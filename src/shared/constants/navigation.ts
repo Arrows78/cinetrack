@@ -1,19 +1,16 @@
-import {
-  Clapperboard,
-  Film,
-  History,
-  House,
-  Search,
-  Settings,
-  Tv,
-} from 'lucide-react';
+import { Clapperboard, Film, History, House, Search, Settings, Tv } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
-export const navigationItems = [
-  { label: 'Accueil', to: '/', icon: House },
-  { label: 'Films', to: '/movies', icon: Film },
-  { label: 'Séries', to: '/series', icon: Tv },
-  { label: 'Recherche', to: '/search', icon: Search },
-  { label: 'Watchlist', to: '/watchlist', icon: Clapperboard },
-  { label: 'Activité', to: '/history', icon: History },
-  { label: 'Paramètres', to: '/settings', icon: Settings },
-] as const;
+export const useNavigationItems = () => {
+  const { t } = useTranslation();
+
+  return [
+    { label: t('nav.home'), to: '/', icon: House },
+    { label: t('nav.movies'), to: '/movies', icon: Film },
+    { label: t('nav.series'), to: '/series', icon: Tv },
+    { label: t('nav.search'), to: '/search', icon: Search },
+    { label: t('nav.watchlist'), to: '/watchlist', icon: Clapperboard },
+    { label: t('nav.history'), to: '/history', icon: History },
+    { label: t('nav.settings'), to: '/settings', icon: Settings },
+  ] as const;
+};

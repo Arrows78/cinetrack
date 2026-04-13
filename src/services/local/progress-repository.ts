@@ -1,11 +1,17 @@
 import { percent } from '@/shared/utils/format';
-import type { Episode, EpisodeProgress, MediaSummary, SeriesProgress, Season } from '@/types/media';
+import type {
+  Episode,
+  EpisodeProgress,
+  MediaSummary,
+  SeriesProgress,
+  Season,
+  TrackedSeriesItem,
+} from '@/types/media';
 import { browserStore, getDatabase } from './db';
 import { historyRepository } from './history-repository';
 
 const nowIso = () => new Date().toISOString();
 const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
 
 export const progressRepository = {
   async isMovieSeen(movieId: number) {
@@ -185,7 +191,11 @@ export const progressRepository = {
     });
   },
 
-  async markSeason(series: MediaSummary & { numberOfEpisodes?: number }, season: Season, watched: boolean) {
+  async markSeason(
+    series: MediaSummary & { numberOfEpisodes?: number },
+    season: Season,
+    watched: boolean,
+  ) {
     for (const episode of season.episodes) {
       await this.toggleEpisodeSeen(series, episode, watched);
     }
@@ -235,10 +245,18 @@ export const progressRepository = {
     }));
   },
 
-  calculateSeriesProgress(seriesId: number, seasons: Season[], watched: EpisodeProgress[]): SeriesProgress {
-    const watchedSet = new Set(watched.filter((item) => item.watched).map((item) => item.episodeId));
+  calculateSeriesProgress(
+    seriesId: number,
+    seasons: Season[],
+    watched: EpisodeProgress[],
+  ): SeriesProgress {
+    const watchedSet = new Set(
+      watched.filter((item) => item.watched).map((item) => item.episodeId),
+    );
     const progressBySeason = seasons.map((season) => {
-      const watchedEpisodes = season.episodes.filter((episode) => watchedSet.has(episode.id)).length;
+      const watchedEpisodes = season.episodes.filter((episode) =>
+        watchedSet.has(episode.id),
+      ).length;
       return {
         seasonNumber: season.seasonNumber,
         totalEpisodes: season.episodes.length,

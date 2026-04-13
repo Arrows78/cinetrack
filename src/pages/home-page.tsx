@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -12,18 +13,14 @@ import { useHistory, useTrackedSeries, useWatchlist } from '@/hooks/use-local-me
 import { useHomeFeed } from '@/hooks/use-media';
 
 export function HomePage() {
+  const { t } = useTranslation();
   const homeQuery = useHomeFeed();
   const watchlistQuery = useWatchlist();
   const trackedSeriesQuery = useTrackedSeries();
   const historyQuery = useHistory();
 
   if (!hasTmdbToken) {
-    return (
-      <EmptyState
-        title="Configure ton accès TMDB"
-        description="Ajoute ton bearer token TMDB dans .env sous la clé VITE_TMDB_API_TOKEN. L’app est déjà prête côté architecture, données locales et UI ; il manque juste l’authentification API pour charger le catalogue."
-      />
-    );
+    return <EmptyState title={t('home.configureTmdb')} description={t('home.configureTmdbDesc')} />;
   }
 
   if (homeQuery.isLoading) {
@@ -66,7 +63,7 @@ export function HomePage() {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm text-primary">
                 <Sparkles className="h-4 w-4" />
-                Sélection premium
+                {t('home.premiumSelection')}
               </div>
               <h2 className="mt-5 text-4xl font-black text-balance md:text-6xl">{hero.title}</h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
@@ -75,31 +72,31 @@ export function HomePage() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button asChild size="lg">
                   <Link to="/movies/$movieId" params={{ movieId: String(hero.id) }}>
-                    Voir la fiche
+                    {t('home.viewDetails')}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <Link to="/search">Explorer le catalogue</Link>
+                  <Link to="/search">{t('home.exploreCatalog')}</Link>
                 </Button>
               </div>
             </div>
 
             <div className="grid gap-4 self-end md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               <StatCard
-                label="Watchlist"
+                label={t('nav.watchlist')}
                 value={String(watchlistQuery.data?.length ?? 0)}
-                helper="Titres à voir plus tard"
+                helper={t('home.watchlistHelper')}
               />
               <StatCard
-                label="Séries suivies"
+                label={t('home.followedSeries')}
                 value={String(trackedSeriesQuery.data?.length ?? 0)}
-                helper="Progressions locales"
+                helper={t('home.trackedHelper')}
               />
               <StatCard
-                label="Activité"
+                label={t('nav.history')}
                 value={String(historyQuery.data?.length ?? 0)}
-                helper="Dernières actions enregistrées"
+                helper={t('home.activityHelper')}
               />
             </div>
           </div>
@@ -109,20 +106,23 @@ export function HomePage() {
       {continueWatching.length > 0 ? (
         <section>
           <SectionHeader
-            title="Continuer à regarder"
-            subtitle="Retrouve tes séries en cours en un clic."
+            title={t('home.continueWatching')}
+            subtitle={t('home.continueWatchingDesc')}
           />
           <MediaGrid items={continueWatching} />
         </section>
       ) : null}
 
       <section>
-        <SectionHeader title="Films populaires" subtitle="Une sélection visuelle soignée pour démarrer." />
+        <SectionHeader title={t('home.popularMovies')} subtitle={t('home.popularMoviesSubtitle')} />
         <MediaGrid items={homeQuery.data?.popularMovies ?? []} />
       </section>
 
       <section>
-        <SectionHeader title="Séries à suivre" subtitle="Progression épisode par épisode, localement persistée." />
+        <SectionHeader
+          title={t('home.trendingSeries')}
+          subtitle={t('home.trendingSeriesSubtitle')}
+        />
         <MediaGrid items={homeQuery.data?.popularSeries ?? []} />
       </section>
     </div>

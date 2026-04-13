@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useParams } from '@tanstack/react-router';
 import { CastList } from '@/components/media/cast-list';
 import { MediaDetailsHero } from '@/components/media/media-details-hero';
@@ -10,6 +11,7 @@ import { useMovieSeen } from '@/hooks/use-local-media';
 import { useMovieDetails } from '@/hooks/use-media';
 
 export function MovieDetailPage() {
+  const { t } = useTranslation();
   const { movieId } = useParams({ from: '/movies/$movieId' });
   const id = Number(movieId);
   const movieQuery = useMovieDetails(id);
@@ -30,30 +32,41 @@ export function MovieDetailPage() {
             seen={Boolean(seenQuery.data)}
             disabled={seenQuery.isSaving}
             onToggle={() => seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
-            labelSeen="Déjà vu"
-            labelUnseen="Marquer comme vu"
+            labelSeen={t('movie.alreadySeen')}
+            labelUnseen={t('movie.markAsSeen')}
           />
         }
       />
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Card>
-          <SectionHeader title="Synopsis" />
+          <SectionHeader title={t('media.overview')} />
           <p className="text-sm leading-7 text-muted-foreground md:text-base">{movie.overview}</p>
         </Card>
         <Card>
-          <SectionHeader title="Fiche technique" />
+          <SectionHeader title={t('movie.technicalSheet')} />
           <div className="grid gap-3 text-sm text-muted-foreground">
-            <div><span className="text-foreground">Pays :</span> {movie.country?.join(', ') || '—'}</div>
-            <div><span className="text-foreground">Langue :</span> {movie.language || '—'}</div>
-            <div><span className="text-foreground">Genres :</span> {movie.genres.join(', ') || '—'}</div>
-            <div><span className="text-foreground">Statut :</span> {movie.status || '—'}</div>
+            <div>
+              <span className="text-foreground">{t('movie.country')}:</span>{' '}
+              {movie.country?.join(', ') || '—'}
+            </div>
+            <div>
+              <span className="text-foreground">{t('movie.language')}:</span>{' '}
+              {movie.language || '—'}
+            </div>
+            <div>
+              <span className="text-foreground">{t('media.genres')}:</span>{' '}
+              {movie.genres.join(', ') || '—'}
+            </div>
+            <div>
+              <span className="text-foreground">{t('series.status')}:</span> {movie.status || '—'}
+            </div>
           </div>
         </Card>
       </section>
 
       <section>
-        <SectionHeader title="Casting principal" subtitle="Les visages les plus visibles de la fiche TMDB." />
+        <SectionHeader title={t('media.cast')} subtitle={t('movie.castSubtitle')} />
         <CastList cast={movie.cast} />
       </section>
     </div>

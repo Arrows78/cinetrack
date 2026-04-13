@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -13,6 +14,7 @@ export function MediaDetailsHero({
   actions?: React.ReactNode;
   extra?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const backdrop = buildTmdbImageUrl(media.backdropPath, 'original');
   const poster = buildTmdbImageUrl(media.posterPath, 'w500');
 
@@ -20,7 +22,11 @@ export function MediaDetailsHero({
     <section className="relative overflow-hidden rounded-[32px] border border-white/5 bg-card/70">
       {backdrop ? (
         <>
-          <img src={backdrop} alt={media.title} className="absolute inset-0 h-full w-full object-cover opacity-35" />
+          <img
+            src={backdrop}
+            alt={media.title}
+            className="absolute inset-0 h-full w-full object-cover opacity-35"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/88 to-background/70" />
         </>
       ) : null}
@@ -37,21 +43,23 @@ export function MediaDetailsHero({
         <div className="flex flex-col justify-between gap-6">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge>{media.mediaType === 'movie' ? 'Film' : 'Série'}</Badge>
+              <Badge>{media.mediaType === 'movie' ? t('nav.movies') : t('nav.series')}</Badge>
               {media.status ? <Badge variant="secondary">{media.status}</Badge> : null}
             </div>
             <h2 className="mt-4 text-3xl font-bold text-balance md:text-5xl">{media.title}</h2>
             {media.originalTitle && media.originalTitle !== media.title ? (
-              <p className="mt-2 text-base text-muted-foreground">Titre original : {media.originalTitle}</p>
+              <p className="mt-2 text-base text-muted-foreground">
+                {t('media.originalTitle')}: {media.originalTitle}
+              </p>
             ) : null}
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span>★ {formatRating(media.rating)}</span>
-              <span>{media.year ?? 'Année inconnue'}</span>
+              <span>{media.year ?? t('media.unknownYear')}</span>
               {media.runtime ? <span>{formatRuntime(media.runtime)}</span> : null}
               {media.language ? <span>{media.language}</span> : null}
             </div>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
-              {media.overview || 'Pas de synopsis disponible pour ce contenu.'}
+              {media.overview || t('media.noOverview')}
             </p>
           </div>
 

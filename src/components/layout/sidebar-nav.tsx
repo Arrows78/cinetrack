@@ -1,10 +1,13 @@
+import { useTranslation } from 'react-i18next';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { navigationItems } from '@/shared/constants/navigation';
+import { useNavigationItems } from '@/shared/constants/navigation';
 import { cn } from '@/shared/lib/cn';
 import { Separator } from '@/components/ui/separator';
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useTranslation();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const navigationItems = useNavigationItems();
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -47,10 +50,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <div className="space-y-4">
         <Separator />
         <div className="rounded-3xl border border-white/5 bg-white/5 p-4 text-sm text-muted-foreground">
-          <p className="font-semibold text-foreground">Desktop-first, mobile-ready</p>
-          <p className="mt-2 text-sm leading-6">
-            Shell Tauri, persistance locale robuste et UI responsive prête pour une future adaptation mobile.
-          </p>
+          <p className="font-semibold text-foreground">{t('sidebar.title')}</p>
+          <p className="mt-2 text-sm leading-6">{t('sidebar.description')}</p>
         </div>
       </div>
     </div>

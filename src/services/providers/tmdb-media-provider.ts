@@ -82,7 +82,6 @@ export class TmdbMediaProvider implements MediaProvider {
       const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>('/search/movie', {
         language: 'fr-FR',
         query,
-        include_adult: false,
       });
       return response.results.map((result) => mapSearchResult(result, 'movie'));
     }
@@ -91,7 +90,6 @@ export class TmdbMediaProvider implements MediaProvider {
       const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>('/search/tv', {
         language: 'fr-FR',
         query,
-        include_adult: false,
       });
       return response.results.map((result) => mapSearchResult(result, 'series'));
     }
@@ -99,7 +97,6 @@ export class TmdbMediaProvider implements MediaProvider {
     const response = await tmdbFetch<TmdbListResponse<TmdbMultiSearchResultDto>>('/search/multi', {
       language: 'fr-FR',
       query,
-      include_adult: false,
     });
 
     return response.results
@@ -107,8 +104,6 @@ export class TmdbMediaProvider implements MediaProvider {
         (result): result is TmdbMultiSearchResultDto & { media_type: 'movie' | 'tv' } =>
           result.media_type === 'movie' || result.media_type === 'tv',
       )
-      .map((result) =>
-        mapSearchResult(result, result.media_type === 'movie' ? 'movie' : 'series'),
-      );
+      .map((result) => mapSearchResult(result, result.media_type === 'movie' ? 'movie' : 'series'));
   }
 }

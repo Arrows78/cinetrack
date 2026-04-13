@@ -1,0 +1,167 @@
+{
+  "common": {
+    "movies": "Movies",
+    "series": "Series",
+    "search": "Search",
+    "settings": "Settings",
+    "home": "Home",
+    "watchlist": "Watchlist",
+    "history": "History",
+    "open": "Open"
+  },
+  "nav": {
+    "home": "Home",
+    "movies": "Movies",
+    "series": "Series",
+    "search": "Search",
+    "watchlist": "Watchlist",
+    "history": "Activity",
+    "settings": "Settings"
+  },
+  "media": {
+    "overview": "Overview",
+    "cast": "Cast",
+    "seasons": "Seasons",
+    "episodes": "Episodes",
+    "rating": "Rating",
+    "releaseDate": "Release Date",
+    "addToWatchlist": "Add to watchlist",
+    "removeFromWatchlist": "Remove from watchlist",
+    "markAsSeen": "Mark as seen",
+    "markAsUnseen": "Mark as unseen",
+    "season": "Season",
+    "episode": "Episode",
+    "seen": "Seen",
+    "genres": "Genres",
+    "inWatchlist": "In watchlist",
+    "originalTitle": "Original title",
+    "unknownYear": "Unknown year",
+    "noOverview": "No overview available for this content."
+  },
+  "status": {
+    "watching": "Watching",
+    "completed": "Completed",
+    "planned": "Planned"
+  },
+  "pages": {
+    "notFound": "Page not found",
+    "noResults": "No results found",
+    "emptyWatchlist": "Your watchlist is empty",
+    "emptyHistory": "No watch history"
+  },
+  "home": {
+    "configureTmdb": "Configure your TMDB access",
+    "configureTmdbDesc": "Add your TMDB bearer token to .env under the key VITE_TMDB_API_TOKEN. The app is already ready on the architecture side, local data and UI; only the API authentication is missing to load the catalog.",
+    "premiumSelection": "Premium selection",
+    "viewDetails": "View details",
+    "exploreCatalog": "Explore catalog",
+    "watchlistHelper": "Titles to watch later",
+    "trackedHelper": "Local progressions",
+    "activityHelper": "Latest recorded actions",
+    "continueWatching": "Continue watching",
+    "continueWatchingDesc": "Find your series in progress with one click.",
+    "followedSeries": "Followed Series",
+    "popularMovies": "Popular Movies",
+    "popularMoviesSubtitle": "A curated visual selection to get started.",
+    "trendingSeries": "Series to Follow",
+    "trendingSeriesSubtitle": "Episode-by-episode progress, locally persisted."
+  },
+  "history": {
+    "recentActivity": "Recent Activity",
+    "recentActivitySubtitle": "Films watched, episodes marked, and watchlist movements.",
+    "seriesInProgress": "Series In Progress",
+    "seriesInProgressSubtitle": "Your local progress on followed series.",
+    "noActivity": "No activity yet",
+    "noActivityDesc": "Start marking content as watched or fill your watchlist to populate this section.",
+    "noTrackedSeries": "No tracked series",
+    "noTrackedSeriesDesc": "As soon as you check an episode, the progress appears here with local persistence.",
+    "episodesWatched": "episodes watched",
+    "completed": "completed",
+    "actions": {
+      "movieWatched": "Movie watched",
+      "movieUnwatched": "Movie unwatched",
+      "episodeWatched": "Episode watched",
+      "episodeUnwatched": "Episode unwatched",
+      "addedToWatchlist": "Added to watchlist",
+      "removedFromWatchlist": "Removed from watchlist"
+    }
+  },
+  "search": {
+    "globalSearch": "Global Search",
+    "subtitle": "Debounce, empty states and clean filters for movies and series.",
+    "startTyping": "Start typing",
+    "startTypingDesc": "Search activates from 2 characters. Use the filter to target movies, series, or both.",
+    "noResultsDesc": "Try another title, different language, or a different filter.",
+    "resultsCount": "{{count}} result(s)"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "User preferences persisted locally, desktop first, ready for future mobile port.",
+    "uiPreferences": "UI Preferences",
+    "uiPreferencesDesc": "Customize your local experience.",
+    "defaultSearchType": "Default search type",
+    "defaultWatchlistFilter": "Default watchlist filter",
+    "all": "All",
+    "reduceAnimations": "Reduce animations",
+    "reducedAnimationsOn": "Reduced animations enabled",
+    "enableCompactMode": "Enable compact mode",
+    "compactModeOn": "Compact mode enabled",
+    "apiConfig": "API Configuration",
+    "apiConfigDesc": "The application uses TMDB via an abstract provider layer.",
+    "envInstruction": "Add your TMDB bearer token to the",
+    "openTmdbDocs": "Open TMDB docs"
+  },
+  "searchBar": {
+    "placeholder": "Search for a movie or series..."
+  },
+  "movies": {
+    "subtitle": "Premium display, immersive posters and direct access to detailed sheets.",
+    "noMoviesAvailable": "No movies available",
+    "noMoviesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
+    "alreadySeen": "Already seen",
+    "markAsSeen": "Mark as seen",
+    "technicalSheet": "Technical Sheet",
+    "country": "Country",
+    "language": "Language",
+    "castSubtitle": "The most visible faces from the TMDB page."
+  },
+  "series": {
+    "subtitle": "Browse by season, track your progress and discover new series.",
+    "noSeriesAvailable": "No series available",
+    "noSeriesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
+    "markAllSeen": "Mark entire series as seen",
+    "resetProgress": "Reset progress",
+    "seriesInfo": "Series Info",
+    "status": "Status",
+    "genres": "Genres",
+    "currentProgress": "Current Progress",
+    "seasonsAndEpisodes": "Seasons & Episodes",
+    "seasonsAndEpisodesDesc": "Each episode can be marked as watched/unwatched, with progress per season and overall.",
+    "globalProgress": "Global Progress",
+    "markSeasonSeen": "Mark season as seen",
+    "resetSeason": "Reset season",
+    "openDedicatedPage": "Open dedicated page"
+  },
+  "watchlist": {
+    "subtitle": "Filter by type and smartly sort your backlog.",
+    "recent": "Recent",
+    "title": "Title",
+    "rating": "Rating",
+    "emptyDesc": "Add movies or series from cards or detail pages to find them here."
+  },
+  "episode": {
+    "noOverview": "Summary not available."
+  },
+  "sidebar": {
+    "title": "Desktop-first, mobile-ready",
+    "description": "Tauri shell, robust local persistence and responsive UI ready for future mobile adaptation."
+  },
+  "movie": {
+    "alreadySeen": "Already seen",
+    "markAsSeen": "Mark as seen",
+    "technicalSheet": "Technical Sheet",
+    "country": "Country",
+    "language": "Language",
+    "castSubtitle": "The most visible faces from the TMDB page."
+  }
+}
