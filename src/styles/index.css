@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 231 33% 8%;
+  --foreground: 220 16% 96%;
+  --card: 228 24% 12%;
+  --card-foreground: 220 16% 96%;
+  --popover: 228 24% 12%;
+  --popover-foreground: 220 16% 96%;
+  --primary: 252 88% 70%;
+  --primary-foreground: 230 20% 98%;
+  --secondary: 220 17% 18%;
+  --secondary-foreground: 220 16% 96%;
+  --muted: 222 15% 16%;
+  --muted-foreground: 220 10% 65%;
+  --accent: 195 92% 62%;
+  --accent-foreground: 230 20% 98%;
+  --destructive: 0 72% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 222 15% 20%;
+  --input: 222 15% 20%;
+  --ring: 252 88% 70%;
+  --radius: 1rem;
+}
+
+.light {
+  --background: 220 33% 98%;
+  --foreground: 225 25% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 225 25% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 225 25% 11%;
+  --primary: 252 88% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 94%;
+  --secondary-foreground: 225 25% 11%;
+  --muted: 220 14% 94%;
+  --muted-foreground: 225 10% 42%;
+  --accent: 196 94% 46%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 15% 88%;
+  --input: 220 15% 88%;
+  --ring: 252 88% 60%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-image: radial-gradient(circle at top, rgba(100, 108, 255, 0.16), transparent 30%),
+      radial-gradient(circle at 80% 10%, rgba(56, 189, 248, 0.08), transparent 20%),
+      linear-gradient(180deg, rgba(7, 10, 24, 1) 0%, rgba(10, 13, 29, 1) 100%);
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(transparent 0%, rgba(255, 255, 255, 0.015) 100%);
+  }
+}
+
+@layer utilities {
+  .surface {
+    @apply bg-card/80 backdrop-blur-xl border border-white/5 shadow-glow;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+.animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+
+.animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}

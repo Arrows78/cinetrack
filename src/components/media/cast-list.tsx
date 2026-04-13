@@ -1,0 +1,26 @@
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { buildTmdbImageUrl } from '@/shared/utils/format';
+import type { CastMember } from '@/types/media';
+
+export function CastList({ cast }: { cast: CastMember[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+      {cast.map((member) => (
+        <Card key={member.id} className="flex items-center gap-3 rounded-3xl p-3">
+          <img
+            src={buildTmdbImageUrl(member.profilePath, 'w185') ?? 'https://placehold.co/200x300/111827/e5e7eb?text=Cast'}
+            alt={member.name}
+            className="h-16 w-16 rounded-2xl object-cover"
+          />
+          <div className="min-w-0">
+            <p className="truncate font-medium">{member.name}</p>
+            <Badge variant="outline" className="mt-1 max-w-full truncate">
+              {member.character ?? 'Casting'}
+            </Badge>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
