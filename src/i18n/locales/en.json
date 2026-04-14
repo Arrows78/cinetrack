@@ -1,12 +1,5 @@
 {
   "common": {
-    "movies": "Movies",
-    "series": "Series",
-    "search": "Search",
-    "settings": "Settings",
-    "home": "Home",
-    "watchlist": "Watchlist",
-    "history": "History",
     "open": "Open"
   },
   "nav": {
@@ -38,13 +31,10 @@
     "unknownYear": "Unknown year",
     "noOverview": "No overview available for this content."
   },
-  "status": {
-    "watching": "Watching",
-    "completed": "Completed",
-    "planned": "Planned"
-  },
   "pages": {
     "notFound": "Page not found",
+    "notFoundDesc": "The requested route doesn't exist or hasn't been exposed in the router yet.",
+    "backToHome": "Back to home",
     "noResults": "No results found",
     "emptyWatchlist": "Your watchlist is empty",
     "emptyHistory": "No watch history"
@@ -76,15 +66,7 @@
     "noTrackedSeries": "No tracked series",
     "noTrackedSeriesDesc": "As soon as you check an episode, the progress appears here with local persistence.",
     "episodesWatched": "episodes watched",
-    "completed": "completed",
-    "actions": {
-      "movieWatched": "Movie watched",
-      "movieUnwatched": "Movie unwatched",
-      "episodeWatched": "Episode watched",
-      "episodeUnwatched": "Episode unwatched",
-      "addedToWatchlist": "Added to watchlist",
-      "removedFromWatchlist": "Removed from watchlist"
-    }
+    "completed": "completed"
   },
   "search": {
     "globalSearch": "Global Search",
@@ -153,8 +135,16 @@
     "noOverview": "Summary not available."
   },
   "sidebar": {
-    "title": "Desktop-first, mobile-ready",
-    "description": "Tauri shell, robust local persistence and responsive UI ready for future mobile adaptation."
+    "brand": {
+      "tagline": "Cinema OS",
+      "name": "CineTrack"
+    },
+    "categories": {
+      "main": "Menu",
+      "settings": "Settings"
+    },
+    "theme": "Theme",
+    "user": "User"
   },
   "movie": {
     "alreadySeen": "Already seen",

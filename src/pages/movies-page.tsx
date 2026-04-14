@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Film } from 'lucide-react'
 import { EmptyState } from '@/components/states/empty-state'
 import { GridSkeleton } from '@/components/states/loading-skeletons'
 import { MediaGrid } from '@/components/media/media-grid'
@@ -13,6 +14,7 @@ export function MoviesPage() {
   if (!query.data?.length) {
     return (
       <EmptyState
+        icon={Film}
         title={t('movies.noMoviesAvailable')}
         description={t('movies.noMoviesAvailableDesc')}
       />

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Search, SearchX } from 'lucide-react'
 import { EmptyState } from '@/components/states/empty-state'
 import { GridSkeleton } from '@/components/states/loading-skeletons'
 import { FilterBar } from '@/components/media/filter-bar'
@@ -50,11 +51,19 @@ export function SearchPage() {
       {searchQuery.isLoading ? <GridSkeleton count={8} /> : null}
 
       {debouncedQuery.trim().length < 2 ? (
-        <EmptyState title={t('search.startTyping')} description={t('search.startTypingDesc')} />
+        <EmptyState
+          icon={Search}
+          title={t('search.startTyping')}
+          description={t('search.startTypingDesc')}
+        />
       ) : null}
 
       {debouncedQuery.trim().length >= 2 && !searchQuery.isLoading && !searchQuery.data?.length ? (
-        <EmptyState title={t('pages.noResults')} description={t('search.noResultsDesc')} />
+        <EmptyState
+          icon={SearchX}
+          title={t('pages.noResults')}
+          description={t('search.noResultsDesc')}
+        />
       ) : null}
 
       {scope === 'all' && grouped.movies.length > 0 ? (

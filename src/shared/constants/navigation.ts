@@ -1,16 +1,45 @@
 import { Clapperboard, Film, History, House, Search, Settings, Tv } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+export type NavigationCategory = 'main' | 'settings'
+
+export interface NavigationItem {
+  label: string
+  to: string
+  icon: typeof House
+  category: NavigationCategory
+  translationKey: string
+}
+
+export const navigationConfig: NavigationItem[] = [
+  { label: 'Home', to: '/', icon: House, category: 'main', translationKey: 'home' },
+  { label: 'Movies', to: '/movies', icon: Film, category: 'main', translationKey: 'movies' },
+  { label: 'Series', to: '/series', icon: Tv, category: 'main', translationKey: 'series' },
+  { label: 'Search', to: '/search', icon: Search, category: 'main', translationKey: 'search' },
+  {
+    label: 'Watchlist',
+    to: '/watchlist',
+    icon: Clapperboard,
+    category: 'main',
+    translationKey: 'watchlist',
+  },
+  { label: 'Activity', to: '/history', icon: History, category: 'main', translationKey: 'history' },
+  {
+    label: 'Settings',
+    to: '/settings',
+    icon: Settings,
+    category: 'settings',
+    translationKey: 'settings',
+  },
+]
+
+export const categoryOrder: NavigationCategory[] = ['main', 'settings']
+
 export const useNavigationItems = () => {
   const { t } = useTranslation()
 
-  return [
-    { label: t('nav.home'), to: '/', icon: House },
-    { label: t('nav.movies'), to: '/movies', icon: Film },
-    { label: t('nav.series'), to: '/series', icon: Tv },
-    { label: t('nav.search'), to: '/search', icon: Search },
-    { label: t('nav.watchlist'), to: '/watchlist', icon: Clapperboard },
-    { label: t('nav.history'), to: '/history', icon: History },
-    { label: t('nav.settings'), to: '/settings', icon: Settings },
-  ] as const
+  return navigationConfig.map((item) => ({
+    ...item,
+    label: t(`nav.${item.translationKey}`),
+  })) as readonly NavigationItem[]
 }

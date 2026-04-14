@@ -7,9 +7,8 @@ export function ThemeController() {
   useEffect(() => {
     const root = document.documentElement
     const body = document.body
-    const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches
     const theme = preferences?.theme ?? 'dark'
-    const shouldUseLight = theme === 'light' || (theme === 'system' && systemPrefersLight)
+    const shouldUseLight = theme === 'light'
 
     root.classList.toggle('light', shouldUseLight)
     root.classList.toggle('dark', !shouldUseLight)

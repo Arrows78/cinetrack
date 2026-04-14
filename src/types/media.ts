@@ -119,12 +119,18 @@ export interface SeriesProgress {
   completed: boolean
 }
 
+export interface UserProfile {
+  name: string | null
+}
+
 export interface UserPreferences {
-  theme: 'dark' | 'light' | 'system'
+  theme: 'dark' | 'light'
   defaultSearchType: 'all' | 'movie' | 'series'
   defaultWatchlistFilter: 'all' | 'movie' | 'series'
   reduceMotion: boolean
   compactMode: boolean
+  sidebarCollapsed: boolean
+  userProfile: UserProfile
 }
 
 export interface TrackedSeriesItem {

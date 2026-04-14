@@ -20,7 +20,13 @@ export function HomePage() {
   const historyQuery = useHistory()
 
   if (!hasTmdbToken) {
-    return <EmptyState title={t('home.configureTmdb')} description={t('home.configureTmdbDesc')} />
+    return (
+      <EmptyState
+        icon={Sparkles}
+        title={t('home.configureTmdb')}
+        description={t('home.configureTmdbDesc')}
+      />
+    )
   }
 
   if (homeQuery.isLoading) {

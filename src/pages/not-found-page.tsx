@@ -1,15 +1,20 @@
 import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/states/empty-state'
 
 export function NotFoundPage() {
+  const { t } = useTranslation()
+
   return (
     <EmptyState
-      title="Page introuvable"
-      description="La route demandée n’existe pas ou n’a pas encore été exposée dans le router."
+      icon={TriangleAlert}
+      title={t('pages.notFound')}
+      description={t('pages.notFoundDesc')}
       action={
         <Button asChild>
-          <Link to="/">Retour à l’accueil</Link>
+          <Link to="/">{t('pages.backToHome')}</Link>
         </Button>
       }
     />

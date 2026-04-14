@@ -1,25 +1,41 @@
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/shared/lib/cn'
 import { Menu } from 'lucide-react'
 import { Outlet } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { SidebarNav } from '@/components/layout/sidebar-nav'
-import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { ThemeController } from '@/components/layout/theme-controller'
 import { useUiStore } from '@/store/ui-store'
+import { usePreferences } from '@/hooks/use-local-media'
 
 export function AppShell() {
+  const { t } = useTranslation()
   const { mobileNavOpen, setMobileNavOpen } = useUiStore()
+  const { data: preferences, updatePreference } = usePreferences()
+  const sidebarCollapsed = preferences?.sidebarCollapsed ?? false
+
+  const handleToggleSidebar = async () => {
+    await updatePreference({ key: 'sidebarCollapsed', value: !sidebarCollapsed })
+  }
 
   return (
     <div className="min-h-screen text-foreground">
       <ThemeController />
-      <div className="mx-auto grid min-h-screen w-full max-w-[1700px] grid-cols-1 gap-6 p-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-6">
-        <aside className="surface hidden min-h-[calc(100vh-3rem)] rounded-[32px] p-5 lg:block">
-          <SidebarNav />
+      <div
+        className={cn(
+          'mx-auto grid min-h-screen w-full max-w-[1700px] grid-cols-1 gap-6 p-4 lg:p-6',
+          sidebarCollapsed
+            ? 'lg:grid-cols-[80px_minmax(0,1fr)]'
+            : 'lg:grid-cols-[280px_minmax(0,1fr)]'
+        )}
+      >
+        <aside className="surface hidden h-[100dvh] sticky top-0 overflow-y-auto rounded-[32px] p-3 lg:block">
+          <SidebarNav collapsed={sidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
         </aside>
 
         <div className="min-w-0">
-          <header className="surface sticky top-4 z-30 mb-6 flex items-center justify-between rounded-[28px] px-4 py-3 lg:px-5">
+          <header className="surface sticky top-4 z-30 mb-6 flex items-center justify-between rounded-[28px] px-4 py-3 lg:hidden">
             <div className="flex items-center gap-3">
               <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                 <SheetTrigger asChild>
@@ -28,17 +44,16 @@ export function AppShell() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent>
-                  <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
+                  <SidebarNav collapsed={false} onToggleCollapse={() => {}} />
                 </SheetContent>
               </Sheet>
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                  Premium tracker
+                  {t('sidebar.brand.tagline')}
                 </p>
-                <h1 className="text-lg font-semibold">Ton cockpit films & séries</h1>
+                <h1 className="text-lg font-semibold">{t('sidebar.brand.name')}</h1>
               </div>
             </div>
-            <ThemeToggle />
           </header>
 
           <main className="pb-10">

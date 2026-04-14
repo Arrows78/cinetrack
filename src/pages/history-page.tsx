@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from '@tanstack/react-router'
-import { Card } from '@/components/ui/card'
+import { History, Clapperboard } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/states/empty-state'
 import { ProgressBar } from '@/components/media/progress-bar'
 import { SectionHeader } from '@/components/media/section-header'
@@ -49,7 +50,11 @@ export function HistoryPage() {
             </Card>
           ))
         ) : (
-          <EmptyState title={t('history.noActivity')} description={t('history.noActivityDesc')} />
+          <EmptyState
+            icon={History}
+            title={t('history.noActivity')}
+            description={t('history.noActivityDesc')}
+          />
         )}
       </section>
 
@@ -86,6 +91,7 @@ export function HistoryPage() {
           })
         ) : (
           <EmptyState
+            icon={Clapperboard}
             title={t('history.noTrackedSeries')}
             description={t('history.noTrackedSeriesDesc')}
           />

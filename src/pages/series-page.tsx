@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Tv } from 'lucide-react'
 import { EmptyState } from '@/components/states/empty-state'
 import { GridSkeleton } from '@/components/states/loading-skeletons'
 import { MediaGrid } from '@/components/media/media-grid'
@@ -13,6 +14,7 @@ export function SeriesPage() {
   if (!query.data?.length) {
     return (
       <EmptyState
+        icon={Tv}
         title={t('series.noSeriesAvailable')}
         description={t('series.noSeriesAvailableDesc')}
       />

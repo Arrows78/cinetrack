@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Clapperboard } from 'lucide-react'
 import { FilterBar } from '@/components/media/filter-bar'
 import { MediaGrid } from '@/components/media/media-grid'
 import { SectionHeader } from '@/components/media/section-header'
@@ -69,7 +70,11 @@ export function WatchlistPage() {
       {filtered.length ? (
         <MediaGrid items={filtered} />
       ) : (
-        <EmptyState title={t('pages.emptyWatchlist')} description={t('watchlist.emptyDesc')} />
+        <EmptyState
+          icon={Clapperboard}
+          title={t('pages.emptyWatchlist')}
+          description={t('watchlist.emptyDesc')}
+        />
       )}
     </div>
   )

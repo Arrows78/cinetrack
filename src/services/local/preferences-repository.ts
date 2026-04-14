@@ -3,11 +3,15 @@ import { browserStore, getDatabase } from './db'
 import type { UserPreferences } from '@/types/media'
 
 const preferencesSchema = z.object({
-  theme: z.enum(['dark', 'light', 'system']).default('dark'),
+  theme: z.enum(['dark', 'light']).default('dark'),
   defaultSearchType: z.enum(['all', 'movie', 'series']).default('all'),
   defaultWatchlistFilter: z.enum(['all', 'movie', 'series']).default('all'),
   reduceMotion: z.boolean().default(false),
   compactMode: z.boolean().default(false),
+  sidebarCollapsed: z.boolean().default(false),
+  userProfile: z.object({
+    name: z.string().nullable().default(null),
+  }),
 })
 
 export const defaultPreferences: UserPreferences = {
@@ -16,6 +20,8 @@ export const defaultPreferences: UserPreferences = {
   defaultWatchlistFilter: 'all',
   reduceMotion: false,
   compactMode: false,
+  sidebarCollapsed: false,
+  userProfile: { name: null },
 }
 
 export const preferencesRepository = {
