@@ -39,7 +39,7 @@ export function HistoryPage() {
                   <p className="mt-3 text-lg font-semibold">{item.title}</p>
                   {item.episodeTitle ? (
                     <p className="mt-1 text-sm text-muted-foreground">
-                      S{item.seasonNumber}E{item.episodeNumber} · {item.episodeTitle}
+                      S{item.seasonNumber}E{item.episodeNumber} • {item.episodeTitle}
                     </p>
                   ) : null}
                 </div>

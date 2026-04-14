@@ -41,8 +41,8 @@ export function SearchPage() {
             onChange={setScope}
             options={[
               { value: 'all', label: t('settings.all') },
-              { value: 'movie', label: t('nav.movies') },
               { value: 'series', label: t('nav.series') },
+              { value: 'movie', label: t('nav.movies') },
             ]}
           />
         </div>
@@ -66,16 +66,6 @@ export function SearchPage() {
         />
       ) : null}
 
-      {scope === 'all' && grouped.movies.length > 0 ? (
-        <section>
-          <SectionHeader
-            title={t('nav.movies')}
-            subtitle={t('search.resultsCount', { count: grouped.movies.length })}
-          />
-          <MediaGrid items={grouped.movies as MediaSummary[]} />
-        </section>
-      ) : null}
-
       {scope === 'all' && grouped.series.length > 0 ? (
         <section>
           <SectionHeader
@@ -83,6 +73,16 @@ export function SearchPage() {
             subtitle={t('search.resultsCount', { count: grouped.series.length })}
           />
           <MediaGrid items={grouped.series as MediaSummary[]} />
+        </section>
+      ) : null}
+
+      {scope === 'all' && grouped.movies.length > 0 ? (
+        <section>
+          <SectionHeader
+            title={t('nav.movies')}
+            subtitle={t('search.resultsCount', { count: grouped.movies.length })}
+          />
+          <MediaGrid items={grouped.movies as MediaSummary[]} />
         </section>
       ) : null}
 

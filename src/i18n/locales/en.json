@@ -51,10 +51,10 @@
     "continueWatching": "Continue watching",
     "continueWatchingDesc": "Find your series in progress with one click.",
     "followedSeries": "Followed Series",
-    "popularMovies": "Popular Movies",
-    "popularMoviesSubtitle": "A curated visual selection to get started.",
-    "trendingSeries": "Series to Follow",
-    "trendingSeriesSubtitle": "Episode-by-episode progress, locally persisted."
+    "trendingMovies": "Trending Movies",
+    "trendingMoviesSubtitle": "Discover the most popular movies of the moment.",
+    "trendingSeries": "Trending Series",
+    "trendingSeriesSubtitle": "Discover the most popular series of the moment."
   },
   "history": {
     "recentActivity": "Recent Activity",
@@ -66,7 +66,15 @@
     "noTrackedSeries": "No tracked series",
     "noTrackedSeriesDesc": "As soon as you check an episode, the progress appears here with local persistence.",
     "episodesWatched": "episodes watched",
-    "completed": "completed"
+    "completed": "completed",
+    "actions": {
+      "movieWatched": "Movie watched",
+      "movieUnwatched": "Movie unwatched",
+      "episodeWatched": "Episode watched",
+      "episodeUnwatched": "Episode unwatched",
+      "addedToWatchlist": "Added to watchlist",
+      "removedFromWatchlist": "Removed from watchlist"
+    }
   },
   "search": {
     "globalSearch": "Global Search",
@@ -144,7 +152,8 @@
       "settings": "Settings"
     },
     "theme": "Theme",
-    "user": "User"
+    "user": "John Doe",
+    "member": "Premium member"
   },
   "movie": {
     "alreadySeen": "Already seen",

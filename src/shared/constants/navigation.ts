@@ -13,8 +13,8 @@ export interface NavigationItem {
 
 export const navigationConfig: NavigationItem[] = [
   { label: 'Home', to: '/', icon: House, category: 'main', translationKey: 'home' },
-  { label: 'Movies', to: '/movies', icon: Film, category: 'main', translationKey: 'movies' },
   { label: 'Series', to: '/series', icon: Tv, category: 'main', translationKey: 'series' },
+  { label: 'Movies', to: '/movies', icon: Film, category: 'main', translationKey: 'movies' },
   { label: 'Search', to: '/search', icon: Search, category: 'main', translationKey: 'search' },
   {
     label: 'Watchlist',

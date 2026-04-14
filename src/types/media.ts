@@ -144,6 +144,6 @@ export interface TrackedSeriesItem {
 }
 
 export interface HomeFeed {
-  popularMovies: Movie[]
+  trendingMovies: Movie[]
   popularSeries: Series[]
 }

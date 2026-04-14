@@ -28,8 +28,8 @@ export function SettingsPage() {
                 onChange={(value) => updatePreference({ key: 'defaultSearchType', value })}
                 options={[
                   { value: 'all', label: t('settings.all') },
-                  { value: 'movie', label: t('nav.movies') },
                   { value: 'series', label: t('nav.series') },
+                  { value: 'movie', label: t('nav.movies') },
                 ]}
               />
             </div>
@@ -41,8 +41,8 @@ export function SettingsPage() {
                 onChange={(value) => updatePreference({ key: 'defaultWatchlistFilter', value })}
                 options={[
                   { value: 'all', label: t('settings.all') },
-                  { value: 'movie', label: t('nav.movies') },
                   { value: 'series', label: t('nav.series') },
+                  { value: 'movie', label: t('nav.movies') },
                 ]}
               />
             </div>

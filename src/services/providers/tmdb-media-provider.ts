@@ -17,18 +17,18 @@ import type {
 
 export class TmdbMediaProvider implements MediaProvider {
   async getHomeFeed(): Promise<HomeFeed> {
-    const [popularMovies, popularSeries] = await Promise.all([
-      this.getPopularMovies(),
+    const [trendingMovies, popularSeries] = await Promise.all([
+      this.getTrendingMovies(),
       this.getPopularSeries(),
     ])
 
     return {
-      popularMovies,
+      trendingMovies,
       popularSeries,
     }
   }
 
-  async getPopularMovies(): Promise<Movie[]> {
+  async getTrendingMovies(): Promise<Movie[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>('/movie/popular', {
       language: 'fr-FR',
       page: 1,

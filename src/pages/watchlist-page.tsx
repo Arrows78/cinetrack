@@ -51,8 +51,8 @@ export function WatchlistPage() {
             onChange={setFilter}
             options={[
               { value: 'all', label: t('settings.all') },
-              { value: 'movie', label: t('nav.movies') },
               { value: 'series', label: t('nav.series') },
+              { value: 'movie', label: t('nav.movies') },
             ]}
           />
           <FilterBar

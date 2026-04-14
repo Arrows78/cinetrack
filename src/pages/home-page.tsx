@@ -38,7 +38,7 @@ export function HomePage() {
     )
   }
 
-  const hero = homeQuery.data?.popularMovies[0]
+  const hero = homeQuery.data?.trendingMovies[0]
   const continueWatching = (trackedSeriesQuery.data ?? [])
     .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
     .slice(0, 5)
@@ -90,14 +90,14 @@ export function HomePage() {
 
             <div className="grid gap-4 self-end md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               <StatCard
-                label={t('nav.watchlist')}
-                value={String(watchlistQuery.data?.length ?? 0)}
-                helper={t('home.watchlistHelper')}
-              />
-              <StatCard
                 label={t('home.followedSeries')}
                 value={String(trackedSeriesQuery.data?.length ?? 0)}
                 helper={t('home.trackedHelper')}
+              />
+              <StatCard
+                label={t('nav.watchlist')}
+                value={String(watchlistQuery.data?.length ?? 0)}
+                helper={t('home.watchlistHelper')}
               />
               <StatCard
                 label={t('nav.history')}
@@ -120,16 +120,16 @@ export function HomePage() {
       ) : null}
 
       <section>
-        <SectionHeader title={t('home.popularMovies')} subtitle={t('home.popularMoviesSubtitle')} />
-        <MediaGrid items={homeQuery.data?.popularMovies ?? []} />
-      </section>
-
-      <section>
         <SectionHeader
           title={t('home.trendingSeries')}
           subtitle={t('home.trendingSeriesSubtitle')}
         />
         <MediaGrid items={homeQuery.data?.popularSeries ?? []} />
+      </section>
+
+      <section>
+        <SectionHeader title={t('home.trendingMovies')} subtitle={t('home.trendingMoviesSubtitle')} />
+        <MediaGrid items={homeQuery.data?.trendingMovies ?? []} />
       </section>
     </div>
   )

@@ -12,7 +12,7 @@ export function useHomeFeed() {
 export function useMovies() {
   return useQuery({
     queryKey: queryKeys.remote.movies,
-    queryFn: () => mediaRepository.getPopularMovies(),
+    queryFn: () => mediaRepository.getTrendingMovies(),
   })
 }
 

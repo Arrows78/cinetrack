@@ -2,7 +2,7 @@ import type { HomeFeed, MediaSummary, Movie, Season, Series } from '@/types/medi
 
 export interface MediaProvider {
   getHomeFeed(): Promise<HomeFeed>
-  getPopularMovies(): Promise<Movie[]>
+  getTrendingMovies(): Promise<Movie[]>
   getPopularSeries(): Promise<Series[]>
   getMovieDetails(movieId: number): Promise<Movie>
   getSeriesDetails(seriesId: number): Promise<Series>

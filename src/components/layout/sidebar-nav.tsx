@@ -28,6 +28,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
   const navigationItems = useNavigationItems()
   const { data: preferences, updatePreference } = usePreferences()
   const activeTheme = preferences?.theme ?? 'dark'
+  const userName = preferences?.userProfile?.name ?? null
 
   const groupedItems = categoryOrder.reduce<Record<NavigationCategory, typeof navigationItems>>(
     (acc, category) => {
@@ -167,14 +168,12 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           )}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
-            {getInitials(null)}
+            {getInitials(userName)}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium">{t('sidebar.user')}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {t('settings.title').toLowerCase()}
-              </p>
+              <p className="truncate text-xs text-muted-foreground">{t('sidebar.member')}</p>
             </div>
           )}
         </div>
