@@ -1,6 +1,6 @@
-import path from 'node:path';
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
+import path from 'node:path'
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
 
 export default defineConfig(() => ({
   plugins: [react()],
@@ -23,4 +23,4 @@ export default defineConfig(() => ({
       : undefined,
   },
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
-}));
+}))

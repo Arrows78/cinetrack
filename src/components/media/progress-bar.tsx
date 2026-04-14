@@ -1,4 +1,4 @@
-import { Progress } from '@/components/ui/progress';
+import { Progress } from '@/components/ui/progress'
 
 export function ProgressBar({ value, label }: { value: number; label?: string }) {
   return (
@@ -6,5 +6,5 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
       {label ? <div className="text-sm text-muted-foreground">{label}</div> : null}
       <Progress value={value} />
     </div>
-  );
+  )
 }

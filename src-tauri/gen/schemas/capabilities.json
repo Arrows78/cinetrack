@@ -1,1 +1,9 @@
-{"default":{"identifier":"default","description":"Main desktop capability for CineTrack","local":true,"windows":["main"],"permissions":["core:default","sql:default"]}}
+{
+  "default": {
+    "identifier": "default",
+    "description": "Main desktop capability for CineTrack",
+    "local": true,
+    "windows": ["main"],
+    "permissions": ["core:default", "sql:default"]
+  }
+}

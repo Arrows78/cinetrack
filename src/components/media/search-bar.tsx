@@ -1,17 +1,17 @@
-import { useTranslation } from 'react-i18next';
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useTranslation } from 'react-i18next'
+import { Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 export function SearchBar({
   value,
   onChange,
   placeholder,
 }: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <div className="relative">
@@ -23,5 +23,5 @@ export function SearchBar({
         className="pl-11"
       />
     </div>
-  );
+  )
 }

@@ -1,22 +1,22 @@
-import { useTranslation } from 'react-i18next';
-import type * as React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { buildTmdbImageUrl, formatRating, formatRuntime } from '@/shared/utils/format';
-import type { MediaSummary } from '@/types/media';
+import { useTranslation } from 'react-i18next'
+import type * as React from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { buildTmdbImageUrl, formatRating, formatRuntime } from '@/shared/utils/format'
+import type { MediaSummary } from '@/types/media'
 
 export function MediaDetailsHero({
   media,
   actions,
   extra,
 }: {
-  media: MediaSummary;
-  actions?: React.ReactNode;
-  extra?: React.ReactNode;
+  media: MediaSummary
+  actions?: React.ReactNode
+  extra?: React.ReactNode
 }) {
-  const { t } = useTranslation();
-  const backdrop = buildTmdbImageUrl(media.backdropPath, 'original');
-  const poster = buildTmdbImageUrl(media.posterPath, 'w500');
+  const { t } = useTranslation()
+  const backdrop = buildTmdbImageUrl(media.backdropPath, 'original')
+  const poster = buildTmdbImageUrl(media.posterPath, 'w500')
 
   return (
     <section className="relative overflow-hidden rounded-[32px] border border-white/5 bg-card/70">
@@ -43,7 +43,9 @@ export function MediaDetailsHero({
         <div className="flex flex-col justify-between gap-6">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge>{media.mediaType === 'movie' ? t('nav.movies') : t('nav.series')}</Badge>
+              <Badge variant={media.mediaType}>
+                {media.mediaType === 'movie' ? t('nav.movies') : t('nav.series')}
+              </Badge>
               {media.status ? <Badge variant="secondary">{media.status}</Badge> : null}
             </div>
             <h2 className="mt-4 text-3xl font-bold text-balance md:text-5xl">{media.title}</h2>
@@ -80,5 +82,5 @@ export function MediaDetailsHero({
         </div>
       </div>
     </section>
-  );
+  )
 }

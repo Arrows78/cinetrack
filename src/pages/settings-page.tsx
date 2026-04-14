@@ -1,14 +1,14 @@
-import { useTranslation } from 'react-i18next';
-import { ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FilterBar } from '@/components/media/filter-bar';
-import { SectionHeader } from '@/components/media/section-header';
-import { usePreferences } from '@/hooks/use-local-media';
+import { useTranslation } from 'react-i18next'
+import { ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { FilterBar } from '@/components/media/filter-bar'
+import { SectionHeader } from '@/components/media/section-header'
+import { usePreferences } from '@/hooks/use-local-media'
 
 export function SettingsPage() {
-  const { t } = useTranslation();
-  const { data: preferences, updatePreference, isSaving } = usePreferences();
+  const { t } = useTranslation()
+  const { data: preferences, updatePreference, isSaving } = usePreferences()
 
   return (
     <div className="space-y-6">
@@ -101,5 +101,5 @@ export function SettingsPage() {
         </Card>
       </div>
     </div>
-  );
+  )
 }

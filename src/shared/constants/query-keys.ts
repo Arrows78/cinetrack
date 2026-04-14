@@ -18,4 +18,4 @@ export const queryKeys = {
     trackedSeries: ['local', 'trackedSeries'] as const,
     stats: ['local', 'stats'] as const,
   },
-};
+}

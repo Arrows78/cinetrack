@@ -1,26 +1,26 @@
-import { useTranslation } from 'react-i18next';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { Link } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/states/empty-state';
-import { GridSkeleton, HeroSkeleton } from '@/components/states/loading-skeletons';
-import { MediaGrid } from '@/components/media/media-grid';
-import { SectionHeader } from '@/components/media/section-header';
-import { StatCard } from '@/components/media/stat-card';
-import { buildTmdbImageUrl } from '@/shared/utils/format';
-import { hasTmdbToken } from '@/shared/config/env';
-import { useHistory, useTrackedSeries, useWatchlist } from '@/hooks/use-local-media';
-import { useHomeFeed } from '@/hooks/use-media';
+import { useTranslation } from 'react-i18next'
+import { ArrowRight, Sparkles } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/states/empty-state'
+import { GridSkeleton, HeroSkeleton } from '@/components/states/loading-skeletons'
+import { MediaGrid } from '@/components/media/media-grid'
+import { SectionHeader } from '@/components/media/section-header'
+import { StatCard } from '@/components/media/stat-card'
+import { buildTmdbImageUrl } from '@/shared/utils/format'
+import { hasTmdbToken } from '@/shared/config/env'
+import { useHistory, useTrackedSeries, useWatchlist } from '@/hooks/use-local-media'
+import { useHomeFeed } from '@/hooks/use-media'
 
 export function HomePage() {
-  const { t } = useTranslation();
-  const homeQuery = useHomeFeed();
-  const watchlistQuery = useWatchlist();
-  const trackedSeriesQuery = useTrackedSeries();
-  const historyQuery = useHistory();
+  const { t } = useTranslation()
+  const homeQuery = useHomeFeed()
+  const watchlistQuery = useWatchlist()
+  const trackedSeriesQuery = useTrackedSeries()
+  const historyQuery = useHistory()
 
   if (!hasTmdbToken) {
-    return <EmptyState title={t('home.configureTmdb')} description={t('home.configureTmdbDesc')} />;
+    return <EmptyState title={t('home.configureTmdb')} description={t('home.configureTmdbDesc')} />
   }
 
   if (homeQuery.isLoading) {
@@ -29,10 +29,10 @@ export function HomePage() {
         <HeroSkeleton />
         <GridSkeleton />
       </div>
-    );
+    )
   }
 
-  const hero = homeQuery.data?.popularMovies[0];
+  const hero = homeQuery.data?.popularMovies[0]
   const continueWatching = (trackedSeriesQuery.data ?? [])
     .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
     .slice(0, 5)
@@ -47,7 +47,7 @@ export function HomePage() {
       rating: null,
       genres: [],
       cast: [],
-    }));
+    }))
 
   return (
     <div className="space-y-10">
@@ -126,5 +126,5 @@ export function HomePage() {
         <MediaGrid items={homeQuery.data?.popularSeries ?? []} />
       </section>
     </div>
-  );
+  )
 }

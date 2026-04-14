@@ -1,40 +1,43 @@
-import { env } from '@/shared/config/env';
+import { env } from '@/shared/config/env'
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
 export class ApiConfigurationError extends Error {
   constructor(message: string) {
-    super(message);
-    this.name = 'ApiConfigurationError';
+    super(message)
+    this.name = 'ApiConfigurationError'
   }
 }
 
-export async function tmdbFetch<T>(path: string, params?: Record<string, string | number | undefined>) {
+export async function tmdbFetch<T>(
+  path: string,
+  params?: Record<string, string | number | undefined>
+) {
   if (!env.VITE_TMDB_API_TOKEN) {
     throw new ApiConfigurationError(
-      'La variable VITE_TMDB_API_TOKEN est absente. Renseigne un bearer token TMDB pour activer les données distantes.',
-    );
+      'La variable VITE_TMDB_API_TOKEN est absente. Renseigne un bearer token TMDB pour activer les données distantes.'
+    )
   }
 
-  const url = new URL(`${TMDB_BASE_URL}${path}`);
+  const url = new URL(`${TMDB_BASE_URL}${path}`)
 
   Object.entries(params ?? {}).forEach(([key, value]) => {
     if (value !== undefined && value !== '') {
-      url.searchParams.set(key, String(value));
+      url.searchParams.set(key, String(value))
     }
-  });
+  })
 
   const response = await fetch(url.toString(), {
     headers: {
       accept: 'application/json',
       Authorization: `Bearer ${env.VITE_TMDB_API_TOKEN}`,
     },
-  });
+  })
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`TMDB ${response.status}: ${message}`);
+    const message = await response.text()
+    throw new Error(`TMDB ${response.status}: ${message}`)
   }
 
-  return (await response.json()) as T;
+  return (await response.json()) as T
 }

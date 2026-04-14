@@ -1,16 +1,16 @@
-import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next'
+import { Link } from '@tanstack/react-router'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
-import { ProgressBar } from '@/components/media/progress-bar';
-import { EpisodeCard } from '@/components/media/episode-card';
-import type { EpisodeProgress, MediaSummary, Season } from '@/types/media';
-import { progressRepository } from '@/services/local/progress-repository';
+} from '@/components/ui/accordion'
+import { Button } from '@/components/ui/button'
+import { ProgressBar } from '@/components/media/progress-bar'
+import { EpisodeCard } from '@/components/media/episode-card'
+import type { EpisodeProgress, MediaSummary, Season } from '@/types/media'
+import { progressRepository } from '@/services/local/progress-repository'
 
 export function SeasonAccordion({
   series,
@@ -20,16 +20,16 @@ export function SeasonAccordion({
   onToggleSeason,
   isSaving,
 }: {
-  series: MediaSummary & { numberOfEpisodes?: number };
-  seasons: Season[];
-  watchedEpisodes: EpisodeProgress[];
-  onToggleEpisode: (episode: Season['episodes'][number], watched: boolean) => Promise<void>;
-  onToggleSeason: (season: Season, watched: boolean) => Promise<void>;
-  isSaving?: boolean;
+  series: MediaSummary & { numberOfEpisodes?: number }
+  seasons: Season[]
+  watchedEpisodes: EpisodeProgress[]
+  onToggleEpisode: (episode: Season['episodes'][number], watched: boolean) => Promise<void>
+  onToggleSeason: (season: Season, watched: boolean) => Promise<void>
+  isSaving?: boolean
 }) {
-  const { t } = useTranslation();
-  const watchedSet = new Set(watchedEpisodes.map((item) => item.episodeId));
-  const progress = progressRepository.calculateSeriesProgress(series.id, seasons, watchedEpisodes);
+  const { t } = useTranslation()
+  const watchedSet = new Set(watchedEpisodes.map((item) => item.episodeId))
+  const progress = progressRepository.calculateSeriesProgress(series.id, seasons, watchedEpisodes)
 
   return (
     <div className="space-y-4">
@@ -53,8 +53,8 @@ export function SeasonAccordion({
       <Accordion type="multiple" className="space-y-4">
         {seasons.map((season) => {
           const seasonProgress = progress.seasons.find(
-            (item) => item.seasonNumber === season.seasonNumber,
-          );
+            (item) => item.seasonNumber === season.seasonNumber
+          )
           return (
             <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
               <AccordionTrigger>
@@ -115,9 +115,9 @@ export function SeasonAccordion({
                 </div>
               </AccordionContent>
             </AccordionItem>
-          );
+          )
         })}
       </Accordion>
     </div>
-  );
+  )
 }

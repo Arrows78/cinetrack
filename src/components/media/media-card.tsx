@@ -1,17 +1,17 @@
-import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
-import { motion } from 'framer-motion';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { buildTmdbImageUrl, formatRating } from '@/shared/utils/format';
-import type { MediaSummary } from '@/types/media';
+import { useTranslation } from 'react-i18next'
+import { Link } from '@tanstack/react-router'
+import { motion } from 'framer-motion'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { buildTmdbImageUrl, formatRating } from '@/shared/utils/format'
+import type { MediaSummary } from '@/types/media'
 
 const fallbackPoster =
-  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80';
+  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80'
 
 function MediaCardInner({ media }: { media: MediaSummary }) {
-  const { t } = useTranslation();
-  const image = buildTmdbImageUrl(media.posterPath, 'w500') ?? fallbackPoster;
+  const { t } = useTranslation()
+  const image = buildTmdbImageUrl(media.posterPath, 'w500') ?? fallbackPoster
 
   return (
     <Card className="group overflow-hidden p-0">
@@ -23,7 +23,9 @@ function MediaCardInner({ media }: { media: MediaSummary }) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
-          <Badge>{media.mediaType === 'movie' ? t('nav.movies') : t('nav.series')}</Badge>
+          <Badge variant={media.mediaType}>
+            {media.mediaType === 'movie' ? t('nav.movies') : t('nav.series')}
+          </Badge>
           <Badge variant="secondary">★ {formatRating(media.rating)}</Badge>
         </div>
         <div className="absolute inset-x-0 bottom-0 p-4">
@@ -32,7 +34,7 @@ function MediaCardInner({ media }: { media: MediaSummary }) {
         </div>
       </div>
     </Card>
-  );
+  )
 }
 
 export function MediaCard({ media }: { media: MediaSummary }) {
@@ -48,5 +50,5 @@ export function MediaCard({ media }: { media: MediaSummary }) {
         </Link>
       )}
     </motion.div>
-  );
+  )
 }

@@ -1,5 +1,5 @@
-import type { MediaSummary } from '@/types/media';
-import { MediaCard } from './media-card';
+import type { MediaSummary } from '@/types/media'
+import { MediaCard } from './media-card'
 
 export function MediaGrid({ items }: { items: MediaSummary[] }) {
   return (
@@ -8,5 +8,5 @@ export function MediaGrid({ items }: { items: MediaSummary[] }) {
         <MediaCard key={`${item.mediaType}-${item.id}`} media={item} />
       ))}
     </div>
-  );
+  )
 }

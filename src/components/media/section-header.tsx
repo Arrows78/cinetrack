@@ -1,5 +1,5 @@
-import type * as React from 'react';
-import { cn } from '@/shared/lib/cn';
+import type * as React from 'react'
+import { cn } from '@/shared/lib/cn'
 
 export function SectionHeader({
   title,
@@ -7,10 +7,10 @@ export function SectionHeader({
   action,
   className,
 }: {
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-  className?: string;
+  title: string
+  subtitle?: string
+  action?: React.ReactNode
+  className?: string
 }) {
   return (
     <div className={cn('mb-4 flex items-end justify-between gap-4', className)}>
@@ -20,5 +20,5 @@ export function SectionHeader({
       </div>
       {action}
     </div>
-  );
+  )
 }

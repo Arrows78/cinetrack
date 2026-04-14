@@ -1,46 +1,46 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { historyRepository } from '@/services/local/history-repository';
-import { preferencesRepository } from '@/services/local/preferences-repository';
-import { progressRepository } from '@/services/local/progress-repository';
-import { watchlistRepository } from '@/services/local/watchlist-repository';
-import { queryKeys } from '@/shared/constants/query-keys';
-import type { Episode, MediaSummary, Season, UserPreferences, WatchlistItem } from '@/types/media';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { historyRepository } from '@/services/local/history-repository'
+import { preferencesRepository } from '@/services/local/preferences-repository'
+import { progressRepository } from '@/services/local/progress-repository'
+import { watchlistRepository } from '@/services/local/watchlist-repository'
+import { queryKeys } from '@/shared/constants/query-keys'
+import type { Episode, MediaSummary, Season, UserPreferences, WatchlistItem } from '@/types/media'
 
 export function usePreferences() {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: queryKeys.local.preferences,
     queryFn: () => preferencesRepository.getPreferences(),
-  });
+  })
 
   const mutation = useMutation({
     mutationFn: ({
       key,
       value,
     }: {
-      key: keyof UserPreferences;
-      value: UserPreferences[keyof UserPreferences];
+      key: keyof UserPreferences
+      value: UserPreferences[keyof UserPreferences]
     }) => preferencesRepository.updatePreference(key as never, value as never),
     onSuccess: (data) => {
-      queryClient.setQueryData(queryKeys.local.preferences, data);
+      queryClient.setQueryData(queryKeys.local.preferences, data)
     },
-  });
+  })
 
   return {
     ...query,
     updatePreference: mutation.mutateAsync,
     isSaving: mutation.isPending,
-  };
+  }
 }
 
 export function useWatchlist() {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: queryKeys.local.watchlist,
     queryFn: () => watchlistRepository.list(),
-  });
+  })
 
   const add = useMutation({
     mutationFn: (item: WatchlistItem) => watchlistRepository.upsert(item),
@@ -48,51 +48,56 @@ export function useWatchlist() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchlist }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
-      ]);
+      ])
     },
-  });
+  })
 
   const remove = useMutation({
-    mutationFn: ({ mediaId, mediaType }: { mediaId: number; mediaType: WatchlistItem['mediaType'] }) =>
-      watchlistRepository.remove(mediaId, mediaType),
+    mutationFn: ({
+      mediaId,
+      mediaType,
+    }: {
+      mediaId: number
+      mediaType: WatchlistItem['mediaType']
+    }) => watchlistRepository.remove(mediaId, mediaType),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchlist }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
-      ]);
+      ])
     },
-  });
+  })
 
   return {
     ...query,
     addToWatchlist: add.mutateAsync,
     removeFromWatchlist: remove.mutateAsync,
     isMutating: add.isPending || remove.isPending,
-  };
+  }
 }
 
 export function useIsInWatchlist(mediaId: number, mediaType: WatchlistItem['mediaType']) {
   return useQuery({
     queryKey: [...queryKeys.local.watchlist, 'has', mediaId, mediaType],
     queryFn: () => watchlistRepository.has(mediaId, mediaType),
-  });
+  })
 }
 
 export function useHistory() {
   return useQuery({
     queryKey: queryKeys.local.history,
     queryFn: () => historyRepository.list(),
-  });
+  })
 }
 
 export function useMovieSeen(movieId: number) {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: queryKeys.local.movieSeen(movieId),
     queryFn: () => progressRepository.isMovieSeen(movieId),
     enabled: Number.isFinite(movieId),
-  });
+  })
 
   const mutation = useMutation({
     mutationFn: ({ movie, watched }: { movie: MediaSummary; watched: boolean }) =>
@@ -101,25 +106,25 @@ export function useMovieSeen(movieId: number) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.movieSeen(variables.movie.id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
-      ]);
+      ])
     },
-  });
+  })
 
   return {
     ...query,
     toggleMovieSeen: mutation.mutateAsync,
     isSaving: mutation.isPending,
-  };
+  }
 }
 
 export function useEpisodeProgress(seriesId: number) {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: queryKeys.local.episodeProgress(seriesId),
     queryFn: () => progressRepository.getEpisodeProgress(seriesId),
     enabled: Number.isFinite(seriesId),
-  });
+  })
 
   const toggleMutation = useMutation({
     mutationFn: ({
@@ -127,18 +132,20 @@ export function useEpisodeProgress(seriesId: number) {
       episode,
       watched,
     }: {
-      series: MediaSummary & { numberOfEpisodes?: number };
-      episode: Episode;
-      watched: boolean;
+      series: MediaSummary & { numberOfEpisodes?: number }
+      episode: Episode
+      watched: boolean
     }) => progressRepository.toggleEpisodeSeen(series, episode, watched),
     onSuccess: async (_, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.episodeProgress(variables.series.id) }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.local.episodeProgress(variables.series.id),
+        }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
-      ]);
+      ])
     },
-  });
+  })
 
   const seasonMutation = useMutation({
     mutationFn: ({
@@ -146,18 +153,20 @@ export function useEpisodeProgress(seriesId: number) {
       season,
       watched,
     }: {
-      series: MediaSummary & { numberOfEpisodes?: number };
-      season: Season;
-      watched: boolean;
+      series: MediaSummary & { numberOfEpisodes?: number }
+      season: Season
+      watched: boolean
     }) => progressRepository.markSeason(series, season, watched),
     onSuccess: async (_, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.episodeProgress(variables.series.id) }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.local.episodeProgress(variables.series.id),
+        }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
-      ]);
+      ])
     },
-  });
+  })
 
   const seriesMutation = useMutation({
     mutationFn: ({
@@ -165,32 +174,33 @@ export function useEpisodeProgress(seriesId: number) {
       seasons,
       watched,
     }: {
-      series: MediaSummary & { numberOfEpisodes?: number };
-      seasons: Season[];
-      watched: boolean;
+      series: MediaSummary & { numberOfEpisodes?: number }
+      seasons: Season[]
+      watched: boolean
     }) => progressRepository.markSeries(series, seasons, watched),
     onSuccess: async (_, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.episodeProgress(variables.series.id) }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.local.episodeProgress(variables.series.id),
+        }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
-      ]);
+      ])
     },
-  });
+  })
 
   return {
     ...query,
     toggleEpisodeSeen: toggleMutation.mutateAsync,
     markSeasonSeen: seasonMutation.mutateAsync,
     markSeriesSeen: seriesMutation.mutateAsync,
-    isSaving:
-      toggleMutation.isPending || seasonMutation.isPending || seriesMutation.isPending,
-  };
+    isSaving: toggleMutation.isPending || seasonMutation.isPending || seriesMutation.isPending,
+  }
 }
 
 export function useTrackedSeries() {
   return useQuery({
     queryKey: queryKeys.local.trackedSeries,
     queryFn: () => progressRepository.listTrackedSeries(),
-  });
+  })
 }

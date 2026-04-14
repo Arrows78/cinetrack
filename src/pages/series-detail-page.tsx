@@ -1,45 +1,41 @@
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import type { Season } from '@/types/media';
-import { useParams } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { CastList } from '@/components/media/cast-list';
-import { MediaDetailsHero } from '@/components/media/media-details-hero';
-import { SeasonAccordion } from '@/components/media/season-accordion';
-import { SectionHeader } from '@/components/media/section-header';
-import { WatchlistButton } from '@/components/media/watchlist-button';
-import { HeroSkeleton } from '@/components/states/loading-skeletons';
-import { useEpisodeProgress } from '@/hooks/use-local-media';
-import { useSeriesDetails, useSeriesSeasons } from '@/hooks/use-media';
-import { progressRepository } from '@/services/local/progress-repository';
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { Season } from '@/types/media'
+import { useParams } from '@tanstack/react-router'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { CastList } from '@/components/media/cast-list'
+import { MediaDetailsHero } from '@/components/media/media-details-hero'
+import { SeasonAccordion } from '@/components/media/season-accordion'
+import { SectionHeader } from '@/components/media/section-header'
+import { WatchlistButton } from '@/components/media/watchlist-button'
+import { HeroSkeleton } from '@/components/states/loading-skeletons'
+import { useEpisodeProgress } from '@/hooks/use-local-media'
+import { useSeriesDetails, useSeriesSeasons } from '@/hooks/use-media'
+import { progressRepository } from '@/services/local/progress-repository'
 
 export function SeriesDetailPage() {
-  const { t } = useTranslation();
-  const { seriesId } = useParams({ from: '/series/$seriesId' });
-  const id = Number(seriesId);
-  const seriesQuery = useSeriesDetails(id);
-  const progressQuery = useEpisodeProgress(id);
+  const { t } = useTranslation()
+  const { seriesId } = useParams({ from: '/series/$seriesId' })
+  const id = Number(seriesId)
+  const seriesQuery = useSeriesDetails(id)
+  const progressQuery = useEpisodeProgress(id)
 
   const seasonNumbers = useMemo(
     () =>
       (seriesQuery.data?.seasons ?? [])
         .map((season) => season.seasonNumber)
         .filter((seasonNumber) => seasonNumber > 0),
-    [seriesQuery.data?.seasons],
-  );
-  const seasonQueries = useSeriesSeasons(id, seasonNumbers);
+    [seriesQuery.data?.seasons]
+  )
+  const seasonQueries = useSeriesSeasons(id, seasonNumbers)
 
-  if (seriesQuery.isLoading) return <HeroSkeleton />;
-  if (!seriesQuery.data) return null;
+  if (seriesQuery.isLoading) return <HeroSkeleton />
+  if (!seriesQuery.data) return null
 
-  const series = seriesQuery.data;
-  const seasons = seasonQueries.map((query) => query.data).filter((s): s is Season => Boolean(s));
-  const progress = progressRepository.calculateSeriesProgress(
-    id,
-    seasons,
-    progressQuery.data ?? [],
-  );
+  const series = seriesQuery.data
+  const seasons = seasonQueries.map((query) => query.data).filter((s): s is Season => Boolean(s))
+  const progress = progressRepository.calculateSeriesProgress(id, seasons, progressQuery.data ?? [])
 
   return (
     <div className="space-y-8">
@@ -124,5 +120,5 @@ export function SeriesDetailPage() {
         <CastList cast={series.cast} />
       </section>
     </div>
-  );
+  )
 }

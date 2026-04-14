@@ -1,14 +1,14 @@
-import { Menu } from 'lucide-react';
-import { Outlet } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { SidebarNav } from '@/components/layout/sidebar-nav';
-import { ThemeToggle } from '@/components/layout/theme-toggle';
-import { ThemeController } from '@/components/layout/theme-controller';
-import { useUiStore } from '@/store/ui-store';
+import { Menu } from 'lucide-react'
+import { Outlet } from '@tanstack/react-router'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { SidebarNav } from '@/components/layout/sidebar-nav'
+import { ThemeToggle } from '@/components/layout/theme-toggle'
+import { ThemeController } from '@/components/layout/theme-controller'
+import { useUiStore } from '@/store/ui-store'
 
 export function AppShell() {
-  const { mobileNavOpen, setMobileNavOpen } = useUiStore();
+  const { mobileNavOpen, setMobileNavOpen } = useUiStore()
 
   return (
     <div className="min-h-screen text-foreground">
@@ -32,7 +32,9 @@ export function AppShell() {
                 </SheetContent>
               </Sheet>
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Premium tracker</p>
+                <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                  Premium tracker
+                </p>
                 <h1 className="text-lg font-semibold">Ton cockpit films & séries</h1>
               </div>
             </div>
@@ -45,5 +47,5 @@ export function AppShell() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,22 +1,22 @@
-import { useTranslation } from 'react-i18next';
-import { EmptyState } from '@/components/states/empty-state';
-import { GridSkeleton } from '@/components/states/loading-skeletons';
-import { MediaGrid } from '@/components/media/media-grid';
-import { SectionHeader } from '@/components/media/section-header';
-import { useSeries } from '@/hooks/use-media';
+import { useTranslation } from 'react-i18next'
+import { EmptyState } from '@/components/states/empty-state'
+import { GridSkeleton } from '@/components/states/loading-skeletons'
+import { MediaGrid } from '@/components/media/media-grid'
+import { SectionHeader } from '@/components/media/section-header'
+import { useSeries } from '@/hooks/use-media'
 
 export function SeriesPage() {
-  const { t } = useTranslation();
-  const query = useSeries();
+  const { t } = useTranslation()
+  const query = useSeries()
 
-  if (query.isLoading) return <GridSkeleton />;
+  if (query.isLoading) return <GridSkeleton />
   if (!query.data?.length) {
     return (
       <EmptyState
         title={t('series.noSeriesAvailable')}
         description={t('series.noSeriesAvailableDesc')}
       />
-    );
+    )
   }
 
   return (
@@ -24,5 +24,5 @@ export function SeriesPage() {
       <SectionHeader title={t('nav.series')} subtitle={t('series.subtitle')} />
       <MediaGrid items={query.data} />
     </section>
-  );
+  )
 }

@@ -1,17 +1,17 @@
-import { browserStore, getDatabase } from './db';
-import type { WatchlistItem } from '@/types/media';
+import { browserStore, getDatabase } from './db'
+import type { WatchlistItem } from '@/types/media'
 
 export const watchlistRepository = {
   async list(): Promise<WatchlistItem[]> {
-    const db = await getDatabase();
+    const db = await getDatabase()
 
     if (!db) {
-      return browserStore.read().watchlist.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return browserStore.read().watchlist.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     }
 
     const rows = await db.select<Array<Record<string, unknown>>>(
-      'SELECT * FROM watchlist ORDER BY created_at DESC',
-    );
+      'SELECT * FROM watchlist ORDER BY created_at DESC'
+    )
 
     return rows.map((row) => ({
       mediaId: Number(row.media_id),
@@ -22,40 +22,39 @@ export const watchlistRepository = {
       year: row.year ? Number(row.year) : null,
       rating: row.rating ? Number(row.rating) : null,
       createdAt: String(row.created_at),
-    }));
+    }))
   },
 
   async has(mediaId: number, mediaType: WatchlistItem['mediaType']) {
-    const db = await getDatabase();
+    const db = await getDatabase()
 
     if (!db) {
       return browserStore
         .read()
-        .watchlist.some((item) => item.mediaId === mediaId && item.mediaType === mediaType);
+        .watchlist.some((item) => item.mediaId === mediaId && item.mediaType === mediaType)
     }
 
     const rows = await db.select<Array<{ count: number }>>(
       'SELECT COUNT(*) as count FROM watchlist WHERE media_id = $1 AND media_type = $2',
-      [mediaId, mediaType],
-    );
+      [mediaId, mediaType]
+    )
 
-    return Number(rows[0]?.count ?? 0) > 0;
+    return Number(rows[0]?.count ?? 0) > 0
   },
 
   async upsert(item: WatchlistItem) {
-    const db = await getDatabase();
+    const db = await getDatabase()
 
     if (!db) {
-      const store = browserStore.read();
+      const store = browserStore.read()
       store.watchlist = [
         item,
         ...store.watchlist.filter(
-          (current) =>
-            !(current.mediaId === item.mediaId && current.mediaType === item.mediaType),
+          (current) => !(current.mediaId === item.mediaId && current.mediaType === item.mediaType)
         ),
-      ];
-      browserStore.write(store);
-      return;
+      ]
+      browserStore.write(store)
+      return
     }
 
     await db.execute(
@@ -71,25 +70,25 @@ export const watchlistRepository = {
         item.year ?? null,
         item.rating ?? null,
         item.createdAt,
-      ],
-    );
+      ]
+    )
   },
 
   async remove(mediaId: number, mediaType: WatchlistItem['mediaType']) {
-    const db = await getDatabase();
+    const db = await getDatabase()
 
     if (!db) {
-      const store = browserStore.read();
+      const store = browserStore.read()
       store.watchlist = store.watchlist.filter(
-        (item) => !(item.mediaId === mediaId && item.mediaType === mediaType),
-      );
-      browserStore.write(store);
-      return;
+        (item) => !(item.mediaId === mediaId && item.mediaType === mediaType)
+      )
+      browserStore.write(store)
+      return
     }
 
     await db.execute('DELETE FROM watchlist WHERE media_id = $1 AND media_type = $2', [
       mediaId,
       mediaType,
-    ]);
+    ])
   },
-};
+}

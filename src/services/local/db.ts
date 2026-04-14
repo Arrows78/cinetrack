@@ -1,29 +1,29 @@
-import Database from '@tauri-apps/plugin-sql';
-import { isTauriApp } from '@/shared/lib/platform';
+import Database from '@tauri-apps/plugin-sql'
+import { isTauriApp } from '@/shared/lib/platform'
 import type {
   EpisodeProgress,
   TrackedSeriesItem,
   UserPreferences,
   ViewingHistoryItem,
   WatchlistItem,
-} from '@/types/media';
+} from '@/types/media'
 
-const DB_URL = 'sqlite:app.db';
-const STORAGE_KEY = 'cinetrack.browser-store';
+const DB_URL = 'sqlite:app.db'
+const STORAGE_KEY = 'cinetrack.browser-store'
 
 interface BrowserStore {
-  watchlist: WatchlistItem[];
+  watchlist: WatchlistItem[]
   seenMovies: Array<{
-    movieId: number;
-    title: string;
-    posterPath?: string | null;
-    backdropPath?: string | null;
-    watchedAt: string;
-  }>;
-  episodeProgress: EpisodeProgress[];
-  trackedSeries: TrackedSeriesItem[];
-  history: ViewingHistoryItem[];
-  preferences: Partial<UserPreferences>;
+    movieId: number
+    title: string
+    posterPath?: string | null
+    backdropPath?: string | null
+    watchedAt: string
+  }>
+  episodeProgress: EpisodeProgress[]
+  trackedSeries: TrackedSeriesItem[]
+  history: ViewingHistoryItem[]
+  preferences: Partial<UserPreferences>
 }
 
 const defaultBrowserStore: BrowserStore = {
@@ -33,9 +33,9 @@ const defaultBrowserStore: BrowserStore = {
   trackedSeries: [],
   history: [],
   preferences: {},
-};
+}
 
-let dbPromise: Promise<Database> | null = null;
+let dbPromise: Promise<Database> | null = null
 
 const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS watchlist (
@@ -88,45 +88,45 @@ const schemaStatements = [
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )`,
-];
+]
 
 const readBrowserStore = (): BrowserStore => {
-  if (typeof window === 'undefined') return defaultBrowserStore;
+  if (typeof window === 'undefined') return defaultBrowserStore
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...defaultBrowserStore, ...JSON.parse(raw) } : defaultBrowserStore;
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    return raw ? { ...defaultBrowserStore, ...JSON.parse(raw) } : defaultBrowserStore
   } catch {
-    return defaultBrowserStore;
+    return defaultBrowserStore
   }
-};
+}
 
 const writeBrowserStore = (store: BrowserStore) => {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-};
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
+}
 
 export const browserStore = {
   read: readBrowserStore,
   write: writeBrowserStore,
-};
+}
 
 export async function initializeDatabase() {
-  if (!isTauriApp()) return null;
+  if (!isTauriApp()) return null
 
   if (!dbPromise) {
-    dbPromise = Database.load(DB_URL);
+    dbPromise = Database.load(DB_URL)
   }
 
-  const db = await dbPromise;
+  const db = await dbPromise
 
   for (const statement of schemaStatements) {
-    await db.execute(statement);
+    await db.execute(statement)
   }
 
-  return db;
+  return db
 }
 
 export async function getDatabase() {
-  return initializeDatabase();
+  return initializeDatabase()
 }

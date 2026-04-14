@@ -1,18 +1,18 @@
-import { browserStore, getDatabase } from './db';
-import type { ViewingHistoryItem } from '@/types/media';
+import { browserStore, getDatabase } from './db'
+import type { ViewingHistoryItem } from '@/types/media'
 
 export const historyRepository = {
   async list(limit = 50): Promise<ViewingHistoryItem[]> {
-    const db = await getDatabase();
+    const db = await getDatabase()
 
     if (!db) {
-      return browserStore.read().history.slice(0, limit);
+      return browserStore.read().history.slice(0, limit)
     }
 
     const rows = await db.select<Array<Record<string, unknown>>>(
       'SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT $1',
-      [limit],
-    );
+      [limit]
+    )
 
     return rows.map((row) => ({
       id: String(row.id),
@@ -24,17 +24,17 @@ export const historyRepository = {
       seasonNumber: row.season_number ? Number(row.season_number) : undefined,
       episodeNumber: row.episode_number ? Number(row.episode_number) : undefined,
       episodeTitle: row.episode_title ? String(row.episode_title) : undefined,
-    }));
+    }))
   },
 
   async add(item: ViewingHistoryItem) {
-    const db = await getDatabase();
+    const db = await getDatabase()
 
     if (!db) {
-      const store = browserStore.read();
-      store.history = [item, ...store.history].slice(0, 200);
-      browserStore.write(store);
-      return;
+      const store = browserStore.read()
+      store.history = [item, ...store.history].slice(0, 200)
+      browserStore.write(store)
+      return
     }
 
     await db.execute(
@@ -51,7 +51,7 @@ export const historyRepository = {
         item.episodeNumber ?? null,
         item.episodeTitle ?? null,
         item.timestamp,
-      ],
-    );
+      ]
+    )
   },
-};
+}

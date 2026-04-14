@@ -1,26 +1,26 @@
-import { useTranslation } from 'react-i18next';
-import { useParams } from '@tanstack/react-router';
-import { CastList } from '@/components/media/cast-list';
-import { MediaDetailsHero } from '@/components/media/media-details-hero';
-import { SectionHeader } from '@/components/media/section-header';
-import { SeenToggle } from '@/components/media/seen-toggle';
-import { WatchlistButton } from '@/components/media/watchlist-button';
-import { HeroSkeleton } from '@/components/states/loading-skeletons';
-import { Card } from '@/components/ui/card';
-import { useMovieSeen } from '@/hooks/use-local-media';
-import { useMovieDetails } from '@/hooks/use-media';
+import { useTranslation } from 'react-i18next'
+import { useParams } from '@tanstack/react-router'
+import { CastList } from '@/components/media/cast-list'
+import { MediaDetailsHero } from '@/components/media/media-details-hero'
+import { SectionHeader } from '@/components/media/section-header'
+import { SeenToggle } from '@/components/media/seen-toggle'
+import { WatchlistButton } from '@/components/media/watchlist-button'
+import { HeroSkeleton } from '@/components/states/loading-skeletons'
+import { Card } from '@/components/ui/card'
+import { useMovieSeen } from '@/hooks/use-local-media'
+import { useMovieDetails } from '@/hooks/use-media'
 
 export function MovieDetailPage() {
-  const { t } = useTranslation();
-  const { movieId } = useParams({ from: '/movies/$movieId' });
-  const id = Number(movieId);
-  const movieQuery = useMovieDetails(id);
-  const seenQuery = useMovieSeen(id);
+  const { t } = useTranslation()
+  const { movieId } = useParams({ from: '/movies/$movieId' })
+  const id = Number(movieId)
+  const movieQuery = useMovieDetails(id)
+  const seenQuery = useMovieSeen(id)
 
-  if (movieQuery.isLoading) return <HeroSkeleton />;
-  if (!movieQuery.data) return null;
+  if (movieQuery.isLoading) return <HeroSkeleton />
+  if (!movieQuery.data) return null
 
-  const movie = movieQuery.data;
+  const movie = movieQuery.data
 
   return (
     <div className="space-y-8">
@@ -70,5 +70,5 @@ export function MovieDetailPage() {
         <CastList cast={movie.cast} />
       </section>
     </div>
-  );
+  )
 }

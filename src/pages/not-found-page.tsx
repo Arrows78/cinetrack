@@ -1,6 +1,6 @@
-import { Link } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/states/empty-state';
+import { Link } from '@tanstack/react-router'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/states/empty-state'
 
 export function NotFoundPage() {
   return (
@@ -13,5 +13,5 @@ export function NotFoundPage() {
         </Button>
       }
     />
-  );
+  )
 }

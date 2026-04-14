@@ -1,13 +1,13 @@
-import type * as React from 'react';
-import * as ProgressPrimitive from '@radix-ui/react-progress';
-import { cn } from '@/shared/lib/cn';
+import type * as React from 'react'
+import * as ProgressPrimitive from '@radix-ui/react-progress'
+import { cn } from '@/shared/lib/cn'
 
 export function Progress({
   className,
   value,
   indicatorClassName,
 }: React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
-  indicatorClassName?: string;
+  indicatorClassName?: string
 }) {
   return (
     <ProgressPrimitive.Root
@@ -19,5 +19,5 @@ export function Progress({
         style={{ transform: `translateX(-${100 - (value ?? 0)}%)` }}
       />
     </ProgressPrimitive.Root>
-  );
+  )
 }

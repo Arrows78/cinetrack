@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton'
 
 export function GridSkeleton({ count = 10 }: { count?: number }) {
   return (
@@ -11,9 +11,9 @@ export function GridSkeleton({ count = 10 }: { count?: number }) {
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 export function HeroSkeleton() {
-  return <Skeleton className="h-[420px] rounded-[32px]" />;
+  return <Skeleton className="h-[420px] rounded-[32px]" />
 }

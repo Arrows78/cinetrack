@@ -1,8 +1,8 @@
-import { Clapperboard, Film, History, House, Search, Settings, Tv } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Clapperboard, Film, History, House, Search, Settings, Tv } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export const useNavigationItems = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return [
     { label: t('nav.home'), to: '/', icon: House },
@@ -12,5 +12,5 @@ export const useNavigationItems = () => {
     { label: t('nav.watchlist'), to: '/watchlist', icon: Clapperboard },
     { label: t('nav.history'), to: '/history', icon: History },
     { label: t('nav.settings'), to: '/settings', icon: Settings },
-  ] as const;
-};
+  ] as const
+}

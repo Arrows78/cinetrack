@@ -1,12 +1,12 @@
-import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { EmptyState } from '@/components/states/empty-state';
-import { ProgressBar } from '@/components/media/progress-bar';
-import { SectionHeader } from '@/components/media/section-header';
-import { formatRelativeDate, percent } from '@/shared/utils/format';
-import { useHistory, useTrackedSeries } from '@/hooks/use-local-media';
+import { useTranslation } from 'react-i18next'
+import { Link } from '@tanstack/react-router'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/states/empty-state'
+import { ProgressBar } from '@/components/media/progress-bar'
+import { SectionHeader } from '@/components/media/section-header'
+import { formatRelativeDate, percent } from '@/shared/utils/format'
+import { useHistory, useTrackedSeries } from '@/hooks/use-local-media'
 
 const labelByAction = {
   'movie:watched': 'movieWatched',
@@ -15,12 +15,12 @@ const labelByAction = {
   'episode:unwatched': 'episodeUnwatched',
   'watchlist:add': 'addedToWatchlist',
   'watchlist:remove': 'removedFromWatchlist',
-};
+}
 
 export function HistoryPage() {
-  const { t } = useTranslation();
-  const historyQuery = useHistory();
-  const trackedSeriesQuery = useTrackedSeries();
+  const { t } = useTranslation()
+  const historyQuery = useHistory()
+  const trackedSeriesQuery = useTrackedSeries()
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -60,7 +60,7 @@ export function HistoryPage() {
         />
         {(trackedSeriesQuery.data ?? []).length ? (
           trackedSeriesQuery.data?.map((item) => {
-            const progress = percent(item.watchedEpisodes, item.totalEpisodes);
+            const progress = percent(item.watchedEpisodes, item.totalEpisodes)
             return (
               <Card key={item.seriesId}>
                 <div className="flex items-start justify-between gap-4">
@@ -82,7 +82,7 @@ export function HistoryPage() {
                   <ProgressBar value={progress} label={`${progress}% ${t('history.completed')}`} />
                 </div>
               </Card>
-            );
+            )
           })
         ) : (
           <EmptyState
@@ -92,5 +92,5 @@ export function HistoryPage() {
         )}
       </section>
     </div>
-  );
+  )
 }

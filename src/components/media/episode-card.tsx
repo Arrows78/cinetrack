@@ -1,21 +1,21 @@
-import { useTranslation } from 'react-i18next';
-import { Calendar, Clock4 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { SeenToggle } from '@/components/media/seen-toggle';
-import { buildTmdbImageUrl, formatDate, formatRuntime, formatRating } from '@/shared/utils/format';
-import type { Episode } from '@/types/media';
+import { useTranslation } from 'react-i18next'
+import { Calendar, Clock4 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { SeenToggle } from '@/components/media/seen-toggle'
+import { buildTmdbImageUrl, formatDate, formatRuntime, formatRating } from '@/shared/utils/format'
+import type { Episode } from '@/types/media'
 
 export function EpisodeCard({
   episode,
   onToggleSeen,
   disabled,
 }: {
-  episode: Episode;
-  onToggleSeen: () => void;
-  disabled?: boolean;
+  episode: Episode
+  onToggleSeen: () => void
+  disabled?: boolean
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <Card className="rounded-[28px] p-0 overflow-hidden">
@@ -65,5 +65,5 @@ export function EpisodeCard({
         </div>
       </div>
     </Card>
-  );
+  )
 }

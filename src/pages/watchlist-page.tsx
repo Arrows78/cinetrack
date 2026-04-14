@@ -1,30 +1,30 @@
-import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { FilterBar } from '@/components/media/filter-bar';
-import { MediaGrid } from '@/components/media/media-grid';
-import { SectionHeader } from '@/components/media/section-header';
-import { EmptyState } from '@/components/states/empty-state';
-import { usePreferences, useWatchlist } from '@/hooks/use-local-media';
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { FilterBar } from '@/components/media/filter-bar'
+import { MediaGrid } from '@/components/media/media-grid'
+import { SectionHeader } from '@/components/media/section-header'
+import { EmptyState } from '@/components/states/empty-state'
+import { usePreferences, useWatchlist } from '@/hooks/use-local-media'
 
 export function WatchlistPage() {
-  const { t } = useTranslation();
-  const { data: preferences } = usePreferences();
-  const { data: items } = useWatchlist();
+  const { t } = useTranslation()
+  const { data: preferences } = usePreferences()
+  const { data: items } = useWatchlist()
   const [filter, setFilter] = useState<'all' | 'movie' | 'series'>(
-    preferences?.defaultWatchlistFilter ?? 'all',
-  );
-  const [sort, setSort] = useState<'recent' | 'title' | 'rating'>('recent');
+    preferences?.defaultWatchlistFilter ?? 'all'
+  )
+  const [sort, setSort] = useState<'recent' | 'title' | 'rating'>('recent')
 
   const filtered = useMemo(() => {
     const base = (items ?? []).filter((item) =>
-      filter === 'all' ? true : item.mediaType === filter,
-    );
+      filter === 'all' ? true : item.mediaType === filter
+    )
     return base
       .slice()
       .sort((a, b) => {
-        if (sort === 'title') return a.title.localeCompare(b.title);
-        if (sort === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
-        return b.createdAt.localeCompare(a.createdAt);
+        if (sort === 'title') return a.title.localeCompare(b.title)
+        if (sort === 'rating') return (b.rating ?? 0) - (a.rating ?? 0)
+        return b.createdAt.localeCompare(a.createdAt)
       })
       .map((item) => ({
         id: item.mediaId,
@@ -37,8 +37,8 @@ export function WatchlistPage() {
         rating: item.rating,
         genres: [],
         cast: [],
-      }));
-  }, [items, filter, sort]);
+      }))
+  }, [items, filter, sort])
 
   return (
     <div className="space-y-6">
@@ -72,5 +72,5 @@ export function WatchlistPage() {
         <EmptyState title={t('pages.emptyWatchlist')} description={t('watchlist.emptyDesc')} />
       )}
     </div>
-  );
+  )
 }

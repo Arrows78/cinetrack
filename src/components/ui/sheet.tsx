@@ -1,11 +1,11 @@
-import type * as React from 'react';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
-import { cn } from '@/shared/lib/cn';
+import type * as React from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { X } from 'lucide-react'
+import { cn } from '@/shared/lib/cn'
 
-export const Sheet = DialogPrimitive.Root;
-export const SheetTrigger = DialogPrimitive.Trigger;
-export const SheetClose = DialogPrimitive.Close;
+export const Sheet = DialogPrimitive.Root
+export const SheetTrigger = DialogPrimitive.Trigger
+export const SheetClose = DialogPrimitive.Close
 
 export function SheetContent({
   className,
@@ -18,7 +18,7 @@ export function SheetContent({
       <DialogPrimitive.Content
         className={cn(
           'fixed left-0 top-0 z-50 flex h-full w-[86%] max-w-sm flex-col border-r border-white/10 bg-background/95 p-5 shadow-2xl',
-          className,
+          className
         )}
         {...props}
       >
@@ -28,5 +28,5 @@ export function SheetContent({
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
-  );
+  )
 }
