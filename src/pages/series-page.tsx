@@ -23,7 +23,7 @@ export function SeriesPage() {
 
   return (
     <section>
-      <SectionHeader title={t('nav.series')} subtitle={t('series.subtitle')} />
+      <SectionHeader title={t('nav.series')} subtitle={t('series.subtitle')} index={1} />
       <MediaGrid items={query.data} />
     </section>
   )

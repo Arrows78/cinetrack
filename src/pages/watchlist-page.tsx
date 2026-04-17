@@ -42,10 +42,11 @@ export function WatchlistPage() {
   }, [items, filter, sort])
 
   return (
-    <div className="space-y-6">
-      <section className="surface rounded-[32px] p-6">
-        <SectionHeader title={t('nav.watchlist')} subtitle={t('watchlist.subtitle')} />
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-8">
+      {/* Header + filters */}
+      <div className="flex flex-col gap-5">
+        <SectionHeader title={t('nav.watchlist')} subtitle={t('watchlist.subtitle')} index={1} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <FilterBar
             value={filter}
             onChange={setFilter}
@@ -65,7 +66,7 @@ export function WatchlistPage() {
             ]}
           />
         </div>
-      </section>
+      </div>
 
       {filtered.length ? (
         <MediaGrid items={filtered} />

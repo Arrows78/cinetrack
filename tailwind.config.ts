@@ -5,6 +5,10 @@ const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        display: ['Playfair Display', 'Georgia', 'serif'],
+        sans: ['DM Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

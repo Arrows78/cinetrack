@@ -4,6 +4,9 @@ import type { UserPreferences } from '@/types/media'
 
 const preferencesSchema = z.object({
   theme: z.enum(['dark', 'light']).default('dark'),
+  accentColor: z
+    .enum(['violet', 'blue', 'teal', 'green', 'amber', 'orange', 'rose', 'red'])
+    .default('violet'),
   defaultSearchType: z.enum(['all', 'movie', 'series']).default('all'),
   defaultWatchlistFilter: z.enum(['all', 'movie', 'series']).default('all'),
   reduceMotion: z.boolean().default(false),
@@ -16,6 +19,7 @@ const preferencesSchema = z.object({
 
 export const defaultPreferences: UserPreferences = {
   theme: 'dark',
+  accentColor: 'violet',
   defaultSearchType: 'all',
   defaultWatchlistFilter: 'all',
   reduceMotion: false,

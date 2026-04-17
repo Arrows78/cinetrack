@@ -11,7 +11,7 @@ export function Progress({
 }) {
   return (
     <ProgressPrimitive.Root
-      className={cn('relative h-2 w-full overflow-hidden rounded-full bg-white/10', className)}
+      className={cn('relative h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10', className)}
       value={value}
     >
       <ProgressPrimitive.Indicator

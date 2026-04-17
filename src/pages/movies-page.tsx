@@ -23,7 +23,7 @@ export function MoviesPage() {
 
   return (
     <section>
-      <SectionHeader title={t('nav.movies')} subtitle={t('movies.subtitle')} />
+      <SectionHeader title={t('nav.movies')} subtitle={t('movies.subtitle')} index={1} />
       <MediaGrid items={query.data} />
     </section>
   )

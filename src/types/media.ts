@@ -125,6 +125,7 @@ export interface UserProfile {
 
 export interface UserPreferences {
   theme: 'dark' | 'light'
+  accentColor: 'violet' | 'blue' | 'teal' | 'green' | 'amber' | 'orange' | 'rose' | 'red'
   defaultSearchType: 'all' | 'movie' | 'series'
   defaultWatchlistFilter: 'all' | 'movie' | 'series'
   reduceMotion: boolean

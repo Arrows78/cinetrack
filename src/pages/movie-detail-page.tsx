@@ -6,7 +6,6 @@ import { SectionHeader } from '@/components/media/section-header'
 import { SeenToggle } from '@/components/media/seen-toggle'
 import { WatchlistButton } from '@/components/media/watchlist-button'
 import { HeroSkeleton } from '@/components/states/loading-skeletons'
-import { Card } from '@/components/ui/card'
 import { useMovieSeen } from '@/hooks/use-local-media'
 import { useMovieDetails } from '@/hooks/use-media'
 
@@ -34,35 +33,32 @@ export function MovieDetailPage() {
             onToggle={() => seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
             labelSeen={t('movie.alreadySeen')}
             labelUnseen={t('movie.markAsSeen')}
+            celebrateOnSeen
           />
         }
       />
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card>
+        <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-6">
           <SectionHeader title={t('media.overview')} />
           <p className="text-sm leading-7 text-muted-foreground md:text-base">{movie.overview}</p>
-        </Card>
-        <Card>
+        </div>
+        <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-6">
           <SectionHeader title={t('movie.technicalSheet')} />
-          <div className="grid gap-3 text-sm text-muted-foreground">
-            <div>
-              <span className="text-foreground">{t('movie.country')}:</span>{' '}
-              {movie.country?.join(', ') || '—'}
-            </div>
-            <div>
-              <span className="text-foreground">{t('movie.language')}:</span>{' '}
-              {movie.language || '—'}
-            </div>
-            <div>
-              <span className="text-foreground">{t('media.genres')}:</span>{' '}
-              {movie.genres.join(', ') || '—'}
-            </div>
-            <div>
-              <span className="text-foreground">{t('series.status')}:</span> {movie.status || '—'}
-            </div>
+          <div className="grid gap-2 text-sm">
+            {[
+              { label: t('movie.country'), value: movie.country?.join(', ') || '—' },
+              { label: t('movie.language'), value: movie.language || '—' },
+              { label: t('media.genres'), value: movie.genres.join(', ') || '—' },
+              { label: t('series.status'), value: movie.status || '—' },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">{label}</span>
+                <span className="font-medium">{value}</span>
+              </div>
+            ))}
           </div>
-        </Card>
+        </div>
       </section>
 
       <section>

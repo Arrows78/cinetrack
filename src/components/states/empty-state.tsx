@@ -11,15 +11,17 @@ interface EmptyStateProps {
 
 export function EmptyState({ title, description, action, icon: Icon, className }: EmptyStateProps) {
   return (
-    <div className={cn('surface rounded-[32px] px-6 py-12 text-center', className)}>
+    <div className={cn('flex flex-col items-center justify-center px-6 py-20 text-center', className)}>
       {Icon && (
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Icon className="h-8 w-8" />
+        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-border bg-black/[0.04] dark:bg-white/[0.04] text-muted-foreground/60">
+          <Icon className="h-7 w-7" />
         </div>
       )}
-      <p className="text-2xl font-semibold">{title}</p>
-      <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-muted-foreground">{description}</p>
-      {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
+      <p className="font-display text-2xl font-bold tracking-tight">{title}</p>
+      <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+      {action ? <div className="mt-8 flex justify-center">{action}</div> : null}
     </div>
   )
 }

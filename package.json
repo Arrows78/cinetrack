@@ -22,6 +22,7 @@
     "@tanstack/react-router": "^1.81.5",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-sql": "^2.0.0",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@eslint/js": "^9.15.0",
     "@tauri-apps/cli": "^2.0.0",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^25.6.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",

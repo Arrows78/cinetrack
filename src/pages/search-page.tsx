@@ -31,10 +31,11 @@ export function SearchPage() {
   }, [searchQuery.data])
 
   return (
-    <div className="space-y-8">
-      <section className="surface rounded-[32px] p-6">
-        <SectionHeader title={t('search.globalSearch')} subtitle={t('search.subtitle')} />
-        <div className="space-y-4">
+    <div className="space-y-10">
+      {/* Search controls */}
+      <div className="space-y-5">
+        <SectionHeader title={t('search.globalSearch')} subtitle={t('search.subtitle')} index={1} />
+        <div className="space-y-3">
           <SearchBar value={query} onChange={setQuery} />
           <FilterBar
             value={scope}
@@ -46,7 +47,7 @@ export function SearchPage() {
             ]}
           />
         </div>
-      </section>
+      </div>
 
       {searchQuery.isLoading ? <GridSkeleton count={8} /> : null}
 
@@ -71,6 +72,7 @@ export function SearchPage() {
           <SectionHeader
             title={t('nav.series')}
             subtitle={t('search.resultsCount', { count: grouped.series.length })}
+            index={2}
           />
           <MediaGrid items={grouped.series as MediaSummary[]} />
         </section>
@@ -81,6 +83,7 @@ export function SearchPage() {
           <SectionHeader
             title={t('nav.movies')}
             subtitle={t('search.resultsCount', { count: grouped.movies.length })}
+            index={scope === 'all' && grouped.series.length > 0 ? 3 : 2}
           />
           <MediaGrid items={grouped.movies as MediaSummary[]} />
         </section>

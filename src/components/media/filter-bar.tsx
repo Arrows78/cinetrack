@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button'
 import { cn } from '@/shared/lib/cn'
 
 export function FilterBar<T extends string>({
@@ -11,20 +10,21 @@ export function FilterBar<T extends string>({
   onChange: (value: T) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="inline-flex rounded-2xl bg-black/[0.06] dark:bg-white/[0.06] p-1 gap-0.5">
       {options.map((option) => (
-        <Button
+        <button
           key={option.value}
-          variant="ghost"
-          size="sm"
+          type="button"
           onClick={() => onChange(option.value)}
           className={cn(
-            'rounded-full border border-white/10',
-            value === option.value && 'bg-primary/15 text-primary'
+            'rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-200',
+            value === option.value
+              ? 'bg-black/10 dark:bg-white/10 text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground/80'
           )}
         >
           {option.label}
-        </Button>
+        </button>
       ))}
     </div>
   )

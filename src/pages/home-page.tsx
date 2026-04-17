@@ -31,7 +31,7 @@ export function HomePage() {
 
   if (homeQuery.isLoading) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-10">
         <HeroSkeleton />
         <GridSkeleton />
       </div>
@@ -55,40 +55,49 @@ export function HomePage() {
       cast: [],
     }))
 
+  let sectionIndex = 0
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
+      {/* Cinematic hero */}
       {hero ? (
-        <section className="relative overflow-hidden rounded-[36px] border border-white/5">
+        <section className="relative overflow-hidden rounded-[36px] border border-border">
+          {/* Backdrop */}
           <img
             src={buildTmdbImageUrl(hero.backdropPath, 'original')}
             alt={hero.title}
-            className="absolute inset-0 h-full w-full object-cover opacity-40"
+            className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/92 to-background/50" />
-          <div className="relative grid gap-8 px-6 py-8 md:px-8 lg:grid-cols-[1.2fr_0.8fr] lg:py-12">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm text-primary">
-                <Sparkles className="h-4 w-4" />
-                {t('home.premiumSelection')}
-              </div>
-              <h2 className="mt-5 text-4xl font-black text-balance md:text-6xl">{hero.title}</h2>
-              <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
-                {hero.overview}
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button asChild size="lg">
-                  <Link to="/movies/$movieId" params={{ movieId: String(hero.id) }}>
-                    {t('home.viewDetails')}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg">
-                  <Link to="/search">{t('home.exploreCatalog')}</Link>
-                </Button>
-              </div>
+          {/* Cinematic overlay */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(108deg, hsl(var(--background)) 0%, hsl(var(--background)/0.93) 38%, hsl(var(--background)/0.55) 68%, hsl(var(--background)/0.15) 100%)',
+            }}
+          />
+          {/* Bottom fade */}
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/60 to-transparent" />
+
+          <div className="relative px-6 py-8 lg:px-8 lg:py-10">
+            {/* Premium badge */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-primary uppercase">
+              <Sparkles className="h-3 w-3" />
+              {t('home.premiumSelection')}
             </div>
 
-            <div className="grid gap-4 self-end md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            {/* Title */}
+            <h2 className="mt-5 max-w-2xl font-display text-3xl font-bold leading-[1.05] text-balance text-card-foreground md:text-5xl lg:text-6xl">
+              {hero.title}
+            </h2>
+
+            {/* Overview */}
+            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground md:text-[14px]">
+              {hero.overview}
+            </p>
+
+            {/* Stats row */}
+            <div className="mt-6 flex flex-wrap items-center gap-6 pt-5">
               <StatCard
                 label={t('home.followedSeries')}
                 value={String(trackedSeriesQuery.data?.length ?? 0)}
@@ -105,30 +114,52 @@ export function HomePage() {
                 helper={t('home.activityHelper')}
               />
             </div>
+
+            {/* Actions */}
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button asChild size="lg" className="gap-2">
+                <Link to="/movies/$movieId" params={{ movieId: String(hero.id) }}>
+                  {t('home.viewDetails')}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link to="/search">{t('home.exploreCatalog')}</Link>
+              </Button>
+            </div>
           </div>
         </section>
       ) : null}
 
+      {/* Continue watching */}
       {continueWatching.length > 0 ? (
         <section>
           <SectionHeader
             title={t('home.continueWatching')}
             subtitle={t('home.continueWatchingDesc')}
+            index={++sectionIndex}
           />
           <MediaGrid items={continueWatching} />
         </section>
       ) : null}
 
+      {/* Trending series */}
       <section>
         <SectionHeader
           title={t('home.trendingSeries')}
           subtitle={t('home.trendingSeriesSubtitle')}
+          index={++sectionIndex}
         />
         <MediaGrid items={homeQuery.data?.popularSeries ?? []} />
       </section>
 
+      {/* Trending movies */}
       <section>
-        <SectionHeader title={t('home.trendingMovies')} subtitle={t('home.trendingMoviesSubtitle')} />
+        <SectionHeader
+          title={t('home.trendingMovies')}
+          subtitle={t('home.trendingMoviesSubtitle')}
+          index={++sectionIndex}
+        />
         <MediaGrid items={homeQuery.data?.trendingMovies ?? []} />
       </section>
     </div>

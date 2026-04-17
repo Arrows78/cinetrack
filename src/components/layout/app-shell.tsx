@@ -30,7 +30,7 @@ export function AppShell() {
             : 'lg:grid-cols-[280px_minmax(0,1fr)]'
         )}
       >
-        <aside className="surface hidden h-[100dvh] sticky top-0 overflow-y-auto rounded-[32px] p-3 lg:block">
+        <aside className="surface hidden h-[100dvh] sticky top-0 overflow-hidden rounded-[32px] p-3 lg:block">
           <SidebarNav collapsed={sidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
         </aside>
 

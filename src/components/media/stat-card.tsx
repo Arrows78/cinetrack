@@ -1,5 +1,3 @@
-import { Card } from '@/components/ui/card'
-
 export function StatCard({
   label,
   value,
@@ -10,10 +8,12 @@ export function StatCard({
   helper?: string
 }) {
   return (
-    <Card className="rounded-[28px]">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-bold">{value}</p>
-      {helper ? <p className="mt-2 text-sm text-muted-foreground">{helper}</p> : null}
-    </Card>
+    <div className="flex flex-col gap-0.5 border-l-2 border-primary pl-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="font-display text-3xl font-bold leading-none text-primary">{value}</p>
+      {helper ? <p className="mt-1 text-[11px] text-muted-foreground">{helper}</p> : null}
+    </div>
   )
 }

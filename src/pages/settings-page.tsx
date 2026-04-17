@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { ExternalLink } from 'lucide-react'
+import { Check, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FilterBar } from '@/components/media/filter-bar'
 import { SectionHeader } from '@/components/media/section-header'
 import { usePreferences } from '@/hooks/use-local-media'
+import { COLOR_PRESETS } from '@/shared/constants/colors'
+import type { AccentColor } from '@/shared/constants/colors'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -21,6 +23,37 @@ export function SettingsPage() {
             <CardDescription>{t('settings.uiPreferencesDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div>
+              <p className="mb-2 text-sm font-medium">{t('settings.accentColor')}</p>
+              <div className="flex flex-wrap gap-2.5">
+                {(
+                  Object.entries(COLOR_PRESETS) as [
+                    AccentColor,
+                    (typeof COLOR_PRESETS)[AccentColor],
+                  ][]
+                ).map(([key, preset]) => {
+                  const isSelected = (preferences?.accentColor ?? 'violet') === key
+                  return (
+                    <button
+                      key={key}
+                      title={preset.label}
+                      disabled={isSaving}
+                      onClick={() => updatePreference({ key: 'accentColor', value: key })}
+                      className="relative h-8 w-8 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50"
+                      style={{ backgroundColor: preset.swatch }}
+                    >
+                      {isSelected && (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                        </span>
+                      )}
+                      <span className="sr-only">{preset.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div>
               <p className="mb-3 text-sm font-medium">{t('settings.defaultSearchType')}</p>
               <FilterBar
@@ -82,9 +115,9 @@ export function SettingsPage() {
           <CardContent className="space-y-4 text-sm text-muted-foreground">
             <p>
               {t('settings.envInstruction')}{' '}
-              <code className="rounded bg-white/10 px-2 py-1">.env</code> :
+              <code className="rounded bg-muted px-2 py-1">.env</code> :
             </p>
-            <pre className="overflow-x-auto rounded-3xl border border-white/10 bg-background/60 p-4 text-xs text-foreground">
+            <pre className="overflow-x-auto rounded-3xl border border-border bg-muted/50 p-4 text-xs text-foreground">
               VITE_TMDB_API_TOKEN=your_tmdb_bearer_token_here
             </pre>
             <Button asChild variant="outline">

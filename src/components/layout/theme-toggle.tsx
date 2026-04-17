@@ -28,7 +28,7 @@ export function ThemeToggle() {
               'flex-1 justify-center gap-2 rounded-2xl px-2 py-2 text-sm font-medium',
               isActive
                 ? 'bg-primary/15 text-primary shadow-glow'
-                : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'
             )}
             onClick={() => updatePreference({ key: 'theme', value: option.value })}
           >

@@ -2,21 +2,25 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Season } from '@/types/media'
 import { useParams } from '@tanstack/react-router'
+import { RotateCcw, CheckCheck } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { CastList } from '@/components/media/cast-list'
 import { MediaDetailsHero } from '@/components/media/media-details-hero'
+import { ProgressBar } from '@/components/media/progress-bar'
 import { SeasonAccordion } from '@/components/media/season-accordion'
 import { SectionHeader } from '@/components/media/section-header'
 import { WatchlistButton } from '@/components/media/watchlist-button'
 import { HeroSkeleton } from '@/components/states/loading-skeletons'
 import { useEpisodeProgress } from '@/hooks/use-local-media'
 import { useSeriesDetails, useSeriesSeasons } from '@/hooks/use-media'
+import { useConfetti } from '@/hooks/use-confetti'
 import { progressRepository } from '@/services/local/progress-repository'
 
 export function SeriesDetailPage() {
   const { t } = useTranslation()
   const { seriesId } = useParams({ from: '/series/$seriesId' })
+  const { celebrate } = useConfetti()
   const id = Number(seriesId)
   const seriesQuery = useSeriesDetails(id)
   const progressQuery = useEpisodeProgress(id)
@@ -43,57 +47,67 @@ export function SeriesDetailPage() {
         media={series}
         actions={<WatchlistButton media={series} />}
         extra={
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
+              size="sm"
               disabled={progressQuery.isSaving || !seasons.length}
-              onClick={() => progressQuery.markSeriesSeen({ series, seasons, watched: true })}
+              onClick={() => {
+                progressQuery.markSeriesSeen({ series, seasons, watched: true })
+                if (progress.progressPercent < 100) setTimeout(celebrate, 300)
+              }}
             >
+              <CheckCheck className="h-4 w-4" />
               {t('series.markAllSeen')}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={progressQuery.isSaving || !seasons.length}
-              onClick={() => progressQuery.markSeriesSeen({ series, seasons, watched: false })}
-            >
-              {t('series.resetProgress')}
             </Button>
           </div>
         }
       />
 
+      {/* Info grid */}
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card>
+        <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-6">
           <SectionHeader title={t('media.overview')} />
           <p className="text-sm leading-7 text-muted-foreground md:text-base">{series.overview}</p>
-        </Card>
-        <Card>
-          <SectionHeader title={t('series.seriesInfo')} />
-          <div className="grid gap-3 text-sm text-muted-foreground">
-            <div>
-              <span className="text-foreground">{t('media.seasons')}:</span>{' '}
-              {series.numberOfSeasons}
-            </div>
-            <div>
-              <span className="text-foreground">{t('media.episodes')}:</span>{' '}
-              {series.numberOfEpisodes ?? '—'}
-            </div>
-            <div>
-              <span className="text-foreground">{t('series.status')}:</span> {series.status || '—'}
-            </div>
-            <div>
-              <span className="text-foreground">{t('media.genres')}:</span>{' '}
-              {series.genres.join(', ') || '—'}
-            </div>
-          </div>
-          <div className="mt-5 rounded-3xl border border-white/5 bg-white/5 p-4">
-            <p className="text-sm text-muted-foreground">{t('series.currentProgress')}</p>
-            <p className="mt-2 text-2xl font-bold">{progress.progressPercent}%</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {progress.watchedEpisodes}/{progress.totalEpisodes} {t('history.episodesWatched')}
+        </div>
+        <div className="space-y-4">
+          {/* Progress card */}
+          <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              {t('series.currentProgress')}
             </p>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <p className="font-display text-5xl font-bold leading-none">
+                {progress.progressPercent}
+                <span className="text-xl font-normal text-muted-foreground">%</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {progress.watchedEpisodes}/{progress.totalEpisodes} ep.
+              </p>
+            </div>
+            <div className="mt-4">
+              <ProgressBar value={progress.progressPercent} />
+            </div>
           </div>
-        </Card>
+
+          {/* Series meta */}
+          <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-5">
+            <SectionHeader title={t('series.seriesInfo')} />
+            <div className="grid gap-2 text-sm">
+              {[
+                { label: t('media.seasons'), value: series.numberOfSeasons },
+                { label: t('media.episodes'), value: series.numberOfEpisodes ?? '—' },
+                { label: t('series.status'), value: series.status || '—' },
+                { label: t('media.genres'), value: series.genres.join(', ') || '—' },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
 
       <section>
