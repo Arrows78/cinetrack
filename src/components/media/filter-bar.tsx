@@ -1,13 +1,13 @@
-import { cn } from '@/shared/lib/cn'
+import { cn } from "@/shared/lib/cn";
 
 export function FilterBar<T extends string>({
   value,
   options,
   onChange,
 }: {
-  value: T
-  options: Array<{ value: T; label: string }>
-  onChange: (value: T) => void
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
 }) {
   return (
     <div className="inline-flex rounded-2xl bg-black/[0.06] dark:bg-white/[0.06] p-1 gap-0.5">
@@ -17,15 +17,15 @@ export function FilterBar<T extends string>({
           type="button"
           onClick={() => onChange(option.value)}
           className={cn(
-            'rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-200',
+            "rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-200",
             value === option.value
-              ? 'bg-black/10 dark:bg-white/10 text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground/80'
+              ? "bg-black/10 dark:bg-white/10 text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground/80"
           )}
         >
           {option.label}
         </button>
       ))}
     </div>
-  )
+  );
 }

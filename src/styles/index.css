@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -112,7 +112,7 @@
   }
 
   body {
-    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
     background-image:
       radial-gradient(ellipse 90% 55% at 50% -10%, hsl(var(--primary) / 0.18), transparent),
       radial-gradient(ellipse 45% 35% at 92% 8%, hsl(var(--accent) / 0.1), transparent),
@@ -131,7 +131,7 @@
   }
 
   body::before {
-    content: '';
+    content: "";
     position: fixed;
     inset: 0;
     pointer-events: none;

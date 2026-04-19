@@ -1,16 +1,15 @@
-import { useTranslation } from 'react-i18next'
-import { Link } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
-import { cn } from '@/shared/lib/cn'
-import { buildTmdbImageUrl, formatRating } from '@/shared/utils/format'
-import type { MediaSummary } from '@/types/media'
+import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { motion } from "framer-motion";
+import { cn } from "@/shared/lib/cn";
+import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
+import type { MediaSummary } from "@/types/media";
 
-const fallbackPoster =
-  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80'
+const fallbackPoster = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80";
 
 function MediaCardInner({ media }: { media: MediaSummary }) {
-  const { t } = useTranslation()
-  const image = buildTmdbImageUrl(media.posterPath, 'w500') ?? fallbackPoster
+  const { t } = useTranslation();
+  const image = buildTmdbImageUrl(media.posterPath, "w500") ?? fallbackPoster;
 
   return (
     <div className="group relative overflow-hidden rounded-[24px]">
@@ -27,7 +26,7 @@ function MediaCardInner({ media }: { media: MediaSummary }) {
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.1) 70%, transparent 100%)',
+              "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.1) 70%, transparent 100%)",
           }}
         />
 
@@ -41,45 +40,42 @@ function MediaCardInner({ media }: { media: MediaSummary }) {
         <div className="absolute left-3 top-3">
           <div
             className={cn(
-              'rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase',
-              media.mediaType === 'movie'
-                ? 'bg-primary/80 text-primary-foreground'
-                : 'bg-accent/80 text-foreground'
+              "rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-sm",
+              media.mediaType === "movie"
+                ? "bg-primary/85 text-primary-foreground"
+                : "bg-black/50 text-white/90 ring-1 ring-white/20"
             )}
           >
-            {media.mediaType === 'movie' ? t('nav.movies') : t('nav.series')}
+            {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
           </div>
         </div>
 
-        {/* Bottom: title + year */}
+        {/* Bottom: title + year + genre */}
         <div className="absolute inset-x-0 bottom-0 p-4">
           <p className="font-display line-clamp-2 text-base font-bold leading-tight text-card-foreground md:text-lg">
             {media.title}
           </p>
-          <p className="mt-1 text-[11px] font-medium tracking-wide text-muted-foreground">
-            {media.year ?? t('media.unknownYear')}
-          </p>
+          <div className="mt-1.5 flex items-center gap-2">
+            <p className="text-[11px] font-medium tracking-wide text-white/60">
+              {media.year ?? t("media.unknownYear")}
+            </p>
+            {media.genres[0] && (
+              <>
+                <span className="h-1 w-1 rounded-full bg-white/30" />
+                <p className="truncate text-[11px] font-medium text-white/60">{media.genres[0]}</p>
+              </>
+            )}
+          </div>
         </div>
-
-        {/* Hover shimmer */}
-        <div
-          className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-          style={{
-            background: 'linear-gradient(135deg, rgba(102,126,234,0.08) 0%, transparent 60%)',
-          }}
-        />
       </div>
     </div>
-  )
+  );
 }
 
 export function MediaCard({ media }: { media: MediaSummary }) {
   return (
-    <motion.div
-      whileHover={{ y: -5, scale: 1.01 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-    >
-      {media.mediaType === 'movie' ? (
+    <motion.div whileHover={{ y: -5, scale: 1.01 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
+      {media.mediaType === "movie" ? (
         <Link to="/movies/$movieId" params={{ movieId: String(media.id) }}>
           <MediaCardInner media={media} />
         </Link>
@@ -89,5 +85,5 @@ export function MediaCard({ media }: { media: MediaSummary }) {
         </Link>
       )}
     </motion.div>
-  )
+  );
 }

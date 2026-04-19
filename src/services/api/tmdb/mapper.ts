@@ -1,13 +1,5 @@
-import type {
-  Movie,
-  Series,
-  Season,
-  Episode,
-  MediaSummary,
-  CastMember,
-  MediaType,
-} from '@/types/media'
-import { yearFromDate } from '@/shared/utils/format'
+import type { Movie, Series, Season, Episode, MediaSummary, CastMember, MediaType } from "@/types/media";
+import { yearFromDate } from "@/shared/utils/format";
 import type {
   TmdbCastDto,
   TmdbEpisodeDto,
@@ -15,7 +7,7 @@ import type {
   TmdbSeasonDetailsDto,
   TmdbSeasonPreviewDto,
   TmdbTvDto,
-} from './types'
+} from "./types";
 
 const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
   (cast ?? [])
@@ -28,11 +20,11 @@ const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
       character: member.character,
       profilePath: member.profile_path,
       order: member.order,
-    }))
+    }));
 
 export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   id: dto.id,
-  mediaType: 'movie',
+  mediaType: "movie",
   title: dto.title,
   originalTitle: dto.original_title,
   overview: dto.overview,
@@ -48,7 +40,7 @@ export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   runtime: dto.runtime,
   duration: dto.runtime,
   cast: mapCast(dto.credits?.cast),
-})
+});
 
 const mapSeasonPreviewDto = (dto: TmdbSeasonPreviewDto): Season => ({
   id: dto.id,
@@ -59,11 +51,11 @@ const mapSeasonPreviewDto = (dto: TmdbSeasonPreviewDto): Season => ({
   airDate: dto.air_date,
   episodeCount: dto.episode_count,
   episodes: [],
-})
+});
 
 export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
   id: dto.id,
-  mediaType: 'series',
+  mediaType: "series",
   title: dto.name,
   originalTitle: dto.original_name,
   overview: dto.overview,
@@ -81,7 +73,7 @@ export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
   numberOfSeasons: dto.number_of_seasons ?? dto.seasons?.length ?? 0,
   numberOfEpisodes: dto.number_of_episodes,
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],
-})
+});
 
 export const mapEpisodeDto = (dto: TmdbEpisodeDto): Episode => ({
   id: dto.id,
@@ -93,7 +85,7 @@ export const mapEpisodeDto = (dto: TmdbEpisodeDto): Episode => ({
   runtime: dto.runtime,
   stillPath: dto.still_path,
   rating: dto.vote_average,
-})
+});
 
 export const mapSeasonDetailsDto = (dto: TmdbSeasonDetailsDto): Season => ({
   id: dto.id,
@@ -104,15 +96,12 @@ export const mapSeasonDetailsDto = (dto: TmdbSeasonDetailsDto): Season => ({
   airDate: dto.air_date,
   episodeCount: dto.episodes.length,
   episodes: dto.episodes.map(mapEpisodeDto),
-})
+});
 
-export const mapSearchResult = (
-  dto: TmdbMovieDto | TmdbTvDto,
-  mediaType: MediaType
-): MediaSummary => {
-  if (mediaType === 'movie') {
-    return mapMovieDto(dto as TmdbMovieDto)
+export const mapSearchResult = (dto: TmdbMovieDto | TmdbTvDto, mediaType: MediaType): MediaSummary => {
+  if (mediaType === "movie") {
+    return mapMovieDto(dto as TmdbMovieDto);
   }
 
-  return mapSeriesDto(dto as TmdbTvDto)
-}
+  return mapSeriesDto(dto as TmdbTvDto);
+};

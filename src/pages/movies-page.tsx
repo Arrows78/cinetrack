@@ -1,30 +1,26 @@
-import { useTranslation } from 'react-i18next'
-import { Film } from 'lucide-react'
-import { EmptyState } from '@/components/states/empty-state'
-import { GridSkeleton } from '@/components/states/loading-skeletons'
-import { MediaGrid } from '@/components/media/media-grid'
-import { SectionHeader } from '@/components/media/section-header'
-import { useMovies } from '@/hooks/use-media'
+import { useTranslation } from "react-i18next";
+import { Film } from "lucide-react";
+import { EmptyState } from "@/components/states/empty-state";
+import { GridSkeleton } from "@/components/states/loading-skeletons";
+import { MediaGrid } from "@/components/media/media-grid";
+import { SectionHeader } from "@/components/media/section-header";
+import { useMovies } from "@/hooks/use-media";
 
 export function MoviesPage() {
-  const { t } = useTranslation()
-  const query = useMovies()
+  const { t } = useTranslation();
+  const query = useMovies();
 
-  if (query.isLoading) return <GridSkeleton />
+  if (query.isLoading) return <GridSkeleton />;
   if (!query.data?.length) {
     return (
-      <EmptyState
-        icon={Film}
-        title={t('movies.noMoviesAvailable')}
-        description={t('movies.noMoviesAvailableDesc')}
-      />
-    )
+      <EmptyState icon={Film} title={t("movies.noMoviesAvailable")} description={t("movies.noMoviesAvailableDesc")} />
+    );
   }
 
   return (
     <section>
-      <SectionHeader title={t('nav.movies')} subtitle={t('movies.subtitle')} index={1} />
+      <SectionHeader title={t("nav.movies")} subtitle={t("movies.subtitle")} index={1} />
       <MediaGrid items={query.data} />
     </section>
-  )
+  );
 }

@@ -1,6 +1,6 @@
-import confetti from 'canvas-confetti'
+import confetti from "canvas-confetti";
 
-const BRAND_COLORS = ['#667eea', '#a78bfa', '#f093fb', '#4facfe', '#43e97b', '#f5576c']
+const BRAND_COLORS = ["#667eea", "#a78bfa", "#f093fb", "#4facfe", "#43e97b", "#f5576c"];
 
 export function useConfetti() {
   /** Small burst from the center — for a single episode watched */
@@ -12,8 +12,8 @@ export function useConfetti() {
       colors: BRAND_COLORS,
       scalar: 0.85,
       ticks: 180,
-    })
-  }
+    });
+  };
 
   /** Big celebration — season or movie complete */
   const celebrate = () => {
@@ -26,10 +26,10 @@ export function useConfetti() {
         colors: BRAND_COLORS,
         scalar: 0.9,
         ticks: 220,
-      })
-    }
-    fire(60, 0.1)
-    fire(120, 0.9)
+      });
+    };
+    fire(60, 0.1);
+    fire(120, 0.9);
     setTimeout(() => {
       confetti({
         particleCount: 50,
@@ -37,19 +37,16 @@ export function useConfetti() {
         origin: { x: 0.5, y: 0.55 },
         colors: BRAND_COLORS,
         scalar: 0.8,
-      })
-    }, 150)
-  }
+      });
+    }, 150);
+  };
 
   /** Fire from a DOM element's position */
   const burstFromRef = (el: HTMLElement | null) => {
-    if (!el) return burst()
-    const rect = el.getBoundingClientRect()
-    burst(
-      (rect.left + rect.width / 2) / window.innerWidth,
-      (rect.top + rect.height / 2) / window.innerHeight
-    )
-  }
+    if (!el) return burst();
+    const rect = el.getBoundingClientRect();
+    burst((rect.left + rect.width / 2) / window.innerWidth, (rect.top + rect.height / 2) / window.innerHeight);
+  };
 
-  return { burst, celebrate, burstFromRef }
+  return { burst, celebrate, burstFromRef };
 }

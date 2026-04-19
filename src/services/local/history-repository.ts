@@ -1,40 +1,40 @@
-import { browserStore, getDatabase } from './db'
-import type { ViewingHistoryItem } from '@/types/media'
+import { browserStore, getDatabase } from "./db";
+import type { ViewingHistoryItem } from "@/types/media";
 
 export const historyRepository = {
   async list(limit = 50): Promise<ViewingHistoryItem[]> {
-    const db = await getDatabase()
+    const db = await getDatabase();
 
     if (!db) {
-      return browserStore.read().history.slice(0, limit)
+      return browserStore.read().history.slice(0, limit);
     }
 
     const rows = await db.select<Array<Record<string, unknown>>>(
-      'SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT $1',
+      "SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT $1",
       [limit]
-    )
+    );
 
     return rows.map((row) => ({
       id: String(row.id),
       mediaId: Number(row.media_id),
-      mediaType: row.media_type === 'movie' ? 'movie' : 'series',
+      mediaType: row.media_type === "movie" ? "movie" : "series",
       title: String(row.title),
-      action: row.action as ViewingHistoryItem['action'],
+      action: row.action as ViewingHistoryItem["action"],
       timestamp: String(row.timestamp),
       seasonNumber: row.season_number ? Number(row.season_number) : undefined,
       episodeNumber: row.episode_number ? Number(row.episode_number) : undefined,
       episodeTitle: row.episode_title ? String(row.episode_title) : undefined,
-    }))
+    }));
   },
 
   async add(item: ViewingHistoryItem) {
-    const db = await getDatabase()
+    const db = await getDatabase();
 
     if (!db) {
-      const store = browserStore.read()
-      store.history = [item, ...store.history].slice(0, 200)
-      browserStore.write(store)
-      return
+      const store = browserStore.read();
+      store.history = [item, ...store.history].slice(0, 200);
+      browserStore.write(store);
+      return;
     }
 
     await db.execute(
@@ -52,6 +52,6 @@ export const historyRepository = {
         item.episodeTitle ?? null,
         item.timestamp,
       ]
-    )
+    );
   },
-}
+};

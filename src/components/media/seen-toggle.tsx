@@ -1,9 +1,9 @@
-import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Check } from 'lucide-react'
-import { cn } from '@/shared/lib/cn'
-import { useConfetti } from '@/hooks/use-confetti'
+import { useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
+import { cn } from "@/shared/lib/cn";
+import { useConfetti } from "@/hooks/use-confetti";
 
 export function SeenToggle({
   seen,
@@ -13,25 +13,25 @@ export function SeenToggle({
   disabled,
   celebrateOnSeen = true,
 }: {
-  seen: boolean
-  onToggle: () => void
-  labelSeen?: string
-  labelUnseen?: string
-  disabled?: boolean
-  celebrateOnSeen?: boolean
+  seen: boolean;
+  onToggle: () => void;
+  labelSeen?: string;
+  labelUnseen?: string;
+  disabled?: boolean;
+  celebrateOnSeen?: boolean;
 }) {
-  const { t } = useTranslation()
-  const { celebrate, burstFromRef } = useConfetti()
-  const ref = useRef<HTMLButtonElement>(null)
+  const { t } = useTranslation();
+  const { celebrate, burstFromRef } = useConfetti();
+  const ref = useRef<HTMLButtonElement>(null);
 
   const handleClick = () => {
-    if (disabled) return
+    if (disabled) return;
     if (!seen && celebrateOnSeen) {
-      burstFromRef(ref.current)
-      setTimeout(celebrate, 300)
+      burstFromRef(ref.current);
+      setTimeout(celebrate, 300);
     }
-    onToggle()
-  }
+    onToggle();
+  };
 
   return (
     <motion.button
@@ -40,10 +40,10 @@ export function SeenToggle({
       disabled={disabled}
       whileTap={{ scale: 0.93 }}
       className={cn(
-        'group relative flex items-center gap-3 overflow-hidden rounded-full px-6 py-3 text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50',
+        "group relative flex items-center gap-3 overflow-hidden rounded-full px-6 py-3 text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50",
         seen
-          ? 'bg-primary text-primary-foreground shadow-glow'
-          : 'border border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 text-foreground hover:border-primary/40 hover:bg-primary/10'
+          ? "bg-primary text-primary-foreground shadow-glow"
+          : "border border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 text-foreground hover:border-primary/40 hover:bg-primary/10"
       )}
     >
       {/* Animated circle check */}
@@ -55,7 +55,7 @@ export function SeenToggle({
               initial={{ scale: 0, rotate: -90 }}
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+              transition={{ type: "spring", stiffness: 400, damping: 18 }}
               className="absolute inset-0 flex items-center justify-center"
             >
               <Check className="h-5 w-5" strokeWidth={3} />
@@ -74,7 +74,7 @@ export function SeenToggle({
         </AnimatePresence>
       </div>
 
-      <span>{seen ? (labelSeen ?? t('media.seen')) : (labelUnseen ?? t('media.markAsSeen'))}</span>
+      <span>{seen ? (labelSeen ?? t("media.seen")) : (labelUnseen ?? t("media.markAsSeen"))}</span>
 
       {/* Ripple on seen */}
       {seen && (
@@ -86,5 +86,5 @@ export function SeenToggle({
         />
       )}
     </motion.button>
-  )
+  );
 }

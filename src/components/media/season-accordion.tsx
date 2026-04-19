@@ -1,32 +1,20 @@
-import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Link } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
-import { ChevronDown, ExternalLink, RotateCcw, CheckCheck } from 'lucide-react'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
-import { Button } from '@/components/ui/button'
-import { ProgressBar } from '@/components/media/progress-bar'
-import { EpisodeCard } from '@/components/media/episode-card'
-import { useConfetti } from '@/hooks/use-confetti'
-import { cn } from '@/shared/lib/cn'
-import type { EpisodeProgress, MediaSummary, Season } from '@/types/media'
-import { progressRepository } from '@/services/local/progress-repository'
+import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { motion } from "framer-motion";
+import { ExternalLink, CheckCheck } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { ProgressBar } from "@/components/media/progress-bar";
+import { EpisodeCard } from "@/components/media/episode-card";
+import { useConfetti } from "@/hooks/use-confetti";
+import { cn } from "@/shared/lib/cn";
+import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
+import { progressRepository } from "@/services/local/progress-repository";
 
 /* Episode dots strip — shows which eps are watched at a glance */
-function EpisodeDots({
-  episodes,
-  watchedSet,
-}: {
-  episodes: Season['episodes']
-  watchedSet: Set<number>
-}) {
-  const max = 30
-  const shown = episodes.slice(0, max)
+function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episodes"]; watchedSet: Set<number> }) {
+  const max = 30;
+  const shown = episodes.slice(0, max);
   return (
     <div className="flex flex-wrap items-center gap-[3px]">
       {shown.map((ep) => (
@@ -34,8 +22,8 @@ function EpisodeDots({
           key={ep.id}
           layout
           className={cn(
-            'h-1.5 w-1.5 rounded-full transition-colors duration-300',
-            watchedSet.has(ep.id) ? 'bg-primary' : 'bg-black/20 dark:bg-white/20'
+            "h-1.5 w-1.5 rounded-full transition-colors duration-300",
+            watchedSet.has(ep.id) ? "bg-primary" : "bg-black/20 dark:bg-white/20"
           )}
         />
       ))}
@@ -43,7 +31,7 @@ function EpisodeDots({
         <span className="ml-1 text-[10px] text-muted-foreground">+{episodes.length - max}</span>
       )}
     </div>
-  )
+  );
 }
 
 export function SeasonAccordion({
@@ -54,31 +42,27 @@ export function SeasonAccordion({
   onToggleSeason,
   isSaving,
 }: {
-  series: MediaSummary & { numberOfEpisodes?: number }
-  seasons: Season[]
-  watchedEpisodes: EpisodeProgress[]
-  onToggleEpisode: (episode: Season['episodes'][number], watched: boolean) => Promise<void>
-  onToggleSeason: (season: Season, watched: boolean) => Promise<void>
-  isSaving?: boolean
+  series: MediaSummary & { numberOfEpisodes?: number };
+  seasons: Season[];
+  watchedEpisodes: EpisodeProgress[];
+  onToggleEpisode: (episode: Season["episodes"][number], watched: boolean) => Promise<void>;
+  onToggleSeason: (season: Season, watched: boolean) => Promise<void>;
+  isSaving?: boolean;
 }) {
-  const { t } = useTranslation()
-  const { celebrate } = useConfetti()
-  const watchedSet = new Set(watchedEpisodes.map((item) => item.episodeId))
-  const progress = progressRepository.calculateSeriesProgress(series.id, seasons, watchedEpisodes)
+  const { t } = useTranslation();
+  const { celebrate } = useConfetti();
+  const watchedSet = new Set(watchedEpisodes.map((item) => item.episodeId));
+  const progress = progressRepository.calculateSeriesProgress(series.id, seasons, watchedEpisodes);
 
   /* Handler that detects season completion and fires confetti */
-  const handleToggleEpisode = async (
-    season: Season,
-    episode: Season['episodes'][number],
-    watched: boolean
-  ) => {
+  const handleToggleEpisode = async (season: Season, episode: Season["episodes"][number], watched: boolean) => {
     if (watched) {
-      const seasonWatched = season.episodes.filter((ep) => watchedSet.has(ep.id)).length
-      const willComplete = seasonWatched + 1 === season.episodes.length
-      if (willComplete) setTimeout(celebrate, 400)
+      const seasonWatched = season.episodes.filter((ep) => watchedSet.has(ep.id)).length;
+      const willComplete = seasonWatched + 1 === season.episodes.length;
+      if (willComplete) setTimeout(celebrate, 400);
     }
-    await onToggleEpisode(episode, watched)
-  }
+    await onToggleEpisode(episode, watched);
+  };
 
   return (
     <div className="space-y-4">
@@ -87,14 +71,14 @@ export function SeasonAccordion({
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {t('series.globalProgress')}
+              {t("series.globalProgress")}
             </p>
             <p className="mt-1 font-display text-3xl font-bold leading-none text-foreground">
               {progress.progressPercent}
               <span className="text-base font-normal text-muted-foreground">%</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {progress.watchedEpisodes} / {progress.totalEpisodes} {t('history.episodesWatched')}
+              {progress.watchedEpisodes} / {progress.totalEpisodes} {t("history.episodesWatched")}
             </p>
           </div>
           <div className="flex-1 max-w-xs">
@@ -106,11 +90,9 @@ export function SeasonAccordion({
       {/* Seasons */}
       <Accordion type="multiple" className="space-y-3">
         {seasons.map((season) => {
-          const seasonProgress = progress.seasons.find(
-            (item) => item.seasonNumber === season.seasonNumber
-          )
-          const pct = seasonProgress?.progressPercent ?? 0
-          const isComplete = pct >= 100
+          const seasonProgress = progress.seasons.find((item) => item.seasonNumber === season.seasonNumber);
+          const pct = seasonProgress?.progressPercent ?? 0;
+          const isComplete = pct >= 100;
 
           return (
             <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
@@ -127,8 +109,8 @@ export function SeasonAccordion({
                           <CheckCheck className="h-3 w-3 text-primary-foreground" />
                         </motion.div>
                       )}
-                      <p className={cn('font-semibold', isComplete && 'text-primary')}>
-                        {season.name || `${t('media.season')} ${season.seasonNumber}`}
+                      <p className={cn("font-semibold", isComplete && "text-primary")}>
+                        {season.name || `${t("media.season")} ${season.seasonNumber}`}
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground">
@@ -148,48 +130,26 @@ export function SeasonAccordion({
                 {/* Season actions */}
                 <div className="flex flex-wrap items-center gap-2 py-3">
                   <Button
-                    variant="secondary"
+                    variant={pct === 100 ? "outline" : "secondary"}
                     size="sm"
                     onClick={() => {
-                      onToggleSeason(season, true)
-                      if (pct < 100) setTimeout(celebrate, 300)
+                      const newWatched = pct !== 100;
+                      onToggleSeason(season, newWatched);
+                      if (newWatched && pct < 100) setTimeout(celebrate, 300);
                     }}
-                    disabled={isSaving || isComplete}
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    {t('series.markSeasonSeen')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onToggleSeason(season, false)}
                     disabled={isSaving}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    {t('series.resetSeason')}
-                  </Button>
-                  <Button asChild variant="ghost" size="sm" className="ml-auto">
-                    <Link
-                      to="/series/$seriesId/season/$seasonNumber"
-                      params={{
-                        seriesId: String(series.id),
-                        seasonNumber: String(season.seasonNumber),
-                      }}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      {t('series.openDedicatedPage')}
-                    </Link>
+                    <CheckCheck className="h-4 w-4" />
+                    {pct === 100 ? t("series.markSeasonUnseen") : t("series.markSeasonSeen")}
                   </Button>
                 </div>
 
                 {/* Episode list */}
                 <div className="space-y-0.5">
                   {season.episodes.map((episode) => {
-                    const isWatched = watchedSet.has(episode.id)
-                    const unwatchedCount = season.episodes.filter(
-                      (ep) => !watchedSet.has(ep.id)
-                    ).length
-                    const isLastUnwatched = !isWatched && unwatchedCount === 1
+                    const isWatched = watchedSet.has(episode.id);
+                    const unwatchedCount = season.episodes.filter((ep) => !watchedSet.has(ep.id)).length;
+                    const isLastUnwatched = !isWatched && unwatchedCount === 1;
 
                     return (
                       <EpisodeCard
@@ -197,18 +157,16 @@ export function SeasonAccordion({
                         episode={{ ...episode, watched: isWatched }}
                         disabled={isSaving}
                         isLastUnwatched={isLastUnwatched}
-                        onToggleSeen={() =>
-                          handleToggleEpisode(season, episode, !isWatched)
-                        }
+                        onToggleSeen={() => handleToggleEpisode(season, episode, !isWatched)}
                       />
-                    )
+                    );
                   })}
                 </div>
               </AccordionContent>
             </AccordionItem>
-          )
+          );
         })}
       </Accordion>
     </div>
-  )
+  );
 }

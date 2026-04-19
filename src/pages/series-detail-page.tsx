@@ -1,45 +1,39 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { Season } from '@/types/media'
-import { useParams } from '@tanstack/react-router'
-import { RotateCcw, CheckCheck } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { CastList } from '@/components/media/cast-list'
-import { MediaDetailsHero } from '@/components/media/media-details-hero'
-import { ProgressBar } from '@/components/media/progress-bar'
-import { SeasonAccordion } from '@/components/media/season-accordion'
-import { SectionHeader } from '@/components/media/section-header'
-import { WatchlistButton } from '@/components/media/watchlist-button'
-import { HeroSkeleton } from '@/components/states/loading-skeletons'
-import { useEpisodeProgress } from '@/hooks/use-local-media'
-import { useSeriesDetails, useSeriesSeasons } from '@/hooks/use-media'
-import { useConfetti } from '@/hooks/use-confetti'
-import { progressRepository } from '@/services/local/progress-repository'
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import type { Season } from "@/types/media";
+import { useParams } from "@tanstack/react-router";
+import { CastList } from "@/components/media/cast-list";
+import { MediaDetailsHero } from "@/components/media/media-details-hero";
+import { ProgressBar } from "@/components/media/progress-bar";
+import { SeasonAccordion } from "@/components/media/season-accordion";
+import { SectionHeader } from "@/components/media/section-header";
+import { SeenToggle } from "@/components/media/seen-toggle";
+import { WatchlistButton } from "@/components/media/watchlist-button";
+import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { useEpisodeProgress } from "@/hooks/use-local-media";
+import { useSeriesDetails, useSeriesSeasons } from "@/hooks/use-media";
+import { progressRepository } from "@/services/local/progress-repository";
 
 export function SeriesDetailPage() {
-  const { t } = useTranslation()
-  const { seriesId } = useParams({ from: '/series/$seriesId' })
-  const { celebrate } = useConfetti()
-  const id = Number(seriesId)
-  const seriesQuery = useSeriesDetails(id)
-  const progressQuery = useEpisodeProgress(id)
+  const { t } = useTranslation();
+  const { seriesId } = useParams({ from: "/series/$seriesId" });
+  const id = Number(seriesId);
+  const seriesQuery = useSeriesDetails(id);
+  const progressQuery = useEpisodeProgress(id);
 
   const seasonNumbers = useMemo(
     () =>
-      (seriesQuery.data?.seasons ?? [])
-        .map((season) => season.seasonNumber)
-        .filter((seasonNumber) => seasonNumber > 0),
+      (seriesQuery.data?.seasons ?? []).map((season) => season.seasonNumber).filter((seasonNumber) => seasonNumber > 0),
     [seriesQuery.data?.seasons]
-  )
-  const seasonQueries = useSeriesSeasons(id, seasonNumbers)
+  );
+  const seasonQueries = useSeriesSeasons(id, seasonNumbers);
 
-  if (seriesQuery.isLoading) return <HeroSkeleton />
-  if (!seriesQuery.data) return null
+  if (seriesQuery.isLoading) return <HeroSkeleton />;
+  if (!seriesQuery.data) return null;
 
-  const series = seriesQuery.data
-  const seasons = seasonQueries.map((query) => query.data).filter((s): s is Season => Boolean(s))
-  const progress = progressRepository.calculateSeriesProgress(id, seasons, progressQuery.data ?? [])
+  const series = seriesQuery.data;
+  const seasons = seasonQueries.map((query) => query.data).filter((s): s is Season => Boolean(s));
+  const progress = progressRepository.calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
 
   return (
     <div className="space-y-8">
@@ -47,34 +41,28 @@ export function SeriesDetailPage() {
         media={series}
         actions={<WatchlistButton media={series} />}
         extra={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={progressQuery.isSaving || !seasons.length}
-              onClick={() => {
-                progressQuery.markSeriesSeen({ series, seasons, watched: true })
-                if (progress.progressPercent < 100) setTimeout(celebrate, 300)
-              }}
-            >
-              <CheckCheck className="h-4 w-4" />
-              {t('series.markAllSeen')}
-            </Button>
-          </div>
+          <SeenToggle
+            seen={progress.completed}
+            disabled={progressQuery.isSaving || !seasons.length}
+            onToggle={() =>
+              progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })
+            }
+            celebrateOnSeen
+          />
         }
       />
 
       {/* Info grid */}
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-6">
-          <SectionHeader title={t('media.overview')} />
+          <SectionHeader title={t("media.overview")} />
           <p className="text-sm leading-7 text-muted-foreground md:text-base">{series.overview}</p>
         </div>
         <div className="space-y-4">
           {/* Progress card */}
           <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-5">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              {t('series.currentProgress')}
+              {t("series.currentProgress")}
             </p>
             <div className="mt-3 flex items-end justify-between gap-3">
               <p className="font-display text-5xl font-bold leading-none">
@@ -92,13 +80,13 @@ export function SeriesDetailPage() {
 
           {/* Series meta */}
           <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-5">
-            <SectionHeader title={t('series.seriesInfo')} />
+            <SectionHeader title={t("series.seriesInfo")} />
             <div className="grid gap-2 text-sm">
               {[
-                { label: t('media.seasons'), value: series.numberOfSeasons },
-                { label: t('media.episodes'), value: series.numberOfEpisodes ?? '—' },
-                { label: t('series.status'), value: series.status || '—' },
-                { label: t('media.genres'), value: series.genres.join(', ') || '—' },
+                { label: t("media.seasons"), value: series.numberOfSeasons },
+                { label: t("media.episodes"), value: series.numberOfEpisodes ?? "—" },
+                { label: t("media.status"), value: series.status || "—" },
+                { label: t("media.genres"), value: series.genres.join(", ") || "—" },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between gap-2">
                   <span className="text-muted-foreground">{label}</span>
@@ -111,28 +99,21 @@ export function SeriesDetailPage() {
       </section>
 
       <section>
-        <SectionHeader
-          title={t('series.seasonsAndEpisodes')}
-          subtitle={t('series.seasonsAndEpisodesDesc')}
-        />
+        <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
         <SeasonAccordion
           series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }}
           seasons={seasons}
           watchedEpisodes={progressQuery.data ?? []}
           isSaving={progressQuery.isSaving}
-          onToggleEpisode={(episode, watched) =>
-            progressQuery.toggleEpisodeSeen({ series, episode, watched })
-          }
-          onToggleSeason={(season, watched) =>
-            progressQuery.markSeasonSeen({ series, season, watched })
-          }
+          onToggleEpisode={(episode, watched) => progressQuery.toggleEpisodeSeen({ series, episode, watched })}
+          onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })}
         />
       </section>
 
       <section>
-        <SectionHeader title={t('media.cast')} />
+        <SectionHeader title={t("media.cast")} />
         <CastList cast={series.cast} />
       </section>
     </div>
-  )
+  );
 }

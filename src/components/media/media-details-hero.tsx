@@ -1,36 +1,31 @@
-import { useTranslation } from 'react-i18next'
-import type * as React from 'react'
-import { Badge } from '@/components/ui/badge'
-import { buildTmdbImageUrl, formatRating, formatRuntime } from '@/shared/utils/format'
-import type { MediaSummary } from '@/types/media'
+import { useTranslation } from "react-i18next";
+import type * as React from "react";
+import { buildTmdbImageUrl, formatRating, formatRuntime } from "@/shared/utils/format";
+import type { MediaSummary } from "@/types/media";
 
 export function MediaDetailsHero({
   media,
   actions,
   extra,
 }: {
-  media: MediaSummary
-  actions?: React.ReactNode
-  extra?: React.ReactNode
+  media: MediaSummary;
+  actions?: React.ReactNode;
+  extra?: React.ReactNode;
 }) {
-  const { t } = useTranslation()
-  const backdrop = buildTmdbImageUrl(media.backdropPath, 'original')
-  const poster = buildTmdbImageUrl(media.posterPath, 'w500')
+  const { t } = useTranslation();
+  const backdrop = buildTmdbImageUrl(media.backdropPath, "original");
+  const poster = buildTmdbImageUrl(media.posterPath, "w500");
 
   return (
     <section className="relative overflow-hidden rounded-[32px] border border-border">
       {backdrop ? (
         <>
-          <img
-            src={backdrop}
-            alt={media.title}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          <img src={backdrop} alt={media.title} className="absolute inset-0 h-full w-full object-cover" />
           <div
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(108deg, hsl(var(--background)) 0%, hsl(var(--background)/0.93) 40%, hsl(var(--background)/0.6) 100%)',
+                "linear-gradient(108deg, hsl(var(--background)) 0%, hsl(var(--background)/0.93) 40%, hsl(var(--background)/0.6) 100%)",
             }}
           />
         </>
@@ -42,7 +37,7 @@ export function MediaDetailsHero({
         {/* Poster */}
         <div className="hidden lg:block">
           <img
-            src={poster ?? 'https://placehold.co/500x750/111827/374151?text=Poster'}
+            src={poster ?? "https://placehold.co/500x750/111827/374151?text=Poster"}
             alt={media.title}
             className="w-full rounded-[24px] border border-border object-cover shadow-2xl"
           />
@@ -55,17 +50,13 @@ export function MediaDetailsHero({
             <div className="flex flex-wrap items-center gap-2">
               <div
                 className={cn(
-                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
-                  media.mediaType === 'movie'
-                    ? 'bg-primary/80 text-primary-foreground'
-                    : 'bg-accent/80 text-foreground'
+                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                  media.mediaType === "movie" ? "bg-primary/80 text-primary-foreground" : "bg-accent/80 text-foreground"
                 )}
               >
-                {media.mediaType === 'movie' ? t('nav.movies') : t('nav.series')}
+                {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
               </div>
-              {media.status ? (
-                <span className="text-xs text-muted-foreground">{media.status}</span>
-              ) : null}
+              {media.status ? <span className="text-xs text-muted-foreground">{media.status}</span> : null}
             </div>
 
             {/* Title */}
@@ -82,12 +73,8 @@ export function MediaDetailsHero({
                 <span>★</span>
                 <span className="font-semibold text-foreground">{formatRating(media.rating)}</span>
               </span>
-              {media.year && (
-                <span className="text-muted-foreground">{media.year}</span>
-              )}
-              {media.runtime ? (
-                <span className="text-muted-foreground">{formatRuntime(media.runtime)}</span>
-              ) : null}
+              {media.year && <span className="text-muted-foreground">{media.year}</span>}
+              {media.runtime ? <span className="text-muted-foreground">{formatRuntime(media.runtime)}</span> : null}
               {media.language ? (
                 <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground uppercase">
                   {media.language}
@@ -97,7 +84,7 @@ export function MediaDetailsHero({
 
             {/* Overview */}
             <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
-              {media.overview || t('media.noOverview')}
+              {media.overview || t("media.noOverview")}
             </p>
 
             {/* Genres */}
@@ -123,10 +110,10 @@ export function MediaDetailsHero({
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 // needed for JSX inside media-details-hero
 function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ')
+  return classes.filter(Boolean).join(" ");
 }

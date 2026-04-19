@@ -1,40 +1,40 @@
-import { useTranslation } from 'react-i18next'
-import { Link, useRouterState } from '@tanstack/react-router'
-import { PanelLeftClose, PanelLeft, Moon, Sun } from 'lucide-react'
-import { useNavigationItems, type NavigationItem } from '@/shared/constants/navigation'
-import { cn } from '@/shared/lib/cn'
-import { Separator } from '@/components/ui/separator'
-import { Button } from '@/components/ui/button'
-import { usePreferences } from '@/hooks/use-local-media'
+import { useTranslation } from "react-i18next";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { PanelLeftClose, PanelLeft, Moon, Sun } from "lucide-react";
+import { useNavigationItems, type NavigationItem } from "@/shared/constants/navigation";
+import { cn } from "@/shared/lib/cn";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { usePreferences } from "@/hooks/use-local-media";
 
 interface SidebarNavProps {
-  collapsed: boolean
-  onToggleCollapse: () => void
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 interface NavLinkProps {
-  item: NavigationItem
-  collapsed: boolean
-  isActive: boolean
+  item: NavigationItem;
+  collapsed: boolean;
+  isActive: boolean;
 }
 
 function NavLink({ item, collapsed, isActive }: NavLinkProps) {
-  const Icon = item.icon
+  const Icon = item.icon;
   return (
     <Link
       to={item.to}
       className={cn(
-        'group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
         isActive
-          ? 'bg-primary/15 text-primary shadow-glow'
-          : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground',
-        collapsed && 'justify-center px-2'
+          ? "bg-primary/15 text-primary shadow-glow"
+          : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground",
+        collapsed && "justify-center px-2"
       )}
     >
       <Icon
         className={cn(
-          'h-[18px] w-[18px] shrink-0 transition-all duration-200',
-          isActive ? 'text-primary' : 'group-hover:scale-110'
+          "h-[18px] w-[18px] shrink-0 transition-all duration-200",
+          isActive ? "text-primary" : "group-hover:scale-110"
         )}
       />
       {!collapsed && (
@@ -44,51 +44,51 @@ function NavLink({ item, collapsed, isActive }: NavLinkProps) {
         </>
       )}
     </Link>
-  )
+  );
 }
 
 const themeOptions = [
-  { value: 'dark' as const, icon: Moon, label: 'Dark' },
-  { value: 'light' as const, icon: Sun, label: 'Light' },
-]
+  { value: "dark" as const, icon: Moon, label: "Dark" },
+  { value: "light" as const, icon: Sun, label: "Light" },
+];
 
 function getInitials(name: string | null): string {
-  if (!name) return 'U'
-  const parts = name.trim().split(' ')
-  if (parts.length === 1) return parts[0][0].toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  if (!name) return "U";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
-  const { t } = useTranslation()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const navigationItems = useNavigationItems()
-  const { data: preferences, updatePreference } = usePreferences()
-  const activeTheme = preferences?.theme ?? 'dark'
-  const userName = preferences?.userProfile?.name ?? null
+  const { t } = useTranslation();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const navigationItems = useNavigationItems();
+  const { data: preferences, updatePreference } = usePreferences();
+  const activeTheme = preferences?.theme ?? "dark";
+  const userName = preferences?.userProfile?.name ?? null;
 
-  const mainItems = navigationItems.filter((item) => item.category === 'main')
-  const settingsItems = navigationItems.filter((item) => item.category === 'settings')
+  const mainItems = navigationItems.filter((item) => item.category === "main");
+  const settingsItems = navigationItems.filter((item) => item.category === "settings");
 
   return (
-    <div className={cn('flex h-full flex-col', collapsed ? 'px-2 py-4' : 'px-4 py-5')}>
+    <div className={cn("flex h-full flex-col", collapsed ? "px-2 py-4" : "px-4 py-5")}>
       {/* Header */}
-      <div className={cn('flex items-center gap-3', collapsed ? 'justify-center mb-3' : 'mb-6')}>
+      <div className={cn("flex items-center gap-3", collapsed ? "justify-center mb-3" : "mb-6")}>
         <div
           className={cn(
-            'flex shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow',
-            collapsed ? 'h-10 w-10' : 'h-11 w-11'
+            "flex shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow",
+            collapsed ? "h-10 w-10" : "h-11 w-11"
           )}
         >
-          <span className={cn('font-black', collapsed ? 'text-base' : 'text-lg')}>C</span>
+          <span className={cn("font-black", collapsed ? "text-base" : "text-lg")}>C</span>
         </div>
         {!collapsed && (
           <div className="flex flex-1 items-center justify-between min-w-0">
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                {t('sidebar.brand.tagline')}
+                {t("sidebar.brand.tagline")}
               </p>
-              <p className="text-xl font-bold leading-tight">{t('sidebar.brand.name')}</p>
+              <p className="text-xl font-bold leading-tight">{t("sidebar.brand.name")}</p>
             </div>
             <Button
               variant="ghost"
@@ -150,12 +150,12 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
               <button
                 key={value}
                 type="button"
-                onClick={() => updatePreference({ key: 'theme', value })}
+                onClick={() => updatePreference({ key: "theme", value })}
                 className={cn(
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-all duration-200',
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-all duration-200",
                   activeTheme === value
-                    ? 'bg-primary/15 text-primary shadow-glow'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? "bg-primary/15 text-primary shadow-glow"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -171,10 +171,10 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'h-9 w-full rounded-xl',
-                  activeTheme === value && 'bg-primary/15 text-primary shadow-glow'
+                  "h-9 w-full rounded-xl",
+                  activeTheme === value && "bg-primary/15 text-primary shadow-glow"
                 )}
-                onClick={() => updatePreference({ key: 'theme', value })}
+                onClick={() => updatePreference({ key: "theme", value })}
               >
                 <Icon className="h-4 w-4" />
               </Button>
@@ -185,8 +185,8 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
         {/* User card */}
         <div
           className={cn(
-            'flex items-center gap-3 rounded-2xl border border-black/[0.07] dark:border-white/5 bg-black/5 dark:bg-white/5 p-2.5',
-            collapsed && 'justify-center p-2'
+            "flex items-center gap-3 rounded-2xl border border-black/[0.07] dark:border-white/5 bg-black/5 dark:bg-white/5 p-2.5",
+            collapsed && "justify-center p-2"
           )}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary ring-2 ring-primary/10">
@@ -194,12 +194,12 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{t('sidebar.user')}</p>
-              <p className="truncate text-xs text-muted-foreground">{t('sidebar.member')}</p>
+              <p className="truncate text-sm font-medium">{t("sidebar.user")}</p>
+              <p className="truncate text-xs text-muted-foreground">{t("sidebar.member")}</p>
             </div>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }

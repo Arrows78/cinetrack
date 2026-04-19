@@ -1,80 +1,75 @@
-import { useTranslation } from 'react-i18next'
-import { Link } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
-import { History, Clapperboard, Eye, EyeOff, Play, BookmarkPlus, BookmarkMinus } from 'lucide-react'
-import { EmptyState } from '@/components/states/empty-state'
-import { ProgressBar } from '@/components/media/progress-bar'
-import { SectionHeader } from '@/components/media/section-header'
-import { formatRelativeDate, percent } from '@/shared/utils/format'
-import { useHistory, useTrackedSeries } from '@/hooks/use-local-media'
-import { cn } from '@/shared/lib/cn'
-import type { LucideIcon } from 'lucide-react'
+import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { motion } from "framer-motion";
+import { History, Clapperboard, Eye, EyeOff, Play, BookmarkPlus, BookmarkMinus } from "lucide-react";
+import { EmptyState } from "@/components/states/empty-state";
+import { ProgressBar } from "@/components/media/progress-bar";
+import { SectionHeader } from "@/components/media/section-header";
+import { formatRelativeDate, percent } from "@/shared/utils/format";
+import { useHistory, useTrackedSeries } from "@/hooks/use-local-media";
+import { cn } from "@/shared/lib/cn";
+import type { LucideIcon } from "lucide-react";
 
 type HistoryAction =
-  | 'movie:watched'
-  | 'movie:unwatched'
-  | 'episode:watched'
-  | 'episode:unwatched'
-  | 'watchlist:add'
-  | 'watchlist:remove'
+  | "movie:watched"
+  | "movie:unwatched"
+  | "episode:watched"
+  | "episode:unwatched"
+  | "watchlist:add"
+  | "watchlist:remove";
 
 const labelByAction: Record<HistoryAction, string> = {
-  'movie:watched': 'movieWatched',
-  'movie:unwatched': 'movieUnwatched',
-  'episode:watched': 'episodeWatched',
-  'episode:unwatched': 'episodeUnwatched',
-  'watchlist:add': 'addedToWatchlist',
-  'watchlist:remove': 'removedFromWatchlist',
-}
+  "movie:watched": "movieWatched",
+  "movie:unwatched": "movieUnwatched",
+  "episode:watched": "episodeWatched",
+  "episode:unwatched": "episodeUnwatched",
+  "watchlist:add": "addedToWatchlist",
+  "watchlist:remove": "removedFromWatchlist",
+};
 
 const actionConfig: Record<HistoryAction, { icon: LucideIcon; dot: string; ring: string }> = {
-  'movie:watched': {
+  "movie:watched": {
     icon: Eye,
-    dot: 'bg-primary/15 text-primary',
-    ring: 'border-primary/20',
+    dot: "bg-primary/15 text-primary",
+    ring: "border-primary/20",
   },
-  'movie:unwatched': {
+  "movie:unwatched": {
     icon: EyeOff,
-    dot: 'bg-black/5 dark:bg-white/5 text-muted-foreground',
-    ring: 'border-border',
+    dot: "bg-black/5 dark:bg-white/5 text-muted-foreground",
+    ring: "border-border",
   },
-  'episode:watched': {
+  "episode:watched": {
     icon: Play,
-    dot: 'bg-accent/15 text-accent',
-    ring: 'border-accent/20',
+    dot: "bg-accent/15 text-accent",
+    ring: "border-accent/20",
   },
-  'episode:unwatched': {
+  "episode:unwatched": {
     icon: EyeOff,
-    dot: 'bg-black/5 dark:bg-white/5 text-muted-foreground',
-    ring: 'border-border',
+    dot: "bg-black/5 dark:bg-white/5 text-muted-foreground",
+    ring: "border-border",
   },
-  'watchlist:add': {
+  "watchlist:add": {
     icon: BookmarkPlus,
-    dot: 'bg-emerald-500/15 text-emerald-400',
-    ring: 'border-emerald-500/20',
+    dot: "bg-emerald-500/15 text-emerald-400",
+    ring: "border-emerald-500/20",
   },
-  'watchlist:remove': {
+  "watchlist:remove": {
     icon: BookmarkMinus,
-    dot: 'bg-red-500/15 text-red-400',
-    ring: 'border-red-500/20',
+    dot: "bg-red-500/15 text-red-400",
+    ring: "border-red-500/20",
   },
-}
-
+};
 
 export function HistoryPage() {
-  const { t } = useTranslation()
-  const historyQuery = useHistory()
-  const trackedSeriesQuery = useTrackedSeries()
+  const { t } = useTranslation();
+  const historyQuery = useHistory();
+  const trackedSeriesQuery = useTrackedSeries();
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
       {/* Activity timeline */}
       <section>
-        <SectionHeader
-          title={t('history.recentActivity')}
-          subtitle={t('history.recentActivitySubtitle')}
-          index={1}
-        />
+        <SectionHeader title={t("history.recentActivity")} subtitle={t("history.recentActivitySubtitle")} index={1} />
 
         {historyQuery.data?.length ? (
           <div className="relative">
@@ -82,22 +77,22 @@ export function HistoryPage() {
             <div className="absolute left-[19px] top-2 bottom-2 w-px bg-black/[0.07] dark:bg-white/[0.07]" />
 
             {historyQuery.data.map((item, i) => {
-              const action = item.action as HistoryAction
-              const config = actionConfig[action] ?? actionConfig['movie:watched']
-              const Icon = config.icon
+              const action = item.action as HistoryAction;
+              const config = actionConfig[action] ?? actionConfig["movie:watched"];
+              const Icon = config.icon;
 
               return (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04, type: 'spring', stiffness: 220, damping: 28 }}
+                  transition={{ delay: i * 0.04, type: "spring", stiffness: 220, damping: 28 }}
                   className="relative flex gap-4 pb-5 last:pb-0"
                 >
                   {/* Icon dot */}
                   <div
                     className={cn(
-                      'relative z-10 flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border',
+                      "relative z-10 flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border",
                       config.dot,
                       config.ring
                     )}
@@ -112,7 +107,7 @@ export function HistoryPage() {
                         <p className="truncate font-semibold leading-snug">{item.title}</p>
                         {item.episodeTitle ? (
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            S{item.seasonNumber}E{item.episodeNumber} · {item.episodeTitle}
+                            S{item.seasonNumber}E{item.episodeNumber} • {item.episodeTitle}
                           </p>
                         ) : null}
                         <p className="mt-1 text-[11px] text-muted-foreground">
@@ -125,43 +120,39 @@ export function HistoryPage() {
                     </div>
                   </div>
                 </motion.div>
-              )
+              );
             })}
           </div>
         ) : (
-          <EmptyState
-            icon={History}
-            title={t('history.noActivity')}
-            description={t('history.noActivityDesc')}
-          />
+          <EmptyState icon={History} title={t("history.noActivity")} description={t("history.noActivityDesc")} />
         )}
       </section>
 
       {/* Tracked series */}
       <section>
         <SectionHeader
-          title={t('history.seriesInProgress')}
-          subtitle={t('history.seriesInProgressSubtitle')}
+          title={t("history.seriesInProgress")}
+          subtitle={t("history.seriesInProgressSubtitle")}
           index={2}
         />
 
         {(trackedSeriesQuery.data ?? []).length ? (
           <div className="space-y-3">
             {trackedSeriesQuery.data?.map((item, i) => {
-              const progress = percent(item.watchedEpisodes, item.totalEpisodes)
+              const progress = percent(item.watchedEpisodes, item.totalEpisodes);
               return (
                 <motion.div
                   key={item.seriesId}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05, type: 'spring', stiffness: 220, damping: 28 }}
+                  transition={{ delay: i * 0.05, type: "spring", stiffness: 220, damping: 28 }}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-4 transition-colors hover:bg-black/[0.06] dark:hover:bg-white/[0.06]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold leading-snug">{item.title}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {item.watchedEpisodes}/{item.totalEpisodes} {t('history.episodesWatched')}
+                        {item.watchedEpisodes}/{item.totalEpisodes} {t("history.episodesWatched")}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
@@ -182,17 +173,17 @@ export function HistoryPage() {
                     aria-label={item.title}
                   />
                 </motion.div>
-              )
+              );
             })}
           </div>
         ) : (
           <EmptyState
             icon={Clapperboard}
-            title={t('history.noTrackedSeries')}
-            description={t('history.noTrackedSeriesDesc')}
+            title={t("history.noTrackedSeries")}
+            description={t("history.noTrackedSeriesDesc")}
           />
         )}
       </section>
     </div>
-  )
+  );
 }

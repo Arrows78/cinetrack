@@ -1,7 +1,4 @@
 {
-  "common": {
-    "open": "Open"
-  },
   "nav": {
     "home": "Home",
     "movies": "Movies",
@@ -16,18 +13,13 @@
     "cast": "Cast",
     "seasons": "Seasons",
     "episodes": "Episodes",
-    "rating": "Rating",
-    "releaseDate": "Release Date",
-    "addToWatchlist": "Add to watchlist",
-    "removeFromWatchlist": "Remove from watchlist",
-    "markAsSeen": "Mark as seen",
-    "markAsUnseen": "Mark as unseen",
     "season": "Season",
-    "episode": "Episode",
     "seen": "Seen",
+    "markAsSeen": "Mark as seen",
+    "status": "Status",
     "genres": "Genres",
+    "addToWatchlist": "Add to watchlist",
     "inWatchlist": "In watchlist",
-    "originalTitle": "Original title",
     "unknownYear": "Unknown year",
     "noOverview": "No overview available for this content."
   },
@@ -36,8 +28,7 @@
     "notFoundDesc": "The requested route doesn't exist or hasn't been exposed in the router yet.",
     "backToHome": "Back to home",
     "noResults": "No results found",
-    "emptyWatchlist": "Your watchlist is empty",
-    "emptyHistory": "No watch history"
+    "emptyWatchlist": "Your watchlist is empty"
   },
   "home": {
     "configureTmdb": "Configure your TMDB access",
@@ -52,9 +43,23 @@
     "continueWatchingDesc": "Find your series in progress with one click.",
     "followedSeries": "Followed Series",
     "trendingMovies": "Trending Movies",
-    "trendingMoviesSubtitle": "Discover the most popular movies of the moment.",
+    "trendingMoviesSubtitle": "Discover the most trending movies of the week.",
     "trendingSeries": "Trending Series",
-    "trendingSeriesSubtitle": "Discover the most popular series of the moment."
+    "trendingSeriesSubtitle": "Discover the most trending series of the week.",
+    "topRatedSeries": "Top Rated Series",
+    "topRatedSeriesSubtitle": "The highest rated series of all time.",
+    "onTheAirSeries": "On The Air",
+    "onTheAirSeriesSubtitle": "Series currently in production.",
+    "topRatedMovies": "Top Rated Movies",
+    "topRatedMoviesSubtitle": "The highest rated movies of all time.",
+    "nowPlayingMovies": "Now Playing",
+    "nowPlayingMoviesSubtitle": "Movies currently in theaters.",
+    "upcomingMovies": "Upcoming Movies",
+    "upcomingMoviesSubtitle": "Movies coming soon.",
+    "browseByGenre": "Browse by Genre",
+    "browseByGenreSubtitle": "Explore series and movies by category.",
+    "browseByPlatform": "Browse by Platform",
+    "browseByPlatformSubtitle": "Find series and movies on your favorite streaming services."
   },
   "history": {
     "recentActivity": "Recent Activity",
@@ -65,16 +70,7 @@
     "noActivityDesc": "Start marking content as watched or fill your watchlist to populate this section.",
     "noTrackedSeries": "No tracked series",
     "noTrackedSeriesDesc": "As soon as you check an episode, the progress appears here with local persistence.",
-    "episodesWatched": "episodes watched",
-    "completed": "completed",
-    "actions": {
-      "movieWatched": "Movie watched",
-      "movieUnwatched": "Movie unwatched",
-      "episodeWatched": "Episode watched",
-      "episodeUnwatched": "Episode unwatched",
-      "addedToWatchlist": "Added to watchlist",
-      "removedFromWatchlist": "Removed from watchlist"
-    }
+    "episodesWatched": "episodes watched"
   },
   "search": {
     "globalSearch": "Global Search",
@@ -82,10 +78,13 @@
     "startTyping": "Start typing",
     "startTypingDesc": "Search activates from 2 characters. Use the filter to target movies, series, or both.",
     "noResultsDesc": "Try another title, different language, or a different filter.",
-    "resultsCount": "{{count}} result(s)"
+    "resultsCount": "{{count}} result(s)",
+    "showingResults": "Showing results for {{filters}}"
+  },
+  "searchBar": {
+    "placeholder": "Search for a movie or series..."
   },
   "settings": {
-    "title": "Settings",
     "subtitle": "User preferences persisted locally, desktop first, ready for future mobile port.",
     "uiPreferences": "UI Preferences",
     "uiPreferencesDesc": "Customize your local experience.",
@@ -102,15 +101,10 @@
     "envInstruction": "Add your TMDB bearer token to the",
     "openTmdbDocs": "Open TMDB docs"
   },
-  "searchBar": {
-    "placeholder": "Search for a movie or series..."
-  },
   "movies": {
     "subtitle": "Premium display, immersive posters and direct access to detailed sheets.",
     "noMoviesAvailable": "No movies available",
     "noMoviesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
-    "alreadySeen": "Already seen",
-    "markAsSeen": "Mark as seen",
     "technicalSheet": "Technical Sheet",
     "country": "Country",
     "language": "Language",
@@ -120,17 +114,13 @@
     "subtitle": "Browse by season, track your progress and discover new series.",
     "noSeriesAvailable": "No series available",
     "noSeriesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
-    "markAllSeen": "Mark entire series as seen",
     "seriesInfo": "Series Info",
-    "status": "Status",
-    "genres": "Genres",
     "currentProgress": "Current Progress",
     "seasonsAndEpisodes": "Seasons & Episodes",
-    "seasonsAndEpisodesDesc": "Each episode can be marked as watched/unwatched, with progress per season and overall.",
+    "seasonsAndEpisodesDesc": "Each episode can be marked as seen/unseen, with progress per season and overall.",
     "globalProgress": "Global Progress",
     "markSeasonSeen": "Mark season as seen",
-    "resetSeason": "Reset season",
-    "openDedicatedPage": "Open dedicated page"
+    "markSeasonUnseen": "Mark season as unseen"
   },
   "watchlist": {
     "subtitle": "Filter by type and smartly sort your backlog.",
@@ -139,28 +129,12 @@
     "rating": "Rating",
     "emptyDesc": "Add movies or series from cards or detail pages to find them here."
   },
-  "episode": {
-    "noOverview": "Summary not available."
-  },
   "sidebar": {
     "brand": {
-      "tagline": "Cinema OS",
-      "name": "CineTrack"
+      "name": "CineTrack",
+      "tagline": "Cinema OS"
     },
-    "categories": {
-      "main": "Menu",
-      "settings": "Settings"
-    },
-    "theme": "Theme",
     "user": "John Doe",
     "member": "Premium member"
-  },
-  "movie": {
-    "alreadySeen": "Already seen",
-    "markAsSeen": "Mark as seen",
-    "technicalSheet": "Technical Sheet",
-    "country": "Country",
-    "language": "Language",
-    "castSubtitle": "The most visible faces from the TMDB page."
   }
 }
