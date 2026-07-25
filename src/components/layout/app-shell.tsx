@@ -5,7 +5,6 @@ import { Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-import { ThemeController } from "@/components/layout/theme-controller";
 import { useUiStore } from "@/store/ui-store";
 import { usePreferences } from "@/hooks/use-local-media";
 
@@ -27,7 +26,6 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen text-foreground">
-      <ThemeController />
       <div
         className={cn(
           "mx-auto grid min-h-screen w-full max-w-[1700px] grid-cols-1 gap-6 p-4 lg:p-6",

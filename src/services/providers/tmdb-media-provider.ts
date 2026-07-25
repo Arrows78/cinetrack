@@ -106,7 +106,11 @@ export class TmdbMediaProvider implements MediaProvider {
       sort_by: "popularity.desc",
     };
     if (args?.genre) params.with_genres = String(args.genre);
-    if (args?.provider) params.with_watch_providers = String(args.provider);
+    if (args?.provider) {
+      params.watch_region = "FR";
+      params.with_watch_providers = String(args.provider);
+      params.with_watch_monetization_types = "flatrate";
+    }
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/discover/movie", params);
     return response.results.map(mapMovieDto);
   }
@@ -118,7 +122,11 @@ export class TmdbMediaProvider implements MediaProvider {
       sort_by: "popularity.desc",
     };
     if (args?.genre) params.with_genres = String(args.genre);
-    if (args?.provider) params.with_networks = String(args.provider);
+    if (args?.provider) {
+      params.watch_region = "FR";
+      params.with_watch_providers = String(args.provider);
+      params.with_watch_monetization_types = "flatrate";
+    }
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/discover/tv", params);
     return response.results.map(mapSeriesDto);
   }

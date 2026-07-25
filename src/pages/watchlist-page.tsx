@@ -11,7 +11,8 @@ export function WatchlistPage() {
   const { t } = useTranslation();
   const { data: preferences } = usePreferences();
   const { data: items } = useWatchlist();
-  const [filter, setFilter] = useState<"all" | "movie" | "series">(preferences?.defaultWatchlistFilter ?? "all");
+  const [selectedFilter, setSelectedFilter] = useState<"all" | "movie" | "series" | null>(null);
+  const filter = selectedFilter ?? preferences?.defaultWatchlistFilter ?? "all";
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
 
   const filtered = useMemo(() => {
@@ -45,7 +46,7 @@ export function WatchlistPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <FilterBar
             value={filter}
-            onChange={setFilter}
+            onChange={setSelectedFilter}
             options={[
               { value: "all", label: t("settings.all") },
               { value: "series", label: t("nav.series") },

@@ -1,5 +1,9 @@
 import { browserStore, getDatabase } from "./db";
+import { historyRepository } from "./history-repository";
 import type { WatchlistItem } from "@/types/media";
+
+const nowIso = () => new Date().toISOString();
+const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export const watchlistRepository = {
   async list(): Promise<WatchlistItem[]> {
@@ -36,6 +40,7 @@ export const watchlistRepository = {
     );
 
     return Number(rows[0]?.count ?? 0) > 0;
+    const alreadyExists = await watchlistRepository.has(item.mediaId, item.mediaType);
   },
 
   async upsert(item: WatchlistItem) {
@@ -47,6 +52,16 @@ export const watchlistRepository = {
         item,
         ...store.watchlist.filter(
           (current) => !(current.mediaId === item.mediaId && current.mediaType === item.mediaType)
+      if (!alreadyExists) {
+        await historyRepository.add({
+          id: uid(),
+          mediaId: item.mediaId,
+          mediaType: item.mediaType,
+          title: item.title,
+          action: "watchlist:add",
+          timestamp: nowIso(),
+        });
+      }
         ),
       ];
       browserStore.write(store);
@@ -64,18 +79,53 @@ export const watchlistRepository = {
         item.posterPath ?? null,
         item.backdropPath ?? null,
         item.year ?? null,
+
+    if (!alreadyExists) {
+      await historyRepository.add({
+        id: uid(),
+        mediaId: item.mediaId,
+        mediaType: item.mediaType,
+        title: item.title,
+        action: "watchlist:add",
+        timestamp: nowIso(),
+      });
+    }
         item.rating ?? null,
         item.createdAt,
+    const item = (await watchlistRepository.list()).find(
+      (current) => current.mediaId === mediaId && current.mediaType === mediaType
+    );
       ]
     );
   },
 
   async remove(mediaId: number, mediaType: WatchlistItem["mediaType"]) {
     const db = await getDatabase();
+      if (item) {
+        await historyRepository.add({
+          id: uid(),
+          mediaId: item.mediaId,
+          mediaType: item.mediaType,
+          title: item.title,
+          action: "watchlist:remove",
+          timestamp: nowIso(),
+        });
+      }
 
     if (!db) {
       const store = browserStore.read();
       store.watchlist = store.watchlist.filter((item) => !(item.mediaId === mediaId && item.mediaType === mediaType));
+
+    if (item) {
+      await historyRepository.add({
+        id: uid(),
+        mediaId: item.mediaId,
+        mediaType: item.mediaType,
+        title: item.title,
+        action: "watchlist:remove",
+        timestamp: nowIso(),
+      });
+    }
       browserStore.write(store);
       return;
     }

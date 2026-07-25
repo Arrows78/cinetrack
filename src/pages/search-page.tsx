@@ -11,17 +11,18 @@ import { SectionHeader } from "@/components/media/section-header";
 import { usePreferences } from "@/hooks/use-local-media";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSearch as useSearchHook } from "@/hooks/use-search";
+import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import type { MediaSummary } from "@/types/media";
 
-// Helper to get genre name - just use the URL param directly
+const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
+
 const getGenreName = (id: string | undefined) => {
   if (!id) return null;
-  return id;
+  return ALL_GENRES.find((genre) => String(genre.id) === id)?.label ?? id;
 };
 
-// Helper to get platform name - just use the URL param directly
 const getPlatformName = (id: string) => {
-  return id;
+  return PLATFORMS.find((platform) => String(platform.id) === id)?.label ?? id;
 };
 
 export function SearchPage() {
@@ -38,7 +39,8 @@ export function SearchPage() {
   const urlScope = searchParams.get("scope") as "all" | "movie" | "series" | null;
 
   const [localQuery, setLocalQuery] = useState(urlQuery);
-  const [scope, setScope] = useState<"all" | "movie" | "series">(urlScope ?? preferences?.defaultSearchType ?? "all");
+  const [selectedScope, setSelectedScope] = useState<"all" | "movie" | "series" | null>(urlScope);
+  const scope = selectedScope ?? preferences?.defaultSearchType ?? "all";
 
   // Use localQuery if typed in, else URL query, else empty
   const query = localQuery || "";
@@ -82,7 +84,7 @@ export function SearchPage() {
           <SearchBar value={query} onChange={setLocalQuery} />
           <FilterBar
             value={scope}
-            onChange={setScope}
+            onChange={setSelectedScope}
             options={[
               { value: "all", label: t("settings.all") },
               { value: "series", label: t("nav.series") },

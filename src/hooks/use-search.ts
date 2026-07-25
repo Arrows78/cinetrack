@@ -8,7 +8,7 @@ export function useSearch(
   scope: "all" | "movie" | "series",
   options?: { genreMovie?: string; genreSeries?: string; provider?: string }
 ) {
-  const hasFilters = options?.genreMovie || options?.genreSeries || options?.provider;
+  const hasFilters = Boolean(options?.genreMovie || options?.genreSeries || options?.provider);
 
   const queryKey = hasFilters
     ? queryKeys.remote.discover(options.genreMovie, options.genreSeries, options.provider, scope)
@@ -18,19 +18,23 @@ export function useSearch(
     if (hasFilters) {
       const genreMovie = options.genreMovie ? Number(options.genreMovie) : undefined;
       const genreSeries = options.genreSeries ? Number(options.genreSeries) : undefined;
+      const canDiscoverMovies = Boolean(genreMovie || provider);
+      const canDiscoverSeries = Boolean(genreSeries || provider);
+
       const provider = options.provider ? Number(options.provider) : undefined;
 
       if (scope === "movie") {
-        return mediaRepository.discoverMovies({ genre: genreMovie, provider });
+        return canDiscoverMovies ? mediaRepository.discoverMovies({ genre: genreMovie, provider }) : [];
       }
       if (scope === "series") {
-        return mediaRepository.discoverSeries({ genre: genreSeries, provider });
+        return canDiscoverSeries ? mediaRepository.discoverSeries({ genre: genreSeries, provider }) : [];
       }
-      const [movies, series] = await Promise.all([
-        mediaRepository.discoverMovies({ genre: genreMovie, provider }),
-        mediaRepository.discoverSeries({ genre: genreSeries, provider }),
-      ]);
-      return [...movies, ...series];
+
+      const requests: Array<Promise<MediaSummary[]>> = [];
+      if (canDiscoverMovies) requests.push(mediaRepository.discoverMovies({ genre: genreMovie, provider }));
+      if (canDiscoverSeries) requests.push(mediaRepository.discoverSeries({ genre: genreSeries, provider }));
+
+      return (await Promise.all(requests)).flat();
     }
 
     return mediaRepository.search(query, scope);

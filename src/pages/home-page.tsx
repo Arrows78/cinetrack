@@ -14,16 +14,24 @@ import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { useHistory, useTrackedSeries, useWatchlist } from "@/hooks/use-local-media";
 import { useHomeFeed } from "@/hooks/use-media";
 
-// Merge genres (same label = same genre across movies and series)
+const SERIES_GENRE_ALIASES: Record<string, string> = {
+  Action: "Action & Adventure",
+  Adventure: "Action & Adventure",
+  Fantasy: "Sci-Fi & Fantasy",
+  "Science Fiction": "Sci-Fi & Fantasy",
+  War: "War & Politics",
+};
+
 const useMergedGenres = () =>
   useMemo(() => {
     const seen = new Map<string, { id: number; label: string; icon: string; movieId: number; seriesId: number }>();
     for (const g of GENRES.movies) {
-      const seriesMatch = GENRES.series.find((s) => s.label === g.label);
+      const seriesLabel = SERIES_GENRE_ALIASES[g.label] ?? g.label;
+      const seriesMatch = GENRES.series.find((s) => s.label === seriesLabel);
       seen.set(g.label, { id: g.id, label: g.label, icon: g.icon, movieId: g.id, seriesId: seriesMatch?.id ?? 0 });
     }
     for (const g of GENRES.series) {
-      if (!seen.has(g.label)) {
+      if (!seen.has(g.label) && !Array.from(seen.values()).some((item) => item.seriesId === g.id)) {
         const movieMatch = GENRES.movies.find((m) => m.label === g.label);
         seen.set(g.label, {
           id: g.id,

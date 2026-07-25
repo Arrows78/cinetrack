@@ -35,7 +35,7 @@ const defaultBrowserStore: BrowserStore = {
   preferences: {},
 };
 
-let dbPromise: Promise<Database> | null = null;
+let databasePromise: Promise<Database> | null = null;
 
 const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS watchlist (
@@ -114,17 +114,22 @@ export const browserStore = {
 export async function initializeDatabase() {
   if (!isTauriApp()) return null;
 
-  if (!dbPromise) {
-    dbPromise = Database.load(DB_URL);
+  if (!databasePromise) {
+    databasePromise = (async () => {
+      const db = await Database.load(DB_URL);
+
+      for (const statement of schemaStatements) {
+        await db.execute(statement);
+      }
+
+      return db;
+    })().catch((error) => {
+      databasePromise = null;
+      throw error;
+    });
   }
 
-  const db = await dbPromise;
-
-  for (const statement of schemaStatements) {
-    await db.execute(statement);
-  }
-
-  return db;
+  return databasePromise;
 }
 
 export async function getDatabase() {

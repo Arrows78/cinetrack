@@ -17,7 +17,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeController />
       <AppRouter />
-      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+      {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /> : null}
     </QueryClientProvider>
   );
 }
