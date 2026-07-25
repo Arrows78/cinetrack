@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ExternalLink, CheckCheck } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/media/progress-bar";
