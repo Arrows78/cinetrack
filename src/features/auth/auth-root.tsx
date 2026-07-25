@@ -1,7 +1,8 @@
 import type { PropsWithChildren } from "react";
 import { LogOut, UserRound } from "lucide-react";
 import { AuthGate } from "@/features/auth/auth-gate";
-import { AuthProvider, useAuth } from "@/features/auth/auth-provider";
+import { AuthProvider } from "@/features/auth/auth-provider";
+import { useAuth } from "@/features/auth/auth-context";
 
 function AccountControl() {
   const { session, signOut, user } = useAuth();
