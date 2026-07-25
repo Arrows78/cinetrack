@@ -81,12 +81,12 @@ export function HomePage() {
     <div className="space-y-12">
       {/* Cinematic hero */}
       {hero ? (
-        <section className="relative overflow-hidden rounded-[36px] border border-border">
+        <section className="relative overflow-hidden rounded-[36px] border border-border animate-in-up">
           {/* Backdrop */}
           <img
             src={buildTmdbImageUrl(hero.backdropPath, "original")}
             alt={hero.title}
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover scale-105"
           />
           {/* Cinematic overlay */}
           <div
@@ -101,21 +101,23 @@ export function HomePage() {
 
           <div className="relative px-6 py-8 lg:px-8 lg:py-10">
             {/* Premium badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-primary uppercase">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-primary uppercase animate-in delay-200">
               <Sparkles className="h-3 w-3" />
               {t("home.premiumSelection")}
             </div>
 
             {/* Title */}
-            <h2 className="mt-5 max-w-2xl font-display text-4xl font-bold leading-[1.05] text-balance text-card-foreground md:text-5xl lg:text-6xl">
+            <h2 className="mt-5 max-w-2xl font-display text-4xl font-bold leading-[1.05] text-balance text-card-foreground md:text-5xl lg:text-6xl animate-in delay-300 hero-title-reveal">
               {hero.title}
             </h2>
 
             {/* Overview */}
-            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground md:text-[14px]">{hero.overview}</p>
+            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground md:text-[14px] animate-in delay-500">
+              {hero.overview}
+            </p>
 
             {/* Stats row */}
-            <div className="mt-6 flex flex-wrap items-center gap-6 pt-5">
+            <div className="mt-6 flex flex-wrap items-center gap-6 pt-5 animate-in delay-600">
               <StatCard
                 label={t("home.followedSeries")}
                 value={String(trackedSeriesQuery.data?.length ?? 0)}
@@ -134,14 +136,14 @@ export function HomePage() {
             </div>
 
             {/* Actions */}
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="gap-2">
+            <div className="mt-7 flex flex-wrap gap-3 animate-in delay-700">
+              <Button asChild size="lg" className="gap-2 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:scale-[1.02]">
                 <Link to="/movies/$movieId" params={{ movieId: String(hero.id) }}>
                   {t("home.viewDetails")}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg">
+              <Button asChild variant="outline" size="lg" className="transition-all duration-300 hover:bg-primary/10 hover:border-primary/40">
                 <Link to="/search">{t("home.exploreCatalog")}</Link>
               </Button>
             </div>
