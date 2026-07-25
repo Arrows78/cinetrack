@@ -1,12 +1,14 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ArrowLeft, Check, LoaderCircle, Mail, ShieldCheck } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 import { ProviderIcon } from "@/features/auth/provider-icon";
 import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/auth-context";
+import { getEnabledSocialProviders } from "@/features/auth/provider-availability";
 
 type AuthMode = "signin" | "signup";
 type AuthStep = "providers" | "email" | "otp";
+type ProviderSettingsStatus = "loading" | "ready" | "unavailable";
 
 const providers: Array<{ provider: SocialAuthProvider; label: string; className: string }> = [
   { provider: "apple", label: "Apple", className: "bg-white text-black" },
@@ -72,9 +74,36 @@ export function AuthScreen() {
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [enabledSocialProviders, setEnabledSocialProviders] = useState<SocialAuthProvider[]>([]);
+  const [providerSettingsStatus, setProviderSettingsStatus] = useState<ProviderSettingsStatus>("loading");
 
   const title = useMemo(() => (mode === "signin" ? "Welcome back" : "Create your account"), [mode]);
   const visibleError = localError ?? error;
+  const visibleProviders =
+    providerSettingsStatus === "ready"
+      ? providers.filter(({ provider }) => enabledSocialProviders.includes(provider))
+      : providers;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void getEnabledSocialProviders(controller.signal)
+      .then((enabledProviders) => {
+        if (enabledProviders === null) {
+          setProviderSettingsStatus("unavailable");
+          return;
+        }
+
+        setEnabledSocialProviders(enabledProviders);
+        setProviderSettingsStatus("ready");
+      })
+      .catch((settingsError: unknown) => {
+        if (settingsError instanceof Error && settingsError.name === "AbortError") return;
+        setProviderSettingsStatus("unavailable");
+      });
+
+    return () => controller.abort();
+  }, []);
 
   function resetError() {
     setLocalError(null);
@@ -90,6 +119,12 @@ export function AuthScreen() {
 
   async function handleProvider(provider: SocialAuthProvider) {
     resetError();
+
+    if (providerSettingsStatus === "ready" && !enabledSocialProviders.includes(provider)) {
+      setLocalError(`${provider} sign-in is not enabled in Supabase.`);
+      return;
+    }
+
     setPendingAction(provider);
     try {
       await signInWithProvider(provider);
@@ -185,13 +220,13 @@ export function AuthScreen() {
               </div>
 
               <div className="mt-8 flex flex-wrap justify-center gap-4">
-                {providers.map(({ provider, label, className }) => (
+                {visibleProviders.map(({ provider, label, className }) => (
                   <button
                     key={provider}
                     type="button"
                     aria-label={`Continue with ${label}`}
                     title={`Continue with ${label}`}
-                    disabled={pendingAction !== null}
+                    disabled={pendingAction !== null || providerSettingsStatus === "loading"}
                     onClick={() => void handleProvider(provider)}
                     className={cn(
                       "flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition hover:-translate-y-1 disabled:cursor-wait disabled:opacity-60 sm:h-[72px] sm:w-[72px]",
@@ -219,6 +254,22 @@ export function AuthScreen() {
                   <Mail className="h-8 w-8" />
                 </button>
               </div>
+
+              {providerSettingsStatus === "loading" ? (
+                <p className="mt-4 text-center text-xs text-white/45">Checking configured sign-in providers…</p>
+              ) : null}
+
+              {providerSettingsStatus === "ready" && enabledSocialProviders.length === 0 ? (
+                <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
+                  No social provider is enabled in Supabase. Enable one under Authentication → Sign In / Providers, or continue with email.
+                </p>
+              ) : null}
+
+              {providerSettingsStatus === "unavailable" ? (
+                <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
+                  CineTrack could not verify the Supabase provider configuration. Social sign-in may fail until it is configured.
+                </p>
+              ) : null}
 
               <label className="mt-9 flex cursor-pointer items-start gap-3 text-sm text-white/75">
                 <button

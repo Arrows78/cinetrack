@@ -195,7 +195,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
         const { data, error: oauthError } =
           await client.auth.signInWithOAuth({
-            provider,
+            provider: provider === "twitter" ? "x" : provider,
             options: {
               redirectTo: getAuthRedirectUrl(),
               skipBrowserRedirect: desktop,
