@@ -224,7 +224,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const requestEmailOtp = useCallback(
     async ({
       email,
-      createUser,
       marketingOptIn,
     }: EmailOtpRequest) => {
       const client = getAuthClient();
@@ -242,7 +241,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           await client.auth.signInWithOtp({
             email,
             options: {
-              shouldCreateUser: createUser,
+              shouldCreateUser: true,
               data: {
                 marketing_opt_in: marketingOptIn,
               },

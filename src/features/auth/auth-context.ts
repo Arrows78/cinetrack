@@ -7,7 +7,6 @@ export type AuthStatus = "loading" | "ready";
 
 export interface EmailOtpRequest {
   email: string;
-  createUser: boolean;
   marketingOptIn: boolean;
 }
 

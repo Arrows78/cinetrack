@@ -148,7 +148,6 @@ export function AuthScreen() {
     try {
       await requestEmailOtp({
         email: email.trim(),
-        createUser: mode === "signup",
         marketingOptIn,
       });
       setStep("otp");

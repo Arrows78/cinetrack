@@ -1,10 +1,13 @@
 import type { SocialAuthProvider } from "@/features/auth/auth-client";
 
-const socialProviders: ReadonlyArray<{ provider: SocialAuthProvider; settingsKey: string }> = [
-  { provider: "apple", settingsKey: "apple" },
-  { provider: "facebook", settingsKey: "facebook" },
-  { provider: "google", settingsKey: "google" },
-  { provider: "twitter", settingsKey: "x" },
+const socialProviders: ReadonlyArray<{
+  provider: SocialAuthProvider;
+  settingsKeys: readonly string[];
+}> = [
+  { provider: "apple", settingsKeys: ["apple"] },
+  { provider: "facebook", settingsKeys: ["facebook"] },
+  { provider: "google", settingsKeys: ["google"] },
+  { provider: "twitter", settingsKeys: ["x", "twitter"] },
 ];
 
 interface SupabaseAuthSettings {
@@ -39,5 +42,5 @@ export async function getEnabledSocialProviders(signal?: AbortSignal): Promise<S
 
   if (!external || typeof external !== "object") return [];
 
-  return socialProviders.filter(({ settingsKey }) => external[settingsKey] === true).map(({ provider }) => provider);
+  return socialProviders.filter(({ settingsKeys }) => settingsKeys.some((key) => external[key] === true)).map(({ provider }) => provider);
 }
