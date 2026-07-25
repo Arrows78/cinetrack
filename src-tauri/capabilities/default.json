@@ -3,5 +3,11 @@
   "identifier": "default",
   "description": "Main desktop capability for CineTrack",
   "windows": ["main"],
-  "permissions": ["core:default", "sql:default"]
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "deep-link:default",
+    "opener:default",
+    "sql:default"
+  ]
 }
