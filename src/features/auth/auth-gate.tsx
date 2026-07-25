@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { LoaderCircle, Settings2 } from "lucide-react";
 import { AuthScreen } from "@/features/auth/auth-screen";
-import { useAuth } from "@/features/auth/auth-provider";
+import { useAuth } from "@/features/auth/auth-context";
 
 export function AuthGate({ children }: PropsWithChildren) {
   const { configured, required, session, status } = useAuth();

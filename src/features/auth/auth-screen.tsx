@@ -3,7 +3,7 @@ import { ArrowLeft, Check, LoaderCircle, Mail, ShieldCheck } from "lucide-react"
 import { cn } from "@/shared/lib/cn";
 import { ProviderIcon } from "@/features/auth/provider-icon";
 import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client";
-import { useAuth } from "@/features/auth/auth-provider";
+import { useAuth } from "@/features/auth/auth-context";
 
 type AuthMode = "signin" | "signup";
 type AuthStep = "providers" | "email" | "otp";
