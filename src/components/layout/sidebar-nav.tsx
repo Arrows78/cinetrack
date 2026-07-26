@@ -49,8 +49,8 @@ function NavLink({ item, collapsed, isActive }: NavLinkProps) {
 }
 
 const themeOptions = [
-  { value: "dark" as const, icon: Moon, label: "Dark" },
-  { value: "light" as const, icon: Sun, label: "Light" },
+  { value: "dark" as const, icon: Moon, labelKey: "sidebar.theme.dark" },
+  { value: "light" as const, icon: Sun, labelKey: "sidebar.theme.light" },
 ];
 
 function getInitials(name: string | null): string {
@@ -148,7 +148,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
         {/* Theme switcher */}
         {!collapsed ? (
           <div className="flex gap-1 rounded-2xl bg-black/5 dark:bg-white/5 p-1">
-            {themeOptions.map(({ value, icon: Icon, label }) => (
+            {themeOptions.map(({ value, icon: Icon, labelKey }) => (
               <button
                 key={value}
                 type="button"
@@ -161,7 +161,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
               </button>
             ))}
           </div>
@@ -196,14 +196,14 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? "Account"}</p>
-              <p className="truncate text-xs text-muted-foreground">{user?.user_metadata?.role ?? "Member"}</p>
+              <p className="truncate text-sm font-medium">{user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? t("sidebar.defaultAccount")}</p>
+              <p className="truncate text-xs text-muted-foreground">{user?.user_metadata?.role ?? t("sidebar.defaultMember")}</p>
             </div>
           )}
           <button
             type="button"
-            aria-label="Sign out"
-            title="Sign out"
+            aria-label={t("sidebar.signOut")}
+            title={t("sidebar.signOut")}
             onClick={() => void signOut()}
             className={cn(
               "flex shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground",
