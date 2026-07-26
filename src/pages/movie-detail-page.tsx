@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
+import { AvailabilityAlertButton } from "@/components/media/availability-alert-button";
 import { ProviderAvailability } from "@/components/media/provider-availability";
 import { RecommendationsPanel } from "@/components/media/recommendations-panel";
 import { TrailerPanel } from "@/components/media/trailer-panel";
@@ -11,6 +12,7 @@ import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { useImageCache } from "@/hooks/use-image-cache";
 import { useMovieSeen } from "@/hooks/use-local-media";
 import { useMovieDetails } from "@/hooks/use-media";
 
@@ -20,6 +22,7 @@ export function MovieDetailPage() {
   const id = Number(movieId);
   const movieQuery = useMovieDetails(id);
   const seenQuery = useMovieSeen(id);
+  useImageCache([movieQuery.data?.posterPath, movieQuery.data?.backdropPath]);
   if (movieQuery.isLoading) return <HeroSkeleton />;
   if (!movieQuery.data) return null;
   const movie = movieQuery.data;
@@ -28,7 +31,7 @@ export function MovieDetailPage() {
     <div className="space-y-8">
       <MediaDetailsHero
         media={movie}
-        actions={<WatchlistButton media={movie} />}
+        actions={<><WatchlistButton media={movie} /><AvailabilityAlertButton media={movie} /></>}
         extra={
           <SeenToggle
             seen={Boolean(seenQuery.data)}
