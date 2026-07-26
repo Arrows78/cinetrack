@@ -19,15 +19,25 @@ export function RemoteErrorState({ error, onRetry }: RemoteErrorStateProps) {
   const { t } = useTranslation();
   const message = errorMessage(error);
   const authenticationError = /TMDB\s+(401|403)|token/i.test(message);
+  const localDatabaseError =
+    /sql\.(execute|select|load|close) not allowed|plugin:sql|sqlite|database/i.test(
+      message,
+    );
 
   return (
     <EmptyState
       icon={AlertTriangle}
-      title={t("errors.catalogUnavailable")}
+      title={
+        localDatabaseError
+          ? t("errors.localDataUnavailable")
+          : t("errors.catalogUnavailable")
+      }
       description={
-        authenticationError
-          ? t("errors.tmdbAuthentication")
-          : t("errors.tmdbConnection")
+        localDatabaseError
+          ? t("errors.localDatabase")
+          : authenticationError
+            ? t("errors.tmdbAuthentication")
+            : t("errors.tmdbConnection")
       }
       action={
         <div className="space-y-3 text-center">
