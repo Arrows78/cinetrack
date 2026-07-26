@@ -41,7 +41,8 @@
     "react-i18next": "^17.0.2",
     "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8",
-    "zustand": "^5.0.1"
+    "zustand": "^5.0.1",
+    "@tauri-apps/plugin-notification": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
@@ -71,6 +72,9 @@
   },
   "packageManager": "pnpm@10.6.5",
   "pnpm": {
-    "ignoredBuiltDependencies": ["@swc/core", "esbuild"]
+    "ignoredBuiltDependencies": [
+      "@swc/core",
+      "esbuild"
+    ]
   }
 }
