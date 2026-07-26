@@ -139,6 +139,8 @@
   },
   "errors": {
     "catalogUnavailable": "Impossible de charger le catalogue",
+    "localDataUnavailable": "Impossible d’ouvrir les données locales",
+    "localDatabase": "CineTrack n’a pas pu initialiser sa base de données locale. Redémarrez l’application desktop après avoir vérifié ses permissions SQL Tauri.",
     "tmdbAuthentication": "Le token TMDB du coffre desktop est absent, expiré ou refusé. Déverrouillez le coffre et enregistrez de nouveau un token Bearer valide.",
     "tmdbConnection": "La connexion à TMDB a échoué. CineTrack essaie automatiquement le backend natif puis la WebView ; vérifiez aussi votre connexion, VPN ou proxy.",
     "retry": "Réessayer",
