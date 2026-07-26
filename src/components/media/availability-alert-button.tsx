@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Bell,BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAvailabilityAlert } from "@/hooks/use-availability-alerts";
@@ -6,6 +7,7 @@ import { notificationService } from "@/services/notification-service";
 import type { MediaSummary } from "@/types/media";
 
 export function AvailabilityAlertButton({ media }: { media: MediaSummary }) {
+  const { t } = useTranslation();
   const preferences = usePreferences();
   const region = preferences.data?.region ?? "FR";
   const providers = preferences.data?.preferredProviderIds ?? [];
@@ -19,7 +21,7 @@ export function AvailabilityAlertButton({ media }: { media: MediaSummary }) {
   return (
     <Button type="button" variant={alert.data ? "secondary" : "outline"} disabled={alert.isSaving} onClick={() => void toggle()}>
       {alert.data ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
-      {alert.data ? "Désactiver l’alerte" : "Alerte de disponibilité"}
+      {alert.data ? t("media.disableAlert") : t("media.availabilityAlert")}
     </Button>
   );
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { EpisodeCard } from "@/components/media/episode-card";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
@@ -10,6 +11,7 @@ import { useEpisodeProgress } from "@/hooks/use-local-media";
 import { useSeasonDetails, useSeriesDetails } from "@/hooks/use-media";
 
 export function SeasonPage() {
+  const { t } = useTranslation();
   const { seriesId, seasonNumber } = useParams({ from: "/series/$seriesId/season/$seasonNumber" });
   const parsedSeriesId = Number(seriesId);
   const parsedSeasonNumber = Number(seasonNumber);
@@ -42,8 +44,8 @@ export function SeasonPage() {
 
       <Card>
         <SectionHeader
-          title={season.name || `Season ${season.seasonNumber}`}
-          subtitle={`${season.episodes.length} episode(s) available in this season.`}
+          title={season.name || t("media.fallbackTitle", { number: season.seasonNumber })}
+          subtitle={t("media.episodesAvailable", { count: season.episodes.length })}
         />
         <div className="space-y-4">
           {season.episodes.map((episode) => (

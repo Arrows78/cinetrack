@@ -26,14 +26,54 @@
     "addToWatchlist": "Ajouter à la liste",
     "inWatchlist": "Dans la liste",
     "unknownYear": "Année inconnue",
-    "noOverview": "Aucun synopsis disponible."
+    "noOverview": "Aucun synopsis disponible.",
+    "hiddenTitle": "Titre masqué",
+    "markSeen": "Marquer vu",
+    "markUnseen": "Marquer non vu",
+    "loading": "Chargement…",
+    "loadMore": "Charger plus",
+    "availableStreaming": "Disponible en streaming",
+    "casting": "Casting",
+    "upToDate": "Tout est à jour",
+    "noAiredEpisode": "Aucun épisode diffusé ne reste à voir.",
+    "nextEpisode": "Prochain épisode",
+    "similarSuggestions": "Suggestions similaires",
+    "becauseWatching": "Parce que vous consultez {{title}}",
+    "disableAlert": "Désactiver l'alerte",
+    "availabilityAlert": "Alerte de disponibilité",
+    "trailer": "Bande-annonce",
+    "openOnYoutube": "Ouvrir sur YouTube",
+    "fallbackTitle": "Saison {{number}}",
+    "episodesAvailable": "{{count}} épisode(s) disponible(s) dans cette saison."
   },
   "pages": {
     "notFound": "Page introuvable",
-    "notFoundDesc": "La route demandée n’existe pas.",
-    "backToHome": "Retour à l’accueil",
+    "notFoundDesc": "La route demandée n'existe pas.",
+    "backToHome": "Retour à l'accueil",
     "noResults": "Aucun résultat",
     "emptyWatchlist": "Votre liste est vide"
+  },
+  "common": {
+    "back": "Retour",
+    "loading": "Chargement…",
+    "somethingWentWrong": "Une erreur est survenue"
+  },
+  "theme": {
+    "dark": "Sombre",
+    "light": "Clair"
+  },
+  "offline": {
+    "message": "Mode hors ligne · données mises en cache"
+  },
+  "colors": {
+    "violet": "Violet",
+    "blue": "Bleu",
+    "teal": "Teal",
+    "green": "Vert",
+    "amber": "Ambre",
+    "orange": "Orange",
+    "rose": "Rose",
+    "red": "Rouge"
   },
   "home": {
     "configureTmdb": "Configurez votre accès TMDB",
@@ -74,14 +114,22 @@
     "noActivity": "Aucune activité",
     "noActivityDesc": "Commencez à marquer des contenus comme vus.",
     "noTrackedSeries": "Aucune série suivie",
-    "noTrackedSeriesDesc": "La progression apparaîtra dès qu’un épisode sera coché.",
-    "episodesWatched": "épisodes vus"
+    "noTrackedSeriesDesc": "La progression apparaîtra dès qu'un épisode sera coché.",
+    "episodesWatched": "épisodes vus",
+    "actions": {
+      "movieWatched": "Film vu",
+      "movieUnwatched": "Film dé-vu",
+      "episodeWatched": "Épisode vu",
+      "episodeUnwatched": "Épisode dé-vu",
+      "addedToWatchlist": "Ajouté à la liste",
+      "removedFromWatchlist": "Retiré de la liste"
+    }
   },
   "search": {
     "globalSearch": "Recherche globale",
     "subtitle": "Films, séries et filtres régionaux.",
     "startTyping": "Commencez à saisir",
-    "startTypingDesc": "La recherche s’active à partir de deux caractères.",
+    "startTypingDesc": "La recherche s'active à partir de deux caractères.",
     "noResultsDesc": "Essayez un autre titre ou un autre filtre.",
     "resultsCount": "{{count}} résultat(s)",
     "showingResults": "Résultats pour {{filters}}"
@@ -89,20 +137,39 @@
   "searchBar": { "placeholder": "Rechercher un film ou une série…" },
   "settings": {
     "subtitle": "Préférences locales et intégration desktop.",
-    "uiPreferences": "Préférences d’interface",
+    "subtitleDesktop": "Interface, catalogue, confidentialité et intégration desktop.",
+    "uiPreferences": "Préférences d'interface",
     "uiPreferencesDesc": "Personnalisez votre expérience locale.",
-    "accentColor": "Couleur d’accent",
+    "customizeDisplay": "Personnalisez l'affichage et les valeurs par défaut.",
+    "accentColor": "Couleur d'accent",
+    "language": "Langue",
+    "region": "Région TMDB",
     "defaultSearchType": "Type de recherche par défaut",
-    "defaultWatchlistFilter": "Filtre par défaut de la liste",
+    "defaultSearch": "Recherche par défaut",
     "all": "Tout",
-    "reduceAnimations": "Réduire les animations",
+    "series": "Séries",
+    "movies": "Films",
+    "reduceAnimations": "Animations réduites",
     "reducedAnimationsOn": "Animations réduites activées",
     "enableCompactMode": "Activer le mode compact",
     "compactModeOn": "Mode compact activé",
+    "compactMode": "Mode compact",
+    "spoilerProtection": "Protection anti-spoiler",
+    "calendarNotifications": "Notifications calendrier",
     "apiConfig": "Configuration API",
     "apiConfigDesc": "CineTrack utilise TMDB via une couche de fournisseur abstraite.",
     "envInstruction": "Ajoutez votre token Bearer TMDB dans",
-    "openTmdbDocs": "Ouvrir la documentation TMDB"
+    "openTmdbDocs": "Ouvrir la documentation TMDB",
+    "desktopSecurity": "Desktop et sécurité",
+    "desktopSecurityDesc": "Token chiffré, raccourcis, démarrage, mises à jour et récupération.",
+    "regionOptions": {
+      "france": "France",
+      "belgium": "Belgique",
+      "switzerland": "Suisse",
+      "canada": "Canada",
+      "uk": "Royaume-Uni",
+      "us": "États-Unis"
+    }
   },
   "movies": {
     "subtitle": "Affiches, filtres et fiches détaillées.",
@@ -132,15 +199,238 @@
     "rating": "Note",
     "emptyDesc": "Ajoutez des films ou séries depuis leur fiche."
   },
+  "stats": {
+    "title": "Statistiques",
+    "description": "Votre activité locale, sans envoyer votre historique vers un serveur.",
+    "loading": "Calcul des statistiques…",
+    "moviesWatched": "Films vus",
+    "episodesWatched": "Épisodes vus",
+    "timeWatched": "Temps regardé",
+    "currentStreak": "Série actuelle",
+    "averageRating": "Note moyenne",
+    "libraryCompleted": "Bibliothèque terminée",
+    "activity12Months": "Activité sur 12 mois",
+    "watches": "visionnages",
+    "favouriteGenres": "Genres favoris",
+    "wrapped": "CineTrack Wrapped {{year}}",
+    "activeDays": "sur {{count}} jours actifs",
+    "films": "films",
+    "episodes": "épisodes",
+    "favouriteGenre": "Genre phare :"
+  },
+  "collections": {
+    "title": "Profils et collections",
+    "description": "Séparez les progressions du foyer et organisez vos médias dans des listes.",
+    "localProfiles": "Profils locaux",
+    "profileNamePlaceholder": "Nom du profil",
+    "add": "Ajouter",
+    "active": "actif",
+    "customLists": "Listes personnalisées",
+    "namePlaceholder": "Nom",
+    "descriptionPlaceholder": "Description facultative",
+    "create": "Créer",
+    "noDescription": "Sans description",
+    "emptyList": "Cette liste est vide.",
+    "movie": "film",
+    "series": "série",
+    "customList": "Liste personnalisée",
+    "addToAList": "Ajouter à une liste…",
+    "addToList": "Ajouter à la liste"
+  },
+  "calendar": {
+    "title": "Calendrier",
+    "description": "Sorties de films et prochains épisodes des séries suivies.",
+    "loading": "Chargement du calendrier…",
+    "newEpisode": "Nouvel épisode",
+    "theatricalRelease": "Sortie cinéma",
+    "noUpcoming": "Aucune sortie détectée dans les 60 prochains jours."
+  },
+  "people": {
+    "title": "Personnes",
+    "description": "Acteurs, actrices, réalisateurs et filmographies.",
+    "searchPlaceholder": "Rechercher une personne",
+    "fallbackDepartment": "Cinéma et télévision"
+  },
+  "person": {
+    "loading": "Chargement…",
+    "knownFilmography": "Filmographie connue"
+  },
+  "watchTonight": {
+    "title": "Que regarder ce soir ?",
+    "description": "Trois propositions issues d'abord de votre bibliothèque, puis du catalogue.",
+    "allGenres": "Tous les genres",
+    "allPlatforms": "Toutes les plateformes",
+    "searching": "Recherche des meilleures options…",
+    "maxDuration": "Durée maximale",
+    "retry": "Relancer"
+  },
+  "library": {
+    "myLibrary": "Ma bibliothèque",
+    "description": "Statut, note, tags, avis privé et revisionnages.",
+    "favourite": "Favori",
+    "status": "Statut",
+    "statuses": {
+      "planned": "À voir",
+      "watching": "En cours",
+      "paused": "En pause",
+      "completed": "Terminé",
+      "dropped": "Abandonné",
+      "rewatching": "Revisionnage"
+    },
+    "myRating": "Ma note / 10",
+    "rewatches": "Revisionnages",
+    "tagsHelp": "Tags, séparés par des virgules",
+    "tagsPlaceholder": "famille, sf, dimanche",
+    "privateNotes": "Notes privées",
+    "save": "Enregistrer",
+    "remove": "Retirer"
+  },
+  "tokenGate": {
+    "title": "Connecter CineTrack à TMDB",
+    "description": "Sur desktop, le token est chiffré dans Stronghold. Le mot de passe du coffre reste uniquement en mémoire pour cette session.",
+    "noToken": "Aucun token n'est encore enregistré dans ce coffre.",
+    "openFailed": "Impossible d'ouvrir le coffre.",
+    "passwordPlaceholder": "Mot de passe du coffre",
+    "tokenPlaceholder": "Token Bearer TMDB — laissez vide pour déverrouiller un coffre existant",
+    "saveAndOpen": "Enregistrer et ouvrir",
+    "unlock": "Déverrouiller"
+  },
+  "commandPalette": {
+    "searchPlaceholder": "Rechercher une action…",
+    "commands": {
+      "home": "Accueil",
+      "movies": "Films",
+      "series": "Séries",
+      "search": "Recherche",
+      "watchTonight": "Que regarder ce soir ?",
+      "calendar": "Calendrier",
+      "collections": "Collections",
+      "stats": "Statistiques",
+      "people": "Personnes",
+      "settings": "Paramètres"
+    }
+  },
+  "backup": {
+    "title": "Sauvegarde portable",
+    "description": "Export JSON complet, import et restauration locale.",
+    "export": "Exporter",
+    "import": "Importer",
+    "exported": "Sauvegarde exportée."
+  },
+  "desktop": {
+    "operationComplete": "Opération terminée.",
+    "operationFailed": "Échec de l'opération.",
+    "tmdbVault": "Coffre TMDB",
+    "vaultDesc": "Le mot de passe n'est jamais enregistré. Il sert à dériver la clé du coffre local.",
+    "vaultPassword": "Mot de passe du coffre",
+    "newToken": "Nouveau token Bearer TMDB",
+    "save": "Enregistrer",
+    "unlock": "Déverrouiller",
+    "unlockSuccess": "Coffre déverrouillé.",
+    "unlockNoToken": "Coffre ouvert, mais aucun token enregistré.",
+    "lock": "Verrouiller",
+    "systemIntegration": "Intégration système",
+    "autostartOff": "Désactiver le démarrage automatique",
+    "autostartOn": "Lancer au démarrage",
+    "autostartEnabled": "Démarrage automatique activé.",
+    "autostartDisabled": "Démarrage automatique désactivé.",
+    "checkUpdate": "Rechercher une mise à jour",
+    "checkDatabase": "Vérifier la base",
+    "databaseHealthy": "Base saine :",
+    "databaseDamaged": "Base endommagée :",
+    "emergencyBackup": "Sauvegarde de secours",
+    "backupUpdated": "Sauvegarde de secours actualisée.",
+    "restoreBackup": "Restaurer la sauvegarde",
+    "shortcuts": "Palette : Ctrl/Cmd+K dans la fenêtre, Ctrl/Cmd+Shift+K au niveau système. Liens : cinetrack://movie/123, cinetrack://series/123 et cinetrack://tonight."
+  },
   "sidebar": {
     "brand": { "name": "CineTrack", "tagline": "Cinema OS" },
-    "user": "Profil local",
-    "member": "Données privées"
+    "defaultAccount": "Compte",
+    "defaultMember": "Membre",
+    "signOut": "Déconnexion",
+    "theme": {
+      "dark": "Sombre",
+      "light": "Clair"
+    }
+  },
+  "auth": {
+    "welcomeBack": "Bon retour",
+    "createAccount": "Créez votre compte",
+    "continueWithProviderOrEmail": "Continuez avec un fournisseur ou utilisez un code à usage unique par e-mail.",
+    "tabs": {
+      "signIn": "Connexion",
+      "signUp": "Inscription"
+    },
+    "email": {
+      "signInByEmail": "Se connecter par e-mail",
+      "createAccountTitle": "Créez votre compte",
+      "sendCodeDescription": "Nous enverrons un code à usage unique de {{length}} chiffres.",
+      "placeholder": "E-mail",
+      "marketingOptIn": "Recevoir des mises à jour optionnelles par e-mail sur mes séries et films.",
+      "sendCode": "Envoyer le code",
+      "back": "Retour",
+      "changeEmail": "Changer d'e-mail"
+    },
+    "otp": {
+      "checkInbox": "Vérifiez votre boîte de réception",
+      "enterCode": "Saisissez le code à {{length}} chiffres envoyé à {{email}}.",
+      "ariaLabel": "Code à usage unique",
+      "verify": "Vérifier",
+      "resendIn": "Renvoyer dans {{seconds}}s",
+      "resendCode": "Renvoyer le code"
+    },
+    "provider": {
+      "continueWith": "Continuer avec {{label}}"
+    },
+    "emailButton": {
+      "ariaLabel": "Continuer avec e-mail",
+      "title": "Continuer avec e-mail"
+    },
+    "status": {
+      "checkingProviders": "Vérification des fournisseurs configurés…",
+      "noProvidersEnabled": "Aucun fournisseur social n'est activé. Configurez-en un dans Supabase ou continuez avec e-mail.",
+      "providerConfigError": "CineTrack n'a pas pu vérifier la configuration du fournisseur."
+    },
+    "legal": {
+      "agreeTo": "En continuant, vous acceptez les <1>Conditions</1> et la <3>Politique de confidentialité</3> de CineTrack."
+    },
+    "errors": {
+      "rateLimited": "Tentatives d'authentification trop nombreuses. Patientez un moment avant de réessayer.",
+      "otpExpired": "Ce code a expiré. Demandez-en un nouveau et réessayez.",
+      "invalidEmail": "Saisissez une adresse e-mail valide.",
+      "noAccount": "Aucun compte CineTrack n'existe pour cette adresse e-mail.",
+      "badCodeVerifier": "La demande de connexion n'a pas pu être vérifiée. Redémarrez le flux de connexion.",
+      "default": "L'authentification a échoué. Veuillez réessayer.",
+      "notConfigured": "Supabase Auth n'est pas configuré.",
+      "noOAuthUrl": "Supabase n'a pas retourné d'URL d'autorisation OAuth.",
+      "invalidOAuthUrl": "Supabase a retourné une URL d'autorisation OAuth invalide.",
+      "providerNotEnabled": "La connexion via {{provider}} n'est pas activée dans Supabase.",
+      "enterOtpCode": "Saisissez le code à {{length}} chiffres envoyé à votre e-mail."
+    },
+    "gate": {
+      "restoringSession": "Restauration de votre session…",
+      "needsConfiguration": "L'authentification nécessite une configuration",
+      "configInstruction": "Ajoutez <1>VITE_SUPABASE_URL</1> et <3>VITE_SUPABASE_PUBLISHABLE_KEY</3> à votre fichier .env, ou définissez <5>VITE_AUTH_REQUIRED=false</5> pour garder CineTrack en mode local uniquement."
+    },
+    "backdrop": {
+      "midnight": "MIDNIGHT",
+      "redHorizon": "RED HORIZON",
+      "theVoyage": "THE VOYAGE",
+      "neonCity": "NEON CITY",
+      "theArchive": "THE ARCHIVE",
+      "lastSignal": "LAST SIGNAL",
+      "wildNorth": "WILD NORTH",
+      "orbit": "ORBIT",
+      "afterglow": "AFTERGLOW",
+      "dust": "DUST",
+      "blueRoom": "BLUE ROOM",
+      "nocturne": "NOCTURNE"
+    }
   },
   "errors": {
     "catalogUnavailable": "Impossible de charger le catalogue",
-    "localDataUnavailable": "Impossible d’ouvrir les données locales",
-    "localDatabase": "CineTrack n’a pas pu initialiser sa base de données locale. Redémarrez l’application desktop après avoir vérifié ses permissions SQL Tauri.",
+    "localDataUnavailable": "Impossible d'ouvrir les données locales",
+    "localDatabase": "CineTrack n'a pas pu initialiser sa base de données locale. Redémarrez l'application desktop après avoir vérifié ses permissions SQL Tauri.",
     "tmdbAuthentication": "Le token TMDB du coffre desktop est absent, expiré ou refusé. Déverrouillez le coffre et enregistrez de nouveau un token Bearer valide.",
     "tmdbConnection": "La connexion à TMDB a échoué. CineTrack essaie automatiquement le backend natif puis la WebView ; vérifiez aussi votre connexion, VPN ou proxy.",
     "retry": "Réessayer",

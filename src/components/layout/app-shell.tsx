@@ -72,7 +72,7 @@ export function AppShell() {
               className="group mb-4 hidden items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-card hover:text-foreground lg:flex"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-              <span>Back</span>
+              <span>{t("common.back")}</span>
             </button>
           )}
 

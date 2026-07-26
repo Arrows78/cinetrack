@@ -6,7 +6,12 @@
     "search": "Search",
     "watchlist": "Watchlist",
     "history": "Activity",
-    "settings": "Settings"
+    "settings": "Settings",
+    "people": "People",
+    "watchTonight": "Watch Tonight",
+    "collections": "Collections",
+    "calendar": "Calendar",
+    "stats": "Stats"
   },
   "media": {
     "overview": "Overview",
@@ -21,7 +26,25 @@
     "addToWatchlist": "Add to watchlist",
     "inWatchlist": "In watchlist",
     "unknownYear": "Unknown year",
-    "noOverview": "No overview available for this content."
+    "noOverview": "No overview available for this content.",
+    "hiddenTitle": "Hidden title",
+    "markSeen": "Mark seen",
+    "markUnseen": "Mark unseen",
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "availableStreaming": "Available on streaming",
+    "casting": "Cast",
+    "upToDate": "All up to date",
+    "noAiredEpisode": "No aired episode left to watch.",
+    "nextEpisode": "Next episode",
+    "similarSuggestions": "Similar suggestions",
+    "becauseWatching": "Because you're watching {{title}}",
+    "disableAlert": "Disable alert",
+    "availabilityAlert": "Availability alert",
+    "trailer": "Trailer",
+    "openOnYoutube": "Open on YouTube",
+    "fallbackTitle": "Season {{number}}",
+    "episodesAvailable": "{{count}} episode(s) available in this season."
   },
   "pages": {
     "notFound": "Page not found",
@@ -29,6 +52,28 @@
     "backToHome": "Back to home",
     "noResults": "No results found",
     "emptyWatchlist": "Your watchlist is empty"
+  },
+  "common": {
+    "back": "Back",
+    "loading": "Loading…",
+    "somethingWentWrong": "Something went wrong"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "offline": {
+    "message": "Offline mode · cached data"
+  },
+  "colors": {
+    "violet": "Violet",
+    "blue": "Blue",
+    "teal": "Teal",
+    "green": "Green",
+    "amber": "Amber",
+    "orange": "Orange",
+    "rose": "Rose",
+    "red": "Red"
   },
   "home": {
     "configureTmdb": "Configure your TMDB access",
@@ -70,7 +115,15 @@
     "noActivityDesc": "Start marking content as watched or fill your watchlist to populate this section.",
     "noTrackedSeries": "No tracked series",
     "noTrackedSeriesDesc": "As soon as you check an episode, the progress appears here with local persistence.",
-    "episodesWatched": "episodes watched"
+    "episodesWatched": "episodes watched",
+    "actions": {
+      "movieWatched": "Movie watched",
+      "movieUnwatched": "Movie unwatched",
+      "episodeWatched": "Episode watched",
+      "episodeUnwatched": "Episode unwatched",
+      "addedToWatchlist": "Added to watchlist",
+      "removedFromWatchlist": "Removed from watchlist"
+    }
   },
   "search": {
     "globalSearch": "Global Search",
@@ -86,20 +139,39 @@
   },
   "settings": {
     "subtitle": "User preferences persisted locally, desktop first, ready for future mobile port.",
+    "subtitleDesktop": "Interface, catalog, privacy and desktop integration.",
     "uiPreferences": "UI Preferences",
     "uiPreferencesDesc": "Customize your local experience.",
+    "customizeDisplay": "Customize display and default values.",
     "accentColor": "Accent color",
+    "language": "Language",
+    "region": "TMDB Region",
     "defaultSearchType": "Default search type",
-    "defaultWatchlistFilter": "Default watchlist filter",
+    "defaultSearch": "Default search",
     "all": "All",
+    "series": "Series",
+    "movies": "Movies",
     "reduceAnimations": "Reduce animations",
     "reducedAnimationsOn": "Reduced animations enabled",
     "enableCompactMode": "Enable compact mode",
     "compactModeOn": "Compact mode enabled",
+    "compactMode": "Compact mode",
+    "spoilerProtection": "Spoiler protection",
+    "calendarNotifications": "Calendar notifications",
     "apiConfig": "API Configuration",
     "apiConfigDesc": "The application uses TMDB via an abstract provider layer.",
     "envInstruction": "Add your TMDB bearer token to the",
-    "openTmdbDocs": "Open TMDB docs"
+    "openTmdbDocs": "Open TMDB docs",
+    "desktopSecurity": "Desktop & Security",
+    "desktopSecurityDesc": "Encrypted token, shortcuts, startup, updates and recovery.",
+    "regionOptions": {
+      "france": "France",
+      "belgium": "Belgium",
+      "switzerland": "Switzerland",
+      "canada": "Canada",
+      "uk": "United Kingdom",
+      "us": "United States"
+    }
   },
   "movies": {
     "subtitle": "Premium display, immersive posters and direct access to detailed sheets.",
@@ -128,6 +200,150 @@
     "title": "Title",
     "rating": "Rating",
     "emptyDesc": "Add movies or series from cards or detail pages to find them here."
+  },
+  "stats": {
+    "title": "Stats",
+    "description": "Your local activity, without sending your history to a server.",
+    "loading": "Calculating stats…",
+    "moviesWatched": "Movies watched",
+    "episodesWatched": "Episodes watched",
+    "timeWatched": "Time watched",
+    "currentStreak": "Current streak",
+    "averageRating": "Average rating",
+    "libraryCompleted": "Library completed",
+    "activity12Months": "Activity over 12 months",
+    "watches": "watches",
+    "favouriteGenres": "Favourite genres",
+    "wrapped": "CineTrack Wrapped {{year}}",
+    "activeDays": "over {{count}} active days",
+    "films": "films",
+    "episodes": "episodes",
+    "favouriteGenre": "Top genre:"
+  },
+  "collections": {
+    "title": "Profiles & Collections",
+    "description": "Separate household progressions and organize your media in lists.",
+    "localProfiles": "Local profiles",
+    "profileNamePlaceholder": "Profile name",
+    "add": "Add",
+    "active": "active",
+    "customLists": "Custom lists",
+    "namePlaceholder": "Name",
+    "descriptionPlaceholder": "Optional description",
+    "create": "Create",
+    "noDescription": "No description",
+    "emptyList": "This list is empty.",
+    "movie": "movie",
+    "series": "series",
+    "customList": "Custom list",
+    "addToAList": "Add to a list…",
+    "addToList": "Add to the list"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "description": "Movie releases and upcoming episodes from followed series.",
+    "loading": "Loading calendar…",
+    "newEpisode": "New episode",
+    "theatricalRelease": "Theatrical release",
+    "noUpcoming": "No releases detected in the next 60 days."
+  },
+  "people": {
+    "title": "People",
+    "description": "Actors, actresses, directors and filmographies.",
+    "searchPlaceholder": "Search for a person",
+    "fallbackDepartment": "Film & television"
+  },
+  "person": {
+    "loading": "Loading…",
+    "knownFilmography": "Known filmography"
+  },
+  "watchTonight": {
+    "title": "What to watch tonight?",
+    "description": "Three suggestions from your library first, then from the catalog.",
+    "allGenres": "All genres",
+    "allPlatforms": "All platforms",
+    "searching": "Searching for best options…",
+    "maxDuration": "Max duration",
+    "retry": "Retry"
+  },
+  "library": {
+    "myLibrary": "My library",
+    "description": "Status, rating, tags, private notes and rewatches.",
+    "favourite": "Favourite",
+    "status": "Status",
+    "statuses": {
+      "planned": "To watch",
+      "watching": "Watching",
+      "paused": "Paused",
+      "completed": "Completed",
+      "dropped": "Dropped",
+      "rewatching": "Rewatching"
+    },
+    "myRating": "My rating / 10",
+    "rewatches": "Rewatches",
+    "tagsHelp": "Tags, comma-separated",
+    "tagsPlaceholder": "family, sci-fi, sunday",
+    "privateNotes": "Private notes",
+    "save": "Save",
+    "remove": "Remove"
+  },
+  "tokenGate": {
+    "title": "Connect CineTrack to TMDB",
+    "description": "On desktop, the token is encrypted in Stronghold. The vault password stays in memory only for this session.",
+    "noToken": "No token is registered in this vault yet.",
+    "openFailed": "Cannot open the vault.",
+    "passwordPlaceholder": "Vault password",
+    "tokenPlaceholder": "TMDB Bearer token — leave empty to unlock an existing vault",
+    "saveAndOpen": "Save and open",
+    "unlock": "Unlock"
+  },
+  "commandPalette": {
+    "searchPlaceholder": "Search for an action…",
+    "commands": {
+      "home": "Home",
+      "movies": "Movies",
+      "series": "Series",
+      "search": "Search",
+      "watchTonight": "What to watch tonight?",
+      "calendar": "Calendar",
+      "collections": "Collections",
+      "stats": "Stats",
+      "people": "People",
+      "settings": "Settings"
+    }
+  },
+  "backup": {
+    "title": "Portable backup",
+    "description": "Full JSON export, import and local restoration.",
+    "export": "Export",
+    "import": "Import",
+    "exported": "Backup exported."
+  },
+  "desktop": {
+    "operationComplete": "Operation complete.",
+    "operationFailed": "Operation failed.",
+    "tmdbVault": "TMDB Vault",
+    "vaultDesc": "The password is never stored. It derives the local vault key.",
+    "vaultPassword": "Vault password",
+    "newToken": "New TMDB Bearer token",
+    "save": "Save",
+    "unlock": "Unlock",
+    "unlockSuccess": "Vault unlocked.",
+    "unlockNoToken": "Vault opened, but no token registered.",
+    "lock": "Lock",
+    "systemIntegration": "System integration",
+    "autostartOff": "Disable autostart",
+    "autostartOn": "Launch at startup",
+    "autostartEnabled": "Autostart enabled.",
+    "autostartDisabled": "Autostart disabled.",
+    "checkUpdate": "Check for updates",
+    "checkDatabase": "Check database",
+    "databaseHealthy": "Database healthy:",
+    "databaseDamaged": "Database damaged:",
+    "emergencyBackup": "Emergency backup",
+    "backupUpdated": "Emergency backup updated.",
+    "restoreBackup": "Restore backup",
+    "shortcuts": "Palette: Ctrl/Cmd+K in window, Ctrl/Cmd+Shift+K system-wide. Links: cinetrack://movie/123, cinetrack://series/123 and cinetrack://tonight."
   },
   "sidebar": {
     "brand": {

@@ -1,17 +1,19 @@
+import { useTranslation } from "react-i18next";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePreferences } from "@/hooks/use-local-media";
 import type { UserPreferences } from "@/types/media";
 import { cn } from "@/shared/lib/cn";
 
-const themeOptions: Array<{ value: UserPreferences["theme"]; label: string; icon: typeof Moon }> = [
-  { value: "dark", label: "Sombre", icon: Moon },
-  { value: "light", label: "Clair", icon: Sun },
-];
-
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const { data: preferences, updatePreference, isSaving } = usePreferences();
   const activeTheme = preferences?.theme ?? "dark";
+
+  const themeOptions: Array<{ value: UserPreferences["theme"]; labelKey: string; icon: typeof Moon }> = [
+    { value: "dark", labelKey: "theme.dark", icon: Moon },
+    { value: "light", labelKey: "theme.light", icon: Sun },
+  ];
 
   return (
     <div className="flex gap-1">
@@ -33,7 +35,7 @@ export function ThemeToggle() {
             onClick={() => updatePreference({ key: "theme", value: option.value })}
           >
             <Icon className="h-4 w-4" />
-            <span className="text-xs">{option.label}</span>
+            <span className="text-xs">{t(option.labelKey)}</span>
           </Button>
         );
       })}
