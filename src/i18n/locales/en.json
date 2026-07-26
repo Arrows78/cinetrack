@@ -134,7 +134,86 @@
       "name": "CineTrack",
       "tagline": "Cinema OS"
     },
-    "user": "John Doe",
-    "member": "Premium member"
+    "defaultAccount": "Account",
+    "defaultMember": "Member",
+    "signOut": "Sign out",
+    "theme": {
+      "dark": "Dark",
+      "light": "Light"
+    }
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "createAccount": "Create your account",
+    "continueWithProviderOrEmail": "Continue with a provider or use a one-time code by email.",
+    "tabs": {
+      "signIn": "Sign in",
+      "signUp": "Sign up"
+    },
+    "email": {
+      "signInByEmail": "Sign in by email",
+      "createAccountTitle": "Create your account",
+      "sendCodeDescription": "We will send a {{length}}-digit one-time code.",
+      "placeholder": "Email",
+      "marketingOptIn": "Send me optional email updates about my shows and movies.",
+      "sendCode": "Send code",
+      "back": "Back",
+      "changeEmail": "Change email"
+    },
+    "otp": {
+      "checkInbox": "Check your inbox",
+      "enterCode": "Enter the {{length}}-digit code sent to {{email}}.",
+      "ariaLabel": "One-time code",
+      "verify": "Verify",
+      "resendIn": "Resend in {{seconds}}s",
+      "resendCode": "Resend code"
+    },
+    "provider": {
+      "continueWith": "Continue with {{label}}"
+    },
+    "emailButton": {
+      "ariaLabel": "Continue with email",
+      "title": "Continue with email"
+    },
+    "status": {
+      "checkingProviders": "Checking configured sign-in providers…",
+      "noProvidersEnabled": "No social provider is enabled. Configure one in Supabase or continue with email.",
+      "providerConfigError": "CineTrack could not verify the provider configuration."
+    },
+    "legal": {
+      "agreeTo": "By continuing, you agree to CineTrack's <1>Terms</1> and <3>Privacy Policy</3>."
+    },
+    "errors": {
+      "rateLimited": "Too many authentication attempts. Wait a moment before trying again.",
+      "otpExpired": "This code has expired. Request a new one and try again.",
+      "invalidEmail": "Enter a valid email address.",
+      "noAccount": "No CineTrack account exists for this email address.",
+      "badCodeVerifier": "The sign-in request could not be verified. Restart the sign-in flow.",
+      "default": "Authentication failed. Please try again.",
+      "notConfigured": "Supabase Auth is not configured.",
+      "noOAuthUrl": "Supabase did not return an OAuth authorization URL.",
+      "invalidOAuthUrl": "Supabase returned an invalid OAuth authorization URL.",
+      "providerNotEnabled": "{{provider}} sign-in is not enabled in Supabase.",
+      "enterOtpCode": "Enter the {{length}}-digit code sent to your email."
+    },
+    "gate": {
+      "restoringSession": "Restoring your session…",
+      "needsConfiguration": "Authentication needs configuration",
+      "configInstruction": "Add <1>VITE_SUPABASE_URL</1> and <3>VITE_SUPABASE_PUBLISHABLE_KEY</3> to your .env file, or set <5>VITE_AUTH_REQUIRED=false</5> to keep CineTrack in local-only mode."
+    },
+    "backdrop": {
+      "midnight": "MIDNIGHT",
+      "redHorizon": "RED HORIZON",
+      "theVoyage": "THE VOYAGE",
+      "neonCity": "NEON CITY",
+      "theArchive": "THE ARCHIVE",
+      "lastSignal": "LAST SIGNAL",
+      "wildNorth": "WILD NORTH",
+      "orbit": "ORBIT",
+      "afterglow": "AFTERGLOW",
+      "dust": "DUST",
+      "blueRoom": "BLUE ROOM",
+      "nocturne": "NOCTURNE"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { ArrowLeft, Check, LoaderCircle, Mail, RotateCw, ShieldCheck } from "lucide-react";
 
 import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client";
@@ -11,33 +12,47 @@ type AuthMode = "signin" | "signup";
 type AuthStep = "providers" | "email" | "otp";
 type ProviderSettingsStatus = "loading" | "ready" | "unavailable";
 
-const providers: Array<{
+const providerIds: Array<{
   provider: SocialAuthProvider;
-  label: string;
   className: string;
 }> = [
-  { provider: "apple", label: "Apple", className: "bg-white text-black" },
-  { provider: "facebook", label: "Facebook", className: "bg-[#1877f2] text-white" },
-  { provider: "google", label: "Google", className: "bg-white text-black" },
-  { provider: "x", label: "X", className: "bg-white text-black" },
+  { provider: "apple", className: "bg-white text-black" },
+  { provider: "facebook", className: "bg-[#1877f2] text-white" },
+  { provider: "google", className: "bg-white text-black" },
+  { provider: "x", className: "bg-white text-black" },
 ];
 
-const backdropTiles = [
-  ["MIDNIGHT", "linear-gradient(145deg, #161a28, #2c3658)"],
-  ["RED HORIZON", "linear-gradient(145deg, #3b1116, #8a272d)"],
-  ["THE VOYAGE", "linear-gradient(145deg, #0f2430, #1d5a70)"],
-  ["NEON CITY", "linear-gradient(145deg, #251147, #6d25a8)"],
-  ["THE ARCHIVE", "linear-gradient(145deg, #1e1e1e, #585858)"],
-  ["LAST SIGNAL", "linear-gradient(145deg, #3a220b, #9c661e)"],
-  ["WILD NORTH", "linear-gradient(145deg, #12261d, #34704f)"],
-  ["ORBIT", "linear-gradient(145deg, #101825, #314976)"],
-  ["AFTERGLOW", "linear-gradient(145deg, #3c142f, #9e3d77)"],
-  ["DUST", "linear-gradient(145deg, #33291c, #8c7048)"],
-  ["BLUE ROOM", "linear-gradient(145deg, #121f39, #315eab)"],
-  ["NOCTURNE", "linear-gradient(145deg, #17131d, #4d3b60)"],
+const backdropTileKeys = [
+  "auth.backdrop.midnight",
+  "auth.backdrop.redHorizon",
+  "auth.backdrop.theVoyage",
+  "auth.backdrop.neonCity",
+  "auth.backdrop.theArchive",
+  "auth.backdrop.lastSignal",
+  "auth.backdrop.wildNorth",
+  "auth.backdrop.orbit",
+  "auth.backdrop.afterglow",
+  "auth.backdrop.dust",
+  "auth.backdrop.blueRoom",
+  "auth.backdrop.nocturne",
 ] as const;
 
-function PolicyLink({ href, children }: { href?: string; children: ReactNode }) {
+const backdropGradients = [
+  "linear-gradient(145deg, #161a28, #2c3658)",
+  "linear-gradient(145deg, #3b1116, #8a272d)",
+  "linear-gradient(145deg, #0f2430, #1d5a70)",
+  "linear-gradient(145deg, #251147, #6d25a8)",
+  "linear-gradient(145deg, #1e1e1e, #585858)",
+  "linear-gradient(145deg, #3a220b, #9c661e)",
+  "linear-gradient(145deg, #12261d, #34704f)",
+  "linear-gradient(145deg, #101825, #314976)",
+  "linear-gradient(145deg, #3c142f, #9e3d77)",
+  "linear-gradient(145deg, #33291c, #8c7048)",
+  "linear-gradient(145deg, #121f39, #315eab)",
+  "linear-gradient(145deg, #17131d, #4d3b60)",
+];
+
+function PolicyLink({ href, children }: { href?: string; children?: ReactNode }) {
   if (!href) return <span className="font-semibold text-primary">{children}</span>;
 
   return (
@@ -48,21 +63,23 @@ function PolicyLink({ href, children }: { href?: string; children: ReactNode }) 
 }
 
 function AuthBackdrop() {
+  const { t } = useTranslation();
+
   return (
     <div className="absolute inset-0 grid grid-cols-3 gap-1 overflow-hidden bg-black p-1 opacity-65 sm:grid-cols-4">
-      {backdropTiles.map(([title, background], index) => (
+      {backdropTileKeys.map((key, index) => (
         <div
-          key={title}
+          key={key}
           className={cn(
             "relative min-h-36 overflow-hidden rounded-sm border border-white/5",
             index % 4 === 1 && "translate-y-8",
             index % 4 === 3 && "-translate-y-5"
           )}
-          style={{ background }}
+          style={{ background: backdropGradients[index] }}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.2),transparent_45%)]" />
           <p className="absolute inset-x-2 bottom-3 text-center text-[11px] font-black tracking-[0.18em] text-white/70">
-            {title}
+            {t(key)}
           </p>
         </div>
       ))}
@@ -76,6 +93,7 @@ function isValidEmail(value: string): boolean {
 }
 
 export function AuthScreen() {
+  const { t } = useTranslation();
   const { error, clearError, requestEmailOtp, signInWithProvider, verifyEmailOtp } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [step, setStep] = useState<AuthStep>("providers");
@@ -89,12 +107,15 @@ export function AuthScreen() {
   const [resendAvailableAt, setResendAvailableAt] = useState(0);
   const [now, setNow] = useState(Date.now());
 
-  const title = useMemo(() => (mode === "signin" ? "Welcome back" : "Create your account"), [mode]);
+  const title = useMemo(
+    () => (mode === "signin" ? t("auth.welcomeBack") : t("auth.createAccount")),
+    [mode, t]
+  );
   const visibleError = localError ?? error;
   const visibleProviders =
     providerSettingsStatus === "ready"
-      ? providers.filter(({ provider }) => enabledSocialProviders.includes(provider))
-      : providers;
+      ? providerIds.filter(({ provider }) => enabledSocialProviders.includes(provider))
+      : providerIds;
   const resendSeconds = Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
 
   useEffect(() => {
@@ -150,7 +171,7 @@ export function AuthScreen() {
     resetError();
 
     if (providerSettingsStatus === "ready" && !enabledSocialProviders.includes(provider)) {
-      setLocalError(`${provider === "x" ? "X" : provider} sign-in is not enabled in Supabase.`);
+      setLocalError(t("auth.errors.providerNotEnabled", { provider: provider === "x" ? "X" : provider }));
       return;
     }
 
@@ -169,7 +190,7 @@ export function AuthScreen() {
     resetError();
 
     if (!isValidEmail(email)) {
-      setLocalError("Enter a valid email address.");
+      setLocalError(t("auth.errors.invalidEmail"));
       return;
     }
 
@@ -217,7 +238,7 @@ export function AuthScreen() {
     resetError();
 
     if (!new RegExp(`^\\d{${authConfig.otpLength}}$`).test(token)) {
-      setLocalError(`Enter the ${authConfig.otpLength}-digit code sent to your email.`);
+      setLocalError(t("auth.errors.enterOtpCode", { length: authConfig.otpLength }));
       return;
     }
 
@@ -241,8 +262,8 @@ export function AuthScreen() {
             <span className="text-3xl font-black text-primary">C</span>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/60">Track every story</p>
-            <p className="text-3xl font-black tracking-tight">CineTrack</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/60">{t("sidebar.brand.tagline")}</p>
+            <p className="text-3xl font-black tracking-tight">{t("sidebar.brand.name")}</p>
           </div>
         </div>
 
@@ -258,7 +279,7 @@ export function AuthScreen() {
                   mode === option ? "bg-white text-black" : "text-white/60 hover:text-white"
                 )}
               >
-                {option === "signin" ? "Sign in" : "Sign up"}
+                {option === "signin" ? t("auth.tabs.signIn") : t("auth.tabs.signUp")}
               </button>
             ))}
           </div>
@@ -267,16 +288,16 @@ export function AuthScreen() {
             <>
               <div className="text-center">
                 <h1 className="text-3xl font-black tracking-tight sm:text-4xl">{title}</h1>
-                <p className="mt-2 text-sm text-white/55">Continue with a provider or use a one-time code by email.</p>
+                <p className="mt-2 text-sm text-white/55">{t("auth.continueWithProviderOrEmail")}</p>
               </div>
 
               <div className="mt-8 flex flex-wrap justify-center gap-4">
-                {visibleProviders.map(({ provider, label, className }) => (
+                {visibleProviders.map(({ provider, className }) => (
                   <button
                     key={provider}
                     type="button"
-                    aria-label={`Continue with ${label}`}
-                    title={`Continue with ${label}`}
+                    aria-label={t("auth.provider.continueWith", { label: provider === "x" ? "X" : provider })}
+                    title={t("auth.provider.continueWith", { label: provider === "x" ? "X" : provider })}
                     disabled={pendingAction !== null || providerSettingsStatus === "loading"}
                     onClick={() => void handleProvider(provider)}
                     className={cn(
@@ -294,8 +315,8 @@ export function AuthScreen() {
 
                 <button
                   type="button"
-                  aria-label="Continue with email"
-                  title="Continue with email"
+                  aria-label={t("auth.emailButton.ariaLabel")}
+                  title={t("auth.emailButton.title")}
                   disabled={pendingAction !== null}
                   onClick={() => {
                     resetError();
@@ -308,18 +329,18 @@ export function AuthScreen() {
               </div>
 
               {providerSettingsStatus === "loading" ? (
-                <p className="mt-4 text-center text-xs text-white/45">Checking configured sign-in providers…</p>
+                <p className="mt-4 text-center text-xs text-white/45">{t("auth.status.checkingProviders")}</p>
               ) : null}
 
               {providerSettingsStatus === "ready" && enabledSocialProviders.length === 0 ? (
                 <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
-                  No social provider is enabled. Configure one in Supabase or continue with email.
+                  {t("auth.status.noProvidersEnabled")}
                 </p>
               ) : null}
 
               {providerSettingsStatus === "unavailable" ? (
                 <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
-                  CineTrack could not verify the provider configuration.
+                  {t("auth.status.providerConfigError")}
                 </p>
               ) : null}
             </>
@@ -335,11 +356,11 @@ export function AuthScreen() {
                 }}
                 className="mb-7 inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
               >
-                <ArrowLeft className="h-5 w-5" /> Back
+                <ArrowLeft className="h-5 w-5" /> {t("auth.email.back")}
               </button>
 
-              <h1 className="text-3xl font-black">{mode === "signin" ? "Sign in by email" : "Create your account"}</h1>
-              <p className="mt-2 text-sm text-white/55">We will send a {authConfig.otpLength}-digit one-time code.</p>
+              <h1 className="text-3xl font-black">{mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}</h1>
+              <p className="mt-2 text-sm text-white/55">{t("auth.email.sendCodeDescription", { length: authConfig.otpLength })}</p>
 
               <div className="mt-7 flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
                 <Mail className="h-6 w-6 text-white/75" />
@@ -350,7 +371,7 @@ export function AuthScreen() {
                   autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Email"
+                  placeholder={t("auth.email.placeholder")}
                   className="min-w-0 flex-1 bg-transparent text-xl text-white outline-none placeholder:text-white/35"
                 />
               </div>
@@ -371,7 +392,7 @@ export function AuthScreen() {
                   >
                     {marketingOptIn ? <Check className="h-4 w-4" /> : null}
                   </button>
-                  <span>Send me optional email updates about my shows and movies.</span>
+                  <span>{t("auth.email.marketingOptIn")}</span>
                 </label>
               ) : null}
 
@@ -380,7 +401,7 @@ export function AuthScreen() {
                 disabled={pendingAction !== null}
                 className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-black uppercase tracking-[0.08em] text-primary-foreground transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
               >
-                {pendingAction === "email" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : "Send code"}
+                {pendingAction === "email" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : t("auth.email.sendCode")}
               </button>
             </form>
           ) : null}
@@ -396,15 +417,15 @@ export function AuthScreen() {
                 }}
                 className="mb-7 inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
               >
-                <ArrowLeft className="h-5 w-5" /> Change email
+                <ArrowLeft className="h-5 w-5" /> {t("auth.email.changeEmail")}
               </button>
 
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
                 <ShieldCheck className="h-6 w-6" />
               </div>
-              <h1 className="mt-5 text-3xl font-black">Check your inbox</h1>
+              <h1 className="mt-5 text-3xl font-black">{t("auth.otp.checkInbox")}</h1>
               <p className="mt-2 text-sm text-white/55">
-                Enter the {authConfig.otpLength}-digit code sent to {email.trim()}.
+                {t("auth.otp.enterCode", { length: authConfig.otpLength, email: email.trim() })}
               </p>
 
               <input
@@ -416,7 +437,7 @@ export function AuthScreen() {
                 maxLength={authConfig.otpLength}
                 onChange={(event) => setToken(event.target.value.replace(/\D/g, "").slice(0, authConfig.otpLength))}
                 placeholder={"0".repeat(authConfig.otpLength)}
-                aria-label="One-time code"
+                aria-label={t("auth.otp.ariaLabel")}
                 className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-white outline-none placeholder:text-white/20 focus:border-primary"
               />
 
@@ -425,7 +446,7 @@ export function AuthScreen() {
                 disabled={pendingAction !== null}
                 className="mt-6 flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-black uppercase tracking-[0.08em] text-primary-foreground transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
               >
-                {pendingAction === "otp" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : "Verify"}
+                {pendingAction === "otp" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : t("auth.otp.verify")}
               </button>
 
               <button
@@ -439,7 +460,7 @@ export function AuthScreen() {
                 ) : (
                   <RotateCw className="h-4 w-4" />
                 )}
-                {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : "Resend code"}
+                {resendSeconds > 0 ? t("auth.otp.resendIn", { seconds: resendSeconds }) : t("auth.otp.resendCode")}
               </button>
             </form>
           ) : null}
@@ -455,8 +476,13 @@ export function AuthScreen() {
           ) : null}
 
           <p className="mt-8 text-center text-xs leading-5 text-white/50">
-            By continuing, you agree to CineTrack&apos;s <PolicyLink href={authConfig.termsUrl}>Terms</PolicyLink> and{" "}
-            <PolicyLink href={authConfig.privacyUrl}>Privacy Policy</PolicyLink>.
+            <Trans
+              i18nKey="auth.legal.agreeTo"
+              components={{
+                1: <PolicyLink href={authConfig.termsUrl} />,
+                3: <PolicyLink href={authConfig.privacyUrl} />,
+              }}
+            />
           </p>
         </section>
       </div>

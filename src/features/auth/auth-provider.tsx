@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import i18next from "i18next";
 
 import {
   authConfig,
@@ -28,15 +29,15 @@ function getErrorMessage(error: unknown): string {
   const message = authError?.message?.toLowerCase() ?? "";
 
   if (authError?.status === 429 || code === "over_email_send_rate_limit") {
-    return "Too many authentication attempts. Wait a moment before trying again.";
+    return i18next.t("auth.errors.rateLimited");
   }
 
   if (code === "otp_expired" || message.includes("expired")) {
-    return "This code has expired. Request a new one and try again.";
+    return i18next.t("auth.errors.otpExpired");
   }
 
   if (code === "email_address_invalid" || message.includes("invalid email")) {
-    return "Enter a valid email address.";
+    return i18next.t("auth.errors.invalidEmail");
   }
 
   if (
@@ -45,18 +46,18 @@ function getErrorMessage(error: unknown): string {
     message.includes("signups not allowed") ||
     message.includes("user not found")
   ) {
-    return "No CineTrack account exists for this email address.";
+    return i18next.t("auth.errors.noAccount");
   }
 
   if (code === "bad_code_verifier") {
-    return "The sign-in request could not be verified. Restart the sign-in flow.";
+    return i18next.t("auth.errors.badCodeVerifier");
   }
 
   if (error instanceof Error && error.message) {
     return error.message;
   }
 
-  return "Authentication failed. Please try again.";
+  return i18next.t("auth.errors.default");
 }
 
 function readAuthCode(callbackUrl: string): string | null {
@@ -196,7 +197,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = getAuthClient();
 
     if (!client) {
-      throw new Error("Supabase Auth is not configured.");
+      throw new Error(i18next.t("auth.errors.notConfigured"));
     }
 
     setError(null);
@@ -217,13 +218,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       if (desktop) {
         if (!data.url) {
-          throw new Error("Supabase did not return an OAuth authorization URL.");
+          throw new Error(i18next.t("auth.errors.noOAuthUrl"));
         }
 
         const authorizationUrl = new URL(data.url);
 
         if (authorizationUrl.protocol !== "https:") {
-          throw new Error("Supabase returned an invalid OAuth authorization URL.");
+          throw new Error(i18next.t("auth.errors.invalidOAuthUrl"));
         }
 
         const { openUrl } = await import("@tauri-apps/plugin-opener");
@@ -239,7 +240,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = getAuthClient();
 
     if (!client) {
-      throw new Error("Supabase Auth is not configured.");
+      throw new Error(i18next.t("auth.errors.notConfigured"));
     }
 
     setError(null);
@@ -271,7 +272,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = getAuthClient();
 
     if (!client) {
-      throw new Error("Supabase Auth is not configured.");
+      throw new Error(i18next.t("auth.errors.notConfigured"));
     }
 
     setError(null);
