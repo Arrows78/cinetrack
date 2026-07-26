@@ -1,5 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
+import { ProviderAvailability } from "@/components/media/provider-availability";
+import { RecommendationsPanel } from "@/components/media/recommendations-panel";
+import { TrailerPanel } from "@/components/media/trailer-panel";
 import { AddToListButton } from "@/components/collections/add-to-list-button";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/cast-list";
@@ -37,6 +40,8 @@ export function MovieDetailPage() {
       />
       <LibraryEditor media={movie} />
       <AddToListButton media={movie} />
+      <ProviderAvailability media={movie} />
+      <TrailerPanel mediaType="movie" mediaId={movie.id} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
           <SectionHeader title={t("media.overview")} />
@@ -58,6 +63,7 @@ export function MovieDetailPage() {
           </div>
         </div>
       </section>
+      <RecommendationsPanel media={movie} />
       <section><SectionHeader title={t("media.cast")} subtitle={t("movies.castSubtitle")} /><CastList cast={movie.cast} /></section>
     </div>
   );

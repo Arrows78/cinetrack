@@ -109,3 +109,31 @@ export type TmdbMultiSearchResultDto =
   | (TmdbMovieDto & { media_type: "movie" })
   | (TmdbTvDto & { media_type: "tv" })
   | { media_type: "person" };
+
+export interface TmdbVideoDto {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official: boolean;
+}
+export interface TmdbVideoResponse { results: TmdbVideoDto[]; }
+
+export interface TmdbPersonDto {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  known_for_department?: string;
+  known_for?: Array<(TmdbMovieDto | TmdbTvDto) & { media_type: "movie" | "tv" }>;
+  combined_credits?: { cast: Array<(TmdbMovieDto | TmdbTvDto) & { media_type: "movie" | "tv" }> };
+}
+
+export interface TmdbProviderRegionDto {
+  link?: string;
+  flatrate?: TmdbWatchProviderDto[];
+  rent?: TmdbWatchProviderDto[];
+  buy?: TmdbWatchProviderDto[];
+  free?: TmdbWatchProviderDto[];
+}
+export interface TmdbProviderResultsResponse { results: Record<string, TmdbProviderRegionDto>; }

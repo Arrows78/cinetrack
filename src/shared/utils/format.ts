@@ -3,7 +3,7 @@ import { fr } from "date-fns/locale";
 
 export const buildTmdbImageUrl = (
   path: string | null | undefined,
-  size: "w185" | "w342" | "w500" | "w780" | "original" = "w780"
+  size: "w92" | "w185" | "w342" | "w500" | "w780" | "original" = "w780"
 ) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined);
 
 export const formatDate = (value?: string | null) => {

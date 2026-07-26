@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import type { Season } from "@/types/media";
+import { ProviderAvailability } from "@/components/media/provider-availability";
+import { RecommendationsPanel } from "@/components/media/recommendations-panel";
+import { TrailerPanel } from "@/components/media/trailer-panel";
 import { AddToListButton } from "@/components/collections/add-to-list-button";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/cast-list";
@@ -44,6 +47,8 @@ export function SeriesDetailPage() {
       />
       <LibraryEditor media={series} />
       <AddToListButton media={series} />
+      <ProviderAvailability media={series} />
+      <TrailerPanel mediaType="series" mediaId={series.id} />
       <NextEpisodeCard episode={nextEpisode} isSaving={progressQuery.isSaving} onWatched={(episode) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true })} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
@@ -76,6 +81,7 @@ export function SeriesDetailPage() {
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
         <SeasonAccordion series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }} seasons={seasons} watchedEpisodes={progressQuery.data ?? []} isSaving={progressQuery.isSaving} onToggleEpisode={(episode, watched) => progressQuery.toggleEpisodeSeen({ series, episode, watched })} onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })} />
       </section>
+      <RecommendationsPanel media={series} />
       <section><SectionHeader title={t("media.cast")} /><CastList cast={series.cast} /></section>
     </div>
   );

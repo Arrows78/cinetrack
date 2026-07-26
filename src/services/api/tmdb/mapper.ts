@@ -8,6 +8,8 @@ import type {
   Season,
   Series,
   WatchProvider,
+  MediaVideo,
+  PersonSummary,
 } from "@/types/media";
 import { yearFromDate } from "@/shared/utils/format";
 import type {
@@ -19,6 +21,8 @@ import type {
   TmdbSeasonPreviewDto,
   TmdbTvDto,
   TmdbWatchProviderDto,
+  TmdbVideoDto,
+  TmdbPersonDto,
 } from "./types";
 
 const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
@@ -127,4 +131,14 @@ export const mapWatchProvider = (dto: TmdbWatchProviderDto): WatchProvider => ({
   name: dto.provider_name,
   logoPath: dto.logo_path,
   displayPriority: dto.display_priority,
+});
+
+export const mapVideo = (dto: TmdbVideoDto): MediaVideo => ({ id: dto.id, key: dto.key, name: dto.name, site: dto.site, type: dto.type, official: dto.official });
+
+export const mapPerson = (dto: TmdbPersonDto): PersonSummary => ({
+  id: dto.id,
+  name: dto.name,
+  profilePath: dto.profile_path,
+  knownForDepartment: dto.known_for_department,
+  knownFor: (dto.known_for ?? dto.combined_credits?.cast ?? []).filter((item) => item.media_type === "movie" || item.media_type === "tv").slice(0, 20).map((item) => mapSearchResult(item, item.media_type === "movie" ? "movie" : "series")),
 });
