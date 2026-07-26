@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
+import { AddToListButton } from "@/components/collections/add-to-list-button";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
@@ -35,6 +36,7 @@ export function MovieDetailPage() {
         }
       />
       <LibraryEditor media={movie} />
+      <AddToListButton media={movie} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
           <SectionHeader title={t("media.overview")} />
