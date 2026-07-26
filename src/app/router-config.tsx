@@ -11,6 +11,7 @@ import { SeasonPage } from "@/pages/season-page";
 import { SeriesDetailPage } from "@/pages/series-detail-page";
 import { SeriesPage } from "@/pages/series-page";
 import { SettingsPage } from "@/pages/settings-page";
+import { StatsPage } from "@/pages/stats-page";
 import { WatchlistPage } from "@/pages/watchlist-page";
 import { ErrorComponent, PendingComponent, RootLayout } from "./router-components";
 
@@ -70,12 +71,17 @@ const calendarRoute = createRoute({
   path: "/calendar",
   component: CalendarPage,
 });
+const statsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/stats",
+  component: StatsPage,
+});
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
   component: SettingsPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute,moviesRoute,movieDetailRoute,seriesRoute,seriesDetailRoute,seasonRoute,searchRoute,watchlistRoute,historyRoute,collectionsRoute,calendarRoute,settingsRoute]);
+const routeTree = rootRoute.addChildren([indexRoute,moviesRoute,movieDetailRoute,seriesRoute,seriesDetailRoute,seasonRoute,searchRoute,watchlistRoute,historyRoute,collectionsRoute,calendarRoute,statsRoute,settingsRoute]);
 export const router = createRouter({ routeTree, defaultPreload: "intent", scrollRestoration: true, defaultPendingComponent: PendingComponent, defaultErrorComponent: ErrorComponent });
 declare module "@tanstack/react-router" { interface Register { router: typeof router; } }

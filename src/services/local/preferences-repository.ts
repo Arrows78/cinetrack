@@ -24,7 +24,9 @@ const preferencesSchema = z.object({
   }),
 });
 
-export const defaultPreferences: UserPreferences = preferencesSchema.parse({});
+export const defaultPreferences: UserPreferences = preferencesSchema.parse({
+  userProfile: {}
+});
 
 export const preferencesRepository = {
   async getPreferences(): Promise<UserPreferences> {
