@@ -104,6 +104,7 @@ export interface WatchlistItem {
 
 export interface LibraryItem extends WatchlistItem {
   profileId: string;
+  genres: string[];
   status: LibraryStatus;
   favourite: boolean;
   userRating?: number | null;
