@@ -136,5 +136,12 @@
     "brand": { "name": "CineTrack", "tagline": "Cinema OS" },
     "user": "Profil local",
     "member": "Données privées"
+  },
+  "errors": {
+    "catalogUnavailable": "Impossible de charger le catalogue",
+    "tmdbAuthentication": "Le token TMDB du coffre desktop est absent, expiré ou refusé. Déverrouillez le coffre et enregistrez de nouveau un token Bearer valide.",
+    "tmdbConnection": "La connexion à TMDB a échoué. CineTrack essaie automatiquement le backend natif puis la WebView ; vérifiez aussi votre connexion, VPN ou proxy.",
+    "retry": "Réessayer",
+    "technicalDetails": "Détails techniques"
   }
 }
