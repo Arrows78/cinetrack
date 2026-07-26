@@ -12,28 +12,15 @@ interface SearchOptions {
   provider?: string;
 }
 
-export function useSearch(
-  query: string,
-  scope: SearchScope,
-  options?: SearchOptions,
-) {
+export function useSearch(query: string, scope: SearchScope, options?: SearchOptions) {
   const genreMovieOption = options?.genreMovie;
   const genreSeriesOption = options?.genreSeries;
   const providerOption = options?.provider;
 
-  const hasFilters = Boolean(
-    genreMovieOption ||
-      genreSeriesOption ||
-      providerOption,
-  );
+  const hasFilters = Boolean(genreMovieOption || genreSeriesOption || providerOption);
 
   const queryKey = hasFilters
-    ? queryKeys.remote.discover(
-        genreMovieOption,
-        genreSeriesOption,
-        providerOption,
-        scope,
-      )
+    ? queryKeys.remote.discover(genreMovieOption, genreSeriesOption, providerOption, scope)
     : queryKeys.remote.search(query, scope);
 
   return useQuery<MediaSummary[]>({
@@ -44,23 +31,15 @@ export function useSearch(
         return mediaRepository.search(query, scope);
       }
 
-      const genreMovie = genreMovieOption
-        ? Number(genreMovieOption)
-        : undefined;
+      const genreMovie = genreMovieOption ? Number(genreMovieOption) : undefined;
 
-      const genreSeries = genreSeriesOption
-        ? Number(genreSeriesOption)
-        : undefined;
+      const genreSeries = genreSeriesOption ? Number(genreSeriesOption) : undefined;
 
-      const provider = providerOption
-        ? Number(providerOption)
-        : undefined;
+      const provider = providerOption ? Number(providerOption) : undefined;
 
-      const canDiscoverMovies =
-        genreMovie !== undefined || provider !== undefined;
+      const canDiscoverMovies = genreMovie !== undefined || provider !== undefined;
 
-      const canDiscoverSeries =
-        genreSeries !== undefined || provider !== undefined;
+      const canDiscoverSeries = genreSeries !== undefined || provider !== undefined;
 
       if (scope === "movie") {
         if (!canDiscoverMovies) {
@@ -91,7 +70,7 @@ export function useSearch(
           mediaRepository.discoverMovies({
             genre: genreMovie,
             provider,
-          }),
+          })
         );
       }
 
@@ -100,7 +79,7 @@ export function useSearch(
           mediaRepository.discoverSeries({
             genre: genreSeries,
             provider,
-          }),
+          })
         );
       }
 

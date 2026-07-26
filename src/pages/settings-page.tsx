@@ -50,7 +50,12 @@ export function SettingsPage() {
                         >
                           {isSelected && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
                         </div>
-                        <span className={cn("text-[10px] font-medium", isSelected ? "text-primary" : "text-muted-foreground")}>
+                        <span
+                          className={cn(
+                            "text-[10px] font-medium",
+                            isSelected ? "text-primary" : "text-muted-foreground"
+                          )}
+                        >
                           {preset.label}
                         </span>
                       </button>

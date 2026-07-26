@@ -44,9 +44,7 @@ export function SeriesDetailPage() {
           <SeenToggle
             seen={progress.completed}
             disabled={progressQuery.isSaving || !seasons.length}
-            onToggle={() =>
-              progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })
-            }
+            onToggle={() => progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })}
             celebrateOnSeen
           />
         }

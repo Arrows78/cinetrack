@@ -33,15 +33,11 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": [
-          "cinetrack"
-        ]
+        "schemes": ["cinetrack"]
       }
     },
     "sql": {
-      "preload": [
-        "sqlite:app.db"
-      ]
+      "preload": ["sqlite:app.db"]
     }
   }
 }

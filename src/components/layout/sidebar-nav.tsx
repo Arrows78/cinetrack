@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { PanelLeftClose, PanelLeft, Moon, Sun } from "lucide-react";
+import { PanelLeftClose, PanelLeft, Moon, Sun, LogOut } from "lucide-react";
 import { useNavigationItems, type NavigationItem } from "@/shared/constants/navigation";
 import { cn } from "@/shared/lib/cn";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { usePreferences } from "@/hooks/use-local-media";
+import { useAuth } from "@/features/auth/auth-context";
 
 interface SidebarNavProps {
   collapsed: boolean;
@@ -64,8 +65,9 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigationItems = useNavigationItems();
   const { data: preferences, updatePreference } = usePreferences();
+  const { signOut, user } = useAuth();
   const activeTheme = preferences?.theme ?? "dark";
-  const userName = preferences?.userProfile?.name ?? null;
+  const userName = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? null;
 
   const mainItems = navigationItems.filter((item) => item.category === "main");
   const settingsItems = navigationItems.filter((item) => item.category === "settings");
@@ -194,10 +196,22 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{t("sidebar.user")}</p>
-              <p className="truncate text-xs text-muted-foreground">{t("sidebar.member")}</p>
+              <p className="truncate text-sm font-medium">{user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? "Account"}</p>
+              <p className="truncate text-xs text-muted-foreground">{user?.user_metadata?.role ?? "Member"}</p>
             </div>
           )}
+          <button
+            type="button"
+            aria-label="Sign out"
+            title="Sign out"
+            onClick={() => void signOut()}
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground",
+              collapsed ? "h-8 w-8" : "h-8 w-8"
+            )}
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>

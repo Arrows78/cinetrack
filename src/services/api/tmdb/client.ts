@@ -12,7 +12,7 @@ export class ApiConfigurationError extends Error {
 export async function tmdbFetch<T>(path: string, params?: Record<string, string | number | undefined>) {
   if (!env.VITE_TMDB_API_TOKEN) {
     throw new ApiConfigurationError(
-      "La variable VITE_TMDB_API_TOKEN est absente. Renseigne un bearer token TMDB pour activer les données distantes."
+      "VITE_TMDB_API_TOKEN is missing. Provide a TMDB bearer token to enable remote data."
     );
   }
 

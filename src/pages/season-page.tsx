@@ -42,8 +42,8 @@ export function SeasonPage() {
 
       <Card>
         <SectionHeader
-          title={season.name || `Saison ${season.seasonNumber}`}
-          subtitle={`${season.episodes.length} épisode(s) disponibles dans cette saison.`}
+          title={season.name || `Season ${season.seasonNumber}`}
+          subtitle={`${season.episodes.length} episode(s) available in this season.`}
         />
         <div className="space-y-4">
           {season.episodes.map((episode) => (

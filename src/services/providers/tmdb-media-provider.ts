@@ -44,7 +44,7 @@ export class TmdbMediaProvider implements MediaProvider {
   // SERIES
   async getTrendingSeries(): Promise<Series[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/trending/tv/week", {
-      language: "fr-FR",
+      language: "en-US",
       page: 1,
     });
     return response.results.map(mapSeriesDto);
@@ -52,7 +52,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async getTopRatedSeries(): Promise<Series[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/tv/top_rated", {
-      language: "fr-FR",
+      language: "en-US",
       page: 1,
     });
     return response.results.map(mapSeriesDto);
@@ -60,7 +60,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async getOnTheAirSeries(): Promise<Series[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/tv/on_the_air", {
-      language: "fr-FR",
+      language: "en-US",
       page: 1,
     });
     return response.results.map(mapSeriesDto);
@@ -69,7 +69,7 @@ export class TmdbMediaProvider implements MediaProvider {
   // MOVIES
   async getTrendingMovies(): Promise<Movie[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/trending/movie/week", {
-      language: "fr-FR",
+      language: "en-US",
       page: 1,
     });
     return response.results.map(mapMovieDto);
@@ -77,7 +77,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async getTopRatedMovies(): Promise<Movie[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/movie/top_rated", {
-      language: "fr-FR",
+      language: "en-US",
       page: 1,
     });
     return response.results.map(mapMovieDto);
@@ -85,7 +85,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async getNowPlayingMovies(): Promise<Movie[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/movie/now_playing", {
-      language: "fr-FR",
+      language: "en-US",
       page: 1,
     });
     return response.results.map(mapMovieDto);
@@ -93,7 +93,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async getUpcomingMovies(): Promise<Movie[]> {
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/movie/upcoming", {
-      language: "fr-FR",
+      language: "en-US",
       page: 1,
     });
     return response.results.map(mapMovieDto);
@@ -101,7 +101,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async discoverMovies(args?: { genre?: number; provider?: number }): Promise<Movie[]> {
     const params: Record<string, string> = {
-      language: "fr-FR",
+      language: "en-US",
       page: "1",
       sort_by: "popularity.desc",
     };
@@ -117,7 +117,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async discoverSeries(args?: { genre?: number; provider?: number }): Promise<Series[]> {
     const params: Record<string, string> = {
-      language: "fr-FR",
+      language: "en-US",
       page: "1",
       sort_by: "popularity.desc",
     };
@@ -134,7 +134,7 @@ export class TmdbMediaProvider implements MediaProvider {
   // DETAILS
   async getMovieDetails(movieId: number): Promise<Movie> {
     const response = await tmdbFetch<TmdbMovieDto>(`/movie/${movieId}`, {
-      language: "fr-FR",
+      language: "en-US",
       append_to_response: "credits",
     });
     return mapMovieDto(response);
@@ -142,7 +142,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async getSeriesDetails(seriesId: number): Promise<Series> {
     const response = await tmdbFetch<TmdbTvDto>(`/tv/${seriesId}`, {
-      language: "fr-FR",
+      language: "en-US",
       append_to_response: "credits",
     });
     return mapSeriesDto(response);
@@ -150,7 +150,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async getSeasonDetails(seriesId: number, seasonNumber: number): Promise<Season> {
     const response = await tmdbFetch<TmdbSeasonDetailsDto>(`/tv/${seriesId}/season/${seasonNumber}`, {
-      language: "fr-FR",
+      language: "en-US",
     });
     return mapSeasonDetailsDto(response);
   }
@@ -160,7 +160,7 @@ export class TmdbMediaProvider implements MediaProvider {
 
     if (scope === "movie") {
       const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/search/movie", {
-        language: "fr-FR",
+        language: "en-US",
         query,
       });
       return response.results.map((result) => mapSearchResult(result, "movie"));
@@ -168,14 +168,14 @@ export class TmdbMediaProvider implements MediaProvider {
 
     if (scope === "series") {
       const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/search/tv", {
-        language: "fr-FR",
+        language: "en-US",
         query,
       });
       return response.results.map((result) => mapSearchResult(result, "series"));
     }
 
     const response = await tmdbFetch<TmdbListResponse<TmdbMultiSearchResultDto>>("/search/multi", {
-      language: "fr-FR",
+      language: "en-US",
       query,
     });
 
