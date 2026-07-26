@@ -4,6 +4,8 @@ import { CollectionsPage } from "@/pages/collections-page";
 import { HistoryPage } from "@/pages/history-page";
 import { HomePage } from "@/pages/home-page";
 import { MovieDetailPage } from "@/pages/movie-detail-page";
+import { PeoplePage } from "@/pages/people-page";
+import { PersonDetailPage } from "@/pages/person-detail-page";
 import { MoviesPage } from "@/pages/movies-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { SearchPage } from "@/pages/search-page";
@@ -13,6 +15,7 @@ import { SeriesPage } from "@/pages/series-page";
 import { SettingsPage } from "@/pages/settings-page";
 import { StatsPage } from "@/pages/stats-page";
 import { WatchlistPage } from "@/pages/watchlist-page";
+import { WatchTonightPage } from "@/pages/watch-tonight-page";
 import { ErrorComponent, PendingComponent, RootLayout } from "./router-components";
 
 const rootRoute = createRootRoute({ component: RootLayout, notFoundComponent: NotFoundPage });
@@ -71,6 +74,21 @@ const calendarRoute = createRoute({
   path: "/calendar",
   component: CalendarPage,
 });
+const peopleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/people",
+  component: PeoplePage,
+});
+const personDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/people/$personId",
+  component: PersonDetailPage,
+});
+const watchTonightRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/watch-tonight",
+  component: WatchTonightPage,
+});
 const statsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/stats",
@@ -82,6 +100,6 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute,moviesRoute,movieDetailRoute,seriesRoute,seriesDetailRoute,seasonRoute,searchRoute,watchlistRoute,historyRoute,collectionsRoute,calendarRoute,statsRoute,settingsRoute]);
+const routeTree = rootRoute.addChildren([indexRoute,moviesRoute,movieDetailRoute,seriesRoute,seriesDetailRoute,seasonRoute,searchRoute,watchlistRoute,historyRoute,collectionsRoute,calendarRoute,peopleRoute,personDetailRoute,watchTonightRoute,statsRoute,settingsRoute]);
 export const router = createRouter({ routeTree, defaultPreload: "intent", scrollRestoration: true, defaultPendingComponent: PendingComponent, defaultErrorComponent: ErrorComponent });
 declare module "@tanstack/react-router" { interface Register { router: typeof router; } }

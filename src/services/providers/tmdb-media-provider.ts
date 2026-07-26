@@ -8,6 +8,9 @@ import type {
   Season,
   Series,
   WatchProvider,
+  WatchProviderAvailability,
+  MediaVideo,
+  PersonSummary,
 } from "@/types/media";
 import type { DiscoverArgs, MediaProvider } from "./media-provider";
 import { tmdbFetch } from "@/services/api/tmdb/client";
@@ -18,6 +21,8 @@ import {
   mapSeasonDetailsDto,
   mapSeriesDto,
   mapWatchProvider,
+  mapVideo,
+  mapPerson,
 } from "@/services/api/tmdb/mapper";
 import type {
   TmdbListResponse,
@@ -26,6 +31,9 @@ import type {
   TmdbSeasonDetailsDto,
   TmdbTvDto,
   TmdbWatchProviderListResponse,
+  TmdbProviderResultsResponse,
+  TmdbVideoResponse,
+  TmdbPersonDto,
 } from "@/services/api/tmdb/types";
 import { preferencesRepository } from "@/services/local/preferences-repository";
 
@@ -115,6 +123,7 @@ export class TmdbMediaProvider implements MediaProvider {
       watch_region: args.provider ? region : undefined,
       with_watch_providers: args.provider,
       with_watch_monetization_types: args.provider ? "flatrate" : undefined,
+      "with_runtime.lte": args.maxRuntime,
     });
     return mapPage(response, mapMovieDto);
   }
@@ -195,4 +204,44 @@ export class TmdbMediaProvider implements MediaProvider {
       results,
     };
   }
+
+  async getWatchAvailability(mediaType: MediaType, mediaId: number, region?: string): Promise<WatchProviderAvailability> {
+    const context = await this.context(region);
+    const path = mediaType === "movie" ? `/movie/${mediaId}/watch/providers` : `/tv/${mediaId}/watch/providers`;
+    const response = await tmdbFetch<TmdbProviderResultsResponse>(path);
+    const result = response.results[context.region] ?? {};
+    return { region: context.region, link: result.link, flatrate: (result.flatrate ?? []).map(mapWatchProvider), rent: (result.rent ?? []).map(mapWatchProvider), buy: (result.buy ?? []).map(mapWatchProvider), free: (result.free ?? []).map(mapWatchProvider) };
+  }
+
+  async getRecommendations(mediaType: MediaType, mediaId: number, page = 1): Promise<PageResult<MediaSummary>> {
+    const { language } = await this.context();
+    const path = mediaType === "movie" ? `/movie/${mediaId}/recommendations` : `/tv/${mediaId}/recommendations`;
+    if (mediaType === "movie") {
+      const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>(path, { language, page });
+      return mapPage(response, (item) => mapSearchResult(item, "movie"));
+    }
+    const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>(path, { language, page });
+    return mapPage(response, (item) => mapSearchResult(item, "series"));
+  }
+
+  async getVideos(mediaType: MediaType, mediaId: number): Promise<MediaVideo[]> {
+    const { language } = await this.context();
+    const path = mediaType === "movie" ? `/movie/${mediaId}/videos` : `/tv/${mediaId}/videos`;
+    const response = await tmdbFetch<TmdbVideoResponse>(path, { language });
+    return response.results.filter((video) => video.site === "YouTube").sort((a,b) => Number(b.official)-Number(a.official)).map(mapVideo);
+  }
+
+  async searchPeople(query: string, page = 1): Promise<PageResult<PersonSummary>> {
+    if (!query.trim()) return { page, totalPages: 0, totalResults: 0, results: [] };
+    const { language } = await this.context();
+    const response = await tmdbFetch<TmdbListResponse<TmdbPersonDto>>("/search/person", { language, query, page });
+    return mapPage(response, mapPerson);
+  }
+
+  async getPerson(personId: number): Promise<PersonSummary> {
+    const { language } = await this.context();
+    const response = await tmdbFetch<TmdbPersonDto>(`/person/${personId}`, { language, append_to_response: "combined_credits" });
+    return mapPerson(response);
+  }
+
 }
