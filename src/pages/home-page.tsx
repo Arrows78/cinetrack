@@ -4,6 +4,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
@@ -63,6 +64,15 @@ export function HomePage() {
         <HeroSkeleton />
         <GridSkeleton />
       </div>
+    );
+  }
+
+  if (homeQuery.isError) {
+    return (
+      <RemoteErrorState
+        error={homeQuery.error}
+        onRetry={() => void homeQuery.refetch()}
+      />
     );
   }
 

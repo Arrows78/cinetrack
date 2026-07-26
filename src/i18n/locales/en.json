@@ -215,5 +215,12 @@
       "blueRoom": "BLUE ROOM",
       "nocturne": "NOCTURNE"
     }
+  },
+  "errors": {
+    "catalogUnavailable": "Unable to load the catalogue",
+    "tmdbAuthentication": "The TMDB token stored by the desktop app is missing, expired, or rejected. Unlock the vault and save a valid Bearer token again.",
+    "tmdbConnection": "The connection to TMDB failed. CineTrack automatically tries the native backend and then the WebView; also check your network, VPN, or proxy.",
+    "retry": "Try again",
+    "technicalDetails": "Technical details"
   }
 }

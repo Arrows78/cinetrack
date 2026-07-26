@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use serde_json::Value;
 use tauri::{Emitter, Manager};
@@ -65,7 +65,11 @@ async fn tmdb_request(
         return Err("Invalid TMDB path".into());
     }
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|error| error.to_string())?;
 
     let response = client
         .get(format!("https://api.themoviedb.org/3{path}"))

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useRouterState } from "@tanstack/react-router";
 import { Search, SearchX } from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { FilterBar } from "@/components/media/filter-bar";
 import { LoadMoreButton } from "@/components/media/load-more-button";
@@ -88,10 +89,16 @@ export function SearchPage() {
       </div>
 
       {searchQuery.isLoading ? <GridSkeleton count={8} /> : null}
-      {!showResults && !hasFilters ? (
+      {searchQuery.isError ? (
+        <RemoteErrorState
+          error={searchQuery.error}
+          onRetry={() => void searchQuery.refetch()}
+        />
+      ) : null}
+      {!searchQuery.isError && !showResults && !hasFilters ? (
         <EmptyState icon={Search} title={t("search.startTyping")} description={t("search.startTypingDesc")} />
       ) : null}
-      {showResults && !searchQuery.isLoading && !searchQuery.items.length ? (
+      {showResults && !searchQuery.isLoading && !searchQuery.isError && !searchQuery.items.length ? (
         <EmptyState icon={SearchX} title={t("pages.noResults")} description={t("search.noResultsDesc")} />
       ) : null}
 
