@@ -9,9 +9,12 @@ import { TokenGate } from "@/components/desktop/token-gate";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
 import { availabilityMonitor } from "@/services/availability-monitor";
+import { calendarService } from "@/services/calendar-service";
 import { desktopService } from "@/services/desktop-service";
 import { maintenanceService } from "@/services/maintenance-service";
 import { initializeDatabase } from "@/services/local/db";
+import { preferencesRepository } from "@/services/local/preferences-repository";
+import { notificationService } from "@/services/notification-service";
 
 export function App() {
   useEffect(() => {
@@ -32,6 +35,14 @@ export function App() {
         console.warn("Desktop initialization failed:", error);
       });
 
+    const checkBackgroundNotifications = async () => {
+      await availabilityMonitor.checkAll();
+      const preferences = await preferencesRepository.getPreferences();
+      if (!preferences.notificationsEnabled) return;
+      const entries = await calendarService.build();
+      await notificationService.notifyDue(entries, preferences);
+    };
+
     void initializeDatabase()
       .then(async () => {
         const check = await maintenanceService.quickCheck();
@@ -45,7 +56,7 @@ export function App() {
           await maintenanceService.createAutomaticBackup();
         }
 
-        await availabilityMonitor.checkAll();
+        await checkBackgroundNotifications();
       })
       .catch((error: unknown) => {
         console.warn(
@@ -55,7 +66,9 @@ export function App() {
       });
 
     const interval = window.setInterval(() => {
-      void availabilityMonitor.checkAll();
+      void checkBackgroundNotifications().catch((error: unknown) => {
+        console.warn("Background notification check failed:", error);
+      });
     }, 1000 * 60 * 60 * 6);
 
     return () => {

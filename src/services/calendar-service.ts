@@ -9,7 +9,7 @@ export const calendarService = {
     const to = endOfDay(addDays(from, days));
     const entries: CalendarEntry[] = [];
 
-    const upcoming = await mediaRepository.getUpcomingMovies(1);
+    const upcoming = await mediaRepository.getUpcomingMovies(1).catch(() => ({ page: 1, totalPages: 0, totalResults: 0, results: [] }));
     for (const movie of upcoming.results) {
       if (!movie.releaseDate) continue;
       const date = parseISO(movie.releaseDate);
@@ -19,14 +19,20 @@ export const calendarService = {
 
     const tracked = (await progressRepository.listTrackedSeries()).slice(0, 20);
     await Promise.all(tracked.map(async (trackedSeries) => {
-      const details = await mediaRepository.getSeriesDetails(trackedSeries.seriesId);
-      const recentSeasonNumbers = details.seasons.map((season) => season.seasonNumber).filter((number) => number > 0).slice(-2);
-      const seasons: Season[] = await Promise.all(recentSeasonNumbers.map((number) => mediaRepository.getSeasonDetails(details.id, number)));
-      for (const episode of seasons.flatMap((season) => season.episodes)) {
-        if (!episode.airDate) continue;
-        const date = parseISO(episode.airDate);
-        if (isBefore(date, from) || isAfter(date, to)) continue;
-        entries.push({ id: `episode-${episode.id}-${episode.airDate}`, mediaId: details.id, mediaType: "series", title: details.title, date: episode.airDate, kind: "episode", posterPath: details.posterPath, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber, episodeTitle: episode.title });
+      try {
+        const details = await mediaRepository.getSeriesDetails(trackedSeries.seriesId);
+        const recentSeasonNumbers = details.seasons.map((season) => season.seasonNumber).filter((number) => number > 0).slice(-2);
+        const seasons = (await Promise.all(recentSeasonNumbers.map((number) =>
+          mediaRepository.getSeasonDetails(details.id, number).catch(() => null)
+        ))).filter((season): season is Season => Boolean(season));
+        for (const episode of seasons.flatMap((season) => season.episodes)) {
+          if (!episode.airDate) continue;
+          const date = parseISO(episode.airDate);
+          if (isBefore(date, from) || isAfter(date, to)) continue;
+          entries.push({ id: `episode-${episode.id}-${episode.airDate}`, mediaId: details.id, mediaType: "series", title: details.title, date: episode.airDate, kind: "episode", posterPath: details.posterPath, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber, episodeTitle: episode.title });
+        }
+      } catch {
+        // A single unavailable series must not hide the rest of the calendar.
       }
     }));
 

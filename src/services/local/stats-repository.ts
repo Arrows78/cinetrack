@@ -1,4 +1,4 @@
-import { eachMonthOfInterval, endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import { eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth, subMonths } from "date-fns";
 import { browserStore, getDatabase } from "./db";
 import { preferencesRepository } from "./preferences-repository";
 import type { LibraryItem, LibraryStats, ViewingEvent } from "@/types/media";
@@ -13,8 +13,10 @@ interface YearSummary {
   activeDays: number;
 }
 
+const localDay = (timestamp: string) => format(parseISO(timestamp), "yyyy-MM-dd");
+
 function currentStreak(events: ViewingEvent[]): number {
-  const days = new Set(events.filter((event) => event.eventType !== "unwatched").map((event) => event.watchedAt.slice(0, 10)));
+  const days = new Set(events.filter((event) => event.eventType !== "unwatched").map((event) => localDay(event.watchedAt)));
   const cursor = new Date();
   if (!days.has(format(cursor, "yyyy-MM-dd"))) cursor.setDate(cursor.getDate() - 1);
   let streak = 0;
@@ -70,7 +72,7 @@ export const statsRepository = {
     for (const event of selected) titleCounts.set(event.title, (titleCounts.get(event.title) ?? 0) + 1);
     const genreCounts = new Map<string, number>();
     for (const item of library) if (selected.some((event) => event.mediaId === item.mediaId && event.mediaType === item.mediaType)) for (const genre of item.genres) genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
-    return { year, movies: selected.filter((event) => event.mediaType === "movie").length, episodes: selected.filter((event) => event.episodeId !== null && event.episodeId !== undefined).length, minutes: selected.reduce((sum,event) => sum + (event.durationMinutes ?? 0), 0), topTitles: [...titleCounts.entries()].sort((a,b) => b[1]-a[1]).slice(0,5).map(([title,count]) => ({ title,count })), favouriteGenre: [...genreCounts.entries()].sort((a,b) => b[1]-a[1])[0]?.[0] ?? null, activeDays: new Set(selected.map((event) => event.watchedAt.slice(0,10))).size };
+    return { year, movies: selected.filter((event) => event.mediaType === "movie").length, episodes: selected.filter((event) => event.episodeId !== null && event.episodeId !== undefined).length, minutes: selected.reduce((sum,event) => sum + (event.durationMinutes ?? 0), 0), topTitles: [...titleCounts.entries()].sort((a,b) => b[1]-a[1]).slice(0,5).map(([title,count]) => ({ title,count })), favouriteGenre: [...genreCounts.entries()].sort((a,b) => b[1]-a[1])[0]?.[0] ?? null, activeDays: new Set(selected.map((event) => localDay(event.watchedAt))).size };
   },
   _compute: compute,
 };

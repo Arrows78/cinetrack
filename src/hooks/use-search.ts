@@ -24,7 +24,13 @@ export function useSearch(query: string, scope: SearchScope, options?: SearchOpt
   const hasFilters = Boolean(genreMovieOption || genreSeriesOption || providerOption);
 
   const queryKey = hasFilters
-    ? queryKeys.remote.discover(genreMovieOption, genreSeriesOption, providerOption, scope)
+    ? queryKeys.remote.discover(
+        genreMovieOption,
+        genreSeriesOption,
+        providerOption,
+        scope,
+        options?.region,
+      )
     : queryKeys.remote.search(query, scope);
 
   const searchQuery = useInfiniteQuery({

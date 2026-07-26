@@ -7,8 +7,13 @@ export const queryKeys = {
     seasonDetails: (seriesId: number, seasonNumber: number) =>
       ["remote", "series", seriesId, "season", seasonNumber] as const,
     search: (query: string, scope: string) => ["remote", "search", scope, query] as const,
-    discover: (genreMovie?: string, genreSeries?: string, provider?: string, scope?: string) =>
-      ["remote", "discover", scope, genreMovie, genreSeries, provider] as const,
+    discover: (
+      genreMovie?: string,
+      genreSeries?: string,
+      provider?: string,
+      scope?: string,
+      region?: string,
+    ) => ["remote", "discover", scope, genreMovie, genreSeries, provider, region] as const,
     providers: (mediaType: string, region: string) => ["remote", "providers", mediaType, region] as const,
     home: ["remote", "home"] as const,
     recommendations: (mediaType: string, mediaId: number) =>

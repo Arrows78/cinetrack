@@ -17,8 +17,22 @@ export function usePreferences() {
   const mutation = useMutation({
     mutationFn: ({ key, value }: { key: keyof UserPreferences; value: UserPreferences[keyof UserPreferences] }) =>
       preferencesRepository.updatePreference(key as never, value as never),
-    onSuccess: (data) => {
+    onSuccess: async (data, variables) => {
       queryClient.setQueryData(queryKeys.local.preferences, data);
+
+      if (variables.key === "activeProfileId") {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["local"] }),
+          queryClient.invalidateQueries({ queryKey: ["watch-tonight"] }),
+        ]);
+      }
+
+      if (variables.key === "language" || variables.key === "region") {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["remote"] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
+        ]);
+      }
     },
   });
 
@@ -96,6 +110,7 @@ export function useMovieSeen(movieId: number) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.movieSeen(variables.movie.id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
       ]);
     },
   });
@@ -133,6 +148,8 @@ export function useEpisodeProgress(seriesId: number) {
         }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
       ]);
     },
   });
@@ -154,6 +171,8 @@ export function useEpisodeProgress(seriesId: number) {
         }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
       ]);
     },
   });
@@ -175,6 +194,8 @@ export function useEpisodeProgress(seriesId: number) {
         }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
       ]);
     },
   });

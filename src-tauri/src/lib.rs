@@ -86,10 +86,8 @@ pub fn run() {
                 app.handle()
                     .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
 
-                if app.config().plugins.0.contains_key("updater") {
-                    app.handle()
-                        .plugin(tauri_plugin_updater::Builder::new().build())?;
-                }
+                app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
 
                 let open = MenuItem::with_id(app, "open", "Ouvrir CineTrack", true, None::<&str>)?;
 

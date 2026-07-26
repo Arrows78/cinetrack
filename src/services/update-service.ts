@@ -5,7 +5,13 @@ import { isTauriApp } from "@/shared/lib/platform";
 export const updateService = {
   async checkAndInstall(onProgress?: (downloaded: number, total?: number) => void): Promise<string> {
     if (!isTauriApp()) return "Les mises à jour natives sont disponibles dans l’application desktop.";
-    const update = await check();
+    const update = await check().catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      if (/endpoint|pubkey|public key|configuration/i.test(detail)) {
+        throw new Error("Le canal de mise à jour desktop n’est pas encore configuré (endpoint et clé publique requis).");
+      }
+      throw error;
+    });
     if (!update) return "CineTrack est à jour.";
     let downloaded = 0; let total: number | undefined;
     await update.downloadAndInstall((event) => {
