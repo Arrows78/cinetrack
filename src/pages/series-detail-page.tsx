@@ -6,6 +6,7 @@ import { AddToListButton } from "@/components/collections/add-to-list-button";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
+import { NextEpisodeCard } from "@/components/media/next-episode-card";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SeasonAccordion } from "@/components/media/season-accordion";
 import { SectionHeader } from "@/components/media/section-header";
@@ -32,6 +33,7 @@ export function SeriesDetailPage() {
   const series = seriesQuery.data;
   const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));
   const progress = progressRepository.calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
+  const nextEpisode = progressRepository.getNextEpisode(seasons, progressQuery.data ?? []);
 
   return (
     <div className="space-y-8">
@@ -42,6 +44,7 @@ export function SeriesDetailPage() {
       />
       <LibraryEditor media={series} />
       <AddToListButton media={series} />
+      <NextEpisodeCard episode={nextEpisode} isSaving={progressQuery.isSaving} onWatched={(episode) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true })} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
           <SectionHeader title={t("media.overview")} />
