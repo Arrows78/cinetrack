@@ -10,48 +10,33 @@ export const watchlistRepository = {
     const db = await getDatabase();
 
     if (!db) {
-      return [...browserStore.read().watchlist].sort((a, b) =>
-        b.createdAt.localeCompare(a.createdAt),
-      );
+      return [...browserStore.read().watchlist].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
 
-    const rows = await db.select<Array<Record<string, unknown>>>(
-      "SELECT * FROM watchlist ORDER BY created_at DESC",
-    );
+    const rows = await db.select<Array<Record<string, unknown>>>("SELECT * FROM watchlist ORDER BY created_at DESC");
 
     return rows.map((row) => ({
       mediaId: Number(row.media_id),
       mediaType: row.media_type === "movie" ? "movie" : "series",
       title: String(row.title),
       posterPath: row.poster_path ? String(row.poster_path) : null,
-      backdropPath: row.backdrop_path
-        ? String(row.backdrop_path)
-        : null,
+      backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
       year: row.year ? Number(row.year) : null,
       rating: row.rating ? Number(row.rating) : null,
       createdAt: String(row.created_at),
     }));
   },
 
-  async has(
-    mediaId: number,
-    mediaType: WatchlistItem["mediaType"],
-  ): Promise<boolean> {
+  async has(mediaId: number, mediaType: WatchlistItem["mediaType"]): Promise<boolean> {
     const db = await getDatabase();
 
     if (!db) {
-      return browserStore
-        .read()
-        .watchlist.some(
-          (item) =>
-            item.mediaId === mediaId &&
-            item.mediaType === mediaType,
-        );
+      return browserStore.read().watchlist.some((item) => item.mediaId === mediaId && item.mediaType === mediaType);
     }
 
     const rows = await db.select<Array<{ count: number }>>(
       "SELECT COUNT(*) AS count FROM watchlist WHERE media_id = $1 AND media_type = $2",
-      [mediaId, mediaType],
+      [mediaId, mediaType]
     );
 
     return Number(rows[0]?.count ?? 0) > 0;
@@ -64,24 +49,18 @@ export const watchlistRepository = {
       const store = browserStore.read();
 
       const alreadyExists = store.watchlist.some(
-        (current) =>
-          current.mediaId === item.mediaId &&
-          current.mediaType === item.mediaType,
+        (current) => current.mediaId === item.mediaId && current.mediaType === item.mediaType
       );
 
       store.watchlist = [
         item,
         ...store.watchlist.filter(
-          (current) =>
-            !(
-              current.mediaId === item.mediaId &&
-              current.mediaType === item.mediaType
-            ),
+          (current) => !(current.mediaId === item.mediaId && current.mediaType === item.mediaType)
         ),
       ];
 
-      // Enregistrer la watchlist avant l'historique évite que les deux
-      // écritures dans le browserStore s'écrasent mutuellement.
+      // Save the watchlist before the history so the two browserStore
+      // writes do not overwrite each other.
       browserStore.write(store);
 
       if (!alreadyExists) {
@@ -98,10 +77,7 @@ export const watchlistRepository = {
       return;
     }
 
-    const alreadyExists = await watchlistRepository.has(
-      item.mediaId,
-      item.mediaType,
-    );
+    const alreadyExists = await watchlistRepository.has(item.mediaId, item.mediaType);
 
     await db.execute(
       `INSERT OR REPLACE INTO watchlist
@@ -125,7 +101,7 @@ export const watchlistRepository = {
         item.year ?? null,
         item.rating ?? null,
         item.createdAt,
-      ],
+      ]
     );
 
     if (!alreadyExists) {
@@ -140,27 +116,16 @@ export const watchlistRepository = {
     }
   },
 
-  async remove(
-    mediaId: number,
-    mediaType: WatchlistItem["mediaType"],
-  ): Promise<void> {
+  async remove(mediaId: number, mediaType: WatchlistItem["mediaType"]): Promise<void> {
     const db = await getDatabase();
 
     if (!db) {
       const store = browserStore.read();
 
-      const item = store.watchlist.find(
-        (current) =>
-          current.mediaId === mediaId &&
-          current.mediaType === mediaType,
-      );
+      const item = store.watchlist.find((current) => current.mediaId === mediaId && current.mediaType === mediaType);
 
       store.watchlist = store.watchlist.filter(
-        (current) =>
-          !(
-            current.mediaId === mediaId &&
-            current.mediaType === mediaType
-          ),
+        (current) => !(current.mediaId === mediaId && current.mediaType === mediaType)
       );
 
       browserStore.write(store);
@@ -180,15 +145,10 @@ export const watchlistRepository = {
     }
 
     const item = (await watchlistRepository.list()).find(
-      (current) =>
-        current.mediaId === mediaId &&
-        current.mediaType === mediaType,
+      (current) => current.mediaId === mediaId && current.mediaType === mediaType
     );
 
-    await db.execute(
-      "DELETE FROM watchlist WHERE media_id = $1 AND media_type = $2",
-      [mediaId, mediaType],
-    );
+    await db.execute("DELETE FROM watchlist WHERE media_id = $1 AND media_type = $2", [mediaId, mediaType]);
 
     if (item) {
       await historyRepository.add({

@@ -1,8 +1,4 @@
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-} from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 
 import { HistoryPage } from "@/pages/history-page";
 import { HomePage } from "@/pages/home-page";
@@ -16,11 +12,7 @@ import { SeriesPage } from "@/pages/series-page";
 import { SettingsPage } from "@/pages/settings-page";
 import { WatchlistPage } from "@/pages/watchlist-page";
 
-import {
-  ErrorComponent,
-  PendingComponent,
-  RootLayout,
-} from "./router-components";
+import { ErrorComponent, PendingComponent, RootLayout } from "./router-components";
 
 const rootRoute = createRootRoute({
   component: RootLayout,

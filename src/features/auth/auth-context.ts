@@ -8,6 +8,7 @@ export type AuthStatus = "loading" | "ready";
 export interface EmailOtpRequest {
   email: string;
   marketingOptIn: boolean;
+  shouldCreateUser: boolean;
 }
 
 export interface EmailOtpVerification {

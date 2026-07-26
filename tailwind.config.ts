@@ -53,8 +53,8 @@ const config: Config = {
           "radial-gradient(circle at top, rgba(104, 117, 245, 0.24), transparent 32%), radial-gradient(circle at 80% 20%, rgba(67, 211, 255, 0.14), transparent 20%)",
       },
       animation: {
-        "float": "float 6s ease-in-out infinite",
-        "shimmer": "shimmer 2s infinite",
+        float: "float 6s ease-in-out infinite",
+        shimmer: "shimmer 2s infinite",
         "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       keyframes: {

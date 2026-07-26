@@ -5,14 +5,11 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground hover:opacity-95 shadow-glow",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        default: "bg-primary text-primary-foreground hover:opacity-95 shadow-glow",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-secondary/70 hover:text-foreground",
         outline: "border border-border bg-card/60 hover:bg-card",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:opacity-95",
+        destructive: "bg-destructive text-destructive-foreground hover:opacity-95",
       },
       size: {
         default: "h-11 px-4 py-2",
@@ -25,5 +22,5 @@ export const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  },
+  }
 );

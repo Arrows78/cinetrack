@@ -145,13 +145,22 @@ export function HomePage() {
 
             {/* Actions */}
             <div className="mt-7 flex flex-wrap gap-3 animate-in delay-700">
-              <Button asChild size="lg" className="gap-2 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:scale-[1.02]">
+              <Button
+                asChild
+                size="lg"
+                className="gap-2 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:scale-[1.02]"
+              >
                 <Link to="/movies/$movieId" params={{ movieId: String(hero.id) }}>
                   {t("home.viewDetails")}
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="transition-all duration-300 hover:bg-primary/10 hover:border-primary/40">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="transition-all duration-300 hover:bg-primary/10 hover:border-primary/40"
+              >
                 <Link to="/search">{t("home.exploreCatalog")}</Link>
               </Button>
             </div>

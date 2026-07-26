@@ -44,19 +44,19 @@ CineTrack is a desktop MVP built with **Tauri**, **React**, **TypeScript**, and 
 
 ## 🧱 Technology stack
 
-| Area | Technologies |
-| --- | --- |
-| Desktop application | Tauri 2, Rust |
-| Frontend | React 18, TypeScript, Vite |
+| Area                   | Technologies                                                   |
+| ---------------------- | -------------------------------------------------------------- |
+| Desktop application    | Tauri 2, Rust                                                  |
+| Frontend               | React 18, TypeScript, Vite                                     |
 | Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui |
-| Routing | TanStack Router |
-| Remote data | TanStack Query, TMDB API |
-| Desktop persistence | SQLite through `@tauri-apps/plugin-sql` |
-| Web preview | `localStorage` with a local JSON store |
-| UI state | Zustand |
-| Validation | Zod |
-| Internationalisation | i18next, react-i18next |
-| Animation and icons | Framer Motion, Lucide React |
+| Routing                | TanStack Router                                                |
+| Remote data            | TanStack Query, TMDB API                                       |
+| Desktop persistence    | SQLite through `@tauri-apps/plugin-sql`                        |
+| Web preview            | `localStorage` with a local JSON store                         |
+| UI state               | Zustand                                                        |
+| Validation             | Zod                                                            |
+| Internationalisation   | i18next, react-i18next                                         |
+| Animation and icons    | Framer Motion, Lucide React                                    |
 
 ## 🏗️ Architecture
 
@@ -152,15 +152,15 @@ The application is then available at `http://localhost:1420`.
 
 ## 🛠️ Scripts
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Starts the Vite development server. |
-| `pnpm build` | Checks TypeScript types and creates the frontend production build. |
-| `pnpm preview` | Serves the Vite production build locally. |
-| `pnpm lint` | Analyses the project with ESLint. |
-| `pnpm format` | Formats files with Prettier. |
-| `pnpm tauri dev` | Starts the desktop application in development mode. |
-| `pnpm tauri build` | Creates desktop bundles for the current platform. |
+| Command            | Description                                                        |
+| ------------------ | ------------------------------------------------------------------ |
+| `pnpm dev`         | Starts the Vite development server.                                |
+| `pnpm build`       | Checks TypeScript types and creates the frontend production build. |
+| `pnpm preview`     | Serves the Vite production build locally.                          |
+| `pnpm lint`        | Analyses the project with ESLint.                                  |
+| `pnpm format`      | Formats files with Prettier.                                       |
+| `pnpm tauri dev`   | Starts the desktop application in development mode.                |
+| `pnpm tauri build` | Creates desktop bundles for the current platform.                  |
 
 Generated Tauri bundles are written to `src-tauri/target/release/bundle/`.
 

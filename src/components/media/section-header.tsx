@@ -31,7 +31,11 @@ export function SectionHeader({
           <h2 className="font-display text-2xl font-bold leading-tight tracking-tight transition-all duration-300 md:text-[28px] group-hover:text-primary/90">
             {title}
           </h2>
-          {subtitle ? <p className="mt-1.5 text-sm text-muted-foreground transition-colors duration-300 group-hover:text-muted-foreground/80">{subtitle}</p> : null}
+          {subtitle ? (
+            <p className="mt-1.5 text-sm text-muted-foreground transition-colors duration-300 group-hover:text-muted-foreground/80">
+              {subtitle}
+            </p>
+          ) : null}
         </div>
         {action}
       </div>

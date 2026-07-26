@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { ArrowLeft, Check, LoaderCircle, Mail, ShieldCheck } from "lucide-react";
-import { cn } from "@/shared/lib/cn";
-import { ProviderIcon } from "@/features/auth/provider-icon";
+import { ArrowLeft, Check, LoaderCircle, Mail, RotateCw, ShieldCheck } from "lucide-react";
+
 import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/auth-context";
 import { getEnabledSocialProviders } from "@/features/auth/provider-availability";
+import { ProviderIcon } from "@/features/auth/provider-icon";
+import { cn } from "@/shared/lib/cn";
 
 type AuthMode = "signin" | "signup";
 type AuthStep = "providers" | "email" | "otp";
 type ProviderSettingsStatus = "loading" | "ready" | "unavailable";
 
-const providers: Array<{ provider: SocialAuthProvider; label: string; className: string }> = [
+const providers: Array<{
+  provider: SocialAuthProvider;
+  label: string;
+  className: string;
+}> = [
   { provider: "apple", label: "Apple", className: "bg-white text-black" },
   { provider: "facebook", label: "Facebook", className: "bg-[#1877f2] text-white" },
   { provider: "google", label: "Google", className: "bg-white text-black" },
-  { provider: "twitter", label: "X", className: "bg-white text-black" },
+  { provider: "x", label: "X", className: "bg-white text-black" },
 ];
 
 const backdropTiles = [
@@ -34,6 +39,7 @@ const backdropTiles = [
 
 function PolicyLink({ href, children }: { href?: string; children: ReactNode }) {
   if (!href) return <span className="font-semibold text-primary">{children}</span>;
+
   return (
     <a className="font-semibold text-primary hover:underline" href={href} target="_blank" rel="noreferrer">
       {children}
@@ -65,6 +71,10 @@ function AuthBackdrop() {
   );
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 export function AuthScreen() {
   const { error, clearError, requestEmailOtp, signInWithProvider, verifyEmailOtp } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -76,6 +86,8 @@ export function AuthScreen() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [enabledSocialProviders, setEnabledSocialProviders] = useState<SocialAuthProvider[]>([]);
   const [providerSettingsStatus, setProviderSettingsStatus] = useState<ProviderSettingsStatus>("loading");
+  const [resendAvailableAt, setResendAvailableAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
 
   const title = useMemo(() => (mode === "signin" ? "Welcome back" : "Create your account"), [mode]);
   const visibleError = localError ?? error;
@@ -83,6 +95,7 @@ export function AuthScreen() {
     providerSettingsStatus === "ready"
       ? providers.filter(({ provider }) => enabledSocialProviders.includes(provider))
       : providers;
+  const resendSeconds = Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -105,6 +118,21 @@ export function AuthScreen() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (!resendAvailableAt || resendAvailableAt <= Date.now()) return;
+
+    const timer = window.setInterval(() => {
+      const currentTime = Date.now();
+      setNow(currentTime);
+
+      if (currentTime >= resendAvailableAt) {
+        window.clearInterval(timer);
+      }
+    }, 1_000);
+
+    return () => window.clearInterval(timer);
+  }, [resendAvailableAt]);
+
   function resetError() {
     setLocalError(null);
     clearError();
@@ -114,6 +142,7 @@ export function AuthScreen() {
     setMode(nextMode);
     setStep("providers");
     setToken("");
+    setResendAvailableAt(0);
     resetError();
   }
 
@@ -121,38 +150,63 @@ export function AuthScreen() {
     resetError();
 
     if (providerSettingsStatus === "ready" && !enabledSocialProviders.includes(provider)) {
-      setLocalError(`${provider} sign-in is not enabled in Supabase.`);
+      setLocalError(`${provider === "x" ? "X" : provider} sign-in is not enabled in Supabase.`);
       return;
     }
 
     setPendingAction(provider);
+
     try {
       await signInWithProvider(provider);
     } catch {
-      // The provider exposes the actionable message through AuthContext.
+      // AuthContext exposes the actionable error message.
     } finally {
       setPendingAction(null);
     }
   }
 
-  async function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function sendEmailOtp() {
     resetError();
 
-    if (!email.trim()) {
+    if (!isValidEmail(email)) {
       setLocalError("Enter a valid email address.");
       return;
     }
 
+    await requestEmailOtp({
+      email: email.trim(),
+      marketingOptIn: mode === "signup" && marketingOptIn,
+      shouldCreateUser: mode === "signup",
+    });
+
+    setToken("");
+    setStep("otp");
+    setNow(Date.now());
+    setResendAvailableAt(Date.now() + authConfig.otpResendSeconds * 1_000);
+  }
+
+  async function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setPendingAction("email");
+
     try {
-      await requestEmailOtp({
-        email: email.trim(),
-        marketingOptIn,
-      });
-      setStep("otp");
+      await sendEmailOtp();
     } catch {
-      // The provider exposes the actionable message through AuthContext.
+      // AuthContext exposes the actionable error message.
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function handleResend() {
+    if (resendSeconds > 0 || pendingAction !== null) return;
+
+    setPendingAction("resend");
+
+    try {
+      await sendEmailOtp();
+    } catch {
+      // AuthContext exposes the actionable error message.
     } finally {
       setPendingAction(null);
     }
@@ -162,16 +216,17 @@ export function AuthScreen() {
     event.preventDefault();
     resetError();
 
-    if (!/^\d{6}$/.test(token)) {
-      setLocalError("Enter the six-digit code sent to your email.");
+    if (!new RegExp(`^\\d{${authConfig.otpLength}}$`).test(token)) {
+      setLocalError(`Enter the ${authConfig.otpLength}-digit code sent to your email.`);
       return;
     }
 
     setPendingAction("otp");
+
     try {
       await verifyEmailOtp({ email: email.trim(), token });
     } catch {
-      // The provider exposes the actionable message through AuthContext.
+      // AuthContext exposes the actionable error message.
     } finally {
       setPendingAction(null);
     }
@@ -180,7 +235,6 @@ export function AuthScreen() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
       <AuthBackdrop />
-
       <div className="relative z-10 flex min-h-screen flex-col justify-end px-4 pb-4 pt-24 sm:items-center sm:justify-center sm:p-8">
         <div className="mb-7 flex items-center gap-3 drop-shadow-2xl">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-black/80 ring-1 ring-white/15">
@@ -213,9 +267,7 @@ export function AuthScreen() {
             <>
               <div className="text-center">
                 <h1 className="text-3xl font-black tracking-tight sm:text-4xl">{title}</h1>
-                <p className="mt-2 text-sm text-white/55">
-                  Continue with a provider or use a one-time code by email.
-                </p>
+                <p className="mt-2 text-sm text-white/55">Continue with a provider or use a one-time code by email.</p>
               </div>
 
               <div className="mt-8 flex flex-wrap justify-center gap-4">
@@ -239,6 +291,7 @@ export function AuthScreen() {
                     )}
                   </button>
                 ))}
+
                 <button
                   type="button"
                   aria-label="Continue with email"
@@ -260,31 +313,15 @@ export function AuthScreen() {
 
               {providerSettingsStatus === "ready" && enabledSocialProviders.length === 0 ? (
                 <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
-                  No social provider is enabled in Supabase. Enable one under Authentication → Sign In / Providers, or continue with email.
+                  No social provider is enabled. Configure one in Supabase or continue with email.
                 </p>
               ) : null}
 
               {providerSettingsStatus === "unavailable" ? (
                 <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
-                  CineTrack could not verify the Supabase provider configuration. Social sign-in may fail until it is configured.
+                  CineTrack could not verify the provider configuration.
                 </p>
               ) : null}
-
-              <label className="mt-9 flex cursor-pointer items-start gap-3 text-sm text-white/75">
-                <button
-                  type="button"
-                  role="checkbox"
-                  aria-checked={marketingOptIn}
-                  onClick={() => setMarketingOptIn((value) => !value)}
-                  className={cn(
-                    "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
-                    marketingOptIn ? "border-primary bg-primary text-primary-foreground" : "border-white/60 bg-transparent"
-                  )}
-                >
-                  {marketingOptIn ? <Check className="h-4 w-4" /> : null}
-                </button>
-                <span>Send me email updates about my shows and movies.</span>
-              </label>
             </>
           ) : null}
 
@@ -300,11 +337,15 @@ export function AuthScreen() {
               >
                 <ArrowLeft className="h-5 w-5" /> Back
               </button>
-              <h1 className="text-3xl font-black">Enter your email</h1>
+
+              <h1 className="text-3xl font-black">{mode === "signin" ? "Sign in by email" : "Create your account"}</h1>
+              <p className="mt-2 text-sm text-white/55">We will send a {authConfig.otpLength}-digit one-time code.</p>
+
               <div className="mt-7 flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
                 <Mail className="h-6 w-6 text-white/75" />
                 <input
                   autoFocus
+                  required
                   type="email"
                   autoComplete="email"
                   value={email}
@@ -313,12 +354,33 @@ export function AuthScreen() {
                   className="min-w-0 flex-1 bg-transparent text-xl text-white outline-none placeholder:text-white/35"
                 />
               </div>
+
+              {mode === "signup" ? (
+                <label className="mt-7 flex cursor-pointer items-start gap-3 text-sm text-white/75">
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={marketingOptIn}
+                    onClick={() => setMarketingOptIn((value) => !value)}
+                    className={cn(
+                      "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
+                      marketingOptIn
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-white/60 bg-transparent"
+                    )}
+                  >
+                    {marketingOptIn ? <Check className="h-4 w-4" /> : null}
+                  </button>
+                  <span>Send me optional email updates about my shows and movies.</span>
+                </label>
+              ) : null}
+
               <button
                 type="submit"
                 disabled={pendingAction !== null}
                 className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-black uppercase tracking-[0.08em] text-primary-foreground transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
               >
-                {pendingAction === "email" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : "Next"}
+                {pendingAction === "email" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : "Send code"}
               </button>
             </form>
           ) : null}
@@ -336,21 +398,28 @@ export function AuthScreen() {
               >
                 <ArrowLeft className="h-5 w-5" /> Change email
               </button>
+
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <h1 className="mt-5 text-3xl font-black">Check your inbox</h1>
-              <p className="mt-2 text-sm text-white/55">Enter the six-digit code sent to {email}.</p>
+              <p className="mt-2 text-sm text-white/55">
+                Enter the {authConfig.otpLength}-digit code sent to {email.trim()}.
+              </p>
+
               <input
                 autoFocus
+                required
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 value={token}
-                maxLength={6}
-                onChange={(event) => setToken(event.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
-                className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.38em] text-white outline-none placeholder:text-white/20 focus:border-primary"
+                maxLength={authConfig.otpLength}
+                onChange={(event) => setToken(event.target.value.replace(/\D/g, "").slice(0, authConfig.otpLength))}
+                placeholder={"0".repeat(authConfig.otpLength)}
+                aria-label="One-time code"
+                className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-white outline-none placeholder:text-white/20 focus:border-primary"
               />
+
               <button
                 type="submit"
                 disabled={pendingAction !== null}
@@ -358,11 +427,29 @@ export function AuthScreen() {
               >
                 {pendingAction === "otp" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : "Verify"}
               </button>
+
+              <button
+                type="button"
+                disabled={pendingAction !== null || resendSeconds > 0}
+                onClick={() => void handleResend()}
+                className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white/65 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {pendingAction === "resend" ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCw className="h-4 w-4" />
+                )}
+                {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : "Resend code"}
+              </button>
             </form>
           ) : null}
 
           {visibleError ? (
-            <p role="alert" className="mt-5 rounded-2xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            <p
+              role="alert"
+              aria-live="polite"
+              className="mt-5 rounded-2xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+            >
               {visibleError}
             </p>
           ) : null}

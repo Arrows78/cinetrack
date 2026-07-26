@@ -7,7 +7,7 @@ const socialProviders: ReadonlyArray<{
   { provider: "apple", settingsKeys: ["apple"] },
   { provider: "facebook", settingsKeys: ["facebook"] },
   { provider: "google", settingsKeys: ["google"] },
-  { provider: "twitter", settingsKeys: ["x", "twitter"] },
+  { provider: "x", settingsKeys: ["x", "twitter"] },
 ];
 
 interface SupabaseAuthSettings {
