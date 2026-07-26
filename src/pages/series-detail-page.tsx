@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import type { Season } from "@/types/media";
+import { AvailabilityAlertButton } from "@/components/media/availability-alert-button";
 import { ProviderAvailability } from "@/components/media/provider-availability";
 import { RecommendationsPanel } from "@/components/media/recommendations-panel";
 import { TrailerPanel } from "@/components/media/trailer-panel";
@@ -16,6 +17,7 @@ import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { useImageCache } from "@/hooks/use-image-cache";
 import { useEpisodeProgress } from "@/hooks/use-local-media";
 import { useSeriesDetails, useSeriesSeasons } from "@/hooks/use-media";
 import { progressRepository } from "@/services/local/progress-repository";
@@ -26,6 +28,7 @@ export function SeriesDetailPage() {
   const id = Number(seriesId);
   const seriesQuery = useSeriesDetails(id);
   const progressQuery = useEpisodeProgress(id);
+  useImageCache([seriesQuery.data?.posterPath, seriesQuery.data?.backdropPath]);
   const seasonNumbers = useMemo(
     () => (seriesQuery.data?.seasons ?? []).map((season) => season.seasonNumber).filter((number) => number > 0),
     [seriesQuery.data?.seasons]
@@ -42,7 +45,7 @@ export function SeriesDetailPage() {
     <div className="space-y-8">
       <MediaDetailsHero
         media={series}
-        actions={<WatchlistButton media={series} />}
+        actions={<><WatchlistButton media={series} /><AvailabilityAlertButton media={series} /></>}
         extra={<SeenToggle seen={progress.completed} disabled={progressQuery.isSaving || !seasons.length} onToggle={() => progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })} celebrateOnSeen />}
       />
       <LibraryEditor media={series} />

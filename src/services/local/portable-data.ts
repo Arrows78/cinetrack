@@ -22,7 +22,7 @@ export const portableData = {
     if (!db) return { format: "cinetrack-backup", version: 1, exportedAt: new Date().toISOString(), data: browserStore.read() };
 
     const data = emptyData();
-    const [watchlist, seen, episodes, tracked, history, preferences, library, events, profiles, lists, listItems] = await Promise.all([
+    const [watchlist, seen, episodes, tracked, history, preferences, library, events, profiles, lists, listItems, snapshots, alerts] = await Promise.all([
       db.select<Array<Record<string, unknown>>>("SELECT * FROM profile_watchlist"),
       db.select<Array<Record<string, unknown>>>("SELECT * FROM profile_seen_movies"),
       db.select<Array<Record<string, unknown>>>("SELECT * FROM profile_episode_progress"),
@@ -34,6 +34,8 @@ export const portableData = {
       db.select<Array<Record<string, unknown>>>("SELECT * FROM profiles"),
       db.select<Array<Record<string, unknown>>>("SELECT * FROM custom_lists"),
       db.select<Array<Record<string, unknown>>>("SELECT * FROM custom_list_items"),
+      db.select<Array<Record<string, unknown>>>("SELECT * FROM availability_snapshots"),
+      db.select<Array<Record<string, unknown>>>("SELECT * FROM availability_alerts"),
     ]);
 
     data.watchlist = watchlist.map((row) => ({ profileId: String(row.profile_id ?? "default"), mediaId: Number(row.media_id), mediaType: mediaType(row.media_type), title: String(row.title), posterPath: row.poster_path ? String(row.poster_path) : null, backdropPath: row.backdrop_path ? String(row.backdrop_path) : null, year: row.year ? Number(row.year) : null, rating: row.rating ? Number(row.rating) : null, createdAt: String(row.created_at) }));
@@ -47,6 +49,8 @@ export const portableData = {
     data.profiles = profiles.map((row) => ({ id: String(row.id), name: String(row.name), avatar: row.avatar ? String(row.avatar) : null, createdAt: String(row.created_at) }));
     data.customLists = lists.map((row) => ({ id: String(row.id), profileId: String(row.profile_id), name: String(row.name), description: row.description ? String(row.description) : null, createdAt: String(row.created_at), updatedAt: String(row.updated_at) }));
     data.customListItems = listItems.map((row) => ({ listId: String(row.list_id), mediaId: Number(row.media_id), mediaType: mediaType(row.media_type), title: String(row.title), posterPath: row.poster_path ? String(row.poster_path) : null, position: Number(row.position), addedAt: String(row.added_at) }));
+    data.availabilitySnapshots = snapshots.map((row) => ({ mediaId: Number(row.media_id), mediaType: mediaType(row.media_type), region: String(row.region), providerIds: JSON.parse(String(row.provider_ids ?? "[]")), checkedAt: String(row.checked_at) }));
+    data.availabilityAlerts = alerts.map((row) => ({ id: String(row.id), profileId: String(row.profile_id), mediaId: Number(row.media_id), mediaType: mediaType(row.media_type), title: String(row.title), region: String(row.region), providerIds: JSON.parse(String(row.provider_ids ?? "[]")), enabled: Boolean(row.enabled), createdAt: String(row.created_at) }));
     return { format: "cinetrack-backup", version: 1, exportedAt: new Date().toISOString(), data };
   },
 
@@ -57,7 +61,7 @@ export const portableData = {
 
     await db.execute("BEGIN IMMEDIATE");
     try {
-      for (const table of ["custom_list_items", "custom_lists", "profiles", "viewing_events", "library_items", "preferences", "activity_log", "profile_episode_progress", "profile_tracked_series", "profile_seen_movies", "profile_watchlist"]) await db.execute(`DELETE FROM ${table}`);
+      for (const table of ["availability_snapshots", "availability_alerts", "custom_list_items", "custom_lists", "profiles", "viewing_events", "library_items", "preferences", "activity_log", "profile_episode_progress", "profile_tracked_series", "profile_seen_movies", "profile_watchlist"]) await db.execute(`DELETE FROM ${table}`);
       for (const item of backup.data.watchlist) await db.execute("INSERT INTO profile_watchlist VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", [item.profileId ?? "default",item.mediaId,item.mediaType,item.title,item.posterPath ?? null,item.backdropPath ?? null,item.year ?? null,item.rating ?? null,item.createdAt]);
       for (const item of backup.data.seenMovies) await db.execute("INSERT INTO profile_seen_movies VALUES ($1,$2,$3,$4,$5,$6)", [item.profileId ?? "default",item.movieId,item.title,item.posterPath ?? null,item.backdropPath ?? null,item.watchedAt]);
       for (const item of backup.data.episodeProgress) await db.execute("INSERT INTO profile_episode_progress VALUES ($1,$2,$3,$4,$5,$6,$7)", [item.profileId ?? "default",item.seriesId,item.episodeId,item.seasonNumber,item.episodeNumber,item.watched ? 1 : 0,item.watchedAt ?? null]);
@@ -69,6 +73,8 @@ export const portableData = {
       for (const item of backup.data.profiles) await db.execute("INSERT INTO profiles VALUES ($1,$2,$3,$4)", [item.id,item.name,item.avatar ?? null,item.createdAt ?? new Date().toISOString()]);
       for (const item of backup.data.customLists) await db.execute("INSERT INTO custom_lists VALUES ($1,$2,$3,$4,$5,$6)", [item.id,item.profileId,item.name,item.description ?? null,item.createdAt,item.updatedAt]);
       for (const item of backup.data.customListItems) await db.execute("INSERT INTO custom_list_items VALUES ($1,$2,$3,$4,$5,$6,$7)", [item.listId,item.mediaId,item.mediaType,item.title,item.posterPath ?? null,item.position,item.addedAt]);
+      for (const item of backup.data.availabilitySnapshots) await db.execute("INSERT INTO availability_snapshots VALUES ($1,$2,$3,$4,$5)", [item.mediaId,item.mediaType,item.region,JSON.stringify(item.providerIds),item.checkedAt]);
+      for (const item of backup.data.availabilityAlerts) await db.execute("INSERT INTO availability_alerts VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", [item.id,item.profileId,item.mediaId,item.mediaType,item.title,item.region,JSON.stringify(item.providerIds),item.enabled ? 1 : 0,item.createdAt]);
       await db.execute("COMMIT");
     } catch (error) { await db.execute("ROLLBACK"); throw error; }
   },

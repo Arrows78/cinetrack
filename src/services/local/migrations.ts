@@ -204,6 +204,32 @@ export const migrations: readonly Migration[] = [
       "CREATE INDEX IF NOT EXISTS idx_custom_list_items_position ON custom_list_items(list_id, position)",
     ],
   },
+  {
+    version: 4,
+    name: "availability alerts and snapshots",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS availability_alerts (
+        id TEXT PRIMARY KEY,
+        profile_id TEXT NOT NULL,
+        media_id INTEGER NOT NULL,
+        media_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        region TEXT NOT NULL,
+        provider_ids TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS availability_snapshots (
+        media_id INTEGER NOT NULL,
+        media_type TEXT NOT NULL,
+        region TEXT NOT NULL,
+        provider_ids TEXT NOT NULL,
+        checked_at TEXT NOT NULL,
+        PRIMARY KEY (media_id, media_type, region)
+      )`,
+      "CREATE INDEX IF NOT EXISTS idx_availability_alert_profile ON availability_alerts(profile_id, enabled)",
+    ],
+  },
 ];
 
 export async function runMigrations(db: Database): Promise<void> {
@@ -228,9 +254,11 @@ export async function runMigrations(db: Database): Promise<void> {
       await db.execute("COMMIT");
       currentVersion = migration.version;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       await db.execute("ROLLBACK");
-      throw new Error(`Migration ${migration.version} (${migration.name}) failed: ${message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Migration ${migration.version} (${migration.name}) failed: ${message}`,
+      );
     }
   }
 }
