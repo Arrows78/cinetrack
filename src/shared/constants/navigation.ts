@@ -1,4 +1,4 @@
-import { Clapperboard, Film, FolderHeart, History, House, Search, Settings, Tv } from "lucide-react";
+import { CalendarDays, Clapperboard, Film, FolderHeart, History, House, Search, Settings, Tv } from "lucide-react";
 import { useTranslation } from "react-i18next";
 export type NavigationCategory = "main" | "settings";
 export interface NavigationItem { label: string; to: string; icon: typeof House; category: NavigationCategory; translationKey: string; }
@@ -9,6 +9,7 @@ export const navigationConfig: NavigationItem[] = [
   { label: "Search", to: "/search", icon: Search, category: "main", translationKey: "search" },
   { label: "Watchlist", to: "/watchlist", icon: Clapperboard, category: "main", translationKey: "watchlist" },
   { label: "Collections", to: "/collections", icon: FolderHeart, category: "main", translationKey: "collections" },
+  { label: "Calendar", to: "/calendar", icon: CalendarDays, category: "main", translationKey: "calendar" },
   { label: "Activity", to: "/history", icon: History, category: "main", translationKey: "history" },
   { label: "Settings", to: "/settings", icon: Settings, category: "settings", translationKey: "settings" },
 ];

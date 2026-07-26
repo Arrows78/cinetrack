@@ -2,13 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Main desktop capability for CineTrack",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "core:event:default",
     "deep-link:default",
+    "notification:default",
     "opener:default",
     "sql:default"
   ]
