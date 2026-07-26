@@ -1,91 +1,68 @@
-import { useQuery } from "@tanstack/react-query";
-
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { mediaRepository } from "@/services/repositories/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
-import type { MediaSummary } from "@/types/media";
-
-type SearchScope = "all" | "movie" | "series";
+import type { MediaSummary, PageResult, SearchScope } from "@/types/media";
 
 interface SearchOptions {
   genreMovie?: string;
   genreSeries?: string;
   provider?: string;
+  region?: string;
 }
+
+const mergePages = (pages: PageResult<MediaSummary>[]): PageResult<MediaSummary> => ({
+  page: pages[pages.length - 1]?.page ?? 1,
+  totalPages: Math.max(0, ...pages.map((page) => page.totalPages)),
+  totalResults: pages.reduce((sum, page) => sum + page.totalResults, 0),
+  results: pages.flatMap((page) => page.results),
+});
 
 export function useSearch(query: string, scope: SearchScope, options?: SearchOptions) {
   const genreMovieOption = options?.genreMovie;
   const genreSeriesOption = options?.genreSeries;
   const providerOption = options?.provider;
-
   const hasFilters = Boolean(genreMovieOption || genreSeriesOption || providerOption);
 
   const queryKey = hasFilters
     ? queryKeys.remote.discover(genreMovieOption, genreSeriesOption, providerOption, scope)
     : queryKeys.remote.search(query, scope);
 
-  return useQuery<MediaSummary[]>({
+  const searchQuery = useInfiniteQuery({
     queryKey,
-
-    queryFn: async () => {
-      if (!hasFilters) {
-        return mediaRepository.search(query, scope);
-      }
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }): Promise<PageResult<MediaSummary>> => {
+      if (!hasFilters) return mediaRepository.search(query, scope, pageParam);
 
       const genreMovie = genreMovieOption ? Number(genreMovieOption) : undefined;
-
       const genreSeries = genreSeriesOption ? Number(genreSeriesOption) : undefined;
-
       const provider = providerOption ? Number(providerOption) : undefined;
-
-      const canDiscoverMovies = genreMovie !== undefined || provider !== undefined;
-
-      const canDiscoverSeries = genreSeries !== undefined || provider !== undefined;
+      const common = { provider, page: pageParam, region: options?.region };
 
       if (scope === "movie") {
-        if (!canDiscoverMovies) {
-          return [];
-        }
-
-        return mediaRepository.discoverMovies({
-          genre: genreMovie,
-          provider,
-        });
+        if (genreMovie === undefined && provider === undefined) return mergePages([]);
+        return mediaRepository.discoverMovies({ ...common, genre: genreMovie });
       }
 
       if (scope === "series") {
-        if (!canDiscoverSeries) {
-          return [];
-        }
-
-        return mediaRepository.discoverSeries({
-          genre: genreSeries,
-          provider,
-        });
+        if (genreSeries === undefined && provider === undefined) return mergePages([]);
+        return mediaRepository.discoverSeries({ ...common, genre: genreSeries });
       }
 
-      const requests: Array<Promise<MediaSummary[]>> = [];
-
-      if (canDiscoverMovies) {
-        requests.push(
-          mediaRepository.discoverMovies({
-            genre: genreMovie,
-            provider,
-          })
-        );
+      const requests: Array<Promise<PageResult<MediaSummary>>> = [];
+      if (genreMovie !== undefined || provider !== undefined) {
+        requests.push(mediaRepository.discoverMovies({ ...common, genre: genreMovie }));
       }
-
-      if (canDiscoverSeries) {
-        requests.push(
-          mediaRepository.discoverSeries({
-            genre: genreSeries,
-            provider,
-          })
-        );
+      if (genreSeries !== undefined || provider !== undefined) {
+        requests.push(mediaRepository.discoverSeries({ ...common, genre: genreSeries }));
       }
-
-      return (await Promise.all(requests)).flat();
+      return mergePages(await Promise.all(requests));
     },
-
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
     enabled: hasFilters || query.trim().length >= 2,
   });
+
+  return {
+    ...searchQuery,
+    items: searchQuery.data?.pages.flatMap((page) => page.results) ?? [],
+  };
 }

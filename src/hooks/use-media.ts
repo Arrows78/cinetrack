@@ -1,6 +1,10 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { mediaRepository } from "@/services/repositories/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
+import type { MediaType, PageResult } from "@/types/media";
+
+const nextPage = <T>(lastPage: PageResult<T>) =>
+  lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined;
 
 export function useHomeFeed() {
   return useQuery({
@@ -10,16 +14,30 @@ export function useHomeFeed() {
 }
 
 export function useMovies() {
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: queryKeys.remote.movies,
-    queryFn: () => mediaRepository.getTrendingMovies(),
+    queryFn: ({ pageParam }) => mediaRepository.getTrendingMovies(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: nextPage,
   });
+  return { ...query, items: query.data?.pages.flatMap((page) => page.results) ?? [] };
 }
 
 export function useSeries() {
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: queryKeys.remote.series,
-    queryFn: () => mediaRepository.getTrendingSeries(),
+    queryFn: ({ pageParam }) => mediaRepository.getTrendingSeries(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: nextPage,
+  });
+  return { ...query, items: query.data?.pages.flatMap((page) => page.results) ?? [] };
+}
+
+export function useWatchProviders(mediaType: MediaType, region: string) {
+  return useQuery({
+    queryKey: queryKeys.remote.providers(mediaType, region),
+    queryFn: () => mediaRepository.getWatchProviders(mediaType, region),
+    staleTime: 1000 * 60 * 60 * 24,
   });
 }
 

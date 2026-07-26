@@ -1,12 +1,24 @@
-import type { Movie, Series, Season, Episode, MediaSummary, CastMember, MediaType } from "@/types/media";
+import type {
+  CastMember,
+  Episode,
+  MediaSummary,
+  MediaType,
+  Movie,
+  PageResult,
+  Season,
+  Series,
+  WatchProvider,
+} from "@/types/media";
 import { yearFromDate } from "@/shared/utils/format";
 import type {
   TmdbCastDto,
   TmdbEpisodeDto,
+  TmdbListResponse,
   TmdbMovieDto,
   TmdbSeasonDetailsDto,
   TmdbSeasonPreviewDto,
   TmdbTvDto,
+  TmdbWatchProviderDto,
 } from "./types";
 
 const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
@@ -34,6 +46,7 @@ export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   year: yearFromDate(dto.release_date),
   rating: dto.vote_average,
   genres: dto.genres?.map((genre) => genre.name) ?? [],
+  genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.production_countries?.map((country) => country.name) ?? [],
   language: dto.spoken_languages?.[0]?.english_name,
   status: dto.status,
@@ -65,6 +78,7 @@ export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
   year: yearFromDate(dto.first_air_date),
   rating: dto.vote_average,
   genres: dto.genres?.map((genre) => genre.name) ?? [],
+  genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.origin_country ?? [],
   language: dto.languages?.[0],
   status: dto.status,
@@ -98,10 +112,19 @@ export const mapSeasonDetailsDto = (dto: TmdbSeasonDetailsDto): Season => ({
   episodes: dto.episodes.map(mapEpisodeDto),
 });
 
-export const mapSearchResult = (dto: TmdbMovieDto | TmdbTvDto, mediaType: MediaType): MediaSummary => {
-  if (mediaType === "movie") {
-    return mapMovieDto(dto as TmdbMovieDto);
-  }
+export const mapSearchResult = (dto: TmdbMovieDto | TmdbTvDto, mediaType: MediaType): MediaSummary =>
+  mediaType === "movie" ? mapMovieDto(dto as TmdbMovieDto) : mapSeriesDto(dto as TmdbTvDto);
 
-  return mapSeriesDto(dto as TmdbTvDto);
-};
+export const mapPage = <Dto, Item>(response: TmdbListResponse<Dto>, mapper: (dto: Dto) => Item): PageResult<Item> => ({
+  page: response.page,
+  totalPages: response.total_pages,
+  totalResults: response.total_results,
+  results: response.results.map(mapper),
+});
+
+export const mapWatchProvider = (dto: TmdbWatchProviderDto): WatchProvider => ({
+  id: dto.provider_id,
+  name: dto.provider_name,
+  logoPath: dto.logo_path,
+  displayPriority: dto.display_priority,
+});

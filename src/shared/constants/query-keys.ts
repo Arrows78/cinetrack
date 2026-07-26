@@ -9,7 +9,14 @@ export const queryKeys = {
     search: (query: string, scope: string) => ["remote", "search", scope, query] as const,
     discover: (genreMovie?: string, genreSeries?: string, provider?: string, scope?: string) =>
       ["remote", "discover", scope, genreMovie, genreSeries, provider] as const,
+    providers: (mediaType: string, region: string) => ["remote", "providers", mediaType, region] as const,
     home: ["remote", "home"] as const,
+    recommendations: (mediaType: string, mediaId: number) =>
+      ["remote", "recommendations", mediaType, mediaId] as const,
+    videos: (mediaType: string, mediaId: number) => ["remote", "videos", mediaType, mediaId] as const,
+    person: (personId: number) => ["remote", "person", personId] as const,
+    availability: (mediaType: string, mediaId: number, region: string) =>
+      ["remote", "availability", mediaType, mediaId, region] as const,
   },
   local: {
     watchlist: ["local", "watchlist"] as const,
@@ -19,5 +26,12 @@ export const queryKeys = {
     episodeProgress: (seriesId: number) => ["local", "episodeProgress", seriesId] as const,
     trackedSeries: ["local", "trackedSeries"] as const,
     stats: ["local", "stats"] as const,
+    library: ["local", "library"] as const,
+    libraryItem: (mediaType: string, mediaId: number) => ["local", "library", mediaType, mediaId] as const,
+    profiles: ["local", "profiles"] as const,
+    customLists: ["local", "customLists"] as const,
+    customList: (listId: string) => ["local", "customLists", listId] as const,
+    calendar: ["local", "calendar"] as const,
+    availabilityAlerts: ["local", "availabilityAlerts"] as const,
   },
 };

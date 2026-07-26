@@ -4,9 +4,14 @@
     "movies": "Films",
     "series": "Séries",
     "search": "Recherche",
-    "watchlist": "Ma liste",
+    "watchlist": "À voir",
     "history": "Activité",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "people": "Personnes",
+    "watchTonight": "Ce soir",
+    "collections": "Collections",
+    "calendar": "Calendrier",
+    "stats": "Statistiques"
   },
   "media": {
     "overview": "Synopsis",
@@ -18,202 +23,118 @@
     "markAsSeen": "Marquer comme vu",
     "status": "Statut",
     "genres": "Genres",
-    "addToWatchlist": "Ajouter à ma liste",
-    "inWatchlist": "Dans ma liste",
+    "addToWatchlist": "Ajouter à la liste",
+    "inWatchlist": "Dans la liste",
     "unknownYear": "Année inconnue",
-    "noOverview": "Aucun synopsis disponible pour ce contenu."
+    "noOverview": "Aucun synopsis disponible."
   },
   "pages": {
     "notFound": "Page introuvable",
-    "notFoundDesc": "La route demandée n'existe pas ou n'est pas encore exposée dans le routeur.",
-    "backToHome": "Retour à l'accueil",
-    "noResults": "Aucun résultat trouvé",
+    "notFoundDesc": "La route demandée n’existe pas.",
+    "backToHome": "Retour à l’accueil",
+    "noResults": "Aucun résultat",
     "emptyWatchlist": "Votre liste est vide"
   },
   "home": {
     "configureTmdb": "Configurez votre accès TMDB",
-    "configureTmdbDesc": "Ajoutez votre token TMDB dans .env avec la clé VITE_TMDB_API_TOKEN. L'application est prête côté architecture, données locales et UI ; il ne manque que l'authentification API pour charger le catalogue.",
-    "premiumSelection": "Sélection premium",
-    "viewDetails": "Voir les détails",
+    "configureTmdbDesc": "Ajoutez ou déverrouillez votre token Bearer TMDB dans les paramètres.",
+    "premiumSelection": "Sélection du moment",
+    "viewDetails": "Voir la fiche",
     "exploreCatalog": "Explorer le catalogue",
-    "watchlistHelper": "Titres à voir plus tard",
+    "watchlistHelper": "Titres à regarder plus tard",
     "trackedHelper": "Progressions locales",
     "activityHelper": "Dernières actions enregistrées",
     "continueWatching": "Continuer à regarder",
     "continueWatchingDesc": "Retrouvez vos séries en cours en un clic.",
     "followedSeries": "Séries suivies",
     "trendingMovies": "Films tendance",
-    "trendingMoviesSubtitle": "Découvrez les films les plus tendance de la semaine.",
+    "trendingMoviesSubtitle": "Les films les plus populaires de la semaine.",
     "trendingSeries": "Séries tendance",
-    "trendingSeriesSubtitle": "Découvrez les séries les plus tendance de la semaine.",
+    "trendingSeriesSubtitle": "Les séries les plus populaires de la semaine.",
     "topRatedSeries": "Séries les mieux notées",
-    "topRatedSeriesSubtitle": "Les séries les mieux notées de tous les temps.",
-    "onTheAirSeries": "À l'antenne",
-    "onTheAirSeriesSubtitle": "Séries actuellement en production.",
+    "topRatedSeriesSubtitle": "Les séries les mieux évaluées.",
+    "onTheAirSeries": "En cours de diffusion",
+    "onTheAirSeriesSubtitle": "Les séries actuellement diffusées.",
     "topRatedMovies": "Films les mieux notés",
-    "topRatedMoviesSubtitle": "Les films les mieux notés de tous les temps.",
-    "nowPlayingMovies": "En salle",
-    "nowPlayingMoviesSubtitle": "Films actuellement en salles.",
-    "upcomingMovies": "À venir",
-    "upcomingMoviesSubtitle": "Films à venir bientôt.",
-    "browseByGenre": "Parcourir par genre",
-    "browseByGenreSubtitle": "Explorez les séries et films par catégorie.",
-    "browseByPlatform": "Parcourir par plateforme",
-    "browseByPlatformSubtitle": "Trouvez des séries et films sur vos plateformes de streaming préférées."
+    "topRatedMoviesSubtitle": "Les films les mieux évalués.",
+    "nowPlayingMovies": "Au cinéma",
+    "nowPlayingMoviesSubtitle": "Les films actuellement en salles.",
+    "upcomingMovies": "Prochainement",
+    "upcomingMoviesSubtitle": "Les films à venir.",
+    "browseByGenre": "Explorer par genre",
+    "browseByGenreSubtitle": "Parcourez films et séries par catégorie.",
+    "browseByPlatform": "Explorer par plateforme",
+    "browseByPlatformSubtitle": "Trouvez des contenus sur vos services préférés."
   },
   "history": {
     "recentActivity": "Activité récente",
-    "recentActivitySubtitle": "Films regardés, épisodes marqués et mouvements de la liste.",
+    "recentActivitySubtitle": "Films vus, épisodes marqués et mouvements de liste.",
     "seriesInProgress": "Séries en cours",
-    "seriesInProgressSubtitle": "Votre progression locale sur les séries suivies.",
-    "noActivity": "Aucune activité pour le moment",
-    "noActivityDesc": "Commencez à marquer du contenu comme regardé ou remplissez votre liste pour alimenter cette section.",
+    "seriesInProgressSubtitle": "Votre progression locale.",
+    "noActivity": "Aucune activité",
+    "noActivityDesc": "Commencez à marquer des contenus comme vus.",
     "noTrackedSeries": "Aucune série suivie",
-    "noTrackedSeriesDesc": "Dès que vous cochez un épisode, la progression apparaît ici avec persistance locale.",
-    "episodesWatched": "épisodes regardés"
+    "noTrackedSeriesDesc": "La progression apparaîtra dès qu’un épisode sera coché.",
+    "episodesWatched": "épisodes vus"
   },
   "search": {
     "globalSearch": "Recherche globale",
-    "subtitle": "Debounce, états vides et filtres propres pour films et séries.",
-    "startTyping": "Commencez à écrire",
-    "startTypingDesc": "La recherche s'active à partir de 2 caractères. Utilisez le filtre pour cibler les films, les séries ou les deux.",
-    "noResultsDesc": "Essayez un autre titre, une langue différente ou un autre filtre.",
+    "subtitle": "Films, séries et filtres régionaux.",
+    "startTyping": "Commencez à saisir",
+    "startTypingDesc": "La recherche s’active à partir de deux caractères.",
+    "noResultsDesc": "Essayez un autre titre ou un autre filtre.",
     "resultsCount": "{{count}} résultat(s)",
     "showingResults": "Résultats pour {{filters}}"
   },
-  "searchBar": {
-    "placeholder": "Rechercher un film ou une série..."
-  },
+  "searchBar": { "placeholder": "Rechercher un film ou une série…" },
   "settings": {
-    "subtitle": "Préférences utilisateur sauvegardées localement, desktop d'abord, prêt pour un portage mobile futur.",
-    "uiPreferences": "Préférences d'interface",
+    "subtitle": "Préférences locales et intégration desktop.",
+    "uiPreferences": "Préférences d’interface",
     "uiPreferencesDesc": "Personnalisez votre expérience locale.",
-    "accentColor": "Couleur d'accent",
+    "accentColor": "Couleur d’accent",
     "defaultSearchType": "Type de recherche par défaut",
-    "defaultWatchlistFilter": "Filtre de liste par défaut",
+    "defaultWatchlistFilter": "Filtre par défaut de la liste",
     "all": "Tout",
     "reduceAnimations": "Réduire les animations",
     "reducedAnimationsOn": "Animations réduites activées",
     "enableCompactMode": "Activer le mode compact",
     "compactModeOn": "Mode compact activé",
     "apiConfig": "Configuration API",
-    "apiConfigDesc": "L'application utilise TMDB via une couche de provider abstraite.",
-    "envInstruction": "Ajoutez votre token TMDB dans le",
-    "openTmdbDocs": "Ouvrir la doc TMDB"
+    "apiConfigDesc": "CineTrack utilise TMDB via une couche de fournisseur abstraite.",
+    "envInstruction": "Ajoutez votre token Bearer TMDB dans",
+    "openTmdbDocs": "Ouvrir la documentation TMDB"
   },
   "movies": {
-    "subtitle": "Affichage premium, affiches immersives et accès direct aux fiches détaillées.",
+    "subtitle": "Affiches, filtres et fiches détaillées.",
     "noMoviesAvailable": "Aucun film disponible",
-    "noMoviesAvailableDesc": "Le catalogue n'a pas pu être chargé pour le moment. Vérifiez votre connexion ou la configuration TMDB.",
+    "noMoviesAvailableDesc": "Vérifiez votre connexion ou la configuration TMDB.",
     "technicalSheet": "Fiche technique",
     "country": "Pays",
     "language": "Langue",
-    "castSubtitle": "Les visages les plus visibles de la page TMDB."
+    "castSubtitle": "Les principaux interprètes référencés par TMDB."
   },
   "series": {
-    "subtitle": "Parcourez par saison, suivez votre progression et découvrez de nouvelles séries.",
+    "subtitle": "Parcourez les saisons et suivez votre progression.",
     "noSeriesAvailable": "Aucune série disponible",
-    "noSeriesAvailableDesc": "Le catalogue n'a pas pu être chargé pour le moment. Vérifiez votre connexion ou la configuration TMDB.",
-    "seriesInfo": "Infos série",
+    "noSeriesAvailableDesc": "Vérifiez votre connexion ou la configuration TMDB.",
+    "seriesInfo": "Informations",
     "currentProgress": "Progression actuelle",
-    "seasonsAndEpisodes": "Saisons & Épisodes",
-    "seasonsAndEpisodesDesc": "Chaque épisode peut être marqué comme vu/non vu, avec progression par saison et au global.",
+    "seasonsAndEpisodes": "Saisons et épisodes",
+    "seasonsAndEpisodesDesc": "Chaque épisode peut être marqué vu ou non vu.",
     "globalProgress": "Progression globale",
     "markSeasonSeen": "Marquer la saison comme vue",
     "markSeasonUnseen": "Marquer la saison comme non vue"
   },
   "watchlist": {
-    "subtitle": "Filtrez par type et triez intelligemment votre backlog.",
+    "subtitle": "Filtrez et triez votre sélection.",
     "recent": "Récent",
     "title": "Titre",
     "rating": "Note",
-    "emptyDesc": "Ajoutez des films ou séries depuis les cartes ou les pages de détails pour les retrouver ici."
+    "emptyDesc": "Ajoutez des films ou séries depuis leur fiche."
   },
   "sidebar": {
-    "brand": {
-      "name": "CineTrack",
-      "tagline": "Cinema OS"
-    },
-    "defaultAccount": "Compte",
-    "defaultMember": "Membre",
-    "signOut": "Déconnexion",
-    "theme": {
-      "dark": "Sombre",
-      "light": "Clair"
-    }
-  },
-  "auth": {
-    "welcomeBack": "Bon retour",
-    "createAccount": "Créez votre compte",
-    "continueWithProviderOrEmail": "Continuez avec un provider ou utilisez un code à usage unique par email.",
-    "tabs": {
-      "signIn": "Se connecter",
-      "signUp": "S'inscrire"
-    },
-    "email": {
-      "signInByEmail": "Connexion par email",
-      "createAccountTitle": "Créez votre compte",
-      "sendCodeDescription": "Nous enverrons un code à usage unique à {{length}} chiffres.",
-      "placeholder": "Email",
-      "marketingOptIn": "Recevoir des emails optionnels sur mes séries et films.",
-      "sendCode": "Envoyer le code",
-      "back": "Retour",
-      "changeEmail": "Changer d'email"
-    },
-    "otp": {
-      "checkInbox": "Vérifiez votre boîte de réception",
-      "enterCode": "Entrez le code à {{length}} chiffres envoyé à {{email}}.",
-      "ariaLabel": "Code à usage unique",
-      "verify": "Vérifier",
-      "resendIn": "Renvoyer dans {{seconds}}s",
-      "resendCode": "Renvoyer le code"
-    },
-    "provider": {
-      "continueWith": "Continuer avec {{label}}"
-    },
-    "emailButton": {
-      "ariaLabel": "Continuer avec email",
-      "title": "Continuer avec email"
-    },
-    "status": {
-      "checkingProviders": "Vérification des providers configurés…",
-      "noProvidersEnabled": "Aucun provider social n'est activé. Configurez-en un dans Supabase ou continuez avec email.",
-      "providerConfigError": "CineTrack n'a pas pu vérifier la configuration des providers."
-    },
-    "legal": {
-      "agreeTo": "En continuant, vous acceptez les <1>Conditions</1> et la <3>Politique de confidentialité</3> de CineTrack."
-    },
-    "errors": {
-      "rateLimited": "Tentatives d'authentification trop nombreuses. Patientez un moment avant de réessayer.",
-      "otpExpired": "Ce code a expiré. Demandez-en un nouveau et réessayez.",
-      "invalidEmail": "Entrez une adresse email valide.",
-      "noAccount": "Aucun compte CineTrack n'existe pour cette adresse email.",
-      "badCodeVerifier": "La requête de connexion n'a pas pu être vérifiée. Redémarrez le flux de connexion.",
-      "default": "L'authentification a échoué. Veuillez réessayer.",
-      "notConfigured": "Supabase Auth n'est pas configuré.",
-      "noOAuthUrl": "Supabase n'a pas retourné d'URL d'autorisation OAuth.",
-      "invalidOAuthUrl": "Supabase a retourné une URL d'autorisation OAuth invalide.",
-      "providerNotEnabled": "La connexion via {{provider}} n'est pas activée dans Supabase.",
-      "enterOtpCode": "Entrez le code à {{length}} chiffres envoyé à votre email."
-    },
-    "gate": {
-      "restoringSession": "Restauration de votre session…",
-      "needsConfiguration": "L'authentification nécessite une configuration",
-      "configInstruction": "Ajoutez <1>VITE_SUPABASE_URL</1> et <3>VITE_SUPABASE_PUBLISHABLE_KEY</3> à votre fichier .env, ou définissez <5>VITE_AUTH_REQUIRED=false</5> pour garder CineTrack en mode local uniquement."
-    },
-    "backdrop": {
-      "midnight": "MIDNIGHT",
-      "redHorizon": "RED HORIZON",
-      "theVoyage": "THE VOYAGE",
-      "neonCity": "NEON CITY",
-      "theArchive": "THE ARCHIVE",
-      "lastSignal": "LAST SIGNAL",
-      "wildNorth": "WILD NORTH",
-      "orbit": "ORBIT",
-      "afterglow": "AFTERGLOW",
-      "dust": "DUST",
-      "blueRoom": "BLUE ROOM",
-      "nocturne": "NOCTURNE"
-    }
+    "brand": { "name": "CineTrack", "tagline": "Cinema OS" },
+    "user": "Profil local",
+    "member": "Données privées"
   }
 }
