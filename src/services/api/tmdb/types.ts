@@ -93,6 +93,18 @@ export interface TmdbSeasonDetailsDto {
   season_number: number;
 }
 
+export interface TmdbWatchProviderDto {
+  display_priority: number;
+  logo_path: string | null;
+  provider_id: number;
+  provider_name: string;
+  display_priorities?: Record<string, number>;
+}
+
+export interface TmdbWatchProviderListResponse {
+  results: TmdbWatchProviderDto[];
+}
+
 export type TmdbMultiSearchResultDto =
   | (TmdbMovieDto & { media_type: "movie" })
   | (TmdbTvDto & { media_type: "tv" })
