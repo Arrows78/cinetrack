@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import type { Season } from "@/types/media";
+import { AddToListButton } from "@/components/collections/add-to-list-button";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
@@ -40,6 +41,7 @@ export function SeriesDetailPage() {
         extra={<SeenToggle seen={progress.completed} disabled={progressQuery.isSaving || !seasons.length} onToggle={() => progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })} celebrateOnSeen />}
       />
       <LibraryEditor media={series} />
+      <AddToListButton media={series} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
           <SectionHeader title={t("media.overview")} />

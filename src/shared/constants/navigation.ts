@@ -1,45 +1,16 @@
-import { Clapperboard, Film, History, House, Search, Settings, Tv } from "lucide-react";
+import { Clapperboard, Film, FolderHeart, History, House, Search, Settings, Tv } from "lucide-react";
 import { useTranslation } from "react-i18next";
-
 export type NavigationCategory = "main" | "settings";
-
-export interface NavigationItem {
-  label: string;
-  to: string;
-  icon: typeof House;
-  category: NavigationCategory;
-  translationKey: string;
-}
-
+export interface NavigationItem { label: string; to: string; icon: typeof House; category: NavigationCategory; translationKey: string; }
 export const navigationConfig: NavigationItem[] = [
   { label: "Home", to: "/", icon: House, category: "main", translationKey: "home" },
   { label: "Series", to: "/series", icon: Tv, category: "main", translationKey: "series" },
   { label: "Movies", to: "/movies", icon: Film, category: "main", translationKey: "movies" },
   { label: "Search", to: "/search", icon: Search, category: "main", translationKey: "search" },
-  {
-    label: "Watchlist",
-    to: "/watchlist",
-    icon: Clapperboard,
-    category: "main",
-    translationKey: "watchlist",
-  },
+  { label: "Watchlist", to: "/watchlist", icon: Clapperboard, category: "main", translationKey: "watchlist" },
+  { label: "Collections", to: "/collections", icon: FolderHeart, category: "main", translationKey: "collections" },
   { label: "Activity", to: "/history", icon: History, category: "main", translationKey: "history" },
-  {
-    label: "Settings",
-    to: "/settings",
-    icon: Settings,
-    category: "settings",
-    translationKey: "settings",
-  },
+  { label: "Settings", to: "/settings", icon: Settings, category: "settings", translationKey: "settings" },
 ];
-
 export const categoryOrder: NavigationCategory[] = ["main", "settings"];
-
-export const useNavigationItems = () => {
-  const { t } = useTranslation();
-
-  return navigationConfig.map((item) => ({
-    ...item,
-    label: t(`nav.${item.translationKey}`),
-  })) as readonly NavigationItem[];
-};
+export const useNavigationItems = () => { const { t } = useTranslation(); return navigationConfig.map((item) => ({ ...item, label: t(`nav.${item.translationKey}`, { defaultValue: item.label }) })) as readonly NavigationItem[]; };
