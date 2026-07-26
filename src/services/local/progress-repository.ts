@@ -72,28 +72,43 @@ export const progressRepository = {
   async toggleEpisodeSeen(series: MediaSummary & { numberOfEpisodes?: number }, episode: Episode, watched: boolean) {
     const watchedAt = nowIso();
     const profile = await profileId();
-    await this.applyEpisodes(series, [episode], watched, watchedAt, profile);
-    await historyRepository.add({ id: uid(), mediaId: series.id, mediaType: "series", title: series.title, action: watched ? "episode:watched" : "episode:unwatched", timestamp: watchedAt, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber, episodeTitle: episode.title, metadata: { profileId: profile } });
+    const changed = await this.applyEpisodes(series, [episode], watched, watchedAt, profile);
+    if (changed > 0) {
+      await historyRepository.add({ id: uid(), mediaId: series.id, mediaType: "series", title: series.title, action: watched ? "episode:watched" : "episode:unwatched", timestamp: watchedAt, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber, episodeTitle: episode.title, metadata: { profileId: profile } });
+    }
   },
 
-  async applyEpisodes(series: MediaSummary & { numberOfEpisodes?: number }, episodes: Episode[], watched: boolean, watchedAt = nowIso(), suppliedProfile?: string) {
+  async applyEpisodes(series: MediaSummary & { numberOfEpisodes?: number }, episodes: Episode[], watched: boolean, watchedAt = nowIso(), suppliedProfile?: string): Promise<number> {
     const profile = suppliedProfile ?? await profileId();
     const db = await getDatabase();
     if (!db) {
       const store = browserStore.read();
-      const ids = new Set(episodes.map((episode) => episode.id));
+      const watchedIds = new Set(store.episodeProgress
+        .filter((item) => storedProfile(item) === profile && item.seriesId === series.id && item.watched)
+        .map((item) => item.episodeId));
+      const changedEpisodes = episodes.filter((episode) => watched ? !watchedIds.has(episode.id) : watchedIds.has(episode.id));
+      if (!changedEpisodes.length) return 0;
+      const ids = new Set(changedEpisodes.map((episode) => episode.id));
       store.episodeProgress = store.episodeProgress.filter((item) => !(storedProfile(item) === profile && item.seriesId === series.id && ids.has(item.episodeId)));
-      if (watched) store.episodeProgress.push(...episodes.map((episode) => ({ profileId: profile, seriesId: series.id, episodeId: episode.id, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber, watched: true, watchedAt })));
+      if (watched) store.episodeProgress.push(...changedEpisodes.map((episode) => ({ profileId: profile, seriesId: series.id, episodeId: episode.id, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber, watched: true, watchedAt })));
       const watchedEpisodes = store.episodeProgress.filter((item) => storedProfile(item) === profile && item.seriesId === series.id && item.watched).length;
       store.trackedSeries = [{ profileId: profile, seriesId: series.id, title: series.title, posterPath: series.posterPath, backdropPath: series.backdropPath, totalEpisodes: series.numberOfEpisodes ?? watchedEpisodes, watchedEpisodes, updatedAt: watchedAt }, ...store.trackedSeries.filter((item) => !(storedProfile(item) === profile && item.seriesId === series.id))];
-      store.viewingEvents.unshift(...episodes.map((episode) => ({ id: uid(), profileId: profile, mediaId: series.id, mediaType: "series" as const, title: series.title, eventType: watched ? "watched" as const : "unwatched" as const, watchedAt, durationMinutes: episode.runtime ?? series.runtime ?? null, episodeId: episode.id, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber })));
+      store.viewingEvents.unshift(...changedEpisodes.map((episode) => ({ id: uid(), profileId: profile, mediaId: series.id, mediaType: "series" as const, title: series.title, eventType: watched ? "watched" as const : "unwatched" as const, watchedAt, durationMinutes: episode.runtime ?? series.runtime ?? null, episodeId: episode.id, seasonNumber: episode.seasonNumber, episodeNumber: episode.episodeNumber })));
       browserStore.write(store);
-      return;
+      return changedEpisodes.length;
     }
+
+    const rows = await db.select<Array<{ episode_id: number }>>(
+      "SELECT episode_id FROM profile_episode_progress WHERE profile_id=$1 AND series_id=$2 AND watched=1",
+      [profile, series.id],
+    );
+    const watchedIds = new Set(rows.map((row) => Number(row.episode_id)));
+    const changedEpisodes = episodes.filter((episode) => watched ? !watchedIds.has(episode.id) : watchedIds.has(episode.id));
+    if (!changedEpisodes.length) return 0;
 
     await db.execute("BEGIN IMMEDIATE");
     try {
-      for (const episode of episodes) {
+      for (const episode of changedEpisodes) {
         if (watched) await db.execute("INSERT OR REPLACE INTO profile_episode_progress (profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at) VALUES ($1,$2,$3,$4,$5,1,$6)", [profile,series.id,episode.id,episode.seasonNumber,episode.episodeNumber,watchedAt]);
         else await db.execute("DELETE FROM profile_episode_progress WHERE profile_id=$1 AND series_id=$2 AND episode_id=$3", [profile,series.id,episode.id]);
         await db.execute("INSERT INTO viewing_events (id,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number) VALUES ($1,$2,$3,'series',$4,$5,$6,$7,$8,$9,$10)", [uid(),profile,series.id,series.title,watched ? "watched" : "unwatched",watchedAt,episode.runtime ?? series.runtime ?? null,episode.id,episode.seasonNumber,episode.episodeNumber]);
@@ -105,21 +120,26 @@ export const progressRepository = {
       await db.execute("ROLLBACK");
       throw error;
     }
+    return changedEpisodes.length;
   },
 
   async markSeason(series: MediaSummary & { numberOfEpisodes?: number }, season: Season, watched: boolean) {
     const timestamp = nowIso();
     const profile = await profileId();
-    await this.applyEpisodes(series, season.episodes, watched, timestamp, profile);
-    await historyRepository.add({ id: uid(), mediaId: series.id, mediaType: "series", title: series.title, action: watched ? "season:watched" : "season:unwatched", timestamp, seasonNumber: season.seasonNumber, metadata: { episodeCount: season.episodes.length, profileId: profile } });
+    const changed = await this.applyEpisodes(series, season.episodes, watched, timestamp, profile);
+    if (changed > 0) {
+      await historyRepository.add({ id: uid(), mediaId: series.id, mediaType: "series", title: series.title, action: watched ? "season:watched" : "season:unwatched", timestamp, seasonNumber: season.seasonNumber, metadata: { episodeCount: changed, profileId: profile } });
+    }
   },
 
   async markSeries(series: MediaSummary & { numberOfEpisodes?: number }, seasons: Season[], watched: boolean) {
     const timestamp = nowIso();
     const profile = await profileId();
     const episodes = seasons.flatMap((season) => season.episodes);
-    await this.applyEpisodes(series, episodes, watched, timestamp, profile);
-    await historyRepository.add({ id: uid(), mediaId: series.id, mediaType: "series", title: series.title, action: watched ? "series:watched" : "series:unwatched", timestamp, metadata: { episodeCount: episodes.length, profileId: profile } });
+    const changed = await this.applyEpisodes(series, episodes, watched, timestamp, profile);
+    if (changed > 0) {
+      await historyRepository.add({ id: uid(), mediaId: series.id, mediaType: "series", title: series.title, action: watched ? "series:watched" : "series:unwatched", timestamp, metadata: { episodeCount: changed, profileId: profile } });
+    }
   },
 
   async listTrackedSeries(): Promise<TrackedSeriesItem[]> {

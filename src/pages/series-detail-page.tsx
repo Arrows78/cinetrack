@@ -38,6 +38,9 @@ export function SeriesDetailPage() {
   if (!seriesQuery.data) return null;
   const series = seriesQuery.data;
   const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));
+  const allSeasonsLoaded = seasonNumbers.length > 0
+    && seasons.length === seasonNumbers.length
+    && seasonQueries.every((query) => !query.isPending && !query.isError);
   const progress = progressRepository.calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
   const nextEpisode = progressRepository.getNextEpisode(seasons, progressQuery.data ?? []);
 
@@ -46,7 +49,7 @@ export function SeriesDetailPage() {
       <MediaDetailsHero
         media={series}
         actions={<><WatchlistButton media={series} /><AvailabilityAlertButton media={series} /></>}
-        extra={<SeenToggle seen={progress.completed} disabled={progressQuery.isSaving || !seasons.length} onToggle={() => progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })} celebrateOnSeen />}
+        extra={<SeenToggle seen={progress.completed} disabled={progressQuery.isSaving || !allSeasonsLoaded} onToggle={() => progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })} celebrateOnSeen />}
       />
       <LibraryEditor media={series} />
       <AddToListButton media={series} />

@@ -17,14 +17,22 @@ export function useLibraryItem(media: MediaSummary) {
     mutationFn: (patch: LibraryPatch) => libraryRepository.upsert(media, patch),
     onSuccess: async (item) => {
       queryClient.setQueryData(queryKeys.local.libraryItem(media.mediaType, media.id), item);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.local.library });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.library }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
+        queryClient.invalidateQueries({ queryKey: ["watch-tonight"] }),
+      ]);
     },
   });
   const remove = useMutation({
     mutationFn: () => libraryRepository.remove(media.id, media.mediaType),
     onSuccess: async () => {
       queryClient.setQueryData(queryKeys.local.libraryItem(media.mediaType, media.id), null);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.local.library });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.library }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
+        queryClient.invalidateQueries({ queryKey: ["watch-tonight"] }),
+      ]);
     },
   });
   return { ...query, save: save.mutateAsync, remove: remove.mutateAsync, isSaving: save.isPending || remove.isPending };

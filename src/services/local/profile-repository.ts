@@ -1,4 +1,5 @@
 import { browserStore, getDatabase } from "./db";
+import { preferencesRepository } from "./preferences-repository";
 import type { UserProfile } from "@/types/media";
 
 const uid = () => crypto.randomUUID();
@@ -9,13 +10,17 @@ export const profileRepository = {
     const db = await getDatabase();
     if (!db) {
       const store = browserStore.read();
-      if (!store.profiles.length) {
-        store.profiles = [{ id: "default", name: "Principal", createdAt: nowIso() }];
+      if (!store.profiles.some((profile) => profile.id === "default")) {
+        store.profiles = [{ id: "default", name: "Principal", createdAt: nowIso() }, ...store.profiles];
         browserStore.write(store);
       }
       return [...store.profiles];
     }
-    const rows = await db.select<Array<Record<string, unknown>>>("SELECT * FROM profiles ORDER BY created_at ASC");
+    await db.execute(
+      "INSERT OR IGNORE INTO profiles (id, name, avatar, created_at) VALUES ('default', 'Principal', NULL, $1)",
+      [nowIso()],
+    );
+    const rows = await db.select<Array<Record<string, unknown>>>("SELECT * FROM profiles ORDER BY CASE WHEN id = 'default' THEN 0 ELSE 1 END, created_at ASC");
     return rows.map((row) => ({
       id: String(row.id),
       name: String(row.name),
@@ -41,6 +46,7 @@ export const profileRepository = {
 
   async remove(profileId: string): Promise<void> {
     if (profileId === "default") throw new Error("Le profil principal ne peut pas être supprimé.");
+    const preferences = await preferencesRepository.getPreferences();
     const db = await getDatabase();
     if (!db) {
       const store = browserStore.read();
@@ -57,6 +63,9 @@ export const profileRepository = {
       store.availabilityAlerts = store.availabilityAlerts.filter((item) => item.profileId !== profileId);
       store.history = store.history.filter((item) => item.metadata?.profileId !== profileId);
       browserStore.write(store);
+      if (preferences.activeProfileId === profileId) {
+        await preferencesRepository.updatePreference("activeProfileId", "default");
+      }
       return;
     }
     await db.execute("BEGIN IMMEDIATE");
@@ -77,6 +86,9 @@ export const profileRepository = {
     } catch (error) {
       await db.execute("ROLLBACK");
       throw error;
+    }
+    if (preferences.activeProfileId === profileId) {
+      await preferencesRepository.updatePreference("activeProfileId", "default");
     }
   },
 };

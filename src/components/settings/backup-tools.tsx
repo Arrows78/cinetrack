@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { portableData, type CineTrackBackup } from "@/services/local/portable-data";
 
 export function BackupTools() {
@@ -23,7 +24,8 @@ export function BackupTools() {
     if (!file) return;
     const parsed = JSON.parse(await file.text()) as CineTrackBackup;
     await portableData.import(parsed);
-    setMessage("Sauvegarde restaurée. Rechargez l’application pour actualiser toutes les vues.");
+    window.localStorage.removeItem(QUERY_CACHE_KEY);
+    window.location.reload();
   };
 
   return (

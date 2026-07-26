@@ -8,7 +8,15 @@ export function useProfiles() {
   const client = useQueryClient();
   const query = useQuery({ queryKey: queryKeys.local.profiles, queryFn: () => profileRepository.list() });
   const create = useMutation({ mutationFn: (name: string) => profileRepository.create(name), onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.local.profiles }) });
-  const remove = useMutation({ mutationFn: (id: string) => profileRepository.remove(id), onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.local.profiles }) });
+  const remove = useMutation({
+    mutationFn: (id: string) => profileRepository.remove(id),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["local"] }),
+        client.invalidateQueries({ queryKey: ["watch-tonight"] }),
+      ]);
+    },
+  });
   return { ...query, create: create.mutateAsync, remove: remove.mutateAsync, isSaving: create.isPending || remove.isPending };
 }
 
