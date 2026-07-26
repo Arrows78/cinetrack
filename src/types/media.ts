@@ -1,11 +1,27 @@
 export type MediaType = "movie" | "series";
+export type SearchScope = "all" | MediaType;
+export type LibraryStatus = "planned" | "watching" | "paused" | "completed" | "dropped" | "rewatching";
 export type HistoryAction =
   | "movie:watched"
   | "movie:unwatched"
   | "episode:watched"
   | "episode:unwatched"
+  | "season:watched"
+  | "season:unwatched"
+  | "series:watched"
+  | "series:unwatched"
   | "watchlist:add"
-  | "watchlist:remove";
+  | "watchlist:remove"
+  | "library:update"
+  | "list:add"
+  | "list:remove";
+
+export interface PageResult<T> {
+  page: number;
+  totalPages: number;
+  totalResults: number;
+  results: T[];
+}
 
 export interface CastMember {
   id: number;
@@ -27,6 +43,7 @@ export interface MediaSummary {
   year?: number | null;
   rating?: number | null;
   genres: string[];
+  genreIds?: number[];
   country?: string[];
   language?: string;
   status?: string;
@@ -74,6 +91,7 @@ export interface Series extends MediaSummary {
 }
 
 export interface WatchlistItem {
+  profileId?: string;
   mediaId: number;
   mediaType: MediaType;
   title: string;
@@ -82,6 +100,19 @@ export interface WatchlistItem {
   year?: number | null;
   rating?: number | null;
   createdAt: string;
+}
+
+export interface LibraryItem extends WatchlistItem {
+  profileId: string;
+  status: LibraryStatus;
+  favourite: boolean;
+  userRating?: number | null;
+  notes?: string | null;
+  tags: string[];
+  startedAt?: string | null;
+  completedAt?: string | null;
+  rewatchCount: number;
+  updatedAt: string;
 }
 
 export interface ViewingHistoryItem {
@@ -94,9 +125,25 @@ export interface ViewingHistoryItem {
   seasonNumber?: number;
   episodeNumber?: number;
   episodeTitle?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ViewingEvent {
+  id: string;
+  profileId: string;
+  mediaId: number;
+  mediaType: MediaType;
+  title: string;
+  eventType: "watched" | "unwatched" | "rewatched";
+  watchedAt: string;
+  durationMinutes?: number | null;
+  episodeId?: number | null;
+  seasonNumber?: number | null;
+  episodeNumber?: number | null;
 }
 
 export interface EpisodeProgress {
+  profileId?: string;
   seriesId: number;
   episodeId: number;
   seasonNumber: number;
@@ -120,21 +167,32 @@ export interface SeriesProgress {
 }
 
 export interface UserProfile {
+  id: string;
   name: string | null;
+  avatar?: string | null;
+  createdAt?: string;
 }
 
 export interface UserPreferences {
   theme: "dark" | "light";
   accentColor: "violet" | "blue" | "teal" | "green" | "amber" | "orange" | "rose" | "red";
-  defaultSearchType: "all" | "movie" | "series";
-  defaultWatchlistFilter: "all" | "movie" | "series";
+  language: "en" | "fr";
+  region: string;
+  defaultSearchType: SearchScope;
+  defaultWatchlistFilter: SearchScope;
   reduceMotion: boolean;
   compactMode: boolean;
   sidebarCollapsed: boolean;
+  spoilerProtection: boolean;
+  notificationsEnabled: boolean;
+  notifyHoursBefore: number;
+  preferredProviderIds: number[];
+  activeProfileId: string;
   userProfile: UserProfile;
 }
 
 export interface TrackedSeriesItem {
+  profileId?: string;
   seriesId: number;
   title: string;
   posterPath?: string | null;
@@ -144,12 +202,107 @@ export interface TrackedSeriesItem {
   updatedAt: string;
 }
 
+export interface CustomList {
+  id: string;
+  profileId: string;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomListItem {
+  listId: string;
+  mediaId: number;
+  mediaType: MediaType;
+  title: string;
+  posterPath?: string | null;
+  position: number;
+  addedAt: string;
+}
+
+export interface WatchProvider {
+  id: number;
+  name: string;
+  logoPath?: string | null;
+  displayPriority?: number;
+}
+
+export interface WatchProviderAvailability {
+  region: string;
+  link?: string;
+  flatrate: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
+  free: WatchProvider[];
+}
+
+export interface MediaVideo {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official: boolean;
+}
+
+export interface PersonSummary {
+  id: number;
+  name: string;
+  profilePath?: string | null;
+  knownForDepartment?: string;
+  knownFor: MediaSummary[];
+}
+
+export interface CalendarEntry {
+  id: string;
+  mediaId: number;
+  mediaType: MediaType;
+  title: string;
+  date: string;
+  kind: "movie-release" | "episode";
+  posterPath?: string | null;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  episodeTitle?: string;
+}
+
+export interface AvailabilitySnapshot {
+  mediaId: number;
+  mediaType: MediaType;
+  region: string;
+  providerIds: number[];
+  checkedAt: string;
+}
+
+export interface AvailabilityAlert {
+  id: string;
+  profileId: string;
+  mediaId: number;
+  mediaType: MediaType;
+  title: string;
+  region: string;
+  providerIds: number[];
+  enabled: boolean;
+  createdAt: string;
+}
+
+export interface LibraryStats {
+  moviesWatched: number;
+  episodesWatched: number;
+  minutesWatched: number;
+  completedSeries: number;
+  averageUserRating: number | null;
+  favouriteGenres: Array<{ name: string; count: number }>;
+  monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
+  currentStreakDays: number;
+  watchlistCompletionPercent: number;
+}
+
 export interface HomeFeed {
-  // Series
   trendingSeries: Series[];
   topRatedSeries: Series[];
   onTheAirSeries: Series[];
-  // Movies
   trendingMovies: Movie[];
   topRatedMovies: Movie[];
   nowPlayingMovies: Movie[];
