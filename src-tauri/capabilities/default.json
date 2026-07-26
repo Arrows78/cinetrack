@@ -9,6 +9,17 @@
     "deep-link:default",
     "notification:default",
     "opener:default",
-    "sql:default"
+    "sql:default",
+    "stronghold:default",
+    "process:default",
+    "updater:default",
+    "autostart:default",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file"
   ]
 }
