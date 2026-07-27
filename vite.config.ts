@@ -25,13 +25,41 @@ export default defineConfig(() => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-router": ["@tanstack/react-router"],
-          "vendor-query": ["@tanstack/react-query"],
-          "vendor-ui": ["framer-motion", "lucide-react", "class-variance-authority", "clsx", "tailwind-merge"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-i18n": ["i18next", "react-i18next"],
+        // Bare-specifier object form (`{ "vendor-react": ["react"] }`) silently
+        // failed to match react/react-dom (produced an empty chunk). Matching
+        // by substring on the full id is also unreliable under pnpm: its
+        // virtual store encodes peer deps into the folder name (e.g.
+        // ".pnpm/@tanstack+react-router@.._react-dom@19.2.8_.."), so an
+        // `id.includes("react-dom")` check matched react-router's own folder
+        // name, not the real react-dom package. Only the path segment after
+        // the last "node_modules/" is the real resolved package.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          const pkgPath = id.split("node_modules/").pop() ?? "";
+
+          if (
+            pkgPath.startsWith("react-dom/") ||
+            pkgPath.startsWith("react/") ||
+            pkgPath.startsWith("scheduler/")
+          ) {
+            return "vendor-react";
+          }
+          if (pkgPath.startsWith("@tanstack/react-router/")) return "vendor-router";
+          if (pkgPath.startsWith("@tanstack/react-query/") || pkgPath.startsWith("@tanstack/query-core/")) {
+            return "vendor-query";
+          }
+          if (
+            pkgPath.startsWith("framer-motion/") ||
+            pkgPath.startsWith("lucide-react/") ||
+            pkgPath.startsWith("class-variance-authority/") ||
+            pkgPath.startsWith("clsx/") ||
+            pkgPath.startsWith("tailwind-merge/")
+          ) {
+            return "vendor-ui";
+          }
+          if (pkgPath.startsWith("@supabase/supabase-js/")) return "vendor-supabase";
+          if (pkgPath.startsWith("i18next/") || pkgPath.startsWith("react-i18next/")) return "vendor-i18n";
+          return undefined;
         },
       },
     },

@@ -1,23 +1,14 @@
-import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
-import { CalendarPage } from "@/pages/calendar-page";
-import { CollectionsPage } from "@/pages/collections-page";
-import { HistoryPage } from "@/pages/history-page";
+import { createRootRoute, createRoute, createRouter, lazyRouteComponent } from "@tanstack/react-router";
 import { HomePage } from "@/pages/home-page";
-import { MovieDetailPage } from "@/pages/movie-detail-page";
-import { PeoplePage } from "@/pages/people-page";
-import { PersonDetailPage } from "@/pages/person-detail-page";
-import { MoviesPage } from "@/pages/movies-page";
 import { NotFoundPage } from "@/pages/not-found-page";
-import { SearchPage } from "@/pages/search-page";
-import { SeasonPage } from "@/pages/season-page";
-import { SeriesDetailPage } from "@/pages/series-detail-page";
-import { SeriesPage } from "@/pages/series-page";
-import { SettingsPage } from "@/pages/settings-page";
-import { StatsPage } from "@/pages/stats-page";
-import { WatchlistPage } from "@/pages/watchlist-page";
-import { WatchTonightPage } from "@/pages/watch-tonight-page";
 import { ErrorComponent, PendingComponent, RootLayout } from "./router-components";
 
+// Every other page is code-split via lazyRouteComponent: eagerly importing
+// all 16 pages here put every page's code (and its transitive imports) in
+// the initial bundle regardless of which route the user opened first.
+// HomePage stays eager since it's needed immediately on a first launch
+// anyway; `defaultPreload: "intent"` below still prefetches lazy routes on
+// link hover/focus, so navigation doesn't feel any slower.
 const rootRoute = createRootRoute({ component: RootLayout, notFoundComponent: NotFoundPage });
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -27,77 +18,77 @@ const indexRoute = createRoute({
 const moviesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/movies",
-  component: MoviesPage,
+  component: lazyRouteComponent(() => import("@/pages/movies-page"), "MoviesPage"),
 });
 const movieDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/movies/$movieId",
-  component: MovieDetailPage,
+  component: lazyRouteComponent(() => import("@/pages/movie-detail-page"), "MovieDetailPage"),
 });
 const seriesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/series",
-  component: SeriesPage,
+  component: lazyRouteComponent(() => import("@/pages/series-page"), "SeriesPage"),
 });
 const seriesDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/series/$seriesId",
-  component: SeriesDetailPage,
+  component: lazyRouteComponent(() => import("@/pages/series-detail-page"), "SeriesDetailPage"),
 });
 const seasonRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/series/$seriesId/season/$seasonNumber",
-  component: SeasonPage,
+  component: lazyRouteComponent(() => import("@/pages/season-page"), "SeasonPage"),
 });
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/search",
-  component: SearchPage,
+  component: lazyRouteComponent(() => import("@/pages/search-page"), "SearchPage"),
 });
 const watchlistRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/watchlist",
-  component: WatchlistPage,
+  component: lazyRouteComponent(() => import("@/pages/watchlist-page"), "WatchlistPage"),
 });
 const historyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/history",
-  component: HistoryPage,
+  component: lazyRouteComponent(() => import("@/pages/history-page"), "HistoryPage"),
 });
 const collectionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/collections",
-  component: CollectionsPage,
+  component: lazyRouteComponent(() => import("@/pages/collections-page"), "CollectionsPage"),
 });
 const calendarRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/calendar",
-  component: CalendarPage,
+  component: lazyRouteComponent(() => import("@/pages/calendar-page"), "CalendarPage"),
 });
 const peopleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/people",
-  component: PeoplePage,
+  component: lazyRouteComponent(() => import("@/pages/people-page"), "PeoplePage"),
 });
 const personDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/people/$personId",
-  component: PersonDetailPage,
+  component: lazyRouteComponent(() => import("@/pages/person-detail-page"), "PersonDetailPage"),
 });
 const watchTonightRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/watch-tonight",
-  component: WatchTonightPage,
+  component: lazyRouteComponent(() => import("@/pages/watch-tonight-page"), "WatchTonightPage"),
 });
 const statsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/stats",
-  component: StatsPage,
+  component: lazyRouteComponent(() => import("@/pages/stats-page"), "StatsPage"),
 });
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: SettingsPage,
+  component: lazyRouteComponent(() => import("@/pages/settings-page"), "SettingsPage"),
 });
 
 const routeTree = rootRoute.addChildren([indexRoute,moviesRoute,movieDetailRoute,seriesRoute,seriesDetailRoute,seasonRoute,searchRoute,watchlistRoute,historyRoute,collectionsRoute,calendarRoute,peopleRoute,personDetailRoute,watchTonightRoute,statsRoute,settingsRoute]);
