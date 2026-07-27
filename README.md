@@ -3,30 +3,31 @@
 **A local-first desktop application for discovering, organising, and tracking films and TV series.**
 
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 
-CineTrack is a desktop MVP built with **Tauri**, **React**, **TypeScript**, and **SQLite**. It uses the [TMDB](https://www.themoviedb.org/) catalogue to explore films and TV series while keeping your watchlist, viewing progress, and activity history on your device.
+CineTrack is a local-first desktop application built with **Tauri**, **React**, **TypeScript**, and **SQLite**. It uses the [TMDB](https://www.themoviedb.org/) catalogue to explore films and TV series while keeping your watchlist, viewing progress, and activity history on your device.
 
 > [!NOTE]
-> The interface is currently available in English. The internationalisation architecture is already in place for adding more languages.
+> The interface is available in English and French, with the internationalisation architecture in place for adding more languages.
 
 ## ✨ Features
 
 ### Discover
 
 - Browse popular, top-rated, currently airing, and upcoming films and TV series.
-- Explore the catalogue by genre and streaming provider.
+- Explore the catalogue by genre and streaming provider, or get a random pick with "Watch tonight".
 - Search films and TV series together, with filters by media type.
-- View detailed media pages with synopses, cast members, genres, status, and technical information.
+- View detailed media pages with synopses, cast members, genres, status, trailers, recommendations, and streaming availability by region.
 
 ### Organise
 
-- Add films and TV series to your watchlist or remove them at any time.
-- Filter and sort your watchlist by media type, date, title, or rating.
-- Mark films as watched or unwatched.
+- Add films and TV series to your watchlist, a unified library (planned/watching/completed/dropped/rewatching), or custom lists.
+- Filter and sort your watchlist and library by media type, status, date, title, or rating.
+- Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
+- Manage multiple local profiles, each with its own watchlist, library, and history.
 
 ### Track TV series
 
@@ -34,29 +35,33 @@ CineTrack is a desktop MVP built with **Tauri**, **React**, **TypeScript**, and 
 - Mark an entire season or series at once.
 - View overall and season-by-season progress.
 - Quickly resume series already in progress from the home page.
+- Get notified when a release date or new episode is coming up via the calendar, and set streaming-availability alerts.
 
 ### Personalise
 
-- Switch between light and dark themes.
-- Choose from several accent colours.
+- Switch between light and dark themes and several accent colours.
 - Enable compact mode or reduced motion.
 - Set default filters for search and the watchlist.
+- Sign in with Supabase (email OTP or social OAuth) when account sync is configured; the app otherwise works fully offline with a local-only profile.
+- Review viewing statistics and a yearly "wrapped" summary.
 
 ## 🧱 Technology stack
 
-| Area                   | Technologies                                                   |
-| ---------------------- | -------------------------------------------------------------- |
-| Desktop application    | Tauri 2, Rust                                                  |
-| Frontend               | React 18, TypeScript, Vite                                     |
-| Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui |
-| Routing                | TanStack Router                                                |
-| Remote data            | TanStack Query, TMDB API                                       |
-| Desktop persistence    | SQLite through `@tauri-apps/plugin-sql`                        |
-| Web preview            | `localStorage` with a local JSON store                         |
-| UI state               | Zustand                                                        |
-| Validation             | Zod                                                            |
-| Internationalisation   | i18next, react-i18next                                         |
-| Animation and icons    | Framer Motion, Lucide React                                    |
+| Area                   | Technologies                                                    |
+| ---------------------- | ---------------------------------------------------------------- |
+| Desktop application    | Tauri 2, Rust                                                    |
+| Frontend               | React 19, TypeScript, Vite                                       |
+| Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui  |
+| Routing                | TanStack Router                                                  |
+| Remote data            | TanStack Query, TMDB API                                         |
+| Optional account sync  | Supabase Auth (email OTP, OAuth)                                 |
+| Desktop persistence    | SQLite through `@tauri-apps/plugin-sql`, Stronghold for secrets  |
+| Web preview            | `localStorage` with a local JSON store                           |
+| UI state               | Zustand                                                          |
+| Validation             | Zod                                                              |
+| Internationalisation   | i18next, react-i18next (English, French)                         |
+| Animation and icons    | Framer Motion, Lucide React                                      |
+| Testing                | Vitest, Testing Library, `cargo test`                            |
 
 ## 🏗️ Architecture
 
@@ -74,9 +79,9 @@ flowchart LR
 ```
 
 - `MediaProvider` abstracts catalogue access, making it possible to replace TMDB without coupling the interface to its API.
-- Local repositories manage the watchlist, progress, activity history, and preferences.
+- Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats) manage personal data.
 - In Tauri, data is stored in `sqlite:app.db`.
-- In the browser, a `localStorage` fallback makes it possible to test the interface without starting the desktop application.
+- In the browser, a `localStorage` fallback makes it possible to test the interface without starting the desktop application. Every repository implements both branches so behavior is identical either way.
 
 ## 📦 Prerequisites
 
@@ -154,15 +159,20 @@ The application is then available at `http://localhost:1420`.
 
 ## 🛠️ Scripts
 
-| Command            | Description                                                        |
-| ------------------ | ------------------------------------------------------------------ |
-| `pnpm dev`         | Starts the Vite development server.                                |
-| `pnpm build`       | Checks TypeScript types and creates the frontend production build. |
-| `pnpm preview`     | Serves the Vite production build locally.                          |
-| `pnpm lint`        | Analyses the project with ESLint.                                  |
-| `pnpm format`      | Formats files with Prettier.                                       |
-| `pnpm tauri dev`   | Starts the desktop application in development mode.                |
-| `pnpm tauri build` | Creates desktop bundles for the current platform.                  |
+| Command              | Description                                                        |
+| -------------------- | ------------------------------------------------------------------ |
+| `pnpm dev`           | Starts the Vite development server.                                |
+| `pnpm build`         | Checks TypeScript types and creates the frontend production build. |
+| `pnpm preview`       | Serves the Vite production build locally.                          |
+| `pnpm lint`          | Analyses the project with ESLint.                                  |
+| `pnpm format`        | Formats files with Prettier.                                       |
+| `pnpm test`          | Runs the Vitest test suite.                                        |
+| `pnpm test:coverage` | Runs the test suite with a coverage report.                        |
+| `pnpm typecheck`     | Checks TypeScript types without emitting output.                   |
+| `pnpm tauri dev`     | Starts the desktop application in development mode.                |
+| `pnpm tauri build`   | Creates desktop bundles for the current platform.                  |
+
+For the Rust side, run `cargo check --manifest-path src-tauri/Cargo.toml` and `cargo test --manifest-path src-tauri/Cargo.toml` (both also run in CI).
 
 Generated Tauri bundles are written to `src-tauri/target/release/bundle/`.
 
@@ -172,23 +182,30 @@ Generated Tauri bundles are written to `src-tauri/target/release/bundle/`.
 cinetrack/
 ├── src/
 │   ├── app/                    # Application setup, router, and QueryClient
-│   ├── components/
-│   │   ├── layout/             # Application shell, navigation, and theme handling
-│   │   ├── media/              # Media cards, grids, progress, and details
-│   │   ├── states/             # Empty states and loading skeletons
-│   │   └── ui/                 # Local UI primitives
-│   ├── hooks/                  # Catalogue, search, and local-data hooks
-│   ├── i18n/                   # Internationalisation setup and translations
-│   ├── pages/                  # Application pages and screens
-│   ├── services/
-│   │   ├── api/tmdb/           # TMDB client, types, and data mapping
-│   │   ├── local/              # SQLite, web fallback, and local repositories
-│   │   ├── providers/          # MediaProvider contract and TMDB implementation
-│   │   └── repositories/       # Catalogue access layer
-│   ├── shared/                 # Configuration, constants, and utilities
-│   ├── store/                  # Lightweight global state with Zustand
-│   ├── styles/                 # Global styles and themes
-│   └── types/                  # Domain models
+│   ├── components/             # Presentational UI: layout, media, ui/, states/, settings, collections, desktop, library
+│   ├── db/                     # SQLite/localStorage connection and versioned migrations (shared by every feature)
+│   ├── features/                # One folder per domain, each bundling its repository/service with the hooks that use it
+│   │   ├── auth/                #   Supabase session, OAuth, email OTP
+│   │   ├── availability/        #   Streaming-availability alerts and background monitor
+│   │   ├── backup/              #   Portable JSON export/import, automatic backups
+│   │   ├── calendar/            #   Release and episode calendar
+│   │   ├── collections/         #   Profiles and custom lists
+│   │   ├── desktop/             #   Tray/deep-link wiring, updater, notifications, TMDB token vault
+│   │   ├── history/              #   Local activity timeline
+│   │   ├── library/              #   Unified watch status, ratings, tags
+│   │   ├── media/                #   TMDB client + MediaProvider, search/discovery hooks, image cache
+│   │   ├── preferences/          #   Theme, language, region, and other user settings
+│   │   ├── progress/              #   Movie/episode watched state and series progress
+│   │   ├── stats/                #   Viewing statistics and yearly wrap-up
+│   │   ├── watch-tonight/        #   Random pick service
+│   │   └── watchlist/             #   Watchlist repository and hooks
+│   ├── hooks/                   # Generic, repository-free hooks (debounce, confetti)
+│   ├── i18n/                    # Internationalisation setup and translations
+│   ├── pages/                   # Route components composed from feature hooks
+│   ├── shared/                  # Configuration, constants, and utilities
+│   ├── store/                   # Lightweight global state with Zustand
+│   ├── styles/                  # Global styles and themes
+│   └── types/                   # Domain models
 ├── src-tauri/
 │   ├── capabilities/           # Tauri permissions
 │   ├── src/                    # Rust entry points
@@ -203,27 +220,22 @@ cinetrack/
 
 CineTrack does not require a user account or an application server to save personal data.
 
-In desktop mode, the SQLite schema includes the following tables:
+In desktop mode, the active SQLite schema (see `src/db/migrations.ts`) includes, among others:
 
-- `watchlist`;
-- `seen_movies`;
-- `tracked_series`;
-- `episode_progress`;
-- `activity_log`;
-- `preferences`.
+- `profiles`, `preferences`;
+- `profile_watchlist`, `library_items`, `viewing_events`, `profile_episode_progress`, `profile_tracked_series`;
+- `custom_lists`, `custom_list_items`;
+- `availability_alerts`, `availability_snapshots`;
+- `activity_log`.
+
+(The original pre-profile tables — `watchlist`, `seen_movies`, `tracked_series`, `episode_progress` — still exist in the schema for backward-compatible migrations but are no longer written to.)
 
 Catalogue data, posters, and metadata are loaded from TMDB, so they require an internet connection and a valid API token.
 
 ## 🗺️ Roadmap
 
-- [ ] Add onboarding for configuring the TMDB token inside the application.
-- [ ] Add more advanced viewing statistics.
-- [ ] Create a release and upcoming-episode calendar.
-- [ ] Add favourites alongside the watchlist.
-- [ ] Persist the TanStack Query cache for a better offline experience.
-- [ ] Add desktop keyboard shortcuts.
-- [ ] Add more translations.
-- [ ] Introduce automated tests and continuous integration.
+- [ ] Code-split the frontend bundle (the main chunk currently exceeds Vite's 500 kB warning threshold).
+- [ ] Add more translations beyond English and French.
 
 ## 🙌 Contributing
 
@@ -233,7 +245,11 @@ Before submitting a change, run:
 
 ```bash
 pnpm lint
+pnpm typecheck
+pnpm test
 pnpm build
+cargo check --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
 ## 🎞️ TMDB attribution
