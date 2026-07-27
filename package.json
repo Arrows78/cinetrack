@@ -2,7 +2,18 @@
   "name": "cinetrack-mvp",
   "private": true,
   "version": "0.3.0",
+  "description": "A premium desktop app to track movies, TV shows, watchlists and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
+  "keywords": ["tauri", "react", "typescript", "sqlite", "tmdb", "movies", "tv-shows", "desktop", "local-first"],
+  "homepage": "https://github.com/Arrows78/cinetrack",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Arrows78/cinetrack.git"
+  },
+  "author": "Thomas Jost",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 1420",
@@ -84,6 +95,11 @@
     "ignoredBuiltDependencies": [
       "@swc/core",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "brace-expansion@1": "^1.1.16",
+      "brace-expansion@5": "^5.0.7",
+      "js-yaml": "^4.2.0"
+    }
   }
 }
