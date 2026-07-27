@@ -730,6 +730,7 @@ dependencies = [
  "tauri-plugin-sql",
  "tauri-plugin-stronghold",
  "tauri-plugin-updater",
+ "tokio",
 ]
 
 [[package]]
