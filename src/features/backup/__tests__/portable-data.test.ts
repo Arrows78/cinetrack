@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { portableData } from "../portable-data";
 import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
 import { libraryRepository } from "@/features/library/library-repository";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { makeMedia } from "@/shared/test-utils";
 
 describe("portableData (browser fallback)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    preferencesRepository.invalidate();
   });
 
   it("exports the current state and can round-trip it back in", async () => {

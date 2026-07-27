@@ -1,4 +1,5 @@
 import { browserStore, getDatabase, type BrowserStore } from "@/db/client";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 
 export interface CineTrackBackup {
   format: "cinetrack-backup";
@@ -89,7 +90,11 @@ export const portableData = {
     if (!backup || backup.format !== "cinetrack-backup" || backup.version !== 1) throw new Error("Format de sauvegarde non pris en charge.");
     const data = normalizeData(backup.data);
     const db = await getDatabase();
-    if (!db) { browserStore.write(data); return; }
+    if (!db) {
+      browserStore.write(data);
+      preferencesRepository.invalidate();
+      return;
+    }
 
     await db.execute("BEGIN IMMEDIATE");
     try {
@@ -141,6 +146,7 @@ export const portableData = {
         await db.execute("INSERT INTO availability_alerts VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", [item.id,item.profileId,item.mediaId,item.mediaType,item.title,item.region,JSON.stringify(item.providerIds),item.enabled ? 1 : 0,item.createdAt]);
       }
       await db.execute("COMMIT");
+      preferencesRepository.invalidate();
     } catch (error) {
       await db.execute("ROLLBACK");
       throw error;

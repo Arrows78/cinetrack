@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { progressRepository } from "../progress-repository";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { makeMedia } from "@/shared/test-utils";
 import type { Episode, Season } from "@/types/media";
 
@@ -24,6 +25,7 @@ const season = (episodes: Episode[]): Season => ({
 describe("progressRepository (browser fallback)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    preferencesRepository.invalidate();
   });
 
   it("toggles a movie as seen and back", async () => {

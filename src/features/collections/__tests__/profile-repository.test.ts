@@ -7,6 +7,7 @@ import { makeMedia } from "@/shared/test-utils";
 describe("profileRepository (browser fallback)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    preferencesRepository.invalidate();
   });
 
   it("always includes the default profile", async () => {

@@ -28,11 +28,21 @@ export const defaultPreferences: UserPreferences = preferencesSchema.parse({
   userProfile: {}
 });
 
+// Preferences are read constantly (every TMDB request and most repository
+// calls resolve the active profile/language/region through this module), but
+// this app is a single window/instance, so an in-memory cache invalidated on
+// every write is always fresh and avoids a SQLite/localStorage round trip per
+// call.
+let cache: UserPreferences | null = null;
+
 export const preferencesRepository = {
   async getPreferences(): Promise<UserPreferences> {
+    if (cache) return cache;
+
     const db = await getDatabase();
     if (!db) {
-      return preferencesSchema.parse({ ...defaultPreferences, ...browserStore.read().preferences });
+      cache = preferencesSchema.parse({ ...defaultPreferences, ...browserStore.read().preferences });
+      return cache;
     }
 
     const rows = await db.select<Array<{ key: string; value: string }>>("SELECT key, value FROM preferences");
@@ -45,7 +55,8 @@ export const preferencesRepository = {
       return acc;
     }, {});
 
-    return preferencesSchema.parse({ ...defaultPreferences, ...raw });
+    cache = preferencesSchema.parse({ ...defaultPreferences, ...raw });
+    return cache;
   },
 
   async updatePreference<Key extends keyof UserPreferences>(
@@ -60,10 +71,18 @@ export const preferencesRepository = {
       const store = browserStore.read();
       store.preferences = { ...store.preferences, [key]: parsed };
       browserStore.write(store);
-      return this.getPreferences();
+    } else {
+      await db.execute("INSERT OR REPLACE INTO preferences (key, value) VALUES ($1, $2)", [key, JSON.stringify(parsed)]);
     }
 
-    await db.execute("INSERT OR REPLACE INTO preferences (key, value) VALUES ($1, $2)", [key, JSON.stringify(parsed)]);
-    return this.getPreferences();
+    cache = { ...current, [key]: parsed };
+    return cache;
+  },
+
+  // Callers that write preferences storage directly (bulk backup restore)
+  // must call this so the next getPreferences() re-reads instead of serving
+  // a now-stale cached value.
+  invalidate(): void {
+    cache = null;
   },
 };

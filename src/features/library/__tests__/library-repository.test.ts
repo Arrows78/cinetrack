@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { libraryRepository } from "../library-repository";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { makeMedia } from "@/shared/test-utils";
 
 describe("libraryRepository (browser fallback)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    preferencesRepository.invalidate();
   });
 
   it("creates a new entry defaulting to the planned status", async () => {

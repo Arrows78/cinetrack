@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { watchlistRepository } from "../watchlist-repository";
 import { historyRepository } from "@/features/history/history-repository";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import type { WatchlistItem } from "@/types/media";
 
 const item = (): WatchlistItem => ({
@@ -13,6 +14,7 @@ const item = (): WatchlistItem => ({
 describe("watchlistRepository (browser fallback)", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    preferencesRepository.invalidate();
   });
 
   it("adds an item and reports it as present", async () => {
