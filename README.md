@@ -253,13 +253,10 @@ Issues and pull requests are welcome, whether you are fixing a bug, improving th
 Before submitting a change, run:
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-cargo check --manifest-path src-tauri/Cargo.toml
-cargo test --manifest-path src-tauri/Cargo.toml
+pnpm validate
 ```
+
+This chains lint, format:check, typecheck, test, build, and the Rust `cargo check`/`clippy`/`test` — the same checks CI runs.
 
 ## 🎞️ TMDB attribution
 
