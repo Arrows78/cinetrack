@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { usePreferences } from "@/hooks/use-local-media";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { COLOR_PRESETS, DEFAULT_ACCENT } from "@/shared/constants/colors";
 
 /**

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { useAvailability } from "@/hooks/use-discovery";
-import { usePreferences } from "@/hooks/use-local-media";
+import { useAvailability } from "@/features/media/use-discovery";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 export function ProviderAvailability({ media }: { media: MediaSummary }) {

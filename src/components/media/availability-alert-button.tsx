@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { Bell,BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAvailabilityAlert } from "@/hooks/use-availability-alerts";
-import { usePreferences } from "@/hooks/use-local-media";
-import { notificationService } from "@/services/notification-service";
+import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
+import { usePreferences } from "@/features/preferences/use-preferences";
+import { notificationService } from "@/features/desktop/notification-service";
 import type { MediaSummary } from "@/types/media";
 
 export function AvailabilityAlertButton({ media }: { media: MediaSummary }) {

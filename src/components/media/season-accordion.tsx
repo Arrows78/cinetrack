@@ -8,7 +8,7 @@ import { EpisodeCard } from "@/components/media/episode-card";
 import { useConfetti } from "@/hooks/use-confetti";
 import { cn } from "@/shared/lib/cn";
 import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
-import { progressRepository } from "@/services/local/progress-repository";
+import { progressRepository } from "@/features/progress/progress-repository";
 
 /* Episode dots strip — shows which eps are watched at a glance */
 function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episodes"]; watchedSet: Set<number> }) {

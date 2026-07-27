@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useIsInWatchlist, useWatchlist } from "@/hooks/use-local-media";
+import { useIsInWatchlist, useWatchlist } from "@/features/watchlist/use-watchlist";
 import type { MediaSummary, WatchlistItem } from "@/types/media";
 
 export function WatchlistButton({ media }: { media: MediaSummary }) {

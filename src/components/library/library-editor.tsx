@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLibraryItem } from "@/hooks/use-library";
+import { useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
 export function LibraryEditor({ media }: { media: MediaSummary }) {

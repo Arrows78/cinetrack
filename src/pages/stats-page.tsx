@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { BarChart3, Clock, Film, Flame, Star, Tv } from "lucide-react";
-import { useStats, useWrapped } from "@/hooks/use-stats";
+import { useStats, useWrapped } from "@/features/stats/use-stats";
 
 const hours = (minutes: number) => `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 export function StatsPage() {

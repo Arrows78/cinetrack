@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListPlus } from "lucide-react";
 import type { MediaSummary } from "@/types/media";
-import { useAddToCustomList, useCustomLists } from "@/hooks/use-collections";
+import { useAddToCustomList, useCustomLists } from "@/features/collections/use-collections";
 import { Button } from "@/components/ui/button";
 
 export function AddToListButton({ media }: { media: MediaSummary }) {

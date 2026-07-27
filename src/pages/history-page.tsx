@@ -6,7 +6,8 @@ import { EmptyState } from "@/components/states/empty-state";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { formatRelativeDate, percent } from "@/shared/utils/format";
-import { useHistory, useTrackedSeries } from "@/hooks/use-local-media";
+import { useHistory } from "@/features/history/use-history";
+import { useTrackedSeries } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
 import type { LucideIcon } from "lucide-react";
 

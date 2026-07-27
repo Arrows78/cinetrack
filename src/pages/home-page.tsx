@@ -12,8 +12,21 @@ import { StatCard } from "@/components/media/stat-card";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { hasTmdbToken } from "@/shared/config/env";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
-import { useHistory, useTrackedSeries, useWatchlist } from "@/hooks/use-local-media";
-import { useHomeFeed } from "@/hooks/use-media";
+import { useHistory } from "@/features/history/use-history";
+import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useWatchlist } from "@/features/watchlist/use-watchlist";
+import { useHomeFeed } from "@/features/media/use-media";
+import type { HomeFeed } from "@/types/media";
+
+const CATALOGUE_SECTIONS = [
+  { key: "trendingSeries", titleKey: "home.trendingSeries", subtitleKey: "home.trendingSeriesSubtitle" },
+  { key: "topRatedSeries", titleKey: "home.topRatedSeries", subtitleKey: "home.topRatedSeriesSubtitle" },
+  { key: "onTheAirSeries", titleKey: "home.onTheAirSeries", subtitleKey: "home.onTheAirSeriesSubtitle" },
+  { key: "trendingMovies", titleKey: "home.trendingMovies", subtitleKey: "home.trendingMoviesSubtitle" },
+  { key: "topRatedMovies", titleKey: "home.topRatedMovies", subtitleKey: "home.topRatedMoviesSubtitle" },
+  { key: "nowPlayingMovies", titleKey: "home.nowPlayingMovies", subtitleKey: "home.nowPlayingMoviesSubtitle" },
+  { key: "upcomingMovies", titleKey: "home.upcomingMovies", subtitleKey: "home.upcomingMoviesSubtitle" },
+] as const satisfies ReadonlyArray<{ key: keyof HomeFeed; titleKey: string; subtitleKey: string }>;
 
 const SERIES_GENRE_ALIASES: Record<string, string> = {
   Action: "Action & Adventure",
@@ -190,79 +203,17 @@ export function HomePage() {
         </section>
       ) : null}
 
-      {/* === SERIES SECTIONS === */}
-
-      {/* Trending Series */}
-      <section>
-        <SectionHeader
-          title={t("home.trendingSeries")}
-          subtitle={t("home.trendingSeriesSubtitle")}
-          index={++sectionIndex}
-        />
-        <MediaGrid items={homeQuery.data?.trendingSeries ?? []} />
-      </section>
-
-      {/* Top Rated Series */}
-      <section>
-        <SectionHeader
-          title={t("home.topRatedSeries")}
-          subtitle={t("home.topRatedSeriesSubtitle")}
-          index={++sectionIndex}
-        />
-        <MediaGrid items={homeQuery.data?.topRatedSeries ?? []} />
-      </section>
-
-      {/* On The Air */}
-      <section>
-        <SectionHeader
-          title={t("home.onTheAirSeries")}
-          subtitle={t("home.onTheAirSeriesSubtitle")}
-          index={++sectionIndex}
-        />
-        <MediaGrid items={homeQuery.data?.onTheAirSeries ?? []} />
-      </section>
-
-      {/* === MOVIES SECTIONS === */}
-
-      {/* Trending Movies */}
-      <section>
-        <SectionHeader
-          title={t("home.trendingMovies")}
-          subtitle={t("home.trendingMoviesSubtitle")}
-          index={++sectionIndex}
-        />
-        <MediaGrid items={homeQuery.data?.trendingMovies ?? []} />
-      </section>
-
-      {/* Top Rated Movies */}
-      <section>
-        <SectionHeader
-          title={t("home.topRatedMovies")}
-          subtitle={t("home.topRatedMoviesSubtitle")}
-          index={++sectionIndex}
-        />
-        <MediaGrid items={homeQuery.data?.topRatedMovies ?? []} />
-      </section>
-
-      {/* Now Playing */}
-      <section>
-        <SectionHeader
-          title={t("home.nowPlayingMovies")}
-          subtitle={t("home.nowPlayingMoviesSubtitle")}
-          index={++sectionIndex}
-        />
-        <MediaGrid items={homeQuery.data?.nowPlayingMovies ?? []} />
-      </section>
-
-      {/* Upcoming Movies */}
-      <section>
-        <SectionHeader
-          title={t("home.upcomingMovies")}
-          subtitle={t("home.upcomingMoviesSubtitle")}
-          index={++sectionIndex}
-        />
-        <MediaGrid items={homeQuery.data?.upcomingMovies ?? []} />
-      </section>
+      {/* Series and movies catalogue sections */}
+      {CATALOGUE_SECTIONS.map((section) => (
+        <section key={section.key}>
+          <SectionHeader
+            title={t(section.titleKey)}
+            subtitle={t(section.subtitleKey)}
+            index={++sectionIndex}
+          />
+          <MediaGrid items={homeQuery.data?.[section.key] ?? []} />
+        </section>
+      ))}
 
       {/* Browse by Genre */}
       <section>

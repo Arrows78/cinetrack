@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MediaGrid } from "@/components/media/media-grid";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { watchTonightService } from "@/services/watch-tonight-service";
+import { watchTonightService } from "@/features/watch-tonight/watch-tonight-service";
 export function WatchTonightPage() {
   const { t } = useTranslation();
   const [genre,setGenre]=useState(""); const [provider,setProvider]=useState(""); const [runtime,setRuntime]=useState("120"); const [seed,setSeed]=useState(0);

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { MediaGrid } from "@/components/media/media-grid";
-import { usePerson } from "@/hooks/use-discovery";
+import { usePerson } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 export function PersonDetailPage() {
   const { t } = useTranslation();

@@ -7,8 +7,8 @@ import { SectionHeader } from "@/components/media/section-header";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { Card } from "@/components/ui/card";
-import { useEpisodeProgress } from "@/hooks/use-local-media";
-import { useSeasonDetails, useSeriesDetails } from "@/hooks/use-media";
+import { useEpisodeProgress } from "@/features/progress/use-progress";
+import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
 
 export function SeasonPage() {
   const { t } = useTranslation();

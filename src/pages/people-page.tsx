@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { usePeopleSearch } from "@/hooks/use-discovery";
+import { usePeopleSearch } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 export function PeoplePage() {
   const { t } = useTranslation();

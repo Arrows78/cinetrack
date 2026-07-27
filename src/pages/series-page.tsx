@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
-import { useSeries } from "@/hooks/use-media";
+import { useSeries } from "@/features/media/use-media";
 
 export function SeriesPage() {
   const { t } = useTranslation();

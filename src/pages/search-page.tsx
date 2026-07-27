@@ -10,9 +10,9 @@ import { LoadMoreButton } from "@/components/media/load-more-button";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SearchBar } from "@/components/media/search-bar";
 import { SectionHeader } from "@/components/media/section-header";
-import { usePreferences } from "@/hooks/use-local-media";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useSearch as useSearchHook } from "@/hooks/use-search";
+import { useSearch as useSearchHook } from "@/features/media/use-search";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import type { MediaSummary, SearchScope } from "@/types/media";
 

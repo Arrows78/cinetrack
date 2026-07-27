@@ -6,7 +6,7 @@ import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
-import { useMovies } from "@/hooks/use-media";
+import { useMovies } from "@/features/media/use-media";
 
 export function MoviesPage() {
   const { t } = useTranslation();

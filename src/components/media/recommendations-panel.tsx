@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useRecommendations } from "@/hooks/use-discovery";
+import { useRecommendations } from "@/features/media/use-discovery";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import type { MediaSummary } from "@/types/media";

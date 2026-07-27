@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePreferences } from "@/hooks/use-local-media";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import type { UserPreferences } from "@/types/media";
 import { cn } from "@/shared/lib/cn";
 

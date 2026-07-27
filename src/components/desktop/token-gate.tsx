@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyRound, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTokenVault } from "@/hooks/use-token-vault";
-import { tokenVault } from "@/services/token-vault";
+import { useTokenVault } from "@/features/desktop/use-token-vault";
+import { tokenVault } from "@/features/desktop/token-vault";
 import { isTauriApp } from "@/shared/lib/platform";
 
 export function TokenGate({ children }: { children: ReactNode }) {

@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ListPlus, Trash2, UserPlus } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { Button } from "@/components/ui/button";
-import { useCustomListItems, useCustomLists, useProfiles } from "@/hooks/use-collections";
-import { usePreferences } from "@/hooks/use-local-media";
+import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
+import { usePreferences } from "@/features/preferences/use-preferences";
 
 function ListContents({ listId }: { listId: string }) {
   const { t } = useTranslation();

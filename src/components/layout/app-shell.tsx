@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { useUiStore } from "@/store/ui-store";
-import { usePreferences } from "@/hooks/use-local-media";
+import { usePreferences } from "@/features/preferences/use-preferences";
 
 export function AppShell() {
   const { t } = useTranslation();

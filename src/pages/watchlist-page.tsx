@@ -5,7 +5,8 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
-import { usePreferences, useWatchlist } from "@/hooks/use-local-media";
+import { usePreferences } from "@/features/preferences/use-preferences";
+import { useWatchlist } from "@/features/watchlist/use-watchlist";
 
 export function WatchlistPage() {
   const { t } = useTranslation();

@@ -8,13 +8,13 @@ import { CommandPalette } from "@/components/desktop/command-palette";
 import { TokenGate } from "@/components/desktop/token-gate";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
-import { availabilityMonitor } from "@/services/availability-monitor";
-import { calendarService } from "@/services/calendar-service";
-import { desktopService } from "@/services/desktop-service";
-import { maintenanceService } from "@/services/maintenance-service";
-import { initializeDatabase } from "@/services/local/db";
-import { preferencesRepository } from "@/services/local/preferences-repository";
-import { notificationService } from "@/services/notification-service";
+import { availabilityMonitor } from "@/features/availability/availability-monitor";
+import { calendarService } from "@/features/calendar/calendar-service";
+import { desktopService } from "@/features/desktop/desktop-service";
+import { maintenanceService } from "@/features/backup/maintenance-service";
+import { initializeDatabase } from "@/db/client";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { notificationService } from "@/features/desktop/notification-service";
 
 export function App() {
   useEffect(() => {

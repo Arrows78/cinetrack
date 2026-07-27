@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { Button } from "@/components/ui/button";
-import { maintenanceService } from "@/services/maintenance-service";
-import { tokenVault } from "@/services/token-vault";
-import { updateService } from "@/services/update-service";
+import { maintenanceService } from "@/features/backup/maintenance-service";
+import { tokenVault } from "@/features/desktop/token-vault";
+import { updateService } from "@/features/desktop/update-service";
 import { isTauriApp } from "@/shared/lib/platform";
 
 export function DesktopSettings() {

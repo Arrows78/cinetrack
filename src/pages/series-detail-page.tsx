@@ -17,10 +17,10 @@ import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
-import { useImageCache } from "@/hooks/use-image-cache";
-import { useEpisodeProgress } from "@/hooks/use-local-media";
-import { useSeriesDetails, useSeriesSeasons } from "@/hooks/use-media";
-import { progressRepository } from "@/services/local/progress-repository";
+import { useImageCache } from "@/features/media/use-image-cache";
+import { useEpisodeProgress } from "@/features/progress/use-progress";
+import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
+import { progressRepository } from "@/features/progress/progress-repository";
 
 export function SeriesDetailPage() {
   const { t } = useTranslation();

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { ExternalLink, PlayCircle } from "lucide-react";
-import { useVideos } from "@/hooks/use-discovery";
+import { useVideos } from "@/features/media/use-discovery";
 import type { MediaType } from "@/types/media";
 export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; mediaId: number }) {
   const { t } = useTranslation();

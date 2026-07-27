@@ -5,7 +5,7 @@ import { useNavigationItems, type NavigationItem } from "@/shared/constants/navi
 import { cn } from "@/shared/lib/cn";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { usePreferences } from "@/hooks/use-local-media";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { useAuth } from "@/features/auth/auth-context";
 
 interface SidebarNavProps {

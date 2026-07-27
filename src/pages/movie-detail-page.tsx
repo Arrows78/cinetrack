@@ -12,9 +12,9 @@ import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
-import { useImageCache } from "@/hooks/use-image-cache";
-import { useMovieSeen } from "@/hooks/use-local-media";
-import { useMovieDetails } from "@/hooks/use-media";
+import { useImageCache } from "@/features/media/use-image-cache";
+import { useMovieSeen } from "@/features/progress/use-progress";
+import { useMovieDetails } from "@/features/media/use-media";
 
 export function MovieDetailPage() {
   const { t } = useTranslation();

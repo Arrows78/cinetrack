@@ -5,8 +5,8 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePreferences } from "@/hooks/use-local-media";
-import { notificationService } from "@/services/notification-service";
+import { usePreferences } from "@/features/preferences/use-preferences";
+import { notificationService } from "@/features/desktop/notification-service";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
 import { cn } from "@/shared/lib/cn";
 

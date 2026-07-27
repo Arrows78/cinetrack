@@ -2,10 +2,10 @@ import { useTranslation } from "react-i18next";
 import { format, parseISO } from "date-fns";
 import { CalendarDays, Film, Tv } from "lucide-react";
 import { useEffect } from "react";
-import { useCalendar } from "@/hooks/use-calendar";
+import { useCalendar } from "@/features/calendar/use-calendar";
 import type { CalendarEntry } from "@/types/media";
-import { usePreferences } from "@/hooks/use-local-media";
-import { notificationService } from "@/services/notification-service";
+import { usePreferences } from "@/features/preferences/use-preferences";
+import { notificationService } from "@/features/desktop/notification-service";
 
 export function CalendarPage() {
   const { t } = useTranslation();

@@ -1,6 +1,6 @@
 import { Calendar, Check, Clock4, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { usePreferences } from "@/hooks/use-local-media";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatDate, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
