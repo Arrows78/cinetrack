@@ -13,7 +13,7 @@ export function useProfiles() {
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ["local"] }),
-        client.invalidateQueries({ queryKey: ["watch-tonight"] }),
+        client.invalidateQueries({ queryKey: queryKeys.local.watchTonight }),
       ]);
     },
   });

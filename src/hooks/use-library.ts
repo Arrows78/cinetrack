@@ -20,7 +20,7 @@ export function useLibraryItem(media: MediaSummary) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.library }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
-        queryClient.invalidateQueries({ queryKey: ["watch-tonight"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight }),
       ]);
     },
   });
@@ -31,7 +31,7 @@ export function useLibraryItem(media: MediaSummary) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.library }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
-        queryClient.invalidateQueries({ queryKey: ["watch-tonight"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight }),
       ]);
     },
   });

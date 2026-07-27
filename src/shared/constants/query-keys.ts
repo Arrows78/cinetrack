@@ -38,5 +38,6 @@ export const queryKeys = {
     customList: (listId: string) => ["local", "customLists", listId] as const,
     calendar: ["local", "calendar"] as const,
     availabilityAlerts: ["local", "availabilityAlerts"] as const,
+    watchTonight: ["watch-tonight"] as const,
   },
 };

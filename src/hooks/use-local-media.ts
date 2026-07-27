@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { historyRepository } from "@/services/local/history-repository";
 import { preferencesRepository } from "@/services/local/preferences-repository";
 import { progressRepository } from "@/services/local/progress-repository";
@@ -23,7 +23,7 @@ export function usePreferences() {
       if (variables.key === "activeProfileId") {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["local"] }),
-          queryClient.invalidateQueries({ queryKey: ["watch-tonight"] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight }),
         ]);
       }
 
@@ -122,6 +122,16 @@ export function useMovieSeen(movieId: number) {
   };
 }
 
+function invalidateEpisodeQueries(queryClient: QueryClient, seriesId: number) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.episodeProgress(seriesId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
+  ]);
+}
+
 export function useEpisodeProgress(seriesId: number) {
   const queryClient = useQueryClient();
 
@@ -141,17 +151,7 @@ export function useEpisodeProgress(seriesId: number) {
       episode: Episode;
       watched: boolean;
     }) => progressRepository.toggleEpisodeSeen(series, episode, watched),
-    onSuccess: async (_, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.local.episodeProgress(variables.series.id),
-        }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
-      ]);
-    },
+    onSuccess: (_, variables) => invalidateEpisodeQueries(queryClient, variables.series.id),
   });
 
   const seasonMutation = useMutation({
@@ -164,17 +164,7 @@ export function useEpisodeProgress(seriesId: number) {
       season: Season;
       watched: boolean;
     }) => progressRepository.markSeason(series, season, watched),
-    onSuccess: async (_, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.local.episodeProgress(variables.series.id),
-        }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
-      ]);
-    },
+    onSuccess: (_, variables) => invalidateEpisodeQueries(queryClient, variables.series.id),
   });
 
   const seriesMutation = useMutation({
@@ -187,17 +177,7 @@ export function useEpisodeProgress(seriesId: number) {
       seasons: Season[];
       watched: boolean;
     }) => progressRepository.markSeries(series, seasons, watched),
-    onSuccess: async (_, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.local.episodeProgress(variables.series.id),
-        }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
-      ]);
-    },
+    onSuccess: (_, variables) => invalidateEpisodeQueries(queryClient, variables.series.id),
   });
 
   return {
