@@ -6,10 +6,6 @@ import { tokenVault } from "@/features/desktop/token-vault";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-type DesktopTransport = "native" | "webview";
-
-let desktopTransport: DesktopTransport = "native";
-
 export class ApiConfigurationError extends Error {
   constructor(message: string) {
     super(message);
@@ -126,40 +122,14 @@ export async function tmdbFetch<T>(path: string, params?: Record<string, string 
   }
 
   try {
-    if (desktopTransport === "webview") {
-      return await fetchFromWebview<T>(path, cleanParams, bearer);
-    }
-
     return await fetchFromNative<T>(path, cleanParams, bearer);
   } catch (error) {
     const nativeError = asTmdbError(error);
 
     if (isAuthenticationError(nativeError)) {
       tokenVault.lock();
-      throw nativeError;
     }
 
-    if (nativeError.status !== undefined || desktopTransport === "webview") {
-      throw nativeError;
-    }
-
-    console.warn(`[TMDB] Le transport Rust a échoué pour ${path}; bascule vers fetch dans la WebView.`, nativeError);
-
-    desktopTransport = "webview";
-
-    try {
-      return await fetchFromWebview<T>(path, cleanParams, bearer);
-    } catch (fallbackError) {
-      const webviewError = asTmdbError(fallbackError);
-
-      if (isAuthenticationError(webviewError)) {
-        tokenVault.lock();
-      }
-
-      throw new TmdbRequestError(
-        `La connexion TMDB a échoué via le backend desktop (${nativeError.message}) puis via la WebView (${webviewError.message}).`,
-        webviewError.status
-      );
-    }
+    throw nativeError;
   }
 }
