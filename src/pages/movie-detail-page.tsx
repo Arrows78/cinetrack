@@ -36,7 +36,7 @@ export function MovieDetailPage() {
           <SeenToggle
             seen={Boolean(seenQuery.data)}
             disabled={seenQuery.isSaving}
-            onToggle={() => seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
+            onToggle={() => void seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
             celebrateOnSeen
           />
         }

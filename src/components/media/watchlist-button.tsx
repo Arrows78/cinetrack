@@ -30,7 +30,7 @@ export function WatchlistButton({ media }: { media: MediaSummary }) {
   };
 
   return (
-    <Button variant={isInWatchlist ? "secondary" : "default"} onClick={toggle} disabled={isMutating}>
+    <Button variant={isInWatchlist ? "secondary" : "default"} onClick={() => void toggle()} disabled={isMutating}>
       {isInWatchlist ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
       {isInWatchlist ? t("media.inWatchlist") : t("media.addToWatchlist")}
     </Button>

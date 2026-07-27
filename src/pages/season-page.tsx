@@ -36,7 +36,7 @@ export function SeasonPage() {
           <SeenToggle
             seen={allWatched}
             disabled={progressQuery.isSaving}
-            onToggle={() => progressQuery.markSeasonSeen({ series, season, watched: !allWatched })}
+            onToggle={() => void progressQuery.markSeasonSeen({ series, season, watched: !allWatched })}
             celebrateOnSeen
           />
         }
@@ -53,7 +53,7 @@ export function SeasonPage() {
               key={episode.id}
               episode={{ ...episode, watched: watchedSet.has(episode.id) }}
               onToggleSeen={() =>
-                progressQuery.toggleEpisodeSeen({
+                void progressQuery.toggleEpisodeSeen({
                   series,
                   episode,
                   watched: !watchedSet.has(episode.id),

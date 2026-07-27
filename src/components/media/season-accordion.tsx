@@ -133,7 +133,7 @@ export function SeasonAccordion({
                     size="sm"
                     onClick={() => {
                       const newWatched = pct !== 100;
-                      onToggleSeason(season, newWatched);
+                      void onToggleSeason(season, newWatched);
                       if (newWatched && pct < 100) setTimeout(celebrate, 300);
                     }}
                     disabled={isSaving}
@@ -156,7 +156,7 @@ export function SeasonAccordion({
                         episode={{ ...episode, watched: isWatched }}
                         disabled={isSaving}
                         isLastUnwatched={isLastUnwatched}
-                        onToggleSeen={() => handleToggleEpisode(season, episode, !isWatched)}
+                        onToggleSeen={() => void handleToggleEpisode(season, episode, !isWatched)}
                       />
                     );
                   })}

@@ -49,7 +49,7 @@ export function SeriesDetailPage() {
       <MediaDetailsHero
         media={series}
         actions={<><WatchlistButton media={series} /><AvailabilityAlertButton media={series} /></>}
-        extra={<SeenToggle seen={progress.completed} disabled={progressQuery.isSaving || !allSeasonsLoaded} onToggle={() => progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })} celebrateOnSeen />}
+        extra={<SeenToggle seen={progress.completed} disabled={progressQuery.isSaving || !allSeasonsLoaded} onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })} celebrateOnSeen />}
       />
       <LibraryEditor media={series} />
       <AddToListButton media={series} />

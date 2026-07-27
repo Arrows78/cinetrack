@@ -33,7 +33,7 @@ export function AppShell() {
         )}
       >
         <aside className="surface hidden h-[100dvh] sticky top-0 overflow-hidden rounded-[32px] p-3 lg:block">
-          <SidebarNav collapsed={sidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
+          <SidebarNav collapsed={sidebarCollapsed} onToggleCollapse={() => void handleToggleSidebar()} />
         </aside>
 
         <div className="min-w-0">

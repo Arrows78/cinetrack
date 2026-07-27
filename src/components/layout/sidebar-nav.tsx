@@ -152,7 +152,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
               <button
                 key={value}
                 type="button"
-                onClick={() => updatePreference({ key: "theme", value })}
+                onClick={() => void updatePreference({ key: "theme", value })}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-all duration-200",
                   activeTheme === value
@@ -176,7 +176,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
                   "h-9 w-full rounded-xl",
                   activeTheme === value && "bg-primary/15 text-primary shadow-glow"
                 )}
-                onClick={() => updatePreference({ key: "theme", value })}
+                onClick={() => void updatePreference({ key: "theme", value })}
               >
                 <Icon className="h-4 w-4" />
               </Button>

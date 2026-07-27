@@ -5,7 +5,7 @@ const BRAND_COLORS = ["#667eea", "#a78bfa", "#f093fb", "#4facfe", "#43e97b", "#f
 export function useConfetti() {
   /** Small burst from the center — for a single episode watched */
   const burst = (originX = 0.5, originY = 0.6) => {
-    confetti({
+    void confetti({
       particleCount: 60,
       spread: 55,
       origin: { x: originX, y: originY },
@@ -18,7 +18,7 @@ export function useConfetti() {
   /** Big celebration — season or movie complete */
   const celebrate = () => {
     const fire = (angle: number, originX: number) => {
-      confetti({
+      void confetti({
         particleCount: 80,
         angle,
         spread: 60,
@@ -31,7 +31,7 @@ export function useConfetti() {
     fire(60, 0.1);
     fire(120, 0.9);
     setTimeout(() => {
-      confetti({
+      void confetti({
         particleCount: 50,
         spread: 80,
         origin: { x: 0.5, y: 0.55 },

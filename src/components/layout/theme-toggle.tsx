@@ -32,7 +32,7 @@ export function ThemeToggle() {
                 ? "bg-primary/15 text-primary shadow-glow"
                 : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
             )}
-            onClick={() => updatePreference({ key: "theme", value: option.value })}
+            onClick={() => void updatePreference({ key: "theme", value: option.value })}
           >
             <Icon className="h-4 w-4" />
             <span className="text-xs">{t(option.labelKey)}</span>

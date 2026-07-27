@@ -347,7 +347,7 @@ export function AuthScreen() {
           ) : null}
 
           {step === "email" ? (
-            <form onSubmit={handleEmailSubmit}>
+            <form onSubmit={(event) => void handleEmailSubmit(event)}>
               <button
                 type="button"
                 onClick={() => {
@@ -407,7 +407,7 @@ export function AuthScreen() {
           ) : null}
 
           {step === "otp" ? (
-            <form onSubmit={handleOtpSubmit}>
+            <form onSubmit={(event) => void handleOtpSubmit(event)}>
               <button
                 type="button"
                 onClick={() => {

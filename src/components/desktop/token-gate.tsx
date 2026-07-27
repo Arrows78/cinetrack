@@ -29,7 +29,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
 
   return (
     <main className="grid min-h-screen place-items-center bg-background p-6">
-      <form onSubmit={submit} className="w-full max-w-lg rounded-[32px] border border-border bg-card p-7 shadow-2xl">
+      <form onSubmit={(event) => void submit(event)} className="w-full max-w-lg rounded-[32px] border border-border bg-card p-7 shadow-2xl">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><LockKeyhole className="size-6" /></div>
         <h1 className="mt-5 font-display text-3xl font-bold">{t("tokenGate.title")}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("tokenGate.description")}</p>
