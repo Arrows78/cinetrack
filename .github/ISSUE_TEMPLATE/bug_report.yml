@@ -1,0 +1,59 @@
+name: Bug report
+description: Something in CineTrack isn't working as expected.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: false
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS (desktop app)
+        - Windows (desktop app)
+        - Linux (desktop app)
+        - Web preview (pnpm dev)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: CineTrack version
+      description: Shown in Settings, or the app.json/tauri.conf.json version if running from source.
+      placeholder: "0.3.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console/terminal output
+      description: Any relevant output from the app's devtools console or the terminal running `pnpm tauri dev`.
+      render: shell
+    validations:
+      required: false
