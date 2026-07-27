@@ -6,6 +6,13 @@ export interface Migration {
   statements: readonly string[];
 }
 
+// `watchlist`, `seen_movies`, `tracked_series`, and `episode_progress` (this
+// migration) are superseded by their `profile_*` / `library_items`
+// equivalents from migration 3 onward and are no longer written to by any
+// repository. They stay in the schema, unused, purely so migration 3's
+// `INSERT OR IGNORE ... SELECT ... FROM <legacy table>` backfill keeps
+// working against databases created before profiles existed — dropping them
+// would break that one-time migration for existing installs.
 export const migrations: readonly Migration[] = [
   {
     version: 1,
