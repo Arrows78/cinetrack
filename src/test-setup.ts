@@ -1,3 +1,5 @@
+import "@testing-library/jest-dom/vitest";
+
 // Recent Node.js versions ship an experimental global `localStorage` that
 // conflicts with jsdom's own per-window implementation, leaving
 // `window.localStorage` undefined in tests. Install a minimal spec-compliant

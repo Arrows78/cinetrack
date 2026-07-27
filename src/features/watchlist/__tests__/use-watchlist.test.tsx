@@ -1,0 +1,62 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
+import { useIsInWatchlist, useWatchlist } from "../use-watchlist";
+import type { WatchlistItem } from "@/types/media";
+
+function createWrapper() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return function Wrapper({ children }: PropsWithChildren) {
+    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  };
+}
+
+const item: WatchlistItem = {
+  mediaId: 7,
+  mediaType: "movie",
+  title: "Test Movie",
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
+
+describe("useWatchlist", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("adding to the watchlist is reflected by useIsInWatchlist without a manual refetch", async () => {
+    const wrapper = createWrapper();
+    const { result: watchlist } = renderHook(() => useWatchlist(), { wrapper });
+    const { result: isInWatchlist } = renderHook(() => useIsInWatchlist(7, "movie"), { wrapper });
+
+    await waitFor(() => expect(watchlist.current.isLoading).toBe(false));
+    await waitFor(() => expect(isInWatchlist.current.data).toBe(false));
+
+    await act(async () => {
+      await watchlist.current.addToWatchlist(item);
+    });
+
+    await waitFor(() => expect(isInWatchlist.current.data).toBe(true));
+    expect(watchlist.current.data).toHaveLength(1);
+  });
+
+  it("removing from the watchlist is reflected by useIsInWatchlist", async () => {
+    const wrapper = createWrapper();
+    const { result: watchlist } = renderHook(() => useWatchlist(), { wrapper });
+    const { result: isInWatchlist } = renderHook(() => useIsInWatchlist(7, "movie"), { wrapper });
+
+    await waitFor(() => expect(watchlist.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await watchlist.current.addToWatchlist(item);
+    });
+    await waitFor(() => expect(isInWatchlist.current.data).toBe(true));
+
+    await act(async () => {
+      await watchlist.current.removeFromWatchlist({ mediaId: 7, mediaType: "movie" });
+    });
+
+    await waitFor(() => expect(isInWatchlist.current.data).toBe(false));
+    expect(watchlist.current.data).toHaveLength(0);
+  });
+});
