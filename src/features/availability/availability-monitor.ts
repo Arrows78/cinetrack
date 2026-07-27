@@ -30,8 +30,9 @@ export const availabilityMonitor = {
           providerIds: current,
           checkedAt: new Date().toISOString(),
         });
-      } catch {
+      } catch (error) {
         // Continue checking the remaining alerts when one provider request fails.
+        console.warn(`[availability] Check failed for ${alert.mediaType} ${alert.mediaId}`, error);
       }
     }
 

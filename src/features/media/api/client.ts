@@ -51,6 +51,11 @@ const asTmdbError = (error: unknown): TmdbRequestError => {
 const isAuthenticationError = (error: TmdbRequestError): boolean =>
   error.status === 401 || error.status === 403;
 
+// Matches the 20s total timeout the Rust native transport already enforces
+// (see src-tauri/src/lib.rs), so a hung TMDB request fails the same way
+// regardless of which transport handled it.
+const WEBVIEW_REQUEST_TIMEOUT_MS = 20_000;
+
 const fetchFromWebview = async <T>(
   path: string,
   params: Record<string, string>,
@@ -62,6 +67,9 @@ const fetchFromWebview = async <T>(
     url.searchParams.set(key, value);
   });
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WEBVIEW_REQUEST_TIMEOUT_MS);
+
   let response: Response;
 
   try {
@@ -70,11 +78,20 @@ const fetchFromWebview = async <T>(
         accept: "application/json",
         Authorization: `Bearer ${bearer}`,
       },
+      signal: controller.signal,
     });
   } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new TmdbRequestError(
+        `TMDB n'a pas répondu dans le délai imparti (${WEBVIEW_REQUEST_TIMEOUT_MS / 1000}s) pour ${path}.`,
+      );
+    }
+
     throw new TmdbRequestError(
       `Impossible de joindre TMDB depuis la WebView : ${errorMessage(error)}`,
     );
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!response.ok) {
