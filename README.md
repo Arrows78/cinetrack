@@ -208,7 +208,11 @@ cinetrack/
 │   └── types/                   # Domain models
 ├── src-tauri/
 │   ├── capabilities/           # Tauri permissions
-│   ├── src/                    # Rust entry points
+│   ├── src/
+│   │   ├── commands/           # Tauri commands (TMDB proxy, updater config check)
+│   │   ├── tray.rs              # System tray icon and menu
+│   │   ├── lib.rs                # Plugin registration and app bootstrap
+│   │   └── main.rs
 │   ├── Cargo.toml              # Rust dependencies
 │   └── tauri.conf.json         # Desktop configuration and bundle settings
 ├── .env.example
@@ -220,7 +224,7 @@ cinetrack/
 
 CineTrack does not require a user account or an application server to save personal data.
 
-In desktop mode, the active SQLite schema (see `src/db/migrations.ts`) includes, among others:
+In desktop mode, the active SQLite schema (see `src/db/migrations/`, one file per version) includes, among others:
 
 - `profiles`, `preferences`;
 - `profile_watchlist`, `library_items`, `viewing_events`, `profile_episode_progress`, `profile_tracked_series`;
