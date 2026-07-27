@@ -315,7 +315,8 @@
     "description": "Export JSON complet, import et restauration locale.",
     "export": "Exporter",
     "import": "Importer",
-    "exported": "Sauvegarde exportée."
+    "exported": "Sauvegarde exportée.",
+    "importFailed": "Échec de l'import : le fichier de sauvegarde est invalide ou corrompu."
   },
   "desktop": {
     "operationComplete": "Opération terminée.",

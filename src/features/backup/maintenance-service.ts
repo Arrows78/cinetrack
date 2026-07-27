@@ -1,6 +1,6 @@
 import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { browserStore, getDatabase } from "@/db/client";
-import { portableData, type CineTrackBackup } from "@/features/backup/portable-data";
+import { portableData } from "@/features/backup/portable-data";
 import { isTauriApp } from "@/shared/lib/platform";
 
 const BACKUP_FILE = "backups/latest.json";
@@ -41,6 +41,6 @@ export const maintenanceService = {
       raw = await readTextFile(BACKUP_FILE, { baseDir: BaseDirectory.AppData });
     } else raw = window.localStorage.getItem("cinetrack.latest-backup");
     if (!raw) throw new Error("Aucune sauvegarde automatique trouvée.");
-    await portableData.import(JSON.parse(raw) as CineTrackBackup);
+    await portableData.import(JSON.parse(raw));
   },
 };

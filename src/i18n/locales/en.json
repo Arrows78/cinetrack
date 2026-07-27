@@ -317,7 +317,8 @@
     "description": "Full JSON export, import and local restoration.",
     "export": "Export",
     "import": "Import",
-    "exported": "Backup exported."
+    "exported": "Backup exported.",
+    "importFailed": "Import failed: the backup file is invalid or corrupted."
   },
   "desktop": {
     "operationComplete": "Operation complete.",

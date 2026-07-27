@@ -2,7 +2,7 @@ import { z } from "zod";
 import { browserStore, getDatabase } from "@/db/client";
 import type { UserPreferences } from "@/types/media";
 
-const preferencesSchema = z.object({
+export const preferencesSchema = z.object({
   theme: z.enum(["dark", "light"]).default("dark"),
   accentColor: z.enum(["violet", "blue", "teal", "green", "amber", "orange", "rose", "red"]).default("violet"),
   language: z.enum(["en", "fr"]).default("en"),

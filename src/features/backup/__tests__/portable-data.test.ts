@@ -49,6 +49,32 @@ describe("portableData (browser fallback)", () => {
     ).rejects.toThrow();
   });
 
+  it("rejects a backup with wrong-typed fields inside an array item", async () => {
+    await expect(
+      portableData.import({
+        format: "cinetrack-backup",
+        version: 1,
+        exportedAt: "",
+        data: {
+          watchlist: [{ mediaId: "not-a-number", mediaType: "movie", title: "x", createdAt: "2026-01-01" }],
+        },
+      } as never)
+    ).rejects.toThrow();
+  });
+
+  it("rejects a backup with an invalid enum value", async () => {
+    await expect(
+      portableData.import({
+        format: "cinetrack-backup",
+        version: 1,
+        exportedAt: "",
+        data: {
+          watchlist: [{ mediaId: 1, mediaType: "documentary", title: "x", createdAt: "2026-01-01" }],
+        },
+      } as never)
+    ).rejects.toThrow();
+  });
+
   it("falls back to the default profile if the active profile referenced in the backup is missing", async () => {
     const backup = await portableData
       .import({

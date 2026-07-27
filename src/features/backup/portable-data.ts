@@ -1,5 +1,6 @@
 import { browserStore, getDatabase, type BrowserStore } from "@/db/client";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { cineTrackBackupSchema } from "./backup-schema";
 
 export interface CineTrackBackup {
   format: "cinetrack-backup";
@@ -27,37 +28,21 @@ const emptyData = (): BrowserStore => ({
 
 const mediaType = (value: unknown) => (value === "movie" ? ("movie" as const) : ("series" as const));
 
-const arrayFields = [
-  "watchlist",
-  "seenMovies",
-  "episodeProgress",
-  "trackedSeries",
-  "history",
-  "library",
-  "viewingEvents",
-  "profiles",
-  "customLists",
-  "customListItems",
-  "availabilitySnapshots",
-  "availabilityAlerts",
-] as const;
-
-function normalizeData(value: unknown): BrowserStore {
-  if (!value || typeof value !== "object") throw new Error("Sauvegarde invalide : données manquantes.");
-  const raw = value as Partial<BrowserStore>;
-  for (const field of arrayFields) {
-    if (raw[field] !== undefined && !Array.isArray(raw[field])) {
-      throw new Error(`Sauvegarde invalide : le champ ${field} doit être une liste.`);
-    }
-  }
-  if (
-    raw.preferences !== undefined &&
-    (!raw.preferences || typeof raw.preferences !== "object" || Array.isArray(raw.preferences))
-  ) {
-    throw new Error("Sauvegarde invalide : préférences illisibles.");
+/**
+ * Validates and normalizes an untrusted value into a full CineTrackBackup.
+ * Field-by-field shape checking (see backup-schema.ts) — a backup with e.g.
+ * `watchlist: [{ mediaId: "not-a-number" }]` is rejected instead of being
+ * written into SQLite as-is. Throws with a readable message on failure.
+ */
+function parseBackup(value: unknown): CineTrackBackup {
+  const result = cineTrackBackupSchema.safeParse(value);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    const path = issue?.path.length ? ` (${issue.path.join(".")})` : "";
+    throw new Error(`Sauvegarde invalide : ${issue?.message ?? "format non reconnu"}${path}.`);
   }
 
-  const data = { ...emptyData(), ...raw } as BrowserStore;
+  const data = { ...emptyData(), ...result.data.data } as BrowserStore;
   if (!data.profiles.some((profile) => profile.id === "default")) {
     data.profiles.unshift({ id: "default", name: "Principal", createdAt: new Date().toISOString() });
   }
@@ -66,7 +51,8 @@ function normalizeData(value: unknown): BrowserStore {
   if (!data.profiles.some((profile) => profile.id === activeProfileId)) {
     data.preferences = { ...data.preferences, activeProfileId: "default" };
   }
-  return data;
+
+  return { format: "cinetrack-backup", version: 1, exportedAt: result.data.exportedAt, data };
 }
 
 export const portableData = {
@@ -240,10 +226,8 @@ export const portableData = {
     return { format: "cinetrack-backup", version: 1, exportedAt: new Date().toISOString(), data };
   },
 
-  async import(backup: CineTrackBackup): Promise<void> {
-    if (!backup || backup.format !== "cinetrack-backup" || backup.version !== 1)
-      throw new Error("Format de sauvegarde non pris en charge.");
-    const data = normalizeData(backup.data);
+  async import(backup: unknown): Promise<void> {
+    const { data } = parseBackup(backup);
     const db = await getDatabase();
     if (!db) {
       browserStore.write(data);

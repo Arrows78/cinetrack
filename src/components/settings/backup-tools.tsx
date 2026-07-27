@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
-import { portableData, type CineTrackBackup } from "@/features/backup/portable-data";
+import { portableData } from "@/features/backup/portable-data";
 
 export function BackupTools() {
   const { t } = useTranslation();
@@ -24,10 +24,14 @@ export function BackupTools() {
 
   const importBackup = async (file?: File) => {
     if (!file) return;
-    const parsed = JSON.parse(await file.text()) as CineTrackBackup;
-    await portableData.import(parsed);
-    window.localStorage.removeItem(QUERY_CACHE_KEY);
-    window.location.reload();
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      await portableData.import(parsed);
+      window.localStorage.removeItem(QUERY_CACHE_KEY);
+      window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t("backup.importFailed"));
+    }
   };
 
   return (
