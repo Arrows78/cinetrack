@@ -21,7 +21,29 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     coverage: {
       reporter: ["text", "html"],
+      // Kept broad (rather than scoped to the tested files below) so
+      // `pnpm test:coverage` still surfaces the real, large gap on
+      // components/pages/hooks — narrowing `include` would hide it.
       include: ["src/**/*.{ts,tsx}"],
+      // Global thresholds aren't meaningful yet (~10% overall, since most
+      // UI has no tests at all — see the coverage report). Only enforce a
+      // floor on the specific files that already have characterization
+      // tests, so a regression there fails CI without pretending the rest
+      // of the app is covered. Add a file here once you give it real tests.
+      thresholds: {
+        "src/db/migrations/001-initial-schema.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        "src/db/migrations/002-library-and-events.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        "src/db/migrations/003-profiles-and-lists.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        "src/db/migrations/004-availability.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        "src/features/backup/portable-data.ts": { statements: 30, branches: 60, functions: 60, lines: 30 },
+        "src/features/collections/profile-repository.ts": { statements: 45, branches: 45, functions: 80, lines: 45 },
+        "src/features/history/history-repository.ts": { statements: 35, branches: 25, functions: 60, lines: 35 },
+        "src/features/library/library-repository.ts": { statements: 45, branches: 50, functions: 55, lines: 45 },
+        "src/features/preferences/preferences-repository.ts": { statements: 65, branches: 55, functions: 90, lines: 65 },
+        "src/features/progress/progress-repository.ts": { statements: 45, branches: 50, functions: 65, lines: 45 },
+        "src/features/stats/stats-repository.ts": { statements: 45, branches: 55, functions: 35, lines: 45 },
+        "src/features/watchlist/watchlist-repository.ts": { statements: 45, branches: 45, functions: 75, lines: 45 },
+      },
     },
   },
 });
