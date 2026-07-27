@@ -136,7 +136,11 @@ The application expects the TMDB **API Read Access Token**, which is sent as a B
 
 > **Security note:** `VITE_TMDB_API_TOKEN` is inlined by Vite into the frontend bundle at build time. Keep it set in `.env` only for local/web development. Never set it when producing a desktop bundle for distribution (`pnpm tauri build`) — a value present at that time would ship in cleartext inside the built binary, bypassing the Stronghold vault. Distributed builds should rely solely on the in-app token vault (Settings → TMDB) or leave the variable unset.
 
-### 4. Start the desktop application
+### 4. (Optional) Configure Supabase account sync
+
+CineTrack works fully offline with `VITE_AUTH_REQUIRED=false` (the default). To enable account sign-in (email OTP or social OAuth), follow [`docs/auth.md`](docs/auth.md) for the full Supabase project setup, redirect URLs, and provider configuration.
+
+### 5. Start the desktop application
 
 ```bash
 pnpm tauri dev
