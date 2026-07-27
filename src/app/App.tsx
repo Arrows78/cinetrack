@@ -8,6 +8,7 @@ import { CommandPalette } from "@/components/desktop/command-palette";
 import { TokenGate } from "@/components/desktop/token-gate";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
+import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate";
 import { availabilityMonitor } from "@/features/availability/availability-monitor";
 import { calendarService } from "@/features/calendar/calendar-service";
 import { desktopService } from "@/features/desktop/desktop-service";
@@ -86,11 +87,13 @@ export function App() {
     >
       <ThemeController />
 
-      <TokenGate>
-        <AppRouter />
-        <CommandPalette />
-        <OfflineIndicator />
-      </TokenGate>
+      <MotionPreferenceGate>
+        <TokenGate>
+          <AppRouter />
+          <CommandPalette />
+          <OfflineIndicator />
+        </TokenGate>
+      </MotionPreferenceGate>
 
       {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /> : null}
     </PersistQueryClientProvider>

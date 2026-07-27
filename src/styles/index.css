@@ -101,6 +101,53 @@
   --ring: 252 80% 42%; /* matches --primary */
 }
 
+/*
+ * Reduced motion (Settings → "Reduce animations", toggled by ThemeController
+ * as the .reduce-motion class on <html>).
+ *
+ * This only covers CSS-driven animations/transitions (the .animate-in family
+ * above, the body::after "breathe" keyframe, accordion open/close). It does
+ * NOT cover Framer Motion — that library drives its own transforms via JS,
+ * not native CSS transitions, so a CSS override here can't reach it. Framer
+ * Motion is disabled separately via <MotionConfig reducedMotion="always">
+ * in MotionPreferenceGate, driven by the same preference.
+ *
+ * Also honors the OS-level prefers-reduced-motion media query, independent
+ * of the app's own setting.
+ */
+.reduce-motion,
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Compact mode (Settings → "Compact mode", toggled as .compact on <html>).
+ * Tailwind's default spacing/font-size scale is rem-based, so scaling the
+ * root font-size proportionally tightens padding, gaps, text, and rem-sized
+ * icons across the whole app without touching every component.
+ */
+.compact {
+  font-size: 90%;
+}
+
 @layer base {
   * {
     @apply border-border;

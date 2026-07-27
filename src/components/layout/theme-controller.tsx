@@ -40,6 +40,12 @@ export function ThemeController() {
     body.classList.toggle("light", theme === "light");
     body.classList.toggle("dark", theme !== "light");
 
+    // — Reduced motion / compact mode (see styles/index.css for the rules
+    // these classes key off). These preferences were previously stored and
+    // toggleable in Settings but never actually read anywhere else.
+    root.classList.toggle("reduce-motion", preferences?.reduceMotion ?? false);
+    root.classList.toggle("compact", preferences?.compactMode ?? false);
+
     // — Primary color CSS variables
     const preset = COLOR_PRESETS[accent];
     const primaryHsl = theme === "dark" ? preset.dark : preset.light;
@@ -58,7 +64,7 @@ export function ThemeController() {
     const primaryFg = theme === "dark" ? "225 25% 10%" : "0 0% 98%";
 
     applyAccentVars(primaryHsl, primaryFg);
-  }, [preferences?.theme, preferences?.accentColor]);
+  }, [preferences?.theme, preferences?.accentColor, preferences?.reduceMotion, preferences?.compactMode]);
 
   return null;
 }
