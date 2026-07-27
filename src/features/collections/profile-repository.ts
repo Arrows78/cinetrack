@@ -89,7 +89,7 @@ export const profileRepository = {
       await db.execute("DELETE FROM library_items WHERE profile_id = $1", [profileId]);
       await db.execute("DELETE FROM viewing_events WHERE profile_id = $1", [profileId]);
       await db.execute("DELETE FROM availability_alerts WHERE profile_id = $1", [profileId]);
-      await db.execute("DELETE FROM activity_log WHERE json_extract(metadata, '$.profileId') = $1", [profileId]);
+      await db.execute("DELETE FROM activity_log WHERE profile_id = $1", [profileId]);
       await db.execute("DELETE FROM profiles WHERE id = $1", [profileId]);
       await db.execute("COMMIT");
     } catch (error) {

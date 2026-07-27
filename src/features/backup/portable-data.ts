@@ -318,8 +318,12 @@ export const portableData = {
         ]);
       }
       for (const item of data.history) {
+        // profile_id mirrors metadata.profileId (see migration 005) — must
+        // stay in sync here or imported history silently drops out of
+        // historyRepository.list()'s indexed profile_id query.
+        const historyProfileId = String(item.metadata?.profileId ?? "default");
         await db.execute(
-          "INSERT INTO activity_log (id,media_id,media_type,title,action,season_number,episode_number,episode_title,metadata,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+          "INSERT INTO activity_log (id,media_id,media_type,title,action,season_number,episode_number,episode_title,metadata,timestamp,profile_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
           [
             item.id,
             item.mediaId,
@@ -331,6 +335,7 @@ export const portableData = {
             item.episodeTitle ?? null,
             item.metadata ? JSON.stringify(item.metadata) : null,
             item.timestamp,
+            historyProfileId,
           ]
         );
       }

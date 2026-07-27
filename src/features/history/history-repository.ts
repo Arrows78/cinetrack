@@ -26,11 +26,7 @@ export const historyRepository = {
     }
 
     const rows = await db.select<Array<Record<string, unknown>>>(
-      `SELECT * FROM activity_log
-       WHERE json_extract(COALESCE(metadata, '{}'), '$.profileId') = $1
-          OR ($1 = 'default' AND json_extract(COALESCE(metadata, '{}'), '$.profileId') IS NULL)
-       ORDER BY timestamp DESC
-       LIMIT $2`,
+      `SELECT * FROM activity_log WHERE profile_id = $1 ORDER BY timestamp DESC LIMIT $2`,
       [profileId, limit]
     );
     return rows.map((row) => ({
@@ -63,8 +59,8 @@ export const historyRepository = {
 
     await db.execute(
       `INSERT OR REPLACE INTO activity_log
-        (id, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        (id, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp, profile_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         scopedItem.id,
         scopedItem.mediaId,
@@ -76,6 +72,7 @@ export const historyRepository = {
         scopedItem.episodeTitle ?? null,
         JSON.stringify(scopedItem.metadata),
         scopedItem.timestamp,
+        String(profileId),
       ]
     );
   },
