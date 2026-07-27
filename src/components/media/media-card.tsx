@@ -4,8 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
-
-const fallbackPoster = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80";
+import fallbackPoster from "@/assets/poster-placeholder.svg";
 
 function MediaCardInner({ media, index = 0 }: { media: MediaSummary; index?: number }) {
   const { t } = useTranslation();
