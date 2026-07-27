@@ -62,3 +62,6 @@ jobs:
 
       - name: Check Rust application
         run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Test Rust application
+        run: cargo test --manifest-path src-tauri/Cargo.toml

@@ -9,8 +9,16 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    environmentOptions: {
+      jsdom: {
+        // jsdom defaults to the "about:blank" origin, which is opaque and
+        // throws on any localStorage access. Repositories fall back to
+        // localStorage outside of Tauri, so tests need a real origin.
+        url: "http://localhost:1420",
+      },
+    },
     globals: true,
-    setupFiles: [],
+    setupFiles: ["./src/test-setup.ts"],
     coverage: {
       reporter: ["text", "html"],
       include: ["src/**/*.{ts,tsx}"],
