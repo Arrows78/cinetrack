@@ -38,16 +38,11 @@ const setSnapshot = (next: VaultSnapshot): void => {
 };
 
 const decode = (value: Uint8Array | number[]): string =>
-  new TextDecoder().decode(
-    value instanceof Uint8Array ? value : Uint8Array.from(value),
-  );
+  new TextDecoder().decode(value instanceof Uint8Array ? value : Uint8Array.from(value));
 
-const encode = (value: string): number[] =>
-  Array.from(new TextEncoder().encode(value));
+const encode = (value: string): number[] => Array.from(new TextEncoder().encode(value));
 
-async function loadVault(
-  password: string,
-): Promise<{ stronghold: Stronghold; client: Client }> {
+async function loadVault(password: string): Promise<{ stronghold: Stronghold; client: Client }> {
   const vaultPath = `${await appDataDir()}/cinetrack-vault.hold`;
   const stronghold = await Stronghold.load(vaultPath, password);
 

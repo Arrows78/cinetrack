@@ -7,5 +7,13 @@ export function RecommendationsPanel({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const query = useRecommendations(media.mediaType, media.id);
   if (!query.data?.results.length) return null;
-  return <section><SectionHeader title={t("media.similarSuggestions")} subtitle={t("media.becauseWatching", { title: media.title })} /><MediaGrid items={query.data.results.slice(0, 10)} /></section>;
+  return (
+    <section>
+      <SectionHeader
+        title={t("media.similarSuggestions")}
+        subtitle={t("media.becauseWatching", { title: media.title })}
+      />
+      <MediaGrid items={query.data.results.slice(0, 10)} />
+    </section>
+  );
 }

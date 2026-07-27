@@ -14,7 +14,9 @@ export function SeriesPage() {
   if (query.isLoading) return <GridSkeleton />;
   if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
   if (!query.items.length) {
-    return <EmptyState icon={Tv} title={t("series.noSeriesAvailable")} description={t("series.noSeriesAvailableDesc")} />;
+    return (
+      <EmptyState icon={Tv} title={t("series.noSeriesAvailable")} description={t("series.noSeriesAvailableDesc")} />
+    );
   }
 
   return (

@@ -5,9 +5,7 @@ import { AuthProvider } from "@/features/auth/auth-provider";
 export function AuthRoot({ children }: PropsWithChildren) {
   return (
     <AuthProvider>
-      <AuthGate>
-        {children}
-      </AuthGate>
+      <AuthGate>{children}</AuthGate>
     </AuthProvider>
   );
 }

@@ -61,14 +61,17 @@ describe("progressRepository (browser fallback)", () => {
     const ep2 = episode({ id: 2, episodeNumber: 2 });
     const s = season([ep1, ep2]);
 
-    const next = progressRepository.getNextEpisode([s], [
-      { seriesId: 9, episodeId: 1, seasonNumber: 1, episodeNumber: 1, watched: true },
-    ]);
+    const next = progressRepository.getNextEpisode(
+      [s],
+      [{ seriesId: 9, episodeId: 1, seasonNumber: 1, episodeNumber: 1, watched: true }]
+    );
     expect(next?.id).toBe(2);
 
-    const progress = progressRepository.calculateSeriesProgress(9, [s], [
-      { seriesId: 9, episodeId: 1, seasonNumber: 1, episodeNumber: 1, watched: true },
-    ]);
+    const progress = progressRepository.calculateSeriesProgress(
+      9,
+      [s],
+      [{ seriesId: 9, episodeId: 1, seasonNumber: 1, episodeNumber: 1, watched: true }]
+    );
     expect(progress.watchedEpisodes).toBe(1);
     expect(progress.totalEpisodes).toBe(2);
     expect(progress.completed).toBe(false);

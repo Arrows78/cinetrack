@@ -10,9 +10,15 @@ export const imageCache = {
       if (!(await cache.match(url))) await cache.add(url).catch(() => undefined);
       meta[url] = Date.now();
     }
-    const sorted = Object.entries(meta).sort((a,b) => b[1]-a[1]);
-    for (const [url] of sorted.slice(LIMIT)) { await cache.delete(url); delete meta[url]; }
+    const sorted = Object.entries(meta).sort((a, b) => b[1] - a[1]);
+    for (const [url] of sorted.slice(LIMIT)) {
+      await cache.delete(url);
+      delete meta[url];
+    }
     localStorage.setItem(META_KEY, JSON.stringify(meta));
   },
-  async clear() { if ("caches" in window) await caches.delete(CACHE_NAME); localStorage.removeItem(META_KEY); },
+  async clear() {
+    if ("caches" in window) await caches.delete(CACHE_NAME);
+    localStorage.removeItem(META_KEY);
+  },
 };

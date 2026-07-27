@@ -35,9 +35,21 @@ export function BackupTools() {
       <p className="font-semibold">{t("backup.title")}</p>
       <p className="mt-1 text-sm text-muted-foreground">{t("backup.description")}</p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => void exportBackup()}><Download className="mr-2 size-4" />{t("backup.export")}</Button>
-        <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}><Upload className="mr-2 size-4" />{t("backup.import")}</Button>
-        <input ref={inputRef} className="hidden" type="file" accept="application/json,.json" onChange={(event) => void importBackup(event.target.files?.[0])} />
+        <Button type="button" variant="outline" onClick={() => void exportBackup()}>
+          <Download className="mr-2 size-4" />
+          {t("backup.export")}
+        </Button>
+        <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
+          <Upload className="mr-2 size-4" />
+          {t("backup.import")}
+        </Button>
+        <input
+          ref={inputRef}
+          className="hidden"
+          type="file"
+          accept="application/json,.json"
+          onChange={(event) => void importBackup(event.target.files?.[0])}
+        />
       </div>
       {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
     </div>

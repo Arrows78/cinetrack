@@ -5,7 +5,29 @@ import { usePerson } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 export function PersonDetailPage() {
   const { t } = useTranslation();
-  const { personId } = useParams({ from: "/people/$personId" }); const query=usePerson(Number(personId));
+  const { personId } = useParams({ from: "/people/$personId" });
+  const query = usePerson(Number(personId));
   if (!query.data) return <p className="text-muted-foreground">{t("person.loading")}</p>;
-  return <div className="space-y-8"><header className="flex items-end gap-5 rounded-3xl border border-border bg-card/60 p-5"><img className="h-48 w-32 rounded-2xl object-cover" src={buildTmdbImageUrl(query.data.profilePath,"w500") ?? "https://placehold.co/500x750/111827/374151?text=Portrait"} alt={query.data.name}/><div><p className="text-sm text-primary">{query.data.knownForDepartment}</p><h1 className="font-display text-4xl font-bold">{query.data.name}</h1></div></header><section><h2 className="mb-4 font-display text-2xl font-bold">{t("person.knownFilmography")}</h2><MediaGrid items={query.data.knownFor}/></section></div>;
+  return (
+    <div className="space-y-8">
+      <header className="flex items-end gap-5 rounded-3xl border border-border bg-card/60 p-5">
+        <img
+          className="h-48 w-32 rounded-2xl object-cover"
+          src={
+            buildTmdbImageUrl(query.data.profilePath, "w500") ??
+            "https://placehold.co/500x750/111827/374151?text=Portrait"
+          }
+          alt={query.data.name}
+        />
+        <div>
+          <p className="text-sm text-primary">{query.data.knownForDepartment}</p>
+          <h1 className="font-display text-4xl font-bold">{query.data.name}</h1>
+        </div>
+      </header>
+      <section>
+        <h2 className="mb-4 font-display text-2xl font-bold">{t("person.knownFilmography")}</h2>
+        <MediaGrid items={query.data.knownFor} />
+      </section>
+    </div>
+  );
 }

@@ -1,7 +1,26 @@
-import { BarChart3, CalendarDays, Clapperboard, Dices, Film, FolderHeart, History, House, Search, Settings, Tv, Users } from "lucide-react";
+import {
+  BarChart3,
+  CalendarDays,
+  Clapperboard,
+  Dices,
+  Film,
+  FolderHeart,
+  History,
+  House,
+  Search,
+  Settings,
+  Tv,
+  Users,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 export type NavigationCategory = "main" | "settings";
-export interface NavigationItem { label: string; to: string; icon: typeof House; category: NavigationCategory; translationKey: string; }
+export interface NavigationItem {
+  label: string;
+  to: string;
+  icon: typeof House;
+  category: NavigationCategory;
+  translationKey: string;
+}
 export const navigationConfig: NavigationItem[] = [
   { label: "Home", to: "/", icon: House, category: "main", translationKey: "home" },
   { label: "Series", to: "/series", icon: Tv, category: "main", translationKey: "series" },
@@ -17,4 +36,10 @@ export const navigationConfig: NavigationItem[] = [
   { label: "Settings", to: "/settings", icon: Settings, category: "settings", translationKey: "settings" },
 ];
 export const categoryOrder: NavigationCategory[] = ["main", "settings"];
-export const useNavigationItems = () => { const { t } = useTranslation(); return navigationConfig.map((item) => ({ ...item, label: t(`nav.${item.translationKey}`, { defaultValue: item.label }) })) as readonly NavigationItem[]; };
+export const useNavigationItems = () => {
+  const { t } = useTranslation();
+  return navigationConfig.map((item) => ({
+    ...item,
+    label: t(`nav.${item.translationKey}`, { defaultValue: item.label }),
+  })) as readonly NavigationItem[];
+};

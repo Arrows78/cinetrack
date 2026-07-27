@@ -48,10 +48,7 @@ export function App() {
         const check = await maintenanceService.quickCheck();
 
         if (!check.healthy) {
-          window.localStorage.setItem(
-            "cinetrack.maintenance-error",
-            check.detail,
-          );
+          window.localStorage.setItem("cinetrack.maintenance-error", check.detail);
         } else {
           await maintenanceService.createAutomaticBackup();
         }
@@ -59,17 +56,17 @@ export function App() {
         await checkBackgroundNotifications();
       })
       .catch((error: unknown) => {
-        console.warn(
-          "Database initialization fallback engaged:",
-          error,
-        );
+        console.warn("Database initialization fallback engaged:", error);
       });
 
-    const interval = window.setInterval(() => {
-      void checkBackgroundNotifications().catch((error: unknown) => {
-        console.warn("Background notification check failed:", error);
-      });
-    }, 1000 * 60 * 60 * 6);
+    const interval = window.setInterval(
+      () => {
+        void checkBackgroundNotifications().catch((error: unknown) => {
+          console.warn("Background notification check failed:", error);
+        });
+      },
+      1000 * 60 * 60 * 6
+    );
 
     return () => {
       disposed = true;
@@ -95,12 +92,7 @@ export function App() {
         <OfflineIndicator />
       </TokenGate>
 
-      {import.meta.env.DEV ? (
-        <ReactQueryDevtools
-          initialIsOpen={false}
-          buttonPosition="bottom-left"
-        />
-      ) : null}
+      {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /> : null}
     </PersistQueryClientProvider>
   );
 }

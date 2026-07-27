@@ -3,8 +3,7 @@ import { mediaRepository } from "@/features/media/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { MediaType, PageResult } from "@/types/media";
 
-const nextPage = <T>(lastPage: PageResult<T>) =>
-  lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined;
+const nextPage = <T>(lastPage: PageResult<T>) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined);
 
 export function useHomeFeed() {
   return useQuery({

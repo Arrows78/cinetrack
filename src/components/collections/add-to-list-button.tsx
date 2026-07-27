@@ -22,7 +22,11 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
         onChange={(event) => setSelected(event.target.value)}
       >
         <option value="">{t("collections.addToAList")}</option>
-        {lists.data.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}
+        {lists.data.map((list) => (
+          <option key={list.id} value={list.id}>
+            {list.name}
+          </option>
+        ))}
       </select>
       <Button
         type="button"

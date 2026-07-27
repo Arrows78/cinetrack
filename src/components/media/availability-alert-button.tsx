@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Bell,BellOff } from "lucide-react";
+import { Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -19,7 +19,12 @@ export function AvailabilityAlertButton({ media }: { media: MediaSummary }) {
   };
 
   return (
-    <Button type="button" variant={alert.data ? "secondary" : "outline"} disabled={alert.isSaving} onClick={() => void toggle()}>
+    <Button
+      type="button"
+      variant={alert.data ? "secondary" : "outline"}
+      disabled={alert.isSaving}
+      onClick={() => void toggle()}
+    >
       {alert.data ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
       {alert.data ? t("media.disableAlert") : t("media.availabilityAlert")}
     </Button>

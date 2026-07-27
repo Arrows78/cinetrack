@@ -60,9 +60,13 @@ export const libraryRepository = {
     const profile = profileId ?? (await activeProfileId());
     const db = await getDatabase();
     if (!db) {
-      return browserStore.read().library.find(
-        (item) => item.profileId === profile && item.mediaId === mediaId && item.mediaType === mediaType
-      ) ?? null;
+      return (
+        browserStore
+          .read()
+          .library.find(
+            (item) => item.profileId === profile && item.mediaId === mediaId && item.mediaType === mediaType
+          ) ?? null
+      );
     }
     const rows = await db.select<Array<Record<string, unknown>>>(
       "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
@@ -88,11 +92,11 @@ export const libraryRepository = {
       genres: media.genres,
       status,
       favourite: patch.favourite ?? current?.favourite ?? false,
-      userRating: patch.userRating !== undefined ? patch.userRating : current?.userRating ?? null,
-      notes: patch.notes !== undefined ? patch.notes : current?.notes ?? null,
+      userRating: patch.userRating !== undefined ? patch.userRating : (current?.userRating ?? null),
+      notes: patch.notes !== undefined ? patch.notes : (current?.notes ?? null),
       tags: patch.tags ?? current?.tags ?? [],
       startedAt: current?.startedAt ?? (status === "watching" || status === "rewatching" ? now : null),
-      completedAt: status === "completed" ? current?.completedAt ?? now : null,
+      completedAt: status === "completed" ? (current?.completedAt ?? now) : null,
       rewatchCount: patch.rewatchCount ?? current?.rewatchCount ?? 0,
       createdAt: current?.createdAt ?? now,
       updatedAt: now,
@@ -115,10 +119,25 @@ export const libraryRepository = {
         status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
       [
-        item.profileId, item.mediaId, item.mediaType, item.title, item.posterPath ?? null, item.backdropPath ?? null,
-        item.year ?? null, item.rating ?? null, JSON.stringify(item.genres), item.status, item.favourite ? 1 : 0, item.userRating ?? null,
-        item.notes ?? null, JSON.stringify(item.tags), item.startedAt ?? null, item.completedAt ?? null,
-        item.rewatchCount, item.createdAt, item.updatedAt,
+        item.profileId,
+        item.mediaId,
+        item.mediaType,
+        item.title,
+        item.posterPath ?? null,
+        item.backdropPath ?? null,
+        item.year ?? null,
+        item.rating ?? null,
+        JSON.stringify(item.genres),
+        item.status,
+        item.favourite ? 1 : 0,
+        item.userRating ?? null,
+        item.notes ?? null,
+        JSON.stringify(item.tags),
+        item.startedAt ?? null,
+        item.completedAt ?? null,
+        item.rewatchCount,
+        item.createdAt,
+        item.updatedAt,
       ]
     );
     return item;

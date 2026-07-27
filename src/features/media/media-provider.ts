@@ -1,5 +1,24 @@
-import type { HomeFeed, MediaSummary, MediaType, MediaVideo, Movie, PageResult, PersonSummary, SearchScope, Season, Series, WatchProvider, WatchProviderAvailability } from "@/types/media";
-export interface DiscoverArgs { genre?: number; provider?: number; page?: number; region?: string; maxRuntime?: number; }
+import type {
+  HomeFeed,
+  MediaSummary,
+  MediaType,
+  MediaVideo,
+  Movie,
+  PageResult,
+  PersonSummary,
+  SearchScope,
+  Season,
+  Series,
+  WatchProvider,
+  WatchProviderAvailability,
+} from "@/types/media";
+export interface DiscoverArgs {
+  genre?: number;
+  provider?: number;
+  page?: number;
+  region?: string;
+  maxRuntime?: number;
+}
 export interface MediaProvider {
   getHomeFeed(): Promise<HomeFeed>;
   getTrendingSeries(page?: number): Promise<PageResult<Series>>;

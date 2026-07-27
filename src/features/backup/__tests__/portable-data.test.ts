@@ -34,7 +34,7 @@ describe("portableData (browser fallback)", () => {
 
   it("rejects a backup with an unsupported format", async () => {
     await expect(
-      portableData.import({ format: "something-else", version: 1, exportedAt: "", data: {} } as never),
+      portableData.import({ format: "something-else", version: 1, exportedAt: "", data: {} } as never)
     ).rejects.toThrow();
   });
 
@@ -45,17 +45,19 @@ describe("portableData (browser fallback)", () => {
         version: 1,
         exportedAt: "",
         data: { watchlist: "not-an-array" },
-      } as never),
+      } as never)
     ).rejects.toThrow();
   });
 
   it("falls back to the default profile if the active profile referenced in the backup is missing", async () => {
-    const backup = await portableData.import({
-      format: "cinetrack-backup",
-      version: 1,
-      exportedAt: "",
-      data: { preferences: { activeProfileId: "ghost" } },
-    } as never).then(() => portableData.export());
+    const backup = await portableData
+      .import({
+        format: "cinetrack-backup",
+        version: 1,
+        exportedAt: "",
+        data: { preferences: { activeProfileId: "ghost" } },
+      } as never)
+      .then(() => portableData.export());
 
     expect(backup.data.preferences.activeProfileId).toBe("default");
   });

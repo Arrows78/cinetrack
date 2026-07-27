@@ -49,20 +49,20 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 ## 🧱 Technology stack
 
 | Area                   | Technologies                                                    |
-| ---------------------- | ---------------------------------------------------------------- |
-| Desktop application    | Tauri 2, Rust                                                    |
-| Frontend               | React 19, TypeScript, Vite                                       |
+| ---------------------- | --------------------------------------------------------------- |
+| Desktop application    | Tauri 2, Rust                                                   |
+| Frontend               | React 19, TypeScript, Vite                                      |
 | Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui  |
-| Routing                | TanStack Router                                                  |
-| Remote data            | TanStack Query, TMDB API                                         |
-| Optional account sync  | Supabase Auth (email OTP, OAuth)                                 |
-| Desktop persistence    | SQLite through `@tauri-apps/plugin-sql`, Stronghold for secrets  |
-| Web preview            | `localStorage` with a local JSON store                           |
-| UI state               | Zustand                                                          |
-| Validation             | Zod                                                              |
-| Internationalisation   | i18next, react-i18next (English, French)                         |
-| Animation and icons    | Framer Motion, Lucide React                                      |
-| Testing                | Vitest, Testing Library, `cargo test`                            |
+| Routing                | TanStack Router                                                 |
+| Remote data            | TanStack Query, TMDB API                                        |
+| Optional account sync  | Supabase Auth (email OTP, OAuth)                                |
+| Desktop persistence    | SQLite through `@tauri-apps/plugin-sql`, Stronghold for secrets |
+| Web preview            | `localStorage` with a local JSON store                          |
+| UI state               | Zustand                                                         |
+| Validation             | Zod                                                             |
+| Internationalisation   | i18next, react-i18next (English, French)                        |
+| Animation and icons    | Framer Motion, Lucide React                                     |
+| Testing                | Vitest, Testing Library, `cargo test`                           |
 
 ## 🏗️ Architecture
 

@@ -63,13 +63,15 @@ describe("watchTonightService", () => {
       { mediaId: 11, mediaType: "movie", status: "planned" },
     ]);
     mocks.getMovieDetails.mockImplementation((id: number) => Promise.resolve(movie(id)));
-    mocks.getWatchAvailability.mockImplementation((_type: string, id: number) => Promise.resolve({
-      link: null,
-      flatrate: id === 10 ? [{ id: 8, name: "Provider" }] : [],
-      free: [],
-      rent: [],
-      buy: [],
-    }));
+    mocks.getWatchAvailability.mockImplementation((_type: string, id: number) =>
+      Promise.resolve({
+        link: null,
+        flatrate: id === 10 ? [{ id: 8, name: "Provider" }] : [],
+        free: [],
+        rent: [],
+        buy: [],
+      })
+    );
 
     const result = await watchTonightService.pick({ provider: 8 });
 

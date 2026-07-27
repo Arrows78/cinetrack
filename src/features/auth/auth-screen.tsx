@@ -107,10 +107,7 @@ export function AuthScreen() {
   const [resendAvailableAt, setResendAvailableAt] = useState(0);
   const [now, setNow] = useState(Date.now());
 
-  const title = useMemo(
-    () => (mode === "signin" ? t("auth.welcomeBack") : t("auth.createAccount")),
-    [mode, t]
-  );
+  const title = useMemo(() => (mode === "signin" ? t("auth.welcomeBack") : t("auth.createAccount")), [mode, t]);
   const visibleError = localError ?? error;
   const visibleProviders =
     providerSettingsStatus === "ready"
@@ -262,7 +259,9 @@ export function AuthScreen() {
             <span className="text-3xl font-black text-primary">C</span>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/60">{t("sidebar.brand.tagline")}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/60">
+              {t("sidebar.brand.tagline")}
+            </p>
             <p className="text-3xl font-black tracking-tight">{t("sidebar.brand.name")}</p>
           </div>
         </div>
@@ -359,8 +358,12 @@ export function AuthScreen() {
                 <ArrowLeft className="h-5 w-5" /> {t("auth.email.back")}
               </button>
 
-              <h1 className="text-3xl font-black">{mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}</h1>
-              <p className="mt-2 text-sm text-white/55">{t("auth.email.sendCodeDescription", { length: authConfig.otpLength })}</p>
+              <h1 className="text-3xl font-black">
+                {mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}
+              </h1>
+              <p className="mt-2 text-sm text-white/55">
+                {t("auth.email.sendCodeDescription", { length: authConfig.otpLength })}
+              </p>
 
               <div className="mt-7 flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
                 <Mail className="h-6 w-6 text-white/75" />
@@ -401,7 +404,11 @@ export function AuthScreen() {
                 disabled={pendingAction !== null}
                 className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-black uppercase tracking-[0.08em] text-primary-foreground transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
               >
-                {pendingAction === "email" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : t("auth.email.sendCode")}
+                {pendingAction === "email" ? (
+                  <LoaderCircle className="h-6 w-6 animate-spin" />
+                ) : (
+                  t("auth.email.sendCode")
+                )}
               </button>
             </form>
           ) : null}

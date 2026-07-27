@@ -7,5 +7,29 @@ export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; med
   const query = useVideos(mediaType, mediaId);
   const video = query.data?.find((item) => item.type === "Trailer") ?? query.data?.[0];
   if (!video) return null;
-  return <section className="rounded-3xl border border-border bg-card/60 p-5"><div className="flex items-center gap-2"><PlayCircle className="size-5 text-primary"/><h2 className="font-semibold">{t("media.trailer")}</h2></div><div className="mt-4 aspect-video overflow-hidden rounded-2xl bg-black"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${video.key}`} title={video.name} allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen /></div><a className="mt-3 inline-flex items-center gap-1 text-sm text-primary" href={`https://www.youtube.com/watch?v=${video.key}`} target="_blank" rel="noreferrer">{t("media.openOnYoutube")} <ExternalLink className="size-3"/></a></section>;
+  return (
+    <section className="rounded-3xl border border-border bg-card/60 p-5">
+      <div className="flex items-center gap-2">
+        <PlayCircle className="size-5 text-primary" />
+        <h2 className="font-semibold">{t("media.trailer")}</h2>
+      </div>
+      <div className="mt-4 aspect-video overflow-hidden rounded-2xl bg-black">
+        <iframe
+          className="h-full w-full"
+          src={`https://www.youtube-nocookie.com/embed/${video.key}`}
+          title={video.name}
+          allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+      <a
+        className="mt-3 inline-flex items-center gap-1 text-sm text-primary"
+        href={`https://www.youtube.com/watch?v=${video.key}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {t("media.openOnYoutube")} <ExternalLink className="size-3" />
+      </a>
+    </section>
+  );
 }

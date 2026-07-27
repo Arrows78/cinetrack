@@ -31,7 +31,12 @@ export function MovieDetailPage() {
     <div className="space-y-8">
       <MediaDetailsHero
         media={movie}
-        actions={<><WatchlistButton media={movie} /><AvailabilityAlertButton media={movie} /></>}
+        actions={
+          <>
+            <WatchlistButton media={movie} />
+            <AvailabilityAlertButton media={movie} />
+          </>
+        }
         extra={
           <SeenToggle
             seen={Boolean(seenQuery.data)}
@@ -60,14 +65,18 @@ export function MovieDetailPage() {
               { label: t("media.status"), value: movie.status || "—" },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">{label}</span><span className="font-medium">{value}</span>
+                <span className="text-muted-foreground">{label}</span>
+                <span className="font-medium">{value}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
       <RecommendationsPanel media={movie} />
-      <section><SectionHeader title={t("media.cast")} subtitle={t("movies.castSubtitle")} /><CastList cast={movie.cast} /></section>
+      <section>
+        <SectionHeader title={t("media.cast")} subtitle={t("movies.castSubtitle")} />
+        <CastList cast={movie.cast} />
+      </section>
     </div>
   );
 }

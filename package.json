@@ -3,7 +3,17 @@
   "private": true,
   "version": "0.3.0",
   "description": "A premium desktop app to track movies, TV shows, watchlists and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
-  "keywords": ["tauri", "react", "typescript", "sqlite", "tmdb", "movies", "tv-shows", "desktop", "local-first"],
+  "keywords": [
+    "tauri",
+    "react",
+    "typescript",
+    "sqlite",
+    "tmdb",
+    "movies",
+    "tv-shows",
+    "desktop",
+    "local-first"
+  ],
   "homepage": "https://github.com/Arrows78/cinetrack",
   "repository": {
     "type": "git",

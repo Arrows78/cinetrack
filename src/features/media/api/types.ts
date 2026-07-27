@@ -118,7 +118,9 @@ export interface TmdbVideoDto {
   type: string;
   official: boolean;
 }
-export interface TmdbVideoResponse { results: TmdbVideoDto[]; }
+export interface TmdbVideoResponse {
+  results: TmdbVideoDto[];
+}
 
 export interface TmdbPersonDto {
   id: number;
@@ -136,4 +138,6 @@ export interface TmdbProviderRegionDto {
   buy?: TmdbWatchProviderDto[];
   free?: TmdbWatchProviderDto[];
 }
-export interface TmdbProviderResultsResponse { results: Record<string, TmdbProviderRegionDto>; }
+export interface TmdbProviderResultsResponse {
+  results: Record<string, TmdbProviderRegionDto>;
+}

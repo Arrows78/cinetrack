@@ -49,11 +49,13 @@ export const notificationService = {
       const releaseDate = parseISO(entry.date);
       const hours = differenceInHours(startOfDay(releaseDate), now);
       if (isAfter(now, endOfDay(releaseDate)) || hours > preferences.notifyHoursBefore || sent.has(entry.id)) continue;
-      const body = entry.kind === "episode"
-        ? `S${entry.seasonNumber}E${entry.episodeNumber} · ${entry.episodeTitle ?? "Nouvel épisode"}`
-        : "Sortie cinéma aujourd’hui ou très bientôt.";
+      const body =
+        entry.kind === "episode"
+          ? `S${entry.seasonNumber}E${entry.episodeNumber} · ${entry.episodeTitle ?? "Nouvel épisode"}`
+          : "Sortie cinéma aujourd’hui ou très bientôt.";
       await this.send(entry.title, body);
-      sent.add(entry.id); count += 1;
+      sent.add(entry.id);
+      count += 1;
     }
     localStorage.setItem(SENT_KEY, JSON.stringify([...sent].slice(-500)));
     return count;

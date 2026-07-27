@@ -31,7 +31,10 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       favourite,
       userRating: userRating ? Math.min(10, Math.max(0, Number(userRating))) : null,
       notes: notes.trim() || null,
-      tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+      tags: tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
       rewatchCount: Math.max(0, rewatchCount),
     });
 
@@ -65,27 +68,58 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       <div className="grid gap-4 md:grid-cols-3">
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("library.status")}</span>
-          <select className="h-10 rounded-xl border border-border bg-background px-3" value={status} onChange={(event) => setStatus(event.target.value as LibraryStatus)}>
-            {statuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          <select
+            className="h-10 rounded-xl border border-border bg-background px-3"
+            value={status}
+            onChange={(event) => setStatus(event.target.value as LibraryStatus)}
+          >
+            {statuses.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("library.myRating")}</span>
-          <input className="h-10 rounded-xl border border-border bg-background px-3" type="number" min="0" max="10" step="0.5" value={userRating} onChange={(event) => setUserRating(event.target.value)} />
+          <input
+            className="h-10 rounded-xl border border-border bg-background px-3"
+            type="number"
+            min="0"
+            max="10"
+            step="0.5"
+            value={userRating}
+            onChange={(event) => setUserRating(event.target.value)}
+          />
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("library.rewatches")}</span>
-          <input className="h-10 rounded-xl border border-border bg-background px-3" type="number" min="0" value={rewatchCount} onChange={(event) => setRewatchCount(Number(event.target.value))} />
+          <input
+            className="h-10 rounded-xl border border-border bg-background px-3"
+            type="number"
+            min="0"
+            value={rewatchCount}
+            onChange={(event) => setRewatchCount(Number(event.target.value))}
+          />
         </label>
       </div>
 
       <label className="mt-4 grid gap-1 text-sm">
         <span className="text-muted-foreground">{t("library.tagsHelp")}</span>
-        <input className="h-10 rounded-xl border border-border bg-background px-3" value={tags} onChange={(event) => setTags(event.target.value)} placeholder={t("library.tagsPlaceholder")} />
+        <input
+          className="h-10 rounded-xl border border-border bg-background px-3"
+          value={tags}
+          onChange={(event) => setTags(event.target.value)}
+          placeholder={t("library.tagsPlaceholder")}
+        />
       </label>
       <label className="mt-4 grid gap-1 text-sm">
         <span className="text-muted-foreground">{t("library.privateNotes")}</span>
-        <textarea className="min-h-24 rounded-xl border border-border bg-background p-3" value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <textarea
+          className="min-h-24 rounded-xl border border-border bg-background p-3"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">

@@ -12,6 +12,7 @@ Authentication identifies the current user and gates the interface. Existing wat
    - **Redirect URLs**: `cinetrack://auth/callback` and `http://localhost:1420/`, plus the production web URL when a web build is deployed.
 
    The `redirectTo` sent by the application must match an allowed entry exactly. Avoid wildcards in production when an exact URL is sufficient.
+
 3. In **Authentication → Sign In / Providers**, configure and enable every social provider CineTrack should offer: Google, Apple, Facebook, X (see provider-specific steps below).
 4. Keep **Email** enabled — see [Email OTP](#2-email-otp-authentication) below.
 

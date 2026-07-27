@@ -39,7 +39,12 @@ export default defineConfig({
         "src/features/collections/profile-repository.ts": { statements: 45, branches: 45, functions: 80, lines: 45 },
         "src/features/history/history-repository.ts": { statements: 35, branches: 25, functions: 60, lines: 35 },
         "src/features/library/library-repository.ts": { statements: 45, branches: 50, functions: 55, lines: 45 },
-        "src/features/preferences/preferences-repository.ts": { statements: 65, branches: 55, functions: 90, lines: 65 },
+        "src/features/preferences/preferences-repository.ts": {
+          statements: 65,
+          branches: 55,
+          functions: 90,
+          lines: 65,
+        },
         "src/features/progress/progress-repository.ts": { statements: 45, branches: 50, functions: 65, lines: 45 },
         "src/features/stats/stats-repository.ts": { statements: 45, branches: 55, functions: 35, lines: 45 },
         "src/features/watchlist/watchlist-repository.ts": { statements: 45, branches: 45, functions: 75, lines: 45 },

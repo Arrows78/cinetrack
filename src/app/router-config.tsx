@@ -91,6 +91,33 @@ const settingsRoute = createRoute({
   component: lazyRouteComponent(() => import("@/pages/settings-page"), "SettingsPage"),
 });
 
-const routeTree = rootRoute.addChildren([indexRoute,moviesRoute,movieDetailRoute,seriesRoute,seriesDetailRoute,seasonRoute,searchRoute,watchlistRoute,historyRoute,collectionsRoute,calendarRoute,peopleRoute,personDetailRoute,watchTonightRoute,statsRoute,settingsRoute]);
-export const router = createRouter({ routeTree, defaultPreload: "intent", scrollRestoration: true, defaultPendingComponent: PendingComponent, defaultErrorComponent: ErrorComponent });
-declare module "@tanstack/react-router" { interface Register { router: typeof router; } }
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  moviesRoute,
+  movieDetailRoute,
+  seriesRoute,
+  seriesDetailRoute,
+  seasonRoute,
+  searchRoute,
+  watchlistRoute,
+  historyRoute,
+  collectionsRoute,
+  calendarRoute,
+  peopleRoute,
+  personDetailRoute,
+  watchTonightRoute,
+  statsRoute,
+  settingsRoute,
+]);
+export const router = createRouter({
+  routeTree,
+  defaultPreload: "intent",
+  scrollRestoration: true,
+  defaultPendingComponent: PendingComponent,
+  defaultErrorComponent: ErrorComponent,
+});
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}

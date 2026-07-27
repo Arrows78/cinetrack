@@ -10,8 +10,12 @@ export const maintenanceService = {
   async quickCheck(): Promise<{ healthy: boolean; detail: string }> {
     const db = await getDatabase();
     if (!db) {
-      try { JSON.stringify(browserStore.read()); return { healthy: true, detail: "Stockage navigateur lisible" }; }
-      catch { return { healthy: false, detail: "Stockage navigateur invalide" }; }
+      try {
+        JSON.stringify(browserStore.read());
+        return { healthy: true, detail: "Stockage navigateur lisible" };
+      } catch {
+        return { healthy: false, detail: "Stockage navigateur invalide" };
+      }
     }
     const rows = await db.select<Array<{ quick_check: string }>>("PRAGMA quick_check");
     const detail = rows.map((row) => row.quick_check).join(", ") || "unknown";
@@ -32,7 +36,8 @@ export const maintenanceService = {
   async restoreAutomaticBackup(): Promise<void> {
     let raw: string | null = null;
     if (isTauriApp()) {
-      if (!(await exists(BACKUP_FILE, { baseDir: BaseDirectory.AppData }))) throw new Error("Aucune sauvegarde automatique trouvée.");
+      if (!(await exists(BACKUP_FILE, { baseDir: BaseDirectory.AppData })))
+        throw new Error("Aucune sauvegarde automatique trouvée.");
       raw = await readTextFile(BACKUP_FILE, { baseDir: BaseDirectory.AppData });
     } else raw = window.localStorage.getItem("cinetrack.latest-backup");
     if (!raw) throw new Error("Aucune sauvegarde automatique trouvée.");

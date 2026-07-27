@@ -2,7 +2,11 @@ import { libraryRepository } from "@/features/library/library-repository";
 import { mediaRepository } from "@/features/media/media-repository";
 import type { Movie } from "@/types/media";
 
-export interface WatchTonightFilters { genre?: number; provider?: number; maxRuntime?: number; }
+export interface WatchTonightFilters {
+  genre?: number;
+  provider?: number;
+  maxRuntime?: number;
+}
 
 function matchesRuntime(movie: Movie, maxRuntime?: number): boolean {
   return !maxRuntime || !movie.runtime || movie.runtime <= maxRuntime;
@@ -28,8 +32,12 @@ function shuffle<T>(items: T[]): T[] {
 
 export const watchTonightService = {
   async pick(filters: WatchTonightFilters): Promise<Movie[]> {
-    const planned = (await libraryRepository.list()).filter((item) => item.mediaType === "movie" && item.status === "planned");
-    const detailed = await Promise.all(planned.slice(0, 20).map((item) => mediaRepository.getMovieDetails(item.mediaId).catch(() => null)));
+    const planned = (await libraryRepository.list()).filter(
+      (item) => item.mediaType === "movie" && item.status === "planned"
+    );
+    const detailed = await Promise.all(
+      planned.slice(0, 20).map((item) => mediaRepository.getMovieDetails(item.mediaId).catch(() => null))
+    );
     let candidates = detailed
       .filter((item): item is Movie => Boolean(item))
       .filter((movie) => matchesRuntime(movie, filters.maxRuntime) && matchesGenre(movie, filters.genre));
@@ -40,11 +48,13 @@ export const watchTonightService = {
     }
 
     if (!candidates.length) {
-      candidates = (await mediaRepository.discoverMovies({
-        genre: filters.genre,
-        provider: filters.provider,
-        maxRuntime: filters.maxRuntime,
-      })).results;
+      candidates = (
+        await mediaRepository.discoverMovies({
+          genre: filters.genre,
+          provider: filters.provider,
+          maxRuntime: filters.maxRuntime,
+        })
+      ).results;
     }
 
     return shuffle(candidates).slice(0, 3);

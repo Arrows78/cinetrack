@@ -20,7 +20,7 @@ export class ApiConfigurationError extends Error {
 export class TmdbRequestError extends Error {
   constructor(
     message: string,
-    readonly status?: number,
+    readonly status?: number
   ) {
     super(message);
     this.name = "TmdbRequestError";
@@ -48,19 +48,14 @@ const asTmdbError = (error: unknown): TmdbRequestError => {
   return new TmdbRequestError(message, statusFromMessage(message));
 };
 
-const isAuthenticationError = (error: TmdbRequestError): boolean =>
-  error.status === 401 || error.status === 403;
+const isAuthenticationError = (error: TmdbRequestError): boolean => error.status === 401 || error.status === 403;
 
 // Matches the 20s total timeout the Rust native transport already enforces
 // (see src-tauri/src/lib.rs), so a hung TMDB request fails the same way
 // regardless of which transport handled it.
 const WEBVIEW_REQUEST_TIMEOUT_MS = 20_000;
 
-const fetchFromWebview = async <T>(
-  path: string,
-  params: Record<string, string>,
-  bearer: string,
-): Promise<T> => {
+const fetchFromWebview = async <T>(path: string, params: Record<string, string>, bearer: string): Promise<T> => {
   const url = new URL(`${TMDB_BASE_URL}${path}`);
 
   Object.entries(params).forEach(([key, value]) => {
@@ -83,32 +78,23 @@ const fetchFromWebview = async <T>(
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new TmdbRequestError(
-        `TMDB n'a pas répondu dans le délai imparti (${WEBVIEW_REQUEST_TIMEOUT_MS / 1000}s) pour ${path}.`,
+        `TMDB n'a pas répondu dans le délai imparti (${WEBVIEW_REQUEST_TIMEOUT_MS / 1000}s) pour ${path}.`
       );
     }
 
-    throw new TmdbRequestError(
-      `Impossible de joindre TMDB depuis la WebView : ${errorMessage(error)}`,
-    );
+    throw new TmdbRequestError(`Impossible de joindre TMDB depuis la WebView : ${errorMessage(error)}`);
   } finally {
     clearTimeout(timeout);
   }
 
   if (!response.ok) {
-    throw new TmdbRequestError(
-      `TMDB ${response.status}: ${await response.text()}`,
-      response.status,
-    );
+    throw new TmdbRequestError(`TMDB ${response.status}: ${await response.text()}`, response.status);
   }
 
   return response.json() as Promise<T>;
 };
 
-const fetchFromNative = async <T>(
-  path: string,
-  params: Record<string, string>,
-  bearer: string,
-): Promise<T> => {
+const fetchFromNative = async <T>(path: string, params: Record<string, string>, bearer: string): Promise<T> => {
   try {
     return await invoke<T>("tmdb_request", {
       path,
@@ -120,24 +106,19 @@ const fetchFromNative = async <T>(
   }
 };
 
-export async function tmdbFetch<T>(
-  path: string,
-  params?: Record<string, string | number | undefined>,
-): Promise<T> {
+export async function tmdbFetch<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
   await tokenVault.initialize();
 
   const cleanParams = Object.fromEntries(
     Object.entries(params ?? {})
       .filter(([, value]) => value !== undefined && value !== "")
-      .map(([key, value]) => [key, String(value)]),
+      .map(([key, value]) => [key, String(value)])
   );
 
   const bearer = tokenVault.getToken() ?? env.VITE_TMDB_API_TOKEN ?? null;
 
   if (!bearer) {
-    throw new ApiConfigurationError(
-      "Aucun token TMDB disponible. Déverrouille le coffre TMDB dans les paramètres.",
-    );
+    throw new ApiConfigurationError("Aucun token TMDB disponible. Déverrouille le coffre TMDB dans les paramètres.");
   }
 
   if (!isTauriApp()) {
@@ -162,10 +143,7 @@ export async function tmdbFetch<T>(
       throw nativeError;
     }
 
-    console.warn(
-      `[TMDB] Le transport Rust a échoué pour ${path}; bascule vers fetch dans la WebView.`,
-      nativeError,
-    );
+    console.warn(`[TMDB] Le transport Rust a échoué pour ${path}; bascule vers fetch dans la WebView.`, nativeError);
 
     desktopTransport = "webview";
 
@@ -180,7 +158,7 @@ export async function tmdbFetch<T>(
 
       throw new TmdbRequestError(
         `La connexion TMDB a échoué via le backend desktop (${nativeError.message}) puis via la WebView (${webviewError.message}).`,
-        webviewError.status,
+        webviewError.status
       );
     }
   }

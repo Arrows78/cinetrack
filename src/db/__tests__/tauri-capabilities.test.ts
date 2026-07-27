@@ -7,9 +7,7 @@ function readDesktopPermissions(): string[] {
     throw new Error("The desktop capability must declare a permissions array");
   }
 
-  return capability.permissions.filter(
-    (permission): permission is string => typeof permission === "string",
-  );
+  return capability.permissions.filter((permission): permission is string => typeof permission === "string");
 }
 
 describe("desktop Tauri capabilities", () => {

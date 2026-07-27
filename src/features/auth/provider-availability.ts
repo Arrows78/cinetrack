@@ -42,5 +42,7 @@ export async function getEnabledSocialProviders(signal?: AbortSignal): Promise<S
 
   if (!external || typeof external !== "object") return [];
 
-  return socialProviders.filter(({ settingsKeys }) => settingsKeys.some((key) => external[key] === true)).map(({ provider }) => provider);
+  return socialProviders
+    .filter(({ settingsKeys }) => settingsKeys.some((key) => external[key] === true))
+    .map(({ provider }) => provider);
 }

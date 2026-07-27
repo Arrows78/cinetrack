@@ -196,8 +196,15 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? t("sidebar.defaultAccount")}</p>
-              <p className="truncate text-xs text-muted-foreground">{user?.user_metadata?.role ?? t("sidebar.defaultMember")}</p>
+              <p className="truncate text-sm font-medium">
+                {user?.user_metadata?.full_name ??
+                  user?.user_metadata?.name ??
+                  user?.email ??
+                  t("sidebar.defaultAccount")}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {user?.user_metadata?.role ?? t("sidebar.defaultMember")}
+              </p>
             </div>
           )}
           <button

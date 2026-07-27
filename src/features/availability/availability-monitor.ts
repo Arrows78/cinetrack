@@ -18,7 +18,7 @@ export const availabilityMonitor = {
         if (previous && newProviders.length) {
           await notificationService.send(
             `${alert.title} est disponible`,
-            `Une nouvelle plateforme correspond à votre alerte (${alert.region}).`,
+            `Une nouvelle plateforme correspond à votre alerte (${alert.region}).`
           );
           changes += 1;
         }

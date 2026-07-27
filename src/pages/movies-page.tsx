@@ -14,7 +14,9 @@ export function MoviesPage() {
   if (query.isLoading) return <GridSkeleton />;
   if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
   if (!query.items.length) {
-    return <EmptyState icon={Film} title={t("movies.noMoviesAvailable")} description={t("movies.noMoviesAvailableDesc")} />;
+    return (
+      <EmptyState icon={Film} title={t("movies.noMoviesAvailable")} description={t("movies.noMoviesAvailableDesc")} />
+    );
   }
 
   return (

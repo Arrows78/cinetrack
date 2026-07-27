@@ -38,9 +38,10 @@ export function SeriesDetailPage() {
   if (!seriesQuery.data) return null;
   const series = seriesQuery.data;
   const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));
-  const allSeasonsLoaded = seasonNumbers.length > 0
-    && seasons.length === seasonNumbers.length
-    && seasonQueries.every((query) => !query.isPending && !query.isError);
+  const allSeasonsLoaded =
+    seasonNumbers.length > 0 &&
+    seasons.length === seasonNumbers.length &&
+    seasonQueries.every((query) => !query.isPending && !query.isError);
   const progress = progressRepository.calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
   const nextEpisode = progressRepository.getNextEpisode(seasons, progressQuery.data ?? []);
 
@@ -48,14 +49,30 @@ export function SeriesDetailPage() {
     <div className="space-y-8">
       <MediaDetailsHero
         media={series}
-        actions={<><WatchlistButton media={series} /><AvailabilityAlertButton media={series} /></>}
-        extra={<SeenToggle seen={progress.completed} disabled={progressQuery.isSaving || !allSeasonsLoaded} onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })} celebrateOnSeen />}
+        actions={
+          <>
+            <WatchlistButton media={series} />
+            <AvailabilityAlertButton media={series} />
+          </>
+        }
+        extra={
+          <SeenToggle
+            seen={progress.completed}
+            disabled={progressQuery.isSaving || !allSeasonsLoaded}
+            onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })}
+            celebrateOnSeen
+          />
+        }
       />
       <LibraryEditor media={series} />
       <AddToListButton media={series} />
       <ProviderAvailability media={series} />
       <TrailerPanel mediaType="series" mediaId={series.id} />
-      <NextEpisodeCard episode={nextEpisode} isSaving={progressQuery.isSaving} onWatched={(episode) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true })} />
+      <NextEpisodeCard
+        episode={nextEpisode}
+        isSaving={progressQuery.isSaving}
+        onWatched={(episode) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true })}
+      />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
           <SectionHeader title={t("media.overview")} />
@@ -63,12 +80,21 @@ export function SeriesDetailPage() {
         </div>
         <div className="space-y-4">
           <div className="rounded-3xl border border-border bg-black/[0.03] p-5 dark:bg-white/[0.03]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{t("series.currentProgress")}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              {t("series.currentProgress")}
+            </p>
             <div className="mt-3 flex items-end justify-between gap-3">
-              <p className="font-display text-5xl font-bold leading-none">{progress.progressPercent}<span className="text-xl font-normal text-muted-foreground">%</span></p>
-              <p className="text-sm text-muted-foreground">{progress.watchedEpisodes}/{progress.totalEpisodes} ep.</p>
+              <p className="font-display text-5xl font-bold leading-none">
+                {progress.progressPercent}
+                <span className="text-xl font-normal text-muted-foreground">%</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {progress.watchedEpisodes}/{progress.totalEpisodes} ep.
+              </p>
             </div>
-            <div className="mt-4"><ProgressBar value={progress.progressPercent} /></div>
+            <div className="mt-4">
+              <ProgressBar value={progress.progressPercent} />
+            </div>
           </div>
           <div className="rounded-3xl border border-border bg-black/[0.03] p-5 dark:bg-white/[0.03]">
             <SectionHeader title={t("series.seriesInfo")} />
@@ -78,17 +104,32 @@ export function SeriesDetailPage() {
                 { label: t("media.episodes"), value: series.numberOfEpisodes ?? "—" },
                 { label: t("media.status"), value: series.status || "—" },
                 { label: t("media.genres"), value: series.genres.join(", ") || "—" },
-              ].map(({ label, value }) => <div key={label} className="flex items-center justify-between gap-2"><span className="text-muted-foreground">{label}</span><span className="font-medium">{value}</span></div>)}
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium">{value}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
       <section>
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
-        <SeasonAccordion series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }} seasons={seasons} watchedEpisodes={progressQuery.data ?? []} isSaving={progressQuery.isSaving} onToggleEpisode={(episode, watched) => progressQuery.toggleEpisodeSeen({ series, episode, watched })} onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })} />
+        <SeasonAccordion
+          series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }}
+          seasons={seasons}
+          watchedEpisodes={progressQuery.data ?? []}
+          isSaving={progressQuery.isSaving}
+          onToggleEpisode={(episode, watched) => progressQuery.toggleEpisodeSeen({ series, episode, watched })}
+          onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })}
+        />
       </section>
       <RecommendationsPanel media={series} />
-      <section><SectionHeader title={t("media.cast")} /><CastList cast={series.cast} /></section>
+      <section>
+        <SectionHeader title={t("media.cast")} />
+        <CastList cast={series.cast} />
+      </section>
     </div>
   );
 }

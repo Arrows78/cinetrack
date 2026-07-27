@@ -18,9 +18,11 @@ export const profileRepository = {
     }
     await db.execute(
       "INSERT OR IGNORE INTO profiles (id, name, avatar, created_at) VALUES ('default', 'Principal', NULL, $1)",
-      [nowIso()],
+      [nowIso()]
     );
-    const rows = await db.select<Array<Record<string, unknown>>>("SELECT * FROM profiles ORDER BY CASE WHEN id = 'default' THEN 0 ELSE 1 END, created_at ASC");
+    const rows = await db.select<Array<Record<string, unknown>>>(
+      "SELECT * FROM profiles ORDER BY CASE WHEN id = 'default' THEN 0 ELSE 1 END, created_at ASC"
+    );
     return rows.map((row) => ({
       id: String(row.id),
       name: String(row.name),
@@ -39,7 +41,10 @@ export const profileRepository = {
       return profile;
     }
     await db.execute("INSERT INTO profiles (id, name, avatar, created_at) VALUES ($1, $2, $3, $4)", [
-      profile.id, profile.name, profile.avatar ?? null, profile.createdAt,
+      profile.id,
+      profile.name,
+      profile.avatar ?? null,
+      profile.createdAt,
     ]);
     return profile;
   },
@@ -50,7 +55,9 @@ export const profileRepository = {
     const db = await getDatabase();
     if (!db) {
       const store = browserStore.read();
-      const removedListIds = new Set(store.customLists.filter((list) => list.profileId === profileId).map((list) => list.id));
+      const removedListIds = new Set(
+        store.customLists.filter((list) => list.profileId === profileId).map((list) => list.id)
+      );
       store.profiles = store.profiles.filter((profile) => profile.id !== profileId);
       store.watchlist = store.watchlist.filter((item) => (item.profileId ?? "default") !== profileId);
       store.seenMovies = store.seenMovies.filter((item) => (item.profileId ?? "default") !== profileId);
@@ -70,7 +77,9 @@ export const profileRepository = {
     }
     await db.execute("BEGIN IMMEDIATE");
     try {
-      const listRows = await db.select<Array<{ id: string }>>("SELECT id FROM custom_lists WHERE profile_id = $1", [profileId]);
+      const listRows = await db.select<Array<{ id: string }>>("SELECT id FROM custom_lists WHERE profile_id = $1", [
+        profileId,
+      ]);
       for (const row of listRows) await db.execute("DELETE FROM custom_list_items WHERE list_id = $1", [row.id]);
       await db.execute("DELETE FROM custom_lists WHERE profile_id = $1", [profileId]);
       await db.execute("DELETE FROM profile_watchlist WHERE profile_id = $1", [profileId]);

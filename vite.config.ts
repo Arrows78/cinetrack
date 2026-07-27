@@ -37,11 +37,7 @@ export default defineConfig(() => ({
           if (!id.includes("node_modules")) return undefined;
           const pkgPath = id.split("node_modules/").pop() ?? "";
 
-          if (
-            pkgPath.startsWith("react-dom/") ||
-            pkgPath.startsWith("react/") ||
-            pkgPath.startsWith("scheduler/")
-          ) {
+          if (pkgPath.startsWith("react-dom/") || pkgPath.startsWith("react/") || pkgPath.startsWith("scheduler/")) {
             return "vendor-react";
           }
           if (pkgPath.startsWith("@tanstack/react-router/")) return "vendor-router";

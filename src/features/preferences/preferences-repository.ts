@@ -6,7 +6,10 @@ const preferencesSchema = z.object({
   theme: z.enum(["dark", "light"]).default("dark"),
   accentColor: z.enum(["violet", "blue", "teal", "green", "amber", "orange", "rose", "red"]).default("violet"),
   language: z.enum(["en", "fr"]).default("en"),
-  region: z.string().regex(/^[A-Z]{2}$/).default("FR"),
+  region: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .default("FR"),
   defaultSearchType: z.enum(["all", "movie", "series"]).default("all"),
   defaultWatchlistFilter: z.enum(["all", "movie", "series"]).default("all"),
   reduceMotion: z.boolean().default(false),
@@ -25,7 +28,7 @@ const preferencesSchema = z.object({
 });
 
 export const defaultPreferences: UserPreferences = preferencesSchema.parse({
-  userProfile: {}
+  userProfile: {},
 });
 
 // Preferences are read constantly (every TMDB request and most repository
@@ -72,7 +75,10 @@ export const preferencesRepository = {
       store.preferences = { ...store.preferences, [key]: parsed };
       browserStore.write(store);
     } else {
-      await db.execute("INSERT OR REPLACE INTO preferences (key, value) VALUES ($1, $2)", [key, JSON.stringify(parsed)]);
+      await db.execute("INSERT OR REPLACE INTO preferences (key, value) VALUES ($1, $2)", [
+        key,
+        JSON.stringify(parsed),
+      ]);
     }
 
     cache = { ...current, [key]: parsed };

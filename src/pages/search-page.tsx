@@ -18,7 +18,7 @@ import type { MediaSummary, SearchScope } from "@/types/media";
 
 const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
 const getGenreName = (id: string | undefined) =>
-  id ? ALL_GENRES.find((genre) => String(genre.id) === id)?.label ?? id : null;
+  id ? (ALL_GENRES.find((genre) => String(genre.id) === id)?.label ?? id) : null;
 const getPlatformName = (id: string) => PLATFORMS.find((platform) => String(platform.id) === id)?.label ?? id;
 
 export function SearchPage() {
@@ -90,10 +90,7 @@ export function SearchPage() {
 
       {searchQuery.isLoading ? <GridSkeleton count={8} /> : null}
       {searchQuery.isError ? (
-        <RemoteErrorState
-          error={searchQuery.error}
-          onRetry={() => void searchQuery.refetch()}
-        />
+        <RemoteErrorState error={searchQuery.error} onRetry={() => void searchQuery.refetch()} />
       ) : null}
       {!searchQuery.isError && !showResults && !hasFilters ? (
         <EmptyState icon={Search} title={t("search.startTyping")} description={t("search.startTypingDesc")} />
@@ -104,7 +101,11 @@ export function SearchPage() {
 
       {scope === "all" && grouped.series.length > 0 ? (
         <section>
-          <SectionHeader title={t("nav.series")} subtitle={t("search.resultsCount", { count: grouped.series.length })} index={2} />
+          <SectionHeader
+            title={t("nav.series")}
+            subtitle={t("search.resultsCount", { count: grouped.series.length })}
+            index={2}
+          />
           <MediaGrid items={grouped.series as MediaSummary[]} />
         </section>
       ) : null}

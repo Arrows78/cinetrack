@@ -81,12 +81,7 @@ export function HomePage() {
   }
 
   if (homeQuery.isError) {
-    return (
-      <RemoteErrorState
-        error={homeQuery.error}
-        onRetry={() => void homeQuery.refetch()}
-      />
-    );
+    return <RemoteErrorState error={homeQuery.error} onRetry={() => void homeQuery.refetch()} />;
   }
 
   const hero = homeQuery.data?.trendingMovies[0];
@@ -206,11 +201,7 @@ export function HomePage() {
       {/* Series and movies catalogue sections */}
       {CATALOGUE_SECTIONS.map((section) => (
         <section key={section.key}>
-          <SectionHeader
-            title={t(section.titleKey)}
-            subtitle={t(section.subtitleKey)}
-            index={++sectionIndex}
-          />
+          <SectionHeader title={t(section.titleKey)} subtitle={t(section.subtitleKey)} index={++sectionIndex} />
           <MediaGrid items={homeQuery.data?.[section.key] ?? []} />
         </section>
       ))}

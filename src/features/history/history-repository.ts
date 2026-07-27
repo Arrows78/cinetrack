@@ -19,8 +19,9 @@ export const historyRepository = {
     const profileId = await activeProfileId();
     const db = await getDatabase();
     if (!db) {
-      return browserStore.read().history
-        .filter((item) => itemProfileId(item) === profileId)
+      return browserStore
+        .read()
+        .history.filter((item) => itemProfileId(item) === profileId)
         .slice(0, limit);
     }
 
@@ -47,7 +48,7 @@ export const historyRepository = {
   },
 
   async add(item: ViewingHistoryItem): Promise<void> {
-    const profileId = item.metadata?.profileId ?? await activeProfileId();
+    const profileId = item.metadata?.profileId ?? (await activeProfileId());
     const scopedItem: ViewingHistoryItem = {
       ...item,
       metadata: { ...item.metadata, profileId },
