@@ -34,14 +34,24 @@ const errorMessage = (error: unknown): string => {
   }
 };
 
-const statusFromMessage = (message: string): number | undefined => {
-  const match = message.match(/TMDB\s+(\d{3})/i);
-  return match ? Number(match[1]) : undefined;
-};
+// Shape of the Err(TmdbError) the Rust `tmdb_request` command serializes over
+// IPC (see src-tauri/src/commands/tmdb.rs) — invoke() rejects with this
+// object directly, no string parsing needed.
+interface StructuredTmdbError {
+  message: string;
+  status?: number;
+}
+
+const isStructuredTmdbError = (error: unknown): error is StructuredTmdbError =>
+  typeof error === "object" &&
+  error !== null &&
+  "message" in error &&
+  typeof (error as { message: unknown }).message === "string";
 
 const asTmdbError = (error: unknown): TmdbRequestError => {
-  const message = errorMessage(error);
-  return new TmdbRequestError(message, statusFromMessage(message));
+  if (error instanceof TmdbRequestError) return error;
+  if (isStructuredTmdbError(error)) return new TmdbRequestError(error.message, error.status);
+  return new TmdbRequestError(errorMessage(error));
 };
 
 const isAuthenticationError = (error: TmdbRequestError): boolean => error.status === 401 || error.status === 403;
