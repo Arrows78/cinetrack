@@ -5,12 +5,13 @@ import { migration as m002 } from "./002-library-and-events";
 import { migration as m003 } from "./003-profiles-and-lists";
 import { migration as m004 } from "./004-availability";
 import { migration as m005 } from "./005-history-profile-id";
+import { migration as m006 } from "./006-index-cleanup";
 
 export type { Migration } from "./types";
 
 // Order matters: each migration runs against the schema left by the ones
 // before it, in this exact sequence.
-export const migrations: readonly Migration[] = [m001, m002, m003, m004, m005];
+export const migrations: readonly Migration[] = [m001, m002, m003, m004, m005, m006];
 
 export async function runMigrations(db: Database): Promise<void> {
   const rows = await db.select<Array<{ user_version: number }>>("PRAGMA user_version");
