@@ -3,6 +3,8 @@ name = "cinetrack"
 version = "0.3.0"
 description = "CineTrack desktop application"
 authors = ["Thomas Jost"]
+license = "MIT"
+repository = "https://github.com/Arrows78/cinetrack"
 edition = "2024"
 
 [lib]
