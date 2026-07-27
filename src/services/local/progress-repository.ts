@@ -51,14 +51,25 @@ export const progressRepository = {
         ? [{ profileId: profile, movieId: movie.id, title: movie.title, posterPath: movie.posterPath, backdropPath: movie.backdropPath, watchedAt }, ...keep]
         : keep;
       browserStore.write(store);
-    } else if (watched) {
-      await db.execute("INSERT OR REPLACE INTO profile_seen_movies (profile_id,movie_id,title,poster_path,backdrop_path,watched_at) VALUES ($1,$2,$3,$4,$5,$6)", [profile,movie.id,movie.title,movie.posterPath ?? null,movie.backdropPath ?? null,watchedAt]);
-    } else {
-      await db.execute("DELETE FROM profile_seen_movies WHERE profile_id=$1 AND movie_id=$2", [profile,movie.id]);
+      await recordEvent({ id: uid(), profileId: profile, mediaId: movie.id, mediaType: "movie", title: movie.title, eventType: watched ? "watched" : "unwatched", watchedAt, durationMinutes: movie.runtime ?? null });
+      await historyRepository.add({ id: uid(), mediaId: movie.id, mediaType: "movie", title: movie.title, action: watched ? "movie:watched" : "movie:unwatched", timestamp: watchedAt, metadata: { profileId: profile } });
+      return;
     }
 
-    await recordEvent({ id: uid(), profileId: profile, mediaId: movie.id, mediaType: "movie", title: movie.title, eventType: watched ? "watched" : "unwatched", watchedAt, durationMinutes: movie.runtime ?? null });
-    await historyRepository.add({ id: uid(), mediaId: movie.id, mediaType: "movie", title: movie.title, action: watched ? "movie:watched" : "movie:unwatched", timestamp: watchedAt, metadata: { profileId: profile } });
+    await db.execute("BEGIN IMMEDIATE");
+    try {
+      if (watched) {
+        await db.execute("INSERT OR REPLACE INTO profile_seen_movies (profile_id,movie_id,title,poster_path,backdrop_path,watched_at) VALUES ($1,$2,$3,$4,$5,$6)", [profile,movie.id,movie.title,movie.posterPath ?? null,movie.backdropPath ?? null,watchedAt]);
+      } else {
+        await db.execute("DELETE FROM profile_seen_movies WHERE profile_id=$1 AND movie_id=$2", [profile,movie.id]);
+      }
+      await recordEvent({ id: uid(), profileId: profile, mediaId: movie.id, mediaType: "movie", title: movie.title, eventType: watched ? "watched" : "unwatched", watchedAt, durationMinutes: movie.runtime ?? null });
+      await historyRepository.add({ id: uid(), mediaId: movie.id, mediaType: "movie", title: movie.title, action: watched ? "movie:watched" : "movie:unwatched", timestamp: watchedAt, metadata: { profileId: profile } });
+      await db.execute("COMMIT");
+    } catch (error) {
+      await db.execute("ROLLBACK");
+      throw error;
+    }
   },
 
   async getEpisodeProgress(seriesId: number): Promise<EpisodeProgress[]> {
