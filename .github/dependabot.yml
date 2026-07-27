@@ -18,6 +18,14 @@ updates:
         dependency-type: production
         patterns:
           - "*"
+    ignore:
+      # typescript-eslint doesn't support TS 7.x yet (as of 8.65.0), so a
+      # grouped bump to typescript@7 breaks `pnpm lint` in CI. Drop this
+      # once https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      # is resolved and typescript-eslint has been bumped to a version that
+      # supports it.
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
     commit-message:
       prefix: "build(deps)"
       prefix-development: "build(deps-dev)"
