@@ -1,94 +1,9 @@
-use std::{collections::HashMap, time::Duration};
+mod commands;
+mod tray;
 
-use serde_json::Value;
 use tauri::{Emitter, Manager};
 
-fn has_updater_config(config: Option<&Value>) -> bool {
-    let Some(config) = config.and_then(Value::as_object) else {
-        return false;
-    };
-
-    let has_pubkey = config
-        .get("pubkey")
-        .and_then(Value::as_str)
-        .is_some_and(|pubkey| !pubkey.trim().is_empty());
-
-    let has_endpoint = config
-        .get("endpoints")
-        .and_then(Value::as_array)
-        .is_some_and(|endpoints| {
-            endpoints.iter().any(|endpoint| {
-                endpoint
-                    .as_str()
-                    .is_some_and(|endpoint| !endpoint.trim().is_empty())
-            })
-        });
-
-    has_pubkey && has_endpoint
-}
-
-#[tauri::command]
-fn updater_is_configured(app: tauri::AppHandle) -> bool {
-    has_updater_config(app.config().plugins.0.get("updater"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::has_updater_config;
-    use serde_json::json;
-
-    #[test]
-    fn updater_requires_a_pubkey_and_at_least_one_endpoint() {
-        assert!(!has_updater_config(None));
-
-        let null_config = json!(null);
-        assert!(!has_updater_config(Some(&null_config)));
-
-        let incomplete_config = json!({ "pubkey": "", "endpoints": [] });
-        assert!(!has_updater_config(Some(&incomplete_config)));
-
-        let complete_config = json!({
-            "pubkey": "public-key",
-            "endpoints": ["https://example.com/latest.json"]
-        });
-        assert!(has_updater_config(Some(&complete_config)));
-    }
-}
-
-#[tauri::command]
-async fn tmdb_request(
-    path: String,
-    params: HashMap<String, String>,
-    token: String,
-) -> Result<Value, String> {
-    if !path.starts_with('/') || path.contains("..") || path.contains("://") {
-        return Err("Invalid TMDB path".into());
-    }
-
-    let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(20))
-        .build()
-        .map_err(|error| error.to_string())?;
-
-    let response = client
-        .get(format!("https://api.themoviedb.org/3{path}"))
-        .bearer_auth(token)
-        .header("accept", "application/json")
-        .query(&params)
-        .send()
-        .await
-        .map_err(|error| error.to_string())?;
-
-    let status = response.status();
-    let body = response.text().await.map_err(|error| error.to_string())?;
-
-    if !status.is_success() {
-        return Err(format!("TMDB {status}: {body}"));
-    }
-
-    serde_json::from_str(&body).map_err(|error| error.to_string())
-}
+use commands::{tmdb_request, updater_is_configured};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -131,10 +46,6 @@ pub fn run() {
 
             #[cfg(desktop)]
             {
-                use tauri::{
-                    menu::{Menu, MenuItem},
-                    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-                };
                 use tauri_plugin_autostart::MacosLauncher;
 
                 app.handle().plugin(tauri_plugin_autostart::init(
@@ -145,62 +56,12 @@ pub fn run() {
                 app.handle()
                     .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
 
-                if has_updater_config(app.config().plugins.0.get("updater")) {
+                if commands::has_updater_config(app.config().plugins.0.get("updater")) {
                     app.handle()
                         .plugin(tauri_plugin_updater::Builder::new().build())?;
                 }
 
-                let open = MenuItem::with_id(app, "open", "Ouvrir CineTrack", true, None::<&str>)?;
-
-                let tonight = MenuItem::with_id(
-                    app,
-                    "tonight",
-                    "Que regarder ce soir ?",
-                    true,
-                    None::<&str>,
-                )?;
-
-                let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
-
-                let menu = Menu::with_items(app, &[&open, &tonight, &quit])?;
-
-                TrayIconBuilder::new()
-                    .icon(app.default_window_icon().expect("app icon").clone())
-                    .tooltip("CineTrack")
-                    .menu(&menu)
-                    .show_menu_on_left_click(false)
-                    .on_menu_event(|app, event| match event.id.as_ref() {
-                        "open" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                        "tonight" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-
-                            let _ = app.emit("cinetrack:navigate", "/watch-tonight");
-                        }
-                        "quit" => app.exit(0),
-                        _ => {}
-                    })
-                    .on_tray_icon_event(|tray, event| {
-                        if let TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            button_state: MouseButtonState::Up,
-                            ..
-                        } = event
-                        {
-                            if let Some(window) = tray.app_handle().get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                    })
-                    .build(app)?;
+                tray::build(app.handle())?;
             }
 
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
