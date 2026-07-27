@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Upload } from "lucide-react";
+import { Download, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
-import { portableData } from "@/features/backup/portable-data";
+import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
+import { maintenanceService } from "@/features/backup/maintenance-service";
 
 export function BackupTools() {
   const { t } = useTranslation();
@@ -25,12 +26,25 @@ export function BackupTools() {
   const importBackup = async (file?: File) => {
     if (!file) return;
     try {
+      if (file.size > MAX_BACKUP_FILE_BYTES) {
+        throw new Error(t("backup.fileTooLarge"));
+      }
       const parsed: unknown = JSON.parse(await file.text());
-      await portableData.import(parsed);
+      await maintenanceService.restoreFromBackup(parsed);
       window.localStorage.removeItem(QUERY_CACHE_KEY);
       window.location.reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t("backup.importFailed"));
+    }
+  };
+
+  const undoLastImport = async () => {
+    try {
+      await maintenanceService.undoLastRestore();
+      window.localStorage.removeItem(QUERY_CACHE_KEY);
+      window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t("backup.undoFailed"));
     }
   };
 
@@ -46,6 +60,10 @@ export function BackupTools() {
         <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
           <Upload className="mr-2 size-4" />
           {t("backup.import")}
+        </Button>
+        <Button type="button" variant="outline" onClick={() => void undoLastImport()}>
+          <Undo2 className="mr-2 size-4" />
+          {t("backup.undoLastImport")}
         </Button>
         <input
           ref={inputRef}

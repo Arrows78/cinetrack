@@ -1,10 +1,38 @@
 import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { browserStore, getDatabase } from "@/db/client";
-import { portableData } from "@/features/backup/portable-data";
+import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { isTauriApp } from "@/shared/lib/platform";
 
 const BACKUP_FILE = "backups/latest.json";
+const PRE_RESTORE_FILE = "backups/pre-restore.json";
 const LAST_BACKUP_KEY = "cinetrack.last-auto-backup";
+const LATEST_BACKUP_KEY = "cinetrack.latest-backup";
+const PRE_RESTORE_KEY = "cinetrack.pre-restore-backup";
+
+async function writeNamedBackup(fileName: string, browserKey: string, content: string): Promise<void> {
+  if (isTauriApp()) {
+    await mkdir("backups", { baseDir: BaseDirectory.AppData, recursive: true });
+    await writeTextFile(fileName, content, { baseDir: BaseDirectory.AppData });
+  } else {
+    window.localStorage.setItem(browserKey, content);
+  }
+}
+
+async function readNamedBackup(fileName: string, browserKey: string): Promise<string | null> {
+  if (isTauriApp()) {
+    if (!(await exists(fileName, { baseDir: BaseDirectory.AppData }))) return null;
+    return readTextFile(fileName, { baseDir: BaseDirectory.AppData });
+  }
+  return window.localStorage.getItem(browserKey);
+}
+
+function assertReasonableSize(raw: string): void {
+  // .length is UTF-16 code units, not bytes, but it's a close enough proxy
+  // for this sanity check — real backups are orders of magnitude smaller.
+  if (raw.length > MAX_BACKUP_FILE_BYTES) {
+    throw new Error("Fichier de sauvegarde trop volumineux.");
+  }
+}
 
 export const maintenanceService = {
   async quickCheck(): Promise<{ healthy: boolean; detail: string }> {
@@ -26,21 +54,34 @@ export const maintenanceService = {
     const last = Number(window.localStorage.getItem(LAST_BACKUP_KEY) ?? 0);
     if (!force && Date.now() - last < 24 * 60 * 60 * 1000) return;
     const backup = await portableData.export();
-    if (isTauriApp()) {
-      await mkdir("backups", { baseDir: BaseDirectory.AppData, recursive: true });
-      await writeTextFile(BACKUP_FILE, JSON.stringify(backup, null, 2), { baseDir: BaseDirectory.AppData });
-    } else window.localStorage.setItem("cinetrack.latest-backup", JSON.stringify(backup));
+    await writeNamedBackup(BACKUP_FILE, LATEST_BACKUP_KEY, JSON.stringify(backup, null, 2));
     window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
   },
 
-  async restoreAutomaticBackup(): Promise<void> {
-    let raw: string | null = null;
-    if (isTauriApp()) {
-      if (!(await exists(BACKUP_FILE, { baseDir: BaseDirectory.AppData })))
-        throw new Error("Aucune sauvegarde automatique trouvée.");
-      raw = await readTextFile(BACKUP_FILE, { baseDir: BaseDirectory.AppData });
-    } else raw = window.localStorage.getItem("cinetrack.latest-backup");
-    if (!raw) throw new Error("Aucune sauvegarde automatique trouvée.");
+  /**
+   * Snapshots the current state to a recoverable "pre-restore" slot, then
+   * imports `parsed`. Without this, importing the wrong file (or a
+   * corrupted one that still happens to validate) silently and irreversibly
+   * replaces everything — the automatic daily backup isn't a reliable
+   * safety net for this since it can be up to 24h stale.
+   */
+  async restoreFromBackup(parsed: unknown): Promise<void> {
+    const snapshot = await portableData.export();
+    await writeNamedBackup(PRE_RESTORE_FILE, PRE_RESTORE_KEY, JSON.stringify(snapshot, null, 2));
+    await portableData.import(parsed);
+  },
+
+  async undoLastRestore(): Promise<void> {
+    const raw = await readNamedBackup(PRE_RESTORE_FILE, PRE_RESTORE_KEY);
+    if (!raw) throw new Error("Aucune sauvegarde pré-restauration trouvée.");
+    assertReasonableSize(raw);
     await portableData.import(JSON.parse(raw));
+  },
+
+  async restoreAutomaticBackup(): Promise<void> {
+    const raw = await readNamedBackup(BACKUP_FILE, LATEST_BACKUP_KEY);
+    if (!raw) throw new Error("Aucune sauvegarde automatique trouvée.");
+    assertReasonableSize(raw);
+    await maintenanceService.restoreFromBackup(JSON.parse(raw));
   },
 };

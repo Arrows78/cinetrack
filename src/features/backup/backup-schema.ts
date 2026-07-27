@@ -164,21 +164,30 @@ const availabilityAlertSchema = z.object({
   createdAt: z.string(),
 });
 
+// Generous upper bounds — far beyond anything a real single-user library
+// would ever contain — so a corrupted or hostile backup can't force an
+// unbounded insert loop against SQLite (each array is inserted row-by-row
+// inside one transaction; see portable-data.ts).
+const MAX_LIST_ITEMS = 20_000;
+const MAX_EVENT_ITEMS = 200_000;
+const MAX_PROFILES = 50;
+const MAX_LISTS = 500;
+
 export const browserStoreSchema = z.object({
   schemaVersion: z.number().optional(),
-  watchlist: z.array(watchlistItemSchema).optional(),
-  seenMovies: z.array(seenMovieSchema).optional(),
-  episodeProgress: z.array(episodeProgressSchema).optional(),
-  trackedSeries: z.array(trackedSeriesItemSchema).optional(),
-  history: z.array(viewingHistoryItemSchema).optional(),
+  watchlist: z.array(watchlistItemSchema).max(MAX_LIST_ITEMS).optional(),
+  seenMovies: z.array(seenMovieSchema).max(MAX_LIST_ITEMS).optional(),
+  episodeProgress: z.array(episodeProgressSchema).max(MAX_EVENT_ITEMS).optional(),
+  trackedSeries: z.array(trackedSeriesItemSchema).max(MAX_LIST_ITEMS).optional(),
+  history: z.array(viewingHistoryItemSchema).max(MAX_EVENT_ITEMS).optional(),
   preferences: preferencesSchema.partial().optional(),
-  library: z.array(libraryItemSchema).optional(),
-  viewingEvents: z.array(viewingEventSchema).optional(),
-  profiles: z.array(userProfileSchema).optional(),
-  customLists: z.array(customListSchema).optional(),
-  customListItems: z.array(customListItemSchema).optional(),
-  availabilitySnapshots: z.array(availabilitySnapshotSchema).optional(),
-  availabilityAlerts: z.array(availabilityAlertSchema).optional(),
+  library: z.array(libraryItemSchema).max(MAX_LIST_ITEMS).optional(),
+  viewingEvents: z.array(viewingEventSchema).max(MAX_EVENT_ITEMS).optional(),
+  profiles: z.array(userProfileSchema).max(MAX_PROFILES).optional(),
+  customLists: z.array(customListSchema).max(MAX_LISTS).optional(),
+  customListItems: z.array(customListItemSchema).max(MAX_EVENT_ITEMS).optional(),
+  availabilitySnapshots: z.array(availabilitySnapshotSchema).max(MAX_LIST_ITEMS).optional(),
+  availabilityAlerts: z.array(availabilityAlertSchema).max(MAX_LIST_ITEMS).optional(),
 });
 
 export const cineTrackBackupSchema = z.object({

@@ -318,7 +318,10 @@
     "export": "Export",
     "import": "Import",
     "exported": "Backup exported.",
-    "importFailed": "Import failed: the backup file is invalid or corrupted."
+    "importFailed": "Import failed: the backup file is invalid or corrupted.",
+    "fileTooLarge": "This file is too large to be a valid backup.",
+    "undoLastImport": "Undo last import",
+    "undoFailed": "Nothing to undo: no pre-import snapshot was found."
   },
   "desktop": {
     "operationComplete": "Operation complete.",

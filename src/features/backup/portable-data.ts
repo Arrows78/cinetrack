@@ -9,6 +9,12 @@ export interface CineTrackBackup {
   data: BrowserStore;
 }
 
+// First line of defense before even attempting JSON.parse on a user-selected
+// file — the per-array-field limits in backup-schema.ts are what actually
+// bound the work done against SQLite, this just avoids parsing an
+// unreasonably large file at all.
+export const MAX_BACKUP_FILE_BYTES = 100 * 1024 * 1024;
+
 const emptyData = (): BrowserStore => ({
   schemaVersion: 1,
   watchlist: [],

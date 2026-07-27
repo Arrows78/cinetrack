@@ -316,7 +316,10 @@
     "export": "Exporter",
     "import": "Importer",
     "exported": "Sauvegarde exportée.",
-    "importFailed": "Échec de l'import : le fichier de sauvegarde est invalide ou corrompu."
+    "importFailed": "Échec de l'import : le fichier de sauvegarde est invalide ou corrompu.",
+    "fileTooLarge": "Ce fichier est trop volumineux pour être une sauvegarde valide.",
+    "undoLastImport": "Annuler le dernier import",
+    "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée."
   },
   "desktop": {
     "operationComplete": "Opération terminée.",

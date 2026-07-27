@@ -75,6 +75,22 @@ describe("portableData (browser fallback)", () => {
     ).rejects.toThrow();
   });
 
+  it("rejects a backup with more profiles than the configured limit", async () => {
+    const tooManyProfiles = Array.from({ length: 51 }, (_, index) => ({
+      id: `profile-${index}`,
+      name: `Profile ${index}`,
+    }));
+
+    await expect(
+      portableData.import({
+        format: "cinetrack-backup",
+        version: 1,
+        exportedAt: "",
+        data: { profiles: tooManyProfiles },
+      } as never)
+    ).rejects.toThrow();
+  });
+
   it("falls back to the default profile if the active profile referenced in the backup is missing", async () => {
     const backup = await portableData
       .import({
