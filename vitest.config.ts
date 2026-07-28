@@ -43,6 +43,7 @@ export default defineConfig({
         "src/db/migrations/004-availability.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
         "src/db/migrations/005-history-profile-id.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
         "src/db/migrations/006-index-cleanup.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        "src/db/migrations/007-foreign-keys.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
         // Exercised end-to-end against a real SQLite engine in
         // migrations.integration.test.ts (see also sqlite-adapter.ts) — not
         // just string-shape-checked like migrations.test.ts.

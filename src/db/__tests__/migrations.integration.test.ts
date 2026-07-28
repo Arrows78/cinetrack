@@ -29,7 +29,7 @@ describe("runMigrations against real SQLite", () => {
     const sqlite = new DatabaseSync(":memory:");
     await runMigrations(createSqliteAdapter(sqlite));
 
-    expect(userVersion(sqlite)).toBe(6);
+    expect(userVersion(sqlite)).toBe(7);
     expect(tableNames(sqlite)).toEqual(
       expect.arrayContaining([
         "activity_log",
@@ -54,7 +54,7 @@ describe("runMigrations against real SQLite", () => {
     await runMigrations(createSqliteAdapter(sqlite));
     await expect(runMigrations(createSqliteAdapter(sqlite))).resolves.not.toThrow();
 
-    expect(userVersion(sqlite)).toBe(6);
+    expect(userVersion(sqlite)).toBe(7);
   });
 
   it("carries legacy watchlist rows forward into library_items and profile_watchlist", async () => {
@@ -97,6 +97,10 @@ describe("runMigrations against real SQLite", () => {
       for (const statement of migration.statements) sqlite.exec(statement);
     }
     sqlite.exec("PRAGMA user_version = 4");
+    // migration 7's orphan cleanup reassigns any profile_id that isn't a
+    // real profiles row back to 'default' — insert 'guest' as a real
+    // profile so this test still isolates migration 5's backfill behavior.
+    sqlite.exec(`INSERT INTO profiles (id, name, created_at) VALUES ('guest', 'Guest', '2026-01-01T00:00:00.000Z')`);
     sqlite.exec(
       `INSERT INTO activity_log (id, media_id, media_type, title, action, timestamp, metadata)
        VALUES ('evt-1', 1, 'movie', 'Scoped', 'movie:watched', '2026-01-01T00:00:00.000Z', '{"profileId":"guest"}')`
@@ -135,11 +139,12 @@ describe("runMigrations against real SQLite", () => {
 
   it("only applies migrations newer than the database's current user_version", async () => {
     const sqlite = new DatabaseSync(":memory:");
-    sqlite.exec("PRAGMA user_version = 6");
+    const latest = migrations[migrations.length - 1].version;
+    sqlite.exec(`PRAGMA user_version = ${latest}`);
 
-    // At version 6 already: every CREATE TABLE should be skipped, so none of
-    // the schema exists — proving the version gate actually short-circuits
-    // instead of re-running everything regardless.
+    // At the latest version already: every migration should be skipped, so
+    // none of the schema exists — proving the version gate actually
+    // short-circuits instead of re-running everything regardless.
     await runMigrations(createSqliteAdapter(sqlite));
 
     expect(tableNames(sqlite)).toEqual([]);
@@ -157,7 +162,7 @@ describe("runMigrations against real SQLite", () => {
     sqlite.exec("PRAGMA user_version = 1");
 
     await expect(runMigrations(adapter)).resolves.not.toThrow();
-    expect(userVersion(sqlite)).toBe(6);
+    expect(userVersion(sqlite)).toBe(7);
   });
 
   it("rolls back and reports the failing migration when a statement genuinely fails", async () => {
@@ -175,5 +180,103 @@ describe("runMigrations against real SQLite", () => {
     );
     // The failed migration's own version bump must not have stuck.
     expect(userVersion(sqlite)).toBe(1);
+  });
+
+  describe("foreign keys (migration 7)", () => {
+    it("rejects an insert whose profile_id does not reference a real profile", async () => {
+      const sqlite = new DatabaseSync(":memory:");
+      sqlite.exec("PRAGMA foreign_keys = ON");
+      await runMigrations(createSqliteAdapter(sqlite));
+
+      expect(() =>
+        sqlite.exec(
+          `INSERT INTO profile_watchlist (profile_id, media_id, media_type, title, created_at)
+           VALUES ('ghost', 1, 'movie', 'Orphan', '2026-01-01T00:00:00.000Z')`
+        )
+      ).toThrow(/FOREIGN KEY constraint failed/);
+    });
+
+    it("rejects a custom_list_items row whose list_id does not reference a real list", async () => {
+      const sqlite = new DatabaseSync(":memory:");
+      sqlite.exec("PRAGMA foreign_keys = ON");
+      await runMigrations(createSqliteAdapter(sqlite));
+
+      expect(() =>
+        sqlite.exec(
+          `INSERT INTO custom_list_items (list_id, media_id, media_type, title, position, added_at)
+           VALUES ('ghost-list', 1, 'movie', 'Orphan', 0, '2026-01-01T00:00:00.000Z')`
+        )
+      ).toThrow(/FOREIGN KEY constraint failed/);
+    });
+
+    it("cascades deleting a profile to every table scoped by profile_id", async () => {
+      const sqlite = new DatabaseSync(":memory:");
+      sqlite.exec("PRAGMA foreign_keys = ON");
+      await runMigrations(createSqliteAdapter(sqlite));
+
+      sqlite.exec(`INSERT INTO profiles (id, name, created_at) VALUES ('alex', 'Alex', '2026-01-01T00:00:00.000Z')`);
+      sqlite.exec(
+        `INSERT INTO library_items (profile_id, media_id, media_type, title, created_at, updated_at)
+         VALUES ('alex', 1, 'movie', 'Test', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      );
+      sqlite.exec(
+        `INSERT INTO custom_lists (id, profile_id, name, created_at, updated_at)
+         VALUES ('list-1', 'alex', 'My List', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      );
+      sqlite.exec(
+        `INSERT INTO custom_list_items (list_id, media_id, media_type, title, position, added_at)
+         VALUES ('list-1', 1, 'movie', 'Test', 0, '2026-01-01T00:00:00.000Z')`
+      );
+
+      sqlite.exec("DELETE FROM profiles WHERE id = 'alex'");
+
+      expect(sqlite.prepare("SELECT * FROM library_items WHERE profile_id = 'alex'").all()).toHaveLength(0);
+      expect(sqlite.prepare("SELECT * FROM custom_lists WHERE profile_id = 'alex'").all()).toHaveLength(0);
+      // Deleting the list must itself have cascaded to its items.
+      expect(sqlite.prepare("SELECT * FROM custom_list_items WHERE list_id = 'list-1'").all()).toHaveLength(0);
+    });
+
+    it("reassigns a profile_id that predates the constraint to 'default' instead of failing the upgrade", async () => {
+      const sqlite = new DatabaseSync(":memory:");
+      const adapter = createSqliteAdapter(sqlite);
+
+      // Apply migrations 1-6 for real, then plant a row referencing a
+      // profile that was never created — the kind of pre-existing
+      // inconsistency a constraint introduced today must tolerate on
+      // yesterday's data instead of bricking the upgrade.
+      for (const migration of migrations.filter((entry) => entry.version <= 6)) {
+        for (const statement of migration.statements) sqlite.exec(statement);
+      }
+      sqlite.exec("PRAGMA user_version = 6");
+      sqlite.exec(
+        `INSERT INTO profile_watchlist (profile_id, media_id, media_type, title, created_at)
+         VALUES ('deleted-profile', 1, 'movie', 'Orphan', '2026-01-01T00:00:00.000Z')`
+      );
+      sqlite.exec(
+        `INSERT INTO custom_lists (id, profile_id, name, created_at, updated_at)
+         VALUES ('orphan-list', 'deleted-profile', 'Orphan List', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      );
+      sqlite.exec(
+        `INSERT INTO custom_list_items (list_id, media_id, media_type, title, position, added_at)
+         VALUES ('ghost-list', 1, 'movie', 'Orphan Item', 0, '2026-01-01T00:00:00.000Z')`
+      );
+
+      await expect(runMigrations(adapter)).resolves.not.toThrow();
+
+      const watchlistRow = sqlite
+        .prepare("SELECT profile_id FROM profile_watchlist WHERE media_id = 1")
+        .all() as Array<{
+        profile_id: string;
+      }>;
+      expect(watchlistRow[0].profile_id).toBe("default");
+
+      const listRow = sqlite.prepare("SELECT profile_id FROM custom_lists WHERE id = 'orphan-list'").all() as Array<{
+        profile_id: string;
+      }>;
+      expect(listRow[0].profile_id).toBe("default");
+
+      // No sensible list to reassign an orphaned item to — it's dropped.
+      expect(sqlite.prepare("SELECT * FROM custom_list_items WHERE list_id = 'ghost-list'").all()).toHaveLength(0);
+    });
   });
 });
