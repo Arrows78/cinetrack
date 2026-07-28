@@ -35,7 +35,11 @@ export const formatRuntime = (runtime?: number | null) => {
 
 export const formatRating = (rating?: number | null) => (rating ? rating.toFixed(1).replace(".", ",") : "—");
 
-export const yearFromDate = (value?: string | null) => (value ? Number.parseInt(value.slice(0, 4), 10) : null);
+export const yearFromDate = (value?: string | null) => {
+  if (!value) return null;
+  const year = Number.parseInt(value.slice(0, 4), 10);
+  return Number.isNaN(year) ? null : year;
+};
 
 export const percent = (value: number, total: number) => (total === 0 ? 0 : Math.round((value / total) * 100));
 

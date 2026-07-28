@@ -3,6 +3,16 @@ import { preferencesRepository } from "@/features/preferences/preferences-reposi
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
 const nowIso = () => new Date().toISOString();
 const profileId = async () => (await preferencesRepository.getPreferences()).activeProfileId;
+
+// A corrupt provider_ids cell must not make the whole list/snapshot unreadable.
+const parseProviderIds = (value: unknown): number[] => {
+  try {
+    const parsed = JSON.parse(String(value));
+    return Array.isArray(parsed) ? parsed.filter((id): id is number => typeof id === "number") : [];
+  } catch {
+    return [];
+  }
+};
 export const availabilityRepository = {
   async listAlerts(): Promise<AvailabilityAlert[]> {
     const profile = await profileId();
@@ -19,7 +29,7 @@ export const availabilityRepository = {
       mediaType: row.media_type === "movie" ? "movie" : "series",
       title: String(row.title),
       region: String(row.region),
-      providerIds: JSON.parse(String(row.provider_ids)),
+      providerIds: parseProviderIds(row.provider_ids),
       enabled: Boolean(row.enabled),
       createdAt: String(row.created_at),
     }));
@@ -100,7 +110,7 @@ export const availabilityRepository = {
           mediaId: Number(row.media_id),
           mediaType: row.media_type === "movie" ? "movie" : "series",
           region: String(row.region),
-          providerIds: JSON.parse(String(row.provider_ids)),
+          providerIds: parseProviderIds(row.provider_ids),
           checkedAt: String(row.checked_at),
         }
       : null;

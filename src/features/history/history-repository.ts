@@ -19,9 +19,12 @@ export const historyRepository = {
     const profileId = await activeProfileId();
     const db = await getDatabase();
     if (!db) {
+      // Sort explicitly: add() prepends, but an imported backup may carry
+      // history in any order.
       return browserStore
         .read()
         .history.filter((item) => itemProfileId(item) === profileId)
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
         .slice(0, limit);
     }
 
