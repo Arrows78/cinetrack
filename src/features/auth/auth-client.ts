@@ -49,7 +49,7 @@ export function getAuthClient(): SupabaseClient | null {
   authClient ??= createClient(supabaseUrl, supabasePublishableKey, {
     auth: {
       autoRefreshToken: true,
-      detectSessionInUrl: !isTauriRuntime(),
+      detectSessionInUrl: false,
       flowType: "pkce",
       persistSession: true,
       storageKey: "cinetrack.auth.session",

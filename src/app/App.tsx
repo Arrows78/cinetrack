@@ -1,8 +1,6 @@
 import { useEffect } from "react";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-import { queryClient, queryPersister } from "@/app/query-client";
 import { AppRouter } from "@/app/router";
 import { CommandPalette } from "@/components/desktop/command-palette";
 import { TokenGate } from "@/components/desktop/token-gate";
@@ -77,14 +75,7 @@ export function App() {
   }, []);
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister: queryPersister,
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-        buster: "cinetrack-v2",
-      }}
-    >
+    <>
       <ThemeController />
 
       <MotionPreferenceGate>
@@ -96,6 +87,6 @@ export function App() {
       </MotionPreferenceGate>
 
       {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /> : null}
-    </PersistQueryClientProvider>
+    </>
   );
 }

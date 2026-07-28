@@ -105,7 +105,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     handledCallbackUrls.current.add(callbackUrl);
 
     try {
-      const code = readAuthCode(callbackUrl);
+      let code: string | null = null;
+
+      try {
+        code = readAuthCode(callbackUrl);
+      } finally {
+        if (!isTauriRuntime() && typeof window !== "undefined") {
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+      }
 
       if (!code) return;
 
@@ -162,6 +170,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
           for (const url of initialUrls ?? []) {
             await handleCallbackUrl(url);
           }
+        } else if (typeof window !== "undefined") {
+          await handleCallbackUrl(window.location.href);
         }
 
         const { data, error: sessionError } = await authClient.auth.getSession();
