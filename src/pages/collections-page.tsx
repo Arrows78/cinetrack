@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
-import { ListPlus, Trash2, UserPlus } from "lucide-react";
+import { ListPlus, Trash2 } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
 import { usePreferences } from "@/features/preferences/use-preferences";
 
@@ -40,14 +40,15 @@ function ListContents({ listId }: { listId: string }) {
 
 export function CollectionsPage() {
   const { t } = useTranslation();
-  const client = useQueryClient();
+  const { user } = useAuth();
   const profiles = useProfiles();
   const lists = useCustomLists();
   const preferences = usePreferences();
-  const [profileName, setProfileName] = useState("");
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
   const [openedList, setOpenedList] = useState<string | null>(null);
+
+  const currentProfile = profiles.data?.find((profile) => profile.id === preferences.data?.activeProfileId);
 
   return (
     <div className="space-y-8">
@@ -59,50 +60,23 @@ export function CollectionsPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-3xl border border-border bg-card/60 p-5">
           <h2 className="font-semibold">{t("collections.localProfiles")}</h2>
-          <div className="mt-4 flex gap-2">
-            <input
-              className="h-10 flex-1 rounded-xl border border-border bg-background px-3"
-              value={profileName}
-              onChange={(event) => setProfileName(event.target.value)}
-              placeholder={t("collections.profileNamePlaceholder")}
-            />
-            <Button
-              type="button"
-              onClick={() => void profiles.create(profileName).then(() => setProfileName(""))}
-              disabled={!profileName.trim()}
-            >
-              <UserPlus className="mr-2 size-4" />
-              {t("collections.add")}
-            </Button>
-          </div>
-          <div className="mt-4 grid gap-2">
-            {profiles.data?.map((profile) => (
-              <div
-                key={profile.id}
-                className="flex items-center justify-between rounded-xl border border-border px-3 py-2"
-              >
-                <button
-                  type="button"
-                  className="flex-1 text-left"
-                  onClick={() =>
-                    void preferences
-                      .updatePreference({ key: "activeProfileId", value: profile.id })
-                      .then(() => client.invalidateQueries())
-                  }
-                >
-                  <span className="font-medium">{profile.name}</span>
-                  {preferences.data?.activeProfileId === profile.id ? (
-                    <span className="ml-2 text-xs text-primary">{t("collections.active")}</span>
-                  ) : null}
-                </button>
-                {profile.id !== "default" ? (
-                  <Button type="button" size="icon" variant="ghost" onClick={() => void profiles.remove(profile.id)}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-          </div>
+          {/*
+            Access to a profile is derived from who is signed in (see
+            ProfileGate) — this used to be a free switcher letting anyone
+            click into any local profile, which would have let a signed-in
+            account read another account's data. Only the current profile
+            is shown here now, read-only.
+          */}
+          {currentProfile ? (
+            <div className="mt-4 rounded-xl border border-border px-3 py-3">
+              <p className="font-medium">{currentProfile.name}</p>
+              {user?.email ? (
+                <p className="mt-1 text-sm text-muted-foreground">{t("collections.linkedTo", { email: user.email })}</p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">{t("collections.noProfile")}</p>
+          )}
         </div>
 
         <BackupTools />

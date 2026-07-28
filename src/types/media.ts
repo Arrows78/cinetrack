@@ -172,6 +172,7 @@ export interface UserProfile {
   name: string | null;
   avatar?: string | null;
   createdAt?: string;
+  supabaseUserId?: string | null;
 }
 
 export interface UserPreferences {

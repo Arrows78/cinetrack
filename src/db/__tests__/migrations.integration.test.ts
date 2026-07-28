@@ -29,7 +29,7 @@ describe("runMigrations against real SQLite", () => {
     const sqlite = new DatabaseSync(":memory:");
     await runMigrations(createSqliteAdapter(sqlite));
 
-    expect(userVersion(sqlite)).toBe(7);
+    expect(userVersion(sqlite)).toBe(8);
     expect(tableNames(sqlite)).toEqual(
       expect.arrayContaining([
         "activity_log",
@@ -54,7 +54,7 @@ describe("runMigrations against real SQLite", () => {
     await runMigrations(createSqliteAdapter(sqlite));
     await expect(runMigrations(createSqliteAdapter(sqlite))).resolves.not.toThrow();
 
-    expect(userVersion(sqlite)).toBe(7);
+    expect(userVersion(sqlite)).toBe(8);
   });
 
   it("carries legacy watchlist rows forward into library_items and profile_watchlist", async () => {
@@ -162,7 +162,7 @@ describe("runMigrations against real SQLite", () => {
     sqlite.exec("PRAGMA user_version = 1");
 
     await expect(runMigrations(adapter)).resolves.not.toThrow();
-    expect(userVersion(sqlite)).toBe(7);
+    expect(userVersion(sqlite)).toBe(8);
   });
 
   it("rolls back and reports the failing migration when a statement genuinely fails", async () => {
@@ -277,6 +277,28 @@ describe("runMigrations against real SQLite", () => {
 
       // No sensible list to reassign an orphaned item to — it's dropped.
       expect(sqlite.prepare("SELECT * FROM custom_list_items WHERE list_id = 'ghost-list'").all()).toHaveLength(0);
+    });
+  });
+
+  describe("supabase user link (migration 8)", () => {
+    it("adds a nullable, unique supabase_user_id column to profiles", async () => {
+      const sqlite = new DatabaseSync(":memory:");
+      await runMigrations(createSqliteAdapter(sqlite));
+
+      // Nullable: multiple unclaimed profiles must coexist.
+      sqlite.exec(`INSERT INTO profiles (id, name, created_at) VALUES ('a', 'A', '2026-01-01T00:00:00.000Z')`);
+      sqlite.exec(`INSERT INTO profiles (id, name, created_at) VALUES ('b', 'B', '2026-01-01T00:00:00.000Z')`);
+      expect(sqlite.prepare("SELECT supabase_user_id FROM profiles WHERE id IN ('a','b')").all()).toEqual([
+        { supabase_user_id: null },
+        { supabase_user_id: null },
+      ]);
+
+      sqlite.exec("UPDATE profiles SET supabase_user_id = 'user-1' WHERE id = 'a'");
+
+      // Unique: a second profile can't claim the same account.
+      expect(() => sqlite.exec("UPDATE profiles SET supabase_user_id = 'user-1' WHERE id = 'b'")).toThrow(
+        /UNIQUE constraint failed/
+      );
     });
   });
 });

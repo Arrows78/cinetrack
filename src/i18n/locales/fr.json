@@ -218,13 +218,21 @@
     "episodes": "épisodes",
     "favouriteGenre": "Genre phare :"
   },
+  "profileGate": {
+    "resolving": "Chargement de votre profil…",
+    "createTitle": "Créez votre profil",
+    "createDescription": "Connecté avec {{email}}. Ce nom identifiera votre bibliothèque, votre historique et vos listes.",
+    "namePlaceholder": "Votre nom",
+    "createSubmit": "Créer mon profil",
+    "createError": "Impossible de créer le profil. Réessayez.",
+    "signOut": "Se déconnecter"
+  },
   "collections": {
     "title": "Profils et collections",
     "description": "Séparez les progressions du foyer et organisez vos médias dans des listes.",
-    "localProfiles": "Profils locaux",
-    "profileNamePlaceholder": "Nom du profil",
-    "add": "Ajouter",
-    "active": "actif",
+    "localProfiles": "Votre profil",
+    "linkedTo": "Lié au compte {{email}}",
+    "noProfile": "Aucun profil n'est encore associé à ce compte.",
     "customLists": "Listes personnalisées",
     "namePlaceholder": "Nom",
     "descriptionPlaceholder": "Description facultative",

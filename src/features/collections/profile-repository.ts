@@ -5,6 +5,14 @@ import type { UserProfile } from "@/types/media";
 const uid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
 
+const rowToProfile = (row: Record<string, unknown>): UserProfile => ({
+  id: String(row.id),
+  name: String(row.name),
+  avatar: row.avatar ? String(row.avatar) : null,
+  createdAt: String(row.created_at),
+  supabaseUserId: row.supabase_user_id ? String(row.supabase_user_id) : null,
+});
+
 export const profileRepository = {
   async list(): Promise<UserProfile[]> {
     const db = await getDatabase();
@@ -23,16 +31,17 @@ export const profileRepository = {
     const rows = await db.select<Array<Record<string, unknown>>>(
       "SELECT * FROM profiles ORDER BY CASE WHEN id = 'default' THEN 0 ELSE 1 END, created_at ASC"
     );
-    return rows.map((row) => ({
-      id: String(row.id),
-      name: String(row.name),
-      avatar: row.avatar ? String(row.avatar) : null,
-      createdAt: String(row.created_at),
-    }));
+    return rows.map(rowToProfile);
   },
 
-  async create(name: string, avatar?: string | null): Promise<UserProfile> {
-    const profile: UserProfile = { id: uid(), name: name.trim() || "Profil", avatar, createdAt: nowIso() };
+  async create(name: string, avatar?: string | null, supabaseUserId?: string | null): Promise<UserProfile> {
+    const profile: UserProfile = {
+      id: uid(),
+      name: name.trim() || "Profil",
+      avatar,
+      createdAt: nowIso(),
+      supabaseUserId: supabaseUserId ?? null,
+    };
     const db = await getDatabase();
     if (!db) {
       const store = browserStore.read();
@@ -40,13 +49,64 @@ export const profileRepository = {
       browserStore.write(store);
       return profile;
     }
-    await db.execute("INSERT INTO profiles (id, name, avatar, created_at) VALUES ($1, $2, $3, $4)", [
-      profile.id,
-      profile.name,
-      profile.avatar ?? null,
-      profile.createdAt,
-    ]);
+    await db.execute(
+      "INSERT INTO profiles (id, name, avatar, created_at, supabase_user_id) VALUES ($1, $2, $3, $4, $5)",
+      [profile.id, profile.name, profile.avatar ?? null, profile.createdAt, profile.supabaseUserId ?? null]
+    );
     return profile;
+  },
+
+  // Every profile going forward must belong to whoever is signed in with
+  // Supabase — this is the only creation path the UI should call.
+  async createForSupabaseUser(name: string, supabaseUserId: string, avatar?: string | null): Promise<UserProfile> {
+    return this.create(name, avatar, supabaseUserId);
+  },
+
+  async findBySupabaseUserId(supabaseUserId: string): Promise<UserProfile | null> {
+    const db = await getDatabase();
+    if (!db) return browserStore.read().profiles.find((profile) => profile.supabaseUserId === supabaseUserId) ?? null;
+    const rows = await db.select<Array<Record<string, unknown>>>(
+      "SELECT * FROM profiles WHERE supabase_user_id = $1 LIMIT 1",
+      [supabaseUserId]
+    );
+    return rows[0] ? rowToProfile(rows[0]) : null;
+  },
+
+  async linkToSupabaseUser(profileId: string, supabaseUserId: string): Promise<UserProfile> {
+    const db = await getDatabase();
+    if (!db) {
+      const store = browserStore.read();
+      const profile = store.profiles.find((entry) => entry.id === profileId);
+      if (!profile) throw new Error("Profil introuvable.");
+      profile.supabaseUserId = supabaseUserId;
+      browserStore.write(store);
+      return profile;
+    }
+    await db.execute("UPDATE profiles SET supabase_user_id = $1 WHERE id = $2", [supabaseUserId, profileId]);
+    const rows = await db.select<Array<Record<string, unknown>>>("SELECT * FROM profiles WHERE id = $1", [profileId]);
+    if (!rows[0]) throw new Error("Profil introuvable.");
+    return rowToProfile(rows[0]);
+  },
+
+  /**
+   * Resolves which local profile a signed-in Supabase account should land
+   * on: the profile it's already linked to, or — only the very first time,
+   * for whichever account signs in first — the 'default' profile that
+   * predates Supabase auth entirely, auto-claimed so pre-existing local
+   * data isn't orphaned by this feature. Returns null when neither applies,
+   * meaning the caller must offer to create a brand new profile.
+   */
+  async resolveForSupabaseUser(supabaseUserId: string): Promise<UserProfile | null> {
+    const existing = await this.findBySupabaseUserId(supabaseUserId);
+    if (existing) return existing;
+
+    const profiles = await this.list();
+    const defaultProfile = profiles.find((profile) => profile.id === "default");
+    if (defaultProfile && !defaultProfile.supabaseUserId) {
+      return this.linkToSupabaseUser("default", supabaseUserId);
+    }
+
+    return null;
   },
 
   async remove(profileId: string): Promise<void> {

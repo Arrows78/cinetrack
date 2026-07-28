@@ -28,6 +28,27 @@ export function useProfiles() {
   };
 }
 
+// Resolves which local profile the signed-in Supabase account should use —
+// see profileRepository.resolveForSupabaseUser for the auto-claim rule.
+// `null` (once loaded) means no profile exists yet for this account.
+export function useProfileForSupabaseUser(supabaseUserId: string | undefined) {
+  return useQuery({
+    queryKey: ["local", "profileForUser", supabaseUserId],
+    queryFn: () => profileRepository.resolveForSupabaseUser(supabaseUserId!),
+    enabled: Boolean(supabaseUserId),
+  });
+}
+
+export function useCreateProfileForSupabaseUser() {
+  const client = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: ({ name, supabaseUserId, avatar }: { name: string; supabaseUserId: string; avatar?: string | null }) =>
+      profileRepository.createForSupabaseUser(name, supabaseUserId, avatar),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["local"] }),
+  });
+  return { create: mutation.mutateAsync, isSaving: mutation.isPending, error: mutation.error };
+}
+
 export function useCustomLists() {
   const client = useQueryClient();
   const query = useQuery({ queryKey: queryKeys.local.customLists, queryFn: () => customListRepository.list() });
