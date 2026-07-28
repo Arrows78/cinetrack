@@ -41,6 +41,12 @@ export default defineConfig({
         "src/db/migrations/002-library-and-events.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
         "src/db/migrations/003-profiles-and-lists.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
         "src/db/migrations/004-availability.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        "src/db/migrations/005-history-profile-id.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        "src/db/migrations/006-index-cleanup.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        // Exercised end-to-end against a real SQLite engine in
+        // migrations.integration.test.ts (see also sqlite-adapter.ts) — not
+        // just string-shape-checked like migrations.test.ts.
+        "src/db/migrations/index.ts": { statements: 95, branches: 75, functions: 95, lines: 95 },
         "src/features/backup/portable-data.ts": { statements: 10, branches: 60, functions: 75, lines: 10 },
         "src/features/collections/profile-repository.ts": { statements: 45, branches: 45, functions: 80, lines: 45 },
         "src/features/history/history-repository.ts": { statements: 35, branches: 25, functions: 60, lines: 35 },
@@ -51,7 +57,9 @@ export default defineConfig({
           functions: 90,
           lines: 65,
         },
-        "src/features/progress/progress-repository.ts": { statements: 45, branches: 50, functions: 65, lines: 45 },
+        // The 92%/85% floor here reflects real SQL coverage, not just the
+        // browser fallback — see progress-repository.sql.test.ts.
+        "src/features/progress/progress-repository.ts": { statements: 90, branches: 85, functions: 85, lines: 90 },
         "src/features/stats/stats-repository.ts": { statements: 35, branches: 65, functions: 45, lines: 35 },
         "src/features/watchlist/watchlist-repository.ts": { statements: 45, branches: 45, functions: 75, lines: 45 },
       },
