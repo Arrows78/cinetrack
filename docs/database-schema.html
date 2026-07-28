@@ -1,0 +1,1262 @@
+<title>CineTrack — Schéma de la base de données</title>
+<style>
+  :root {
+    --bg: #f8f7fb;
+    --surface: #ffffff;
+    --surface-2: #fbfaff;
+    --ink: #1c1826;
+    --muted: #6e6680;
+    --faint: #a49bb5;
+    --accent: #6d4fd6;
+    --accent-ink: #4a2fb0;
+    --accent-soft: #efe9fb;
+    --line: #e6e2f0;
+    --legacy: #a8632a;
+    --legacy-soft: #f6ead9;
+    --legacy-line: #ecd3ab;
+    --shadow: 0 1px 2px rgba(28, 24, 38, 0.04);
+
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d0c13;
+      --surface: #161420;
+      --surface-2: #13111c;
+      --ink: #ece9f5;
+      --muted: #a099b0;
+      --faint: #6a637a;
+      --accent: #b09bfb;
+      --accent-ink: #d2c3ff;
+      --accent-soft: #241f38;
+      --line: #2b2738;
+      --legacy: #dba470;
+      --legacy-soft: #2c2318;
+      --legacy-line: #443119;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d0c13;
+    --surface: #161420;
+    --surface-2: #13111c;
+    --ink: #ece9f5;
+    --muted: #a099b0;
+    --faint: #6a637a;
+    --accent: #b09bfb;
+    --accent-ink: #d2c3ff;
+    --accent-soft: #241f38;
+    --line: #2b2738;
+    --legacy: #dba470;
+    --legacy-soft: #2c2318;
+    --legacy-line: #443119;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  :root[data-theme="light"] {
+    --bg: #f8f7fb;
+    --surface: #ffffff;
+    --surface-2: #fbfaff;
+    --ink: #1c1826;
+    --muted: #6e6680;
+    --faint: #a49bb5;
+    --accent: #6d4fd6;
+    --accent-ink: #4a2fb0;
+    --accent-soft: #efe9fb;
+    --line: #e6e2f0;
+    --legacy: #a8632a;
+    --legacy-soft: #f6ead9;
+    --legacy-line: #ecd3ab;
+    --shadow: 0 1px 2px rgba(28, 24, 38, 0.04);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--accent-ink);
+  }
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  /* ---------- Header ---------- */
+
+  header.hero {
+    padding: 56px 0 40px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(28px, 4vw, 38px);
+    line-height: 1.18;
+    margin: 0 0 16px;
+    text-wrap: balance;
+    max-width: 20ch;
+  }
+
+  .lede {
+    font-size: 17px;
+    color: var(--muted);
+    max-width: 62ch;
+    margin: 0 0 20px;
+  }
+
+  .stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    margin-top: 28px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat b {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat span {
+    font-size: 12.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---------- Sticky nav ---------- */
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 10px 0;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+
+  nav.toc a {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  nav.toc a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  /* ---------- Sections ---------- */
+
+  section.domain {
+    padding: 48px 0 8px;
+    scroll-margin-top: 56px;
+  }
+
+  .domain-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .domain-head h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 24px;
+    margin: 0;
+  }
+
+  .domain-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--faint);
+  }
+
+  .domain-note {
+    color: var(--muted);
+    max-width: 68ch;
+    margin: 0 0 28px;
+  }
+
+  /* ---------- Table cards ---------- */
+
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .table-card.is-legacy {
+    background: var(--legacy-soft);
+    border-color: var(--legacy-line);
+  }
+
+  .table-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .is-legacy .table-card-head {
+    border-color: var(--legacy-line);
+  }
+
+  .table-name {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+
+  .badge.pk {
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .badge.legacy-tag {
+    color: var(--legacy);
+    border-color: var(--legacy-line);
+    background: var(--legacy-soft);
+  }
+
+  .table-purpose {
+    padding: 14px 20px 4px;
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 68ch;
+  }
+
+  .table-purpose strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  table.cols {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  table.cols th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 500;
+    padding: 10px 20px 8px;
+  }
+
+  table.cols td {
+    padding: 7px 20px;
+    border-top: 1px solid var(--line);
+    vertical-align: baseline;
+  }
+
+  .is-legacy table.cols td {
+    border-color: var(--legacy-line);
+  }
+
+  table.cols td.col-name {
+    font-family: var(--mono);
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  table.cols td.col-type {
+    font-family: var(--mono);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  table.cols td.col-note {
+    color: var(--muted);
+    width: 100%;
+  }
+
+  .tag-pk,
+  .tag-fk {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    padding: 1px 5px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .tag-pk {
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+  }
+  .tag-fk {
+    color: var(--muted);
+    border: 1px solid var(--line);
+  }
+
+  .relations {
+    padding: 12px 20px 18px;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+  }
+
+  .is-legacy .relations {
+    border-color: var(--legacy-line);
+  }
+
+  .relations code {
+    font-family: var(--mono);
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  .is-legacy .relations code {
+    background: var(--legacy-soft);
+  }
+
+  /* ---------- Callouts ---------- */
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 14px 18px;
+    border-radius: 0 4px 4px 0;
+    font-size: 14.5px;
+    color: var(--ink);
+    margin: 0 0 24px;
+  }
+
+  .callout p {
+    margin: 0;
+  }
+  .callout p + p {
+    margin-top: 8px;
+  }
+
+  /* ---------- MCD / diagram ---------- */
+
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 20px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 16px 0 28px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .legend .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .swatch.accent {
+    background: var(--accent);
+  }
+  .swatch.legacy {
+    background: var(--legacy);
+  }
+  .swatch.line {
+    background: var(--faint);
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+    font-size: 13px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      scroll-behavior: auto !important;
+    }
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+</style>
+
+<div class="page">
+  <header class="hero">
+    <p class="eyebrow">CineTrack · schéma SQLite</p>
+    <h1>Comment CineTrack range vos films et séries</h1>
+    <p class="lede">
+      La base est du SQLite local, embarqué dans l'app via Tauri — pas de serveur, tout vit sur le poste. Elle est
+      pensée <strong>multi-profils</strong> dès le départ&nbsp;: presque chaque table porte un
+      <code>profile_id</code> qui isole les données d'un profil des autres, avec des contraintes
+      <code>FOREIGN KEY … ON DELETE CASCADE</code> qui garantissent qu'aucune ligne ne survit à la suppression de son
+      profil ou de sa liste. Depuis peu, chaque profil est en plus <strong>lié à un compte Supabase</strong> — y accéder
+      nécessite d'être connecté avec ce compte précis.
+    </p>
+    <div class="stat-row">
+      <div class="stat"><b>11</b><span>tables actives</span></div>
+      <div class="stat"><b>4</b><span>tables historiques</span></div>
+      <div class="stat"><b>8</b><span>migrations</span></div>
+      <div class="stat"><b>1</b><span>base par poste</span></div>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#profils">Profils</a>
+    <a href="#bibliotheque">Bibliothèque</a>
+    <a href="#historique">Historique</a>
+    <a href="#listes">Listes</a>
+    <a href="#disponibilite">Disponibilité</a>
+    <a href="#legacy">Tables historiques</a>
+    <a href="#mcd">Schéma (MCD)</a>
+  </nav>
+
+  <!-- ================= PROFILS ================= -->
+  <section class="domain" id="profils">
+    <div class="domain-head">
+      <h2>Profils &amp; préférences</h2>
+      <span class="domain-count">2 tables</span>
+    </div>
+    <p class="domain-note">
+      Le socle de tout le reste&nbsp;: chaque profil a sa propre bibliothèque, son historique, ses listes. Les
+      préférences, elles, ne suivent volontairement <strong>pas</strong> ce découpage.
+    </p>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">profiles</span>
+        <span class="badge pk">racine</span>
+      </div>
+      <p class="table-purpose">
+        Un profil = une personne qui utilise l'app. <strong>Toutes</strong> les tables ci-dessous s'y rattachent par
+        <code>profile_id</code>. Le profil <code>'default'</code> est créé automatiquement à la première migration et ne
+        peut jamais être supprimé. Depuis la migration 008, un profil doit être
+        <strong>lié à un compte Supabase</strong> pour être accessible&nbsp;: le premier compte qui se connecte réclame
+        automatiquement <code>'default'</code> (et ses données existantes), tout compte suivant doit créer son propre
+        profil.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">identifiant du profil (<code>'default'</code> ou UUID)</td>
+        </tr>
+        <tr>
+          <td class="col-name">name</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">nom affiché</td>
+        </tr>
+        <tr>
+          <td class="col-name">avatar</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">optionnel</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">date ISO</td>
+        </tr>
+        <tr>
+          <td class="col-name">supabase_user_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">
+            optionnel, <strong>unique</strong> — id du compte Supabase lié ; pas de FK possible,
+            <code>auth.users</code> vit chez Supabase, hors de ce fichier SQLite
+          </td>
+        </tr>
+      </table>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">preferences</span>
+        <span class="badge">clé / valeur</span>
+      </div>
+      <p class="table-purpose">
+        Réglages de l'application&nbsp;: thème, couleur d'accent, langue, région TMDB, spoiler protection,
+        notifications, et <code>activeProfileId</code> — le profil actuellement sélectionné. C'est une table
+        <strong>globale</strong>, partagée par tous les profils : ils partagent la même app, pas les mêmes préférences
+        par profil.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>key</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ex. <code>theme</code>, <code>activeProfileId</code></td>
+        </tr>
+        <tr>
+          <td class="col-name">value</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">valeur encodée en JSON</td>
+        </tr>
+      </table>
+      <div class="relations">Aucune relation déclarée — table intentionnellement indépendante des profils.</div>
+    </article>
+  </section>
+
+  <!-- ================= BIBLIOTHEQUE ================= -->
+  <section class="domain" id="bibliotheque">
+    <div class="domain-head">
+      <h2>Bibliothèque &amp; progression</h2>
+      <span class="domain-count">6 tables</span>
+    </div>
+    <p class="domain-note">
+      Le cœur fonctionnel de l'app. Trois idées coexistent volontairement : un <em>état</em> courant
+      (<code>library_items</code>, <code>status</code>), un <em>journal d'événements</em> immuable
+      (<code>viewing_events</code>, utilisé pour les statistiques) et des tables de suivi plus légères héritées des
+      premières versions (watchlist, seen, progression d'épisodes).
+    </p>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">library_items</span>
+        <span class="badge pk">fiche de suivi</span>
+      </div>
+      <p class="table-purpose">
+        La fiche complète d'un film ou d'une série dans la bibliothèque d'un profil&nbsp;: son
+        <strong>statut</strong> (<code>planned</code>, <code>watching</code>, <code>paused</code>,
+        <code>completed</code>, <code>dropped</code>, <code>rewatching</code>), la note personnelle, des notes libres,
+        des tags, les dates de début/fin et le nombre de re-visionnages.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ profiles.id</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>media_id, media_type</td>
+          <td class="col-type">INT, TEXT</td>
+          <td class="col-note">identifiant TMDB + <code>movie</code>/<code>series</code></td>
+        </tr>
+        <tr>
+          <td class="col-name">status</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">défaut <code>planned</code></td>
+        </tr>
+        <tr>
+          <td class="col-name">favourite, user_rating, notes, tags</td>
+          <td class="col-type">…</td>
+          <td class="col-note"><code>tags</code> en JSON</td>
+        </tr>
+        <tr>
+          <td class="col-name">genres</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">JSON, copié depuis TMDB</td>
+        </tr>
+        <tr>
+          <td class="col-name">started_at, completed_at, rewatch_count</td>
+          <td class="col-type">…</td>
+          <td class="col-note">renseignés selon les changements de statut</td>
+        </tr>
+      </table>
+      <div class="relations">
+        Un profil possède <code>0..n</code> entrées de bibliothèque. Supprimer le profil supprime la ligne (<code
+          >ON DELETE CASCADE</code
+        >).
+      </div>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">viewing_events</span>
+        <span class="badge pk">journal (append-only)</span>
+      </div>
+      <p class="table-purpose">
+        Chaque visionnage (ou annulation) génère une ligne ici&nbsp;: film entier ou épisode précis, avec sa durée.
+        C'est <strong>cette</strong> table — pas <code>library_items.status</code> — qui alimente les statistiques
+        (minutes vues, séries de jours consécutifs, activité mensuelle).
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">UUID</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ profiles.id</td>
+        </tr>
+        <tr>
+          <td class="col-name">event_type</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note"><code>watched</code> / <code>unwatched</code> / <code>rewatched</code></td>
+        </tr>
+        <tr>
+          <td class="col-name">watched_at, duration_minutes</td>
+          <td class="col-type">TEXT, INT</td>
+          <td class="col-note">horodatage + durée pour les stats</td>
+        </tr>
+        <tr>
+          <td class="col-name">episode_id, season_number, episode_number</td>
+          <td class="col-type">INT</td>
+          <td class="col-note">nuls pour un film</td>
+        </tr>
+      </table>
+      <div class="relations">Un profil journalise <code>0..n</code> événements.</div>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">profile_watchlist</span>
+        <span class="badge">à voir</span>
+      </div>
+      <p class="table-purpose">
+        La liste « à regarder » simple — plus légère que <code>library_items</code>, sans statut ni note.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name">
+            <span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, media_id, media_type
+          </td>
+          <td class="col-type">…</td>
+          <td class="col-note">clé composite</td>
+        </tr>
+        <tr>
+          <td class="col-name">title, poster_path, backdrop_path, year, rating</td>
+          <td class="col-type">…</td>
+          <td class="col-note">copie TMDB au moment de l'ajout</td>
+        </tr>
+      </table>
+      <div class="relations">Un profil a <code>0..n</code> entrées à voir.</div>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">profile_seen_movies</span>
+        <span class="badge">vu / pas vu</span>
+      </div>
+      <p class="table-purpose">
+        Un simple bascule « vu » pour les films, plus rapide que de passer par la bibliothèque complète.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, movie_id</td>
+          <td class="col-type">…</td>
+          <td class="col-note">clé composite</td>
+        </tr>
+        <tr>
+          <td class="col-name">watched_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">date du visionnage</td>
+        </tr>
+      </table>
+      <div class="relations">Un profil a <code>0..n</code> films marqués vus.</div>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">profile_episode_progress</span>
+        <span class="badge">progression</span>
+      </div>
+      <p class="table-purpose">
+        Une ligne par épisode regardé. C'est la source de vérité pour savoir où en est un profil dans une série — le
+        décompte affiché est recalculé à la lecture, pas stocké.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name">
+            <span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, series_id, episode_id
+          </td>
+          <td class="col-type">…</td>
+          <td class="col-note">clé composite</td>
+        </tr>
+        <tr>
+          <td class="col-name">season_number, episode_number</td>
+          <td class="col-type">INT</td>
+          <td class="col-note">repère l'épisode</td>
+        </tr>
+        <tr>
+          <td class="col-name">watched, watched_at</td>
+          <td class="col-type">BOOL, TEXT</td>
+          <td class="col-note"></td>
+        </tr>
+      </table>
+      <div class="relations">Un profil a <code>0..n</code> épisodes marqués vus.</div>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">profile_tracked_series</span>
+        <span class="badge">séries suivies</span>
+      </div>
+      <p class="table-purpose">
+        Une ligne par série qu'un profil suit activement. Le nombre d'épisodes vus n'est
+        <strong>pas</strong> stocké ici&nbsp;: il est calculé par une jointure avec
+        <code>profile_episode_progress</code> à chaque lecture, pour ne jamais désynchroniser un compteur.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, series_id</td>
+          <td class="col-type">…</td>
+          <td class="col-note">clé composite</td>
+        </tr>
+        <tr>
+          <td class="col-name">total_episodes</td>
+          <td class="col-type">INT</td>
+          <td class="col-note">total connu côté TMDB</td>
+        </tr>
+        <tr>
+          <td class="col-name">updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note"></td>
+        </tr>
+      </table>
+      <div class="relations">Un profil suit <code>0..n</code> séries.</div>
+    </article>
+  </section>
+
+  <!-- ================= HISTORIQUE ================= -->
+  <section class="domain" id="historique">
+    <div class="domain-head">
+      <h2>Historique d'activité</h2>
+      <span class="domain-count">1 table</span>
+    </div>
+    <p class="domain-note">
+      Le fil d'activité affiché à l'écran « Historique » — lisible par un humain, distinct du journal statistique
+      ci-dessus même si les deux s'écrivent souvent au même moment.
+    </p>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">activity_log</span>
+        <span class="badge pk">fil d'activité</span>
+      </div>
+      <p class="table-purpose">
+        Chaque action notable — ajout à une liste, film marqué vu, épisode ou saison entière cochée — devient une ligne
+        ici avec un <code>action</code> parmi 13 valeurs possibles (<code>movie:watched</code>,
+        <code>watchlist:add</code>, <code>list:remove</code>…) et un champ <code>metadata</code> en JSON pour les
+        détails propres à chaque action.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">UUID</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ profiles.id, nullable</td>
+        </tr>
+        <tr>
+          <td class="col-name">action</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ex. <code>episode:watched</code></td>
+        </tr>
+        <tr>
+          <td class="col-name">season_number, episode_number, episode_title</td>
+          <td class="col-type">…</td>
+          <td class="col-note">renseignés pour les épisodes</td>
+        </tr>
+        <tr>
+          <td class="col-name">metadata</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">JSON libre</td>
+        </tr>
+        <tr>
+          <td class="col-name">timestamp</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">indexé pour un tri rapide</td>
+        </tr>
+      </table>
+      <div class="relations">Un profil a <code>0..n</code> lignes d'historique.</div>
+    </article>
+  </section>
+
+  <!-- ================= LISTES ================= -->
+  <section class="domain" id="listes">
+    <div class="domain-head">
+      <h2>Listes personnalisées</h2>
+      <span class="domain-count">2 tables</span>
+    </div>
+    <p class="domain-note">
+      Les collections que l'utilisateur crée lui-même — « Films de Noël », « À revoir avec… » — distinctes de la
+      watchlist système.
+    </p>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">custom_lists</span>
+        <span class="badge pk">collection</span>
+      </div>
+      <p class="table-purpose">Une liste nommée créée par un profil.</p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">UUID</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ profiles.id</td>
+        </tr>
+        <tr>
+          <td class="col-name">name, description</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note"></td>
+        </tr>
+      </table>
+      <div class="relations">
+        Un profil crée <code>0..n</code> listes. Supprimer le profil supprime la liste, qui supprime à son tour ses
+        contenus (cascade en chaîne).
+      </div>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">custom_list_items</span>
+        <span class="badge">contenu d'une liste</span>
+      </div>
+      <p class="table-purpose">Un film ou une série dans une liste, avec sa position pour l'ordre d'affichage.</p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>list_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ custom_lists.id</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>media_id, media_type</td>
+          <td class="col-type">…</td>
+          <td class="col-note"></td>
+        </tr>
+        <tr>
+          <td class="col-name">position</td>
+          <td class="col-type">INT</td>
+          <td class="col-note">ordre dans la liste</td>
+        </tr>
+      </table>
+      <div class="relations">Une liste contient <code>0..n</code> éléments.</div>
+    </article>
+  </section>
+
+  <!-- ================= DISPONIBILITE ================= -->
+  <section class="domain" id="disponibilite">
+    <div class="domain-head">
+      <h2>Disponibilité streaming</h2>
+      <span class="domain-count">2 tables</span>
+    </div>
+    <p class="domain-note">
+      « Que regarder ce soir » et les alertes de disponibilité s'appuient sur ces deux tables — l'une appartient à un
+      profil, l'autre décrit un fait sur un titre, partagé par tous.
+    </p>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">availability_alerts</span>
+        <span class="badge pk">abonnement</span>
+      </div>
+      <p class="table-purpose">
+        « Préviens-moi si ce film devient disponible sur telle plateforme » — un profil peut s'abonner à un titre pour
+        une région et une liste de plateformes préférées.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">UUID</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ profiles.id</td>
+        </tr>
+        <tr>
+          <td class="col-name">region, provider_ids</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note"><code>provider_ids</code> en JSON</td>
+        </tr>
+        <tr>
+          <td class="col-name">enabled</td>
+          <td class="col-type">BOOL</td>
+          <td class="col-note">défaut vrai</td>
+        </tr>
+      </table>
+      <div class="relations">Un profil crée <code>0..n</code> alertes.</div>
+    </article>
+
+    <article class="table-card">
+      <div class="table-card-head">
+        <span class="table-name">availability_snapshots</span>
+        <span class="badge">fait partagé</span>
+      </div>
+      <p class="table-purpose">
+        Le dernier relevé connu des plateformes proposant un titre, par région — une propriété du
+        <strong>titre</strong>, pas d'un profil, donc partagée par tous. Rapprochée des alertes en mémoire par l'app
+        (pas de clé étrangère entre les deux), pour détecter une nouvelle disponibilité.
+      </p>
+      <table class="cols">
+        <tr>
+          <th>Colonne</th>
+          <th>Type</th>
+          <th>Détail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>media_id, media_type, region</td>
+          <td class="col-type">…</td>
+          <td class="col-note">clé composite</td>
+        </tr>
+        <tr>
+          <td class="col-name">provider_ids</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">JSON</td>
+        </tr>
+        <tr>
+          <td class="col-name">checked_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">horodatage du dernier relevé</td>
+        </tr>
+      </table>
+      <div class="relations">Aucune relation déclarée — table indépendante des profils.</div>
+    </article>
+  </section>
+
+  <!-- ================= LEGACY ================= -->
+  <section class="domain" id="legacy">
+    <div class="domain-head">
+      <h2>Tables historiques</h2>
+      <span class="domain-count">4 tables · dépréciées</span>
+    </div>
+    <p class="domain-note">
+      Datent de la toute première version de CineTrack, avant l'existence des profils. Plus aucun code n'y écrit
+      aujourd'hui — elles restent uniquement pour que la migration qui a introduit les profils puisse recopier une
+      dernière fois leurs données vers les tables <code>profile_*</code>
+      équivalentes sur une installation ancienne.
+    </p>
+
+    <article class="table-card is-legacy">
+      <div class="table-card-head">
+        <span class="table-name">watchlist</span>
+        <span class="badge legacy-tag">remplacée par profile_watchlist</span>
+      </div>
+      <div class="relations">media_id, media_type, title, poster_path, backdrop_path, year, rating, created_at</div>
+    </article>
+    <article class="table-card is-legacy">
+      <div class="table-card-head">
+        <span class="table-name">seen_movies</span>
+        <span class="badge legacy-tag">remplacée par profile_seen_movies</span>
+      </div>
+      <div class="relations">movie_id, title, poster_path, backdrop_path, watched_at</div>
+    </article>
+    <article class="table-card is-legacy">
+      <div class="table-card-head">
+        <span class="table-name">tracked_series</span>
+        <span class="badge legacy-tag">remplacée par profile_tracked_series</span>
+      </div>
+      <div class="relations">series_id, title, poster_path, backdrop_path, total_episodes, updated_at</div>
+    </article>
+    <article class="table-card is-legacy">
+      <div class="table-card-head">
+        <span class="table-name">episode_progress</span>
+        <span class="badge legacy-tag">remplacée par profile_episode_progress</span>
+      </div>
+      <div class="relations">series_id, episode_id, season_number, episode_number, watched, watched_at</div>
+    </article>
+  </section>
+
+  <!-- ================= MCD ================= -->
+  <section class="domain" id="mcd">
+    <div class="domain-head">
+      <h2>Modèle conceptuel (MCD)</h2>
+      <span class="domain-count">schéma actif uniquement</span>
+    </div>
+    <p class="domain-note">
+      Les entités et leurs cardinalités — les colonnes complètes sont dans les fiches ci-dessus, ici on ne garde que ce
+      qui identifie chaque ligne. Les tables historiques n'y figurent pas : elles ne participent plus au modèle vivant
+      de l'app.
+    </p>
+
+    <div class="callout">
+      <p>
+        <strong>Lecture des cardinalités&nbsp;:</strong> <code>||—o{</code> se lit « un, obligatoirement » du côté du
+        trait double, « zéro à plusieurs » du côté du trait ouvert. Exemple —
+        <code>PROFILES ||--o{ LIBRARY_ITEMS</code> : un profil a zéro à plusieurs fiches de bibliothèque, une fiche
+        appartient à exactement un profil.
+      </p>
+    </div>
+
+    <div class="diagram-wrap">
+      <pre class="mermaid">
+erDiagram
+    PROFILES {
+        string id PK
+        string name
+        string created_at
+        string supabase_user_id UK
+    }
+    PREFERENCES {
+        string key PK
+        string value
+    }
+    LIBRARY_ITEMS {
+        string profile_id FK
+        int media_id
+        string media_type
+        string status
+    }
+    VIEWING_EVENTS {
+        string id PK
+        string profile_id FK
+        string event_type
+        string watched_at
+    }
+    PROFILE_WATCHLIST {
+        string profile_id FK
+        int media_id
+        string media_type
+    }
+    PROFILE_SEEN_MOVIES {
+        string profile_id FK
+        int movie_id
+        string watched_at
+    }
+    PROFILE_EPISODE_PROGRESS {
+        string profile_id FK
+        int series_id
+        int episode_id
+        bool watched
+    }
+    PROFILE_TRACKED_SERIES {
+        string profile_id FK
+        int series_id
+        int total_episodes
+    }
+    ACTIVITY_LOG {
+        string id PK
+        string profile_id FK
+        string action
+        string timestamp
+    }
+    CUSTOM_LISTS {
+        string id PK
+        string profile_id FK
+        string name
+    }
+    CUSTOM_LIST_ITEMS {
+        string list_id FK
+        int media_id
+        int position
+    }
+    AVAILABILITY_ALERTS {
+        string id PK
+        string profile_id FK
+        string region
+        string provider_ids
+    }
+    AVAILABILITY_SNAPSHOTS {
+        int media_id
+        string media_type
+        string region
+        string checked_at
+    }
+
+    PROFILES ||--o{ LIBRARY_ITEMS : suit
+    PROFILES ||--o{ VIEWING_EVENTS : journalise
+    PROFILES ||--o{ PROFILE_WATCHLIST : "veut voir"
+    PROFILES ||--o{ PROFILE_SEEN_MOVIES : "a vu"
+    PROFILES ||--o{ PROFILE_EPISODE_PROGRESS : progresse
+    PROFILES ||--o{ PROFILE_TRACKED_SERIES : suit
+    PROFILES ||--o{ ACTIVITY_LOG : historise
+    PROFILES ||--o{ CUSTOM_LISTS : cree
+    PROFILES ||--o{ AVAILABILITY_ALERTS : "s'abonne"
+    CUSTOM_LISTS ||--o{ CUSTOM_LIST_ITEMS : contient
+</pre
+      >
+    </div>
+
+    <div class="legend">
+      <span
+        ><span class="swatch accent"></span> entités reliées à <code>profiles</code> par une vraie contrainte FK</span
+      >
+      <span
+        ><span class="swatch line"></span> <code>PREFERENCES</code> et <code>AVAILABILITY_SNAPSHOTS</code> :
+        volontairement isolées, pas de FK</span
+      >
+    </div>
+
+    <div class="callout">
+      <p>
+        <code>PROFILES.supabase_user_id</code> (<code>UK</code> = unique key) n'a volontairement
+        <strong>aucune ligne de relation</strong> dans ce diagramme&nbsp;: son "parent" conceptuel,
+        <code>auth.users</code>, vit dans la base Postgres de Supabase — un fichier SQLite séparé ne peut ni le
+        référencer ni le joindre. C'est une donnée de corrélation, pas une contrainte imposée par le moteur.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    Les 9 relations vers <code>profiles</code> et celle de <code>custom_list_items</code> vers
+    <code>custom_lists</code> sont posées en <code>ON DELETE CASCADE</code> depuis la migration 007 — supprimer un
+    profil ou une liste supprime tout ce qui lui appartient, jusqu'au bout de la chaîne. La migration 008 ajoute le lien
+    <code>profiles.supabase_user_id</code> qui conditionne l'accès à un profil à une connexion Supabase.
+  </footer>
+</div>
+
+<!--
+  Copie archivée de l'artifact claude.ai (voir historique du dépôt pour le
+  lien d'origine). Le rendu Mermoid natif de la plateforme d'artifacts ne
+  s'applique qu'aux pages servies par claude.ai — ouvert directement comme
+  fichier local, ce document a besoin de la librairie Mermaid pour afficher
+  le diagramme du bloc `<pre class="mermaid">` ci-dessus ; ce script ne fait
+  que ça, avec une connexion internet.
+-->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+    });
+  }
+</script>
