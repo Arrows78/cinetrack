@@ -57,13 +57,21 @@ fn http_client() -> &'static reqwest::Client {
 const MAX_ATTEMPTS: u32 = 3;
 const RETRY_BASE_DELAY: Duration = Duration::from_millis(250);
 
+/// The frontend controls `path`, but it still crosses the IPC boundary, so it
+/// is validated as untrusted input: it must stay inside the TMDB v3 API and
+/// cannot smuggle a traversal segment, an absolute URL, or a query/fragment
+/// that would break out of the `format!`-built URL.
+fn is_valid_tmdb_path(path: &str) -> bool {
+    path.starts_with('/') && !path.contains("..") && !path.contains("://") && !path.contains('?') && !path.contains('#')
+}
+
 #[tauri::command]
 pub async fn tmdb_request(
     path: String,
     params: HashMap<String, String>,
     token: String,
 ) -> Result<Value, TmdbError> {
-    if !path.starts_with('/') || path.contains("..") || path.contains("://") {
+    if !is_valid_tmdb_path(&path) {
         return Err(TmdbError::new("Invalid TMDB path"));
     }
 
@@ -118,4 +126,31 @@ pub async fn tmdb_request(
     }
 
     Err(last_error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_valid_tmdb_path;
+
+    #[test]
+    fn accepts_normal_tmdb_api_paths() {
+        assert!(is_valid_tmdb_path("/movie/550"));
+        assert!(is_valid_tmdb_path("/tv/1399/season/1"));
+        assert!(is_valid_tmdb_path("/search/multi"));
+        assert!(is_valid_tmdb_path("/trending/movie/week"));
+    }
+
+    #[test]
+    fn rejects_paths_that_escape_the_tmdb_api() {
+        // Must be rooted.
+        assert!(!is_valid_tmdb_path(""));
+        assert!(!is_valid_tmdb_path("movie/550"));
+        // Traversal.
+        assert!(!is_valid_tmdb_path("/movie/../../4/secret"));
+        // Absolute URL smuggling.
+        assert!(!is_valid_tmdb_path("/https://evil.example"));
+        // Query or fragment injection into the format!-built URL.
+        assert!(!is_valid_tmdb_path("/movie/550?api_key=stolen"));
+        assert!(!is_valid_tmdb_path("/movie/550#fragment"));
+    }
 }
