@@ -99,6 +99,7 @@ export function HomePage() {
       rating: null,
       genres: [],
       cast: [],
+      progress: { watched: item.watchedEpisodes, total: item.totalEpisodes },
     }));
 
   let sectionIndex = 0;

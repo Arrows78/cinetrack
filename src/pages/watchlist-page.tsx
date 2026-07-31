@@ -6,17 +6,25 @@ import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useWatchlist } from "@/features/watchlist/use-watchlist";
 
 export function WatchlistPage() {
   const { t } = useTranslation();
   const { data: preferences } = usePreferences();
   const { data: items } = useWatchlist();
+  const { data: trackedSeries } = useTrackedSeries();
   const [selectedFilter, setSelectedFilter] = useState<"all" | "movie" | "series" | null>(null);
   const filter = selectedFilter ?? preferences?.defaultWatchlistFilter ?? "all";
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
 
   const filtered = useMemo(() => {
+    const progressBySeries = new Map(
+      (trackedSeries ?? []).map((series) => [
+        series.seriesId,
+        { watched: series.watchedEpisodes, total: series.totalEpisodes },
+      ])
+    );
     const base = (items ?? []).filter((item) => (filter === "all" ? true : item.mediaType === filter));
     return base
       .slice()
@@ -36,8 +44,9 @@ export function WatchlistPage() {
         rating: item.rating,
         genres: [],
         cast: [],
+        progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
       }));
-  }, [items, filter, sort]);
+  }, [items, trackedSeries, filter, sort]);
 
   return (
     <div className="space-y-8">

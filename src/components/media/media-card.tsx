@@ -6,9 +6,16 @@ import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
-function MediaCardInner({ media }: { media: MediaSummary }) {
+export interface MediaCardProgress {
+  watched: number;
+  total: number;
+}
+
+function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: MediaCardProgress }) {
   const { t } = useTranslation();
   const image = buildTmdbImageUrl(media.posterPath, "w500") ?? fallbackPoster;
+  const showProgress = progress !== undefined && progress.total > 0;
+  const complete = showProgress && progress.watched >= progress.total;
 
   return (
     <div className="relative overflow-hidden rounded-card">
@@ -71,14 +78,39 @@ function MediaCardInner({ media }: { media: MediaSummary }) {
                 <p className="truncate text-[11px] font-medium text-white/60">{media.genres[0]}</p>
               </>
             )}
+            {showProgress ? (
+              <>
+                <span className="h-1 w-1 rounded-full bg-white/30" />
+                <p className="text-[11px] font-medium tabular-nums text-white/60">
+                  {progress.watched}/{progress.total}
+                </p>
+              </>
+            ) : null}
           </div>
         </div>
+
+        {/* TV Time-style progress bar */}
+        {showProgress ? (
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={progress.total}
+            aria-valuenow={progress.watched}
+            aria-label={t("media.episodes")}
+            className="absolute inset-x-0 bottom-0 h-1 bg-white/15"
+          >
+            <div
+              className={cn("h-full transition-all duration-500", complete ? "bg-emerald-500" : "bg-primary")}
+              style={{ width: `${Math.min(100, Math.round((progress.watched / progress.total) * 100))}%` }}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
-export function MediaCard({ media }: { media: MediaSummary }) {
+export function MediaCard({ media, progress }: { media: MediaSummary; progress?: MediaCardProgress }) {
   return (
     <motion.div
       className="group"
@@ -87,11 +119,11 @@ export function MediaCard({ media }: { media: MediaSummary }) {
     >
       {media.mediaType === "movie" ? (
         <Link to="/movies/$movieId" params={{ movieId: String(media.id) }}>
-          <MediaCardInner media={media} />
+          <MediaCardInner media={media} progress={progress} />
         </Link>
       ) : (
         <Link to="/series/$seriesId" params={{ seriesId: String(media.id) }}>
-          <MediaCardInner media={media} />
+          <MediaCardInner media={media} progress={progress} />
         </Link>
       )}
     </motion.div>
