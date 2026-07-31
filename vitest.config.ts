@@ -49,7 +49,9 @@ export default defineConfig({
         // migrations.integration.test.ts (see also sqlite-adapter.ts) — not
         // just string-shape-checked like migrations.test.ts.
         "src/db/migrations/index.ts": { statements: 95, branches: 75, functions: 95, lines: 95 },
-        "src/features/backup/portable-data.ts": { statements: 10, branches: 60, functions: 75, lines: 10 },
+        // The facade is nearly fully covered since the SQL row-mapping moved
+        // to portable-data-export.ts / portable-data-import.ts.
+        "src/features/backup/portable-data.ts": { statements: 90, branches: 60, functions: 95, lines: 90 },
         // Includes the real-SQLite path for the Supabase-linking methods —
         // see profile-repository.sql.test.ts.
         "src/features/collections/profile-repository.ts": { statements: 80, branches: 70, functions: 95, lines: 80 },
@@ -61,9 +63,13 @@ export default defineConfig({
           functions: 90,
           lines: 65,
         },
-        // The 92%/85% floor here reflects real SQL coverage, not just the
-        // browser fallback — see progress-repository.sql.test.ts.
-        "src/features/progress/progress-repository.ts": { statements: 90, branches: 85, functions: 85, lines: 90 },
+        // The repository is now a thin facade over the two storage adapters;
+        // the real SQL coverage lives in progress-store-sql.ts (see
+        // progress-repository.sql.test.ts) and the localStorage fallback in
+        // progress-store-browser.ts.
+        "src/features/progress/progress-repository.ts": { statements: 85, branches: 90, functions: 90, lines: 85 },
+        "src/features/progress/progress-store-browser.ts": { statements: 95, branches: 85, functions: 95, lines: 95 },
+        "src/features/progress/progress-store-sql.ts": { statements: 90, branches: 75, functions: 95, lines: 90 },
         "src/features/stats/stats-repository.ts": { statements: 35, branches: 65, functions: 45, lines: 35 },
         "src/features/watchlist/watchlist-repository.ts": { statements: 45, branches: 45, functions: 75, lines: 45 },
       },
