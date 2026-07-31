@@ -105,7 +105,9 @@
     "browseByGenre": "Browse by Genre",
     "browseByGenreSubtitle": "Explore series and movies by category.",
     "browseByPlatform": "Browse by Platform",
-    "browseByPlatformSubtitle": "Find series and movies on your favorite streaming services."
+    "browseByPlatformSubtitle": "Find series and movies on your favorite streaming services.",
+    "watchNext": "Watch next",
+    "watchNextSubtitle": "Pick up right where you left off"
   },
   "history": {
     "recentActivity": "Recent Activity",

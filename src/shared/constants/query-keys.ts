@@ -34,5 +34,6 @@ export const queryKeys = {
     calendar: ["local", "calendar"] as const,
     availabilityAlerts: ["local", "availabilityAlerts"] as const,
     watchTonight: ["local", "watchTonight"] as const,
+    watchNextEpisode: (seriesId: number) => ["local", "watchNext", seriesId] as const,
   },
 };

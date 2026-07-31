@@ -105,7 +105,9 @@
     "browseByGenre": "Explorer par genre",
     "browseByGenreSubtitle": "Parcourez films et séries par catégorie.",
     "browseByPlatform": "Explorer par plateforme",
-    "browseByPlatformSubtitle": "Trouvez des contenus sur vos services préférés."
+    "browseByPlatformSubtitle": "Trouvez des contenus sur vos services préférés.",
+    "watchNext": "À suivre",
+    "watchNextSubtitle": "Reprenez là où vous vous êtes arrêté"
   },
   "history": {
     "recentActivity": "Activité récente",

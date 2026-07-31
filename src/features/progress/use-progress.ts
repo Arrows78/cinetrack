@@ -31,9 +31,10 @@ export function useMovieSeen(movieId: number) {
   };
 }
 
-function invalidateEpisodeQueries(queryClient: QueryClient, seriesId: number) {
+export function invalidateEpisodeQueries(queryClient: QueryClient, seriesId: number) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.local.episodeProgress(seriesId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.watchNextEpisode(seriesId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.local.history }),
     queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries }),
     queryClient.invalidateQueries({ queryKey: queryKeys.local.stats }),

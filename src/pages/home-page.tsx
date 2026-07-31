@@ -14,8 +14,10 @@ import { hasTmdbToken } from "@/shared/config/env";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useWatchNext } from "@/features/progress/use-watch-next";
 import { useWatchlist } from "@/features/watchlist/use-watchlist";
 import { useHomeFeed } from "@/features/media/use-media";
+import { WatchNextSection } from "@/components/media/watch-next-section";
 import type { HomeFeed } from "@/types/media";
 
 const CATALOGUE_SECTIONS = [
@@ -66,6 +68,7 @@ export function HomePage() {
   const trackedSeriesQuery = useTrackedSeries();
   const historyQuery = useHistory();
   const mergedGenres = useMergedGenres();
+  const watchNext = useWatchNext(trackedSeriesQuery.data ?? []);
 
   if (!hasTmdbToken) {
     return <EmptyState icon={Sparkles} title={t("home.configureTmdb")} description={t("home.configureTmdbDesc")} />;
@@ -186,6 +189,9 @@ export function HomePage() {
           </div>
         </section>
       ) : null}
+
+      {/* Watch next (TV Time-style episode queue) */}
+      {watchNext.entries.length > 0 ? <WatchNextSection entries={watchNext.entries} index={++sectionIndex} /> : null}
 
       {/* Continue watching */}
       {continueWatching.length > 0 ? (
