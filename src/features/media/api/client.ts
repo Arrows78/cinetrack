@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import i18n from "@/i18n";
 import { env } from "@/shared/config/env";
 import { isTauriApp } from "@/shared/lib/platform";
 import { tokenVault } from "@/features/desktop/token-vault";
@@ -83,12 +84,10 @@ const fetchFromWebview = async <T>(path: string, params: Record<string, string>,
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new TmdbRequestError(
-        `TMDB n'a pas répondu dans le délai imparti (${WEBVIEW_REQUEST_TIMEOUT_MS / 1000}s) pour ${path}.`
-      );
+      throw new TmdbRequestError(i18n.t("errors.tmdbTimeout", { seconds: WEBVIEW_REQUEST_TIMEOUT_MS / 1000, path }));
     }
 
-    throw new TmdbRequestError(`Impossible de joindre TMDB depuis la WebView : ${errorMessage(error)}`);
+    throw new TmdbRequestError(i18n.t("errors.tmdbUnreachable", { details: errorMessage(error) }));
   } finally {
     clearTimeout(timeout);
   }
@@ -124,7 +123,7 @@ export async function tmdbFetch<T>(path: string, params?: Record<string, string 
   const bearer = tokenVault.getToken() ?? env.VITE_TMDB_API_TOKEN ?? null;
 
   if (!bearer) {
-    throw new ApiConfigurationError("Aucun token TMDB disponible. Déverrouille le coffre TMDB dans les paramètres.");
+    throw new ApiConfigurationError(i18n.t("errors.tmdbNoToken"));
   }
 
   if (!isTauriApp()) {

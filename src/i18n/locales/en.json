@@ -56,7 +56,8 @@
   "common": {
     "back": "Back",
     "loading": "Loading…",
-    "somethingWentWrong": "Something went wrong"
+    "somethingWentWrong": "Something went wrong",
+    "unknownDate": "Unknown date"
   },
   "theme": {
     "dark": "Dark",
@@ -451,6 +452,9 @@
     "tmdbAuthentication": "The TMDB token stored by the desktop app is missing, expired, or rejected. Unlock the vault and save a valid Bearer token again.",
     "tmdbConnection": "The connection to TMDB failed. CineTrack automatically tries the native backend and then the WebView; also check your network, VPN, or proxy.",
     "retry": "Try again",
-    "technicalDetails": "Technical details"
+    "technicalDetails": "Technical details",
+    "tmdbTimeout": "TMDB did not respond within {{seconds}}s for {{path}}.",
+    "tmdbUnreachable": "Unable to reach TMDB from the WebView: {{details}}",
+    "tmdbNoToken": "No TMDB token available. Unlock the TMDB vault in Settings."
   }
 }

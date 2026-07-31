@@ -56,7 +56,8 @@
   "common": {
     "back": "Retour",
     "loading": "Chargement…",
-    "somethingWentWrong": "Une erreur est survenue"
+    "somethingWentWrong": "Une erreur est survenue",
+    "unknownDate": "Date inconnue"
   },
   "theme": {
     "dark": "Sombre",
@@ -134,7 +135,9 @@
     "resultsCount": "{{count}} résultat(s)",
     "showingResults": "Résultats pour {{filters}}"
   },
-  "searchBar": { "placeholder": "Rechercher un film ou une série…" },
+  "searchBar": {
+    "placeholder": "Rechercher un film ou une série…"
+  },
   "settings": {
     "subtitle": "Préférences locales et intégration desktop.",
     "subtitleDesktop": "Interface, catalogue, confidentialité et intégration desktop.",
@@ -356,7 +359,10 @@
     "shortcuts": "Palette : Ctrl/Cmd+K dans la fenêtre, Ctrl/Cmd+Shift+K au niveau système. Liens : cinetrack://movie/123, cinetrack://series/123 et cinetrack://tonight."
   },
   "sidebar": {
-    "brand": { "name": "CineTrack", "tagline": "Cinema OS" },
+    "brand": {
+      "name": "CineTrack",
+      "tagline": "Cinema OS"
+    },
     "defaultAccount": "Compte",
     "defaultMember": "Membre",
     "signOut": "Déconnexion",
@@ -446,6 +452,9 @@
     "tmdbAuthentication": "Le token TMDB du coffre desktop est absent, expiré ou refusé. Déverrouillez le coffre et enregistrez de nouveau un token Bearer valide.",
     "tmdbConnection": "La connexion à TMDB a échoué. CineTrack essaie automatiquement le backend natif puis la WebView ; vérifiez aussi votre connexion, VPN ou proxy.",
     "retry": "Réessayer",
-    "technicalDetails": "Détails techniques"
+    "technicalDetails": "Détails techniques",
+    "tmdbTimeout": "TMDB n'a pas répondu dans le délai imparti ({{seconds}}s) pour {{path}}.",
+    "tmdbUnreachable": "Impossible de joindre TMDB depuis la WebView : {{details}}",
+    "tmdbNoToken": "Aucun token TMDB disponible. Déverrouillez le coffre TMDB dans les paramètres."
   }
 }

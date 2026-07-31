@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import i18n from "@/i18n";
 import {
   buildTmdbImageUrl,
   formatDate,
@@ -24,20 +25,34 @@ describe("buildTmdbImageUrl", () => {
 });
 
 describe("formatDate", () => {
-  it("formats an ISO date in French", () => {
-    expect(formatDate("2026-07-14")).toMatch(/14 .*juil.* 2026/i);
+  beforeEach(async () => {
+    await i18n.changeLanguage("fr");
   });
 
-  it("falls back on missing or invalid input", () => {
+  it("formats an ISO date in the active language", async () => {
+    expect(formatDate("2026-07-14")).toMatch(/14 .*juil.* 2026/i);
+
+    await i18n.changeLanguage("en");
+    expect(formatDate("2026-07-14")).toMatch(/14 jul 2026/i);
+  });
+
+  it("falls back on missing or invalid input", async () => {
     expect(formatDate(null)).toBe("Date inconnue");
     expect(formatDate(undefined)).toBe("Date inconnue");
     expect(formatDate("not-a-date")).toBe("not-a-date");
+
+    await i18n.changeLanguage("en");
+    expect(formatDate(null)).toBe("Unknown date");
   });
 });
 
 describe("formatRelativeDate", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("fr");
+  });
+
   it("falls back on missing or invalid input", () => {
-    expect(formatRelativeDate(null)).toBe("date inconnue");
+    expect(formatRelativeDate(null)).toBe("Date inconnue");
     expect(formatRelativeDate("not-a-date")).toBe("not-a-date");
   });
 });
@@ -57,9 +72,13 @@ describe("formatRuntime", () => {
 });
 
 describe("formatRating", () => {
-  it("formats with a French decimal comma", () => {
+  it("uses the decimal separator of the active language", async () => {
+    await i18n.changeLanguage("fr");
     expect(formatRating(7.46)).toBe("7,5");
     expect(formatRating(10)).toBe("10,0");
+
+    await i18n.changeLanguage("en");
+    expect(formatRating(7.46)).toBe("7.5");
   });
 
   it("returns a placeholder for missing ratings", () => {

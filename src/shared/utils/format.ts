@@ -1,5 +1,9 @@
 import { format, formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
+import { enUS, fr } from "date-fns/locale";
+import i18n from "@/i18n";
+
+const isFrench = () => (i18n.language ?? "").toLowerCase().startsWith("fr");
+const dateLocale = () => (isFrench() ? fr : enUS);
 
 export const buildTmdbImageUrl = (
   path: string | null | undefined,
@@ -7,20 +11,20 @@ export const buildTmdbImageUrl = (
 ) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined);
 
 export const formatDate = (value?: string | null) => {
-  if (!value) return "Date inconnue";
+  if (!value) return i18n.t("common.unknownDate");
 
   try {
-    return format(new Date(value), "dd MMM yyyy", { locale: fr });
+    return format(new Date(value), "dd MMM yyyy", { locale: dateLocale() });
   } catch {
     return value;
   }
 };
 
 export const formatRelativeDate = (value?: string | null) => {
-  if (!value) return "date inconnue";
+  if (!value) return i18n.t("common.unknownDate");
 
   try {
-    return formatDistanceToNow(new Date(value), { addSuffix: true, locale: fr });
+    return formatDistanceToNow(new Date(value), { addSuffix: true, locale: dateLocale() });
   } catch {
     return value;
   }
@@ -33,7 +37,11 @@ export const formatRuntime = (runtime?: number | null) => {
   return hours > 0 ? `${hours}h ${minutes.toString().padStart(2, "0")}` : `${minutes} min`;
 };
 
-export const formatRating = (rating?: number | null) => (rating ? rating.toFixed(1).replace(".", ",") : "—");
+export const formatRating = (rating?: number | null) => {
+  if (!rating) return "—";
+  const fixed = rating.toFixed(1);
+  return isFrench() ? fixed.replace(".", ",") : fixed;
+};
 
 export const yearFromDate = (value?: string | null) => {
   if (!value) return null;
