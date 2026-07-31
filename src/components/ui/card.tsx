@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/shared/lib/cn";
 
 export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn("surface rounded-[28px] p-5", className)} {...props} />
+  ({ className, ...props }, ref) => <div ref={ref} className={cn("surface rounded-panel p-5", className)} {...props} />
 );
 Card.displayName = "Card";
 

@@ -17,7 +17,7 @@ export function MediaDetailsHero({
   const poster = buildTmdbImageUrl(media.posterPath, "w500");
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] border border-border">
+    <section className="relative overflow-hidden rounded-shell border border-border">
       {backdrop ? (
         <>
           <img src={backdrop} alt={media.title} className="absolute inset-0 h-full w-full object-cover" />
@@ -39,7 +39,7 @@ export function MediaDetailsHero({
           <img
             src={poster ?? "https://placehold.co/500x750/111827/374151?text=Poster"}
             alt={media.title}
-            className="w-full rounded-[24px] border border-border object-cover shadow-2xl"
+            className="w-full rounded-card border border-border object-cover shadow-2xl"
           />
         </div>
 

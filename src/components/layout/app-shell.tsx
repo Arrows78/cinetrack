@@ -32,13 +32,13 @@ export function AppShell() {
           sidebarCollapsed ? "lg:grid-cols-[80px_minmax(0,1fr)]" : "lg:grid-cols-[280px_minmax(0,1fr)]"
         )}
       >
-        <aside className="surface hidden h-[100dvh] sticky top-0 overflow-hidden rounded-[32px] p-3 lg:block">
+        <aside className="surface hidden h-[100dvh] sticky top-0 overflow-hidden rounded-shell p-3 lg:block">
           <SidebarNav collapsed={sidebarCollapsed} onToggleCollapse={() => void handleToggleSidebar()} />
         </aside>
 
         <div className="min-w-0">
           {/* Mobile header */}
-          <header className="surface sticky top-4 z-30 mb-6 flex items-center justify-between rounded-[28px] px-3 py-2.5 lg:hidden">
+          <header className="surface sticky top-4 z-30 mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
               {canGoBack ? (
                 <Button variant="ghost" size="icon" onClick={handleGoBack} className="-ml-1 h-9 w-9">

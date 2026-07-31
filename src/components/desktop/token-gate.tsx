@@ -38,7 +38,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
     <main className="grid min-h-screen place-items-center bg-background p-6">
       <form
         onSubmit={(event) => void submit(event)}
-        className="w-full max-w-lg rounded-[32px] border border-border bg-card p-7 shadow-2xl"
+        className="w-full max-w-lg rounded-shell border border-border bg-card p-7 shadow-2xl"
       >
         <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <LockKeyhole className="size-6" />

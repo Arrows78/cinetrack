@@ -107,7 +107,7 @@ export function HomePage() {
     <div className="space-y-12">
       {/* Cinematic hero */}
       {hero ? (
-        <section className="relative overflow-hidden rounded-[36px] border border-border animate-in-up">
+        <section className="relative overflow-hidden rounded-hero border border-border animate-in-up">
           {/* Backdrop */}
           <img
             src={buildTmdbImageUrl(hero.backdropPath, "original")}

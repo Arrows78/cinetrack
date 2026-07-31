@@ -21,7 +21,7 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
-      <div className="surface w-full max-w-xl rounded-[32px] p-8">
+      <div className="surface w-full max-w-xl rounded-shell p-8">
         <UserPlus className="h-10 w-10 text-primary" />
         <h1 className="mt-5 text-2xl font-bold">{t("profileGate.createTitle")}</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">

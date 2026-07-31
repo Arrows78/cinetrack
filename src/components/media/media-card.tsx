@@ -11,7 +11,7 @@ function MediaCardInner({ media }: { media: MediaSummary }) {
   const image = buildTmdbImageUrl(media.posterPath, "w500") ?? fallbackPoster;
 
   return (
-    <div className="relative overflow-hidden rounded-[24px]">
+    <div className="relative overflow-hidden rounded-card">
       {/* Poster image */}
       <div className="relative aspect-[2/3] overflow-hidden">
         <img

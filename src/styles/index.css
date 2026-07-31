@@ -66,6 +66,13 @@
   --input: 222 15% 22%;
   --ring: 252 80% 42%; /* matches light mode default (SSR flash prevention) */
   --radius: 1rem;
+
+  /* Surface radius scale, exposed to Tailwind as rounded-card/panel/shell/hero
+     (see tailwind.config.ts). */
+  --radius-card: 1.5rem; /* 24px — posters, media cards */
+  --radius-panel: 1.75rem; /* 28px — cards, headers */
+  --radius-shell: 2rem; /* 32px — sidebar, gates, full-page panels */
+  --radius-hero: 2.25rem; /* 36px — hero sections */
 }
 
 .light {
@@ -165,7 +172,7 @@
       radial-gradient(ellipse 90% 55% at 50% -10%, hsl(var(--primary) / 0.18), transparent),
       radial-gradient(ellipse 45% 35% at 92% 8%, hsl(var(--accent) / 0.1), transparent),
       radial-gradient(ellipse 60% 40% at 5% 95%, hsl(var(--primary) / 0.05), transparent),
-      linear-gradient(180deg, rgba(7, 10, 24, 1) 0%, rgba(10, 13, 29, 1) 100%);
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
     background-attachment: fixed;
     /* Smooth transition when accent color changes */
     transition: background-color 0.3s ease;
@@ -222,15 +229,6 @@
     box-shadow: 0 4px 16px hsl(0 0% 0% / 0.2);
   }
 
-  /* Replaces the static Tailwind shadow-glow with a dynamic one */
-  .shadow-glow {
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.15);
-  }
-
-  .text-balance {
-    text-wrap: balance;
-  }
-
   .section-rule {
     @apply h-px w-full bg-gradient-to-r from-black/[0.12] to-transparent;
   }
@@ -247,17 +245,6 @@
 
   .animate-in-up {
     animation: animateInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    opacity: 0;
-  }
-
-  .animate-scale-in {
-    animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    opacity: 0;
-    transform: scale(0.95);
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease forwards;
     opacity: 0;
   }
 }
@@ -284,46 +271,6 @@
   }
 }
 
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 /* Hero text reveal animation */
 .hero-title-reveal {
   animation: heroTextReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -340,17 +287,11 @@
 }
 
 /* Stagger delays for cascade animations */
-.delay-100 {
-  animation-delay: 100ms;
-}
 .delay-200 {
   animation-delay: 200ms;
 }
 .delay-300 {
   animation-delay: 300ms;
-}
-.delay-400 {
-  animation-delay: 400ms;
 }
 .delay-500 {
   animation-delay: 500ms;
@@ -360,9 +301,6 @@
 }
 .delay-700 {
   animation-delay: 700ms;
-}
-.delay-800 {
-  animation-delay: 800ms;
 }
 
 /* Scrollbar */

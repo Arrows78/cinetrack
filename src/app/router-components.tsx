@@ -15,7 +15,7 @@ export function PendingComponent() {
 export function ErrorComponent({ error }: ErrorComponentProps) {
   const { t } = useTranslation();
   return (
-    <div className="surface rounded-[32px] p-6">
+    <div className="surface rounded-shell p-6">
       <h2 className="text-xl font-semibold">{t("common.somethingWentWrong")}</h2>
 
       <p className="mt-3 text-sm text-muted-foreground">{error.message}</p>
