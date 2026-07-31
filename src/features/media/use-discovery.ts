@@ -27,7 +27,7 @@ export function useAvailability(mediaType: MediaType, mediaId: number, region: s
 }
 export function usePeopleSearch(query: string) {
   return useQuery({
-    queryKey: ["remote", "people", query],
+    queryKey: queryKeys.remote.people(query),
     queryFn: () => mediaRepository.searchPeople(query),
     enabled: query.trim().length >= 2,
   });

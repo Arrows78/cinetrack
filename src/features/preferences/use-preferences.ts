@@ -18,10 +18,7 @@ export function usePreferences() {
       queryClient.setQueryData(queryKeys.local.preferences, data);
 
       if (variables.key === "activeProfileId") {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["local"] }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight }),
-        ]);
+        await queryClient.invalidateQueries({ queryKey: ["local"] });
       }
 
       if (variables.key === "language" || variables.key === "region") {

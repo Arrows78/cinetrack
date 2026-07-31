@@ -14,6 +14,7 @@ export const queryKeys = {
     recommendations: (mediaType: string, mediaId: number) => ["remote", "recommendations", mediaType, mediaId] as const,
     videos: (mediaType: string, mediaId: number) => ["remote", "videos", mediaType, mediaId] as const,
     person: (personId: number) => ["remote", "person", personId] as const,
+    people: (query: string) => ["remote", "people", query] as const,
     availability: (mediaType: string, mediaId: number, region: string) =>
       ["remote", "availability", mediaType, mediaId, region] as const,
   },
@@ -32,6 +33,6 @@ export const queryKeys = {
     customList: (listId: string) => ["local", "customLists", listId] as const,
     calendar: ["local", "calendar"] as const,
     availabilityAlerts: ["local", "availabilityAlerts"] as const,
-    watchTonight: ["watch-tonight"] as const,
+    watchTonight: ["local", "watchTonight"] as const,
   },
 };
