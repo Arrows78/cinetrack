@@ -36,6 +36,8 @@ export interface MediaProvider {
   getSeriesDetails(seriesId: number): Promise<Series>;
   getSeasonDetails(seriesId: number, seasonNumber: number): Promise<Season>;
   search(query: string, scope?: SearchScope, page?: number): Promise<PageResult<MediaSummary>>;
+  /** Resolves a TheTVDB series id (used by TV Time exports) to a TMDB series. */
+  findSeriesByTvdbId(tvdbId: number): Promise<Series | null>;
   getRecommendations(mediaType: MediaType, mediaId: number, page?: number): Promise<PageResult<MediaSummary>>;
   getVideos(mediaType: MediaType, mediaId: number): Promise<MediaVideo[]>;
   searchPeople(query: string, page?: number): Promise<PageResult<PersonSummary>>;

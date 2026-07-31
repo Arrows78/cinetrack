@@ -219,6 +219,16 @@ export class TmdbMediaProvider implements MediaProvider {
     };
   }
 
+  async findSeriesByTvdbId(tvdbId: number): Promise<Series | null> {
+    const { language } = await this.context();
+    const response = await tmdbFetch<{ tv_results: TmdbTvDto[] }>(`/find/${tvdbId}`, {
+      language,
+      external_source: "tvdb_id",
+    });
+    const match = response.tv_results[0];
+    return match ? mapSeriesDto(match) : null;
+  }
+
   async getWatchAvailability(
     mediaType: MediaType,
     mediaId: number,

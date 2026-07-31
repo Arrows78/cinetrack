@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListPlus, Trash2 } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
+import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
@@ -80,6 +81,8 @@ export function CollectionsPage() {
         </div>
 
         <BackupTools />
+
+        <TvTimeImportCard />
       </section>
 
       <section className="rounded-3xl border border-border bg-card/60 p-5">

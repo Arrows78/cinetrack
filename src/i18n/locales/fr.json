@@ -465,5 +465,20 @@
     "tmdbTimeout": "TMDB n'a pas répondu dans le délai imparti ({{seconds}}s) pour {{path}}.",
     "tmdbUnreachable": "Impossible de joindre TMDB depuis la WebView : {{details}}",
     "tmdbNoToken": "Aucun token TMDB disponible. Déverrouillez le coffre TMDB dans les paramètres."
+  },
+  "tvtimeImport": {
+    "title": "Importer depuis TV Time",
+    "description": "Rapatriez votre historique TV Time dans CineTrack : épisodes et films vus avec leurs dates d'origine, plus votre liste à voir.",
+    "hint": "Sélectionnez les fichiers CSV de votre export RGPD TV Time (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
+    "selectFiles": "Sélectionner les CSV",
+    "failed": "L'import a échoué",
+    "done": "{{episodes}} épisodes importés sur {{series}} séries, {{movies}} films et {{watchlist}} entrées de liste.",
+    "unmatched_one": "{{count}} titre n'a pas pu être associé",
+    "unmatched_other": "{{count}} titres n'ont pas pu être associés",
+    "phase": {
+      "series": "Séries",
+      "movies": "Films",
+      "watchlist": "À voir"
+    }
   }
 }
