@@ -1,12 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { BarChart3, Clock, Film, Flame, Star, Tv } from "lucide-react";
-import { useStats, useWrapped } from "@/features/stats/use-stats";
+import { BarChart3, CalendarCheck, Clock, Film, Flame, Gauge, Hourglass, Star, Tv } from "lucide-react";
+import { useStats, useWatchForecast, useWrapped } from "@/features/stats/use-stats";
+import { formatDate } from "@/shared/utils/format";
 
 const hours = (minutes: number) => `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 export function StatsPage() {
   const { t } = useTranslation();
   const stats = useStats();
   const wrapped = useWrapped();
+  const forecast = useWatchForecast();
   if (!stats.data || !wrapped.data) return <p className="text-muted-foreground">{t("stats.loading")}</p>;
   const cards = [
     { label: t("stats.moviesWatched"), value: stats.data.moviesWatched, icon: Film },
@@ -32,6 +34,36 @@ export function StatsPage() {
           </article>
         ))}
       </section>
+      {forecast.data && forecast.data.backlogEpisodes > 0 ? (
+        <section>
+          <h2 className="mb-3 font-semibold">{t("stats.forecast")}</h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <article className="rounded-3xl border border-border bg-card/60 p-5">
+              <Hourglass className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.timeToWatch")}</p>
+              <p className="mt-1 font-display text-3xl font-bold">{hours(forecast.data.backlogMinutes)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("stats.backlogEpisodes", { count: forecast.data.backlogEpisodes })}
+              </p>
+            </article>
+            <article className="rounded-3xl border border-border bg-card/60 p-5">
+              <Gauge className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.pacePerWeek")}</p>
+              <p className="mt-1 font-display text-3xl font-bold">{forecast.data.episodesPerWeek}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
+            </article>
+            <article className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
+              <CalendarCheck className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.catchUpBy")}</p>
+              <p className="mt-1 font-display text-3xl font-bold">
+                {forecast.data.catchUpDate ? formatDate(forecast.data.catchUpDate) : "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
       <section className="rounded-3xl border border-border bg-card/60 p-5">
         <h2 className="font-semibold">{t("stats.activity12Months")}</h2>
         <div className="mt-5 flex h-44 items-end gap-2">

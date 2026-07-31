@@ -221,7 +221,14 @@
     "activeDays": "sur {{count}} jours actifs",
     "films": "films",
     "episodes": "épisodes",
-    "favouriteGenre": "Genre phare :"
+    "favouriteGenre": "Genre phare :",
+    "forecast": "Projections",
+    "timeToWatch": "Temps de visionnage restant",
+    "backlogEpisodes_one": "{{count}} épisode restant",
+    "backlogEpisodes_other": "{{count}} épisodes restants",
+    "pacePerWeek": "Épisodes par semaine",
+    "paceBasis": "Sur les deux derniers mois",
+    "catchUpBy": "À jour le"
   },
   "profileGate": {
     "resolving": "Chargement de votre profil…",

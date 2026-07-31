@@ -221,7 +221,14 @@
     "activeDays": "over {{count}} active days",
     "films": "films",
     "episodes": "episodes",
-    "favouriteGenre": "Top genre:"
+    "favouriteGenre": "Top genre:",
+    "forecast": "Forecast",
+    "timeToWatch": "Time to watch",
+    "backlogEpisodes_one": "{{count}} episode left",
+    "backlogEpisodes_other": "{{count}} episodes left",
+    "pacePerWeek": "Episodes per week",
+    "paceBasis": "Based on the last two months",
+    "catchUpBy": "Caught up by"
   },
   "profileGate": {
     "resolving": "Loading your profile…",

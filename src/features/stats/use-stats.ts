@@ -10,3 +10,9 @@ export function useWrapped(year = new Date().getFullYear()) {
     queryFn: () => statsRepository.getYearSummary(year),
   });
 }
+export function useWatchForecast() {
+  return useQuery({
+    queryKey: [...queryKeys.local.stats, "forecast"],
+    queryFn: () => statsRepository.getForecast(),
+  });
+}
