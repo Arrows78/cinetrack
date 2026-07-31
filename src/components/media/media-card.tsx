@@ -6,17 +6,12 @@ import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
-function MediaCardInner({ media, index = 0 }: { media: MediaSummary; index?: number }) {
+function MediaCardInner({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const image = buildTmdbImageUrl(media.posterPath, "w500") ?? fallbackPoster;
 
   return (
-    <motion.div
-      className="relative overflow-hidden rounded-[24px]"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-    >
+    <div className="relative overflow-hidden rounded-[24px]">
       {/* Poster image */}
       <div className="relative aspect-[2/3] overflow-hidden">
         <img
@@ -77,13 +72,17 @@ function MediaCardInner({ media, index = 0 }: { media: MediaSummary; index?: num
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 export function MediaCard({ media }: { media: MediaSummary }) {
   return (
-    <motion.div whileHover={{ y: -5, scale: 1.01 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
+    <motion.div
+      className="group"
+      whileHover={{ y: -5, scale: 1.01 }}
+      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+    >
       {media.mediaType === "movie" ? (
         <Link to="/movies/$movieId" params={{ movieId: String(media.id) }}>
           <MediaCardInner media={media} />

@@ -166,7 +166,7 @@ export function HomePage() {
               <Button
                 asChild
                 size="lg"
-                className="gap-2 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:scale-[1.02]"
+                className="group gap-2 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:scale-[1.02]"
               >
                 <Link to="/movies/$movieId" params={{ movieId: String(hero.id) }}>
                   {t("home.viewDetails")}
@@ -224,7 +224,7 @@ export function HomePage() {
                 genreMovie: genre.movieId ? String(genre.movieId) : undefined,
                 genreSeries: genre.seriesId ? String(genre.seriesId) : undefined,
               }}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/60 px-2 py-4 text-center transition-all duration-200 hover:border-primary/40 hover:bg-primary/8 hover:shadow-glow active:scale-[0.97]"
+              className="group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/60 px-2 py-4 text-center transition-all duration-200 hover:border-primary/40 hover:bg-primary/10 hover:shadow-glow active:scale-[0.97]"
             >
               <span className="text-2xl leading-none">{genre.icon}</span>
               <span className="text-[11px] font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
