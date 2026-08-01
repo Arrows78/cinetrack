@@ -36,7 +36,9 @@ const libraryItem = (overrides: Partial<LibraryItem> = {}): LibraryItem => ({
 // src-tauri/src/commands/library.rs's own tests) — this only verifies the
 // repository wraps invoke() with the right command name/args.
 describe("libraryRepository", () => {
-  beforeEach(() => invokeMock.mockReset());
+  beforeEach(() => {
+    invokeMock.mockReset();
+  });
 
   it("list() invokes list_library and returns its result", async () => {
     const items = [libraryItem()];

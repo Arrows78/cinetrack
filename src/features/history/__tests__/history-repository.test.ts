@@ -21,7 +21,9 @@ const entry = (overrides: Partial<ViewingHistoryItem> = {}): ViewingHistoryItem 
 // src-tauri/src/commands/history.rs's own tests) — this only verifies the
 // repository wraps invoke() with the right command name/args.
 describe("historyRepository", () => {
-  beforeEach(() => invokeMock.mockReset());
+  beforeEach(() => {
+    invokeMock.mockReset();
+  });
 
   it("list() invokes list_history with the given limit and returns its result", async () => {
     const items = [entry()];

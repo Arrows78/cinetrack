@@ -20,7 +20,9 @@ const item = (): WatchlistItem => ({
 // src-tauri/src/commands/watchlist.rs's own tests) — this only verifies the
 // repository wraps invoke() with the right command name/args.
 describe("watchlistRepository", () => {
-  beforeEach(() => invokeMock.mockReset());
+  beforeEach(() => {
+    invokeMock.mockReset();
+  });
 
   it("list() invokes list_watchlist and returns its result", async () => {
     const items = [item()];

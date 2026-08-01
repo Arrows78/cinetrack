@@ -34,7 +34,9 @@ const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySn
 // — this only verifies the repository wraps invoke() with the right
 // command name/args.
 describe("availabilityRepository", () => {
-  beforeEach(() => invokeMock.mockReset());
+  beforeEach(() => {
+    invokeMock.mockReset();
+  });
 
   it("listAlerts() invokes list_availability_alerts", async () => {
     invokeMock.mockResolvedValueOnce([alert()]);
