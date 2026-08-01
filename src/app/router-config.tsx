@@ -90,6 +90,16 @@ const settingsRoute = createRoute({
   path: "/settings",
   component: lazyRouteComponent(() => import("@/pages/settings-page"), "SettingsPage"),
 });
+// Dev-only token/component catalog — import.meta.env.DEV is statically
+// replaced at build time, so Rollup drops both this route and its dynamic
+// import (and everything it pulls in) from the production bundle entirely.
+const designSystemRoute = import.meta.env.DEV
+  ? createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/design-system",
+      component: lazyRouteComponent(() => import("@/pages/design-system-page"), "DesignSystemPage"),
+    })
+  : null;
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -108,6 +118,7 @@ const routeTree = rootRoute.addChildren([
   watchTonightRoute,
   statsRoute,
   settingsRoute,
+  ...(designSystemRoute ? [designSystemRoute] : []),
 ]);
 export const router = createRouter({
   routeTree,

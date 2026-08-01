@@ -9,6 +9,22 @@ const config: Config = {
         display: ["Syne", "Playfair Display", "Georgia", "serif"],
         sans: ["DM Sans", "ui-sans-serif", "system-ui", "sans-serif"],
       },
+      // Semantic type roles, additive to Tailwind's default text-xs..text-9xl
+      // scale (still available and still what every existing component
+      // uses). This is the target vocabulary for new/future UI — adopting it
+      // across existing components is a separate, larger follow-up.
+      fontSize: {
+        "display-hero": ["3.5rem", { lineHeight: "1.05", letterSpacing: "-0.02em", fontWeight: "800" }],
+        "display-title": ["2.25rem", { lineHeight: "1.15", letterSpacing: "-0.01em", fontWeight: "700" }],
+        "heading-lg": ["1.5rem", { lineHeight: "1.25", fontWeight: "600" }],
+        "heading-md": ["1.25rem", { lineHeight: "1.3", fontWeight: "600" }],
+        "heading-sm": ["1.125rem", { lineHeight: "1.35", fontWeight: "600" }],
+        "body-lg": ["1.0625rem", { lineHeight: "1.6" }],
+        body: ["0.9375rem", { lineHeight: "1.6" }],
+        "body-sm": ["0.8125rem", { lineHeight: "1.5" }],
+        caption: ["0.75rem", { lineHeight: "1.4" }],
+        overline: ["0.625rem", { lineHeight: "1.3", letterSpacing: "0.3em", fontWeight: "600" }],
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -51,7 +67,42 @@ const config: Config = {
       },
       boxShadow: {
         // Follows the runtime accent color (--primary is set by ThemeController).
-        glow: "0 4px 16px hsl(var(--primary) / 0.15)",
+        glow: "var(--shadow-glow)",
+        // Elevation scale, single source of truth in styles/index.css.
+        // Namespaced "elevation-*" — NOT shadow-sm/xl/2xl, which already
+        // resolve to Tailwind's own defaults in active use elsewhere.
+        "elevation-xs": "var(--shadow-xs)",
+        "elevation-sm": "var(--shadow-sm)",
+        "elevation-md": "var(--shadow-md)",
+        "elevation-lg": "var(--shadow-lg)",
+        "elevation-xl": "var(--shadow-xl)",
+      },
+      // Named additions to Tailwind's default numeric duration scale
+      // (duration-200 etc. stay available and in use elsewhere).
+      transitionDuration: {
+        fast: "var(--duration-fast)",
+        base: "var(--duration-base)",
+        slow: "var(--duration-slow)",
+        slower: "var(--duration-slower)",
+        slowest: "var(--duration-slowest)",
+      },
+      // "out-expo" — NOT "out", which is Tailwind's own default ease-out.
+      transitionTimingFunction: {
+        "out-expo": "var(--ease-out-expo)",
+      },
+      // Named additions to Tailwind's default numeric z-index scale (z-10
+      // etc. stay available and in use elsewhere). Values documented here
+      // rather than as CSS vars — nothing dynamic touches them at runtime.
+      // The decorative body::before/::after layers in styles/index.css sit
+      // deliberately above this whole scale (z-index: 9997/9998) as a
+      // special-cased always-on-top overlay, not a stacking tier new UI
+      // should ever need to clear.
+      zIndex: {
+        sticky: "30", // matches the mobile header's existing z-30
+        dropdown: "40",
+        overlay: "50", // matches Sheet/Dialog's existing z-50
+        modal: "50",
+        toast: "60",
       },
       animation: {
         shimmer: "shimmer 2s infinite",

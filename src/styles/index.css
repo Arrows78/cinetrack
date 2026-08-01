@@ -73,6 +73,33 @@
   --radius-panel: 1.75rem; /* 28px — cards, headers */
   --radius-shell: 2rem; /* 32px — sidebar, gates, full-page panels */
   --radius-hero: 2.25rem; /* 36px — hero sections */
+
+  /* Elevation scale, exposed to Tailwind as shadow-elevation-xs/sm/md/lg/xl
+     (see tailwind.config.ts). Deliberately namespaced "elevation-*" instead
+     of overriding Tailwind's own shadow-sm/xl/2xl keys, which are already in
+     active use elsewhere with their default values.
+     --shadow-sm's value matches .surface's pre-existing dark box-shadow
+     below byte-for-byte, so wiring .surface to the token doesn't change
+     anything visually. */
+  --shadow-xs: 0 1px 3px hsl(0 0% 0% / 0.14);
+  --shadow-sm: 0 4px 16px hsl(0 0% 0% / 0.2);
+  --shadow-md: 0 8px 28px hsl(0 0% 0% / 0.26);
+  --shadow-lg: 0 16px 44px hsl(0 0% 0% / 0.32);
+  --shadow-xl: 0 24px 64px hsl(0 0% 0% / 0.4);
+  --shadow-glow: 0 4px 16px hsl(var(--primary) / 0.15);
+
+  /* Motion scale. --ease-out-expo replaces the cubic-bezier(0.16, 1, 0.3, 1)
+     literal repeated 4x below; the --duration-* values are named after the
+     literals they replace (0.2s/0.3s/0.6s/0.7s/1s/8s) so the substitution
+     is lossless — nothing here changes what's actually rendered, it just
+     stops the same numbers from being retyped by hand at each call site. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 200ms;
+  --duration-base: 300ms;
+  --duration-slow: 600ms;
+  --duration-slower: 700ms;
+  --duration-slowest: 1000ms;
+  --duration-ambient: 8s;
 }
 
 .light {
@@ -106,6 +133,16 @@
   --border: 220 15% 86%;
   --input: 220 15% 86%;
   --ring: 252 80% 42%; /* matches --primary */
+
+  /* Elevation — lighter alpha than dark mode: on a white background, a
+     dark-mode-strength shadow reads as a hard drop-shadow rather than soft
+     depth. --shadow-sm matches .surface's pre-existing light box-shadow
+     byte-for-byte. */
+  --shadow-xs: 0 1px 2px hsl(0 0% 0% / 0.03);
+  --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.04);
+  --shadow-md: 0 6px 18px hsl(0 0% 0% / 0.06);
+  --shadow-lg: 0 12px 32px hsl(0 0% 0% / 0.08);
+  --shadow-xl: 0 20px 52px hsl(0 0% 0% / 0.1);
 }
 
 /*
@@ -175,7 +212,7 @@
       linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
     background-attachment: fixed;
     /* Smooth transition when accent color changes */
-    transition: background-color 0.3s ease;
+    transition: background-color var(--duration-base) ease;
   }
 
   .light body,
@@ -202,7 +239,7 @@
     pointer-events: none;
     background: radial-gradient(ellipse 800px 600px at 50% 120%, hsl(var(--primary) / 0.08), transparent 70%);
     z-index: 9997;
-    animation: breathe 8s ease-in-out infinite;
+    animation: breathe var(--duration-ambient) ease-in-out infinite;
   }
 
   @keyframes breathe {
@@ -221,12 +258,11 @@
 @layer utilities {
   .surface {
     @apply bg-card/80 backdrop-blur-xl border border-black/[0.06];
-    box-shadow: 0 2px 8px hsl(0 0% 0% / 0.04);
+    box-shadow: var(--shadow-sm);
   }
 
   .dark .surface {
     @apply border-white/[0.06];
-    box-shadow: 0 4px 16px hsl(0 0% 0% / 0.2);
   }
 
   .section-rule {
@@ -239,12 +275,12 @@
 
   /* Cinematic entrance animations */
   .animate-in {
-    animation: animateIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: animateIn var(--duration-slow) var(--ease-out-expo) forwards;
     opacity: 0;
   }
 
   .animate-in-up {
-    animation: animateInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: animateInUp var(--duration-slower) var(--ease-out-expo) forwards;
     opacity: 0;
   }
 }
@@ -290,8 +326,8 @@
  */
 .hero-title-reveal {
   animation:
-    animateIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-    heroTextReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animateIn var(--duration-slow) var(--ease-out-expo) forwards,
+    heroTextReveal var(--duration-slowest) var(--ease-out-expo) forwards;
   clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
   opacity: 0;
 }
@@ -353,8 +389,8 @@
   }
 }
 .animate-accordion-down {
-  animation: accordion-down 0.2s ease-out;
+  animation: accordion-down var(--duration-fast) ease-out;
 }
 .animate-accordion-up {
-  animation: accordion-up 0.2s ease-out;
+  animation: accordion-up var(--duration-fast) ease-out;
 }
