@@ -7,6 +7,7 @@ import type { WatchlistItem } from "@/types/media";
 
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
 vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 function createWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

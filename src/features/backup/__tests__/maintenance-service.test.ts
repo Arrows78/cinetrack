@@ -3,6 +3,7 @@ import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
 vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 // `vi.hoisted` so `fsState` is reachable both from the (hoisted) vi.mock
 // factory below and from the top-level `beforeEach` that clears it — plain

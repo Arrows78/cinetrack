@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ViewingHistoryItem } from "@/types/media";
 
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) => invokeMock(command, args),
+}));
 
 const entry = (overrides: Partial<ViewingHistoryItem> = {}): ViewingHistoryItem => ({
   id: crypto.randomUUID(),
@@ -15,68 +16,43 @@ const entry = (overrides: Partial<ViewingHistoryItem> = {}): ViewingHistoryItem 
   ...overrides,
 });
 
+// The activity_log upsert, profile scoping and profileId fallback behavior
+// now live in Rust and are exercised there (see
+// src-tauri/src/commands/history.rs's own tests) — this only verifies the
+// repository wraps invoke() with the right command name/args.
 describe("historyRepository", () => {
-  const sqlite = useTestSqlite();
+  beforeEach(() => invokeMock.mockReset());
 
-  const seedGuestProfile = () => {
-    sqlite.current.exec(
-      `INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('guest', 'Guest', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
-    );
-  };
-
-  it("returns entries newest first even when they were added out of order", async () => {
+  it("list() invokes list_history with the given limit and returns its result", async () => {
+    const items = [entry()];
+    invokeMock.mockResolvedValueOnce(items);
     const { historyRepository } = await import("../history-repository");
 
-    await historyRepository.add(entry({ timestamp: "2026-01-02T00:00:00.000Z", title: "Milieu" }));
-    await historyRepository.add(entry({ timestamp: "2026-01-01T00:00:00.000Z", title: "Ancien" }));
-    await historyRepository.add(entry({ timestamp: "2026-01-03T00:00:00.000Z", title: "Récent" }));
-
-    const list = await historyRepository.list();
-    expect(list.map((item) => item.title)).toEqual(["Récent", "Milieu", "Ancien"]);
+    await expect(historyRepository.list(5)).resolves.toEqual(items);
+    expect(invokeMock).toHaveBeenCalledWith("list_history", { limit: 5 });
   });
 
-  it("respects the limit parameter", async () => {
+  it("list() defaults to a limit of 50", async () => {
+    invokeMock.mockResolvedValueOnce([]);
     const { historyRepository } = await import("../history-repository");
 
-    for (let index = 0; index < 5; index += 1) {
-      await historyRepository.add(entry({ id: crypto.randomUUID(), timestamp: `2026-01-0${index + 1}T00:00:00.000Z` }));
-    }
-
-    expect(await historyRepository.list(2)).toHaveLength(2);
+    await historyRepository.list();
+    expect(invokeMock).toHaveBeenCalledWith("list_history", { limit: 50 });
   });
 
-  it("stamps entries with the active profile and scopes list() to it", async () => {
+  it("add() invokes add_history_item with the item", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
     const { historyRepository } = await import("../history-repository");
-    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
+    const item = entry();
 
-    await historyRepository.add(entry());
-    expect(await historyRepository.list()).toHaveLength(1);
-
-    // Migrations only run lazily on the first repository call above, so the
-    // profiles table doesn't exist until now.
-    seedGuestProfile();
-    await preferencesRepository.updatePreference("activeProfileId", "guest");
-    expect(await historyRepository.list()).toHaveLength(0);
-
-    await historyRepository.add(entry({ id: "guest-entry" }));
-    const guestHistory = await historyRepository.list();
-    expect(guestHistory).toHaveLength(1);
-    expect(guestHistory[0].metadata?.profileId).toBe("guest");
+    await historyRepository.add(item);
+    expect(invokeMock).toHaveBeenCalledWith("add_history_item", { item });
   });
 
-  it("keeps an explicit metadata profileId instead of the active profile", async () => {
+  it("wraps a rejected invoke() into an ApiCommandError", async () => {
+    invokeMock.mockRejectedValueOnce({ message: "boom", status: 500 });
     const { historyRepository } = await import("../history-repository");
-    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
-    const { getDatabase } = await import("@/db/client");
 
-    // Trigger the lazy migration run before seeding a profile row directly.
-    await getDatabase();
-    seedGuestProfile();
-    await historyRepository.add(entry({ metadata: { profileId: "guest" } }));
-
-    expect(await historyRepository.list()).toHaveLength(0);
-
-    await preferencesRepository.updatePreference("activeProfileId", "guest");
-    expect(await historyRepository.list()).toHaveLength(1);
+    await expect(historyRepository.list()).rejects.toMatchObject({ message: "boom", status: 500 });
   });
 });

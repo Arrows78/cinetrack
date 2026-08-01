@@ -5,6 +5,7 @@ import type { Episode, EpisodeProgress, Season } from "@/types/media";
 
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
 vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 const episode = (overrides: Partial<Episode> = {}): Episode => ({
   id: 100,
@@ -135,18 +136,20 @@ describe("progressRepository", () => {
     const s = season([ep1, ep2]);
 
     const now = new Date().toISOString();
-    const mockProgress: EpisodeProgress = { id: "1", seriesId: 9, episodeId: 1, seasonNumber: 1, episodeNumber: 1, watched: true, createdAt: now, updatedAt: now };
-    const next = progressRepository.getNextEpisode(
-      [s],
-      [mockProgress]
-    );
+    const mockProgress: EpisodeProgress = {
+      id: "1",
+      seriesId: 9,
+      episodeId: 1,
+      seasonNumber: 1,
+      episodeNumber: 1,
+      watched: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const next = progressRepository.getNextEpisode([s], [mockProgress]);
     expect(next?.id).toBe(2);
 
-    const progress = progressRepository.calculateSeriesProgress(
-      9,
-      [s],
-      [mockProgress]
-    );
+    const progress = progressRepository.calculateSeriesProgress(9, [s], [mockProgress]);
     expect(progress.watchedEpisodes).toBe(1);
     expect(progress.totalEpisodes).toBe(2);
     expect(progress.completed).toBe(false);
