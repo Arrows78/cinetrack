@@ -7,7 +7,8 @@
 // without a Tauri runtime, instead of hitting a missing `invoke()` global.
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { defaultPreferences, preferencesSchema } from "@/features/preferences/preferences-repository";
-import type { UserPreferences, WatchlistItem } from "@/types/media";
+import type { LibraryItem, MediaSummary, UserPreferences, WatchlistItem } from "@/types/media";
+import type { LibraryPatch } from "@/features/library/library-repository";
 
 function loadPreferences(sqlite: DatabaseSync): UserPreferences {
   const rows = sqlite.prepare("SELECT key, value FROM preferences").all() as Array<{
@@ -206,6 +207,138 @@ function removeWatchlistItem(sqlite: DatabaseSync, mediaId: number, mediaType: s
   }
 }
 
+function rowToLibraryItem(row: Record<string, unknown>): LibraryItem {
+  return {
+    id: String(row.uuid),
+    profileId: String(row.profile_id ?? "default"),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
+    year: row.year === null || row.year === undefined ? null : Number(row.year),
+    rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
+    genres: row.genres ? (JSON.parse(String(row.genres)) as string[]) : [],
+    status: String(row.status) as LibraryItem["status"],
+    favourite: Boolean(row.favourite),
+    userRating: row.user_rating === null || row.user_rating === undefined ? null : Number(row.user_rating),
+    notes: row.notes ? String(row.notes) : null,
+    tags: row.tags ? (JSON.parse(String(row.tags)) as string[]) : [],
+    startedAt: row.started_at ? String(row.started_at) : null,
+    completedAt: row.completed_at ? String(row.completed_at) : null,
+    rewatchCount: Number(row.rewatch_count ?? 0),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function listLibrary(sqlite: DatabaseSync, profileId: string): LibraryItem[] {
+  const rows = sqlite
+    .prepare("SELECT * FROM library_items WHERE profile_id = $profileId ORDER BY updated_at DESC")
+    .all({ $profileId: profileId }) as Array<Record<string, unknown>>;
+  return rows.map(rowToLibraryItem);
+}
+
+function getLibraryItem(
+  sqlite: DatabaseSync,
+  profileId: string,
+  mediaId: number,
+  mediaType: string
+): LibraryItem | null {
+  const rows = sqlite
+    .prepare(
+      "SELECT * FROM library_items WHERE profile_id = $profileId AND media_id = $mediaId AND media_type = $mediaType LIMIT 1"
+    )
+    .all({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType }) as Array<Record<string, unknown>>;
+  return rows[0] ? rowToLibraryItem(rows[0]) : null;
+}
+
+function upsertLibraryItem(sqlite: DatabaseSync, media: MediaSummary, patch: LibraryPatch): LibraryItem {
+  const profileId = loadPreferences(sqlite).activeProfileId;
+  const current = getLibraryItem(sqlite, profileId, media.id, media.mediaType);
+  const now = new Date().toISOString();
+  const status = patch.status ?? current?.status ?? "planned";
+  const item: LibraryItem = {
+    id: current?.id ?? crypto.randomUUID(),
+    profileId,
+    mediaId: media.id,
+    mediaType: media.mediaType,
+    title: media.title,
+    posterPath: media.posterPath,
+    backdropPath: media.backdropPath,
+    year: media.year,
+    rating: media.rating,
+    genres: media.genres,
+    status,
+    favourite: patch.favourite ?? current?.favourite ?? false,
+    userRating: patch.userRating !== undefined ? patch.userRating : (current?.userRating ?? null),
+    notes: patch.notes !== undefined ? patch.notes : (current?.notes ?? null),
+    tags: patch.tags ?? current?.tags ?? [],
+    startedAt: current?.startedAt ?? (status === "watching" || status === "rewatching" ? now : null),
+    completedAt: status === "completed" ? (current?.completedAt ?? now) : null,
+    rewatchCount: patch.rewatchCount ?? current?.rewatchCount ?? 0,
+    createdAt: current?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  sqlite
+    .prepare(
+      `INSERT INTO library_items (
+        uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
+        status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at
+      ) VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$posterPath,$backdropPath,$year,$rating,$genres,
+        $status,$favourite,$userRating,$notes,$tags,$startedAt,$completedAt,$rewatchCount,$createdAt,$updatedAt)
+      ON CONFLICT (profile_id, media_id, media_type) DO UPDATE SET
+        title = excluded.title,
+        poster_path = excluded.poster_path,
+        backdrop_path = excluded.backdrop_path,
+        year = excluded.year,
+        rating = excluded.rating,
+        genres = excluded.genres,
+        status = excluded.status,
+        favourite = excluded.favourite,
+        user_rating = excluded.user_rating,
+        notes = excluded.notes,
+        tags = excluded.tags,
+        started_at = excluded.started_at,
+        completed_at = excluded.completed_at,
+        rewatch_count = excluded.rewatch_count,
+        updated_at = excluded.updated_at`
+    )
+    .run({
+      $uuid: item.id,
+      $profileId: item.profileId,
+      $mediaId: item.mediaId,
+      $mediaType: item.mediaType,
+      $title: item.title,
+      $posterPath: item.posterPath ?? null,
+      $backdropPath: item.backdropPath ?? null,
+      $year: item.year ?? null,
+      $rating: item.rating ?? null,
+      $genres: JSON.stringify(item.genres),
+      $status: item.status,
+      $favourite: item.favourite ? 1 : 0,
+      $userRating: item.userRating ?? null,
+      $notes: item.notes ?? null,
+      $tags: JSON.stringify(item.tags),
+      $startedAt: item.startedAt ?? null,
+      $completedAt: item.completedAt ?? null,
+      $rewatchCount: item.rewatchCount,
+      $createdAt: item.createdAt,
+      $updatedAt: item.updatedAt,
+    } as Record<string, SQLInputValue>);
+
+  return item;
+}
+
+function removeLibraryItem(sqlite: DatabaseSync, profileId: string, mediaId: number, mediaType: string): void {
+  sqlite
+    .prepare(
+      "DELETE FROM library_items WHERE profile_id = $profileId AND media_id = $mediaId AND media_type = $mediaType"
+    )
+    .run({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType });
+}
+
 export function createFakeInvoke(sqlite: DatabaseSync) {
   return async (command: string, args: Record<string, unknown> = {}): Promise<unknown> => {
     // Route through the same `getDatabase()` singleton the repository under
@@ -246,6 +379,25 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return undefined;
       case "remove_watchlist_item":
         removeWatchlistItem(sqlite, args.mediaId as number, args.mediaType as string);
+        return undefined;
+      case "list_library":
+        return listLibrary(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "get_library_item":
+        return getLibraryItem(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.mediaId as number,
+          args.mediaType as string
+        );
+      case "upsert_library_item":
+        return upsertLibraryItem(sqlite, args.media as MediaSummary, (args.patch as LibraryPatch) ?? {});
+      case "remove_library_item":
+        removeLibraryItem(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.mediaId as number,
+          args.mediaType as string
+        );
         return undefined;
       default:
         throw new Error(`fake invoke(): unhandled command "${command}"`);
