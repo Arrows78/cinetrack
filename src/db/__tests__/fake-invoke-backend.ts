@@ -7,8 +7,17 @@
 // without a Tauri runtime, instead of hitting a missing `invoke()` global.
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { defaultPreferences, preferencesSchema } from "@/features/preferences/preferences-repository";
-import type { LibraryItem, MediaSummary, UserPreferences, WatchlistItem } from "@/types/media";
+import type {
+  Episode,
+  EpisodeProgress,
+  LibraryItem,
+  MediaSummary,
+  TrackedSeriesItem,
+  UserPreferences,
+  WatchlistItem,
+} from "@/types/media";
 import type { LibraryPatch } from "@/features/library/library-repository";
+import type { SeriesInput } from "@/features/progress/progress-repository";
 
 function loadPreferences(sqlite: DatabaseSync): UserPreferences {
   const rows = sqlite.prepare("SELECT key, value FROM preferences").all() as Array<{
@@ -339,6 +348,213 @@ function removeLibraryItem(sqlite: DatabaseSync, profileId: string, mediaId: num
     .run({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType });
 }
 
+function isMovieSeen(sqlite: DatabaseSync, profileId: string, movieId: number): boolean {
+  const rows = sqlite
+    .prepare("SELECT COUNT(*) count FROM seen_movies WHERE profile_id=$profileId AND movie_id=$movieId")
+    .all({ $profileId: profileId, $movieId: movieId }) as Array<{ count: number }>;
+  return Number(rows[0]?.count ?? 0) > 0;
+}
+
+function toggleMovieSeen(
+  sqlite: DatabaseSync,
+  profileId: string,
+  movie: MediaSummary,
+  watched: boolean,
+  watchedAt: string
+): void {
+  if (watched) {
+    sqlite
+      .prepare(
+        `INSERT INTO seen_movies (uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at)
+         VALUES ($uuid,$profileId,$movieId,$title,$posterPath,$backdropPath,$watchedAt,$watchedAt,$watchedAt)
+         ON CONFLICT (profile_id, movie_id) DO UPDATE SET
+           title = excluded.title,
+           poster_path = excluded.poster_path,
+           backdrop_path = excluded.backdrop_path,
+           watched_at = excluded.watched_at,
+           updated_at = excluded.updated_at`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $profileId: profileId,
+        $movieId: movie.id,
+        $title: movie.title,
+        $posterPath: movie.posterPath ?? null,
+        $backdropPath: movie.backdropPath ?? null,
+        $watchedAt: watchedAt,
+      } as Record<string, SQLInputValue>);
+  } else {
+    sqlite
+      .prepare("DELETE FROM seen_movies WHERE profile_id=$profileId AND movie_id=$movieId")
+      .run({ $profileId: profileId, $movieId: movie.id });
+  }
+
+  sqlite
+    .prepare(
+      `INSERT INTO viewing_events (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at)
+       VALUES ($uuid,$profileId,$movieId,'movie',$title,$eventType,$watchedAt,$duration,NULL,NULL,NULL,$watchedAt)`
+    )
+    .run({
+      $uuid: crypto.randomUUID(),
+      $profileId: profileId,
+      $movieId: movie.id,
+      $title: movie.title,
+      $eventType: watched ? "watched" : "unwatched",
+      $watchedAt: watchedAt,
+      $duration: movie.runtime ?? null,
+    } as Record<string, SQLInputValue>);
+
+  addHistoryItem(sqlite, {
+    id: crypto.randomUUID(),
+    mediaId: movie.id,
+    mediaType: "movie",
+    title: movie.title,
+    action: watched ? "movie:watched" : "movie:unwatched",
+    timestamp: watchedAt,
+    metadata: { profileId },
+  });
+}
+
+function getEpisodeProgress(sqlite: DatabaseSync, profileId: string, seriesId: number): EpisodeProgress[] {
+  const rows = sqlite
+    .prepare("SELECT * FROM episode_progress WHERE profile_id=$profileId AND series_id=$seriesId AND watched=1")
+    .all({ $profileId: profileId, $seriesId: seriesId }) as Array<Record<string, unknown>>;
+  return rows.map((row) => ({
+    id: String(row.uuid),
+    profileId,
+    seriesId: Number(row.series_id),
+    episodeId: Number(row.episode_id),
+    seasonNumber: Number(row.season_number),
+    episodeNumber: Number(row.episode_number),
+    watched: Boolean(row.watched),
+    watchedAt: row.watched_at ? String(row.watched_at) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+function applyEpisodes(
+  sqlite: DatabaseSync,
+  profileId: string,
+  series: SeriesInput,
+  episodes: Episode[],
+  watched: boolean,
+  watchedAt: string
+): number {
+  const rows = sqlite
+    .prepare(
+      "SELECT episode_id FROM episode_progress WHERE profile_id=$profileId AND series_id=$seriesId AND watched=1"
+    )
+    .all({ $profileId: profileId, $seriesId: series.id }) as Array<{ episode_id: number }>;
+  const watchedIds = new Set(rows.map((row) => Number(row.episode_id)));
+  const changedEpisodes = episodes.filter((episode) =>
+    watched ? !watchedIds.has(episode.id) : watchedIds.has(episode.id)
+  );
+  if (!changedEpisodes.length) return 0;
+
+  for (const episode of changedEpisodes) {
+    if (watched) {
+      sqlite
+        .prepare(
+          `INSERT INTO episode_progress (uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at)
+           VALUES ($uuid,$profileId,$seriesId,$episodeId,$seasonNumber,$episodeNumber,1,$watchedAt,$watchedAt,$watchedAt)
+           ON CONFLICT (profile_id, series_id, episode_id) DO UPDATE SET
+             watched = 1,
+             watched_at = excluded.watched_at,
+             updated_at = excluded.updated_at`
+        )
+        .run({
+          $uuid: crypto.randomUUID(),
+          $profileId: profileId,
+          $seriesId: series.id,
+          $episodeId: episode.id,
+          $seasonNumber: episode.seasonNumber,
+          $episodeNumber: episode.episodeNumber,
+          $watchedAt: watchedAt,
+        } as Record<string, SQLInputValue>);
+    } else {
+      sqlite
+        .prepare(
+          "DELETE FROM episode_progress WHERE profile_id=$profileId AND series_id=$seriesId AND episode_id=$episodeId"
+        )
+        .run({ $profileId: profileId, $seriesId: series.id, $episodeId: episode.id });
+    }
+
+    sqlite
+      .prepare(
+        `INSERT INTO viewing_events (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at)
+         VALUES ($uuid,$profileId,$seriesId,'series',$title,$eventType,$watchedAt,$duration,$episodeId,$seasonNumber,$episodeNumber,$watchedAt)`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $profileId: profileId,
+        $seriesId: series.id,
+        $title: series.title,
+        $eventType: watched ? "watched" : "unwatched",
+        $watchedAt: watchedAt,
+        $duration: episode.runtime ?? series.runtime ?? null,
+        $episodeId: episode.id,
+        $seasonNumber: episode.seasonNumber,
+        $episodeNumber: episode.episodeNumber,
+      } as Record<string, SQLInputValue>);
+  }
+
+  const counts = sqlite
+    .prepare(
+      "SELECT COUNT(*) count FROM episode_progress WHERE profile_id=$profileId AND series_id=$seriesId AND watched=1"
+    )
+    .all({ $profileId: profileId, $seriesId: series.id }) as Array<{ count: number }>;
+
+  sqlite
+    .prepare(
+      `INSERT INTO tracked_series (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at)
+       VALUES ($uuid,$profileId,$seriesId,$title,$posterPath,$backdropPath,$totalEpisodes,$watchedAt,$watchedAt)
+       ON CONFLICT (profile_id, series_id) DO UPDATE SET
+         title = excluded.title,
+         poster_path = excluded.poster_path,
+         backdrop_path = excluded.backdrop_path,
+         total_episodes = excluded.total_episodes,
+         updated_at = excluded.updated_at`
+    )
+    .run({
+      $uuid: crypto.randomUUID(),
+      $profileId: profileId,
+      $seriesId: series.id,
+      $title: series.title,
+      $posterPath: series.posterPath ?? null,
+      $backdropPath: series.backdropPath ?? null,
+      $totalEpisodes: series.numberOfEpisodes ?? Number(counts[0]?.count ?? 0),
+      $watchedAt: watchedAt,
+    } as Record<string, SQLInputValue>);
+
+  return changedEpisodes.length;
+}
+
+function listTrackedSeries(sqlite: DatabaseSync, profileId: string): TrackedSeriesItem[] {
+  const rows = sqlite
+    .prepare(
+      `SELECT ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.created_at,ts.updated_at,COUNT(ep.episode_id) watched_episodes
+       FROM tracked_series ts
+       LEFT JOIN episode_progress ep ON ep.profile_id=ts.profile_id AND ep.series_id=ts.series_id AND ep.watched=1
+       WHERE ts.profile_id=$profileId
+       GROUP BY ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.created_at,ts.updated_at
+       ORDER BY ts.updated_at DESC`
+    )
+    .all({ $profileId: profileId }) as Array<Record<string, unknown>>;
+  return rows.map((row) => ({
+    id: String(row.uuid),
+    profileId,
+    seriesId: Number(row.series_id),
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
+    totalEpisodes: Number(row.total_episodes),
+    watchedEpisodes: Number(row.watched_episodes),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+}
+
 export function createFakeInvoke(sqlite: DatabaseSync) {
   return async (command: string, args: Record<string, unknown> = {}): Promise<unknown> => {
     // Route through the same `getDatabase()` singleton the repository under
@@ -399,6 +615,30 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
           args.mediaType as string
         );
         return undefined;
+      case "is_movie_seen":
+        return isMovieSeen(sqlite, loadPreferences(sqlite).activeProfileId, args.movieId as number);
+      case "toggle_movie_seen":
+        toggleMovieSeen(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.movie as MediaSummary,
+          args.watched as boolean,
+          args.watchedAt as string
+        );
+        return undefined;
+      case "get_episode_progress":
+        return getEpisodeProgress(sqlite, loadPreferences(sqlite).activeProfileId, args.seriesId as number);
+      case "apply_episodes":
+        return applyEpisodes(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.series as SeriesInput,
+          args.episodes as Episode[],
+          args.watched as boolean,
+          args.watchedAt as string
+        );
+      case "list_tracked_series":
+        return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
       default:
         throw new Error(`fake invoke(): unhandled command "${command}"`);
     }
