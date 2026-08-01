@@ -1,3 +1,4 @@
+mod availability;
 mod history;
 mod library;
 mod preferences;
@@ -7,6 +8,10 @@ mod tmdb;
 mod updater;
 mod watchlist;
 
+pub use availability::{
+    get_availability_alert, get_availability_snapshot, list_availability_alerts, remove_availability_alert,
+    save_availability_snapshot, toggle_availability_alert,
+};
 pub use history::{add_history_item, list_history};
 pub use library::{get_library_item, list_library, remove_library_item, upsert_library_item};
 pub use preferences::{get_preferences, invalidate_preferences_cache, update_preference, PreferencesCache};

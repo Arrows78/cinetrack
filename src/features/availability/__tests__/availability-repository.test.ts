@@ -1,11 +1,24 @@
-import { describe, expect, it, vi } from "vitest";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMedia } from "@/shared/test-utils";
-import type { AvailabilitySnapshot } from "@/types/media";
+import type { AvailabilityAlert, AvailabilitySnapshot } from "@/types/media";
 
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) => invokeMock(command, args),
+}));
+
+const alert = (overrides: Partial<AvailabilityAlert> = {}): AvailabilityAlert => ({
+  id: "test-id",
+  profileId: "default",
+  mediaId: 7,
+  mediaType: "movie",
+  title: "Alerte",
+  region: "FR",
+  providerIds: [8],
+  enabled: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  ...overrides,
+});
 
 const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySnapshot => ({
   mediaId: 1,
@@ -16,67 +29,64 @@ const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySn
   ...overrides,
 });
 
+// The toggle/remove/snapshot business logic now lives in Rust and is
+// exercised there (see src-tauri/src/commands/availability.rs's own tests)
+// — this only verifies the repository wraps invoke() with the right
+// command name/args.
 describe("availabilityRepository", () => {
-  const sqlite = useTestSqlite();
+  beforeEach(() => invokeMock.mockReset());
 
-  it("creates an alert on first toggle and removes it on the second", async () => {
+  it("listAlerts() invokes list_availability_alerts", async () => {
+    invokeMock.mockResolvedValueOnce([alert()]);
+    const { availabilityRepository } = await import("../availability-repository");
+
+    await expect(availabilityRepository.listAlerts()).resolves.toEqual([alert()]);
+    expect(invokeMock).toHaveBeenCalledWith("list_availability_alerts", undefined);
+  });
+
+  it("getAlert() invokes get_availability_alert with mediaId/mediaType", async () => {
+    invokeMock.mockResolvedValueOnce(alert());
+    const { availabilityRepository } = await import("../availability-repository");
+
+    await availabilityRepository.getAlert(7, "movie");
+    expect(invokeMock).toHaveBeenCalledWith("get_availability_alert", { mediaId: 7, mediaType: "movie" });
+  });
+
+  it("toggle() invokes toggle_availability_alert with media/region/providerIds", async () => {
+    invokeMock.mockResolvedValueOnce(alert());
     const { availabilityRepository } = await import("../availability-repository");
     const media = makeMedia({ id: 7, title: "Alerte" });
 
-    const created = await availabilityRepository.toggle(media, "FR", [8]);
-    expect(created).not.toBeNull();
-    expect(created?.enabled).toBe(true);
-    expect(await availabilityRepository.getAlert(7, "movie")).toMatchObject({ mediaId: 7, region: "FR" });
-
-    const removed = await availabilityRepository.toggle(media, "FR", [8]);
-    expect(removed).toBeNull();
-    expect(await availabilityRepository.getAlert(7, "movie")).toBeNull();
+    await availabilityRepository.toggle(media, "FR", [8]);
+    expect(invokeMock).toHaveBeenCalledWith("toggle_availability_alert", { media, region: "FR", providerIds: [8] });
   });
 
-  it("distinguishes alerts by media type", async () => {
+  it("remove() invokes remove_availability_alert with the id", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
     const { availabilityRepository } = await import("../availability-repository");
 
-    await availabilityRepository.toggle(makeMedia({ id: 7, mediaType: "movie" }), "FR", [8]);
-
-    expect(await availabilityRepository.getAlert(7, "series")).toBeNull();
-    expect(await availabilityRepository.getAlert(7, "movie")).not.toBeNull();
+    await availabilityRepository.remove("test-id");
+    expect(invokeMock).toHaveBeenCalledWith("remove_availability_alert", { id: "test-id" });
   });
 
-  it("scopes alerts to the active profile", async () => {
+  it("getSnapshot() invokes get_availability_snapshot with mediaId/mediaType/region", async () => {
+    invokeMock.mockResolvedValueOnce(snapshot());
     const { availabilityRepository } = await import("../availability-repository");
-    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
 
-    await availabilityRepository.toggle(makeMedia({ id: 7 }), "FR", [8]);
-    expect(await availabilityRepository.listAlerts()).toHaveLength(1);
-
-    sqlite.current.exec(
-      `INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('guest', 'Guest', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
-    );
-    await preferencesRepository.updatePreference("activeProfileId", "guest");
-    expect(await availabilityRepository.listAlerts()).toHaveLength(0);
+    await availabilityRepository.getSnapshot(1, "movie", "FR");
+    expect(invokeMock).toHaveBeenCalledWith("get_availability_snapshot", {
+      mediaId: 1,
+      mediaType: "movie",
+      region: "FR",
+    });
   });
 
-  it("round-trips a snapshot and replaces it on the same media/region key", async () => {
+  it("saveSnapshot() invokes save_availability_snapshot with the snapshot", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
     const { availabilityRepository } = await import("../availability-repository");
+    const s = snapshot();
 
-    expect(await availabilityRepository.getSnapshot(1, "movie", "FR")).toBeNull();
-
-    await availabilityRepository.saveSnapshot(snapshot());
-    expect(await availabilityRepository.getSnapshot(1, "movie", "FR")).toMatchObject({ providerIds: [8, 119] });
-
-    await availabilityRepository.saveSnapshot(snapshot({ providerIds: [337], checkedAt: "2026-02-01T00:00:00.000Z" }));
-    const replaced = await availabilityRepository.getSnapshot(1, "movie", "FR");
-    expect(replaced?.providerIds).toEqual([337]);
-    expect(replaced?.checkedAt).toBe("2026-02-01T00:00:00.000Z");
-  });
-
-  it("keeps snapshots for different regions separate", async () => {
-    const { availabilityRepository } = await import("../availability-repository");
-
-    await availabilityRepository.saveSnapshot(snapshot({ region: "FR", providerIds: [8] }));
-    await availabilityRepository.saveSnapshot(snapshot({ region: "US", providerIds: [9] }));
-
-    expect((await availabilityRepository.getSnapshot(1, "movie", "FR"))?.providerIds).toEqual([8]);
-    expect((await availabilityRepository.getSnapshot(1, "movie", "US"))?.providerIds).toEqual([9]);
+    await availabilityRepository.saveSnapshot(s);
+    expect(invokeMock).toHaveBeenCalledWith("save_availability_snapshot", { snapshot: s });
   });
 });

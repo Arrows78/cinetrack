@@ -1,105 +1,35 @@
-import { getDatabase } from "@/db/client";
-import { newUuid } from "@/shared/lib/id";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { invokeCommand } from "@/shared/lib/invoke";
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
-const nowIso = () => new Date().toISOString();
-const profileId = async () => (await preferencesRepository.getPreferences()).activeProfileId;
 
-// A corrupt provider_ids cell must not make the whole list/snapshot unreadable.
-const parseProviderIds = (value: unknown): number[] => {
-  try {
-    const parsed = JSON.parse(String(value));
-    return Array.isArray(parsed) ? parsed.filter((id): id is number => typeof id === "number") : [];
-  } catch {
-    return [];
-  }
-};
+// The toggle/remove/snapshot writes and active-profile resolution now live
+// in Rust (see src-tauri/src/commands/availability.rs) — this repository is
+// a thin invoke() wrapper.
 export const availabilityRepository = {
   async listAlerts(): Promise<AvailabilityAlert[]> {
-    const profile = await profileId();
-    const db = await getDatabase();
-    const rows = await db.select<Array<Record<string, unknown>>>(
-      "SELECT * FROM availability_alerts WHERE profile_id=$1 ORDER BY created_at DESC",
-      [profile]
-    );
-    return rows.map((row) => ({
-      id: String(row.uuid),
-      profileId: String(row.profile_id),
-      mediaId: Number(row.media_id),
-      mediaType: row.media_type === "movie" ? "movie" : "series",
-      title: String(row.title),
-      region: String(row.region),
-      providerIds: parseProviderIds(row.provider_ids),
-      enabled: Boolean(row.enabled),
-      createdAt: String(row.created_at),
-    }));
+    return invokeCommand<AvailabilityAlert[]>("list_availability_alerts");
   },
+
   async getAlert(mediaId: number, mediaType: MediaSummary["mediaType"]): Promise<AvailabilityAlert | null> {
-    return (await this.listAlerts()).find((item) => item.mediaId === mediaId && item.mediaType === mediaType) ?? null;
+    return invokeCommand<AvailabilityAlert | null>("get_availability_alert", { mediaId, mediaType });
   },
+
   async toggle(media: MediaSummary, region: string, providerIds: number[]): Promise<AvailabilityAlert | null> {
-    const existing = await this.getAlert(media.id, media.mediaType);
-    if (existing) {
-      await this.remove(existing.id);
-      return null;
-    }
-    const item: AvailabilityAlert = {
-      id: newUuid(),
-      profileId: await profileId(),
-      mediaId: media.id,
-      mediaType: media.mediaType,
-      title: media.title,
-      region,
-      providerIds,
-      enabled: true,
-      createdAt: nowIso(),
-    };
-    const db = await getDatabase();
-    await db.execute(
-      "INSERT INTO availability_alerts (uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,1,$8,$8)",
-      [
-        item.id,
-        item.profileId,
-        item.mediaId,
-        item.mediaType,
-        item.title,
-        item.region,
-        JSON.stringify(item.providerIds),
-        item.createdAt,
-      ]
-    );
-    return item;
+    return invokeCommand<AvailabilityAlert | null>("toggle_availability_alert", { media, region, providerIds });
   },
-  async remove(id: string) {
-    const db = await getDatabase();
-    await db.execute("DELETE FROM availability_alerts WHERE uuid=$1", [id]);
+
+  async remove(id: string): Promise<void> {
+    await invokeCommand<void>("remove_availability_alert", { id });
   },
+
   async getSnapshot(
     mediaId: number,
     mediaType: MediaSummary["mediaType"],
     region: string
   ): Promise<AvailabilitySnapshot | null> {
-    const db = await getDatabase();
-    const rows = await db.select<Array<Record<string, unknown>>>(
-      "SELECT * FROM availability_snapshots WHERE media_id=$1 AND media_type=$2 AND region=$3",
-      [mediaId, mediaType, region]
-    );
-    const row = rows[0];
-    return row
-      ? {
-          mediaId: Number(row.media_id),
-          mediaType: row.media_type === "movie" ? "movie" : "series",
-          region: String(row.region),
-          providerIds: parseProviderIds(row.provider_ids),
-          checkedAt: String(row.checked_at),
-        }
-      : null;
+    return invokeCommand<AvailabilitySnapshot | null>("get_availability_snapshot", { mediaId, mediaType, region });
   },
-  async saveSnapshot(snapshot: AvailabilitySnapshot) {
-    const db = await getDatabase();
-    await db.execute(
-      "INSERT OR REPLACE INTO availability_snapshots (media_id,media_type,region,provider_ids,checked_at) VALUES ($1,$2,$3,$4,$5)",
-      [snapshot.mediaId, snapshot.mediaType, snapshot.region, JSON.stringify(snapshot.providerIds), snapshot.checkedAt]
-    );
+
+  async saveSnapshot(snapshot: AvailabilitySnapshot): Promise<void> {
+    await invokeCommand<void>("save_availability_snapshot", { snapshot });
   },
 };
