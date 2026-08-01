@@ -14,6 +14,7 @@ import type {
   MediaSummary,
   TrackedSeriesItem,
   UserPreferences,
+  ViewingEvent,
   WatchlistItem,
 } from "@/types/media";
 import type { LibraryPatch } from "@/features/library/library-repository";
@@ -555,6 +556,25 @@ function listTrackedSeries(sqlite: DatabaseSync, profileId: string): TrackedSeri
   }));
 }
 
+function listViewingEvents(sqlite: DatabaseSync, profileId: string): ViewingEvent[] {
+  const rows = sqlite
+    .prepare("SELECT * FROM viewing_events WHERE profile_id = $profileId")
+    .all({ $profileId: profileId }) as Array<Record<string, unknown>>;
+  return rows.map((row) => ({
+    id: String(row.uuid),
+    profileId,
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    eventType: String(row.event_type) as ViewingEvent["eventType"],
+    watchedAt: String(row.watched_at),
+    durationMinutes: row.duration_minutes === null ? null : Number(row.duration_minutes),
+    episodeId: row.episode_id === null ? null : Number(row.episode_id),
+    seasonNumber: row.season_number === null ? null : Number(row.season_number),
+    episodeNumber: row.episode_number === null ? null : Number(row.episode_number),
+  }));
+}
+
 export function createFakeInvoke(sqlite: DatabaseSync) {
   return async (command: string, args: Record<string, unknown> = {}): Promise<unknown> => {
     // Route through the same `getDatabase()` singleton the repository under
@@ -639,6 +659,8 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         );
       case "list_tracked_series":
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "list_viewing_events":
+        return listViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId);
       default:
         throw new Error(`fake invoke(): unhandled command "${command}"`);
     }
