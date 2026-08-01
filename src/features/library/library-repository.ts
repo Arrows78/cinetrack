@@ -1,4 +1,5 @@
-import { browserStore, getDatabase } from "@/db/client";
+import { getDatabase } from "@/db/client";
+import { newUuid } from "@/shared/lib/id";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import type { LibraryItem, LibraryStatus, MediaSummary } from "@/types/media";
 
@@ -43,12 +44,6 @@ export const libraryRepository = {
   async list(profileId?: string): Promise<LibraryItem[]> {
     const profile = profileId ?? (await activeProfileId());
     const db = await getDatabase();
-    if (!db) {
-      return browserStore
-        .read()
-        .library.filter((item) => item.profileId === profile)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    }
     const rows = await db.select<Array<Record<string, unknown>>>(
       "SELECT * FROM library_items WHERE profile_id = $1 ORDER BY updated_at DESC",
       [profile]
@@ -59,15 +54,6 @@ export const libraryRepository = {
   async get(mediaId: number, mediaType: MediaSummary["mediaType"], profileId?: string): Promise<LibraryItem | null> {
     const profile = profileId ?? (await activeProfileId());
     const db = await getDatabase();
-    if (!db) {
-      return (
-        browserStore
-          .read()
-          .library.find(
-            (item) => item.profileId === profile && item.mediaId === mediaId && item.mediaType === mediaType
-          ) ?? null
-      );
-    }
     const rows = await db.select<Array<Record<string, unknown>>>(
       "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
       [profile, mediaId, mediaType]
@@ -103,22 +89,29 @@ export const libraryRepository = {
     };
 
     const db = await getDatabase();
-    if (!db) {
-      const store = browserStore.read();
-      store.library = store.library.filter(
-        (entry) => !(entry.profileId === profile && entry.mediaId === media.id && entry.mediaType === media.mediaType)
-      );
-      store.library.push(item);
-      browserStore.write(store);
-      return item;
-    }
-
     await db.execute(
-      `INSERT OR REPLACE INTO library_items (
-        profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
+      `INSERT INTO library_items (
+        uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
         status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+      ON CONFLICT (profile_id, media_id, media_type) DO UPDATE SET
+        title = excluded.title,
+        poster_path = excluded.poster_path,
+        backdrop_path = excluded.backdrop_path,
+        year = excluded.year,
+        rating = excluded.rating,
+        genres = excluded.genres,
+        status = excluded.status,
+        favourite = excluded.favourite,
+        user_rating = excluded.user_rating,
+        notes = excluded.notes,
+        tags = excluded.tags,
+        started_at = excluded.started_at,
+        completed_at = excluded.completed_at,
+        rewatch_count = excluded.rewatch_count,
+        updated_at = excluded.updated_at`,
       [
+        newUuid(),
         item.profileId,
         item.mediaId,
         item.mediaType,
@@ -146,14 +139,6 @@ export const libraryRepository = {
   async remove(mediaId: number, mediaType: MediaSummary["mediaType"], profileId?: string): Promise<void> {
     const profile = profileId ?? (await activeProfileId());
     const db = await getDatabase();
-    if (!db) {
-      const store = browserStore.read();
-      store.library = store.library.filter(
-        (item) => !(item.profileId === profile && item.mediaId === mediaId && item.mediaType === mediaType)
-      );
-      browserStore.write(store);
-      return;
-    }
     await db.execute("DELETE FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3", [
       profile,
       mediaId,

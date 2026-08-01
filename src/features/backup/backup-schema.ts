@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { preferencesSchema } from "@/features/preferences/preferences-repository";
-import { browserStoreSchema } from "@/db/browser-store-schema";
+import { portableDataSchema } from "./portable-data-schema";
 
 // Field-level validation for a restored backup. The structural schemas live
-// in src/db/browser-store-schema.ts (shared with the localStorage fallback
-// store); backups additionally validate the preferences section against the
-// strict preferences schema before anything is written into SQLite.
+// in ./portable-data-schema.ts; backups additionally validate the
+// preferences section against the strict preferences schema before anything
+// is written into SQLite.
 
-export const backupDataSchema = browserStoreSchema.extend({
+export const backupDataSchema = portableDataSchema.extend({
   preferences: preferencesSchema.partial().optional(),
 });
 

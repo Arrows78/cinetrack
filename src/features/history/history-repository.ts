@@ -1,5 +1,5 @@
 import type { ViewingHistoryItem } from "@/types/media";
-import { browserStore, getDatabase } from "@/db/client";
+import { getDatabase } from "@/db/client";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 
 const parseMetadata = (value: unknown): Record<string, unknown> | undefined => {
@@ -12,28 +12,18 @@ const parseMetadata = (value: unknown): Record<string, unknown> | undefined => {
 };
 
 const activeProfileId = async () => (await preferencesRepository.getPreferences()).activeProfileId;
-const itemProfileId = (item: ViewingHistoryItem) => String(item.metadata?.profileId ?? "default");
 
 export const historyRepository = {
   async list(limit = 50): Promise<ViewingHistoryItem[]> {
     const profileId = await activeProfileId();
     const db = await getDatabase();
-    if (!db) {
-      // Sort explicitly: add() prepends, but an imported backup may carry
-      // history in any order.
-      return browserStore
-        .read()
-        .history.filter((item) => itemProfileId(item) === profileId)
-        .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-        .slice(0, limit);
-    }
 
     const rows = await db.select<Array<Record<string, unknown>>>(
       `SELECT * FROM activity_log WHERE profile_id = $1 ORDER BY timestamp DESC LIMIT $2`,
       [profileId, limit]
     );
     return rows.map((row) => ({
-      id: String(row.id),
+      id: String(row.uuid),
       mediaId: Number(row.media_id),
       mediaType: row.media_type === "movie" ? "movie" : "series",
       title: String(row.title),
@@ -53,19 +43,26 @@ export const historyRepository = {
       metadata: { ...item.metadata, profileId },
     };
     const db = await getDatabase();
-    if (!db) {
-      const store = browserStore.read();
-      store.history = [scopedItem, ...store.history].slice(0, 500);
-      browserStore.write(store);
-      return;
-    }
 
     await db.execute(
-      `INSERT OR REPLACE INTO activity_log
-        (id, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp, profile_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      `INSERT INTO activity_log
+        (uuid, profile_id, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $11)
+       ON CONFLICT (uuid) DO UPDATE SET
+         profile_id = excluded.profile_id,
+         media_id = excluded.media_id,
+         media_type = excluded.media_type,
+         title = excluded.title,
+         action = excluded.action,
+         season_number = excluded.season_number,
+         episode_number = excluded.episode_number,
+         episode_title = excluded.episode_title,
+         metadata = excluded.metadata,
+         timestamp = excluded.timestamp,
+         updated_at = excluded.updated_at`,
       [
         scopedItem.id,
+        String(profileId),
         scopedItem.mediaId,
         scopedItem.mediaType,
         scopedItem.title,
@@ -75,7 +72,6 @@ export const historyRepository = {
         scopedItem.episodeTitle ?? null,
         JSON.stringify(scopedItem.metadata),
         scopedItem.timestamp,
-        String(profileId),
       ]
     );
   },

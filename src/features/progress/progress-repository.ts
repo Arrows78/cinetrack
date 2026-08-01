@@ -1,22 +1,21 @@
 import { percent } from "@/shared/utils/format";
 import type { Episode, EpisodeProgress, MediaSummary, SeriesProgress, Season, TrackedSeriesItem } from "@/types/media";
 import { getDatabase } from "@/db/client";
+import { newUuid } from "@/shared/lib/id";
 import { historyRepository } from "@/features/history/history-repository";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
-import { browserProgressStore } from "./progress-store-browser";
 import { createSqlProgressStore } from "./progress-store-sql";
 import type { ProgressStore, SeriesInput } from "./progress-store";
 
 const nowIso = () => new Date().toISOString();
-const uid = () => crypto.randomUUID();
+const uid = newUuid;
 
 async function profileId() {
   return (await preferencesRepository.getPreferences()).activeProfileId;
 }
 
 async function resolveStore(): Promise<ProgressStore> {
-  const db = await getDatabase();
-  return db ? createSqlProgressStore(db) : browserProgressStore;
+  return createSqlProgressStore(await getDatabase());
 }
 
 export const progressRepository = {

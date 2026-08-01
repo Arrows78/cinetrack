@@ -1,15 +1,14 @@
 import type Database from "@tauri-apps/plugin-sql";
+import { newUuid } from "@/shared/lib/id";
 import { historyRepository } from "@/features/history/history-repository";
 import type { ProgressStore, SeriesInput } from "./progress-store";
 import type { Episode, EpisodeProgress, MediaSummary, TrackedSeriesItem } from "@/types/media";
-
-const uid = () => crypto.randomUUID();
 
 export function createSqlProgressStore(db: Database): ProgressStore {
   return {
     async isMovieSeen(profile: string, movieId: number): Promise<boolean> {
       const rows = await db.select<Array<{ count: number }>>(
-        "SELECT COUNT(*) count FROM profile_seen_movies WHERE profile_id=$1 AND movie_id=$2",
+        "SELECT COUNT(*) count FROM seen_movies WHERE profile_id=$1 AND movie_id=$2",
         [profile, movieId]
       );
       return Number(rows[0]?.count ?? 0) > 0;
@@ -20,17 +19,24 @@ export function createSqlProgressStore(db: Database): ProgressStore {
       try {
         if (watched) {
           await db.execute(
-            "INSERT OR REPLACE INTO profile_seen_movies (profile_id,movie_id,title,poster_path,backdrop_path,watched_at) VALUES ($1,$2,$3,$4,$5,$6)",
-            [profile, movie.id, movie.title, movie.posterPath ?? null, movie.backdropPath ?? null, watchedAt]
+            `INSERT INTO seen_movies (uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$7,$7)
+             ON CONFLICT (profile_id, movie_id) DO UPDATE SET
+               title = excluded.title,
+               poster_path = excluded.poster_path,
+               backdrop_path = excluded.backdrop_path,
+               watched_at = excluded.watched_at,
+               updated_at = excluded.updated_at`,
+            [newUuid(), profile, movie.id, movie.title, movie.posterPath ?? null, movie.backdropPath ?? null, watchedAt]
           );
         } else {
-          await db.execute("DELETE FROM profile_seen_movies WHERE profile_id=$1 AND movie_id=$2", [profile, movie.id]);
+          await db.execute("DELETE FROM seen_movies WHERE profile_id=$1 AND movie_id=$2", [profile, movie.id]);
         }
         await db.execute(
-          `INSERT INTO viewing_events (id, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          `INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$7)`,
           [
-            uid(),
+            newUuid(),
             profile,
             movie.id,
             "movie",
@@ -44,7 +50,7 @@ export function createSqlProgressStore(db: Database): ProgressStore {
           ]
         );
         await historyRepository.add({
-          id: uid(),
+          id: newUuid(),
           mediaId: movie.id,
           mediaType: "movie",
           title: movie.title,
@@ -61,7 +67,7 @@ export function createSqlProgressStore(db: Database): ProgressStore {
 
     async getEpisodeProgress(profile: string, seriesId: number): Promise<EpisodeProgress[]> {
       const rows = await db.select<Array<Record<string, unknown>>>(
-        "SELECT * FROM profile_episode_progress WHERE profile_id=$1 AND series_id=$2 AND watched=1",
+        "SELECT * FROM episode_progress WHERE profile_id=$1 AND series_id=$2 AND watched=1",
         [profile, seriesId]
       );
       return rows.map((row) => ({
@@ -83,7 +89,7 @@ export function createSqlProgressStore(db: Database): ProgressStore {
       watchedAt: string
     ): Promise<number> {
       const rows = await db.select<Array<{ episode_id: number }>>(
-        "SELECT episode_id FROM profile_episode_progress WHERE profile_id=$1 AND series_id=$2 AND watched=1",
+        "SELECT episode_id FROM episode_progress WHERE profile_id=$1 AND series_id=$2 AND watched=1",
         [profile, series.id]
       );
       const watchedIds = new Set(rows.map((row) => Number(row.episode_id)));
@@ -97,18 +103,25 @@ export function createSqlProgressStore(db: Database): ProgressStore {
         for (const episode of changedEpisodes) {
           if (watched)
             await db.execute(
-              "INSERT OR REPLACE INTO profile_episode_progress (profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at) VALUES ($1,$2,$3,$4,$5,1,$6)",
-              [profile, series.id, episode.id, episode.seasonNumber, episode.episodeNumber, watchedAt]
+              `INSERT INTO episode_progress (uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at)
+               VALUES ($1,$2,$3,$4,$5,$6,1,$7,$7,$7)
+               ON CONFLICT (profile_id, series_id, episode_id) DO UPDATE SET
+                 watched = 1,
+                 watched_at = excluded.watched_at,
+                 updated_at = excluded.updated_at`,
+              [newUuid(), profile, series.id, episode.id, episode.seasonNumber, episode.episodeNumber, watchedAt]
             );
           else
-            await db.execute(
-              "DELETE FROM profile_episode_progress WHERE profile_id=$1 AND series_id=$2 AND episode_id=$3",
-              [profile, series.id, episode.id]
-            );
+            await db.execute("DELETE FROM episode_progress WHERE profile_id=$1 AND series_id=$2 AND episode_id=$3", [
+              profile,
+              series.id,
+              episode.id,
+            ]);
           await db.execute(
-            "INSERT INTO viewing_events (id,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number) VALUES ($1,$2,$3,'series',$4,$5,$6,$7,$8,$9,$10)",
+            `INSERT INTO viewing_events (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at)
+             VALUES ($1,$2,$3,'series',$4,$5,$6,$7,$8,$9,$10,$6)`,
             [
-              uid(),
+              newUuid(),
               profile,
               series.id,
               series.title,
@@ -122,12 +135,20 @@ export function createSqlProgressStore(db: Database): ProgressStore {
           );
         }
         const counts = await db.select<Array<{ count: number }>>(
-          "SELECT COUNT(*) count FROM profile_episode_progress WHERE profile_id=$1 AND series_id=$2 AND watched=1",
+          "SELECT COUNT(*) count FROM episode_progress WHERE profile_id=$1 AND series_id=$2 AND watched=1",
           [profile, series.id]
         );
         await db.execute(
-          "INSERT OR REPLACE INTO profile_tracked_series (profile_id,series_id,title,poster_path,backdrop_path,total_episodes,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+          `INSERT INTO tracked_series (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8)
+           ON CONFLICT (profile_id, series_id) DO UPDATE SET
+             title = excluded.title,
+             poster_path = excluded.poster_path,
+             backdrop_path = excluded.backdrop_path,
+             total_episodes = excluded.total_episodes,
+             updated_at = excluded.updated_at`,
           [
+            newUuid(),
             profile,
             series.id,
             series.title,
@@ -147,7 +168,7 @@ export function createSqlProgressStore(db: Database): ProgressStore {
 
     async listTrackedSeries(profile: string): Promise<TrackedSeriesItem[]> {
       const rows = await db.select<Array<Record<string, unknown>>>(
-        `SELECT ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.updated_at,COUNT(ep.episode_id) watched_episodes FROM profile_tracked_series ts LEFT JOIN profile_episode_progress ep ON ep.profile_id=ts.profile_id AND ep.series_id=ts.series_id AND ep.watched=1 WHERE ts.profile_id=$1 GROUP BY ts.profile_id,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.updated_at ORDER BY ts.updated_at DESC`,
+        `SELECT ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.updated_at,COUNT(ep.episode_id) watched_episodes FROM tracked_series ts LEFT JOIN episode_progress ep ON ep.profile_id=ts.profile_id AND ep.series_id=ts.series_id AND ep.watched=1 WHERE ts.profile_id=$1 GROUP BY ts.profile_id,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.updated_at ORDER BY ts.updated_at DESC`,
         [profile]
       );
       return rows.map((row) => ({

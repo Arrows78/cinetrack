@@ -1,13 +1,9 @@
 import { z } from "zod";
 
-// Structural validation for the localStorage fallback store. Every schema
-// mirrors the real shape in src/types/media.ts exactly, so data written by
-// this app always round-trips; only genuinely malformed data gets rejected.
-//
-// This module must not import from features/* — browser-store.ts (in db/)
-// consumes it, and features already import db/client, so a features import
-// here would create a cycle. The backup schema (features/backup) extends
-// browserStoreSchema with the strict preferences schema instead.
+// Structural validation for the portable backup format (see portable-data.ts).
+// Every schema mirrors the real shape in src/types/media.ts exactly, so data
+// exported by this app always round-trips; only genuinely malformed data
+// (e.g. a hand-edited or corrupted backup file) gets rejected.
 
 const mediaType = z.enum(["movie", "series"]);
 const libraryStatus = z.enum(["planned", "watching", "paused", "completed", "dropped", "rewatching"]);
@@ -174,16 +170,15 @@ export const MAX_EVENT_ITEMS = 200_000;
 export const MAX_PROFILES = 50;
 export const MAX_LISTS = 500;
 
-export const browserStoreSchema = z.object({
-  schemaVersion: z.number().optional(),
+export const portableDataSchema = z.object({
   watchlist: z.array(watchlistItemSchema).max(MAX_LIST_ITEMS).optional(),
   seenMovies: z.array(seenMovieSchema).max(MAX_LIST_ITEMS).optional(),
   episodeProgress: z.array(episodeProgressSchema).max(MAX_EVENT_ITEMS).optional(),
   trackedSeries: z.array(trackedSeriesItemSchema).max(MAX_LIST_ITEMS).optional(),
   history: z.array(viewingHistoryItemSchema).max(MAX_EVENT_ITEMS).optional(),
-  // Loose here (no features/* import allowed); preferences-repository parses
-  // this section with its own strict schema on read, and backup-schema.ts
-  // overrides it with preferencesSchema for backup validation.
+  // Loose here; preferences-repository parses this section with its own
+  // strict schema on read, and backup-schema.ts overrides it with
+  // preferencesSchema for backup validation.
   preferences: z.record(z.string(), z.unknown()).optional(),
   library: z.array(libraryItemSchema).max(MAX_LIST_ITEMS).optional(),
   viewingEvents: z.array(viewingEventSchema).max(MAX_EVENT_ITEMS).optional(),

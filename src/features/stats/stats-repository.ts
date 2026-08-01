@@ -1,5 +1,5 @@
 import { addDays, eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth, subDays, subMonths } from "date-fns";
-import { browserStore, getDatabase } from "@/db/client";
+import { getDatabase } from "@/db/client";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
 import type { LibraryItem, LibraryStats, TrackedSeriesItem, ViewingEvent } from "@/types/media";
@@ -118,13 +118,6 @@ function computeForecast(tracked: TrackedSeriesItem[], events: ViewingEvent[], n
 async function loadData(): Promise<{ library: LibraryItem[]; events: ViewingEvent[] }> {
   const profileId = (await preferencesRepository.getPreferences()).activeProfileId;
   const db = await getDatabase();
-  if (!db) {
-    const store = browserStore.read();
-    return {
-      library: store.library.filter((item) => item.profileId === profileId),
-      events: store.viewingEvents.filter((event) => event.profileId === profileId),
-    };
-  }
   const [libraryRows, eventRows] = await Promise.all([
     db.select<Array<Record<string, unknown>>>("SELECT * FROM library_items WHERE profile_id = $1", [profileId]),
     db.select<Array<Record<string, unknown>>>("SELECT * FROM viewing_events WHERE profile_id = $1", [profileId]),
@@ -151,7 +144,7 @@ async function loadData(): Promise<{ library: LibraryItem[]; events: ViewingEven
     updatedAt: String(row.updated_at),
   }));
   const events: ViewingEvent[] = eventRows.map((row) => ({
-    id: String(row.id),
+    id: String(row.uuid),
     profileId,
     mediaId: Number(row.media_id),
     mediaType: row.media_type === "movie" ? "movie" : "series",

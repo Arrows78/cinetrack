@@ -1,4 +1,5 @@
-import { browserStore, getDatabase } from "@/db/client";
+import { getDatabase } from "@/db/client";
+import { newUuid } from "@/shared/lib/id";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
 const nowIso = () => new Date().toISOString();
@@ -17,13 +18,12 @@ export const availabilityRepository = {
   async listAlerts(): Promise<AvailabilityAlert[]> {
     const profile = await profileId();
     const db = await getDatabase();
-    if (!db) return browserStore.read().availabilityAlerts.filter((item) => item.profileId === profile);
     const rows = await db.select<Array<Record<string, unknown>>>(
       "SELECT * FROM availability_alerts WHERE profile_id=$1 ORDER BY created_at DESC",
       [profile]
     );
     return rows.map((row) => ({
-      id: String(row.id),
+      id: String(row.uuid),
       profileId: String(row.profile_id),
       mediaId: Number(row.media_id),
       mediaType: row.media_type === "movie" ? "movie" : "series",
@@ -44,7 +44,7 @@ export const availabilityRepository = {
       return null;
     }
     const item: AvailabilityAlert = {
-      id: crypto.randomUUID(),
+      id: newUuid(),
       profileId: await profileId(),
       mediaId: media.id,
       mediaType: media.mediaType,
@@ -55,14 +55,8 @@ export const availabilityRepository = {
       createdAt: nowIso(),
     };
     const db = await getDatabase();
-    if (!db) {
-      const store = browserStore.read();
-      store.availabilityAlerts.push(item);
-      browserStore.write(store);
-      return item;
-    }
     await db.execute(
-      "INSERT INTO availability_alerts (id,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,1,$8)",
+      "INSERT INTO availability_alerts (uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,1,$8,$8)",
       [
         item.id,
         item.profileId,
@@ -78,13 +72,7 @@ export const availabilityRepository = {
   },
   async remove(id: string) {
     const db = await getDatabase();
-    if (!db) {
-      const store = browserStore.read();
-      store.availabilityAlerts = store.availabilityAlerts.filter((item) => item.id !== id);
-      browserStore.write(store);
-      return;
-    }
-    await db.execute("DELETE FROM availability_alerts WHERE id=$1", [id]);
+    await db.execute("DELETE FROM availability_alerts WHERE uuid=$1", [id]);
   },
   async getSnapshot(
     mediaId: number,
@@ -92,14 +80,6 @@ export const availabilityRepository = {
     region: string
   ): Promise<AvailabilitySnapshot | null> {
     const db = await getDatabase();
-    if (!db)
-      return (
-        browserStore
-          .read()
-          .availabilitySnapshots.find(
-            (item) => item.mediaId === mediaId && item.mediaType === mediaType && item.region === region
-          ) ?? null
-      );
     const rows = await db.select<Array<Record<string, unknown>>>(
       "SELECT * FROM availability_snapshots WHERE media_id=$1 AND media_type=$2 AND region=$3",
       [mediaId, mediaType, region]
@@ -117,20 +97,6 @@ export const availabilityRepository = {
   },
   async saveSnapshot(snapshot: AvailabilitySnapshot) {
     const db = await getDatabase();
-    if (!db) {
-      const store = browserStore.read();
-      store.availabilitySnapshots = store.availabilitySnapshots.filter(
-        (item) =>
-          !(
-            item.mediaId === snapshot.mediaId &&
-            item.mediaType === snapshot.mediaType &&
-            item.region === snapshot.region
-          )
-      );
-      store.availabilitySnapshots.push(snapshot);
-      browserStore.write(store);
-      return;
-    }
     await db.execute(
       "INSERT OR REPLACE INTO availability_snapshots (media_id,media_type,region,provider_ids,checked_at) VALUES ($1,$2,$3,$4,$5)",
       [snapshot.mediaId, snapshot.mediaType, snapshot.region, JSON.stringify(snapshot.providerIds), snapshot.checkedAt]

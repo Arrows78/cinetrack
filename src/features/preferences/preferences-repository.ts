@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { browserStore, getDatabase } from "@/db/client";
+import { getDatabase } from "@/db/client";
 import type { UserPreferences } from "@/types/media";
 
 export const preferencesSchema = z.object({
@@ -34,8 +34,7 @@ export const defaultPreferences: UserPreferences = preferencesSchema.parse({
 // Preferences are read constantly (every TMDB request and most repository
 // calls resolve the active profile/language/region through this module), but
 // this app is a single window/instance, so an in-memory cache invalidated on
-// every write is always fresh and avoids a SQLite/localStorage round trip per
-// call.
+// every write is always fresh and avoids a SQLite round trip per call.
 let cache: UserPreferences | null = null;
 
 export const preferencesRepository = {
@@ -43,11 +42,6 @@ export const preferencesRepository = {
     if (cache) return cache;
 
     const db = await getDatabase();
-    if (!db) {
-      cache = preferencesSchema.parse({ ...defaultPreferences, ...browserStore.read().preferences });
-      return cache;
-    }
-
     const rows = await db.select<Array<{ key: string; value: string }>>("SELECT key, value FROM preferences");
     const raw = rows.reduce<Record<string, unknown>>((acc, row) => {
       try {
@@ -70,16 +64,11 @@ export const preferencesRepository = {
     const parsed = preferencesSchema.parse({ ...current, [key]: value })[key];
     const db = await getDatabase();
 
-    if (!db) {
-      const store = browserStore.read();
-      store.preferences = { ...store.preferences, [key]: parsed };
-      browserStore.write(store);
-    } else {
-      await db.execute("INSERT OR REPLACE INTO preferences (key, value) VALUES ($1, $2)", [
-        key,
-        JSON.stringify(parsed),
-      ]);
-    }
+    await db.execute(
+      `INSERT INTO preferences (key, value, updated_at) VALUES ($1, $2, $3)
+       ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      [key, JSON.stringify(parsed), new Date().toISOString()]
+    );
 
     cache = { ...current, [key]: parsed };
     return cache;

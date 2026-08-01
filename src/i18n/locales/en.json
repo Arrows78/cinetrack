@@ -305,6 +305,11 @@
     "save": "Save",
     "remove": "Remove"
   },
+  "tauriRequired": {
+    "title": "Desktop app required",
+    "description": "CineTrack stores your data in a local SQLite database that only the desktop window can reach — a regular browser tab, even one opened while `pnpm tauri dev` is running, cannot access it.",
+    "instructions": "Launch the app with `pnpm tauri dev`, or open the installed desktop application, then use its window instead of this browser tab."
+  },
   "tokenGate": {
     "title": "Connect CineTrack to TMDB",
     "description": "On desktop, the token is encrypted in Stronghold. The vault password stays in memory only for this session.",
