@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePeopleSearch } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
+import { staggerDelayMs } from "@/shared/utils/animation";
+
+// Matches MediaGrid's entrance cascade (see media-grid.tsx) so cards feel
+// consistent across the app, even though person cards have a different shape.
+const MAX_STAGGER_DELAY_S = 0.44;
+
 export function PeoplePage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -12,11 +19,14 @@ export function PeoplePage() {
   const people = usePeopleSearch(debounced);
   return (
     <div className="space-y-6">
-      <header>
+      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <h1 className="font-display text-3xl font-bold">{t("people.title")}</h1>
         <p className="text-muted-foreground">{t("people.description")}</p>
       </header>
-      <label className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4">
+      <label
+        className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 animate-in"
+        style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
+      >
         <Search className="size-4 text-muted-foreground" />
         <input
           className="h-12 flex-1 bg-transparent outline-none"
@@ -26,26 +36,37 @@ export function PeoplePage() {
         />
       </label>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {people.data?.results.map((person) => (
-          <Link
+        {people.data?.results.map((person, index) => (
+          <motion.div
             key={person.id}
-            to="/people/$personId"
-            params={{ personId: String(person.id) }}
-            className="rounded-3xl border border-border bg-card/60 p-4 transition hover:border-primary/50"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 200,
+              damping: 26,
+              delay: Math.min(index * 0.05, MAX_STAGGER_DELAY_S),
+            }}
           >
-            <img
-              className="aspect-[2/3] w-full rounded-2xl object-cover"
-              src={
-                buildTmdbImageUrl(person.profilePath, "w500") ??
-                "https://placehold.co/500x750/111827/374151?text=Portrait"
-              }
-              alt={person.name}
-            />
-            <h2 className="mt-3 font-semibold">{person.name}</h2>
-            <p className="text-sm text-muted-foreground">
-              {person.knownForDepartment ?? t("people.fallbackDepartment")}
-            </p>
-          </Link>
+            <Link
+              to="/people/$personId"
+              params={{ personId: String(person.id) }}
+              className="block rounded-3xl border border-border bg-card/60 p-4 transition hover:border-primary/50"
+            >
+              <img
+                className="aspect-[2/3] w-full rounded-2xl object-cover"
+                src={
+                  buildTmdbImageUrl(person.profilePath, "w500") ??
+                  "https://placehold.co/500x750/111827/374151?text=Portrait"
+                }
+                alt={person.name}
+              />
+              <h2 className="mt-3 font-semibold">{person.name}</h2>
+              <p className="text-sm text-muted-foreground">
+                {person.knownForDepartment ?? t("people.fallbackDepartment")}
+              </p>
+            </Link>
+          </motion.div>
         ))}
       </div>
     </div>

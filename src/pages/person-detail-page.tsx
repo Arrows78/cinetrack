@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { MediaGrid } from "@/components/media/media-grid";
 import { usePerson } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
+import { staggerDelayMs } from "@/shared/utils/animation";
 export function PersonDetailPage() {
   const { t } = useTranslation();
   const { personId } = useParams({ from: "/people/$personId" });
@@ -10,7 +11,10 @@ export function PersonDetailPage() {
   if (!query.data) return <p className="text-muted-foreground">{t("person.loading")}</p>;
   return (
     <div className="space-y-8">
-      <header className="flex items-end gap-5 rounded-3xl border border-border bg-card/60 p-5">
+      <header
+        className="flex items-end gap-5 rounded-3xl border border-border bg-card/60 p-5 animate-in"
+        style={{ animationDelay: `${staggerDelayMs(0)}ms` }}
+      >
         <img
           className="h-48 w-32 rounded-2xl object-cover"
           src={

@@ -7,6 +7,7 @@ import { MediaGrid } from "@/components/media/media-grid";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { watchTonightService } from "@/features/watch-tonight/watch-tonight-service";
+import { staggerDelayMs } from "@/shared/utils/animation";
 export function WatchTonightPage() {
   const { t } = useTranslation();
   const [genre, setGenre] = useState("");
@@ -24,11 +25,14 @@ export function WatchTonightPage() {
   });
   return (
     <div className="space-y-6">
-      <header>
+      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <h1 className="font-display text-3xl font-bold">{t("watchTonight.title")}</h1>
         <p className="text-muted-foreground">{t("watchTonight.description")}</p>
       </header>
-      <section className="grid gap-3 rounded-3xl border border-border bg-card/60 p-5 md:grid-cols-4">
+      <section
+        className="grid gap-3 rounded-3xl border border-border bg-card/60 p-5 md:grid-cols-4 animate-in"
+        style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
+      >
         <select
           className="h-10 rounded-xl border border-border bg-background px-3"
           value={genre}

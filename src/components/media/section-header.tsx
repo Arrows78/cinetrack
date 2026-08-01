@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { cn } from "@/shared/lib/cn";
+import { staggerDelayMs } from "@/shared/utils/animation";
 
 export function SectionHeader({
   title,
@@ -14,7 +15,7 @@ export function SectionHeader({
   index?: number;
   className?: string;
 }) {
-  const sectionDelay = index !== undefined ? Math.min(index * 100, 800) : 0;
+  const sectionDelay = index !== undefined ? staggerDelayMs(index) : 0;
 
   return (
     <div className={cn("group mb-6", className)}>

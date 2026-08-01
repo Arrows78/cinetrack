@@ -6,6 +6,7 @@ import { useCalendar } from "@/features/calendar/use-calendar";
 import type { CalendarEntry } from "@/types/media";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
+import { staggerDelayMs } from "@/shared/utils/animation";
 
 export function CalendarPage() {
   const { t } = useTranslation();
@@ -21,7 +22,7 @@ export function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <div className="flex items-center gap-3">
           <CalendarDays className="size-7 text-primary" />
           <h1 className="font-display text-3xl font-bold">{t("calendar.title")}</h1>
@@ -29,8 +30,12 @@ export function CalendarPage() {
         <p className="mt-1 text-muted-foreground">{t("calendar.description")}</p>
       </header>
       {calendar.isLoading ? <p className="text-muted-foreground">{t("calendar.loading")}</p> : null}
-      {Object.entries(groups).map(([date, entries]) => (
-        <section key={date} className="rounded-3xl border border-border bg-card/60 p-5">
+      {Object.entries(groups).map(([date, entries], index) => (
+        <section
+          key={date}
+          className="rounded-3xl border border-border bg-card/60 p-5 animate-in"
+          style={{ animationDelay: `${staggerDelayMs(index + 1)}ms` }}
+        >
           <h2 className="font-semibold capitalize">{format(parseISO(date), "EEEE d MMMM yyyy")}</h2>
           <div className="mt-3 grid gap-2">
             {entries?.map((entry) => (

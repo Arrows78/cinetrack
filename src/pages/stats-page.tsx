@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { BarChart3, CalendarCheck, Clock, Film, Flame, Gauge, Hourglass, Star, Tv } from "lucide-react";
 import { useStats, useWatchForecast, useWrapped } from "@/features/stats/use-stats";
 import { formatDate } from "@/shared/utils/format";
+import { staggerDelayMs } from "@/shared/utils/animation";
 
 const hours = (minutes: number) => `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 export function StatsPage() {
@@ -21,11 +22,14 @@ export function StatsPage() {
   const maxMonth = Math.max(1, ...stats.data.monthlyActivity.map((month) => month.count));
   return (
     <div className="space-y-8">
-      <header>
+      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <h1 className="font-display text-3xl font-bold">{t("stats.title")}</h1>
         <p className="mt-1 text-muted-foreground">{t("stats.description")}</p>
       </header>
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <section
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 animate-in"
+        style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
+      >
         {cards.map(({ label, value, icon: Icon }) => (
           <article key={label} className="rounded-3xl border border-border bg-card/60 p-5">
             <Icon className="size-5 text-primary" />
@@ -35,7 +39,7 @@ export function StatsPage() {
         ))}
       </section>
       {forecast.data && forecast.data.backlogEpisodes > 0 ? (
-        <section>
+        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
           <h2 className="mb-3 font-semibold">{t("stats.forecast")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <article className="rounded-3xl border border-border bg-card/60 p-5">
@@ -64,7 +68,10 @@ export function StatsPage() {
         </section>
       ) : null}
 
-      <section className="rounded-3xl border border-border bg-card/60 p-5">
+      <section
+        className="rounded-3xl border border-border bg-card/60 p-5 animate-in"
+        style={{ animationDelay: `${staggerDelayMs(3)}ms` }}
+      >
         <h2 className="font-semibold">{t("stats.activity12Months")}</h2>
         <div className="mt-5 flex h-44 items-end gap-2">
           {stats.data.monthlyActivity.map((month) => (
@@ -79,7 +86,7 @@ export function StatsPage() {
           ))}
         </div>
       </section>
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
         <article className="rounded-3xl border border-border bg-card/60 p-5">
           <h2 className="font-semibold">{t("stats.favouriteGenres")}</h2>
           <div className="mt-4 grid gap-2">

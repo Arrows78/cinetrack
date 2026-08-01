@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { staggerDelayMs } from "@/shared/utils/animation";
 
 function ListContents({ listId }: { listId: string }) {
   const { t } = useTranslation();
@@ -53,12 +54,12 @@ export function CollectionsPage() {
 
   return (
     <div className="space-y-8">
-      <header>
+      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <h1 className="font-display text-3xl font-bold">{t("collections.title")}</h1>
         <p className="mt-1 text-muted-foreground">{t("collections.description")}</p>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
         <div className="rounded-3xl border border-border bg-card/60 p-5">
           <h2 className="font-semibold">{t("collections.localProfiles")}</h2>
           {/*
@@ -85,7 +86,10 @@ export function CollectionsPage() {
         <TvTimeImportCard />
       </section>
 
-      <section className="rounded-3xl border border-border bg-card/60 p-5">
+      <section
+        className="rounded-3xl border border-border bg-card/60 p-5 animate-in"
+        style={{ animationDelay: `${staggerDelayMs(2)}ms` }}
+      >
         <h2 className="font-semibold">{t("collections.customLists")}</h2>
         <div className="mt-4 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
           <input

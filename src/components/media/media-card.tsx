@@ -115,6 +115,7 @@ export function MediaCard({ media, progress }: { media: MediaSummary; progress?:
     <motion.div
       className="group"
       whileHover={{ y: -5, scale: 1.01 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
     >
       {media.mediaType === "movie" ? (

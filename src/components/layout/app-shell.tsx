@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/shared/lib/cn";
 import { Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,17 @@ export function AppShell() {
           )}
 
           <main className="pb-10">
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </div>
