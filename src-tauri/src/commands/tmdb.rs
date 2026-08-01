@@ -37,12 +37,12 @@ pub async fn tmdb_request(
     token: String,
 ) -> Result<Value, ApiError> {
     if !is_valid_tmdb_path(&path) {
-        return Err(ApiError::new("Invalid TMDB path"));
+        return Err(ApiError::bad_request("Invalid TMDB path"));
     }
 
     let url = format!("https://api.themoviedb.org/3{path}");
     let client = http_client();
-    let mut last_error = ApiError::new("TMDB request failed");
+    let mut last_error = ApiError::with_status("TMDB request failed", 502);
 
     // Controlled retry: bounded attempts with exponential backoff, and only
     // for failures that are plausibly transient (network errors, 5xx).
@@ -64,7 +64,7 @@ pub async fn tmdb_request(
         {
             Ok(response) => response,
             Err(error) => {
-                last_error = ApiError::new(error.to_string());
+                last_error = ApiError::with_status(error.to_string(), 502);
                 continue;
             }
         };
@@ -73,13 +73,13 @@ pub async fn tmdb_request(
         let body = match response.text().await {
             Ok(body) => body,
             Err(error) => {
-                last_error = ApiError::new(error.to_string());
+                last_error = ApiError::with_status(error.to_string(), 502);
                 continue;
             }
         };
 
         if status.is_success() {
-            return serde_json::from_str(&body).map_err(|error| ApiError::new(error.to_string()));
+            return serde_json::from_str(&body).map_err(|error| ApiError::internal(error.to_string()));
         }
 
         last_error = ApiError::with_status(body, status.as_u16());

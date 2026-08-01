@@ -5,6 +5,7 @@ use serde_json::{Map, Value};
 use sqlx::SqlitePool;
 use tauri::State;
 
+use crate::database::now_iso;
 use crate::error::ApiError;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -207,13 +208,16 @@ pub async fn update_preference(
         .get(&key)
         .ok_or_else(|| ApiError::bad_request(format!("Unknown preference key: {key}")))?;
 
+    let timestamp = now_iso(&*pool).await?;
+
     sqlx::query(
         "INSERT INTO preferences (key, value, updated_at)
-         VALUES ($1, $2, strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'))
+         VALUES ($1, $2, $3)
          ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
     )
     .bind(&key)
     .bind(stored_value.to_string())
+    .bind(&timestamp)
     .execute(&*pool)
     .await
     .map_err(ApiError::from)?;
@@ -222,8 +226,12 @@ pub async fn update_preference(
     Ok(updated)
 }
 
+/// Forces the next `get_preferences` call to reload from disk instead of
+/// returning the in-memory cache — needed after something writes preference
+/// rows directly (e.g. a backup restore) without going through
+/// `update_preference`.
 #[tauri::command]
-pub fn invalidate_preferences_cache(cache: State<'_, PreferencesCache>) {
+pub fn refresh_preferences(cache: State<'_, PreferencesCache>) {
     *cache.0.lock().unwrap() = None;
 }
 

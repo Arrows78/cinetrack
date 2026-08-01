@@ -460,7 +460,7 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
 // `uuid` column (profiles, custom lists, history, viewing events, alerts)
 // reuse the backup's `id` field as that uuid so identity survives a round
 // trip; rows with no app-level identity (watchlist, seen movies, episode
-// progress, tracked series, list items) get a fresh uuid.
+// progress, tracked series, list items, library items) get a fresh uuid.
 // ---------------------------------------------------------------------
 
 async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
