@@ -68,6 +68,7 @@ const config: Config = {
       boxShadow: {
         // Follows the runtime accent color (--primary is set by ThemeController).
         glow: "var(--shadow-glow)",
+        "glow-lg": "var(--shadow-glow-lg)",
         // Elevation scale, single source of truth in styles/index.css.
         // Namespaced "elevation-*" — NOT shadow-sm/xl/2xl, which already
         // resolve to Tailwind's own defaults in active use elsewhere.
@@ -77,11 +78,14 @@ const config: Config = {
         "elevation-lg": "var(--shadow-lg)",
         "elevation-xl": "var(--shadow-xl)",
       },
-      // Named additions to Tailwind's default numeric duration scale
-      // (duration-200 etc. stay available and in use elsewhere).
+      // Named additions to Tailwind's default numeric duration scale,
+      // covering every duration-* value already used across components
+      // (200/300/500/600/700/1000ms) so any of them can be referred to by
+      // name without changing the actual rendered duration.
       transitionDuration: {
         fast: "var(--duration-fast)",
         base: "var(--duration-base)",
+        medium: "var(--duration-medium)",
         slow: "var(--duration-slow)",
         slower: "var(--duration-slower)",
         slowest: "var(--duration-slowest)",
@@ -98,11 +102,13 @@ const config: Config = {
       // special-cased always-on-top overlay, not a stacking tier new UI
       // should ever need to clear.
       zIndex: {
+        raised: "10", // matches existing z-10 usages
         sticky: "30", // matches the mobile header's existing z-30
         dropdown: "40",
         overlay: "50", // matches Sheet/Dialog's existing z-50
         modal: "50",
         toast: "60",
+        "command-palette": "100", // matches command-palette.tsx's existing z-[100]
       },
       animation: {
         shimmer: "shimmer 2s infinite",

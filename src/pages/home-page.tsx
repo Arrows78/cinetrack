@@ -170,18 +170,18 @@ export function HomePage() {
               <Button
                 asChild
                 size="lg"
-                className="group gap-2 transition-all duration-300 hover:shadow-[0_0_30px_hsl(var(--primary)/0.3)] hover:scale-[1.02]"
+                className="group gap-2 transition-all duration-base hover:shadow-glow-lg hover:scale-[1.02]"
               >
                 <Link to="/movies/$movieId" params={{ movieId: String(hero.id) }}>
                   {t("home.viewDetails")}
-                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                  <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover:translate-x-1" />
                 </Link>
               </Button>
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="transition-all duration-300 hover:bg-primary/10 hover:border-primary/40"
+                className="transition-all duration-base hover:bg-primary/10 hover:border-primary/40"
               >
                 <Link to="/search">{t("home.exploreCatalog")}</Link>
               </Button>
@@ -231,7 +231,7 @@ export function HomePage() {
                 genreMovie: genre.movieId ? String(genre.movieId) : undefined,
                 genreSeries: genre.seriesId ? String(genre.seriesId) : undefined,
               }}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/60 px-2 py-4 text-center transition-all duration-200 hover:border-primary/40 hover:bg-primary/10 hover:shadow-glow active:scale-[0.97]"
+              className="group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/60 px-2 py-4 text-center transition-all duration-fast hover:border-primary/40 hover:bg-primary/10 hover:shadow-glow active:scale-[0.97]"
             >
               <span className="text-2xl leading-none">{genre.icon}</span>
               <span className="text-[11px] font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
@@ -255,7 +255,7 @@ export function HomePage() {
               key={platform.id}
               to="/search"
               search={{ q: platform.label, scope: "all", provider: String(platform.id) }}
-              className="group flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-glow active:scale-[0.98]"
+              className="group flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-4 transition-all duration-fast hover:scale-[1.02] hover:shadow-glow active:scale-[0.98]"
               style={{ borderColor: `${platform.color}33` }}
             >
               <div

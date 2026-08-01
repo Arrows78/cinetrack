@@ -48,7 +48,7 @@ export function CommandPalette() {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[100] grid place-items-start bg-black/55 p-4 pt-[12vh] backdrop-blur-sm"
+      className="fixed inset-0 z-command-palette grid place-items-start bg-black/55 p-4 pt-[12vh] backdrop-blur-sm"
       onMouseDown={() => setOpen(false)}
     >
       <div

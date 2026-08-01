@@ -17,7 +17,7 @@ export function FilterBar<T extends string>({
           type="button"
           onClick={() => onChange(option.value)}
           className={cn(
-            "rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-200",
+            "rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-fast",
             value === option.value
               ? "bg-black/10 dark:bg-white/10 text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground/80"

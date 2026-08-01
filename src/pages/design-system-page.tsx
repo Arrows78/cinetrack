@@ -103,11 +103,13 @@ const motionTokens: { name: string; className: string }[] = [
 ];
 
 const zIndexScale: { name: string; value: string; usage: string }[] = [
-  { name: "sticky", value: "30", usage: "En-tête mobile collant (déjà en z-30 dans AppShell)" },
+  { name: "raised", value: "10", usage: "Élément relevé dans son propre empilement (ex: history-page)" },
+  { name: "sticky", value: "30", usage: "En-tête mobile collant (AppShell)" },
   { name: "dropdown", value: "40", usage: "Menus déroulants, popovers" },
-  { name: "overlay", value: "50", usage: "Fond assombri derrière une Sheet/Dialog" },
-  { name: "modal", value: "50", usage: "Contenu de Sheet/Dialog (déjà en z-50)" },
+  { name: "overlay", value: "50", usage: "Fond assombri / bannières flottantes (Sheet, indicateurs)" },
+  { name: "modal", value: "50", usage: "Contenu de Sheet/Dialog" },
   { name: "toast", value: "60", usage: "Notifications au-dessus de tout le reste" },
+  { name: "command-palette", value: "100", usage: "Palette de commandes (Cmd+K), au-dessus de tout" },
 ];
 
 const buttonVariantList = ["default", "secondary", "ghost", "outline", "destructive"] as const;

@@ -26,7 +26,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
           alt={media.title}
           loading="lazy"
           decoding="async"
-          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.07]"
+          className="h-full w-full object-cover transition-transform duration-slower ease-out group-hover:scale-[1.07]"
         />
 
         {/* Cinematic gradient overlay */}
@@ -39,12 +39,12 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
         />
 
         {/* Shine effect on hover */}
-        <div className="absolute inset-0 overflow-hidden opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+        <div className="absolute inset-0 overflow-hidden opacity-0 transition-opacity duration-medium group-hover:opacity-100">
           <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
         </div>
 
         {/* Top: rating badge */}
-        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-transform duration-300 group-hover:scale-110">
+        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-transform duration-base group-hover:scale-110">
           <span className="text-amber-400">★</span>
           {formatRating(media.rating)}
         </div>
@@ -53,7 +53,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
         <div className="absolute left-3 top-3">
           <div
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-sm transition-all duration-300",
+              "rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-sm transition-all duration-base",
               media.mediaType === "movie"
                 ? "bg-primary/85 text-primary-foreground"
                 : "bg-black/50 text-white/90 ring-1 ring-white/20"
@@ -65,7 +65,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
 
         {/* Bottom: title + year + genre */}
         <div className="absolute inset-x-0 bottom-0 p-4">
-          <p className="font-display line-clamp-2 text-base font-bold leading-tight text-card-foreground md:text-lg transition-all duration-300 group-hover:text-primary/90">
+          <p className="font-display line-clamp-2 text-base font-bold leading-tight text-card-foreground md:text-lg transition-all duration-base group-hover:text-primary/90">
             {media.title}
           </p>
           <div className="mt-1.5 flex items-center gap-2">
@@ -100,7 +100,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
             className="absolute inset-x-0 bottom-0 h-1 bg-white/15"
           >
             <div
-              className={cn("h-full transition-all duration-500", complete ? "bg-emerald-500" : "bg-primary")}
+              className={cn("h-full transition-all duration-medium", complete ? "bg-emerald-500" : "bg-primary")}
               style={{ width: `${Math.min(100, Math.round((progress.watched / progress.total) * 100))}%` }}
             />
           </div>

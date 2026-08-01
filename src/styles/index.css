@@ -87,15 +87,21 @@
   --shadow-lg: 0 16px 44px hsl(0 0% 0% / 0.32);
   --shadow-xl: 0 24px 64px hsl(0 0% 0% / 0.4);
   --shadow-glow: 0 4px 16px hsl(var(--primary) / 0.15);
+  /* Stronger hover-only glow (home-page CTA button). Primary-based like
+     --shadow-glow, so no separate .light value needed — ThemeController
+     already recomputes --primary per theme at runtime. */
+  --shadow-glow-lg: 0 0 30px hsl(var(--primary) / 0.3);
 
   /* Motion scale. --ease-out-expo replaces the cubic-bezier(0.16, 1, 0.3, 1)
      literal repeated 4x below; the --duration-* values are named after the
-     literals they replace (0.2s/0.3s/0.6s/0.7s/1s/8s) so the substitution
-     is lossless — nothing here changes what's actually rendered, it just
-     stops the same numbers from being retyped by hand at each call site. */
+     literals they replace (0.2s/0.3s/0.5s/0.6s/0.7s/1s/8s) — including
+     every duration-* Tailwind utility already used across components — so
+     substituting a name for a number anywhere is lossless: nothing here
+     changes what's actually rendered. */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 200ms;
   --duration-base: 300ms;
+  --duration-medium: 500ms;
   --duration-slow: 600ms;
   --duration-slower: 700ms;
   --duration-slowest: 1000ms;

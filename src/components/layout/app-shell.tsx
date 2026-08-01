@@ -39,7 +39,7 @@ export function AppShell() {
 
         <div className="min-w-0">
           {/* Mobile header */}
-          <header className="surface sticky top-4 z-30 mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
+          <header className="surface sticky top-4 z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
               {canGoBack ? (
                 <Button variant="ghost" size="icon" onClick={handleGoBack} className="-ml-1 h-9 w-9">

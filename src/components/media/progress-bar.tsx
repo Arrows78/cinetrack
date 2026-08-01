@@ -35,7 +35,7 @@ export function ProgressBar({
         )}
       >
         <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
+          className="h-full rounded-full transition-all duration-slower ease-out"
           style={{
             width: `${clampedValue}%`,
             background: isComplete

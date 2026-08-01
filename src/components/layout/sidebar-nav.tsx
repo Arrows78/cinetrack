@@ -25,7 +25,7 @@ function NavLink({ item, collapsed, isActive }: NavLinkProps) {
     <Link
       to={item.to}
       className={cn(
-        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-fast",
         isActive
           ? "bg-primary/15 text-primary shadow-glow"
           : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground",
@@ -34,7 +34,7 @@ function NavLink({ item, collapsed, isActive }: NavLinkProps) {
     >
       <Icon
         className={cn(
-          "h-[18px] w-[18px] shrink-0 transition-all duration-200",
+          "h-[18px] w-[18px] shrink-0 transition-all duration-fast",
           isActive ? "text-primary" : "group-hover:scale-110"
         )}
       />
@@ -154,7 +154,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
                 type="button"
                 onClick={() => void updatePreference({ key: "theme", value })}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-all duration-200",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-all duration-fast",
                   activeTheme === value
                     ? "bg-primary/15 text-primary shadow-glow"
                     : "text-muted-foreground hover:text-foreground"

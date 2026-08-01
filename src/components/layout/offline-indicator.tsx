@@ -16,7 +16,7 @@ export function OfflineIndicator() {
   }, []);
   if (online) return null;
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-500/30 bg-background px-4 py-2 text-sm shadow-xl">
+    <div className="fixed bottom-4 left-1/2 z-overlay flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-500/30 bg-background px-4 py-2 text-sm shadow-xl">
       <WifiOff className="size-4 text-amber-500" />
       {t("offline.message")}
     </div>
