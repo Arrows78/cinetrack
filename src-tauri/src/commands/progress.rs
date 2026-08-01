@@ -1,0 +1,573 @@
+use std::collections::HashSet;
+
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sqlx::SqlitePool;
+use tauri::State;
+
+use super::history::{add_history_item_impl, HistoryAction, ViewingHistoryItem};
+use crate::database::{current_profile_id, new_uuid};
+use crate::error::ApiError;
+use crate::models::MediaType;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MovieInput {
+    pub id: i64,
+    pub title: String,
+    pub poster_path: Option<String>,
+    pub backdrop_path: Option<String>,
+    pub runtime: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EpisodeInput {
+    pub id: i64,
+    pub season_number: i64,
+    pub episode_number: i64,
+    pub runtime: Option<i64>,
+}
+
+/// Only the fields `apply_episodes` reads off the frontend's `SeriesInput`
+/// (`MediaSummary & { numberOfEpisodes?: number }`) — unknown fields are
+/// silently ignored by serde.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeriesInput {
+    pub id: i64,
+    pub title: String,
+    pub poster_path: Option<String>,
+    pub backdrop_path: Option<String>,
+    pub runtime: Option<i64>,
+    pub number_of_episodes: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EpisodeProgress {
+    pub id: String,
+    pub profile_id: String,
+    pub series_id: i64,
+    pub episode_id: i64,
+    pub season_number: i64,
+    pub episode_number: i64,
+    pub watched: bool,
+    pub watched_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct EpisodeProgressRow {
+    uuid: String,
+    series_id: i64,
+    episode_id: i64,
+    season_number: i64,
+    episode_number: i64,
+    watched: bool,
+    watched_at: Option<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackedSeriesItem {
+    pub id: String,
+    pub profile_id: String,
+    pub series_id: i64,
+    pub title: String,
+    pub poster_path: Option<String>,
+    pub backdrop_path: Option<String>,
+    pub total_episodes: i64,
+    pub watched_episodes: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct TrackedSeriesRow {
+    uuid: String,
+    series_id: i64,
+    title: String,
+    poster_path: Option<String>,
+    backdrop_path: Option<String>,
+    total_episodes: i64,
+    created_at: String,
+    updated_at: String,
+    watched_episodes: i64,
+}
+
+async fn is_movie_seen_impl(pool: &SqlitePool, profile_id: &str, movie_id: i64) -> Result<bool, ApiError> {
+    let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
+        .bind(profile_id)
+        .bind(movie_id)
+        .fetch_one(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(row.0 > 0)
+}
+
+/// Unlike `apply_episodes_impl` below, this logs the history entry inside
+/// the same transaction as the seen-flag/viewing-event writes — matching
+/// progress-store-sql.ts's `toggleMovieSeen`, which committed history
+/// atomically for movies while episode-based actions logged it as a
+/// separate step one level up in progress-repository.ts.
+pub(crate) async fn toggle_movie_seen_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    movie: MovieInput,
+    watched: bool,
+    watched_at: &str,
+) -> Result<(), ApiError> {
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
+    if watched {
+        sqlx::query(
+            "INSERT INTO seen_movies (uuid, profile_id, movie_id, title, poster_path, backdrop_path, watched_at, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$7,$7)
+             ON CONFLICT (profile_id, movie_id) DO UPDATE SET
+               title = excluded.title,
+               poster_path = excluded.poster_path,
+               backdrop_path = excluded.backdrop_path,
+               watched_at = excluded.watched_at,
+               updated_at = excluded.updated_at",
+        )
+        .bind(new_uuid())
+        .bind(profile_id)
+        .bind(movie.id)
+        .bind(&movie.title)
+        .bind(&movie.poster_path)
+        .bind(&movie.backdrop_path)
+        .bind(watched_at)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+    } else {
+        sqlx::query("DELETE FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
+            .bind(profile_id)
+            .bind(movie.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+    }
+
+    sqlx::query(
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
+         VALUES ($1,$2,$3,'movie',$4,$5,$6,$7,NULL,NULL,NULL,$6)",
+    )
+    .bind(new_uuid())
+    .bind(profile_id)
+    .bind(movie.id)
+    .bind(&movie.title)
+    .bind(if watched { "watched" } else { "unwatched" })
+    .bind(watched_at)
+    .bind(movie.runtime)
+    .execute(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    let history_item = ViewingHistoryItem {
+        id: new_uuid(),
+        media_id: movie.id,
+        media_type: MediaType::Movie,
+        title: movie.title,
+        action: if watched { HistoryAction::MovieWatched } else { HistoryAction::MovieUnwatched },
+        timestamp: watched_at.to_string(),
+        season_number: None,
+        episode_number: None,
+        episode_title: None,
+        metadata: Some(json!({ "profileId": profile_id })),
+    };
+    add_history_item_impl(&mut *tx, pool, history_item).await?;
+
+    tx.commit().await.map_err(ApiError::from)?;
+    Ok(())
+}
+
+async fn get_episode_progress_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    series_id: i64,
+) -> Result<Vec<EpisodeProgress>, ApiError> {
+    let rows: Vec<EpisodeProgressRow> = sqlx::query_as(
+        "SELECT uuid, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at
+         FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1",
+    )
+    .bind(profile_id)
+    .bind(series_id)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| EpisodeProgress {
+            id: row.uuid,
+            profile_id: profile_id.to_string(),
+            series_id: row.series_id,
+            episode_id: row.episode_id,
+            season_number: row.season_number,
+            episode_number: row.episode_number,
+            watched: row.watched,
+            watched_at: row.watched_at,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+        .collect())
+}
+
+/// Applies a watched/unwatched change to a set of episodes: writes only the
+/// episodes whose state actually changes, records a matching viewing_events
+/// row for each, and refreshes the tracked_series rollup
+/// (`total_episodes = series.numberOfEpisodes ?? watchedCount`). Returns the
+/// number of episodes that changed. Does NOT log history — callers (episode/
+/// season/series toggles, and eventually the tvtime importer) do that
+/// themselves, matching the original TS split between progress-store-sql.ts
+/// and progress-repository.ts. `pub(crate)` so tvtime's future importer,
+/// which needs the same upsert/rollup logic, can reuse this instead of
+/// duplicating it.
+pub(crate) async fn apply_episodes_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    series: &SeriesInput,
+    episodes: &[EpisodeInput],
+    watched: bool,
+    watched_at: &str,
+) -> Result<i64, ApiError> {
+    let watched_rows: Vec<(i64,)> =
+        sqlx::query_as("SELECT episode_id FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1")
+            .bind(profile_id)
+            .bind(series.id)
+            .fetch_all(pool)
+            .await
+            .map_err(ApiError::from)?;
+    let watched_ids: HashSet<i64> = watched_rows.into_iter().map(|(id,)| id).collect();
+
+    let changed_episodes: Vec<&EpisodeInput> = episodes
+        .iter()
+        .filter(|episode| {
+            if watched {
+                !watched_ids.contains(&episode.id)
+            } else {
+                watched_ids.contains(&episode.id)
+            }
+        })
+        .collect();
+
+    if changed_episodes.is_empty() {
+        return Ok(0);
+    }
+
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
+    for episode in &changed_episodes {
+        if watched {
+            sqlx::query(
+                "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,1,$7,$7,$7)
+                 ON CONFLICT (profile_id, series_id, episode_id) DO UPDATE SET
+                   watched = 1,
+                   watched_at = excluded.watched_at,
+                   updated_at = excluded.updated_at",
+            )
+            .bind(new_uuid())
+            .bind(profile_id)
+            .bind(series.id)
+            .bind(episode.id)
+            .bind(episode.season_number)
+            .bind(episode.episode_number)
+            .bind(watched_at)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+        } else {
+            sqlx::query("DELETE FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND episode_id = $3")
+                .bind(profile_id)
+                .bind(series.id)
+                .bind(episode.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(ApiError::from)?;
+        }
+
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
+             VALUES ($1,$2,$3,'series',$4,$5,$6,$7,$8,$9,$10,$6)",
+        )
+        .bind(new_uuid())
+        .bind(profile_id)
+        .bind(series.id)
+        .bind(&series.title)
+        .bind(if watched { "watched" } else { "unwatched" })
+        .bind(watched_at)
+        .bind(episode.runtime.or(series.runtime))
+        .bind(episode.id)
+        .bind(episode.season_number)
+        .bind(episode.episode_number)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+    }
+
+    let count_row: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1")
+            .bind(profile_id)
+            .bind(series.id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+
+    sqlx::query(
+        "INSERT INTO tracked_series (uuid, profile_id, series_id, title, poster_path, backdrop_path, total_episodes, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8)
+         ON CONFLICT (profile_id, series_id) DO UPDATE SET
+           title = excluded.title,
+           poster_path = excluded.poster_path,
+           backdrop_path = excluded.backdrop_path,
+           total_episodes = excluded.total_episodes,
+           updated_at = excluded.updated_at",
+    )
+    .bind(new_uuid())
+    .bind(profile_id)
+    .bind(series.id)
+    .bind(&series.title)
+    .bind(&series.poster_path)
+    .bind(&series.backdrop_path)
+    .bind(series.number_of_episodes.unwrap_or(count_row.0))
+    .bind(watched_at)
+    .execute(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    tx.commit().await.map_err(ApiError::from)?;
+    Ok(changed_episodes.len() as i64)
+}
+
+async fn list_tracked_series_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<TrackedSeriesItem>, ApiError> {
+    let rows: Vec<TrackedSeriesRow> = sqlx::query_as(
+        "SELECT ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.created_at, ts.updated_at,
+                COUNT(ep.episode_id) as watched_episodes
+         FROM tracked_series ts
+         LEFT JOIN episode_progress ep ON ep.profile_id = ts.profile_id AND ep.series_id = ts.series_id AND ep.watched = 1
+         WHERE ts.profile_id = $1
+         GROUP BY ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.created_at, ts.updated_at
+         ORDER BY ts.updated_at DESC",
+    )
+    .bind(profile_id)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| TrackedSeriesItem {
+            id: row.uuid,
+            profile_id: profile_id.to_string(),
+            series_id: row.series_id,
+            title: row.title,
+            poster_path: row.poster_path,
+            backdrop_path: row.backdrop_path,
+            total_episodes: row.total_episodes,
+            watched_episodes: row.watched_episodes,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn is_movie_seen(movie_id: i64, pool: State<'_, SqlitePool>) -> Result<bool, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    is_movie_seen_impl(&pool, &profile_id, movie_id).await
+}
+
+#[tauri::command]
+pub async fn toggle_movie_seen(
+    movie: MovieInput,
+    watched: bool,
+    watched_at: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    toggle_movie_seen_impl(&pool, &profile_id, movie, watched, &watched_at).await
+}
+
+#[tauri::command]
+pub async fn get_episode_progress(series_id: i64, pool: State<'_, SqlitePool>) -> Result<Vec<EpisodeProgress>, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    get_episode_progress_impl(&pool, &profile_id, series_id).await
+}
+
+#[tauri::command]
+pub async fn apply_episodes(
+    series: SeriesInput,
+    episodes: Vec<EpisodeInput>,
+    watched: bool,
+    watched_at: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<i64, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    apply_episodes_impl(&pool, &profile_id, &series, &episodes, watched, &watched_at).await
+}
+
+#[tauri::command]
+pub async fn list_tracked_series(pool: State<'_, SqlitePool>) -> Result<Vec<TrackedSeriesItem>, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    list_tracked_series_impl(&pool, &profile_id).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn migrated_pool() -> SqlitePool {
+        let pool = SqlitePoolOptions::new().max_connections(4).connect("sqlite::memory:").await.unwrap();
+        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        pool
+    }
+
+    fn movie(id: i64) -> MovieInput {
+        MovieInput { id, title: "Test Movie".to_string(), poster_path: None, backdrop_path: None, runtime: Some(118) }
+    }
+
+    fn series(id: i64, number_of_episodes: Option<i64>) -> SeriesInput {
+        SeriesInput {
+            id,
+            title: "Test Show".to_string(),
+            poster_path: None,
+            backdrop_path: None,
+            runtime: None,
+            number_of_episodes,
+        }
+    }
+
+    fn episode(id: i64, episode_number: i64) -> EpisodeInput {
+        EpisodeInput { id, season_number: 1, episode_number, runtime: None }
+    }
+
+    #[tokio::test]
+    async fn toggles_a_movie_seen_through_a_real_insert_delete_round_trip() {
+        let pool = migrated_pool().await;
+
+        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        assert!(is_movie_seen_impl(&pool, "default", 55).await.unwrap());
+
+        let rows: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 55").fetch_one(&pool).await.unwrap();
+        assert_eq!(rows.0, 1);
+
+        toggle_movie_seen_impl(&pool, "default", movie(55), false, "2026-01-01T00:00:01.000Z").await.unwrap();
+        assert!(!is_movie_seen_impl(&pool, "default", 55).await.unwrap());
+        let rows: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 55").fetch_one(&pool).await.unwrap();
+        assert_eq!(rows.0, 0);
+    }
+
+    #[tokio::test]
+    async fn records_a_viewing_event_and_history_entry_alongside_the_seen_toggle() {
+        let pool = migrated_pool().await;
+        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        let event: (String, Option<i64>) =
+            sqlx::query_as("SELECT event_type, duration_minutes FROM viewing_events WHERE media_id = 55")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(event.0, "watched");
+        assert_eq!(event.1, Some(118));
+
+        let history_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'").fetch_one(&pool).await.unwrap();
+        assert_eq!(history_count.0, 1);
+    }
+
+    #[tokio::test]
+    async fn marks_an_episode_watched_and_reflects_it_in_progress_and_tracked_series() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+
+        let changed =
+            apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        assert_eq!(changed, 1);
+
+        let progress = get_episode_progress_impl(&pool, "default", 9).await.unwrap();
+        assert_eq!(progress.len(), 1);
+        assert_eq!(progress[0].episode_id, 100);
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.watched_episodes, 1);
+    }
+
+    #[tokio::test]
+    async fn does_not_reapply_an_already_applied_episode() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        let changed =
+            apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:01.000Z").await.unwrap();
+        assert_eq!(changed, 0);
+    }
+
+    #[tokio::test]
+    async fn computes_watched_episodes_via_the_tracked_series_join_not_a_stored_counter() {
+        let pool = migrated_pool().await;
+        let s = series(9, Some(3));
+
+        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(&pool, "default", &s, &[episode(2, 2)], true, "2026-01-01T00:00:01.000Z").await.unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.total_episodes, 3);
+        assert_eq!(entry.watched_episodes, 2);
+
+        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], false, "2026-01-01T00:00:02.000Z").await.unwrap();
+        let updated = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = updated.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.watched_episodes, 1);
+    }
+
+    #[tokio::test]
+    async fn apply_episodes_only_writes_rows_that_actually_changed_state() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+
+        let first = apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2)], true, "2026-01-01T00:00:00.000Z")
+            .await
+            .unwrap();
+        assert_eq!(first, 2);
+
+        let second = apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2)], true, "2026-01-01T00:00:01.000Z")
+            .await
+            .unwrap();
+        assert_eq!(second, 0);
+
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM episode_progress WHERE series_id = 9").fetch_one(&pool).await.unwrap();
+        assert_eq!(count.0, 2);
+    }
+
+    #[tokio::test]
+    async fn marking_a_whole_season_watched_applies_every_episode_in_one_transaction() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        let season_episodes = vec![episode(1, 1), episode(2, 2), episode(3, 3)];
+
+        apply_episodes_impl(&pool, "default", &s, &season_episodes, true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        let progress = get_episode_progress_impl(&pool, "default", 9).await.unwrap();
+        assert_eq!(progress.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn apply_episodes_does_not_log_history() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
+        assert_eq!(history_count.0, 0);
+    }
+}
