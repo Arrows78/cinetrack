@@ -1,17 +1,18 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { portableData } from "../portable-data";
-import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
-import { libraryRepository } from "@/features/library/library-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { describe, expect, it, vi } from "vitest";
+import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeMedia } from "@/shared/test-utils";
 
-describe("portableData (browser fallback)", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    preferencesRepository.invalidate();
-  });
+vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
+vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+
+describe("portableData", () => {
+  useTestSqlite();
 
   it("exports the current state and can round-trip it back in", async () => {
+    const { portableData } = await import("../portable-data");
+    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+    const { libraryRepository } = await import("@/features/library/library-repository");
+
     await watchlistRepository.upsert({
       mediaId: 1,
       mediaType: "movie",
@@ -25,7 +26,6 @@ describe("portableData (browser fallback)", () => {
     expect(backup.data.watchlist).toHaveLength(1);
     expect(backup.data.library).toHaveLength(1);
 
-    window.localStorage.clear();
     await portableData.import(backup);
 
     expect(await watchlistRepository.has(1, "movie")).toBe(true);
@@ -33,12 +33,16 @@ describe("portableData (browser fallback)", () => {
   });
 
   it("rejects a backup with an unsupported format", async () => {
+    const { portableData } = await import("../portable-data");
+
     await expect(
       portableData.import({ format: "something-else", version: 1, exportedAt: "", data: {} } as never)
     ).rejects.toThrow();
   });
 
   it("rejects a backup whose array fields are not arrays", async () => {
+    const { portableData } = await import("../portable-data");
+
     await expect(
       portableData.import({
         format: "cinetrack-backup",
@@ -50,6 +54,8 @@ describe("portableData (browser fallback)", () => {
   });
 
   it("rejects a backup with wrong-typed fields inside an array item", async () => {
+    const { portableData } = await import("../portable-data");
+
     await expect(
       portableData.import({
         format: "cinetrack-backup",
@@ -63,6 +69,8 @@ describe("portableData (browser fallback)", () => {
   });
 
   it("rejects a backup with an invalid enum value", async () => {
+    const { portableData } = await import("../portable-data");
+
     await expect(
       portableData.import({
         format: "cinetrack-backup",
@@ -76,6 +84,7 @@ describe("portableData (browser fallback)", () => {
   });
 
   it("rejects a backup with more profiles than the configured limit", async () => {
+    const { portableData } = await import("../portable-data");
     const tooManyProfiles = Array.from({ length: 51 }, (_, index) => ({
       id: `profile-${index}`,
       name: `Profile ${index}`,
@@ -92,6 +101,8 @@ describe("portableData (browser fallback)", () => {
   });
 
   it("falls back to the default profile if the active profile referenced in the backup is missing", async () => {
+    const { portableData } = await import("../portable-data");
+
     const backup = await portableData
       .import({
         format: "cinetrack-backup",

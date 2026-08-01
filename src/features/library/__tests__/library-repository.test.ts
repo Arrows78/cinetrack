@@ -1,15 +1,16 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { libraryRepository } from "../library-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { describe, expect, it, vi } from "vitest";
+import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeMedia } from "@/shared/test-utils";
 
-describe("libraryRepository (browser fallback)", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    preferencesRepository.invalidate();
-  });
+vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
+vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+
+describe("libraryRepository", () => {
+  useTestSqlite();
 
   it("creates a new entry defaulting to the planned status", async () => {
+    const { libraryRepository } = await import("../library-repository");
+
     const item = await libraryRepository.upsert(makeMedia({ id: 7 }));
     expect(item.status).toBe("planned");
     expect(item.favourite).toBe(false);
@@ -19,6 +20,8 @@ describe("libraryRepository (browser fallback)", () => {
   });
 
   it("sets completedAt when the status transitions to completed", async () => {
+    const { libraryRepository } = await import("../library-repository");
+
     await libraryRepository.upsert(makeMedia({ id: 7 }));
     const updated = await libraryRepository.upsert(makeMedia({ id: 7 }), { status: "completed" });
 
@@ -27,6 +30,8 @@ describe("libraryRepository (browser fallback)", () => {
   });
 
   it("preserves user fields across updates that omit them", async () => {
+    const { libraryRepository } = await import("../library-repository");
+
     await libraryRepository.upsert(makeMedia({ id: 7 }), { userRating: 8, tags: ["favourite-director"] });
     const updated = await libraryRepository.upsert(makeMedia({ id: 7 }), { status: "watching" });
 
@@ -35,6 +40,8 @@ describe("libraryRepository (browser fallback)", () => {
   });
 
   it("removes an entry", async () => {
+    const { libraryRepository } = await import("../library-repository");
+
     await libraryRepository.upsert(makeMedia({ id: 7 }));
     await libraryRepository.remove(7, "movie");
     expect(await libraryRepository.get(7, "movie")).toBeNull();

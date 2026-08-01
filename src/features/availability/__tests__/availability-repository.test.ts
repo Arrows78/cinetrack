@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { availabilityRepository } from "../availability-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { describe, expect, it, vi } from "vitest";
+import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeMedia } from "@/shared/test-utils";
 import type { AvailabilitySnapshot } from "@/types/media";
+
+vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
+vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
 
 const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySnapshot => ({
   mediaId: 1,
@@ -13,13 +15,11 @@ const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySn
   ...overrides,
 });
 
-describe("availabilityRepository (browser fallback)", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    preferencesRepository.invalidate();
-  });
+describe("availabilityRepository", () => {
+  const sqlite = useTestSqlite();
 
   it("creates an alert on first toggle and removes it on the second", async () => {
+    const { availabilityRepository } = await import("../availability-repository");
     const media = makeMedia({ id: 7, title: "Alerte" });
 
     const created = await availabilityRepository.toggle(media, "FR", [8]);
@@ -33,6 +33,8 @@ describe("availabilityRepository (browser fallback)", () => {
   });
 
   it("distinguishes alerts by media type", async () => {
+    const { availabilityRepository } = await import("../availability-repository");
+
     await availabilityRepository.toggle(makeMedia({ id: 7, mediaType: "movie" }), "FR", [8]);
 
     expect(await availabilityRepository.getAlert(7, "series")).toBeNull();
@@ -40,14 +42,22 @@ describe("availabilityRepository (browser fallback)", () => {
   });
 
   it("scopes alerts to the active profile", async () => {
+    const { availabilityRepository } = await import("../availability-repository");
+    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
+
     await availabilityRepository.toggle(makeMedia({ id: 7 }), "FR", [8]);
     expect(await availabilityRepository.listAlerts()).toHaveLength(1);
 
+    sqlite.current.exec(
+      `INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('guest', 'Guest', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+    );
     await preferencesRepository.updatePreference("activeProfileId", "guest");
     expect(await availabilityRepository.listAlerts()).toHaveLength(0);
   });
 
   it("round-trips a snapshot and replaces it on the same media/region key", async () => {
+    const { availabilityRepository } = await import("../availability-repository");
+
     expect(await availabilityRepository.getSnapshot(1, "movie", "FR")).toBeNull();
 
     await availabilityRepository.saveSnapshot(snapshot());
@@ -60,6 +70,8 @@ describe("availabilityRepository (browser fallback)", () => {
   });
 
   it("keeps snapshots for different regions separate", async () => {
+    const { availabilityRepository } = await import("../availability-repository");
+
     await availabilityRepository.saveSnapshot(snapshot({ region: "FR", providerIds: [8] }));
     await availabilityRepository.saveSnapshot(snapshot({ region: "US", providerIds: [9] }));
 

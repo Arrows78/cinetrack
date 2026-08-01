@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { statsRepository } from "../stats-repository";
-import { browserStore } from "@/db/client";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
+import { makeMedia } from "@/shared/test-utils";
 import type { LibraryItem, ViewingEvent } from "@/types/media";
 
 const libraryItem = (overrides: Partial<LibraryItem> = {}): LibraryItem =>
@@ -113,31 +113,43 @@ describe("statsRepository", () => {
     expect(stats.minutesWatched).toBe(0);
     expect(stats.currentStreakDays).toBe(0);
   });
+});
 
-  describe("getYearSummary (browser fallback)", () => {
-    beforeEach(() => {
-      window.localStorage.clear();
-      preferencesRepository.invalidate();
-    });
+describe("statsRepository.getYearSummary (real SQLite path)", () => {
+  vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
+  vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+  useTestSqlite();
 
-    it("aggregates the selected year only, with top titles and favourite genre", async () => {
-      const year = new Date().getFullYear();
-      const store = browserStore.read();
-      store.library = [libraryItem({ mediaId: 1, genres: ["Drame"] })];
-      store.viewingEvents = [
-        event({ mediaId: 1, title: "Film A", watchedAt: `${year}-02-01T00:00:00.000Z`, durationMinutes: 100 }),
-        event({ mediaId: 1, title: "Film A", watchedAt: `${year}-03-01T00:00:00.000Z`, durationMinutes: 50 }),
-        event({ mediaId: 2, title: "Hors année", watchedAt: `${year - 1}-03-01T00:00:00.000Z` }),
-      ];
-      browserStore.write(store);
+  it("aggregates the selected year only, with top titles and favourite genre", async () => {
+    const { libraryRepository } = await import("../../library/library-repository");
+    const { progressRepository } = await import("../../progress/progress-repository");
+    const { statsRepository: repo } = await import("../stats-repository");
+    const year = new Date().getFullYear();
 
-      const summary = await statsRepository.getYearSummary(year);
+    await libraryRepository.upsert(makeMedia({ id: 1, title: "Film A", genres: ["Drame"] }));
 
-      expect(summary.movies).toBe(2);
-      expect(summary.minutes).toBe(150);
-      expect(summary.activeDays).toBe(2);
-      expect(summary.topTitles[0]).toEqual({ title: "Film A", count: 2 });
-      expect(summary.favouriteGenre).toBe("Drame");
-    });
+    await progressRepository.toggleMovieSeen(
+      makeMedia({ id: 1, title: "Film A", runtime: 100 }),
+      true,
+      `${year}-02-01T00:00:00.000Z`
+    );
+    await progressRepository.toggleMovieSeen(
+      makeMedia({ id: 1, title: "Film A", runtime: 50 }),
+      true,
+      `${year}-03-01T00:00:00.000Z`
+    );
+    await progressRepository.toggleMovieSeen(
+      makeMedia({ id: 2, title: "Hors année" }),
+      true,
+      `${year - 1}-03-01T00:00:00.000Z`
+    );
+
+    const summary = await repo.getYearSummary(year);
+
+    expect(summary.movies).toBe(2);
+    expect(summary.minutes).toBe(150);
+    expect(summary.activeDays).toBe(2);
+    expect(summary.topTitles[0]).toEqual({ title: "Film A", count: 2 });
+    expect(summary.favouriteGenre).toBe("Drame");
   });
 });

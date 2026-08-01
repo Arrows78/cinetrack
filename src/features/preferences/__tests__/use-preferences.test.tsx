@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import { usePreferences } from "../use-preferences";
-import { preferencesRepository } from "../preferences-repository";
+import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
+
+vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
+vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
 
 function createWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -13,12 +15,10 @@ function createWrapper() {
 }
 
 describe("usePreferences", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    preferencesRepository.invalidate();
-  });
+  useTestSqlite();
 
   it("loads default preferences", async () => {
+    const { usePreferences } = await import("../use-preferences");
     const { result } = renderHook(() => usePreferences(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -28,6 +28,7 @@ describe("usePreferences", () => {
   });
 
   it("persists and reflects an updated preference", async () => {
+    const { usePreferences } = await import("../use-preferences");
     const { result } = renderHook(() => usePreferences(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 

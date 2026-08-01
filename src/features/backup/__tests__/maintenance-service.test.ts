@@ -1,7 +1,33 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { maintenanceService } from "../maintenance-service";
-import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
+
+vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
+vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
+
+// `vi.hoisted` so `fsState` is reachable both from the (hoisted) vi.mock
+// factory below and from the top-level `beforeEach` that clears it — plain
+// `vi.resetModules()` (see the shared harness) doesn't reliably re-run
+// vi.mock factories, so without an explicit reset, files written by one
+// test would still be visible to the next.
+const fsState = vi.hoisted(() => ({ files: new Map<string, string>() }));
+
+vi.mock("@tauri-apps/plugin-fs", () => ({
+  BaseDirectory: { AppData: 0 },
+  mkdir: vi.fn(async () => undefined),
+  writeTextFile: vi.fn(async (path: string, content: string) => {
+    fsState.files.set(path, content);
+  }),
+  readTextFile: vi.fn(async (path: string) => {
+    const content = fsState.files.get(path);
+    if (content === undefined) throw new Error(`not found: ${path}`);
+    return content;
+  }),
+  exists: vi.fn(async (path: string) => fsState.files.has(path)),
+}));
+
+beforeEach(() => {
+  fsState.files.clear();
+});
 
 const item = (mediaId: number) => ({
   mediaId,
@@ -10,13 +36,13 @@ const item = (mediaId: number) => ({
   createdAt: "2026-01-01T00:00:00.000Z",
 });
 
-describe("maintenanceService.restoreFromBackup / undoLastRestore (browser fallback)", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    preferencesRepository.invalidate();
-  });
+describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
+  useTestSqlite();
 
   it("snapshots the current state before importing, and undo restores it", async () => {
+    const { maintenanceService } = await import("../maintenance-service");
+    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+
     await watchlistRepository.upsert(item(1));
     const before = await watchlistRepository.list();
     expect(before).toHaveLength(1);
@@ -31,6 +57,8 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore (browser fallba
   });
 
   it("throws when there is nothing to undo", async () => {
+    const { maintenanceService } = await import("../maintenance-service");
+
     await expect(maintenanceService.undoLastRestore()).rejects.toThrow();
   });
 });

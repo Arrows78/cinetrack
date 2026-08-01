@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { watchlistRepository } from "../watchlist-repository";
-import { historyRepository } from "@/features/history/history-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { describe, expect, it, vi } from "vitest";
+import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import type { WatchlistItem } from "@/types/media";
+
+vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
+vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
 
 const item = (): WatchlistItem => ({
   mediaId: 42,
@@ -11,13 +12,12 @@ const item = (): WatchlistItem => ({
   createdAt: "2026-01-01T00:00:00.000Z",
 });
 
-describe("watchlistRepository (browser fallback)", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    preferencesRepository.invalidate();
-  });
+describe("watchlistRepository", () => {
+  useTestSqlite();
 
   it("adds an item and reports it as present", async () => {
+    const { watchlistRepository } = await import("../watchlist-repository");
+
     await watchlistRepository.upsert(item());
 
     const list = await watchlistRepository.list();
@@ -27,6 +27,9 @@ describe("watchlistRepository (browser fallback)", () => {
   });
 
   it("records a history entry only the first time an item is added", async () => {
+    const { watchlistRepository } = await import("../watchlist-repository");
+    const { historyRepository } = await import("@/features/history/history-repository");
+
     await watchlistRepository.upsert(item());
     await watchlistRepository.upsert(item());
 
@@ -35,6 +38,9 @@ describe("watchlistRepository (browser fallback)", () => {
   });
 
   it("removes an item and records a removal history entry", async () => {
+    const { watchlistRepository } = await import("../watchlist-repository");
+    const { historyRepository } = await import("@/features/history/history-repository");
+
     await watchlistRepository.upsert(item());
     await watchlistRepository.remove(42, "movie");
 
@@ -44,6 +50,9 @@ describe("watchlistRepository (browser fallback)", () => {
   });
 
   it("does not record a removal history entry when the item was never present", async () => {
+    const { watchlistRepository } = await import("../watchlist-repository");
+    const { historyRepository } = await import("@/features/history/history-repository");
+
     await watchlistRepository.remove(999, "movie");
     const history = await historyRepository.list();
     expect(history.some((entry) => entry.action === "watchlist:remove")).toBe(false);
