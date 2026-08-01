@@ -137,7 +137,7 @@ export function HomePage() {
             </div>
 
             {/* Title */}
-            <h2 className="mt-5 max-w-2xl font-display text-4xl font-bold leading-[1.05] text-balance text-card-foreground md:text-5xl lg:text-6xl animate-in delay-300 hero-title-reveal">
+            <h2 className="mt-5 max-w-2xl font-display text-4xl font-bold leading-[1.05] text-balance text-card-foreground md:text-5xl lg:text-6xl delay-300 hero-title-reveal">
               {hero.title}
             </h2>
 

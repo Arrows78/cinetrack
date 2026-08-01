@@ -271,10 +271,29 @@
   }
 }
 
-/* Hero text reveal animation */
+/*
+ * Hero text reveal animation: the same fade + rise as .animate-in (see
+ * `animateIn` above), plus a clip-path wipe, running together via a single
+ * comma-separated `animation` shorthand.
+ *
+ * Deliberately self-contained rather than combined with the .animate-in
+ * class in markup: .animate-in lives inside `@layer utilities`, and this
+ * rule used to be unlayered — unlayered CSS always wins over layered CSS
+ * regardless of source order, so pairing the two classes on one element let
+ * this rule's `animation` shorthand silently replace .animate-in's
+ * entirely (only one `animation` declaration can win per element; layers
+ * and shorthands don't merge across separate rules). .animate-in's own
+ * `opacity: 0` base style survived — it's a separate declaration — but the
+ * animation that would have brought it back to 1 didn't, leaving the title
+ * stuck invisible forever. Folding both animations into one declaration
+ * here sidesteps that trap for good, instead of just relocating it.
+ */
 .hero-title-reveal {
-  animation: heroTextReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+  animation:
+    animateIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    heroTextReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+  opacity: 0;
 }
 
 @keyframes heroTextReveal {
