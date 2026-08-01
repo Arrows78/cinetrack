@@ -76,7 +76,7 @@ describe("runMigrations against real SQLite", () => {
   });
 
   describe("id / uuid columns", () => {
-    it("assigns a fresh auto-increment id and lets the app supply the uuid", async () => {
+    it("uses uuid as the primary key", async () => {
       const sqlite = new DatabaseSync(":memory:");
       await runMigrations(createSqliteAdapter(sqlite));
 
@@ -85,12 +85,11 @@ describe("runMigrations against real SQLite", () => {
          VALUES ('list-uuid-1', 'default', 'My List', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
       );
 
-      const row = sqlite.prepare("SELECT id, uuid FROM custom_lists WHERE uuid = 'list-uuid-1'").all() as Array<{
-        id: number;
+      const row = sqlite.prepare("SELECT uuid FROM custom_lists WHERE uuid = 'list-uuid-1'").all() as Array<{
         uuid: string;
       }>;
       expect(row).toHaveLength(1);
-      expect(typeof row[0].id).toBe("number");
+      expect(row[0].uuid).toBe('list-uuid-1');
     });
 
     it("rejects a duplicate uuid", async () => {

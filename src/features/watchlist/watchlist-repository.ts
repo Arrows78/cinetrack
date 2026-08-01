@@ -8,6 +8,7 @@ const nowIso = () => new Date().toISOString();
 const activeProfile = async () => (await preferencesRepository.getPreferences()).activeProfileId;
 
 const rowToItem = (row: Record<string, unknown>): WatchlistItem => ({
+  id: String(row.uuid),
   profileId: String(row.profile_id ?? "default"),
   mediaId: Number(row.media_id),
   mediaType: row.media_type === "movie" ? "movie" : "series",
@@ -17,6 +18,7 @@ const rowToItem = (row: Record<string, unknown>): WatchlistItem => ({
   year: row.year == null ? null : Number(row.year),
   rating: row.rating == null ? null : Number(row.rating),
   createdAt: String(row.created_at),
+  updatedAt: String(row.updated_at),
 });
 
 export const watchlistRepository = {

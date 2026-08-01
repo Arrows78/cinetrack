@@ -24,6 +24,7 @@ const historyAction = z.enum([
 ]);
 
 export const watchlistItemSchema = z.object({
+  id: z.string(),
   profileId: z.string().optional(),
   mediaId: z.number(),
   mediaType,
@@ -33,6 +34,7 @@ export const watchlistItemSchema = z.object({
   year: z.number().nullable().optional(),
   rating: z.number().nullable().optional(),
   createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const seenMovieSchema = z.object({
@@ -45,6 +47,7 @@ export const seenMovieSchema = z.object({
 });
 
 export const episodeProgressSchema = z.object({
+  id: z.string(),
   profileId: z.string().optional(),
   seriesId: z.number(),
   episodeId: z.number(),
@@ -52,9 +55,12 @@ export const episodeProgressSchema = z.object({
   episodeNumber: z.number(),
   watched: z.boolean(),
   watchedAt: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const trackedSeriesItemSchema = z.object({
+  id: z.string(),
   profileId: z.string().optional(),
   seriesId: z.number(),
   title: z.string(),
@@ -62,6 +68,7 @@ export const trackedSeriesItemSchema = z.object({
   backdropPath: z.string().nullable().optional(),
   totalEpisodes: z.number(),
   watchedEpisodes: z.number(),
+  createdAt: z.string(),
   updatedAt: z.string(),
 });
 
@@ -132,6 +139,7 @@ export const customListSchema = z.object({
 });
 
 export const customListItemSchema = z.object({
+  id: z.string(),
   listId: z.string(),
   mediaId: z.number(),
   mediaType,
@@ -139,6 +147,7 @@ export const customListItemSchema = z.object({
   posterPath: z.string().nullable().optional(),
   position: z.number(),
   addedAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const availabilitySnapshotSchema = z.object({

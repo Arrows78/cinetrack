@@ -16,10 +16,12 @@ function createWrapper() {
 }
 
 const item: WatchlistItem = {
+  id: "test-id",
   mediaId: 7,
   mediaType: "movie",
   title: "Test Movie",
   createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
 describe("useWatchlist", () => {

@@ -123,6 +123,7 @@ async function loadData(): Promise<{ library: LibraryItem[]; events: ViewingEven
     db.select<Array<Record<string, unknown>>>("SELECT * FROM viewing_events WHERE profile_id = $1", [profileId]),
   ]);
   const library: LibraryItem[] = libraryRows.map((row) => ({
+    id: String(row.uuid),
     profileId,
     mediaId: Number(row.media_id),
     mediaType: row.media_type === "movie" ? "movie" : "series",

@@ -3,6 +3,7 @@ import { statsRepository } from "../stats-repository";
 import type { TrackedSeriesItem, ViewingEvent } from "@/types/media";
 
 const tracked = (watched: number, total: number): TrackedSeriesItem => ({
+  id: crypto.randomUUID(),
   profileId: "default",
   seriesId: 1,
   title: "Test",
@@ -10,6 +11,7 @@ const tracked = (watched: number, total: number): TrackedSeriesItem => ({
   backdropPath: null,
   totalEpisodes: total,
   watchedEpisodes: watched,
+  createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 });
 

@@ -1,6 +1,7 @@
 import { mediaRepository } from "@/features/media/media-repository";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
+import { newUuid } from "@/shared/lib/id";
 import type { MediaSummary, Series } from "@/types/media";
 import { emptyExport, normalizeExport, parseTvTimeFile, type TvTimeEpisode, type TvTimeExport } from "./parse-export";
 import { tvTimeImportRepository, type ImportableEpisode } from "./tvtime-import-repository";
@@ -196,7 +197,9 @@ export async function importTvTimeExport(
       if (!match) {
         summary.unmatched.push(entry.title);
       } else {
+        const now = new Date().toISOString();
         await watchlistRepository.upsert({
+          id: newUuid(),
           mediaId: match.id,
           mediaType: entry.mediaType,
           title: match.title,
@@ -204,7 +207,8 @@ export async function importTvTimeExport(
           backdropPath: match.backdropPath,
           year: match.year,
           rating: match.rating,
-          createdAt: new Date().toISOString(),
+          createdAt: now,
+          updatedAt: now,
         });
         summary.watchlistImported += 1;
       }

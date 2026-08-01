@@ -36,10 +36,12 @@ describe("profileRepository", () => {
     const created = await profileRepository.create("Alex");
     await preferencesRepository.updatePreference("activeProfileId", created.id);
     await watchlistRepository.upsert({
+      id: "test-id",
       mediaId: 1,
       mediaType: "movie",
       title: makeMedia().title,
       createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
     await profileRepository.remove(created.id);

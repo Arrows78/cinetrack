@@ -6,10 +6,12 @@ vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
 vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
 
 const item = (): WatchlistItem => ({
+  id: "test-id",
   mediaId: 42,
   mediaType: "movie",
   title: "Test Movie",
   createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
 });
 
 describe("watchlistRepository", () => {

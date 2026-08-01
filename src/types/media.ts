@@ -91,6 +91,7 @@ export interface Series extends MediaSummary {
 }
 
 export interface WatchlistItem {
+  id: string;
   profileId?: string;
   mediaId: number;
   mediaType: MediaType;
@@ -100,6 +101,7 @@ export interface WatchlistItem {
   year?: number | null;
   rating?: number | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface LibraryItem extends WatchlistItem {
@@ -113,7 +115,6 @@ export interface LibraryItem extends WatchlistItem {
   startedAt?: string | null;
   completedAt?: string | null;
   rewatchCount: number;
-  updatedAt: string;
 }
 
 export interface ViewingHistoryItem {
@@ -144,6 +145,7 @@ export interface ViewingEvent {
 }
 
 export interface EpisodeProgress {
+  id: string;
   profileId?: string;
   seriesId: number;
   episodeId: number;
@@ -151,6 +153,8 @@ export interface EpisodeProgress {
   episodeNumber: number;
   watched: boolean;
   watchedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SeriesProgress {
@@ -194,6 +198,7 @@ export interface UserPreferences {
 }
 
 export interface TrackedSeriesItem {
+  id: string;
   profileId?: string;
   seriesId: number;
   title: string;
@@ -201,6 +206,7 @@ export interface TrackedSeriesItem {
   backdropPath?: string | null;
   totalEpisodes: number;
   watchedEpisodes: number;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -214,6 +220,7 @@ export interface CustomList {
 }
 
 export interface CustomListItem {
+  id: string;
   listId: string;
   mediaId: number;
   mediaType: MediaType;
@@ -221,6 +228,7 @@ export interface CustomListItem {
   posterPath?: string | null;
   position: number;
   addedAt: string;
+  updatedAt: string;
 }
 
 export interface WatchProvider {

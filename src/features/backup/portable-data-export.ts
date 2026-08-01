@@ -36,6 +36,7 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
   ]);
 
   data.watchlist = watchlist.map((row) => ({
+    id: String(row.uuid),
     profileId: String(row.profile_id ?? "default"),
     mediaId: Number(row.media_id),
     mediaType: mediaType(row.media_type),
@@ -45,6 +46,7 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
     year: row.year === null || row.year === undefined ? null : Number(row.year),
     rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
     createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   }));
   data.seenMovies = seen.map((row) => ({
     profileId: String(row.profile_id ?? "default"),
@@ -55,6 +57,7 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
     watchedAt: String(row.watched_at),
   }));
   data.episodeProgress = episodes.map((row) => ({
+    id: String(row.uuid),
     profileId: String(row.profile_id ?? "default"),
     seriesId: Number(row.series_id),
     episodeId: Number(row.episode_id),
@@ -62,8 +65,11 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
     episodeNumber: Number(row.episode_number),
     watched: Boolean(row.watched),
     watchedAt: row.watched_at ? String(row.watched_at) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   }));
   data.trackedSeries = tracked.map((row) => ({
+    id: String(row.uuid),
     profileId: String(row.profile_id ?? "default"),
     seriesId: Number(row.series_id),
     title: String(row.title),
@@ -71,6 +77,7 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
     backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
     totalEpisodes: Number(row.total_episodes),
     watchedEpisodes: 0,
+    createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   }));
   data.history = history.map((row) => ({
@@ -87,6 +94,7 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
   }));
   data.preferences = Object.fromEntries(preferences.map((row) => [String(row.key), JSON.parse(String(row.value))]));
   data.library = library.map((row) => ({
+    id: String(row.uuid),
     profileId: String(row.profile_id),
     mediaId: Number(row.media_id),
     mediaType: mediaType(row.media_type),
@@ -135,6 +143,7 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
     updatedAt: String(row.updated_at),
   }));
   data.customListItems = listItems.map((row) => ({
+    id: String(row.uuid),
     listId: String(row.list_id),
     mediaId: Number(row.media_id),
     mediaType: mediaType(row.media_type),
@@ -142,6 +151,7 @@ export async function exportDatabaseToStore(db: Database): Promise<PortableData>
     posterPath: row.poster_path ? String(row.poster_path) : null,
     position: Number(row.position),
     addedAt: String(row.added_at),
+    updatedAt: String(row.updated_at),
   }));
   data.availabilitySnapshots = snapshots.map((row) => ({
     mediaId: Number(row.media_id),

@@ -6,6 +6,7 @@ import type { LibraryItem, LibraryStatus, MediaSummary } from "@/types/media";
 const nowIso = () => new Date().toISOString();
 
 const rowToLibraryItem = (row: Record<string, unknown>): LibraryItem => ({
+  id: String(row.uuid),
   profileId: String(row.profile_id ?? "default"),
   mediaId: Number(row.media_id),
   mediaType: row.media_type === "movie" ? "movie" : "series",
@@ -67,6 +68,7 @@ export const libraryRepository = {
     const now = nowIso();
     const status = patch.status ?? current?.status ?? "planned";
     const item: LibraryItem = {
+      id: current?.id ?? newUuid(),
       profileId: profile,
       mediaId: media.id,
       mediaType: media.mediaType,

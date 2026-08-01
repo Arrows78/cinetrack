@@ -71,6 +71,7 @@ export function createSqlProgressStore(db: Database): ProgressStore {
         [profile, seriesId]
       );
       return rows.map((row) => ({
+        id: String(row.uuid),
         profileId: profile,
         seriesId: Number(row.series_id),
         episodeId: Number(row.episode_id),
@@ -78,6 +79,8 @@ export function createSqlProgressStore(db: Database): ProgressStore {
         episodeNumber: Number(row.episode_number),
         watched: Boolean(row.watched),
         watchedAt: row.watched_at ? String(row.watched_at) : null,
+        createdAt: String(row.created_at),
+        updatedAt: String(row.updated_at),
       }));
     },
 
@@ -168,10 +171,11 @@ export function createSqlProgressStore(db: Database): ProgressStore {
 
     async listTrackedSeries(profile: string): Promise<TrackedSeriesItem[]> {
       const rows = await db.select<Array<Record<string, unknown>>>(
-        `SELECT ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.updated_at,COUNT(ep.episode_id) watched_episodes FROM tracked_series ts LEFT JOIN episode_progress ep ON ep.profile_id=ts.profile_id AND ep.series_id=ts.series_id AND ep.watched=1 WHERE ts.profile_id=$1 GROUP BY ts.profile_id,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.updated_at ORDER BY ts.updated_at DESC`,
+        `SELECT ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.created_at,ts.updated_at,COUNT(ep.episode_id) watched_episodes FROM tracked_series ts LEFT JOIN episode_progress ep ON ep.profile_id=ts.profile_id AND ep.series_id=ts.series_id AND ep.watched=1 WHERE ts.profile_id=$1 GROUP BY ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.created_at,ts.updated_at ORDER BY ts.updated_at DESC`,
         [profile]
       );
       return rows.map((row) => ({
+        id: String(row.uuid),
         profileId: profile,
         seriesId: Number(row.series_id),
         title: String(row.title),
@@ -179,6 +183,7 @@ export function createSqlProgressStore(db: Database): ProgressStore {
         backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
         totalEpisodes: Number(row.total_episodes),
         watchedEpisodes: Number(row.watched_episodes),
+        createdAt: String(row.created_at),
         updatedAt: String(row.updated_at),
       }));
     },

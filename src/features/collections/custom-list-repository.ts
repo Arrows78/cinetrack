@@ -56,6 +56,7 @@ export const customListRepository = {
       [listId]
     );
     return rows.map((row) => ({
+      id: String(row.uuid),
       listId: String(row.list_id),
       mediaId: Number(row.media_id),
       mediaType: row.media_type === "movie" ? "movie" : "series",
@@ -63,19 +64,23 @@ export const customListRepository = {
       posterPath: row.poster_path ? String(row.poster_path) : null,
       position: Number(row.position),
       addedAt: String(row.added_at),
+      updatedAt: String(row.updated_at),
     }));
   },
 
   async add(listId: string, media: MediaSummary): Promise<void> {
     const items = await this.items(listId);
+    const now = nowIso();
     const item: CustomListItem = {
+      id: newUuid(),
       listId,
       mediaId: media.id,
       mediaType: media.mediaType,
       title: media.title,
       posterPath: media.posterPath,
       position: items.length,
-      addedAt: nowIso(),
+      addedAt: now,
+      updatedAt: now,
     };
     const db = await getDatabase();
     await db.execute(

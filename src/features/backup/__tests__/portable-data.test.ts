@@ -14,10 +14,12 @@ describe("portableData", () => {
     const { libraryRepository } = await import("@/features/library/library-repository");
 
     await watchlistRepository.upsert({
+      id: "test-id",
       mediaId: 1,
       mediaType: "movie",
       title: "Round Trip",
       createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     await libraryRepository.upsert(makeMedia({ id: 1, title: "Round Trip" }), { status: "watching" });
 
