@@ -57,7 +57,6 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 | Remote data            | TanStack Query, TMDB API                                        |
 | Optional account sync  | Supabase Auth (email OTP, OAuth)                                |
 | Desktop persistence    | SQLite through `@tauri-apps/plugin-sql`, Stronghold for secrets |
-| Web preview            | `localStorage` with a local JSON store                          |
 | UI state               | Zustand                                                         |
 | Validation             | Zod                                                             |
 | Internationalisation   | i18next, react-i18next (English, French)                        |
@@ -75,14 +74,12 @@ flowchart LR
     MP --> TMDB[TMDB API]
 
     UI --> LR[Local repositories]
-    LR -->|Tauri| DB[(SQLite app.db)]
-    LR -->|Web preview| LS[(localStorage)]
+    LR --> DB[(SQLite app.db)]
 ```
 
 - `MediaProvider` abstracts catalogue access, making it possible to replace TMDB without coupling the interface to its API.
-- Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats) manage personal data.
-- In Tauri, data is stored in `sqlite:app.db`.
-- In the browser, a `localStorage` fallback makes it possible to test the interface without starting the desktop application. Every repository implements both branches so behavior is identical either way.
+- Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats) manage personal data, all of it in SQLite (`sqlite:app.db`).
+- SQLite is only reachable from inside the Tauri webview — a plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at the same dev server `pnpm tauri dev` uses. Opening the app outside the Tauri window (`pnpm dev` alone, or a browser tab during `pnpm tauri dev`) shows a dedicated blocking screen instead of silently degrading, see [`src/components/desktop/tauri-required-gate.tsx`](src/components/desktop/tauri-required-gate.tsx).
 
 ## 📦 Prerequisites
 
@@ -149,18 +146,12 @@ pnpm tauri dev
 
 This command starts the Vite server on port `1420`, initialises the SQLite database, and opens the Tauri window.
 
-## 🌐 Web preview
+## 🌐 About `pnpm dev`
 
-To work on the interface without starting Tauri:
-
-```bash
-pnpm dev
-```
-
-The application is then available at `http://localhost:1420`.
+`pnpm dev` (used internally by `pnpm tauri dev` to serve the frontend, and also runnable on its own) starts the same Vite server on `http://localhost:1420` — but CineTrack's only persistence layer is SQLite, reachable exclusively from inside the Tauri webview. A plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at that same URL while `pnpm tauri dev` is running.
 
 > [!IMPORTANT]
-> Browser mode stores data in `localStorage` under the `cinetrack.browser-store` key. It is intended to simplify development; the primary target remains the Tauri desktop application backed by SQLite.
+> Opening `http://localhost:1420` outside the Tauri window — `pnpm dev` on its own, or a regular browser tab while `pnpm tauri dev` runs — shows a dedicated blocking screen instead of a broken UI or a silent fallback. Use the Tauri window (`pnpm tauri dev`) or the installed desktop application.
 
 ## 🛠️ Scripts
 
@@ -188,7 +179,7 @@ cinetrack/
 ├── src/
 │   ├── app/                    # Application setup, router, and QueryClient
 │   ├── components/             # Presentational UI: layout, media, ui/, states/, settings, collections, desktop, library
-│   ├── db/                     # SQLite/localStorage connection and versioned migrations (shared by every feature)
+│   ├── db/                     # SQLite connection and migrations (shared by every feature)
 │   ├── features/                # One folder per domain, each bundling its repository/service with the hooks that use it
 │   │   ├── auth/                #   Supabase session, OAuth, email OTP
 │   │   ├── availability/        #   Streaming-availability alerts and background monitor
@@ -229,15 +220,15 @@ cinetrack/
 
 CineTrack does not require a user account or an application server to save personal data.
 
-In desktop mode, the active SQLite schema (see `src/db/migrations/`, one file per version) includes, among others:
+The SQLite schema (a single migration, see `src/db/migrations/001-initial-schema.ts`) includes:
 
 - `profiles`, `preferences`;
-- `profile_watchlist`, `library_items`, `viewing_events`, `profile_episode_progress`, `profile_tracked_series`;
+- `watchlist_items`, `library_items`, `viewing_events`, `seen_movies`, `episode_progress`, `tracked_series`;
 - `custom_lists`, `custom_list_items`;
 - `availability_alerts`, `availability_snapshots`;
 - `activity_log`.
 
-(The original pre-profile tables — `watchlist`, `seen_movies`, `tracked_series`, `episode_progress` — still exist in the schema for backward-compatible migrations but are no longer written to.)
+Every table (other than `preferences` and the pure-cache `availability_snapshots`) has an internal `id INTEGER PRIMARY KEY` — a storage-engine-only rowid never surfaced outside SQL — plus a public `uuid TEXT UNIQUE` that the app treats as `.id`, and `created_at`/`updated_at` timestamps. See [`docs/database-schema.html`](docs/database-schema.html) for the full diagram.
 
 Catalogue data, posters, and metadata are loaded from TMDB, so they require an internet connection and a valid API token.
 

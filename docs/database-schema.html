@@ -1,4 +1,4 @@
-<title>CineTrack — Schéma de la base de données</title>
+<title>CineTrack — Database schema</title>
 <style>
   :root {
     --bg: #f8f7fb;
@@ -11,9 +11,6 @@
     --accent-ink: #4a2fb0;
     --accent-soft: #efe9fb;
     --line: #e6e2f0;
-    --legacy: #a8632a;
-    --legacy-soft: #f6ead9;
-    --legacy-line: #ecd3ab;
     --shadow: 0 1px 2px rgba(28, 24, 38, 0.04);
 
     --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
@@ -33,9 +30,6 @@
       --accent-ink: #d2c3ff;
       --accent-soft: #241f38;
       --line: #2b2738;
-      --legacy: #dba470;
-      --legacy-soft: #2c2318;
-      --legacy-line: #443119;
       --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
   }
@@ -51,9 +45,6 @@
     --accent-ink: #d2c3ff;
     --accent-soft: #241f38;
     --line: #2b2738;
-    --legacy: #dba470;
-    --legacy-soft: #2c2318;
-    --legacy-line: #443119;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
@@ -68,9 +59,6 @@
     --accent-ink: #4a2fb0;
     --accent-soft: #efe9fb;
     --line: #e6e2f0;
-    --legacy: #a8632a;
-    --legacy-soft: #f6ead9;
-    --legacy-line: #ecd3ab;
     --shadow: 0 1px 2px rgba(28, 24, 38, 0.04);
   }
 
@@ -242,11 +230,6 @@
     overflow: hidden;
   }
 
-  .table-card.is-legacy {
-    background: var(--legacy-soft);
-    border-color: var(--legacy-line);
-  }
-
   .table-card-head {
     display: flex;
     align-items: center;
@@ -254,10 +237,6 @@
     gap: 12px;
     padding: 16px 20px;
     border-bottom: 1px solid var(--line);
-  }
-
-  .is-legacy .table-card-head {
-    border-color: var(--legacy-line);
   }
 
   .table-name {
@@ -283,12 +262,6 @@
     border-color: var(--accent);
     background: var(--accent-soft);
   }
-  .badge.legacy-tag {
-    color: var(--legacy);
-    border-color: var(--legacy-line);
-    background: var(--legacy-soft);
-  }
-
   .table-purpose {
     padding: 14px 20px 4px;
     color: var(--muted);
@@ -324,10 +297,6 @@
     vertical-align: baseline;
   }
 
-  .is-legacy table.cols td {
-    border-color: var(--legacy-line);
-  }
-
   table.cols td.col-name {
     font-family: var(--mono);
     color: var(--ink);
@@ -346,7 +315,8 @@
   }
 
   .tag-pk,
-  .tag-fk {
+  .tag-fk,
+  .tag-uk {
     display: inline-block;
     font-family: var(--mono);
     font-size: 10px;
@@ -365,6 +335,10 @@
     color: var(--muted);
     border: 1px solid var(--line);
   }
+  .tag-uk {
+    color: var(--accent-ink);
+    border: 1px solid var(--accent-soft);
+  }
 
   .relations {
     padding: 12px 20px 18px;
@@ -373,20 +347,12 @@
     border-top: 1px solid var(--line);
   }
 
-  .is-legacy .relations {
-    border-color: var(--legacy-line);
-  }
-
   .relations code {
     font-family: var(--mono);
     background: var(--surface-2);
     padding: 1px 5px;
     border-radius: 2px;
     color: var(--ink);
-  }
-
-  .is-legacy .relations code {
-    background: var(--legacy-soft);
   }
 
   /* ---------- Callouts ---------- */
@@ -444,9 +410,6 @@
   .swatch.accent {
     background: var(--accent);
   }
-  .swatch.legacy {
-    background: var(--legacy);
-  }
   .swatch.line {
     background: var(--faint);
   }
@@ -472,90 +435,99 @@
 
 <div class="page">
   <header class="hero">
-    <p class="eyebrow">CineTrack · schéma SQLite</p>
-    <h1>Comment CineTrack range vos films et séries</h1>
+    <p class="eyebrow">CineTrack · SQLite schema</p>
+    <h1>How CineTrack organizes your movies and shows</h1>
     <p class="lede">
-      La base est du SQLite local, embarqué dans l'app via Tauri — pas de serveur, tout vit sur le poste. Elle est
-      pensée <strong>multi-profils</strong> dès le départ&nbsp;: presque chaque table porte un
-      <code>profile_id</code> qui isole les données d'un profil des autres, avec des contraintes
-      <code>FOREIGN KEY … ON DELETE CASCADE</code> qui garantissent qu'aucune ligne ne survit à la suppression de son
-      profil ou de sa liste. Depuis peu, chaque profil est en plus <strong>lié à un compte Supabase</strong> — y accéder
-      nécessite d'être connecté avec ce compte précis.
+      The database is local SQLite, embedded in the app via Tauri — no server, everything lives on the machine. It's
+      designed to be <strong>multi-profile</strong> from the start&nbsp;: almost every table carries a
+      <code>profile_id</code> that isolates one profile's data from the others, with
+      <code>FOREIGN KEY … ON DELETE CASCADE</code> constraints guaranteeing no row survives the deletion of its profile
+      or its list. Each profile is also <strong>linked to a Supabase account</strong> — accessing it requires being
+      signed in with that specific account. Under the current single schema, every table (bar two documented exceptions)
+      also carries an internal <code>id INTEGER</code> — a technical rowid, never seen outside SQL — and a public
+      <code>uuid TEXT</code>, generated app-side, that serves as a stable identifier and as the target for
+      <code>FOREIGN KEY</code>s.
     </p>
     <div class="stat-row">
-      <div class="stat"><b>11</b><span>tables actives</span></div>
-      <div class="stat"><b>4</b><span>tables historiques</span></div>
-      <div class="stat"><b>8</b><span>migrations</span></div>
-      <div class="stat"><b>1</b><span>base par poste</span></div>
+      <div class="stat"><b>13</b><span>active tables</span></div>
+      <div class="stat"><b>1</b><span>migration</span></div>
+      <div class="stat"><b>1</b><span>database per machine</span></div>
     </div>
   </header>
 
   <nav class="toc">
-    <a href="#profils">Profils</a>
-    <a href="#bibliotheque">Bibliothèque</a>
-    <a href="#historique">Historique</a>
-    <a href="#listes">Listes</a>
-    <a href="#disponibilite">Disponibilité</a>
-    <a href="#legacy">Tables historiques</a>
-    <a href="#mcd">Schéma (MCD)</a>
+    <a href="#profiles">Profiles</a>
+    <a href="#library">Library</a>
+    <a href="#history">History</a>
+    <a href="#lists">Lists</a>
+    <a href="#availability">Availability</a>
+    <a href="#mcd">Schema (ERD)</a>
   </nav>
 
-  <!-- ================= PROFILS ================= -->
-  <section class="domain" id="profils">
+  <!-- ================= PROFILES ================= -->
+  <section class="domain" id="profiles">
     <div class="domain-head">
-      <h2>Profils &amp; préférences</h2>
+      <h2>Profiles &amp; preferences</h2>
       <span class="domain-count">2 tables</span>
     </div>
     <p class="domain-note">
-      Le socle de tout le reste&nbsp;: chaque profil a sa propre bibliothèque, son historique, ses listes. Les
-      préférences, elles, ne suivent volontairement <strong>pas</strong> ce découpage.
+      The foundation for everything else&nbsp;: each profile has its own library, history, and lists. Preferences, on
+      the other hand, deliberately do <strong>not</strong> follow this split.
     </p>
 
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">profiles</span>
-        <span class="badge pk">racine</span>
+        <span class="badge pk">root</span>
       </div>
       <p class="table-purpose">
-        Un profil = une personne qui utilise l'app. <strong>Toutes</strong> les tables ci-dessous s'y rattachent par
-        <code>profile_id</code>. Le profil <code>'default'</code> est créé automatiquement à la première migration et ne
-        peut jamais être supprimé. Depuis la migration 008, un profil doit être
-        <strong>lié à un compte Supabase</strong> pour être accessible&nbsp;: le premier compte qui se connecte réclame
-        automatiquement <code>'default'</code> (et ses données existantes), tout compte suivant doit créer son propre
-        profil.
+        A profile = a person using the app. <strong>Every</strong> table below attaches to it via
+        <code>profile_id</code> (which points to <code>profiles.uuid</code>). The <code>'default'</code> profile is
+        created automatically by the migration and can never be deleted. A profile must be
+        <strong>linked to a Supabase account</strong> to be accessible&nbsp;: the first account that signs in
+        automatically claims <code>'default'</code> (and its existing data), any following account must create its own
+        profile.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid, never exposed outside SQL</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">identifiant du profil (<code>'default'</code> ou UUID)</td>
+          <td class="col-note">
+            public identifier of the profile (<code>'default'</code> or a UUID) — this is what the app calls
+            <code>.id</code>
+          </td>
         </tr>
         <tr>
           <td class="col-name">name</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">nom affiché</td>
+          <td class="col-note">displayed name</td>
         </tr>
         <tr>
           <td class="col-name">avatar</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">optionnel</td>
+          <td class="col-note">optional</td>
         </tr>
         <tr>
-          <td class="col-name">created_at</td>
+          <td class="col-name">created_at, updated_at</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">date ISO</td>
+          <td class="col-note">ISO dates</td>
         </tr>
         <tr>
           <td class="col-name">supabase_user_id</td>
           <td class="col-type">TEXT</td>
           <td class="col-note">
-            optionnel, <strong>unique</strong> — id du compte Supabase lié ; pas de FK possible,
-            <code>auth.users</code> vit chez Supabase, hors de ce fichier SQLite
+            optional, <strong>unique</strong> — id of the linked Supabase account; no FK possible,
+            <code>auth.users</code> lives on Supabase, outside this SQLite file
           </td>
         </tr>
       </table>
@@ -564,128 +536,160 @@
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">preferences</span>
-        <span class="badge">clé / valeur</span>
+        <span class="badge">key / value</span>
       </div>
       <p class="table-purpose">
-        Réglages de l'application&nbsp;: thème, couleur d'accent, langue, région TMDB, spoiler protection,
-        notifications, et <code>activeProfileId</code> — le profil actuellement sélectionné. C'est une table
-        <strong>globale</strong>, partagée par tous les profils : ils partagent la même app, pas les mêmes préférences
-        par profil.
+        Application settings&nbsp;: theme, accent color, language, TMDB region, spoiler protection, notifications, and
+        <code>activeProfileId</code> — the currently selected profile. This is a <strong>global</strong> table, shared
+        by every profile: they share the same app, not the same per-profile preferences.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-pk">PK</span>key</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">ex. <code>theme</code>, <code>activeProfileId</code></td>
+          <td class="col-note">e.g. <code>theme</code>, <code>activeProfileId</code></td>
         </tr>
         <tr>
           <td class="col-name">value</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">valeur encodée en JSON</td>
+          <td class="col-note">value encoded as JSON</td>
+        </tr>
+        <tr>
+          <td class="col-name">updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO date</td>
         </tr>
       </table>
-      <div class="relations">Aucune relation déclarée — table intentionnellement indépendante des profils.</div>
+      <div class="relations">
+        No declared relation — table intentionally independent from profiles. Neither <code>id</code> nor
+        <code>uuid</code>&nbsp;: <code>key</code> is already a stable natural key, and nothing references an individual
+        preference row.
+      </div>
     </article>
   </section>
 
-  <!-- ================= BIBLIOTHEQUE ================= -->
-  <section class="domain" id="bibliotheque">
+  <!-- ================= LIBRARY ================= -->
+  <section class="domain" id="library">
     <div class="domain-head">
-      <h2>Bibliothèque &amp; progression</h2>
+      <h2>Library &amp; progress</h2>
       <span class="domain-count">6 tables</span>
     </div>
     <p class="domain-note">
-      Le cœur fonctionnel de l'app. Trois idées coexistent volontairement : un <em>état</em> courant
-      (<code>library_items</code>, <code>status</code>), un <em>journal d'événements</em> immuable
-      (<code>viewing_events</code>, utilisé pour les statistiques) et des tables de suivi plus légères héritées des
-      premières versions (watchlist, seen, progression d'épisodes).
+      The functional core of the app. Three ideas deliberately coexist: a current
+      <em>state</em> (<code>library_items</code>, <code>status</code>), an immutable
+      <em>event log</em> (<code>viewing_events</code>, used for statistics), and lighter tables that are faster to query
+      for day-to-day interactive use (watchlist, seen/unseen, episode progress, tracked shows).
     </p>
 
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">library_items</span>
-        <span class="badge pk">fiche de suivi</span>
+        <span class="badge pk">tracking record</span>
       </div>
       <p class="table-purpose">
-        La fiche complète d'un film ou d'une série dans la bibliothèque d'un profil&nbsp;: son
-        <strong>statut</strong> (<code>planned</code>, <code>watching</code>, <code>paused</code>,
-        <code>completed</code>, <code>dropped</code>, <code>rewatching</code>), la note personnelle, des notes libres,
-        des tags, les dates de début/fin et le nombre de re-visionnages.
+        The full record of a movie or show in a profile's library&nbsp;: its
+        <strong>status</strong> (<code>planned</code>, <code>watching</code>, <code>paused</code>,
+        <code>completed</code>, <code>dropped</code>, <code>rewatching</code>), the personal rating, free-form notes,
+        tags, start/end dates, and the rewatch count.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
-          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id</td>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">→ profiles.id</td>
+          <td class="col-note">public identifier of the row</td>
         </tr>
         <tr>
-          <td class="col-name"><span class="tag-pk">PK</span>media_id, media_type</td>
+          <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ profiles.uuid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>media_id, media_type</td>
           <td class="col-type">INT, TEXT</td>
-          <td class="col-note">identifiant TMDB + <code>movie</code>/<code>series</code></td>
+          <td class="col-note">
+            TMDB id + <code>movie</code>/<code>series</code> — <code>UNIQUE(profile_id, media_id, media_type)</code>,
+            still a natural composite key now that <code>id</code> is the real PK
+          </td>
         </tr>
         <tr>
           <td class="col-name">status</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">défaut <code>planned</code></td>
+          <td class="col-note">defaults to <code>planned</code></td>
         </tr>
         <tr>
           <td class="col-name">favourite, user_rating, notes, tags</td>
           <td class="col-type">…</td>
-          <td class="col-note"><code>tags</code> en JSON</td>
+          <td class="col-note"><code>tags</code> as JSON</td>
         </tr>
         <tr>
           <td class="col-name">genres</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">JSON, copié depuis TMDB</td>
+          <td class="col-note">JSON, copied from TMDB</td>
         </tr>
         <tr>
           <td class="col-name">started_at, completed_at, rewatch_count</td>
           <td class="col-type">…</td>
-          <td class="col-note">renseignés selon les changements de statut</td>
+          <td class="col-note">set based on status changes</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO dates</td>
         </tr>
       </table>
       <div class="relations">
-        Un profil possède <code>0..n</code> entrées de bibliothèque. Supprimer le profil supprime la ligne (<code
+        A profile owns <code>0..n</code> library entries. Deleting the profile deletes the row (<code
           >ON DELETE CASCADE</code
-        >).
+        >). Updates go through <code>INSERT … ON CONFLICT DO UPDATE</code> rather than <code>INSERT OR REPLACE</code>,
+        so <code>id</code>/<code>uuid</code>/<code>created_at</code> survive a status change.
       </div>
     </article>
 
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">viewing_events</span>
-        <span class="badge pk">journal (append-only)</span>
+        <span class="badge pk">log (append-only)</span>
       </div>
       <p class="table-purpose">
-        Chaque visionnage (ou annulation) génère une ligne ici&nbsp;: film entier ou épisode précis, avec sa durée.
-        C'est <strong>cette</strong> table — pas <code>library_items.status</code> — qui alimente les statistiques
-        (minutes vues, séries de jours consécutifs, activité mensuelle).
+        Every watch (or un-watch) generates a row here&nbsp;: a whole movie or a specific episode, with its duration.
+        This is <strong>this</strong> table — not <code>library_items.status</code> — that feeds the statistics (minutes
+        watched, consecutive-day streaks, monthly activity).
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">UUID</td>
+          <td class="col-note">public identifier of the row</td>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">→ profiles.id</td>
+          <td class="col-note">→ profiles.uuid</td>
         </tr>
         <tr>
           <td class="col-name">event_type</td>
@@ -695,219 +699,299 @@
         <tr>
           <td class="col-name">watched_at, duration_minutes</td>
           <td class="col-type">TEXT, INT</td>
-          <td class="col-note">horodatage + durée pour les stats</td>
+          <td class="col-note">timestamp + duration for stats</td>
         </tr>
         <tr>
           <td class="col-name">episode_id, season_number, episode_number</td>
           <td class="col-type">INT</td>
-          <td class="col-note">nuls pour un film</td>
+          <td class="col-note">null for a movie</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">
+            ISO date; no <code>updated_at</code> — every write is a plain <code>INSERT</code>, this table is an
+            <em>append-only</em> log, no row is ever modified after the fact
+          </td>
         </tr>
       </table>
-      <div class="relations">Un profil journalise <code>0..n</code> événements.</div>
+      <div class="relations">A profile logs <code>0..n</code> events.</div>
     </article>
 
     <article class="table-card">
       <div class="table-card-head">
-        <span class="table-name">profile_watchlist</span>
-        <span class="badge">à voir</span>
+        <span class="table-name">watchlist_items</span>
+        <span class="badge">to watch</span>
       </div>
       <p class="table-purpose">
-        La liste « à regarder » simple — plus légère que <code>library_items</code>, sans statut ni note.
+        The simple "to watch" list — lighter than <code>library_items</code>, with no status or rating. Used to be
+        called <code>profile_watchlist</code> before the single schema&nbsp;: the <code>profile_</code> prefix
+        distinguished this table from an old, non-profile-scoped <code>watchlist</code> table, now removed — it has no
+        reason to exist anymore.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">public identifier of the row</td>
         </tr>
         <tr>
           <td class="col-name">
-            <span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, media_id, media_type
+            <span class="tag-uk">UK</span><span class="tag-fk">FK</span>profile_id, media_id, media_type
           </td>
           <td class="col-type">…</td>
-          <td class="col-note">clé composite</td>
+          <td class="col-note">→ profiles.uuid ; natural composite key (UNIQUE, not the PK)</td>
         </tr>
         <tr>
           <td class="col-name">title, poster_path, backdrop_path, year, rating</td>
           <td class="col-type">…</td>
-          <td class="col-note">copie TMDB au moment de l'ajout</td>
+          <td class="col-note">TMDB copy taken when added</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO dates</td>
         </tr>
       </table>
-      <div class="relations">Un profil a <code>0..n</code> entrées à voir.</div>
+      <div class="relations">A profile has <code>0..n</code> entries to watch.</div>
     </article>
 
     <article class="table-card">
       <div class="table-card-head">
-        <span class="table-name">profile_seen_movies</span>
-        <span class="badge">vu / pas vu</span>
+        <span class="table-name">seen_movies</span>
+        <span class="badge">seen / unseen</span>
       </div>
       <p class="table-purpose">
-        Un simple bascule « vu » pour les films, plus rapide que de passer par la bibliothèque complète.
+        A simple "seen" toggle for movies, faster than going through the full library. Used to be called
+        <code>profile_seen_movies</code> before the single schema.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
-          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, movie_id</td>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">public identifier of the row</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span><span class="tag-fk">FK</span>profile_id, movie_id</td>
           <td class="col-type">…</td>
-          <td class="col-note">clé composite</td>
+          <td class="col-note">→ profiles.uuid ; natural composite key</td>
         </tr>
         <tr>
           <td class="col-name">watched_at</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">date du visionnage</td>
+          <td class="col-note">watch date (can predate the import, e.g. TV Time)</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO dates — row insertion vs. last modification</td>
         </tr>
       </table>
-      <div class="relations">Un profil a <code>0..n</code> films marqués vus.</div>
+      <div class="relations">A profile has <code>0..n</code> movies marked as seen.</div>
     </article>
 
     <article class="table-card">
       <div class="table-card-head">
-        <span class="table-name">profile_episode_progress</span>
-        <span class="badge">progression</span>
+        <span class="table-name">episode_progress</span>
+        <span class="badge">progress</span>
       </div>
       <p class="table-purpose">
-        Une ligne par épisode regardé. C'est la source de vérité pour savoir où en est un profil dans une série — le
-        décompte affiché est recalculé à la lecture, pas stocké.
+        One row per watched episode. This is the source of truth for where a profile stands in a show — the displayed
+        count is recomputed on read, not stored. Used to be called <code>profile_episode_progress</code>
+        before the single schema.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">public identifier of the row</td>
         </tr>
         <tr>
           <td class="col-name">
-            <span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, series_id, episode_id
+            <span class="tag-uk">UK</span><span class="tag-fk">FK</span>profile_id, series_id, episode_id
           </td>
           <td class="col-type">…</td>
-          <td class="col-note">clé composite</td>
+          <td class="col-note">→ profiles.uuid ; natural composite key</td>
         </tr>
         <tr>
           <td class="col-name">season_number, episode_number</td>
           <td class="col-type">INT</td>
-          <td class="col-note">repère l'épisode</td>
+          <td class="col-note">locates the episode</td>
         </tr>
         <tr>
           <td class="col-name">watched, watched_at</td>
           <td class="col-type">BOOL, TEXT</td>
           <td class="col-note"></td>
         </tr>
+        <tr>
+          <td class="col-name">created_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO dates</td>
+        </tr>
       </table>
-      <div class="relations">Un profil a <code>0..n</code> épisodes marqués vus.</div>
+      <div class="relations">A profile has <code>0..n</code> episodes marked as watched.</div>
     </article>
 
     <article class="table-card">
       <div class="table-card-head">
-        <span class="table-name">profile_tracked_series</span>
-        <span class="badge">séries suivies</span>
+        <span class="table-name">tracked_series</span>
+        <span class="badge">tracked shows</span>
       </div>
       <p class="table-purpose">
-        Une ligne par série qu'un profil suit activement. Le nombre d'épisodes vus n'est
-        <strong>pas</strong> stocké ici&nbsp;: il est calculé par une jointure avec
-        <code>profile_episode_progress</code> à chaque lecture, pour ne jamais désynchroniser un compteur.
+        One row per show a profile actively tracks. The number of watched episodes is <strong>not</strong> stored
+        here&nbsp;: it's computed via a join with <code>episode_progress</code> on every read, so a counter can never
+        drift out of sync. Used to be called <code>profile_tracked_series</code> before the single schema.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
-          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>profile_id, series_id</td>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">public identifier of the row</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span><span class="tag-fk">FK</span>profile_id, series_id</td>
           <td class="col-type">…</td>
-          <td class="col-note">clé composite</td>
+          <td class="col-note">→ profiles.uuid ; natural composite key</td>
         </tr>
         <tr>
           <td class="col-name">total_episodes</td>
           <td class="col-type">INT</td>
-          <td class="col-note">total connu côté TMDB</td>
+          <td class="col-note">total known from TMDB</td>
         </tr>
         <tr>
-          <td class="col-name">updated_at</td>
+          <td class="col-name">created_at, updated_at</td>
           <td class="col-type">TEXT</td>
           <td class="col-note"></td>
         </tr>
       </table>
-      <div class="relations">Un profil suit <code>0..n</code> séries.</div>
+      <div class="relations">A profile tracks <code>0..n</code> shows.</div>
     </article>
   </section>
 
-  <!-- ================= HISTORIQUE ================= -->
-  <section class="domain" id="historique">
+  <!-- ================= HISTORY ================= -->
+  <section class="domain" id="history">
     <div class="domain-head">
-      <h2>Historique d'activité</h2>
+      <h2>Activity history</h2>
       <span class="domain-count">1 table</span>
     </div>
     <p class="domain-note">
-      Le fil d'activité affiché à l'écran « Historique » — lisible par un humain, distinct du journal statistique
-      ci-dessus même si les deux s'écrivent souvent au même moment.
+      The activity feed shown on the "History" screen — human-readable, distinct from the statistical log above even
+      though the two are often written at the same time.
     </p>
 
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">activity_log</span>
-        <span class="badge pk">fil d'activité</span>
+        <span class="badge pk">activity feed</span>
       </div>
       <p class="table-purpose">
-        Chaque action notable — ajout à une liste, film marqué vu, épisode ou saison entière cochée — devient une ligne
-        ici avec un <code>action</code> parmi 13 valeurs possibles (<code>movie:watched</code>,
-        <code>watchlist:add</code>, <code>list:remove</code>…) et un champ <code>metadata</code> en JSON pour les
-        détails propres à chaque action.
+        Every notable action — adding to a list, a movie marked watched, an episode or a whole season checked off —
+        becomes a row here with an <code>action</code> from 13 possible values (<code>movie:watched</code>,
+        <code>watchlist:add</code>, <code>list:remove</code>…) and a <code>metadata</code> JSON field for details
+        specific to each action.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">UUID</td>
+          <td class="col-note">public identifier of the row</td>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">→ profiles.id, nullable</td>
+          <td class="col-note">→ profiles.uuid</td>
         </tr>
         <tr>
           <td class="col-name">action</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">ex. <code>episode:watched</code></td>
+          <td class="col-note">
+            e.g. <code>episode:watched</code>, <code>CHECK</code> constraint on the 13 possible values
+          </td>
         </tr>
         <tr>
           <td class="col-name">season_number, episode_number, episode_title</td>
           <td class="col-type">…</td>
-          <td class="col-note">renseignés pour les épisodes</td>
+          <td class="col-note">set for episodes</td>
         </tr>
         <tr>
           <td class="col-name">metadata</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">JSON libre</td>
+          <td class="col-note">free-form JSON</td>
         </tr>
         <tr>
           <td class="col-name">timestamp</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">indexé pour un tri rapide</td>
+          <td class="col-note">indexed for fast sorting — when the action happened</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO dates — when the row was written/modified, distinct from <code>timestamp</code></td>
         </tr>
       </table>
-      <div class="relations">Un profil a <code>0..n</code> lignes d'historique.</div>
+      <div class="relations">A profile has <code>0..n</code> history rows.</div>
     </article>
   </section>
 
-  <!-- ================= LISTES ================= -->
-  <section class="domain" id="listes">
+  <!-- ================= LISTS ================= -->
+  <section class="domain" id="lists">
     <div class="domain-head">
-      <h2>Listes personnalisées</h2>
+      <h2>Custom lists</h2>
       <span class="domain-count">2 tables</span>
     </div>
     <p class="domain-note">
-      Les collections que l'utilisateur crée lui-même — « Films de Noël », « À revoir avec… » — distinctes de la
-      watchlist système.
+      The collections users create themselves — "Christmas movies", "Rewatch with…" — distinct from the system
+      watchlist.
     </p>
 
     <article class="table-card">
@@ -915,137 +999,177 @@
         <span class="table-name">custom_lists</span>
         <span class="badge pk">collection</span>
       </div>
-      <p class="table-purpose">Une liste nommée créée par un profil.</p>
+      <p class="table-purpose">A named list created by a profile.</p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">UUID</td>
+          <td class="col-note">
+            public identifier of the list — target of the <code>custom_list_items.list_id</code> FK
+          </td>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">→ profiles.id</td>
+          <td class="col-note">→ profiles.uuid</td>
         </tr>
         <tr>
           <td class="col-name">name, description</td>
           <td class="col-type">TEXT</td>
           <td class="col-note"></td>
         </tr>
+        <tr>
+          <td class="col-name">created_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO dates</td>
+        </tr>
       </table>
       <div class="relations">
-        Un profil crée <code>0..n</code> listes. Supprimer le profil supprime la liste, qui supprime à son tour ses
-        contenus (cascade en chaîne).
+        A profile creates <code>0..n</code> lists. Deleting the profile deletes the list, which in turn deletes its
+        contents (cascading chain).
       </div>
     </article>
 
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">custom_list_items</span>
-        <span class="badge">contenu d'une liste</span>
+        <span class="badge">list contents</span>
       </div>
-      <p class="table-purpose">Un film ou une série dans une liste, avec sa position pour l'ordre d'affichage.</p>
+      <p class="table-purpose">A movie or show inside a list, with its position for display order.</p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
-          <td class="col-name"><span class="tag-pk">PK</span><span class="tag-fk">FK</span>list_id</td>
+          <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">→ custom_lists.id</td>
+          <td class="col-note">public identifier of the row</td>
         </tr>
         <tr>
-          <td class="col-name"><span class="tag-pk">PK</span>media_id, media_type</td>
+          <td class="col-name"><span class="tag-fk">FK</span>list_id</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">→ custom_lists.uuid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>media_id, media_type</td>
           <td class="col-type">…</td>
-          <td class="col-note"></td>
+          <td class="col-note"><code>UNIQUE(list_id, media_id, media_type)</code></td>
         </tr>
         <tr>
           <td class="col-name">position</td>
           <td class="col-type">INT</td>
-          <td class="col-note">ordre dans la liste</td>
+          <td class="col-note">order within the list</td>
+        </tr>
+        <tr>
+          <td class="col-name">added_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">
+            ISO date added, then last modified (reordering) — no separate <code>created_at</code>,
+            <code>added_at</code> already plays that role
+          </td>
         </tr>
       </table>
-      <div class="relations">Une liste contient <code>0..n</code> éléments.</div>
+      <div class="relations">A list contains <code>0..n</code> items.</div>
     </article>
   </section>
 
-  <!-- ================= DISPONIBILITE ================= -->
-  <section class="domain" id="disponibilite">
+  <!-- ================= AVAILABILITY ================= -->
+  <section class="domain" id="availability">
     <div class="domain-head">
-      <h2>Disponibilité streaming</h2>
+      <h2>Streaming availability</h2>
       <span class="domain-count">2 tables</span>
     </div>
     <p class="domain-note">
-      « Que regarder ce soir » et les alertes de disponibilité s'appuient sur ces deux tables — l'une appartient à un
-      profil, l'autre décrit un fait sur un titre, partagé par tous.
+      "What to watch tonight" and availability alerts rely on these two tables — one belongs to a profile, the other
+      describes a fact about a title, shared by everyone.
     </p>
 
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">availability_alerts</span>
-        <span class="badge pk">abonnement</span>
+        <span class="badge pk">subscription</span>
       </div>
       <p class="table-purpose">
-        « Préviens-moi si ce film devient disponible sur telle plateforme » — un profil peut s'abonner à un titre pour
-        une région et une liste de plateformes préférées.
+        "Tell me when this movie becomes available on this platform" — a profile can subscribe to a title for a region
+        and a list of preferred platforms.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-pk">PK</span>id</td>
+          <td class="col-type">INTEGER</td>
+          <td class="col-note">internal rowid</td>
+        </tr>
+        <tr>
+          <td class="col-name"><span class="tag-uk">UK</span>uuid</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">UUID</td>
+          <td class="col-note">public identifier of the row</td>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-fk">FK</span>profile_id</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">→ profiles.id</td>
+          <td class="col-note">→ profiles.uuid</td>
         </tr>
         <tr>
           <td class="col-name">region, provider_ids</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note"><code>provider_ids</code> en JSON</td>
+          <td class="col-note"><code>provider_ids</code> as JSON</td>
         </tr>
         <tr>
           <td class="col-name">enabled</td>
           <td class="col-type">BOOL</td>
-          <td class="col-note">défaut vrai</td>
+          <td class="col-note">defaults to true</td>
+        </tr>
+        <tr>
+          <td class="col-name">created_at, updated_at</td>
+          <td class="col-type">TEXT</td>
+          <td class="col-note">ISO dates</td>
         </tr>
       </table>
-      <div class="relations">Un profil crée <code>0..n</code> alertes.</div>
+      <div class="relations">A profile creates <code>0..n</code> alerts.</div>
     </article>
 
     <article class="table-card">
       <div class="table-card-head">
         <span class="table-name">availability_snapshots</span>
-        <span class="badge">fait partagé</span>
+        <span class="badge">shared fact</span>
       </div>
       <p class="table-purpose">
-        Le dernier relevé connu des plateformes proposant un titre, par région — une propriété du
-        <strong>titre</strong>, pas d'un profil, donc partagée par tous. Rapprochée des alertes en mémoire par l'app
-        (pas de clé étrangère entre les deux), pour détecter une nouvelle disponibilité.
+        The latest known list of platforms offering a title, per region — a property of the <strong>title</strong>, not
+        of a profile, so shared by everyone. Matched against alerts in memory by the app (no foreign key between the
+        two), to detect new availability.
       </p>
       <table class="cols">
         <tr>
-          <th>Colonne</th>
+          <th>Column</th>
           <th>Type</th>
-          <th>Détail</th>
+          <th>Detail</th>
         </tr>
         <tr>
           <td class="col-name"><span class="tag-pk">PK</span>media_id, media_type, region</td>
           <td class="col-type">…</td>
-          <td class="col-note">clé composite</td>
+          <td class="col-note">composite key</td>
         </tr>
         <tr>
           <td class="col-name">provider_ids</td>
@@ -1055,74 +1179,33 @@
         <tr>
           <td class="col-name">checked_at</td>
           <td class="col-type">TEXT</td>
-          <td class="col-note">horodatage du dernier relevé</td>
+          <td class="col-note">timestamp of the last check — also serves as "last modified"</td>
         </tr>
       </table>
-      <div class="relations">Aucune relation déclarée — table indépendante des profils.</div>
-    </article>
-  </section>
-
-  <!-- ================= LEGACY ================= -->
-  <section class="domain" id="legacy">
-    <div class="domain-head">
-      <h2>Tables historiques</h2>
-      <span class="domain-count">4 tables · dépréciées</span>
-    </div>
-    <p class="domain-note">
-      Datent de la toute première version de CineTrack, avant l'existence des profils. Plus aucun code n'y écrit
-      aujourd'hui — elles restent uniquement pour que la migration qui a introduit les profils puisse recopier une
-      dernière fois leurs données vers les tables <code>profile_*</code>
-      équivalentes sur une installation ancienne.
-    </p>
-
-    <article class="table-card is-legacy">
-      <div class="table-card-head">
-        <span class="table-name">watchlist</span>
-        <span class="badge legacy-tag">remplacée par profile_watchlist</span>
+      <div class="relations">
+        No declared relation — table independent from profiles. Neither <code>id</code> nor <code>uuid</code>&nbsp;: a
+        pure cache, fully overwritten on every check, none of whose rows ever needs to be referenced individually.
       </div>
-      <div class="relations">media_id, media_type, title, poster_path, backdrop_path, year, rating, created_at</div>
-    </article>
-    <article class="table-card is-legacy">
-      <div class="table-card-head">
-        <span class="table-name">seen_movies</span>
-        <span class="badge legacy-tag">remplacée par profile_seen_movies</span>
-      </div>
-      <div class="relations">movie_id, title, poster_path, backdrop_path, watched_at</div>
-    </article>
-    <article class="table-card is-legacy">
-      <div class="table-card-head">
-        <span class="table-name">tracked_series</span>
-        <span class="badge legacy-tag">remplacée par profile_tracked_series</span>
-      </div>
-      <div class="relations">series_id, title, poster_path, backdrop_path, total_episodes, updated_at</div>
-    </article>
-    <article class="table-card is-legacy">
-      <div class="table-card-head">
-        <span class="table-name">episode_progress</span>
-        <span class="badge legacy-tag">remplacée par profile_episode_progress</span>
-      </div>
-      <div class="relations">series_id, episode_id, season_number, episode_number, watched, watched_at</div>
     </article>
   </section>
 
   <!-- ================= MCD ================= -->
   <section class="domain" id="mcd">
     <div class="domain-head">
-      <h2>Modèle conceptuel (MCD)</h2>
-      <span class="domain-count">schéma actif uniquement</span>
+      <h2>Conceptual model (ERD)</h2>
+      <span class="domain-count">active schema only</span>
     </div>
     <p class="domain-note">
-      Les entités et leurs cardinalités — les colonnes complètes sont dans les fiches ci-dessus, ici on ne garde que ce
-      qui identifie chaque ligne. Les tables historiques n'y figurent pas : elles ne participent plus au modèle vivant
-      de l'app.
+      The entities and their cardinalities — the full column lists are in the cards above. To stay readable, this
+      simplified diagram only shows <code>uuid</code> (the public identifier) as a key, not the internal
+      <code>id</code> every table also carries.
     </p>
 
     <div class="callout">
       <p>
-        <strong>Lecture des cardinalités&nbsp;:</strong> <code>||—o{</code> se lit « un, obligatoirement » du côté du
-        trait double, « zéro à plusieurs » du côté du trait ouvert. Exemple —
-        <code>PROFILES ||--o{ LIBRARY_ITEMS</code> : un profil a zéro à plusieurs fiches de bibliothèque, une fiche
-        appartient à exactement un profil.
+        <strong>Reading the cardinalities&nbsp;:</strong> <code>||—o{</code> reads as "one, mandatory" on the double-bar
+        side, "zero to many" on the open-crow's-foot side. Example — <code>PROFILES ||--o{ LIBRARY_ITEMS</code>: a
+        profile has zero to many library records, a record belongs to exactly one profile.
       </p>
     </div>
 
@@ -1130,7 +1213,7 @@
       <pre class="mermaid">
 erDiagram
     PROFILES {
-        string id PK
+        string uuid PK
         string name
         string created_at
         string supabase_user_id UK
@@ -1140,56 +1223,62 @@ erDiagram
         string value
     }
     LIBRARY_ITEMS {
+        string uuid PK
         string profile_id FK
         int media_id
         string media_type
         string status
     }
     VIEWING_EVENTS {
-        string id PK
+        string uuid PK
         string profile_id FK
         string event_type
         string watched_at
     }
-    PROFILE_WATCHLIST {
+    WATCHLIST_ITEMS {
+        string uuid PK
         string profile_id FK
         int media_id
         string media_type
     }
-    PROFILE_SEEN_MOVIES {
+    SEEN_MOVIES {
+        string uuid PK
         string profile_id FK
         int movie_id
         string watched_at
     }
-    PROFILE_EPISODE_PROGRESS {
+    EPISODE_PROGRESS {
+        string uuid PK
         string profile_id FK
         int series_id
         int episode_id
         bool watched
     }
-    PROFILE_TRACKED_SERIES {
+    TRACKED_SERIES {
+        string uuid PK
         string profile_id FK
         int series_id
         int total_episodes
     }
     ACTIVITY_LOG {
-        string id PK
+        string uuid PK
         string profile_id FK
         string action
         string timestamp
     }
     CUSTOM_LISTS {
-        string id PK
+        string uuid PK
         string profile_id FK
         string name
     }
     CUSTOM_LIST_ITEMS {
+        string uuid PK
         string list_id FK
         int media_id
         int position
     }
     AVAILABILITY_ALERTS {
-        string id PK
+        string uuid PK
         string profile_id FK
         string region
         string provider_ids
@@ -1201,55 +1290,53 @@ erDiagram
         string checked_at
     }
 
-    PROFILES ||--o{ LIBRARY_ITEMS : suit
-    PROFILES ||--o{ VIEWING_EVENTS : journalise
-    PROFILES ||--o{ PROFILE_WATCHLIST : "veut voir"
-    PROFILES ||--o{ PROFILE_SEEN_MOVIES : "a vu"
-    PROFILES ||--o{ PROFILE_EPISODE_PROGRESS : progresse
-    PROFILES ||--o{ PROFILE_TRACKED_SERIES : suit
-    PROFILES ||--o{ ACTIVITY_LOG : historise
-    PROFILES ||--o{ CUSTOM_LISTS : cree
-    PROFILES ||--o{ AVAILABILITY_ALERTS : "s'abonne"
-    CUSTOM_LISTS ||--o{ CUSTOM_LIST_ITEMS : contient
+    PROFILES ||--o{ LIBRARY_ITEMS : tracks
+    PROFILES ||--o{ VIEWING_EVENTS : logs
+    PROFILES ||--o{ WATCHLIST_ITEMS : "wants to watch"
+    PROFILES ||--o{ SEEN_MOVIES : "has watched"
+    PROFILES ||--o{ EPISODE_PROGRESS : progresses
+    PROFILES ||--o{ TRACKED_SERIES : tracks
+    PROFILES ||--o{ ACTIVITY_LOG : logs
+    PROFILES ||--o{ CUSTOM_LISTS : creates
+    PROFILES ||--o{ AVAILABILITY_ALERTS : subscribes
+    CUSTOM_LISTS ||--o{ CUSTOM_LIST_ITEMS : contains
 </pre
       >
     </div>
 
     <div class="legend">
+      <span><span class="swatch accent"></span> entities linked to <code>profiles</code> by a real FK constraint</span>
       <span
-        ><span class="swatch accent"></span> entités reliées à <code>profiles</code> par une vraie contrainte FK</span
-      >
-      <span
-        ><span class="swatch line"></span> <code>PREFERENCES</code> et <code>AVAILABILITY_SNAPSHOTS</code> :
-        volontairement isolées, pas de FK</span
+        ><span class="swatch line"></span> <code>PREFERENCES</code> and <code>AVAILABILITY_SNAPSHOTS</code>:
+        deliberately isolated, no FK</span
       >
     </div>
 
     <div class="callout">
       <p>
-        <code>PROFILES.supabase_user_id</code> (<code>UK</code> = unique key) n'a volontairement
-        <strong>aucune ligne de relation</strong> dans ce diagramme&nbsp;: son "parent" conceptuel,
-        <code>auth.users</code>, vit dans la base Postgres de Supabase — un fichier SQLite séparé ne peut ni le
-        référencer ni le joindre. C'est une donnée de corrélation, pas une contrainte imposée par le moteur.
+        <code>PROFILES.supabase_user_id</code> (<code>UK</code> = unique key) deliberately has
+        <strong>no relationship line</strong> in this diagram&nbsp;: its conceptual "parent", <code>auth.users</code>,
+        lives in Supabase's own Postgres database — a separate SQLite file can neither reference nor join it. It's a
+        correlation value, not a constraint enforced by the engine.
       </p>
     </div>
   </section>
 
   <footer>
-    Les 9 relations vers <code>profiles</code> et celle de <code>custom_list_items</code> vers
-    <code>custom_lists</code> sont posées en <code>ON DELETE CASCADE</code> depuis la migration 007 — supprimer un
-    profil ou une liste supprime tout ce qui lui appartient, jusqu'au bout de la chaîne. La migration 008 ajoute le lien
-    <code>profiles.supabase_user_id</code> qui conditionne l'accès à un profil à une connexion Supabase.
+    The 9 relations to <code>profiles</code>, plus the one from <code>custom_list_items</code> to
+    <code>custom_lists</code>, are declared as <code>ON DELETE CASCADE</code> — deleting a profile or a list deletes
+    everything that belongs to it, all the way down the chain. The <code>profiles.supabase_user_id</code> link
+    conditions access to a profile on a Supabase sign-in.
   </footer>
 </div>
 
 <!--
-  Copie archivée de l'artifact claude.ai (voir historique du dépôt pour le
-  lien d'origine). Le rendu Mermoid natif de la plateforme d'artifacts ne
-  s'applique qu'aux pages servies par claude.ai — ouvert directement comme
-  fichier local, ce document a besoin de la librairie Mermaid pour afficher
-  le diagramme du bloc `<pre class="mermaid">` ci-dessus ; ce script ne fait
-  que ça, avec une connexion internet.
+  Archived copy of the claude.ai artifact (see the repo history for the
+  original link). The platform's native Mermaid rendering only applies to
+  pages served by claude.ai — opened directly as a local file, this
+  document needs the Mermaid library to render the diagram in the
+  `<pre class="mermaid">` block above; this script does just that, given
+  an internet connection.
 -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <script>
