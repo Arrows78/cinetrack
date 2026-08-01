@@ -89,7 +89,7 @@ describe("runMigrations against real SQLite", () => {
         uuid: string;
       }>;
       expect(row).toHaveLength(1);
-      expect(row[0].uuid).toBe('list-uuid-1');
+      expect(row[0].uuid).toBe("list-uuid-1");
     });
 
     it("rejects a duplicate uuid", async () => {

@@ -12,7 +12,6 @@ import { availabilityMonitor } from "@/features/availability/availability-monito
 import { calendarService } from "@/features/calendar/calendar-service";
 import { desktopService } from "@/features/desktop/desktop-service";
 import { maintenanceService } from "@/features/backup/maintenance-service";
-import { initializeDatabase } from "@/db/client";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { notificationService } from "@/features/desktop/notification-service";
 import { isTauriApp } from "@/shared/lib/platform";
@@ -51,8 +50,8 @@ export function App() {
       await notificationService.notifyDue(entries, preferences);
     };
 
-    void initializeDatabase()
-      .then(async () => {
+    void (async () => {
+      try {
         const check = await maintenanceService.quickCheck();
 
         if (!check.healthy) {
@@ -62,10 +61,10 @@ export function App() {
         }
 
         await checkBackgroundNotifications();
-      })
-      .catch((error: unknown) => {
-        console.warn("Database initialization fallback engaged:", error);
-      });
+      } catch (error: unknown) {
+        console.warn("Startup maintenance checks failed:", error);
+      }
+    })();
 
     const interval = window.setInterval(
       () => {

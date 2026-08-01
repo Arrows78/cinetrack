@@ -27,11 +27,11 @@ function readScopedPermissions(): ScopedPermission[] {
 }
 
 describe("desktop Tauri capabilities", () => {
-  it("allows the SQL operations used by local repositories and migrations", () => {
+  it("does not grant the SQL plugin — all database access goes through Rust commands", () => {
     const permissions = readDesktopPermissions();
 
-    expect(permissions).toContain("sql:default");
-    expect(permissions).toContain("sql:allow-execute");
+    expect(permissions).not.toContain("sql:default");
+    expect(permissions).not.toContain("sql:allow-execute");
   });
 
   it("scopes filesystem access to the backups directory only", () => {

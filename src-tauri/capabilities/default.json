@@ -9,8 +9,6 @@
     "deep-link:default",
     "notification:default",
     "opener:default",
-    "sql:default",
-    "sql:allow-execute",
     "stronghold:default",
     "process:default",
     "updater:default",
