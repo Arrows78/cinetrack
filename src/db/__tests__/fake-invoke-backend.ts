@@ -7,7 +7,7 @@
 // without a Tauri runtime, instead of hitting a missing `invoke()` global.
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { defaultPreferences, preferencesSchema } from "@/features/preferences/preferences-repository";
-import type { UserPreferences } from "@/types/media";
+import type { UserPreferences, WatchlistItem } from "@/types/media";
 
 function loadPreferences(sqlite: DatabaseSync): UserPreferences {
   const rows = sqlite.prepare("SELECT key, value FROM preferences").all() as Array<{
@@ -107,6 +107,105 @@ function addHistoryItem(sqlite: DatabaseSync, item: Record<string, unknown>) {
     } as Record<string, SQLInputValue>);
 }
 
+function rowToWatchlistItem(row: Record<string, unknown>): WatchlistItem {
+  return {
+    id: String(row.uuid),
+    profileId: String(row.profile_id ?? "default"),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
+    year: row.year == null ? null : Number(row.year),
+    rating: row.rating == null ? null : Number(row.rating),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function listWatchlist(sqlite: DatabaseSync, profileId: string): WatchlistItem[] {
+  const rows = sqlite
+    .prepare("SELECT * FROM watchlist_items WHERE profile_id = $profileId ORDER BY created_at DESC")
+    .all({ $profileId: profileId }) as Array<Record<string, unknown>>;
+  return rows.map(rowToWatchlistItem);
+}
+
+function hasWatchlistItem(sqlite: DatabaseSync, profileId: string, mediaId: number, mediaType: string): boolean {
+  const rows = sqlite
+    .prepare(
+      "SELECT COUNT(*) count FROM watchlist_items WHERE profile_id=$profileId AND media_id=$mediaId AND media_type=$mediaType"
+    )
+    .all({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType }) as Array<{ count: number }>;
+  return Number(rows[0]?.count ?? 0) > 0;
+}
+
+function upsertWatchlistItem(sqlite: DatabaseSync, item: WatchlistItem): void {
+  const profileId = loadPreferences(sqlite).activeProfileId;
+  const alreadyExists = hasWatchlistItem(sqlite, profileId, item.mediaId, item.mediaType);
+  const now = new Date().toISOString();
+
+  sqlite
+    .prepare(
+      `INSERT INTO watchlist_items
+        (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,created_at,updated_at)
+       VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$posterPath,$backdropPath,$year,$rating,$createdAt,$createdAt)
+       ON CONFLICT (profile_id, media_id, media_type) DO UPDATE SET
+         title = excluded.title,
+         poster_path = excluded.poster_path,
+         backdrop_path = excluded.backdrop_path,
+         year = excluded.year,
+         rating = excluded.rating,
+         updated_at = excluded.updated_at`
+    )
+    .run({
+      $uuid: crypto.randomUUID(),
+      $profileId: profileId,
+      $mediaId: item.mediaId,
+      $mediaType: item.mediaType,
+      $title: item.title,
+      $posterPath: item.posterPath ?? null,
+      $backdropPath: item.backdropPath ?? null,
+      $year: item.year ?? null,
+      $rating: item.rating ?? null,
+      $createdAt: item.createdAt || now,
+    } as Record<string, SQLInputValue>);
+
+  if (!alreadyExists) {
+    addHistoryItem(sqlite, {
+      id: crypto.randomUUID(),
+      mediaId: item.mediaId,
+      mediaType: item.mediaType,
+      title: item.title,
+      action: "watchlist:add",
+      timestamp: now,
+      metadata: { profileId },
+    });
+  }
+}
+
+function removeWatchlistItem(sqlite: DatabaseSync, mediaId: number, mediaType: string): void {
+  const profileId = loadPreferences(sqlite).activeProfileId;
+  const existing = listWatchlist(sqlite, profileId).find(
+    (current) => current.mediaId === mediaId && current.mediaType === mediaType
+  );
+
+  sqlite
+    .prepare("DELETE FROM watchlist_items WHERE profile_id=$profileId AND media_id=$mediaId AND media_type=$mediaType")
+    .run({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType });
+
+  if (existing) {
+    addHistoryItem(sqlite, {
+      id: crypto.randomUUID(),
+      mediaId,
+      mediaType,
+      title: existing.title,
+      action: "watchlist:remove",
+      timestamp: new Date().toISOString(),
+      metadata: { profileId },
+    });
+  }
+}
+
 export function createFakeInvoke(sqlite: DatabaseSync) {
   return async (command: string, args: Record<string, unknown> = {}): Promise<unknown> => {
     // Route through the same `getDatabase()` singleton the repository under
@@ -132,6 +231,21 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return listHistory(sqlite, (args.limit as number | undefined) ?? 50);
       case "add_history_item":
         addHistoryItem(sqlite, args.item as Record<string, unknown>);
+        return undefined;
+      case "list_watchlist":
+        return listWatchlist(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "has_watchlist_item":
+        return hasWatchlistItem(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.mediaId as number,
+          args.mediaType as string
+        );
+      case "upsert_watchlist_item":
+        upsertWatchlistItem(sqlite, args.item as WatchlistItem);
+        return undefined;
+      case "remove_watchlist_item":
+        removeWatchlistItem(sqlite, args.mediaId as number, args.mediaType as string);
         return undefined;
       default:
         throw new Error(`fake invoke(): unhandled command "${command}"`);

@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchlistItem } from "@/types/media";
 
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) => invokeMock(command, args),
+}));
 
 const item = (): WatchlistItem => ({
   id: "test-id",
@@ -15,49 +15,44 @@ const item = (): WatchlistItem => ({
   updatedAt: "2026-01-01T00:00:00.000Z",
 });
 
+// The upsert/remove transactions, history logging and active-profile
+// resolution now live in Rust and are exercised there (see
+// src-tauri/src/commands/watchlist.rs's own tests) — this only verifies the
+// repository wraps invoke() with the right command name/args.
 describe("watchlistRepository", () => {
-  useTestSqlite();
+  beforeEach(() => invokeMock.mockReset());
 
-  it("adds an item and reports it as present", async () => {
+  it("list() invokes list_watchlist and returns its result", async () => {
+    const items = [item()];
+    invokeMock.mockResolvedValueOnce(items);
     const { watchlistRepository } = await import("../watchlist-repository");
 
-    await watchlistRepository.upsert(item());
-
-    const list = await watchlistRepository.list();
-    expect(list).toHaveLength(1);
-    expect(list[0].mediaId).toBe(42);
-    expect(await watchlistRepository.has(42, "movie")).toBe(true);
+    await expect(watchlistRepository.list()).resolves.toEqual(items);
+    expect(invokeMock).toHaveBeenCalledWith("list_watchlist", undefined);
   });
 
-  it("records a history entry only the first time an item is added", async () => {
+  it("has() invokes has_watchlist_item with mediaId/mediaType", async () => {
+    invokeMock.mockResolvedValueOnce(true);
     const { watchlistRepository } = await import("../watchlist-repository");
-    const { historyRepository } = await import("@/features/history/history-repository");
 
-    await watchlistRepository.upsert(item());
-    await watchlistRepository.upsert(item());
-
-    const history = await historyRepository.list();
-    expect(history.filter((entry) => entry.action === "watchlist:add")).toHaveLength(1);
+    await expect(watchlistRepository.has(42, "movie")).resolves.toBe(true);
+    expect(invokeMock).toHaveBeenCalledWith("has_watchlist_item", { mediaId: 42, mediaType: "movie" });
   });
 
-  it("removes an item and records a removal history entry", async () => {
+  it("upsert() invokes upsert_watchlist_item with the item", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
     const { watchlistRepository } = await import("../watchlist-repository");
-    const { historyRepository } = await import("@/features/history/history-repository");
+    const watchlistItem = item();
 
-    await watchlistRepository.upsert(item());
+    await watchlistRepository.upsert(watchlistItem);
+    expect(invokeMock).toHaveBeenCalledWith("upsert_watchlist_item", { item: watchlistItem });
+  });
+
+  it("remove() invokes remove_watchlist_item with mediaId/mediaType", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    const { watchlistRepository } = await import("../watchlist-repository");
+
     await watchlistRepository.remove(42, "movie");
-
-    expect(await watchlistRepository.has(42, "movie")).toBe(false);
-    const history = await historyRepository.list();
-    expect(history.some((entry) => entry.action === "watchlist:remove")).toBe(true);
-  });
-
-  it("does not record a removal history entry when the item was never present", async () => {
-    const { watchlistRepository } = await import("../watchlist-repository");
-    const { historyRepository } = await import("@/features/history/history-repository");
-
-    await watchlistRepository.remove(999, "movie");
-    const history = await historyRepository.list();
-    expect(history.some((entry) => entry.action === "watchlist:remove")).toBe(false);
+    expect(invokeMock).toHaveBeenCalledWith("remove_watchlist_item", { mediaId: 42, mediaType: "movie" });
   });
 });

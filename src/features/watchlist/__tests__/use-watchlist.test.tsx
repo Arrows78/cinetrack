@@ -1,13 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import type { WatchlistItem } from "@/types/media";
-
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 function createWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -25,8 +20,44 @@ const item: WatchlistItem = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
+let items: WatchlistItem[];
+
+// Fakes the Rust list_watchlist/has_watchlist_item/upsert_watchlist_item/
+// remove_watchlist_item commands (see src-tauri/src/commands/watchlist.rs)
+// at the invoke() boundary — the real SQL/transactions behind them are
+// exercised by that module's own Rust tests, this only verifies the hooks'
+// query invalidation wiring.
+const invokeMock = vi.fn(async (command: string, args?: Record<string, unknown>) => {
+  switch (command) {
+    case "list_watchlist":
+      return items;
+    case "has_watchlist_item":
+      return items.some((current) => current.mediaId === args!.mediaId && current.mediaType === args!.mediaType);
+    case "upsert_watchlist_item": {
+      const upserted = args!.item as WatchlistItem;
+      const index = items.findIndex(
+        (current) => current.mediaId === upserted.mediaId && current.mediaType === upserted.mediaType
+      );
+      items = index >= 0 ? items.map((current, i) => (i === index ? upserted : current)) : [...items, upserted];
+      return undefined;
+    }
+    case "remove_watchlist_item":
+      items = items.filter((current) => !(current.mediaId === args!.mediaId && current.mediaType === args!.mediaType));
+      return undefined;
+    default:
+      throw new Error(`Unhandled command: ${command}`);
+  }
+});
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) => invokeMock(command, args),
+}));
+
 describe("useWatchlist", () => {
-  useTestSqlite();
+  beforeEach(() => {
+    items = [];
+    invokeMock.mockClear();
+  });
 
   it("adding to the watchlist is reflected by useIsInWatchlist without a manual refetch", async () => {
     const { useIsInWatchlist, useWatchlist } = await import("../use-watchlist");
