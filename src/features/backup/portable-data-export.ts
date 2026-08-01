@@ -1,9 +1,9 @@
 import type Database from "@tauri-apps/plugin-sql";
-import type { BrowserStore } from "@/db/client";
+import type { PortableData } from "./portable-data-common";
 import { emptyData, mediaType } from "./portable-data-common";
 
 /** Reads every persisted table and maps the rows to the portable backup shape. */
-export async function exportDatabaseToStore(db: Database): Promise<BrowserStore> {
+export async function exportDatabaseToStore(db: Database): Promise<PortableData> {
   const data = emptyData();
   const [
     watchlist,
@@ -20,10 +20,10 @@ export async function exportDatabaseToStore(db: Database): Promise<BrowserStore>
     snapshots,
     alerts,
   ] = await Promise.all([
-    db.select<Array<Record<string, unknown>>>("SELECT * FROM profile_watchlist"),
-    db.select<Array<Record<string, unknown>>>("SELECT * FROM profile_seen_movies"),
-    db.select<Array<Record<string, unknown>>>("SELECT * FROM profile_episode_progress"),
-    db.select<Array<Record<string, unknown>>>("SELECT * FROM profile_tracked_series"),
+    db.select<Array<Record<string, unknown>>>("SELECT * FROM watchlist_items"),
+    db.select<Array<Record<string, unknown>>>("SELECT * FROM seen_movies"),
+    db.select<Array<Record<string, unknown>>>("SELECT * FROM episode_progress"),
+    db.select<Array<Record<string, unknown>>>("SELECT * FROM tracked_series"),
     db.select<Array<Record<string, unknown>>>("SELECT * FROM activity_log"),
     db.select<Array<Record<string, unknown>>>("SELECT * FROM preferences"),
     db.select<Array<Record<string, unknown>>>("SELECT * FROM library_items"),
@@ -74,7 +74,7 @@ export async function exportDatabaseToStore(db: Database): Promise<BrowserStore>
     updatedAt: String(row.updated_at),
   }));
   data.history = history.map((row) => ({
-    id: String(row.id),
+    id: String(row.uuid),
     mediaId: Number(row.media_id),
     mediaType: mediaType(row.media_type),
     title: String(row.title),
@@ -108,7 +108,7 @@ export async function exportDatabaseToStore(db: Database): Promise<BrowserStore>
     updatedAt: String(row.updated_at),
   }));
   data.viewingEvents = events.map((row) => ({
-    id: String(row.id),
+    id: String(row.uuid),
     profileId: String(row.profile_id),
     mediaId: Number(row.media_id),
     mediaType: mediaType(row.media_type),
@@ -121,13 +121,13 @@ export async function exportDatabaseToStore(db: Database): Promise<BrowserStore>
     episodeNumber: row.episode_number === null ? null : Number(row.episode_number),
   }));
   data.profiles = profiles.map((row) => ({
-    id: String(row.id),
+    id: String(row.uuid),
     name: String(row.name),
     avatar: row.avatar ? String(row.avatar) : null,
     createdAt: String(row.created_at),
   }));
   data.customLists = lists.map((row) => ({
-    id: String(row.id),
+    id: String(row.uuid),
     profileId: String(row.profile_id),
     name: String(row.name),
     description: row.description ? String(row.description) : null,
@@ -151,7 +151,7 @@ export async function exportDatabaseToStore(db: Database): Promise<BrowserStore>
     checkedAt: String(row.checked_at),
   }));
   data.availabilityAlerts = alerts.map((row) => ({
-    id: String(row.id),
+    id: String(row.uuid),
     profileId: String(row.profile_id),
     mediaId: Number(row.media_id),
     mediaType: mediaType(row.media_type),

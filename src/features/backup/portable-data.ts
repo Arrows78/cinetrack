@@ -1,7 +1,7 @@
-import { browserStore, getDatabase, type BrowserStore } from "@/db/client";
+import { getDatabase } from "@/db/client";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { cineTrackBackupSchema } from "./backup-schema";
-import { emptyData } from "./portable-data-common";
+import { emptyData, type PortableData } from "./portable-data-common";
 import { exportDatabaseToStore } from "./portable-data-export";
 import { importStoreIntoDatabase } from "./portable-data-import";
 
@@ -9,7 +9,7 @@ export interface CineTrackBackup {
   format: "cinetrack-backup";
   version: 1;
   exportedAt: string;
-  data: BrowserStore;
+  data: PortableData;
 }
 
 // First line of defense before even attempting JSON.parse on a user-selected
@@ -20,9 +20,10 @@ export const MAX_BACKUP_FILE_BYTES = 100 * 1024 * 1024;
 
 /**
  * Validates and normalizes an untrusted value into a full CineTrackBackup.
- * Field-by-field shape checking (see backup-schema.ts) — a backup with e.g.
- * `watchlist: [{ mediaId: "not-a-number" }]` is rejected instead of being
- * written into SQLite as-is. Throws with a readable message on failure.
+ * Field-by-field shape checking (see portable-data-schema.ts) — a backup with
+ * e.g. `watchlist: [{ mediaId: "not-a-number" }]` is rejected instead of
+ * being written into SQLite as-is. Throws with a readable message on
+ * failure.
  */
 function parseBackup(value: unknown): CineTrackBackup {
   const result = cineTrackBackupSchema.safeParse(value);
@@ -32,7 +33,7 @@ function parseBackup(value: unknown): CineTrackBackup {
     throw new Error(`Sauvegarde invalide : ${issue?.message ?? "format non reconnu"}${path}.`);
   }
 
-  const data = { ...emptyData(), ...result.data.data } as BrowserStore;
+  const data = { ...emptyData(), ...result.data.data } as PortableData;
   if (!data.profiles.some((profile) => profile.id === "default")) {
     data.profiles.unshift({ id: "default", name: "Principal", createdAt: new Date().toISOString() });
   }
@@ -48,19 +49,13 @@ function parseBackup(value: unknown): CineTrackBackup {
 export const portableData = {
   async export(): Promise<CineTrackBackup> {
     const db = await getDatabase();
-    const data = db ? await exportDatabaseToStore(db) : browserStore.read();
+    const data = await exportDatabaseToStore(db);
     return { format: "cinetrack-backup", version: 1, exportedAt: new Date().toISOString(), data };
   },
 
   async import(backup: unknown): Promise<void> {
     const { data } = parseBackup(backup);
     const db = await getDatabase();
-    if (!db) {
-      browserStore.write(data);
-      preferencesRepository.invalidate();
-      return;
-    }
-
     await importStoreIntoDatabase(db, data);
     preferencesRepository.invalidate();
   },
