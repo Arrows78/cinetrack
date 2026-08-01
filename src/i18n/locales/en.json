@@ -305,10 +305,8 @@
     "save": "Save",
     "remove": "Remove"
   },
-  "tauriRequired": {
-    "title": "Desktop app required",
-    "description": "CineTrack stores your data in a local SQLite database that only the desktop window can reach — a regular browser tab, even one opened while `pnpm tauri dev` is running, cannot access it.",
-    "instructions": "Launch the app with `pnpm tauri dev`, or open the installed desktop application, then use its window instead of this browser tab."
+  "browserPreview": {
+    "message": "Browser preview — SQLite data isn't available outside the Tauri window."
   },
   "tokenGate": {
     "title": "Connect CineTrack to TMDB",

@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import { AppRouter } from "@/app/router";
+import { BrowserPreviewBanner } from "@/components/desktop/browser-preview-banner";
 import { CommandPalette } from "@/components/desktop/command-palette";
-import { TauriRequiredGate } from "@/components/desktop/tauri-required-gate";
 import { TokenGate } from "@/components/desktop/token-gate";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
@@ -20,9 +20,10 @@ import { isTauriApp } from "@/shared/lib/platform";
 export function App() {
   useEffect(() => {
     // Nothing below reaches SQLite (or any native Tauri capability) without
-    // the Tauri webview — TauriRequiredGate already blocks the rest of the
-    // UI in that case, so skip the work entirely instead of racing it into
-    // failures that would just be caught and logged.
+    // the Tauri webview. The rest of the UI still renders in a plain browser
+    // tab (see BrowserPreviewBanner) for layout/styling work, but there's no
+    // point racing this background init into failures that would just be
+    // caught and logged.
     if (!isTauriApp()) return;
 
     let cleanup: (() => void) | undefined;
@@ -83,7 +84,7 @@ export function App() {
   }, []);
 
   return (
-    <TauriRequiredGate>
+    <>
       <ThemeController />
 
       <MotionPreferenceGate>
@@ -94,7 +95,9 @@ export function App() {
         </TokenGate>
       </MotionPreferenceGate>
 
+      <BrowserPreviewBanner />
+
       {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /> : null}
-    </TauriRequiredGate>
+    </>
   );
 }

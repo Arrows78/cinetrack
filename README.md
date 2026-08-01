@@ -79,7 +79,7 @@ flowchart LR
 
 - `MediaProvider` abstracts catalogue access, making it possible to replace TMDB without coupling the interface to its API.
 - Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats) manage personal data, all of it in SQLite (`sqlite:app.db`).
-- SQLite is only reachable from inside the Tauri webview — a plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at the same dev server `pnpm tauri dev` uses. Opening the app outside the Tauri window (`pnpm dev` alone, or a browser tab during `pnpm tauri dev`) shows a dedicated blocking screen instead of silently degrading, see [`src/components/desktop/tauri-required-gate.tsx`](src/components/desktop/tauri-required-gate.tsx).
+- SQLite is only reachable from inside the Tauri webview — a plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at the same dev server `pnpm tauri dev` uses. Every local-data hook already tolerates a failed query (none use React Query's suspense mode), so the UI still renders outside Tauri for layout/styling work; reads/writes to SQLite just fail silently. A small non-blocking banner flags this, see [`src/components/desktop/browser-preview-banner.tsx`](src/components/desktop/browser-preview-banner.tsx).
 
 ## 📦 Prerequisites
 
@@ -150,8 +150,8 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 
 `pnpm dev` (used internally by `pnpm tauri dev` to serve the frontend, and also runnable on its own) starts the same Vite server on `http://localhost:1420` — but CineTrack's only persistence layer is SQLite, reachable exclusively from inside the Tauri webview. A plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at that same URL while `pnpm tauri dev` is running.
 
-> [!IMPORTANT]
-> Opening `http://localhost:1420` outside the Tauri window — `pnpm dev` on its own, or a regular browser tab while `pnpm tauri dev` runs — shows a dedicated blocking screen instead of a broken UI or a silent fallback. Use the Tauri window (`pnpm tauri dev`) or the installed desktop application.
+> [!NOTE]
+> Opening `http://localhost:1420` outside the Tauri window — `pnpm dev` on its own, or a regular browser tab while `pnpm tauri dev` runs — still renders the full UI (useful for quick layout/styling iteration), with a small banner flagging that SQLite reads/writes won't work. Use the Tauri window (`pnpm tauri dev`) or the installed desktop application whenever you need real data.
 
 ## 🛠️ Scripts
 
