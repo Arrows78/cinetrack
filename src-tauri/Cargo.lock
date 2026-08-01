@@ -741,6 +741,7 @@ dependencies = [
  "tauri-plugin-stronghold",
  "tauri-plugin-updater",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

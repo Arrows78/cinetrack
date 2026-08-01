@@ -7,8 +7,9 @@ mod tray;
 use tauri::{Emitter, Manager};
 
 use commands::{
-    add_history_item, get_preferences, invalidate_preferences_cache, list_history, tmdb_request,
-    update_preference, updater_is_configured, PreferencesCache,
+    add_history_item, get_preferences, has_watchlist_item, invalidate_preferences_cache, list_history,
+    list_watchlist, remove_watchlist_item, tmdb_request, update_preference, updater_is_configured,
+    upsert_watchlist_item, PreferencesCache,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -48,6 +49,10 @@ pub fn run() {
             invalidate_preferences_cache,
             list_history,
             add_history_item,
+            list_watchlist,
+            has_watchlist_item,
+            upsert_watchlist_item,
+            remove_watchlist_item,
         ])
         .setup(|app| {
             // Same "sqlite:app.db" file tauri-plugin-sql already opens

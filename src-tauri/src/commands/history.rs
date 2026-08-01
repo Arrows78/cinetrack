@@ -116,7 +116,7 @@ impl TryFrom<HistoryRow> for ViewingHistoryItem {
     }
 }
 
-async fn list_history_impl(pool: &SqlitePool, limit: u32) -> Result<Vec<ViewingHistoryItem>, ApiError> {
+pub(crate) async fn list_history_impl(pool: &SqlitePool, limit: u32) -> Result<Vec<ViewingHistoryItem>, ApiError> {
     let profile_id = current_profile_id(pool).await?;
 
     let rows: Vec<HistoryRow> = sqlx::query_as(
@@ -132,7 +132,22 @@ async fn list_history_impl(pool: &SqlitePool, limit: u32) -> Result<Vec<ViewingH
     rows.into_iter().map(ViewingHistoryItem::try_from).collect()
 }
 
-async fn add_history_item_impl(pool: &SqlitePool, item: ViewingHistoryItem) -> Result<(), ApiError> {
+/// Generic over the executor so callers that already opened their own
+/// transaction (e.g. watchlist's upsert/remove, which must log history
+/// atomically with their own write) can pass `&mut *tx` instead of forcing a
+/// second, separate transaction. `pool` is only used for the active-profile
+/// fallback when `item.metadata` doesn't already carry a `profileId` —
+/// callers writing inside a transaction should always pre-populate it (as
+/// every caller in this codebase does) to avoid a second connection
+/// checkout while the transaction's connection is held.
+pub(crate) async fn add_history_item_impl<'e, E>(
+    executor: E,
+    pool: &SqlitePool,
+    item: ViewingHistoryItem,
+) -> Result<(), ApiError>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
     let profile_id = match item.metadata.as_ref().and_then(|m| m.get("profileId")).and_then(Value::as_str) {
         Some(id) => id.to_string(),
         None => current_profile_id(pool).await?,
@@ -171,7 +186,7 @@ async fn add_history_item_impl(pool: &SqlitePool, item: ViewingHistoryItem) -> R
     .bind(item.episode_title)
     .bind(metadata.to_string())
     .bind(item.timestamp)
-    .execute(pool)
+    .execute(executor)
     .await
     .map_err(ApiError::from)?;
 
@@ -188,7 +203,7 @@ pub async fn list_history(
 
 #[tauri::command]
 pub async fn add_history_item(item: ViewingHistoryItem, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
-    add_history_item_impl(&pool, item).await
+    add_history_item_impl(pool.inner(), pool.inner(), item).await
 }
 
 #[cfg(test)]
@@ -225,9 +240,9 @@ mod tests {
     async fn returns_entries_newest_first() {
         let pool = migrated_pool().await;
 
-        add_history_item_impl(&pool, entry("1", "2026-01-02T00:00:00.000Z", "Milieu")).await.unwrap();
-        add_history_item_impl(&pool, entry("2", "2026-01-01T00:00:00.000Z", "Ancien")).await.unwrap();
-        add_history_item_impl(&pool, entry("3", "2026-01-03T00:00:00.000Z", "Recent")).await.unwrap();
+        add_history_item_impl(&pool, &pool, entry("1", "2026-01-02T00:00:00.000Z", "Milieu")).await.unwrap();
+        add_history_item_impl(&pool, &pool, entry("2", "2026-01-01T00:00:00.000Z", "Ancien")).await.unwrap();
+        add_history_item_impl(&pool, &pool, entry("3", "2026-01-03T00:00:00.000Z", "Recent")).await.unwrap();
 
         let list = list_history_impl(&pool, 50).await.unwrap();
         assert_eq!(
@@ -240,7 +255,7 @@ mod tests {
     async fn respects_the_limit_parameter() {
         let pool = migrated_pool().await;
         for index in 0..5 {
-            add_history_item_impl(&pool, entry(&index.to_string(), &format!("2026-01-0{}T00:00:00.000Z", index + 1), "Title"))
+            add_history_item_impl(&pool, &pool, entry(&index.to_string(), &format!("2026-01-0{}T00:00:00.000Z", index + 1), "Title"))
                 .await
                 .unwrap();
         }
@@ -258,7 +273,7 @@ mod tests {
         .await
         .unwrap();
 
-        add_history_item_impl(&pool, entry("1", "2026-01-01T00:00:00.000Z", "Default profile entry"))
+        add_history_item_impl(&pool, &pool, entry("1", "2026-01-01T00:00:00.000Z", "Default profile entry"))
             .await
             .unwrap();
         assert_eq!(list_history_impl(&pool, 50).await.unwrap().len(), 1);
@@ -271,7 +286,7 @@ mod tests {
         .unwrap();
         assert_eq!(list_history_impl(&pool, 50).await.unwrap().len(), 0);
 
-        add_history_item_impl(&pool, entry("2", "2026-01-01T00:00:00.000Z", "Guest entry")).await.unwrap();
+        add_history_item_impl(&pool, &pool, entry("2", "2026-01-01T00:00:00.000Z", "Guest entry")).await.unwrap();
         let guest_history = list_history_impl(&pool, 50).await.unwrap();
         assert_eq!(guest_history.len(), 1);
         assert_eq!(
@@ -292,7 +307,7 @@ mod tests {
 
         let mut item = entry("1", "2026-01-01T00:00:00.000Z", "Explicit profile");
         item.metadata = Some(serde_json::json!({ "profileId": "guest" }));
-        add_history_item_impl(&pool, item).await.unwrap();
+        add_history_item_impl(&pool, &pool, item).await.unwrap();
 
         assert_eq!(list_history_impl(&pool, 50).await.unwrap().len(), 0);
 

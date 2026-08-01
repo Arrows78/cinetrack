@@ -1,120 +1,23 @@
 import type { WatchlistItem } from "@/types/media";
-import { getDatabase } from "@/db/client";
-import { newUuid } from "@/shared/lib/id";
-import { historyRepository } from "@/features/history/history-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { invokeCommand } from "@/shared/lib/invoke";
 
-const nowIso = () => new Date().toISOString();
-const activeProfile = async () => (await preferencesRepository.getPreferences()).activeProfileId;
-
-const rowToItem = (row: Record<string, unknown>): WatchlistItem => ({
-  id: String(row.uuid),
-  profileId: String(row.profile_id ?? "default"),
-  mediaId: Number(row.media_id),
-  mediaType: row.media_type === "movie" ? "movie" : "series",
-  title: String(row.title),
-  posterPath: row.poster_path ? String(row.poster_path) : null,
-  backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
-  year: row.year == null ? null : Number(row.year),
-  rating: row.rating == null ? null : Number(row.rating),
-  createdAt: String(row.created_at),
-  updatedAt: String(row.updated_at),
-});
-
+// The upsert/remove transactions, history logging and active-profile
+// resolution now live in Rust (see src-tauri/src/commands/watchlist.rs) —
+// this repository is a thin invoke() wrapper.
 export const watchlistRepository = {
   async list(): Promise<WatchlistItem[]> {
-    const profile = await activeProfile();
-    const db = await getDatabase();
-    const rows = await db.select<Array<Record<string, unknown>>>(
-      "SELECT * FROM watchlist_items WHERE profile_id = $1 ORDER BY created_at DESC",
-      [profile]
-    );
-    return rows.map(rowToItem);
+    return invokeCommand<WatchlistItem[]>("list_watchlist");
   },
 
   async has(mediaId: number, mediaType: WatchlistItem["mediaType"]): Promise<boolean> {
-    const profile = await activeProfile();
-    const db = await getDatabase();
-    const rows = await db.select<Array<{ count: number }>>(
-      "SELECT COUNT(*) count FROM watchlist_items WHERE profile_id=$1 AND media_id=$2 AND media_type=$3",
-      [profile, mediaId, mediaType]
-    );
-    return Number(rows[0]?.count ?? 0) > 0;
+    return invokeCommand<boolean>("has_watchlist_item", { mediaId, mediaType });
   },
 
   async upsert(item: WatchlistItem): Promise<void> {
-    const profile = await activeProfile();
-    const alreadyExists = await this.has(item.mediaId, item.mediaType);
-    const db = await getDatabase();
-    const now = nowIso();
-    await db.execute("BEGIN IMMEDIATE");
-    try {
-      await db.execute(
-        `INSERT INTO watchlist_items
-          (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,created_at,updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)
-         ON CONFLICT (profile_id, media_id, media_type) DO UPDATE SET
-           title = excluded.title,
-           poster_path = excluded.poster_path,
-           backdrop_path = excluded.backdrop_path,
-           year = excluded.year,
-           rating = excluded.rating,
-           updated_at = excluded.updated_at`,
-        [
-          newUuid(),
-          profile,
-          item.mediaId,
-          item.mediaType,
-          item.title,
-          item.posterPath ?? null,
-          item.backdropPath ?? null,
-          item.year ?? null,
-          item.rating ?? null,
-          item.createdAt || now,
-        ]
-      );
-      if (!alreadyExists)
-        await historyRepository.add({
-          id: newUuid(),
-          mediaId: item.mediaId,
-          mediaType: item.mediaType,
-          title: item.title,
-          action: "watchlist:add",
-          timestamp: nowIso(),
-          metadata: { profileId: profile },
-        });
-      await db.execute("COMMIT");
-    } catch (error) {
-      await db.execute("ROLLBACK");
-      throw error;
-    }
+    await invokeCommand<void>("upsert_watchlist_item", { item });
   },
 
   async remove(mediaId: number, mediaType: WatchlistItem["mediaType"]): Promise<void> {
-    const profile = await activeProfile();
-    const item = (await this.list()).find((current) => current.mediaId === mediaId && current.mediaType === mediaType);
-    const db = await getDatabase();
-    await db.execute("BEGIN IMMEDIATE");
-    try {
-      await db.execute("DELETE FROM watchlist_items WHERE profile_id=$1 AND media_id=$2 AND media_type=$3", [
-        profile,
-        mediaId,
-        mediaType,
-      ]);
-      if (item)
-        await historyRepository.add({
-          id: newUuid(),
-          mediaId,
-          mediaType,
-          title: item.title,
-          action: "watchlist:remove",
-          timestamp: nowIso(),
-          metadata: { profileId: profile },
-        });
-      await db.execute("COMMIT");
-    } catch (error) {
-      await db.execute("ROLLBACK");
-      throw error;
-    }
+    await invokeCommand<void>("remove_watchlist_item", { mediaId, mediaType });
   },
 };
