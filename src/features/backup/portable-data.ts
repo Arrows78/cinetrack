@@ -56,6 +56,6 @@ export const portableData = {
   async import(backup: unknown): Promise<void> {
     const { data } = parseBackup(backup);
     await invokeCommand<void>("import_backup_data", { data });
-    await preferencesRepository.invalidate();
+    await preferencesRepository.refresh();
   },
 };

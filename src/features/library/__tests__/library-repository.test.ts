@@ -57,16 +57,16 @@ describe("libraryRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("get_library_item", { mediaId: 7, mediaType: "movie" });
   });
 
-  it("upsert() invokes upsert_library_item with the media and patch, defaulting patch to {}", async () => {
+  it("save() invokes save_library_item with the media and patch, defaulting patch to {}", async () => {
     invokeMock.mockResolvedValueOnce(libraryItem());
     const { libraryRepository } = await import("../library-repository");
     const media = makeMedia({ id: 7 });
 
-    await libraryRepository.upsert(media);
-    expect(invokeMock).toHaveBeenCalledWith("upsert_library_item", { media, patch: {} });
+    await libraryRepository.save(media);
+    expect(invokeMock).toHaveBeenCalledWith("save_library_item", { media, patch: {} });
 
-    await libraryRepository.upsert(media, { status: "completed" });
-    expect(invokeMock).toHaveBeenCalledWith("upsert_library_item", { media, patch: { status: "completed" } });
+    await libraryRepository.save(media, { status: "completed" });
+    expect(invokeMock).toHaveBeenCalledWith("save_library_item", { media, patch: { status: "completed" } });
   });
 
   it("remove() invokes remove_library_item with mediaId/mediaType", async () => {

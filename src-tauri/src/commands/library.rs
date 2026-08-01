@@ -65,7 +65,7 @@ where
     Ok(Some(Option::deserialize(deserializer)?))
 }
 
-/// Only the fields `upsert_library_item` actually reads off the frontend's
+/// Only the fields `save_library_item` actually reads off the frontend's
 /// full `MediaSummary` object — unknown fields (overview, cast, ...) are
 /// silently ignored by serde, matching how the TS code only destructures
 /// these too.
@@ -320,7 +320,7 @@ pub async fn get_library_item(
 }
 
 #[tauri::command]
-pub async fn upsert_library_item(
+pub async fn save_library_item(
     media: MediaSummaryInput,
     patch: Option<LibraryPatch>,
     pool: State<'_, SqlitePool>,

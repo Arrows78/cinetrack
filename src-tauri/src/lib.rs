@@ -7,16 +7,16 @@ mod tray;
 use tauri::{Emitter, Manager};
 
 use commands::{
-    add_custom_list_item, add_history_item, apply_episodes, create_custom_list, create_profile,
+    add_custom_list_item, add_history_item, check_data_integrity, create_custom_list, create_profile,
     export_backup_data, find_profile_by_supabase_user_id, get_availability_alert, get_availability_snapshot,
     get_episode_progress, get_library_item, get_preferences, has_watchlist_item, import_backup_data,
-    import_movie_seen, import_series_progress, invalidate_preferences_cache, is_movie_seen,
-    link_profile_to_supabase_user, list_availability_alerts, list_custom_list_items, list_custom_lists,
-    list_history, list_library, list_profiles, list_tracked_series, list_viewing_events, list_watchlist,
-    quick_check, remove_availability_alert, remove_custom_list, remove_custom_list_item, remove_library_item,
-    remove_profile, remove_watchlist_item, resolve_profile_for_supabase_user, save_availability_snapshot,
-    tmdb_request, toggle_availability_alert, toggle_movie_seen, update_preference, updater_is_configured,
-    upsert_library_item, upsert_watchlist_item, PreferencesCache,
+    import_movie_seen, import_series_progress, is_movie_seen, link_profile_to_supabase_user,
+    list_availability_alerts, list_custom_list_items, list_custom_lists, list_history, list_library,
+    list_profiles, list_tracked_series, list_viewing_events, list_watchlist, refresh_preferences,
+    remove_availability_alert, remove_custom_list, remove_custom_list_item, remove_library_item, remove_profile,
+    remove_watchlist_item, resolve_profile_for_supabase_user, save_availability_snapshot, save_library_item,
+    save_watchlist_item, tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
+    update_preference, updater_is_configured, PreferencesCache,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -52,21 +52,21 @@ pub fn run() {
             updater_is_configured,
             get_preferences,
             update_preference,
-            invalidate_preferences_cache,
+            refresh_preferences,
             list_history,
             add_history_item,
             list_watchlist,
             has_watchlist_item,
-            upsert_watchlist_item,
+            save_watchlist_item,
             remove_watchlist_item,
             list_library,
             get_library_item,
-            upsert_library_item,
+            save_library_item,
             remove_library_item,
             is_movie_seen,
             toggle_movie_seen,
             get_episode_progress,
-            apply_episodes,
+            toggle_episodes_watched,
             list_tracked_series,
             list_viewing_events,
             list_availability_alerts,
@@ -91,7 +91,7 @@ pub fn run() {
             import_movie_seen,
             export_backup_data,
             import_backup_data,
-            quick_check,
+            check_data_integrity,
         ])
         .setup(|app| {
             // Same "sqlite:app.db" file tauri-plugin-sql already opens

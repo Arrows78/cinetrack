@@ -22,7 +22,7 @@ const item: WatchlistItem = {
 
 let items: WatchlistItem[];
 
-// Fakes the Rust list_watchlist/has_watchlist_item/upsert_watchlist_item/
+// Fakes the Rust list_watchlist/has_watchlist_item/save_watchlist_item/
 // remove_watchlist_item commands (see src-tauri/src/commands/watchlist.rs)
 // at the invoke() boundary — the real SQL/transactions behind them are
 // exercised by that module's own Rust tests, this only verifies the hooks'
@@ -33,7 +33,7 @@ const invokeMock = vi.fn(async (command: string, args?: Record<string, unknown>)
       return items;
     case "has_watchlist_item":
       return items.some((current) => current.mediaId === args!.mediaId && current.mediaType === args!.mediaType);
-    case "upsert_watchlist_item": {
+    case "save_watchlist_item": {
       const upserted = args!.item as WatchlistItem;
       const index = items.findIndex(
         (current) => current.mediaId === upserted.mediaId && current.mediaType === upserted.mediaType

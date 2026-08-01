@@ -195,7 +195,7 @@ pub async fn has_watchlist_item(
 }
 
 #[tauri::command]
-pub async fn upsert_watchlist_item(item: WatchlistItem, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
+pub async fn save_watchlist_item(item: WatchlistItem, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
     upsert_impl(&pool, item).await
 }
 

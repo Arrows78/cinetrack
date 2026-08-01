@@ -50,7 +50,7 @@ export const preferencesRepository = {
   // Callers that write preferences storage directly (bulk backup restore)
   // must call this so the next getPreferences() re-reads instead of serving
   // a now-stale cached value.
-  async invalidate(): Promise<void> {
-    await invokeCommand<void>("invalidate_preferences_cache");
+  async refresh(): Promise<void> {
+    await invokeCommand<void>("refresh_preferences");
   },
 };

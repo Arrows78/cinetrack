@@ -14,7 +14,7 @@ describe("portableData", () => {
     const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
     const { libraryRepository } = await import("@/features/library/library-repository");
 
-    await watchlistRepository.upsert({
+    await watchlistRepository.save({
       id: "test-id",
       mediaId: 1,
       mediaType: "movie",
@@ -22,7 +22,7 @@ describe("portableData", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
-    await libraryRepository.upsert(makeMedia({ id: 1, title: "Round Trip" }), { status: "watching" });
+    await libraryRepository.save(makeMedia({ id: 1, title: "Round Trip" }), { status: "watching" });
 
     const backup = await portableData.export();
     expect(backup.format).toBe("cinetrack-backup");

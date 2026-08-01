@@ -25,8 +25,8 @@ function assertReasonableSize(raw: string): void {
 }
 
 export const maintenanceService = {
-  async quickCheck(): Promise<{ healthy: boolean; detail: string }> {
-    return invokeCommand<{ healthy: boolean; detail: string }>("quick_check");
+  async checkDataIntegrity(): Promise<{ healthy: boolean; detail: string }> {
+    return invokeCommand<{ healthy: boolean; detail: string }>("check_data_integrity");
   },
 
   async createAutomaticBackup(force = false): Promise<void> {

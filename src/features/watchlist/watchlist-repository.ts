@@ -1,7 +1,7 @@
 import type { WatchlistItem } from "@/types/media";
 import { invokeCommand } from "@/shared/lib/invoke";
 
-// The upsert/remove transactions, history logging and active-profile
+// The save/remove transactions, history logging and active-profile
 // resolution now live in Rust (see src-tauri/src/commands/watchlist.rs) —
 // this repository is a thin invoke() wrapper.
 export const watchlistRepository = {
@@ -13,8 +13,8 @@ export const watchlistRepository = {
     return invokeCommand<boolean>("has_watchlist_item", { mediaId, mediaType });
   },
 
-  async upsert(item: WatchlistItem): Promise<void> {
-    await invokeCommand<void>("upsert_watchlist_item", { item });
+  async save(item: WatchlistItem): Promise<void> {
+    await invokeCommand<void>("save_watchlist_item", { item });
   },
 
   async remove(mediaId: number, mediaType: WatchlistItem["mediaType"]): Promise<void> {

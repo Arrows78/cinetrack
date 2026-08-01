@@ -746,7 +746,7 @@ async fn quick_check_impl(pool: &SqlitePool) -> Result<(bool, String), ApiError>
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct QuickCheckResult {
+pub struct DataIntegrityCheck {
     pub healthy: bool,
     pub detail: String,
 }
@@ -762,9 +762,9 @@ pub async fn import_backup_data(data: PortableData, pool: State<'_, SqlitePool>)
 }
 
 #[tauri::command]
-pub async fn quick_check(pool: State<'_, SqlitePool>) -> Result<QuickCheckResult, ApiError> {
+pub async fn check_data_integrity(pool: State<'_, SqlitePool>) -> Result<DataIntegrityCheck, ApiError> {
     let (healthy, detail) = quick_check_impl(&pool).await?;
-    Ok(QuickCheckResult { healthy, detail })
+    Ok(DataIntegrityCheck { healthy, detail })
 }
 
 #[cfg(test)]

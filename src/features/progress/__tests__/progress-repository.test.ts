@@ -70,11 +70,11 @@ describe("progressRepository", () => {
     expect(tracked.find((item) => item.seriesId === 9)?.watchedEpisodes).toBe(1);
   });
 
-  it("does not re-apply an already-applied episode (applyEpisodes returns 0 changes)", async () => {
+  it("does not re-apply an already-applied episode (toggleEpisodesWatched returns 0 changes)", async () => {
     const { progressRepository } = await import("../progress-repository");
     const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" });
     await progressRepository.toggleEpisodeSeen(series, episode(), true);
-    const changed = await progressRepository.applyEpisodes(series, [episode()], true);
+    const changed = await progressRepository.toggleEpisodesWatched(series, [episode()], true);
     expect(changed).toBe(0);
   });
 
@@ -96,14 +96,22 @@ describe("progressRepository", () => {
     expect(updated.find((item) => item.seriesId === 9)?.watchedEpisodes).toBe(1);
   });
 
-  it("applyEpisodes only writes rows that actually changed state (real COUNT check)", async () => {
+  it("toggleEpisodesWatched only writes rows that actually changed state (real COUNT check)", async () => {
     const { progressRepository } = await import("../progress-repository");
     const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" } as never);
 
-    const firstRun = await progressRepository.applyEpisodes(series, [episode({ id: 1 }), episode({ id: 2 })], true);
+    const firstRun = await progressRepository.toggleEpisodesWatched(
+      series,
+      [episode({ id: 1 }), episode({ id: 2 })],
+      true
+    );
     expect(firstRun).toBe(2);
 
-    const secondRun = await progressRepository.applyEpisodes(series, [episode({ id: 1 }), episode({ id: 2 })], true);
+    const secondRun = await progressRepository.toggleEpisodesWatched(
+      series,
+      [episode({ id: 1 }), episode({ id: 2 })],
+      true
+    );
     expect(secondRun).toBe(0);
 
     const rows = sqlite.current

@@ -46,7 +46,7 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
     const { maintenanceService } = await import("../maintenance-service");
     const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
 
-    await watchlistRepository.upsert(item(1));
+    await watchlistRepository.save(item(1));
     const before = await watchlistRepository.list();
     expect(before).toHaveLength(1);
 

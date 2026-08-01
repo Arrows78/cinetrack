@@ -195,7 +195,7 @@ export async function importTvTimeExport(
         summary.unmatched.push(entry.title);
       } else {
         const now = new Date().toISOString();
-        await watchlistRepository.upsert({
+        await watchlistRepository.save({
           id: newUuid(),
           mediaId: match.id,
           mediaType: entry.mediaType,

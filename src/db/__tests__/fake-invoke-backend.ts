@@ -1009,7 +1009,7 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return loadPreferences(sqlite);
       case "update_preference":
         return upsertPreference(sqlite, args.key as string, args.value);
-      case "invalidate_preferences_cache":
+      case "refresh_preferences":
         return undefined;
       case "list_history":
         return listHistory(sqlite, (args.limit as number | undefined) ?? 50);
@@ -1025,7 +1025,7 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
           args.mediaId as number,
           args.mediaType as string
         );
-      case "upsert_watchlist_item":
+      case "save_watchlist_item":
         upsertWatchlistItem(sqlite, args.item as WatchlistItem);
         return undefined;
       case "remove_watchlist_item":
@@ -1040,7 +1040,7 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
           args.mediaId as number,
           args.mediaType as string
         );
-      case "upsert_library_item":
+      case "save_library_item":
         return upsertLibraryItem(sqlite, args.media as MediaSummary, (args.patch as LibraryPatch) ?? {});
       case "remove_library_item":
         removeLibraryItem(
@@ -1063,7 +1063,7 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return undefined;
       case "get_episode_progress":
         return getEpisodeProgress(sqlite, loadPreferences(sqlite).activeProfileId, args.seriesId as number);
-      case "apply_episodes":
+      case "toggle_episodes_watched":
         return applyEpisodes(
           sqlite,
           loadPreferences(sqlite).activeProfileId,
@@ -1076,7 +1076,7 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
       case "list_viewing_events":
         return listViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId);
-      case "quick_check":
+      case "check_data_integrity":
         return quickCheck(sqlite);
       case "export_backup_data":
         return exportBackupData(sqlite);

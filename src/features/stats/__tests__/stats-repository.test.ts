@@ -127,7 +127,7 @@ describe("statsRepository.getYearSummary (real SQLite path)", () => {
     const { statsRepository: repo } = await import("../stats-repository");
     const year = new Date().getFullYear();
 
-    await libraryRepository.upsert(makeMedia({ id: 1, title: "Film A", genres: ["Drame"] }));
+    await libraryRepository.save(makeMedia({ id: 1, title: "Film A", genres: ["Drame"] }));
 
     await progressRepository.toggleMovieSeen(
       makeMedia({ id: 1, title: "Film A", runtime: 100 }),

@@ -10,7 +10,7 @@ export interface LibraryPatch {
   rewatchCount?: number;
 }
 
-// The status/startedAt/completedAt business rules, the upsert transaction
+// The status/startedAt/completedAt business rules, the save transaction
 // and active-profile resolution now live in Rust (see
 // src-tauri/src/commands/library.rs) — this repository is a thin invoke()
 // wrapper.
@@ -23,8 +23,8 @@ export const libraryRepository = {
     return invokeCommand<LibraryItem | null>("get_library_item", { mediaId, mediaType });
   },
 
-  async upsert(media: MediaSummary, patch: LibraryPatch = {}): Promise<LibraryItem> {
-    return invokeCommand<LibraryItem>("upsert_library_item", { media, patch });
+  async save(media: MediaSummary, patch: LibraryPatch = {}): Promise<LibraryItem> {
+    return invokeCommand<LibraryItem>("save_library_item", { media, patch });
   },
 
   async remove(mediaId: number, mediaType: MediaSummary["mediaType"]): Promise<void> {

@@ -34,7 +34,7 @@ const invokeMock = vi.fn(async (command: string, args?: Record<string, unknown>)
     stored = { ...stored, [args!.key as string]: args!.value };
     return stored;
   }
-  if (command === "invalidate_preferences_cache") return undefined;
+  if (command === "refresh_preferences") return undefined;
   throw new Error(`Unhandled command: ${command}`);
 });
 

@@ -14,7 +14,7 @@ export function useLibraryItem(media: MediaSummary) {
     queryFn: () => libraryRepository.get(media.id, media.mediaType),
   });
   const save = useMutation({
-    mutationFn: (patch: LibraryPatch) => libraryRepository.upsert(media, patch),
+    mutationFn: (patch: LibraryPatch) => libraryRepository.save(media, patch),
     onSuccess: async (item) => {
       queryClient.setQueryData(queryKeys.local.libraryItem(media.mediaType, media.id), item);
       await Promise.all([

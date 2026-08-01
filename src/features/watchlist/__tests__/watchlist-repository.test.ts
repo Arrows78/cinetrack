@@ -41,13 +41,13 @@ describe("watchlistRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("has_watchlist_item", { mediaId: 42, mediaType: "movie" });
   });
 
-  it("upsert() invokes upsert_watchlist_item with the item", async () => {
+  it("save() invokes save_watchlist_item with the item", async () => {
     invokeMock.mockResolvedValueOnce(undefined);
     const { watchlistRepository } = await import("../watchlist-repository");
     const watchlistItem = item();
 
-    await watchlistRepository.upsert(watchlistItem);
-    expect(invokeMock).toHaveBeenCalledWith("upsert_watchlist_item", { item: watchlistItem });
+    await watchlistRepository.save(watchlistItem);
+    expect(invokeMock).toHaveBeenCalledWith("save_watchlist_item", { item: watchlistItem });
   });
 
   it("remove() invokes remove_watchlist_item with mediaId/mediaType", async () => {

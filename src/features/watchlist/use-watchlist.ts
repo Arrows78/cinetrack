@@ -12,7 +12,7 @@ export function useWatchlist() {
   });
 
   const add = useMutation({
-    mutationFn: (item: WatchlistItem) => watchlistRepository.upsert(item),
+    mutationFn: (item: WatchlistItem) => watchlistRepository.save(item),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchlist }),

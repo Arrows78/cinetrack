@@ -18,11 +18,11 @@ async function profileId() {
 // live in Rust (see src-tauri/src/commands/progress.rs) — this repository is
 // a thin invoke() wrapper around them, plus the history logging that was
 // already a separate step from the SQL transaction for episode-based
-// actions (see apply_episodes_impl's doc comment for why movie toggles log
-// history atomically in Rust while episode/season/series toggles log it
-// here, one level up — matching the original split). getNextEpisode/
-// calculateSeriesProgress are pure computations over already-fetched data
-// and stay in TS.
+// actions (see apply_episodes_impl's doc comment on toggle_episodes_watched
+// for why movie toggles log history atomically in Rust while
+// episode/season/series toggles log it here, one level up — matching the
+// original split). getNextEpisode/calculateSeriesProgress are pure
+// computations over already-fetched data and stay in TS.
 export const progressRepository = {
   async isMovieSeen(movieId: number): Promise<boolean> {
     return invokeCommand<boolean>("is_movie_seen", { movieId });
@@ -39,7 +39,7 @@ export const progressRepository = {
   async toggleEpisodeSeen(series: SeriesInput, episode: Episode, watched: boolean): Promise<void> {
     const watchedAt = nowIso();
     const profile = await profileId();
-    const changed = await this.applyEpisodes(series, [episode], watched, watchedAt);
+    const changed = await this.toggleEpisodesWatched(series, [episode], watched, watchedAt);
     if (changed > 0) {
       await historyRepository.add({
         id: uid(),
@@ -56,19 +56,19 @@ export const progressRepository = {
     }
   },
 
-  async applyEpisodes(
+  async toggleEpisodesWatched(
     series: SeriesInput,
     episodes: Episode[],
     watched: boolean,
     watchedAt = nowIso()
   ): Promise<number> {
-    return invokeCommand<number>("apply_episodes", { series, episodes, watched, watchedAt });
+    return invokeCommand<number>("toggle_episodes_watched", { series, episodes, watched, watchedAt });
   },
 
   async markSeason(series: SeriesInput, season: Season, watched: boolean): Promise<void> {
     const timestamp = nowIso();
     const profile = await profileId();
-    const changed = await this.applyEpisodes(series, season.episodes, watched, timestamp);
+    const changed = await this.toggleEpisodesWatched(series, season.episodes, watched, timestamp);
     if (changed > 0) {
       await historyRepository.add({
         id: uid(),
@@ -87,7 +87,7 @@ export const progressRepository = {
     const timestamp = nowIso();
     const profile = await profileId();
     const episodes = seasons.flatMap((season) => season.episodes);
-    const changed = await this.applyEpisodes(series, episodes, watched, timestamp);
+    const changed = await this.toggleEpisodesWatched(series, episodes, watched, timestamp);
     if (changed > 0) {
       await historyRepository.add({
         id: uid(),

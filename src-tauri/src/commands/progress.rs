@@ -36,7 +36,7 @@ pub struct EpisodeInput {
     pub watched_at: Option<String>,
 }
 
-/// Only the fields `apply_episodes` reads off the frontend's `SeriesInput`
+/// Only the fields `toggle_episodes_watched` reads off the frontend's `SeriesInput`
 /// (`MediaSummary & { numberOfEpisodes?: number }`) — unknown fields are
 /// silently ignored by serde.
 #[derive(Debug, Clone, Deserialize)]
@@ -409,7 +409,7 @@ pub async fn get_episode_progress(series_id: i64, pool: State<'_, SqlitePool>) -
 }
 
 #[tauri::command]
-pub async fn apply_episodes(
+pub async fn toggle_episodes_watched(
     series: SeriesInput,
     episodes: Vec<EpisodeInput>,
     watched: bool,

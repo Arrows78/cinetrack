@@ -102,7 +102,7 @@ export function DesktopSettings() {
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  const check = await maintenanceService.quickCheck();
+                  const check = await maintenanceService.checkDataIntegrity();
                   return check.healthy
                     ? `${t("desktop.databaseHealthy")} ${check.detail}`
                     : `${t("desktop.databaseDamaged")} ${check.detail}`;

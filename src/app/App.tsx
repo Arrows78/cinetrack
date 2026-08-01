@@ -52,7 +52,7 @@ export function App() {
 
     void (async () => {
       try {
-        const check = await maintenanceService.quickCheck();
+        const check = await maintenanceService.checkDataIntegrity();
 
         if (!check.healthy) {
           window.localStorage.setItem("cinetrack.maintenance-error", check.detail);
