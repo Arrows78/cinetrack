@@ -1,6 +1,6 @@
 import { addDays, eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth, subDays, subMonths } from "date-fns";
-import { getDatabase } from "@/db/client";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { invokeCommand } from "@/shared/lib/invoke";
+import { libraryRepository } from "@/features/library/library-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
 import type { LibraryItem, LibraryStats, TrackedSeriesItem, ViewingEvent } from "@/types/media";
 
@@ -116,47 +116,10 @@ function computeForecast(tracked: TrackedSeriesItem[], events: ViewingEvent[], n
 }
 
 async function loadData(): Promise<{ library: LibraryItem[]; events: ViewingEvent[] }> {
-  const profileId = (await preferencesRepository.getPreferences()).activeProfileId;
-  const db = await getDatabase();
-  const [libraryRows, eventRows] = await Promise.all([
-    db.select<Array<Record<string, unknown>>>("SELECT * FROM library_items WHERE profile_id = $1", [profileId]),
-    db.select<Array<Record<string, unknown>>>("SELECT * FROM viewing_events WHERE profile_id = $1", [profileId]),
+  const [library, events] = await Promise.all([
+    libraryRepository.list(),
+    invokeCommand<ViewingEvent[]>("list_viewing_events"),
   ]);
-  const library: LibraryItem[] = libraryRows.map((row) => ({
-    id: String(row.uuid),
-    profileId,
-    mediaId: Number(row.media_id),
-    mediaType: row.media_type === "movie" ? "movie" : "series",
-    title: String(row.title),
-    posterPath: row.poster_path ? String(row.poster_path) : null,
-    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
-    year: row.year ? Number(row.year) : null,
-    rating: row.rating ? Number(row.rating) : null,
-    genres: JSON.parse(String(row.genres ?? "[]")),
-    status: String(row.status) as LibraryItem["status"],
-    favourite: Boolean(row.favourite),
-    userRating: row.user_rating === null ? null : Number(row.user_rating),
-    notes: row.notes ? String(row.notes) : null,
-    tags: JSON.parse(String(row.tags ?? "[]")),
-    startedAt: row.started_at ? String(row.started_at) : null,
-    completedAt: row.completed_at ? String(row.completed_at) : null,
-    rewatchCount: Number(row.rewatch_count),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  }));
-  const events: ViewingEvent[] = eventRows.map((row) => ({
-    id: String(row.uuid),
-    profileId,
-    mediaId: Number(row.media_id),
-    mediaType: row.media_type === "movie" ? "movie" : "series",
-    title: String(row.title),
-    eventType: String(row.event_type) as ViewingEvent["eventType"],
-    watchedAt: String(row.watched_at),
-    durationMinutes: row.duration_minutes === null ? null : Number(row.duration_minutes),
-    episodeId: row.episode_id === null ? null : Number(row.episode_id),
-    seasonNumber: row.season_number === null ? null : Number(row.season_number),
-    episodeNumber: row.episode_number === null ? null : Number(row.episode_number),
-  }));
   return { library, events };
 }
 

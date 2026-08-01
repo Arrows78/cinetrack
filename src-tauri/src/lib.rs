@@ -8,8 +8,8 @@ use tauri::{Emitter, Manager};
 
 use commands::{
     add_history_item, apply_episodes, get_episode_progress, get_library_item, get_preferences, has_watchlist_item,
-    invalidate_preferences_cache, is_movie_seen, list_history, list_library, list_tracked_series, list_watchlist,
-    remove_library_item, remove_watchlist_item, tmdb_request, toggle_movie_seen, update_preference,
+    invalidate_preferences_cache, is_movie_seen, list_history, list_library, list_tracked_series, list_viewing_events,
+    list_watchlist, remove_library_item, remove_watchlist_item, tmdb_request, toggle_movie_seen, update_preference,
     updater_is_configured, upsert_library_item, upsert_watchlist_item, PreferencesCache,
 };
 
@@ -63,6 +63,7 @@ pub fn run() {
             get_episode_progress,
             apply_episodes,
             list_tracked_series,
+            list_viewing_events,
         ])
         .setup(|app| {
             // Same "sqlite:app.db" file tauri-plugin-sql already opens
