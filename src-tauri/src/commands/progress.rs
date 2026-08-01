@@ -50,11 +50,11 @@ pub struct SeriesInput {
     pub number_of_episodes: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EpisodeProgress {
     pub id: String,
-    pub profile_id: String,
+    pub profile_id: Option<String>,
     pub series_id: i64,
     pub episode_id: i64,
     pub season_number: i64,
@@ -78,11 +78,11 @@ struct EpisodeProgressRow {
     updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrackedSeriesItem {
     pub id: String,
-    pub profile_id: String,
+    pub profile_id: Option<String>,
     pub series_id: i64,
     pub title: String,
     pub poster_path: Option<String>,
@@ -212,7 +212,7 @@ async fn get_episode_progress_impl(
         .into_iter()
         .map(|row| EpisodeProgress {
             id: row.uuid,
-            profile_id: profile_id.to_string(),
+            profile_id: Some(profile_id.to_string()),
             series_id: row.series_id,
             episode_id: row.episode_id,
             season_number: row.season_number,
@@ -372,7 +372,7 @@ async fn list_tracked_series_impl(pool: &SqlitePool, profile_id: &str) -> Result
         .into_iter()
         .map(|row| TrackedSeriesItem {
             id: row.uuid,
-            profile_id: profile_id.to_string(),
+            profile_id: Some(profile_id.to_string()),
             series_id: row.series_id,
             title: row.title,
             poster_path: row.poster_path,

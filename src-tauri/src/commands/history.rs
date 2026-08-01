@@ -40,7 +40,7 @@ pub enum HistoryAction {
 impl HistoryAction {
     // `CHECK (action IN (...))` in the schema guarantees these are the only
     // thirteen strings that will ever be stored.
-    fn as_db_str(self) -> &'static str {
+    pub(crate) fn as_db_str(self) -> &'static str {
         match self {
             HistoryAction::MovieWatched => "movie:watched",
             HistoryAction::MovieUnwatched => "movie:unwatched",

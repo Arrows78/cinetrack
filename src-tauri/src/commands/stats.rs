@@ -14,7 +14,17 @@ pub enum ViewingEventType {
     Rewatched,
 }
 
-#[derive(Debug, Clone, Serialize)]
+impl ViewingEventType {
+    pub(crate) fn as_db_str(self) -> &'static str {
+        match self {
+            ViewingEventType::Watched => "watched",
+            ViewingEventType::Unwatched => "unwatched",
+            ViewingEventType::Rewatched => "rewatched",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ViewingEvent {
     pub id: String,

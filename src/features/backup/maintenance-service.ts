@@ -1,5 +1,5 @@
 import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { getDatabase } from "@/db/client";
+import { invokeCommand } from "@/shared/lib/invoke";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 
 const BACKUP_FILE = "backups/latest.json";
@@ -26,10 +26,7 @@ function assertReasonableSize(raw: string): void {
 
 export const maintenanceService = {
   async quickCheck(): Promise<{ healthy: boolean; detail: string }> {
-    const db = await getDatabase();
-    const rows = await db.select<Array<{ quick_check: string }>>("PRAGMA quick_check");
-    const detail = rows.map((row) => row.quick_check).join(", ") || "unknown";
-    return { healthy: detail === "ok", detail };
+    return invokeCommand<{ healthy: boolean; detail: string }>("quick_check");
   },
 
   async createAutomaticBackup(force = false): Promise<void> {

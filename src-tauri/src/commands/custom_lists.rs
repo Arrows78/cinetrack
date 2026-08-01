@@ -6,7 +6,7 @@ use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomList {
     pub id: String,
@@ -51,7 +51,7 @@ pub struct MediaSummaryInput {
     pub poster_path: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomListItem {
     pub id: String,

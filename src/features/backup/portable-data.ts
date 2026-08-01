@@ -1,9 +1,7 @@
-import { getDatabase } from "@/db/client";
+import { invokeCommand } from "@/shared/lib/invoke";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { cineTrackBackupSchema } from "./backup-schema";
 import { emptyData, type PortableData } from "./portable-data-common";
-import { exportDatabaseToStore } from "./portable-data-export";
-import { importStoreIntoDatabase } from "./portable-data-import";
 
 export interface CineTrackBackup {
   format: "cinetrack-backup";
@@ -22,8 +20,7 @@ export const MAX_BACKUP_FILE_BYTES = 100 * 1024 * 1024;
  * Validates and normalizes an untrusted value into a full CineTrackBackup.
  * Field-by-field shape checking (see portable-data-schema.ts) — a backup with
  * e.g. `watchlist: [{ mediaId: "not-a-number" }]` is rejected instead of
- * being written into SQLite as-is. Throws with a readable message on
- * failure.
+ * being sent to Rust as-is. Throws with a readable message on failure.
  */
 function parseBackup(value: unknown): CineTrackBackup {
   const result = cineTrackBackupSchema.safeParse(value);
@@ -46,17 +43,19 @@ function parseBackup(value: unknown): CineTrackBackup {
   return { format: "cinetrack-backup", version: 1, exportedAt: result.data.exportedAt, data };
 }
 
+// The per-table reads/writes (exportDatabaseToStore/importStoreIntoDatabase)
+// now live in Rust (see src-tauri/src/commands/backup.rs) — this module
+// keeps the Zod validation/normalization of untrusted backup JSON, which
+// isn't SQL and stays in TS where it's already tested.
 export const portableData = {
   async export(): Promise<CineTrackBackup> {
-    const db = await getDatabase();
-    const data = await exportDatabaseToStore(db);
+    const data = await invokeCommand<PortableData>("export_backup_data");
     return { format: "cinetrack-backup", version: 1, exportedAt: new Date().toISOString(), data };
   },
 
   async import(backup: unknown): Promise<void> {
     const { data } = parseBackup(backup);
-    const db = await getDatabase();
-    await importStoreIntoDatabase(db, data);
+    await invokeCommand<void>("import_backup_data", { data });
     await preferencesRepository.invalidate();
   },
 };

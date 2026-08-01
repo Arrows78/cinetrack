@@ -19,7 +19,7 @@ pub enum LibraryStatus {
 }
 
 impl LibraryStatus {
-    fn as_db_str(self) -> &'static str {
+    pub(crate) fn as_db_str(self) -> &'static str {
         match self {
             LibraryStatus::Planned => "planned",
             LibraryStatus::Watching => "watching",
