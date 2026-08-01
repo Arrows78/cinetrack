@@ -18,6 +18,7 @@ import type {
   WatchlistItem,
 } from "@/types/media";
 import type { LibraryPatch } from "@/features/library/library-repository";
+import type { PortableData } from "@/features/backup/portable-data-common";
 import type { SeriesInput } from "@/features/progress/progress-repository";
 
 function loadPreferences(sqlite: DatabaseSync): UserPreferences {
@@ -575,6 +576,420 @@ function listViewingEvents(sqlite: DatabaseSync, profileId: string): ViewingEven
   }));
 }
 
+function quickCheck(sqlite: DatabaseSync): { healthy: boolean; detail: string } {
+  const rows = sqlite.prepare("PRAGMA quick_check").all() as Array<{ quick_check: string }>;
+  const detail = rows.map((row) => row.quick_check).join(", ") || "unknown";
+  return { healthy: detail === "ok", detail };
+}
+
+function exportBackupData(sqlite: DatabaseSync): PortableData {
+  const rowsOf = (table: string) => sqlite.prepare(`SELECT * FROM ${table}`).all() as Array<Record<string, unknown>>;
+
+  const watchlist = rowsOf("watchlist_items").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id ?? "default"),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
+    year: row.year === null || row.year === undefined ? null : Number(row.year),
+    rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+  const seenMovies = rowsOf("seen_movies").map((row) => ({
+    profileId: String(row.profile_id ?? "default"),
+    movieId: Number(row.movie_id),
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
+    watchedAt: String(row.watched_at),
+  }));
+  const episodeProgress = rowsOf("episode_progress").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id ?? "default"),
+    seriesId: Number(row.series_id),
+    episodeId: Number(row.episode_id),
+    seasonNumber: Number(row.season_number),
+    episodeNumber: Number(row.episode_number),
+    watched: Boolean(row.watched),
+    watchedAt: row.watched_at ? String(row.watched_at) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+  const trackedSeries = rowsOf("tracked_series").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id ?? "default"),
+    seriesId: Number(row.series_id),
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
+    totalEpisodes: Number(row.total_episodes),
+    watchedEpisodes: 0,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+  const history = rowsOf("activity_log").map((row) => ({
+    id: String(row.uuid),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    action: String(row.action) as never,
+    timestamp: String(row.timestamp),
+    seasonNumber: row.season_number ? Number(row.season_number) : undefined,
+    episodeNumber: row.episode_number ? Number(row.episode_number) : undefined,
+    episodeTitle: row.episode_title ? String(row.episode_title) : undefined,
+    metadata: row.metadata ? JSON.parse(String(row.metadata)) : undefined,
+  }));
+  const preferences = Object.fromEntries(
+    rowsOf("preferences").map((row) => [String(row.key), JSON.parse(String(row.value))])
+  );
+  const library = rowsOf("library_items").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
+    year: row.year === null || row.year === undefined ? null : Number(row.year),
+    rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
+    genres: JSON.parse(String(row.genres ?? "[]")),
+    status: String(row.status) as never,
+    favourite: Boolean(row.favourite),
+    userRating: row.user_rating === null ? null : Number(row.user_rating),
+    notes: row.notes ? String(row.notes) : null,
+    tags: JSON.parse(String(row.tags ?? "[]")),
+    startedAt: row.started_at ? String(row.started_at) : null,
+    completedAt: row.completed_at ? String(row.completed_at) : null,
+    rewatchCount: Number(row.rewatch_count),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+  const viewingEvents = rowsOf("viewing_events").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    eventType: String(row.event_type) as never,
+    watchedAt: String(row.watched_at),
+    durationMinutes: row.duration_minutes === null ? null : Number(row.duration_minutes),
+    episodeId: row.episode_id === null ? null : Number(row.episode_id),
+    seasonNumber: row.season_number === null ? null : Number(row.season_number),
+    episodeNumber: row.episode_number === null ? null : Number(row.episode_number),
+  }));
+  const profiles = rowsOf("profiles").map((row) => ({
+    id: String(row.uuid),
+    name: String(row.name),
+    avatar: row.avatar ? String(row.avatar) : null,
+    createdAt: String(row.created_at),
+  }));
+  const customLists = rowsOf("custom_lists").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id),
+    name: String(row.name),
+    description: row.description ? String(row.description) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+  const customListItems = rowsOf("custom_list_items").map((row) => ({
+    id: String(row.uuid),
+    listId: String(row.list_id),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    posterPath: row.poster_path ? String(row.poster_path) : null,
+    position: Number(row.position),
+    addedAt: String(row.added_at),
+    updatedAt: String(row.updated_at),
+  }));
+  const availabilitySnapshots = rowsOf("availability_snapshots").map((row) => ({
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    region: String(row.region),
+    providerIds: JSON.parse(String(row.provider_ids ?? "[]")),
+    checkedAt: String(row.checked_at),
+  }));
+  const availabilityAlerts = rowsOf("availability_alerts").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id),
+    mediaId: Number(row.media_id),
+    mediaType: row.media_type === "movie" ? "movie" : "series",
+    title: String(row.title),
+    region: String(row.region),
+    providerIds: JSON.parse(String(row.provider_ids ?? "[]")),
+    enabled: Boolean(row.enabled),
+    createdAt: String(row.created_at),
+  }));
+
+  return {
+    watchlist,
+    seenMovies,
+    episodeProgress,
+    trackedSeries,
+    history,
+    preferences,
+    library,
+    viewingEvents,
+    profiles,
+    customLists,
+    customListItems,
+    availabilitySnapshots,
+    availabilityAlerts,
+  } as PortableData;
+}
+
+function importBackupData(sqlite: DatabaseSync, data: PortableData): void {
+  for (const table of [
+    "availability_alerts",
+    "availability_snapshots",
+    "custom_list_items",
+    "custom_lists",
+    "viewing_events",
+    "library_items",
+    "activity_log",
+    "episode_progress",
+    "tracked_series",
+    "seen_movies",
+    "watchlist_items",
+    "preferences",
+    "profiles",
+  ]) {
+    sqlite.exec(`DELETE FROM ${table}`);
+  }
+
+  for (const item of data.profiles) {
+    sqlite
+      .prepare(
+        "INSERT INTO profiles (uuid, name, avatar, created_at, updated_at) VALUES ($uuid,$name,$avatar,$createdAt,$createdAt)"
+      )
+      .run({
+        $uuid: item.id,
+        $name: item.name,
+        $avatar: item.avatar ?? null,
+        $createdAt: item.createdAt ?? new Date().toISOString(),
+      } as Record<string, SQLInputValue>);
+  }
+  const now = new Date().toISOString();
+  for (const [key, value] of Object.entries(data.preferences)) {
+    sqlite
+      .prepare("INSERT INTO preferences (key, value, updated_at) VALUES ($key,$value,$updatedAt)")
+      .run({ $key: key, $value: JSON.stringify(value), $updatedAt: now } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.watchlist) {
+    sqlite
+      .prepare(
+        `INSERT INTO watchlist_items
+          (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,created_at,updated_at)
+         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$posterPath,$backdropPath,$year,$rating,$createdAt,$createdAt)`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $profileId: item.profileId ?? "default",
+        $mediaId: item.mediaId,
+        $mediaType: item.mediaType,
+        $title: item.title,
+        $posterPath: item.posterPath ?? null,
+        $backdropPath: item.backdropPath ?? null,
+        $year: item.year ?? null,
+        $rating: item.rating ?? null,
+        $createdAt: item.createdAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.seenMovies) {
+    sqlite
+      .prepare(
+        `INSERT INTO seen_movies (uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at)
+         VALUES ($uuid,$profileId,$movieId,$title,$posterPath,$backdropPath,$watchedAt,$watchedAt,$watchedAt)`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $profileId: item.profileId ?? "default",
+        $movieId: item.movieId,
+        $title: item.title,
+        $posterPath: item.posterPath ?? null,
+        $backdropPath: item.backdropPath ?? null,
+        $watchedAt: item.watchedAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.episodeProgress) {
+    const timestamp = item.watchedAt ?? now;
+    sqlite
+      .prepare(
+        `INSERT INTO episode_progress
+          (uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at)
+         VALUES ($uuid,$profileId,$seriesId,$episodeId,$seasonNumber,$episodeNumber,$watched,$watchedAt,$timestamp,$timestamp)`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $profileId: item.profileId ?? "default",
+        $seriesId: item.seriesId,
+        $episodeId: item.episodeId,
+        $seasonNumber: item.seasonNumber,
+        $episodeNumber: item.episodeNumber,
+        $watched: item.watched ? 1 : 0,
+        $watchedAt: item.watchedAt ?? null,
+        $timestamp: timestamp,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.trackedSeries) {
+    sqlite
+      .prepare(
+        `INSERT INTO tracked_series
+          (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at)
+         VALUES ($uuid,$profileId,$seriesId,$title,$posterPath,$backdropPath,$totalEpisodes,$updatedAt,$updatedAt)`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $profileId: item.profileId ?? "default",
+        $seriesId: item.seriesId,
+        $title: item.title,
+        $posterPath: item.posterPath ?? null,
+        $backdropPath: item.backdropPath ?? null,
+        $totalEpisodes: item.totalEpisodes,
+        $updatedAt: item.updatedAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.history) {
+    const historyProfileId = String(item.metadata?.profileId ?? "default");
+    sqlite
+      .prepare(
+        `INSERT INTO activity_log
+          (uuid,profile_id,media_id,media_type,title,action,season_number,episode_number,episode_title,metadata,timestamp,created_at,updated_at)
+         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$action,$seasonNumber,$episodeNumber,$episodeTitle,$metadata,$timestamp,$timestamp,$timestamp)`
+      )
+      .run({
+        $uuid: item.id,
+        $profileId: historyProfileId,
+        $mediaId: item.mediaId,
+        $mediaType: item.mediaType,
+        $title: item.title,
+        $action: item.action,
+        $seasonNumber: item.seasonNumber ?? null,
+        $episodeNumber: item.episodeNumber ?? null,
+        $episodeTitle: item.episodeTitle ?? null,
+        $metadata: item.metadata ? JSON.stringify(item.metadata) : null,
+        $timestamp: item.timestamp,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.library) {
+    sqlite
+      .prepare(
+        `INSERT INTO library_items
+          (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,genres,status,favourite,user_rating,notes,tags,started_at,completed_at,rewatch_count,created_at,updated_at)
+         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$posterPath,$backdropPath,$year,$rating,$genres,$status,$favourite,$userRating,$notes,$tags,$startedAt,$completedAt,$rewatchCount,$createdAt,$updatedAt)`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $profileId: item.profileId,
+        $mediaId: item.mediaId,
+        $mediaType: item.mediaType,
+        $title: item.title,
+        $posterPath: item.posterPath ?? null,
+        $backdropPath: item.backdropPath ?? null,
+        $year: item.year ?? null,
+        $rating: item.rating ?? null,
+        $genres: JSON.stringify(item.genres),
+        $status: item.status,
+        $favourite: item.favourite ? 1 : 0,
+        $userRating: item.userRating ?? null,
+        $notes: item.notes ?? null,
+        $tags: JSON.stringify(item.tags),
+        $startedAt: item.startedAt ?? null,
+        $completedAt: item.completedAt ?? null,
+        $rewatchCount: item.rewatchCount,
+        $createdAt: item.createdAt,
+        $updatedAt: item.updatedAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.viewingEvents) {
+    sqlite
+      .prepare(
+        `INSERT INTO viewing_events
+          (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at)
+         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$eventType,$watchedAt,$durationMinutes,$episodeId,$seasonNumber,$episodeNumber,$watchedAt)`
+      )
+      .run({
+        $uuid: item.id,
+        $profileId: item.profileId,
+        $mediaId: item.mediaId,
+        $mediaType: item.mediaType,
+        $title: item.title,
+        $eventType: item.eventType,
+        $watchedAt: item.watchedAt,
+        $durationMinutes: item.durationMinutes ?? null,
+        $episodeId: item.episodeId ?? null,
+        $seasonNumber: item.seasonNumber ?? null,
+        $episodeNumber: item.episodeNumber ?? null,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.customLists) {
+    sqlite
+      .prepare(
+        "INSERT INTO custom_lists (uuid, profile_id, name, description, created_at, updated_at) VALUES ($uuid,$profileId,$name,$description,$createdAt,$updatedAt)"
+      )
+      .run({
+        $uuid: item.id,
+        $profileId: item.profileId,
+        $name: item.name,
+        $description: item.description ?? null,
+        $createdAt: item.createdAt,
+        $updatedAt: item.updatedAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.customListItems) {
+    sqlite
+      .prepare(
+        `INSERT INTO custom_list_items (uuid,list_id,media_id,media_type,title,poster_path,position,added_at,updated_at)
+         VALUES ($uuid,$listId,$mediaId,$mediaType,$title,$posterPath,$position,$addedAt,$addedAt)`
+      )
+      .run({
+        $uuid: crypto.randomUUID(),
+        $listId: item.listId,
+        $mediaId: item.mediaId,
+        $mediaType: item.mediaType,
+        $title: item.title,
+        $posterPath: item.posterPath ?? null,
+        $position: item.position,
+        $addedAt: item.addedAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.availabilitySnapshots) {
+    sqlite
+      .prepare(
+        "INSERT INTO availability_snapshots (media_id, media_type, region, provider_ids, checked_at) VALUES ($mediaId,$mediaType,$region,$providerIds,$checkedAt)"
+      )
+      .run({
+        $mediaId: item.mediaId,
+        $mediaType: item.mediaType,
+        $region: item.region,
+        $providerIds: JSON.stringify(item.providerIds),
+        $checkedAt: item.checkedAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.availabilityAlerts) {
+    sqlite
+      .prepare(
+        `INSERT INTO availability_alerts
+          (uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at)
+         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$region,$providerIds,$enabled,$createdAt,$createdAt)`
+      )
+      .run({
+        $uuid: item.id,
+        $profileId: item.profileId,
+        $mediaId: item.mediaId,
+        $mediaType: item.mediaType,
+        $title: item.title,
+        $region: item.region,
+        $providerIds: JSON.stringify(item.providerIds),
+        $enabled: item.enabled ? 1 : 0,
+        $createdAt: item.createdAt,
+      } as Record<string, SQLInputValue>);
+  }
+}
+
 export function createFakeInvoke(sqlite: DatabaseSync) {
   return async (command: string, args: Record<string, unknown> = {}): Promise<unknown> => {
     // Route through the same `getDatabase()` singleton the repository under
@@ -661,6 +1076,13 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
       case "list_viewing_events":
         return listViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "quick_check":
+        return quickCheck(sqlite);
+      case "export_backup_data":
+        return exportBackupData(sqlite);
+      case "import_backup_data":
+        importBackupData(sqlite, args.data as PortableData);
+        return undefined;
       default:
         throw new Error(`fake invoke(): unhandled command "${command}"`);
     }
