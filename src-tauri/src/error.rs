@@ -34,9 +34,6 @@ impl ApiError {
         Self::with_status(message, 400)
     }
 
-    // Unused until a later migrated domain needs a 404 (e.g. library/profile
-    // lookups) — kept alongside the other constructors as the shared API.
-    #[allow(dead_code)]
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::with_status(message, 404)
     }

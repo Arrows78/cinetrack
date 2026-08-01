@@ -1,117 +1,144 @@
-import { describe, expect, it, vi } from "vitest";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
-import { makeMedia } from "@/shared/test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { UserPreferences, UserProfile } from "@/types/media";
 
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) => invokeMock(command, args),
+}));
 
+const profile = (overrides: Partial<UserProfile> = {}): UserProfile => ({
+  id: "profile-id",
+  name: "Alex",
+  avatar: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  supabaseUserId: null,
+  ...overrides,
+});
+
+// The default-profile seed, supabase auto-claim logic and cascading delete
+// now live in Rust and are exercised there (see
+// src-tauri/src/commands/profiles.rs's own tests) — this only verifies the
+// repository wraps invoke() with the right command name/args, plus the one
+// bit of orchestration still in TS: remove() resetting activeProfileId.
 describe("profileRepository", () => {
-  const sqlite = useTestSqlite();
+  beforeEach(() => {
+    invokeMock.mockReset();
+  });
 
-  it("always includes the default profile", async () => {
+  it("list() invokes list_profiles", async () => {
+    invokeMock.mockResolvedValueOnce([profile()]);
     const { profileRepository } = await import("../profile-repository");
 
-    const profiles = await profileRepository.list();
-    expect(profiles.some((profile) => profile.id === "default")).toBe(true);
+    await expect(profileRepository.list()).resolves.toEqual([profile()]);
+    expect(invokeMock).toHaveBeenCalledWith("list_profiles", undefined);
   });
 
-  it("creates additional profiles", async () => {
+  it("create() invokes create_profile with name/avatar/supabaseUserId, defaulting to null", async () => {
+    invokeMock.mockResolvedValueOnce(profile());
     const { profileRepository } = await import("../profile-repository");
 
-    const created = await profileRepository.create("Alex");
-    const profiles = await profileRepository.list();
-    expect(profiles.some((profile) => profile.id === created.id && profile.name === "Alex")).toBe(true);
+    await profileRepository.create("Alex");
+    expect(invokeMock).toHaveBeenCalledWith("create_profile", { name: "Alex", avatar: null, supabaseUserId: null });
   });
 
-  it("refuses to remove the default profile", async () => {
+  it("createForSupabaseUser() delegates to create_profile with the supabaseUserId set", async () => {
+    invokeMock.mockResolvedValueOnce(profile({ supabaseUserId: "user-1" }));
     const { profileRepository } = await import("../profile-repository");
-    await expect(profileRepository.remove("default")).rejects.toThrow();
+
+    await profileRepository.createForSupabaseUser("Camille", "user-1");
+    expect(invokeMock).toHaveBeenCalledWith("create_profile", {
+      name: "Camille",
+      avatar: null,
+      supabaseUserId: "user-1",
+    });
   });
 
-  it("removing a profile clears its scoped data and resets the active profile if needed", async () => {
+  it("findBySupabaseUserId() invokes find_profile_by_supabase_user_id", async () => {
+    invokeMock.mockResolvedValueOnce(null);
     const { profileRepository } = await import("../profile-repository");
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
-    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
 
-    const created = await profileRepository.create("Alex");
-    await preferencesRepository.updatePreference("activeProfileId", created.id);
-    await watchlistRepository.upsert({
-      id: "test-id",
-      mediaId: 1,
-      mediaType: "movie",
-      title: makeMedia().title,
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
-
-    await profileRepository.remove(created.id);
-
-    const profiles = await profileRepository.list();
-    expect(profiles.some((profile) => profile.id === created.id)).toBe(false);
-    expect((await preferencesRepository.getPreferences()).activeProfileId).toBe("default");
+    await profileRepository.findBySupabaseUserId("user-1");
+    expect(invokeMock).toHaveBeenCalledWith("find_profile_by_supabase_user_id", { supabaseUserId: "user-1" });
   });
 
-  describe("supabase account linking", () => {
-    it("auto-claims the unclaimed 'default' profile for the first account that signs in", async () => {
-      const { profileRepository } = await import("../profile-repository");
+  it("linkToSupabaseUser() invokes link_profile_to_supabase_user", async () => {
+    invokeMock.mockResolvedValueOnce(profile());
+    const { profileRepository } = await import("../profile-repository");
 
-      const resolved = await profileRepository.resolveForSupabaseUser("user-1");
-
-      expect(resolved).toMatchObject({ id: "default", supabaseUserId: "user-1" });
-      expect(await profileRepository.findBySupabaseUserId("user-1")).toMatchObject({ id: "default" });
-    });
-
-    it("returns the already-linked profile on subsequent resolutions, without re-claiming anything", async () => {
-      const { profileRepository } = await import("../profile-repository");
-
-      await profileRepository.resolveForSupabaseUser("user-1");
-      const second = await profileRepository.resolveForSupabaseUser("user-1");
-
-      expect(second).toMatchObject({ id: "default", supabaseUserId: "user-1" });
-    });
-
-    it("returns null for a second account once 'default' is already claimed", async () => {
-      const { profileRepository } = await import("../profile-repository");
-
-      await profileRepository.resolveForSupabaseUser("user-1");
-
-      expect(await profileRepository.resolveForSupabaseUser("user-2")).toBeNull();
-    });
-
-    it("createForSupabaseUser links a brand new profile to that account", async () => {
-      const { profileRepository } = await import("../profile-repository");
-
-      await profileRepository.resolveForSupabaseUser("user-1");
-
-      const created = await profileRepository.createForSupabaseUser("Camille", "user-2");
-
-      expect(created.supabaseUserId).toBe("user-2");
-      expect(await profileRepository.resolveForSupabaseUser("user-2")).toMatchObject({ id: created.id });
+    await profileRepository.linkToSupabaseUser("default", "user-1");
+    expect(invokeMock).toHaveBeenCalledWith("link_profile_to_supabase_user", {
+      profileId: "default",
+      supabaseUserId: "user-1",
     });
   });
 
-  // Exercises the UNIQUE index on supabase_user_id directly against real
-  // SQLite — the only thing that actually protects linkToSupabaseUser from
-  // double-assigning one account to two profiles.
-  it("the unique index rejects linking a second profile to an already-claimed account", async () => {
+  it("resolveForSupabaseUser() invokes resolve_profile_for_supabase_user", async () => {
+    invokeMock.mockResolvedValueOnce(null);
     const { profileRepository } = await import("../profile-repository");
 
     await profileRepository.resolveForSupabaseUser("user-1");
-    const second = await profileRepository.createForSupabaseUser("Camille", "user-2");
-
-    await expect(profileRepository.linkToSupabaseUser(second.id, "user-1")).rejects.toThrow(/UNIQUE constraint failed/);
+    expect(invokeMock).toHaveBeenCalledWith("resolve_profile_for_supabase_user", { supabaseUserId: "user-1" });
   });
 
-  it("resolves and claims 'default' for the first real INSERT/UPDATE round trip", async () => {
+  it("remove() resets activeProfileId to default when the removed profile was active", async () => {
+    const preferences: UserPreferences = {
+      theme: "dark",
+      accentColor: "violet",
+      language: "en",
+      region: "FR",
+      defaultSearchType: "all",
+      defaultWatchlistFilter: "all",
+      reduceMotion: false,
+      compactMode: false,
+      sidebarCollapsed: false,
+      spoilerProtection: true,
+      notificationsEnabled: false,
+      notifyHoursBefore: 24,
+      preferredProviderIds: [],
+      activeProfileId: "removed-id",
+      userProfile: { id: "default", name: null },
+    };
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "remove_profile") return undefined;
+      if (command === "get_preferences") return preferences;
+      if (command === "update_preference") return { ...preferences, activeProfileId: "default" };
+      throw new Error(`Unhandled command: ${command}`);
+    });
     const { profileRepository } = await import("../profile-repository");
 
-    const resolved = await profileRepository.resolveForSupabaseUser("user-1");
+    await profileRepository.remove("removed-id");
 
-    expect(resolved).toMatchObject({ id: "default", supabaseUserId: "user-1" });
-    const row = sqlite.current.prepare("SELECT supabase_user_id FROM profiles WHERE uuid = 'default'").all() as Array<{
-      supabase_user_id: string;
-    }>;
-    expect(row[0].supabase_user_id).toBe("user-1");
+    expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id" });
+    expect(invokeMock).toHaveBeenCalledWith("update_preference", { key: "activeProfileId", value: "default" });
+  });
+
+  it("remove() leaves activeProfileId untouched when the removed profile wasn't active", async () => {
+    const preferences: UserPreferences = {
+      theme: "dark",
+      accentColor: "violet",
+      language: "en",
+      region: "FR",
+      defaultSearchType: "all",
+      defaultWatchlistFilter: "all",
+      reduceMotion: false,
+      compactMode: false,
+      sidebarCollapsed: false,
+      spoilerProtection: true,
+      notificationsEnabled: false,
+      notifyHoursBefore: 24,
+      preferredProviderIds: [],
+      activeProfileId: "default",
+      userProfile: { id: "default", name: null },
+    };
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "remove_profile") return undefined;
+      if (command === "get_preferences") return preferences;
+      throw new Error(`Unhandled command: ${command}`);
+    });
+    const { profileRepository } = await import("../profile-repository");
+
+    await profileRepository.remove("other-id");
+
+    expect(invokeMock).not.toHaveBeenCalledWith("update_preference", expect.anything());
   });
 });

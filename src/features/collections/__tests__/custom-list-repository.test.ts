@@ -1,83 +1,94 @@
-import { describe, expect, it, vi } from "vitest";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMedia } from "@/shared/test-utils";
+import type { CustomList, CustomListItem } from "@/types/media";
 
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) => invokeMock(command, args),
+}));
 
+const list = (overrides: Partial<CustomList> = {}): CustomList => ({
+  id: "list-id",
+  profileId: "default",
+  name: "Ma liste",
+  description: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  ...overrides,
+});
+
+const item = (overrides: Partial<CustomListItem> = {}): CustomListItem => ({
+  id: "item-id",
+  listId: "list-id",
+  mediaId: 1,
+  mediaType: "movie",
+  title: "Premier",
+  posterPath: null,
+  position: 0,
+  addedAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  ...overrides,
+});
+
+// The name validation, position assignment/dedup and active-profile
+// resolution now live in Rust and are exercised there (see
+// src-tauri/src/commands/custom_lists.rs's own tests) — this only verifies
+// the repository wraps invoke() with the right command name/args.
 describe("customListRepository", () => {
-  const sqlite = useTestSqlite();
-
-  it("creates a list with a trimmed name", async () => {
-    const { customListRepository } = await import("../custom-list-repository");
-
-    const list = await customListRepository.create("  Soirées ciné  ", "Les classiques");
-
-    expect(list.name).toBe("Soirées ciné");
-    expect(list.description).toBe("Les classiques");
-    expect(await customListRepository.list()).toHaveLength(1);
+  beforeEach(() => {
+    invokeMock.mockReset();
   });
 
-  it("rejects a whitespace-only name", async () => {
+  it("list() invokes list_custom_lists", async () => {
+    invokeMock.mockResolvedValueOnce([list()]);
     const { customListRepository } = await import("../custom-list-repository");
 
-    await expect(customListRepository.create("   ")).rejects.toThrow("Le nom de la liste est requis.");
-    expect(await customListRepository.list()).toHaveLength(0);
+    await expect(customListRepository.list()).resolves.toEqual([list()]);
+    expect(invokeMock).toHaveBeenCalledWith("list_custom_lists", undefined);
   });
 
-  it("scopes lists to the active profile", async () => {
+  it("create() invokes create_custom_list with name/description, defaulting description to null", async () => {
+    invokeMock.mockResolvedValueOnce(list());
     const { customListRepository } = await import("../custom-list-repository");
-    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
 
     await customListRepository.create("Ma liste");
-
-    sqlite.current.exec(
-      `INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('guest', 'Guest', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
-    );
-    await preferencesRepository.updatePreference("activeProfileId", "guest");
-    expect(await customListRepository.list()).toHaveLength(0);
+    expect(invokeMock).toHaveBeenCalledWith("create_custom_list", { name: "Ma liste", description: null });
   });
 
-  it("adds items with increasing positions and deduplicates re-adds", async () => {
+  it("remove() invokes remove_custom_list with the listId", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
     const { customListRepository } = await import("../custom-list-repository");
 
-    const list = await customListRepository.create("Ma liste");
-
-    await customListRepository.add(list.id, makeMedia({ id: 1, title: "Premier" }));
-    await customListRepository.add(list.id, makeMedia({ id: 2, title: "Deuxième" }));
-    await customListRepository.add(list.id, makeMedia({ id: 1, title: "Premier" }));
-
-    const items = await customListRepository.items(list.id);
-    expect(items).toHaveLength(2);
-    expect(items.map((item) => item.mediaId)).toEqual([2, 1]);
+    await customListRepository.remove("list-id");
+    expect(invokeMock).toHaveBeenCalledWith("remove_custom_list", { listId: "list-id" });
   });
 
-  it("removes a single item without touching the rest", async () => {
+  it("items() invokes list_custom_list_items with the listId", async () => {
+    invokeMock.mockResolvedValueOnce([item()]);
     const { customListRepository } = await import("../custom-list-repository");
 
-    const list = await customListRepository.create("Ma liste");
-    await customListRepository.add(list.id, makeMedia({ id: 1 }));
-    await customListRepository.add(list.id, makeMedia({ id: 2 }));
-
-    await customListRepository.removeItem(list.id, 1, "movie");
-
-    const items = await customListRepository.items(list.id);
-    expect(items.map((item) => item.mediaId)).toEqual([2]);
+    await expect(customListRepository.items("list-id")).resolves.toEqual([item()]);
+    expect(invokeMock).toHaveBeenCalledWith("list_custom_list_items", { listId: "list-id" });
   });
 
-  it("removes a list along with its items", async () => {
+  it("add() invokes add_custom_list_item with the listId and media", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    const { customListRepository } = await import("../custom-list-repository");
+    const media = makeMedia({ id: 1, title: "Premier" });
+
+    await customListRepository.add("list-id", media);
+    expect(invokeMock).toHaveBeenCalledWith("add_custom_list_item", { listId: "list-id", media });
+  });
+
+  it("removeItem() invokes remove_custom_list_item with listId/mediaId/mediaType", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
     const { customListRepository } = await import("../custom-list-repository");
 
-    const kept = await customListRepository.create("Gardée");
-    const removed = await customListRepository.create("Supprimée");
-    await customListRepository.add(kept.id, makeMedia({ id: 1 }));
-    await customListRepository.add(removed.id, makeMedia({ id: 2 }));
-
-    await customListRepository.remove(removed.id);
-
-    expect((await customListRepository.list()).map((list) => list.id)).toEqual([kept.id]);
-    expect(await customListRepository.items(removed.id)).toHaveLength(0);
-    expect(await customListRepository.items(kept.id)).toHaveLength(1);
+    await customListRepository.removeItem("list-id", 1, "movie");
+    expect(invokeMock).toHaveBeenCalledWith("remove_custom_list_item", {
+      listId: "list-id",
+      mediaId: 1,
+      mediaType: "movie",
+    });
   });
 });
