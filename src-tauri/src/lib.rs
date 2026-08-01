@@ -9,13 +9,13 @@ use tauri::{Emitter, Manager};
 use commands::{
     add_custom_list_item, add_history_item, apply_episodes, create_custom_list, create_profile,
     find_profile_by_supabase_user_id, get_availability_alert, get_availability_snapshot, get_episode_progress,
-    get_library_item, get_preferences, has_watchlist_item, invalidate_preferences_cache, is_movie_seen,
-    link_profile_to_supabase_user, list_availability_alerts, list_custom_list_items, list_custom_lists, list_history,
-    list_library, list_profiles, list_tracked_series, list_viewing_events, list_watchlist, remove_availability_alert,
-    remove_custom_list, remove_custom_list_item, remove_library_item, remove_profile, remove_watchlist_item,
-    resolve_profile_for_supabase_user, save_availability_snapshot, tmdb_request, toggle_availability_alert,
-    toggle_movie_seen, update_preference, updater_is_configured, upsert_library_item, upsert_watchlist_item,
-    PreferencesCache,
+    get_library_item, get_preferences, has_watchlist_item, import_movie_seen, import_series_progress,
+    invalidate_preferences_cache, is_movie_seen, link_profile_to_supabase_user, list_availability_alerts,
+    list_custom_list_items, list_custom_lists, list_history, list_library, list_profiles, list_tracked_series,
+    list_viewing_events, list_watchlist, remove_availability_alert, remove_custom_list, remove_custom_list_item,
+    remove_library_item, remove_profile, remove_watchlist_item, resolve_profile_for_supabase_user,
+    save_availability_snapshot, tmdb_request, toggle_availability_alert, toggle_movie_seen, update_preference,
+    updater_is_configured, upsert_library_item, upsert_watchlist_item, PreferencesCache,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -87,6 +87,8 @@ pub fn run() {
             list_custom_list_items,
             add_custom_list_item,
             remove_custom_list_item,
+            import_series_progress,
+            import_movie_seen,
         ])
         .setup(|app| {
             // Same "sqlite:app.db" file tauri-plugin-sql already opens

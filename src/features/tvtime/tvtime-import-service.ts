@@ -1,5 +1,4 @@
 import { mediaRepository } from "@/features/media/media-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
 import { newUuid } from "@/shared/lib/id";
 import type { MediaSummary, Series } from "@/types/media";
@@ -73,7 +72,6 @@ async function importOneSeries(
   seriesName: string,
   episodes: TvTimeEpisode[],
   data: TvTimeExport,
-  profile: string,
   summary: TvTimeImportSummary
 ): Promise<void> {
   const series = await resolveSeries(seriesName, data.tvdbIdsByName);
@@ -118,7 +116,7 @@ async function importOneSeries(
     summary.unmatched.push(`${seriesName} (${unresolved} ép.)`);
   }
 
-  const inserted = await tvTimeImportRepository.importSeriesProgress(profile, series, importable);
+  const inserted = await tvTimeImportRepository.importSeriesProgress(series, importable);
   if (inserted > 0) {
     summary.seriesImported += 1;
     summary.episodesImported += inserted;
@@ -133,7 +131,6 @@ export async function importTvTimeExport(
   for (const content of fileContents) parseTvTimeFile(content, accumulator);
   const data = normalizeExport(accumulator);
 
-  const profile = (await preferencesRepository.getPreferences()).activeProfileId;
   const summary: TvTimeImportSummary = {
     seriesImported: 0,
     episodesImported: 0,
@@ -154,7 +151,7 @@ export async function importTvTimeExport(
   await mapWithConcurrency(seriesEntries, async ([seriesName, episodes]) => {
     onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
     try {
-      await importOneSeries(seriesName, episodes, data, profile, summary);
+      await importOneSeries(seriesName, episodes, data, summary);
     } catch {
       summary.unmatched.push(seriesName);
     }
@@ -171,7 +168,7 @@ export async function importTvTimeExport(
       if (!match) {
         summary.unmatched.push(movie.title);
       } else {
-        const inserted = await tvTimeImportRepository.importMovieSeen(profile, {
+        const inserted = await tvTimeImportRepository.importMovieSeen({
           movieId: match.id,
           title: match.title,
           posterPath: match.posterPath,

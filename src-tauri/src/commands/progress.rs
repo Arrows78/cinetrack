@@ -27,6 +27,13 @@ pub struct EpisodeInput {
     pub season_number: i64,
     pub episode_number: i64,
     pub runtime: Option<i64>,
+    /// Per-episode override for `apply_episodes_impl`'s batch `watched_at`,
+    /// used only by the tvtime importer to preserve each episode's original
+    /// watch date instead of stamping every imported episode with the same
+    /// timestamp. Interactive callers (toggle/season/series) never set this,
+    /// so they keep sharing the single batch timestamp as before.
+    #[serde(default)]
+    pub watched_at: Option<String>,
 }
 
 /// Only the fields `apply_episodes` reads off the frontend's `SeriesInput`
@@ -263,6 +270,7 @@ pub(crate) async fn apply_episodes_impl(
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     for episode in &changed_episodes {
+        let episode_watched_at = episode.watched_at.as_deref().unwrap_or(watched_at);
         if watched {
             sqlx::query(
                 "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at)
@@ -278,7 +286,7 @@ pub(crate) async fn apply_episodes_impl(
             .bind(episode.id)
             .bind(episode.season_number)
             .bind(episode.episode_number)
-            .bind(watched_at)
+            .bind(episode_watched_at)
             .execute(&mut *tx)
             .await
             .map_err(ApiError::from)?;
@@ -301,7 +309,7 @@ pub(crate) async fn apply_episodes_impl(
         .bind(series.id)
         .bind(&series.title)
         .bind(if watched { "watched" } else { "unwatched" })
-        .bind(watched_at)
+        .bind(episode_watched_at)
         .bind(episode.runtime.or(series.runtime))
         .bind(episode.id)
         .bind(episode.season_number)
@@ -445,7 +453,7 @@ mod tests {
     }
 
     fn episode(id: i64, episode_number: i64) -> EpisodeInput {
-        EpisodeInput { id, season_number: 1, episode_number, runtime: None }
+        EpisodeInput { id, season_number: 1, episode_number, runtime: None, watched_at: None }
     }
 
     #[tokio::test]

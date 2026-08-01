@@ -7,6 +7,7 @@ mod profiles;
 mod progress;
 mod stats;
 mod tmdb;
+mod tvtime;
 mod updater;
 mod watchlist;
 
@@ -28,5 +29,6 @@ pub use profiles::{
 pub use progress::{apply_episodes, get_episode_progress, is_movie_seen, list_tracked_series, toggle_movie_seen};
 pub use stats::list_viewing_events;
 pub use tmdb::tmdb_request;
+pub use tvtime::{import_movie_seen, import_series_progress};
 pub use updater::{has_updater_config, updater_is_configured};
 pub use watchlist::{has_watchlist_item, list_watchlist, remove_watchlist_item, upsert_watchlist_item};
