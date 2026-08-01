@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getDatabase } from "@/db/client";
+import { invokeCommand } from "@/shared/lib/invoke";
 import type { UserPreferences } from "@/types/media";
 
 export const preferencesSchema = z.object({
@@ -31,53 +31,26 @@ export const defaultPreferences: UserPreferences = preferencesSchema.parse({
   userProfile: {},
 });
 
-// Preferences are read constantly (every TMDB request and most repository
-// calls resolve the active profile/language/region through this module), but
-// this app is a single window/instance, so an in-memory cache invalidated on
-// every write is always fresh and avoids a SQLite round trip per call.
-let cache: UserPreferences | null = null;
-
+// Reading/writing/caching preferences now happens in Rust (see
+// src-tauri/src/commands/preferences.rs) — this repository is a thin
+// invoke() wrapper. `preferencesSchema`/`defaultPreferences` above stay here
+// because backup-schema.ts still validates restored backups against them.
 export const preferencesRepository = {
   async getPreferences(): Promise<UserPreferences> {
-    if (cache) return cache;
-
-    const db = await getDatabase();
-    const rows = await db.select<Array<{ key: string; value: string }>>("SELECT key, value FROM preferences");
-    const raw = rows.reduce<Record<string, unknown>>((acc, row) => {
-      try {
-        acc[row.key] = JSON.parse(row.value);
-      } catch {
-        // Ignore invalid legacy values and fall back to defaults.
-      }
-      return acc;
-    }, {});
-
-    cache = preferencesSchema.parse({ ...defaultPreferences, ...raw });
-    return cache;
+    return invokeCommand<UserPreferences>("get_preferences");
   },
 
   async updatePreference<Key extends keyof UserPreferences>(
     key: Key,
     value: UserPreferences[Key]
   ): Promise<UserPreferences> {
-    const current = await this.getPreferences();
-    const parsed = preferencesSchema.parse({ ...current, [key]: value })[key];
-    const db = await getDatabase();
-
-    await db.execute(
-      `INSERT INTO preferences (key, value, updated_at) VALUES ($1, $2, $3)
-       ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-      [key, JSON.stringify(parsed), new Date().toISOString()]
-    );
-
-    cache = { ...current, [key]: parsed };
-    return cache;
+    return invokeCommand<UserPreferences>("update_preference", { key, value });
   },
 
   // Callers that write preferences storage directly (bulk backup restore)
   // must call this so the next getPreferences() re-reads instead of serving
   // a now-stale cached value.
-  invalidate(): void {
-    cache = null;
+  async invalidate(): Promise<void> {
+    await invokeCommand<void>("invalidate_preferences_cache");
   },
 };

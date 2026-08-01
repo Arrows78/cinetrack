@@ -57,6 +57,6 @@ export const portableData = {
     const { data } = parseBackup(backup);
     const db = await getDatabase();
     await importStoreIntoDatabase(db, data);
-    preferencesRepository.invalidate();
+    await preferencesRepository.invalidate();
   },
 };

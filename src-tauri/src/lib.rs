@@ -1,9 +1,15 @@
 mod commands;
+mod database;
+mod error;
+mod models;
 mod tray;
 
 use tauri::{Emitter, Manager};
 
-use commands::{tmdb_request, updater_is_configured};
+use commands::{
+    add_history_item, get_preferences, invalidate_preferences_cache, list_history, tmdb_request,
+    update_preference, updater_is_configured, PreferencesCache,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -36,9 +42,23 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             tmdb_request,
-            updater_is_configured
+            updater_is_configured,
+            get_preferences,
+            update_preference,
+            invalidate_preferences_cache,
+            list_history,
+            add_history_item,
         ])
         .setup(|app| {
+            // Same "sqlite:app.db" file tauri-plugin-sql already opens
+            // (resolved against the app config dir) — both drivers must
+            // agree on the file while domains are migrated one at a time.
+            let handle = app.handle().clone();
+            let pool = tauri::async_runtime::block_on(async move { database::init_pool(&handle).await })
+                .map_err(|error| Box::new(error) as Box<dyn std::error::Error>)?;
+            app.manage(pool);
+            app.manage(PreferencesCache::default());
+
             let salt_path = app.path().app_local_data_dir()?.join("stronghold-salt.txt");
 
             app.handle()
