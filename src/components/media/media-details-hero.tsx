@@ -82,7 +82,7 @@ export function MediaDetailsHero({
             </div>
 
             {/* Overview */}
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
+            <p className="mt-4 max-w-2xl font-serif text-base italic leading-7 text-muted-foreground">
               {media.overview || t("media.noOverview")}
             </p>
 

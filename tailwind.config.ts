@@ -8,6 +8,12 @@ const config: Config = {
       fontFamily: {
         display: ["Syne", "Playfair Display", "Georgia", "serif"],
         sans: ["DM Sans", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Playfair Display was only ever a fallback inside `display` (Syne
+        // always loads, so it never actually rendered). Its own family, for
+        // the one place an editorial serif earns its keep: synopsis text
+        // (see movie/series detail pages) — a quiet nod to the "programme
+        // note" register of a film synopsis, not a display face.
+        serif: ["Playfair Display", "Georgia", "serif"],
       },
       // Semantic type roles, additive to Tailwind's default text-xs..text-9xl
       // scale (still available and still what every existing component

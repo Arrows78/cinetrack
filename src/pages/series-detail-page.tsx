@@ -77,7 +77,7 @@ export function SeriesDetailPage() {
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
-          <p className="text-sm leading-7 text-muted-foreground md:text-base">{series.overview}</p>
+          <p className="font-serif text-base italic leading-7 text-muted-foreground md:text-lg">{series.overview}</p>
         </Panel>
         <div className="space-y-4">
           <Panel tone="subtle">
