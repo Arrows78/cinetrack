@@ -1,3 +1,10 @@
+// @vitest-environment node
+//
+// Pure math + filesystem assertions, no DOM needed. Required: under jsdom,
+// import.meta.url resolves against jsdom's configured `location` instead of
+// the real module file, so readFileSync(new URL(..., import.meta.url))
+// throws "The URL must be of scheme file" (see catalog-data.test.ts for the
+// same issue with the same fix).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { COLOR_PRESETS } from "@/shared/constants/colors";

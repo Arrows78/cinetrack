@@ -34,6 +34,10 @@ describe("DesignSystemPage", () => {
     vi.unstubAllGlobals();
   });
 
+  // This page renders ~50 live components at once (multiple Sheets, Accordions,
+  // motion elements, plus live-contrast ColorSwatch/AccentPresetCard instances) —
+  // consistently under 1s locally, but the default 5000ms budget has been
+  // observed to trip under CI's more limited parallelism/CPU headroom.
   it("renders the complete catalog and supports its interactive filters", () => {
     render(<DesignSystemPage />);
 
@@ -55,5 +59,5 @@ describe("DesignSystemPage", () => {
 
     const currentQuery = screen.getByText("Arrival");
     expect(currentQuery.parentElement).toHaveTextContent("Current example: Arrival · series");
-  });
+  }, 20000);
 });

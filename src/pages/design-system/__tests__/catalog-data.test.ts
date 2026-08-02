@@ -1,3 +1,12 @@
+// @vitest-environment node
+//
+// Pure filesystem/data assertions, no DOM needed. Required: under the
+// project's default jsdom environment, import.meta.url resolves against
+// jsdom's configured `location` (see vitest.config.ts's
+// environmentOptions.jsdom.url) instead of the real module file, so
+// fileURLToPath(new URL(..., import.meta.url)) throws "The URL must be of
+// scheme file" — it sees "http://localhost:1420/..." instead of a file:
+// URL. The node environment doesn't have that indirection.
 import { readdirSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
