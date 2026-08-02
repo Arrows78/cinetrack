@@ -1,0 +1,120 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
+import type { Episode, TrackedSeriesItem } from "@/types/media";
+
+const inProgressSeries: TrackedSeriesItem = {
+  id: "t1",
+  seriesId: 1,
+  title: "In Progress",
+  totalEpisodes: 10,
+  watchedEpisodes: 3,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
+
+const finishedSeries: TrackedSeriesItem = {
+  ...inProgressSeries,
+  id: "t2",
+  seriesId: 2,
+  title: "Finished",
+  watchedEpisodes: 10,
+};
+
+const notStartedSeries: TrackedSeriesItem = {
+  ...inProgressSeries,
+  id: "t3",
+  seriesId: 3,
+  title: "Not Started",
+  watchedEpisodes: 0,
+};
+
+const nextEpisode: Episode = {
+  id: 42,
+  seasonNumber: 1,
+  episodeNumber: 4,
+  title: "Next Up",
+  overview: "",
+};
+
+const getSeriesDetailsMock = vi.fn(async () => ({ seasons: [{ seasonNumber: 1 }] }) as never);
+const getSeasonDetailsMock = vi.fn(async () => ({ seasonNumber: 1, episodes: [] }) as never);
+const getEpisodeProgressMock = vi.fn(async () => [] as never);
+const getNextEpisodeMock = vi.fn(() => nextEpisode);
+const toggleEpisodeSeenMock = vi.fn(async () => undefined);
+
+vi.mock("@/features/media/media-repository", () => ({
+  mediaRepository: {
+    getSeriesDetails: getSeriesDetailsMock,
+    getSeasonDetails: getSeasonDetailsMock,
+  },
+}));
+
+vi.mock("@/features/progress/progress-repository", () => ({
+  progressRepository: {
+    getEpisodeProgress: getEpisodeProgressMock,
+    getNextEpisode: getNextEpisodeMock,
+    toggleEpisodeSeen: toggleEpisodeSeenMock,
+  },
+}));
+
+function createWrapper() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return function Wrapper({ children }: PropsWithChildren) {
+    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  };
+}
+
+beforeEach(() => {
+  getSeriesDetailsMock.mockClear();
+  getSeasonDetailsMock.mockClear();
+  getEpisodeProgressMock.mockClear();
+  getNextEpisodeMock.mockClear();
+  toggleEpisodeSeenMock.mockClear();
+});
+
+describe("useWatchNext", () => {
+  it("only resolves entries for series that are started but not finished", async () => {
+    const { useWatchNext } = await import("../use-watch-next");
+    const { result } = renderHook(
+      () => useWatchNext([inProgressSeries, finishedSeries, notStartedSeries]),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(1);
+    expect(getSeriesDetailsMock).toHaveBeenCalledWith(1);
+    expect(result.current.entries).toEqual([
+      { series: inProgressSeries, nextEpisode, remaining: 7 },
+    ]);
+  });
+
+  it("caps the number of resolved series at the given limit", async () => {
+    const other = { ...inProgressSeries, id: "t4", seriesId: 4 };
+    const { useWatchNext } = await import("../use-watch-next");
+    const { result } = renderHook(() => useWatchNext([inProgressSeries, other], 1), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(1);
+    expect(result.current.entries).toHaveLength(1);
+  });
+});
+
+describe("useMarkWatchNext", () => {
+  it("marks the episode watched via progressRepository.toggleEpisodeSeen", async () => {
+    const { useMarkWatchNext } = await import("../use-watch-next");
+    const { result } = renderHook(() => useMarkWatchNext(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await result.current.markWatched({ series: inProgressSeries, episode: nextEpisode });
+    });
+
+    expect(toggleEpisodeSeenMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, mediaType: "series", numberOfEpisodes: 10 }),
+      nextEpisode,
+      true
+    );
+  });
+});
