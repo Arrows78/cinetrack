@@ -30,7 +30,9 @@ const getTrendingSeriesMock = vi.fn(async (pageParam: number) => page(pageParam,
 const getWatchProvidersMock = vi.fn(async () => [] as never);
 const getMovieDetailsMock = vi.fn(async () => ({ id: 1 }) as never);
 const getSeriesDetailsMock = vi.fn(async () => ({ id: 1 }) as never);
-const getSeasonDetailsMock = vi.fn(async (seriesId: number, seasonNumber: number) => ({ seriesId, seasonNumber }) as never);
+const getSeasonDetailsMock = vi.fn(
+  async (seriesId: number, seasonNumber: number) => ({ seriesId, seasonNumber }) as never
+);
 
 vi.mock("@/features/media/media-repository", () => ({
   mediaRepository: {

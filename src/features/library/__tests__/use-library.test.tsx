@@ -21,7 +21,10 @@ const media: MediaSummary = {
 let items: LibraryItem[];
 
 const listMock = vi.fn(async () => items);
-const getMock = vi.fn(async (mediaId: number, mediaType: string) => items.find((i) => i.mediaId === mediaId && i.mediaType === mediaType) ?? null);
+const getMock = vi.fn(
+  async (mediaId: number, mediaType: string) =>
+    items.find((i) => i.mediaId === mediaId && i.mediaType === mediaType) ?? null
+);
 const saveMock = vi.fn(async (subject: MediaSummary, patch: LibraryPatch) => {
   const saved = { mediaId: subject.id, mediaType: subject.mediaType, ...patch } as LibraryItem;
   const index = items.findIndex((i) => i.mediaId === subject.id && i.mediaType === subject.mediaType);

@@ -77,18 +77,15 @@ beforeEach(() => {
 describe("useWatchNext", () => {
   it("only resolves entries for series that are started but not finished", async () => {
     const { useWatchNext } = await import("../use-watch-next");
-    const { result } = renderHook(
-      () => useWatchNext([inProgressSeries, finishedSeries, notStartedSeries]),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useWatchNext([inProgressSeries, finishedSeries, notStartedSeries]), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(getSeriesDetailsMock).toHaveBeenCalledTimes(1);
     expect(getSeriesDetailsMock).toHaveBeenCalledWith(1);
-    expect(result.current.entries).toEqual([
-      { series: inProgressSeries, nextEpisode, remaining: 7 },
-    ]);
+    expect(result.current.entries).toEqual([{ series: inProgressSeries, nextEpisode, remaining: 7 }]);
   });
 
   it("caps the number of resolved series at the given limit", async () => {
