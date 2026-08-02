@@ -92,7 +92,7 @@ export function MediaDetailsHero({
                 {media.genres.map((genre) => (
                   <span
                     key={genre}
-                    className="rounded-full border border-border bg-black/5 dark:bg-white/5 px-2.5 py-0.5 text-xs text-muted-foreground"
+                    className="rounded-full border border-border bg-foreground/5 px-2.5 py-0.5 text-xs text-muted-foreground"
                   >
                     {genre}
                   </span>

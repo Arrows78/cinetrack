@@ -23,7 +23,7 @@ export function SheetContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 hover:bg-black/10 dark:hover:bg-white/10">
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 hover:bg-foreground/10">
           <X className="h-4 w-4" />
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

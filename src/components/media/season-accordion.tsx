@@ -22,7 +22,7 @@ function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episodes"]; w
           layout
           className={cn(
             "h-1.5 w-1.5 rounded-full transition-colors duration-base",
-            watchedSet.has(ep.id) ? "bg-primary" : "bg-black/20 dark:bg-white/20"
+            watchedSet.has(ep.id) ? "bg-primary" : "bg-foreground/20"
           )}
         />
       ))}

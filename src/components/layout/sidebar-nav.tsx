@@ -28,7 +28,7 @@ function NavLink({ item, collapsed, isActive }: NavLinkProps) {
         "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-fast",
         isActive
           ? "bg-primary/15 text-primary shadow-glow"
-          : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground",
+          : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
         collapsed && "justify-center px-2"
       )}
     >
@@ -96,7 +96,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
               variant="ghost"
               size="icon"
               onClick={onToggleCollapse}
-              className="h-8 w-8 shrink-0 hidden bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 lg:flex"
+              className="h-8 w-8 shrink-0 hidden bg-foreground/5 hover:bg-foreground/10 lg:flex"
             >
               <PanelLeftClose className="h-4 w-4" />
             </Button>
@@ -109,7 +109,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           variant="ghost"
           size="sm"
           onClick={onToggleCollapse}
-          className="mb-3 w-full h-8 justify-center rounded-xl bg-black/5 dark:bg-white/5 text-foreground hover:bg-black/10 dark:hover:bg-white/10 hidden lg:flex"
+          className="mb-3 w-full h-8 justify-center rounded-xl bg-foreground/5 text-foreground hover:bg-foreground/10 hidden lg:flex"
         >
           <PanelLeft className="h-4 w-4" />
         </Button>
@@ -147,7 +147,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
 
         {/* Theme switcher */}
         {!collapsed ? (
-          <div className="flex gap-1 rounded-2xl bg-black/5 dark:bg-white/5 p-1">
+          <div className="flex gap-1 rounded-2xl bg-foreground/5 p-1">
             {themeOptions.map(({ value, icon: Icon, labelKey }) => (
               <button
                 key={value}
@@ -187,7 +187,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
         {/* User card */}
         <div
           className={cn(
-            "flex items-center gap-3 rounded-2xl border border-black/[0.07] dark:border-white/5 bg-black/5 dark:bg-white/5 p-2.5",
+            "flex items-center gap-3 rounded-2xl border border-black/[0.07] dark:border-white/5 bg-foreground/5 p-2.5",
             collapsed && "justify-center p-2"
           )}
         >

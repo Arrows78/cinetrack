@@ -19,7 +19,7 @@ export function FilterBar<T extends string>({
           className={cn(
             "rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-fast",
             value === option.value
-              ? "bg-black/10 dark:bg-white/10 text-foreground shadow-sm"
+              ? "bg-foreground/10 text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground/80"
           )}
         >
