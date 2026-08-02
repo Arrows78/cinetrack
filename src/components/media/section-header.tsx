@@ -21,10 +21,7 @@ export function SectionHeader({
     <div className={cn("group mb-6", className)}>
       {index !== undefined && (
         <div className="mb-3 flex items-center gap-3">
-          <span className="shrink-0 text-[10px] font-semibold tracking-[0.3em] text-primary/50 uppercase transition-all duration-medium group-hover:text-primary/80">
-            {String(index).padStart(2, "0")}
-          </span>
-          <div className="section-rule w-16 transition-all duration-medium group-hover:w-24" />
+          <div className="section-rule w-10 transition-all duration-medium group-hover:w-16" />
         </div>
       )}
       <div className="flex items-end justify-between gap-4">
