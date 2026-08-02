@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyRound, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useTokenVault } from "@/features/desktop/use-token-vault";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { isTauriApp } from "@/shared/lib/platform";
@@ -46,8 +48,8 @@ export function TokenGate({ children }: { children: ReactNode }) {
         <h1 className="mt-5 font-display text-3xl font-bold">{t("tokenGate.title")}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("tokenGate.description")}</p>
         {isTauriApp() ? (
-          <input
-            className="mt-6 h-11 w-full rounded-xl border border-border bg-background px-3"
+          <Input
+            className="mt-6 rounded-xl bg-background px-3"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -55,8 +57,8 @@ export function TokenGate({ children }: { children: ReactNode }) {
             required
           />
         ) : null}
-        <textarea
-          className="mt-3 min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm"
+        <Textarea
+          className="mt-3 min-h-28 text-sm"
           value={bearer}
           onChange={(event) => setBearer(event.target.value)}
           placeholder={t("tokenGate.tokenPlaceholder")}

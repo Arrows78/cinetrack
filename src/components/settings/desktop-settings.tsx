@@ -4,6 +4,7 @@ import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
@@ -47,8 +48,8 @@ export function DesktopSettings() {
             onChange={(event) => setPassword(event.target.value)}
             placeholder={t("desktop.vaultPassword")}
           />
-          <textarea
-            className="min-h-24 rounded-xl border border-border bg-background p-3 text-sm"
+          <Textarea
+            className="min-h-24 text-sm"
             value={token}
             onChange={(event) => setToken(event.target.value)}
             placeholder={t("desktop.newToken")}

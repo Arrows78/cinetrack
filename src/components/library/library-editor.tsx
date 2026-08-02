@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
@@ -50,7 +52,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   ];
 
   return (
-    <section className="rounded-3xl border border-border bg-card/60 p-5">
+    <Panel>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="font-semibold">{t("library.myLibrary")}</p>
@@ -113,8 +115,8 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       </label>
       <label className="mt-4 grid gap-1 text-sm">
         <span className="text-muted-foreground">{t("library.privateNotes")}</span>
-        <textarea
-          className="min-h-24 rounded-xl border border-border bg-background p-3"
+        <Textarea
+          className="min-h-24"
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
         />
@@ -130,6 +132,6 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
           </Button>
         ) : null}
       </div>
-    </section>
+    </Panel>
   );
 }
