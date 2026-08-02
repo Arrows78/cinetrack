@@ -53,7 +53,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
         {/* Type chip */}
         <div className="absolute left-3 top-3">
           <Badge
-            variant={media.mediaType === "movie" ? "movie-overlay" : "series-overlay"}
+            variant={media.mediaType === "movie" ? "movie" : "series"}
             className="px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-sm transition-all duration-base"
           >
             {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}

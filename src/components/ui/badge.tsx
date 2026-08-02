@@ -8,15 +8,10 @@ const badgeVariants = cva("inline-flex items-center rounded-full px-2.5 py-1 tex
       default: "bg-primary/20 text-primary",
       secondary: "bg-secondary text-secondary-foreground",
       outline: "border border-border text-muted-foreground",
-      // Media-type chip, hero/detail context (media-details-hero.tsx).
+      // Media-type chip (movie vs series), used both in the detail hero and
+      // over poster art (add backdrop-blur-sm via className for the latter).
       movie: "bg-primary/80 text-primary-foreground",
       series: "bg-accent/80 text-foreground",
-      // Media-type chip, poster-overlay context (media-card.tsx) — sits on
-      // arbitrary poster art, so it needs its own legibility treatment
-      // (backdrop blur via className, a dark ring instead of accent for
-      // series) rather than sharing movie/series's hero colors.
-      "movie-overlay": "bg-primary/85 text-primary-foreground",
-      "series-overlay": "bg-black/50 text-white/90 ring-1 ring-white/20",
     },
   },
   defaultVariants: {
