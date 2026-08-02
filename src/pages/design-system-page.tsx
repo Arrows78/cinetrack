@@ -8,6 +8,7 @@ import { Panel } from "@/components/ui/panel";
 import { Progress } from "@/components/ui/progress";
 import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tile } from "@/components/ui/tile";
@@ -105,9 +106,12 @@ const tintScale: { value: string; usage: string }[] = [
   { value: "[0.02]", usage: "Nested content directly under a tinted header (season accordion content)" },
   { value: "[0.03]", usage: "Panel tone=\"subtle\", tracked-series rows, accordion trigger" },
   { value: "[0.04]", usage: "Empty-state icon circle, episode row hover" },
-  { value: "[0.06]", usage: "Hover/active state over a [0.03] surface, filter-bar segmented track" },
+  { value: "5", usage: "Skeleton, sidebar nav surfaces, theme toggle hover, genre chips, seen-toggle idle state" },
+  { value: "[0.06]", usage: "Hover/active state over a [0.03] surface, filter-bar track background" },
   { value: "[0.07]", usage: "Decorative timeline connector (history page)" },
-  { value: "[0.08]", usage: "Progress bar track" },
+  { value: "[0.08]", usage: "Media progress-bar track (progress-bar.tsx, the custom gradient one)" },
+  { value: "10", usage: "Separator, ui/Progress track, Sheet close-button hover, filter-bar active segment, sidebar collapse button" },
+  { value: "20", usage: "Unwatched episode dots, seen-toggle idle border" },
 ];
 
 // Tailwind's default rem-based spacing scale already is the app's spacing
@@ -345,6 +349,22 @@ export function DesignSystemPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
+              <CardTitle>Card</CardTitle>
+              <CardDescription>
+                card.tsx — glass surface (<code className="font-mono">.surface</code>: bg-card/80 + backdrop-blur +
+                shadow-elevation-sm) at rounded-panel. Every demo in this section is itself a Card — this is the one
+                place it gets shown as the subject rather than the container.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                CardHeader / CardTitle / CardDescription above, CardContent here.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Button</CardTitle>
               <CardDescription>Variants × sizes (button-variants.ts)</CardDescription>
             </CardHeader>
@@ -528,6 +548,30 @@ export function DesignSystemPage() {
                   <AccordionContent>Content of the second item.</AccordionContent>
                 </AccordionItem>
               </Accordion>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sheet</CardTitle>
+              <CardDescription>
+                sheet.tsx — Radix Dialog underneath, styled as a left-edge drawer (used for the mobile nav in
+                app-shell.tsx). Try the trigger below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline">Open sheet</Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <h3 className="font-display text-lg font-bold">Sheet content</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Anything can go here — this is just the Sheet/SheetTrigger/SheetContent/SheetClose primitives at
+                    work, unstyled beyond what sheet.tsx already provides.
+                  </p>
+                </SheetContent>
+              </Sheet>
             </CardContent>
           </Card>
         </div>
