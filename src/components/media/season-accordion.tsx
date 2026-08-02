@@ -65,27 +65,6 @@ export function SeasonAccordion({
 
   return (
     <div className="space-y-4">
-      {/* Global progress card */}
-      <div className="rounded-3xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {t("series.globalProgress")}
-            </p>
-            <p className="mt-1 font-display text-3xl font-bold leading-none text-foreground">
-              {progress.progressPercent}
-              <span className="text-base font-normal text-muted-foreground">%</span>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {progress.watchedEpisodes} / {progress.totalEpisodes} {t("history.episodesWatched")}
-            </p>
-          </div>
-          <div className="flex-1 max-w-xs">
-            <ProgressBar value={progress.progressPercent} size="default" />
-          </div>
-        </div>
-      </div>
-
       {/* Seasons */}
       <Accordion type="multiple" className="space-y-3">
         {seasons.map((season) => {

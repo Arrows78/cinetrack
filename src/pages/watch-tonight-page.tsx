@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Dices } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { MediaGrid } from "@/components/media/media-grid";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -29,8 +30,8 @@ export function WatchTonightPage() {
         <h1 className="font-display text-3xl font-bold">{t("watchTonight.title")}</h1>
         <p className="text-muted-foreground">{t("watchTonight.description")}</p>
       </header>
-      <section
-        className="grid gap-3 rounded-3xl border border-border bg-card/60 p-5 md:grid-cols-4 animate-in"
+      <Panel
+        className="grid gap-3 md:grid-cols-4 animate-in"
         style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
       >
         <select
@@ -70,7 +71,7 @@ export function WatchTonightPage() {
           <Dices className="mr-2 size-4" />
           {t("watchTonight.retry")}
         </Button>
-      </section>
+      </Panel>
       {query.isLoading ? <p>{t("watchTonight.searching")}</p> : <MediaGrid items={query.data ?? []} />}
     </div>
   );

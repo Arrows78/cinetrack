@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Panel } from "@/components/ui/panel";
 import { usePeopleSearch } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
@@ -48,24 +49,22 @@ export function PeoplePage() {
               delay: Math.min(index * 0.05, MAX_STAGGER_DELAY_S),
             }}
           >
-            <Link
-              to="/people/$personId"
-              params={{ personId: String(person.id) }}
-              className="block rounded-3xl border border-border bg-card/60 p-4 transition hover:border-primary/50"
-            >
-              <img
-                className="aspect-[2/3] w-full rounded-2xl object-cover"
-                src={
-                  buildTmdbImageUrl(person.profilePath, "w500") ??
-                  "https://placehold.co/500x750/111827/374151?text=Portrait"
-                }
-                alt={person.name}
-              />
-              <h2 className="mt-3 font-semibold">{person.name}</h2>
-              <p className="text-sm text-muted-foreground">
-                {person.knownForDepartment ?? t("people.fallbackDepartment")}
-              </p>
-            </Link>
+            <Panel asChild tone="card" className="block p-4 transition hover:border-primary/50">
+              <Link to="/people/$personId" params={{ personId: String(person.id) }}>
+                <img
+                  className="aspect-[2/3] w-full rounded-2xl object-cover"
+                  src={
+                    buildTmdbImageUrl(person.profilePath, "w500") ??
+                    "https://placehold.co/500x750/111827/374151?text=Portrait"
+                  }
+                  alt={person.name}
+                />
+                <h2 className="mt-3 font-semibold">{person.name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {person.knownForDepartment ?? t("people.fallbackDepartment")}
+                </p>
+              </Link>
+            </Panel>
           </motion.div>
         ))}
       </div>

@@ -6,6 +6,7 @@ import { useCalendar } from "@/features/calendar/use-calendar";
 import type { CalendarEntry } from "@/types/media";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
+import { Panel } from "@/components/ui/panel";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
 export function CalendarPage() {
@@ -31,11 +32,7 @@ export function CalendarPage() {
       </header>
       {calendar.isLoading ? <p className="text-muted-foreground">{t("calendar.loading")}</p> : null}
       {Object.entries(groups).map(([date, entries], index) => (
-        <section
-          key={date}
-          className="rounded-3xl border border-border bg-card/60 p-5 animate-in"
-          style={{ animationDelay: `${staggerDelayMs(index + 1)}ms` }}
-        >
+        <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 1)}ms` }}>
           <h2 className="font-semibold capitalize">{format(parseISO(date), "EEEE d MMMM yyyy")}</h2>
           <div className="mt-3 grid gap-2">
             {entries?.map((entry) => (
@@ -56,7 +53,7 @@ export function CalendarPage() {
               </div>
             ))}
           </div>
-        </section>
+        </Panel>
       ))}
       {!calendar.isLoading && !calendar.data?.length ? (
         <p className="rounded-3xl border border-dashed border-border p-8 text-center text-muted-foreground">

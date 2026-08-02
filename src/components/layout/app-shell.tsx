@@ -58,7 +58,7 @@ export function AppShell() {
                 </Sheet>
               )}
               <div>
-                <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                   {t("sidebar.brand.tagline")}
                 </p>
                 <h1 className="text-base font-semibold">{t("sidebar.brand.name")}</h1>

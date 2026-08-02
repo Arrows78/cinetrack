@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Panel } from "@/components/ui/panel";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -325,6 +326,27 @@ export function DesignSystemPage() {
                   </Badge>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Panel</CardTitle>
+              <CardDescription>
+                panel.tsx — conteneur plat, distinct de Card (verre + ombre). <code className="font-mono">tone</code>{" "}
+                = "card" (bg-card/60) ou "subtle" (tinte noir/blanc 3%). <code className="font-mono">asChild</code>{" "}
+                pour hériter d'un autre élément (Link, article...).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Panel>
+                <p className="text-sm font-medium">tone="card" (défaut)</p>
+                <p className="text-xs text-muted-foreground">rounded-panel · border-border · bg-card/60</p>
+              </Panel>
+              <Panel tone="subtle">
+                <p className="text-sm font-medium">tone="subtle"</p>
+                <p className="text-xs text-muted-foreground">rounded-panel · border-border · bg-black/[0.03]</p>
+              </Panel>
             </CardContent>
           </Card>
 

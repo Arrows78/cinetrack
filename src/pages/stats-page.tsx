@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { BarChart3, CalendarCheck, Clock, Film, Flame, Gauge, Hourglass, Star, Tv } from "lucide-react";
 import { useStats, useWatchForecast, useWrapped } from "@/features/stats/use-stats";
+import { Panel } from "@/components/ui/panel";
 import { formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
@@ -31,31 +32,37 @@ export function StatsPage() {
         style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
       >
         {cards.map(({ label, value, icon: Icon }) => (
-          <article key={label} className="rounded-3xl border border-border bg-card/60 p-5">
-            <Icon className="size-5 text-primary" />
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className="mt-1 font-display text-3xl font-bold">{value}</p>
-          </article>
+          <Panel asChild key={label}>
+            <article>
+              <Icon className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+              <p className="mt-1 font-display text-3xl font-bold">{value}</p>
+            </article>
+          </Panel>
         ))}
       </section>
       {forecast.data && forecast.data.backlogEpisodes > 0 ? (
         <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
           <h2 className="mb-3 font-semibold">{t("stats.forecast")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
-            <article className="rounded-3xl border border-border bg-card/60 p-5">
-              <Hourglass className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.timeToWatch")}</p>
-              <p className="mt-1 font-display text-3xl font-bold">{hours(forecast.data.backlogMinutes)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("stats.backlogEpisodes", { count: forecast.data.backlogEpisodes })}
-              </p>
-            </article>
-            <article className="rounded-3xl border border-border bg-card/60 p-5">
-              <Gauge className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.pacePerWeek")}</p>
-              <p className="mt-1 font-display text-3xl font-bold">{forecast.data.episodesPerWeek}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
-            </article>
+            <Panel asChild>
+              <article>
+                <Hourglass className="size-5 text-primary" />
+                <p className="mt-4 text-sm text-muted-foreground">{t("stats.timeToWatch")}</p>
+                <p className="mt-1 font-display text-3xl font-bold">{hours(forecast.data.backlogMinutes)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("stats.backlogEpisodes", { count: forecast.data.backlogEpisodes })}
+                </p>
+              </article>
+            </Panel>
+            <Panel asChild>
+              <article>
+                <Gauge className="size-5 text-primary" />
+                <p className="mt-4 text-sm text-muted-foreground">{t("stats.pacePerWeek")}</p>
+                <p className="mt-1 font-display text-3xl font-bold">{forecast.data.episodesPerWeek}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
+              </article>
+            </Panel>
             <article className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
               <CalendarCheck className="size-5 text-primary" />
               <p className="mt-4 text-sm text-muted-foreground">{t("stats.catchUpBy")}</p>
@@ -68,10 +75,7 @@ export function StatsPage() {
         </section>
       ) : null}
 
-      <section
-        className="rounded-3xl border border-border bg-card/60 p-5 animate-in"
-        style={{ animationDelay: `${staggerDelayMs(3)}ms` }}
-      >
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
         <h2 className="font-semibold">{t("stats.activity12Months")}</h2>
         <div className="mt-5 flex h-44 items-end gap-2">
           {stats.data.monthlyActivity.map((month) => (
@@ -85,19 +89,24 @@ export function StatsPage() {
             </div>
           ))}
         </div>
-      </section>
+      </Panel>
       <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
-        <article className="rounded-3xl border border-border bg-card/60 p-5">
-          <h2 className="font-semibold">{t("stats.favouriteGenres")}</h2>
-          <div className="mt-4 grid gap-2">
-            {stats.data.favouriteGenres.map((genre) => (
-              <div key={genre.name} className="flex justify-between rounded-xl border border-border px-3 py-2 text-sm">
-                <span>{genre.name}</span>
-                <strong>{genre.count}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
+        <Panel asChild>
+          <article>
+            <h2 className="font-semibold">{t("stats.favouriteGenres")}</h2>
+            <div className="mt-4 grid gap-2">
+              {stats.data.favouriteGenres.map((genre) => (
+                <div
+                  key={genre.name}
+                  className="flex justify-between rounded-xl border border-border px-3 py-2 text-sm"
+                >
+                  <span>{genre.name}</span>
+                  <strong>{genre.count}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+        </Panel>
         <article className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
             {t("stats.wrapped", { year: wrapped.data.year })}

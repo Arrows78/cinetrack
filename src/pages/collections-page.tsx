@@ -4,6 +4,7 @@ import { ListPlus, Trash2 } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -60,7 +61,7 @@ export function CollectionsPage() {
       </header>
 
       <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
-        <div className="rounded-3xl border border-border bg-card/60 p-5">
+        <Panel>
           <h2 className="font-semibold">{t("collections.localProfiles")}</h2>
           {/*
             Access to a profile is derived from who is signed in (see
@@ -79,17 +80,14 @@ export function CollectionsPage() {
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">{t("collections.noProfile")}</p>
           )}
-        </div>
+        </Panel>
 
         <BackupTools />
 
         <TvTimeImportCard />
       </section>
 
-      <section
-        className="rounded-3xl border border-border bg-card/60 p-5 animate-in"
-        style={{ animationDelay: `${staggerDelayMs(2)}ms` }}
-      >
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
         <h2 className="font-semibold">{t("collections.customLists")}</h2>
         <div className="mt-4 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
           <input
@@ -142,7 +140,7 @@ export function CollectionsPage() {
             </article>
           ))}
         </div>
-      </section>
+      </Panel>
     </div>
   );
 }

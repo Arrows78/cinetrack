@@ -10,6 +10,7 @@ import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
+import { Panel } from "@/components/ui/panel";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { useImageCache } from "@/features/media/use-image-cache";
@@ -51,11 +52,11 @@ export function MovieDetailPage() {
       <ProviderAvailability media={movie} />
       <TrailerPanel mediaType="movie" mediaId={movie.id} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
+        <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
           <p className="text-sm leading-7 text-muted-foreground md:text-base">{movie.overview}</p>
-        </div>
-        <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
+        </Panel>
+        <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("movies.technicalSheet")} />
           <div className="grid gap-2 text-sm">
             {[
@@ -70,7 +71,7 @@ export function MovieDetailPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Panel>
       </section>
       <RecommendationsPanel media={movie} />
       <section>

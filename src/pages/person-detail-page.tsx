@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { MediaGrid } from "@/components/media/media-grid";
+import { Panel } from "@/components/ui/panel";
 import { usePerson } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
@@ -11,8 +12,8 @@ export function PersonDetailPage() {
   if (!query.data) return <p className="text-muted-foreground">{t("person.loading")}</p>;
   return (
     <div className="space-y-8">
-      <header
-        className="flex items-end gap-5 rounded-3xl border border-border bg-card/60 p-5 animate-in"
+      <Panel
+        className="flex items-end gap-5 animate-in"
         style={{ animationDelay: `${staggerDelayMs(0)}ms` }}
       >
         <img
@@ -27,7 +28,7 @@ export function PersonDetailPage() {
           <p className="text-sm text-primary">{query.data.knownForDepartment}</p>
           <h1 className="font-display text-4xl font-bold">{query.data.name}</h1>
         </div>
-      </header>
+      </Panel>
       <section>
         <h2 className="mb-4 font-display text-2xl font-bold">{t("person.knownFilmography")}</h2>
         <MediaGrid items={query.data.knownFor} />

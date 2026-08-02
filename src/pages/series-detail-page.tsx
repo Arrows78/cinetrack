@@ -12,6 +12,7 @@ import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/next-episode-card";
 import { ProgressBar } from "@/components/media/progress-bar";
+import { Panel } from "@/components/ui/panel";
 import { SeasonAccordion } from "@/components/media/season-accordion";
 import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
@@ -74,12 +75,12 @@ export function SeriesDetailPage() {
         onWatched={(episode) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true })}
       />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-3xl border border-border bg-black/[0.03] p-6 dark:bg-white/[0.03]">
+        <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
           <p className="text-sm leading-7 text-muted-foreground md:text-base">{series.overview}</p>
-        </div>
+        </Panel>
         <div className="space-y-4">
-          <div className="rounded-3xl border border-border bg-black/[0.03] p-5 dark:bg-white/[0.03]">
+          <Panel tone="subtle">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
               {t("series.currentProgress")}
             </p>
@@ -95,8 +96,8 @@ export function SeriesDetailPage() {
             <div className="mt-4">
               <ProgressBar value={progress.progressPercent} />
             </div>
-          </div>
-          <div className="rounded-3xl border border-border bg-black/[0.03] p-5 dark:bg-white/[0.03]">
+          </Panel>
+          <Panel tone="subtle">
             <SectionHeader title={t("series.seriesInfo")} />
             <div className="grid gap-2 text-sm">
               {[
@@ -111,7 +112,7 @@ export function SeriesDetailPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Panel>
         </div>
       </section>
       <section>
