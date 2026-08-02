@@ -1,0 +1,179 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
+import { queryKeys } from "@/shared/constants/query-keys";
+import type { Episode, MediaSummary, Season, TrackedSeriesItem } from "@/types/media";
+
+const movie: MediaSummary = {
+  id: 7,
+  mediaType: "movie",
+  title: "Test Movie",
+  overview: "",
+  posterPath: null,
+  backdropPath: null,
+  year: 2024,
+  rating: null,
+  genres: [],
+  cast: [],
+};
+
+const series: MediaSummary & { numberOfEpisodes?: number } = {
+  id: 9,
+  mediaType: "series",
+  title: "Test Series",
+  overview: "",
+  posterPath: null,
+  backdropPath: null,
+  year: 2024,
+  rating: null,
+  genres: [],
+  cast: [],
+};
+
+const episode: Episode = {
+  id: 1,
+  seasonNumber: 1,
+  episodeNumber: 1,
+  title: "Pilot",
+  overview: "",
+};
+
+const season: Season = {
+  id: 1,
+  seasonNumber: 1,
+  name: "Season 1",
+  overview: "",
+  episodeCount: 1,
+  episodes: [episode],
+};
+
+const isMovieSeenMock = vi.fn(async () => false);
+const toggleMovieSeenMock = vi.fn(async () => undefined);
+const getEpisodeProgressMock = vi.fn(async () => [] as never);
+const toggleEpisodeSeenMock = vi.fn(async () => undefined);
+const markSeasonMock = vi.fn(async () => undefined);
+const markSeriesMock = vi.fn(async () => undefined);
+const listTrackedSeriesMock = vi.fn(async () => [] as TrackedSeriesItem[]);
+
+vi.mock("@/features/progress/progress-repository", () => ({
+  progressRepository: {
+    isMovieSeen: isMovieSeenMock,
+    toggleMovieSeen: toggleMovieSeenMock,
+    getEpisodeProgress: getEpisodeProgressMock,
+    toggleEpisodeSeen: toggleEpisodeSeenMock,
+    markSeason: markSeasonMock,
+    markSeries: markSeriesMock,
+    listTrackedSeries: listTrackedSeriesMock,
+  },
+}));
+
+function createWrapper() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return {
+    client,
+    Wrapper: function Wrapper({ children }: PropsWithChildren) {
+      return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    },
+  };
+}
+
+beforeEach(() => {
+  isMovieSeenMock.mockClear();
+  toggleMovieSeenMock.mockClear();
+  getEpisodeProgressMock.mockClear();
+  toggleEpisodeSeenMock.mockClear();
+  markSeasonMock.mockClear();
+  markSeriesMock.mockClear();
+  listTrackedSeriesMock.mockClear();
+});
+
+describe("useMovieSeen", () => {
+  it("is disabled for a non-finite id and loads seen state otherwise", async () => {
+    const { useMovieSeen } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+
+    const { result: disabled } = renderHook(() => useMovieSeen(Number.NaN), { wrapper: Wrapper });
+    expect(disabled.current.fetchStatus).toBe("idle");
+
+    const { result } = renderHook(() => useMovieSeen(7), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data).toBe(false);
+  });
+
+  it("toggling invalidates movieSeen, history and stats", async () => {
+    const { useMovieSeen } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useMovieSeen(7), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.toggleMovieSeen({ movie, watched: true });
+    });
+
+    expect(toggleMovieSeenMock).toHaveBeenCalledWith(movie, true);
+    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.movieSeen(7));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.history);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.stats);
+  });
+});
+
+describe("useEpisodeProgress", () => {
+  it("toggling an episode invalidates the full episode-progress fanout", async () => {
+    const { useEpisodeProgress } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useEpisodeProgress(9), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.toggleEpisodeSeen({ series, episode, watched: true });
+    });
+
+    expect(toggleEpisodeSeenMock).toHaveBeenCalledWith(series, episode, true);
+    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.episodeProgress(9));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.watchNextEpisode(9));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar);
+  });
+
+  it("marking a season delegates to progressRepository.markSeason", async () => {
+    const { useEpisodeProgress } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useEpisodeProgress(9), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.markSeasonSeen({ series, season, watched: true });
+    });
+
+    expect(markSeasonMock).toHaveBeenCalledWith(series, season, true);
+  });
+
+  it("marking a whole series delegates to progressRepository.markSeries", async () => {
+    const { useEpisodeProgress } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useEpisodeProgress(9), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.markSeriesSeen({ series, seasons: [season], watched: true });
+    });
+
+    expect(markSeriesMock).toHaveBeenCalledWith(series, [season], true);
+  });
+});
+
+describe("useTrackedSeries", () => {
+  it("loads tracked series", async () => {
+    const { useTrackedSeries } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useTrackedSeries(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(listTrackedSeriesMock).toHaveBeenCalled();
+  });
+});

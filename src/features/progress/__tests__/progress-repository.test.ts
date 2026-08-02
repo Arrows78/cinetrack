@@ -137,6 +137,69 @@ describe("progressRepository", () => {
     expect(progress).toHaveLength(3);
   });
 
+  it("marking a season unwatched logs a season:unwatched history entry", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" } as never);
+    const fullSeason = season([episode({ id: 1 })]);
+
+    await progressRepository.markSeason(series, fullSeason, true);
+    await progressRepository.markSeason(series, fullSeason, false);
+
+    const history = sqlite.current.prepare("SELECT * FROM activity_log WHERE media_id = 9").all() as Array<{
+      action: string;
+    }>;
+    expect(history.some((row) => row.action === "season:unwatched")).toBe(true);
+  });
+
+  it("marking a whole series watched applies every season's episodes in one transaction", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" } as never);
+    const season1 = season([episode({ id: 1 }), episode({ id: 2, episodeNumber: 2 })]);
+    const season2 = season([episode({ id: 3, seasonNumber: 2, episodeNumber: 1 })]);
+
+    await progressRepository.markSeries(series, [season1, season2], true);
+
+    const progress = await progressRepository.getEpisodeProgress(9);
+    expect(progress).toHaveLength(3);
+
+    const history = sqlite.current.prepare("SELECT * FROM activity_log WHERE media_id = 9").all() as Array<{
+      action: string;
+    }>;
+    expect(history.some((row) => row.action === "series:watched")).toBe(true);
+  });
+
+  it("marking an already-watched series again writes no history entry", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" } as never);
+    const fullSeason = season([episode({ id: 1 })]);
+
+    await progressRepository.markSeries(series, [fullSeason], true);
+    const before = sqlite.current.prepare("SELECT COUNT(*) count FROM activity_log WHERE media_id = 9").all() as Array<{
+      count: number;
+    }>;
+
+    await progressRepository.markSeries(series, [fullSeason], true);
+    const after = sqlite.current.prepare("SELECT COUNT(*) count FROM activity_log WHERE media_id = 9").all() as Array<{
+      count: number;
+    }>;
+
+    expect(after[0].count).toBe(before[0].count);
+  });
+
+  it("marking a series unwatched logs a series:unwatched history entry", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" } as never);
+    const fullSeason = season([episode({ id: 1 })]);
+
+    await progressRepository.markSeries(series, [fullSeason], true);
+    await progressRepository.markSeries(series, [fullSeason], false);
+
+    const history = sqlite.current.prepare("SELECT * FROM activity_log WHERE media_id = 9").all() as Array<{
+      action: string;
+    }>;
+    expect(history.some((row) => row.action === "series:unwatched")).toBe(true);
+  });
+
   it("computes next episode and series progress purely from inputs", async () => {
     const { progressRepository } = await import("../progress-repository");
     const ep1 = episode({ id: 1, episodeNumber: 1 });
@@ -161,5 +224,16 @@ describe("progressRepository", () => {
     expect(progress.watchedEpisodes).toBe(1);
     expect(progress.totalEpisodes).toBe(2);
     expect(progress.completed).toBe(false);
+  });
+
+  it("getNextEpisode skips unwatched episodes that haven't aired yet", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const unaired = episode({ id: 1, episodeNumber: 1, airDate: farFuture });
+    const noAirDate = episode({ id: 2, episodeNumber: 2, airDate: null });
+    const s = season([unaired, noAirDate]);
+
+    const next = progressRepository.getNextEpisode([s], []);
+    expect(next?.id).toBe(2);
   });
 });
