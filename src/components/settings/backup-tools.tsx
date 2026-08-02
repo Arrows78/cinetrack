@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { maintenanceService } from "@/features/backup/maintenance-service";
@@ -49,7 +50,7 @@ export function BackupTools() {
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-card/60 p-5">
+    <Panel>
       <p className="font-semibold">{t("backup.title")}</p>
       <p className="mt-1 text-sm text-muted-foreground">{t("backup.description")}</p>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -74,6 +75,6 @@ export function BackupTools() {
         />
       </div>
       {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
-    </div>
+    </Panel>
   );
 }

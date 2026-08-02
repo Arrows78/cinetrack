@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { ExternalLink, PlayCircle } from "lucide-react";
+import { Panel } from "@/components/ui/panel";
 import { useVideos } from "@/features/media/use-discovery";
 import type { MediaType } from "@/types/media";
 export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; mediaId: number }) {
@@ -8,7 +9,7 @@ export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; med
   const video = query.data?.find((item) => item.type === "Trailer") ?? query.data?.[0];
   if (!video) return null;
   return (
-    <section className="rounded-3xl border border-border bg-card/60 p-5">
+    <Panel>
       <div className="flex items-center gap-2">
         <PlayCircle className="size-5 text-primary" />
         <h2 className="font-semibold">{t("media.trailer")}</h2>
@@ -30,6 +31,6 @@ export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; med
       >
         {t("media.openOnYoutube")} <ExternalLink className="size-3" />
       </a>
-    </section>
+    </Panel>
   );
 }

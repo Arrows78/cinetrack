@@ -7,6 +7,7 @@ import type { CalendarEntry } from "@/types/media";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
 import { Panel } from "@/components/ui/panel";
+import { Tile } from "@/components/ui/tile";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
 export function CalendarPage() {
@@ -36,7 +37,7 @@ export function CalendarPage() {
           <h2 className="font-semibold capitalize">{format(parseISO(date), "EEEE d MMMM yyyy")}</h2>
           <div className="mt-3 grid gap-2">
             {entries?.map((entry) => (
-              <div key={entry.id} className="flex items-center gap-3 rounded-xl border border-border px-3 py-3">
+              <Tile key={entry.id} className="flex items-center gap-3 px-3 py-3">
                 {entry.kind === "episode" ? (
                   <Tv className="size-4 text-primary" />
                 ) : (
@@ -50,7 +51,7 @@ export function CalendarPage() {
                       : t("calendar.theatricalRelease")}
                   </p>
                 </div>
-              </div>
+              </Tile>
             ))}
           </div>
         </Panel>

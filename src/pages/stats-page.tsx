@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { BarChart3, CalendarCheck, Clock, Film, Flame, Gauge, Hourglass, Star, Tv } from "lucide-react";
 import { useStats, useWatchForecast, useWrapped } from "@/features/stats/use-stats";
 import { Panel } from "@/components/ui/panel";
+import { Tile } from "@/components/ui/tile";
 import { formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
@@ -96,13 +97,10 @@ export function StatsPage() {
             <h2 className="font-semibold">{t("stats.favouriteGenres")}</h2>
             <div className="mt-4 grid gap-2">
               {stats.data.favouriteGenres.map((genre) => (
-                <div
-                  key={genre.name}
-                  className="flex justify-between rounded-xl border border-border px-3 py-2 text-sm"
-                >
+                <Tile key={genre.name} className="flex justify-between px-3 py-2 text-sm">
                   <span>{genre.name}</span>
                   <strong>{genre.count}</strong>
-                </div>
+                </Tile>
               ))}
             </div>
           </article>

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoaderCircle, Tv, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import {
   importTvTimeExport,
   type TvTimeImportProgress,
@@ -39,7 +40,7 @@ export function TvTimeImportCard() {
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-card/60 p-5">
+    <Panel>
       <div className="flex items-center gap-2">
         <Tv className="size-5 text-primary" />
         <p className="font-semibold">{t("tvtimeImport.title")}</p>
@@ -94,6 +95,6 @@ export function TvTimeImportCard() {
           {error}
         </p>
       ) : null}
-    </div>
+    </Panel>
   );
 }

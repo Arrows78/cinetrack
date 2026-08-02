@@ -6,6 +6,7 @@ import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
+import { Tile } from "@/components/ui/tile";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -18,9 +19,9 @@ function ListContents({ listId }: { listId: string }) {
   return (
     <div className="grid gap-2">
       {items.data.map((item) => (
-        <div
+        <Tile
           key={`${item.mediaType}-${item.mediaId}`}
-          className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
+          className="flex items-center justify-between px-3 py-2 text-sm"
         >
           <span>
             {item.title}{" "}
@@ -36,7 +37,7 @@ function ListContents({ listId }: { listId: string }) {
           >
             <Trash2 className="size-4" />
           </Button>
-        </div>
+        </Tile>
       ))}
     </div>
   );
@@ -72,12 +73,12 @@ export function CollectionsPage() {
             is shown here now, read-only.
           */}
           {currentProfile ? (
-            <div className="mt-4 rounded-xl border border-border px-3 py-3">
+            <Tile className="mt-4 px-3 py-3">
               <p className="font-medium">{currentProfile.name}</p>
               {user?.email ? (
                 <p className="mt-1 text-sm text-muted-foreground">{t("collections.linkedTo", { email: user.email })}</p>
               ) : null}
-            </div>
+            </Tile>
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">{t("collections.noProfile")}</p>
           )}

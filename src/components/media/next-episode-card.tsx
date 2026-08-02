@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import type { Episode } from "@/types/media";
 
 export function NextEpisodeCard({
@@ -15,10 +16,10 @@ export function NextEpisodeCard({
   const { t } = useTranslation();
   if (!episode)
     return (
-      <div className="rounded-3xl border border-border bg-card/60 p-5">
+      <Panel>
         <p className="font-semibold">{t("media.upToDate")}</p>
         <p className="text-sm text-muted-foreground">{t("media.noAiredEpisode")}</p>
-      </div>
+      </Panel>
     );
   return (
     <div className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
