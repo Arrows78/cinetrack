@@ -1,21 +1,32 @@
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/shared/lib/cn";
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        className={cn(
-          "flex h-11 w-full rounded-2xl border border-border bg-card/70 px-4 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    );
+const inputVariants = cva(
+  "flex w-full border border-border text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+  {
+    variants: {
+      size: {
+        // Prominent inputs (search-bar.tsx).
+        default: "h-11 rounded-2xl bg-card/70 px-4 py-2 text-sm",
+        // Compact form fields (settings, filters, editors) — no explicit
+        // text size, matching the hand-rolled markup this variant replaces.
+        sm: "h-10 rounded-xl bg-background px-3",
+      },
+    },
+    defaultVariants: {
+      size: "default",
+    },
   }
 );
+
+export interface InputProps
+  extends Omit<React.ComponentProps<"input">, "size">,
+    VariantProps<typeof inputVariants> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, size, ...props }, ref) => {
+  return <input type={type} className={cn(inputVariants({ size }), className)} ref={ref} {...props} />;
+});
 Input.displayName = "Input";
 
 export { Input };

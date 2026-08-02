@@ -5,6 +5,7 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
@@ -64,19 +65,17 @@ export function SettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium">
                 {t("settings.language")}
-                <select
-                  className="h-10 rounded-xl border border-border bg-background px-3"
+                <Select
                   value={preferences?.language ?? "fr"}
                   onChange={(event) => void setLanguage(event.target.value as "fr" | "en")}
                 >
                   <option value="fr">Français</option>
                   <option value="en">English</option>
-                </select>
+                </Select>
               </label>
               <label className="grid gap-2 text-sm font-medium">
                 {t("settings.region")}
-                <select
-                  className="h-10 rounded-xl border border-border bg-background px-3"
+                <Select
                   value={preferences?.region ?? "FR"}
                   onChange={(event) => void updatePreference({ key: "region", value: event.target.value })}
                 >
@@ -86,7 +85,7 @@ export function SettingsPage() {
                   <option value="CA">{t("settings.regionOptions.canada")}</option>
                   <option value="GB">{t("settings.regionOptions.uk")}</option>
                   <option value="US">{t("settings.regionOptions.us")}</option>
-                </select>
+                </Select>
               </label>
             </div>
             <div>

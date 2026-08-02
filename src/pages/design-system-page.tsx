@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Progress } from "@/components/ui/progress";
+import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
@@ -361,12 +362,31 @@ export function DesignSystemPage() {
           <Card>
             <CardHeader>
               <CardTitle>Input</CardTitle>
-              <CardDescription>input.tsx</CardDescription>
+              <CardDescription>
+                input.tsx — <code className="font-mono">size</code> "default" (recherche, mise en avant) ou "sm"
+                (formulaires compacts : réglages, filtres, éditeurs).
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Input placeholder="Placeholder" />
-              <Input defaultValue="Valeur saisie" />
-              <Input placeholder="Désactivé" disabled />
+              <Input placeholder="size=default" />
+              <Input size="sm" placeholder="size=sm" />
+              <Input size="sm" placeholder="Désactivé" disabled />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Select</CardTitle>
+              <CardDescription>select.tsx — même gabarit que Input size="sm", pour les listes natives.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select defaultValue="a">
+                <option value="a">Option A</option>
+                <option value="b">Option B</option>
+              </Select>
+              <Select disabled defaultValue="a">
+                <option value="a">Désactivé</option>
+              </Select>
             </CardContent>
           </Card>
 

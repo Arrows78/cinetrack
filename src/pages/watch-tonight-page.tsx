@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Dices } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
+import { Select } from "@/components/ui/select";
 import { MediaGrid } from "@/components/media/media-grid";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -34,32 +36,24 @@ export function WatchTonightPage() {
         className="grid gap-3 md:grid-cols-4 animate-in"
         style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
       >
-        <select
-          className="h-10 rounded-xl border border-border bg-background px-3"
-          value={genre}
-          onChange={(e) => setGenre(e.target.value)}
-        >
+        <Select value={genre} onChange={(e) => setGenre(e.target.value)}>
           <option value="">{t("watchTonight.allGenres")}</option>
           {GENRES.movies.map((item) => (
             <option key={item.id} value={item.id}>
               {item.label}
             </option>
           ))}
-        </select>
-        <select
-          className="h-10 rounded-xl border border-border bg-background px-3"
-          value={provider}
-          onChange={(e) => setProvider(e.target.value)}
-        >
+        </Select>
+        <Select value={provider} onChange={(e) => setProvider(e.target.value)}>
           <option value="">{t("watchTonight.allPlatforms")}</option>
           {PLATFORMS.map((item) => (
             <option key={item.id} value={item.id}>
               {item.label}
             </option>
           ))}
-        </select>
-        <input
-          className="h-10 rounded-xl border border-border bg-background px-3"
+        </Select>
+        <Input
+          size="sm"
           type="number"
           min="30"
           step="15"

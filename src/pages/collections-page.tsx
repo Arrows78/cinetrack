@@ -4,6 +4,7 @@ import { ListPlus, Trash2 } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
@@ -90,14 +91,14 @@ export function CollectionsPage() {
       <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
         <h2 className="font-semibold">{t("collections.customLists")}</h2>
         <div className="mt-4 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-          <input
-            className="h-10 rounded-xl border border-border bg-background px-3"
+          <Input
+            size="sm"
             value={listName}
             onChange={(event) => setListName(event.target.value)}
             placeholder={t("collections.namePlaceholder")}
           />
-          <input
-            className="h-10 rounded-xl border border-border bg-background px-3"
+          <Input
+            size="sm"
             value={listDescription}
             onChange={(event) => setListDescription(event.target.value)}
             placeholder={t("collections.descriptionPlaceholder")}

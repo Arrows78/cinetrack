@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
@@ -68,22 +70,18 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       <div className="grid gap-4 md:grid-cols-3">
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("library.status")}</span>
-          <select
-            className="h-10 rounded-xl border border-border bg-background px-3"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as LibraryStatus)}
-          >
+          <Select value={status} onChange={(event) => setStatus(event.target.value as LibraryStatus)}>
             {statuses.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("library.myRating")}</span>
-          <input
-            className="h-10 rounded-xl border border-border bg-background px-3"
+          <Input
+            size="sm"
             type="number"
             min="0"
             max="10"
@@ -94,8 +92,8 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         </label>
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("library.rewatches")}</span>
-          <input
-            className="h-10 rounded-xl border border-border bg-background px-3"
+          <Input
+            size="sm"
             type="number"
             min="0"
             value={rewatchCount}
@@ -106,8 +104,8 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
 
       <label className="mt-4 grid gap-1 text-sm">
         <span className="text-muted-foreground">{t("library.tagsHelp")}</span>
-        <input
-          className="h-10 rounded-xl border border-border bg-background px-3"
+        <Input
+          size="sm"
           value={tags}
           onChange={(event) => setTags(event.target.value)}
           placeholder={t("library.tagsPlaceholder")}

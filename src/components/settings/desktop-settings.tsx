@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
@@ -39,8 +40,8 @@ export function DesktopSettings() {
         <h3 className="font-semibold">{t("desktop.tmdbVault")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{t("desktop.vaultDesc")}</p>
         <div className="mt-3 grid gap-2">
-          <input
-            className="h-10 rounded-xl border border-border bg-background px-3"
+          <Input
+            size="sm"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
