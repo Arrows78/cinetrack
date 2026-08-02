@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
@@ -51,16 +52,12 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
 
         {/* Type chip */}
         <div className="absolute left-3 top-3">
-          <div
-            className={cn(
-              "rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-sm transition-all duration-base",
-              media.mediaType === "movie"
-                ? "bg-primary/85 text-primary-foreground"
-                : "bg-black/50 text-white/90 ring-1 ring-white/20"
-            )}
+          <Badge
+            variant={media.mediaType === "movie" ? "movie-overlay" : "series-overlay"}
+            className="px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-sm transition-all duration-base"
           >
             {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
-          </div>
+          </Badge>
         </div>
 
         {/* Bottom: title + year + genre */}

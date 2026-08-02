@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type * as React from "react";
+import { Badge } from "@/components/ui/badge";
 import { buildTmdbImageUrl, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 
@@ -48,14 +49,12 @@ export function MediaDetailsHero({
           <div>
             {/* Badges */}
             <div className="flex flex-wrap items-center gap-2">
-              <div
-                className={cn(
-                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                  media.mediaType === "movie" ? "bg-primary/80 text-primary-foreground" : "bg-accent/80 text-foreground"
-                )}
+              <Badge
+                variant={media.mediaType === "movie" ? "movie" : "series"}
+                className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
               >
                 {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
-              </div>
+              </Badge>
               {media.status ? <span className="text-xs text-muted-foreground">{media.status}</span> : null}
             </div>
 
@@ -111,9 +110,4 @@ export function MediaDetailsHero({
       </div>
     </section>
   );
-}
-
-// needed for JSX inside media-details-hero
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
 }

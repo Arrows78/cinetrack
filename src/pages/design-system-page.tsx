@@ -115,7 +115,15 @@ const zIndexScale: { name: string; value: string; usage: string }[] = [
 
 const buttonVariantList = ["default", "secondary", "ghost", "outline", "destructive"] as const;
 const buttonSizeList = ["sm", "default", "lg", "icon"] as const;
-const badgeVariantList = ["default", "secondary", "outline", "movie", "series"] as const;
+const badgeVariantList = [
+  "default",
+  "secondary",
+  "outline",
+  "movie",
+  "series",
+  "movie-overlay",
+  "series-overlay",
+] as const;
 
 export function DesignSystemPage() {
   return (
