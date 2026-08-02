@@ -64,7 +64,7 @@ function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
         className={cn(
           "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all",
           justChecked
-            ? "border-emerald-500 bg-emerald-500 text-white"
+            ? "border-success bg-success text-success-foreground"
             : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
         )}
       >

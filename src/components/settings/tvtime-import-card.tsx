@@ -70,7 +70,7 @@ export function TvTimeImportCard() {
       </div>
 
       {summary ? (
-        <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
+        <div className="mt-4 rounded-2xl border border-success/30 bg-success/5 px-4 py-3 text-sm">
           <p className="font-medium">
             {t("tvtimeImport.done", {
               episodes: summary.episodesImported,
@@ -91,7 +91,7 @@ export function TvTimeImportCard() {
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-4 rounded-2xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm">
+        <p role="alert" className="mt-4 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm">
           {error}
         </p>
       ) : null}

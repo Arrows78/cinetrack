@@ -62,6 +62,17 @@
   --destructive: 0 72% 62%;
   --destructive-foreground: 225 25% 10%;
 
+  /* Success/warning — formalizing colors already used consistently across
+     4 (success) and 2 (warning) call sites as raw Tailwind emerald-500/
+     amber-500. Values match those literals exactly (Tailwind's own emerald-
+     500/amber-500 HSL), so wiring existing call sites to these tokens is a
+     lossless rename. No .light override, matching those call sites' current
+     behavior — they never had a dark:/light-mode distinction either. */
+  --success: 160 84% 39%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 225 25% 10%;
+
   --border: 222 15% 22%;
   --input: 222 15% 22%;
   --ring: 252 80% 42%; /* matches light mode default (SSR flash prevention) */

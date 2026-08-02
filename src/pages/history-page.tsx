@@ -36,7 +36,7 @@ const actionConfig: Record<HistoryAction, { icon: LucideIcon; dot: string; ring:
   },
   "movie:unwatched": {
     icon: EyeOff,
-    dot: "bg-black/5 dark:bg-white/5 text-muted-foreground",
+    dot: "bg-foreground/5 text-muted-foreground",
     ring: "border-border",
   },
   "episode:watched": {
@@ -46,18 +46,18 @@ const actionConfig: Record<HistoryAction, { icon: LucideIcon; dot: string; ring:
   },
   "episode:unwatched": {
     icon: EyeOff,
-    dot: "bg-black/5 dark:bg-white/5 text-muted-foreground",
+    dot: "bg-foreground/5 text-muted-foreground",
     ring: "border-border",
   },
   "watchlist:add": {
     icon: BookmarkPlus,
-    dot: "bg-emerald-500/15 text-emerald-400",
-    ring: "border-emerald-500/20",
+    dot: "bg-success/15 text-success",
+    ring: "border-success/20",
   },
   "watchlist:remove": {
     icon: BookmarkMinus,
-    dot: "bg-red-500/15 text-red-400",
-    ring: "border-red-500/20",
+    dot: "bg-destructive/15 text-destructive",
+    ring: "border-destructive/20",
   },
 };
 

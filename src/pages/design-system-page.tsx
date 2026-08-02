@@ -53,6 +53,8 @@ const colorPairs: { label: string; bg: string; fg: string }[] = [
   { label: "Muted", bg: "muted", fg: "muted-foreground" },
   { label: "Accent", bg: "accent", fg: "accent-foreground" },
   { label: "Destructive", bg: "destructive", fg: "destructive-foreground" },
+  { label: "Success", bg: "success", fg: "success-foreground" },
+  { label: "Warning", bg: "warning", fg: "warning-foreground" },
 ];
 
 const lineTokens: { label: string; varName: string }[] = [

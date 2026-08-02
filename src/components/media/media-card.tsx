@@ -97,7 +97,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
             className="absolute inset-x-0 bottom-0 h-1 bg-white/15"
           >
             <div
-              className={cn("h-full transition-all duration-medium", complete ? "bg-emerald-500" : "bg-primary")}
+              className={cn("h-full transition-all duration-medium", complete ? "bg-success" : "bg-primary")}
               style={{ width: `${Math.min(100, Math.round((progress.watched / progress.total) * 100))}%` }}
             />
           </div>
