@@ -74,7 +74,7 @@ export function SeasonAccordion({
 
           return (
             <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
-              <AccordionTrigger className="group rounded-2xl border border-border bg-black/[0.03] dark:bg-white/[0.03] px-5 py-4 hover:bg-black/[0.06] dark:hover:bg-white/[0.06] data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
+              <AccordionTrigger className="group rounded-2xl border border-border bg-foreground/[0.03] px-5 py-4 hover:bg-foreground/[0.06] data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
                 <div className="w-full space-y-3 text-left">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -104,7 +104,7 @@ export function SeasonAccordion({
                 </div>
               </AccordionTrigger>
 
-              <AccordionContent className="rounded-b-2xl border border-t-0 border-border bg-black/[0.02] dark:bg-white/[0.02] px-4 pb-4">
+              <AccordionContent className="rounded-b-2xl border border-t-0 border-border bg-foreground/[0.02] px-4 pb-4">
                 {/* Season actions */}
                 <div className="flex flex-wrap items-center gap-2 py-3">
                   <Button

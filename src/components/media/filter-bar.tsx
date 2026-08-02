@@ -10,7 +10,7 @@ export function FilterBar<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="inline-flex rounded-2xl bg-black/[0.06] dark:bg-white/[0.06] p-1 gap-0.5">
+    <div className="inline-flex rounded-2xl bg-foreground/[0.06] p-1 gap-0.5">
       {options.map((option) => (
         <button
           key={option.value}

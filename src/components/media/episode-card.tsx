@@ -22,7 +22,7 @@ export function EpisodeCard({
     <div
       className={cn(
         "group flex items-center gap-3 rounded-2xl p-3 transition",
-        watched ? "bg-primary/[0.06]" : "hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+        watched ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.04]"
       )}
     >
       <div className="relative aspect-video h-[62px] w-[110px] shrink-0 overflow-hidden rounded-xl bg-muted">

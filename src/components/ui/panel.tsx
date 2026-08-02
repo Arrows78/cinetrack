@@ -16,7 +16,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
         className={cn(
           "rounded-panel border border-border p-5",
           tone === "card" && "bg-card/60",
-          tone === "subtle" && "bg-black/[0.03] dark:bg-white/[0.03]",
+          tone === "subtle" && "bg-foreground/[0.03]",
           className
         )}
         {...props}

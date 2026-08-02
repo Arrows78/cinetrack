@@ -30,7 +30,7 @@ export function ProgressBar({
       )}
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-full bg-black/[0.08] dark:bg-white/[0.08]",
+          "relative w-full overflow-hidden rounded-full bg-foreground/[0.08]",
           size === "sm" ? "h-1" : "h-1.5"
         )}
       >

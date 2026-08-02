@@ -75,7 +75,7 @@ export function HistoryPage() {
         {historyQuery.data?.length ? (
           <div className="relative">
             {/* Vertical connector */}
-            <div className="absolute left-[19px] top-2 bottom-2 w-px bg-black/[0.07] dark:bg-white/[0.07]" />
+            <div className="absolute left-[19px] top-2 bottom-2 w-px bg-foreground/[0.07]" />
 
             {historyQuery.data.map((item, i) => {
               const action = item.action as HistoryAction;
@@ -147,7 +147,7 @@ export function HistoryPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05, type: "spring", stiffness: 220, damping: 28 }}
-                  className="group relative overflow-hidden rounded-2xl border border-border bg-black/[0.03] dark:bg-white/[0.03] p-4 transition-colors hover:bg-black/[0.06] dark:hover:bg-white/[0.06]"
+                  className="group relative overflow-hidden rounded-2xl border border-border bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.06]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
