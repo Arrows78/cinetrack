@@ -15,7 +15,7 @@ describe("Badge", () => {
 
   it("applies the movie variant class", () => {
     render(<Badge variant="movie">Movie</Badge>);
-    expect(screen.getByText("Movie")).toHaveClass("bg-primary", "text-primary-foreground");
+    expect(screen.getByText("Movie")).toHaveClass("bg-primary/80", "text-primary-foreground");
   });
 
   it("merges a custom className", () => {

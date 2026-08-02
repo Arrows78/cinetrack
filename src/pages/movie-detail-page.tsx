@@ -54,7 +54,7 @@ export function MovieDetailPage() {
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
-          <p className="font-serif text-base italic leading-7 text-muted-foreground md:text-lg">{movie.overview}</p>
+          <p className="font-serif text-base leading-7 text-muted-foreground md:text-lg">{movie.overview}</p>
         </Panel>
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("movies.technicalSheet")} />
