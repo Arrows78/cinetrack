@@ -6,31 +6,55 @@
 @tailwind utilities;
 
 /**
- * WCAG contrast audit:
+ * WCAG contrast audit — every ratio below is computed (relative-luminance
+ * formula, not eyeballed) and re-verified whenever a value in this file
+ * changes; the design-system catalog's Colors section renders the same
+ * numbers live. Two real failures were caught this way and fixed in place
+ * (not just documented): --accent-foreground was dark-on-dark in :root
+ * (2.9:1) since --accent doesn't brighten in dark mode the way --primary
+ * does — now white, 5.9:1. --success-foreground was white-on-medium-green
+ * (2.6:1) — now dark text, 6.9:1. Three of the eight accent presets in
+ * colors.ts (teal/green/amber) also failed AA in light mode (their light L
+ * was too bright for the white primary-foreground text ThemeController
+ * always pairs with primary in light mode) — darkened to L 22–24%, and all
+ * eight presets now meet the system's ≥4.5:1 AA contract in both themes.
  *
  * Dark mode:
- * --foreground on --background        → ~40:1  AAA ✓
- * --foreground on --card              → ~32:1  AAA ✓
- * --muted-foreground on --background  → ~11:1  AAA ✓
- * --muted-foreground on --card        → ~9:1   AAA ✓
- * --primary (text) on --background    → ~19:1  AAA ✓
- * --primary-foreground on --primary   → ~17:1  AAA ✓ (dark fg on bright primary)
- * --accent (text) on --background     → ~21:1  AAA ✓
+ * --foreground on --background        → 17.7:1  AAA
+ * --foreground on --card              → 16.1:1  AAA
+ * --muted-foreground on --background  → 8.1:1   AAA
+ * --muted-foreground on --card        → 7.4:1   AAA
+ * --muted-foreground on --muted       → 6.5:1   AA
+ * --primary (text) on --background    → 5.4:1   AA  (default "violet" accent)
+ * --primary-foreground on --primary   → 5.1:1   AA
+ * --secondary-foreground on --secondary → 10.4:1 AAA
+ * --accent (text) on --background     → 3.1:1   — icon/decorative use only (history-page dot); non-text 3:1 minimum, not body-text 4.5:1
+ * --accent-foreground on --accent     → 5.9:1   AA
+ * --destructive (text) on --background → 5.3:1  AA
+ * --destructive-foreground on --destructive → 5.0:1 AA
+ * --success-foreground on --success   → 6.9:1   AA
+ * --warning-foreground on --warning   → 8.4:1   AAA
  *
- * Light mode (AAA):
- * --foreground on --background        → ~37:1  AAA ✓
- * --foreground on --card               → ~39:1  AAA ✓
- * --muted-foreground on --background  → ~8.1:1 AAA ✓ (L=32%)
- * --muted-foreground on --muted       → ~7.2:1 AAA ✓
- * --primary (text) on --background    → ≥7:1   AAA ✓ (varies by accent — see colors.ts)
- * --primary-foreground on --primary   → ~9:1   AAA ✓ (white fg on dark accent)
- * --accent (text) on --background     → ~8.2:1 AAA ✓ (L=22%)
- * --accent-foreground on --accent      → ~8.2:1 AAA ✓ (white fg on dark teal)
- * --destructive on --background       → ~7.2:1 AAA ✓
+ * Light mode:
+ * --foreground on --background        → 17.2:1  AAA
+ * --foreground on --card              → 18.0:1  AAA
+ * --muted-foreground on --background  → 8.2:1   AAA
+ * --muted-foreground on --card        → 8.6:1   AAA
+ * --muted-foreground on --muted       → 7.4:1   AAA
+ * --primary (text) on --background    → 9.8:1   AAA (default "violet"; every preset is ≥4.5:1, see colors.ts)
+ * --primary-foreground on --primary   → 9.8:1   AAA
+ * --secondary-foreground on --secondary → 14.9:1 AAA
+ * --accent (text) on --background     → 8.2:1   AAA
+ * --accent-foreground on --accent     → 8.2:1   AAA
+ * --destructive (text) on --background → 7.7:1  AAA
+ * --destructive-foreground on --destructive → 7.7:1 AAA
+ * --success-foreground on --success   → 6.9:1   AA  (theme-invariant — success has no .light override)
+ * --warning-foreground on --warning   → 8.4:1   AAA (theme-invariant — warning has no .light override)
  *
  * Note: --primary and --ring are overridden at runtime by ThemeController
- * based on the user's accent color preference. Default values below are
- * for SSR/flash prevention (light mode defaults).
+ * based on the user's accent color preference. The static :root and .light
+ * values mirror the default violet preset in their respective themes so the
+ * pre-hydration frame is accessible too.
  */
 
 :root {
@@ -45,8 +69,8 @@
   --popover-foreground: 220 18% 97%;
 
   /* Primary — overridden by ThemeController at runtime */
-  --primary: 252 80% 42%;
-  --primary-foreground: 225 25% 10%; /* dark fg → AAA on any primary */
+  --primary: 252 80% 70%;
+  --primary-foreground: 225 25% 10%; /* dark fg → AA or better across dark presets */
 
   --secondary: 220 17% 20%;
   --secondary-foreground: 220 16% 90%;
@@ -57,7 +81,12 @@
 
   /* Accent (cyan) - darker L for AAA on white bg */
   --accent: 192 80% 28%;
-  --accent-foreground: 225 20% 10%; /* dark fg → AAA on cyan */
+  /* White, not dark text: unlike primary/destructive, accent doesn't get
+     brighter in dark mode (28% here vs 22% in .light — both dark teals), so
+     it needs the same light foreground light mode already uses correctly.
+     Dark text here (as this read until an audit caught it) computes to
+     2.9:1 — fails AA. White is 5.9:1 (AA). */
+  --accent-foreground: 0 0% 98%;
 
   --destructive: 0 72% 62%;
   --destructive-foreground: 225 25% 10%;
@@ -69,13 +98,17 @@
      lossless rename. No .light override, matching those call sites' current
      behavior — they never had a dark:/light-mode distinction either. */
   --success: 160 84% 39%;
-  --success-foreground: 0 0% 100%;
+  /* Dark text, not white: white-on-success computes to 2.6:1 — fails AA
+     badly (caught when adding contrast figures to the design-system
+     catalog). Dark text (same family as primary/destructive-foreground)
+     gives 6.95:1, just under AAA. */
+  --success-foreground: 225 25% 10%;
   --warning: 38 92% 50%;
   --warning-foreground: 225 25% 10%;
 
   --border: 222 15% 22%;
   --input: 222 15% 22%;
-  --ring: 252 80% 42%; /* matches light mode default (SSR flash prevention) */
+  --ring: 252 80% 70%; /* matches the default violet dark preset */
   --radius: 1rem;
 
   /* Surface radius scale, exposed to Tailwind as rounded-card/panel/shell/hero
@@ -131,7 +164,7 @@
 
   /* Primary — overridden by ThemeController */
   --primary: 252 80% 42%;
-  --primary-foreground: 0 0% 98%; /* white → AAA on dark accent bg (~9:1) */
+  --primary-foreground: 0 0% 98%; /* white → AA or better across light presets */
 
   --secondary: 220 14% 92%;
   --secondary-foreground: 225 25% 10%;

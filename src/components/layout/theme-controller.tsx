@@ -54,12 +54,12 @@ export function ThemeController() {
      * Primary foreground contrast strategy:
      *
      * Dark mode:  primary is bright (L ≈ 52–70%).
-     *             Dark fg (L≈8%) gives ~11–18:1 (AAA ✓).
-     *             White would give ~1.3:1 (FAIL).
+     *             Dark fg (L≈10%) gives 5.1–10.5:1 (AA+, some AAA).
+     *             White would fail on the lighter presets.
      *
-     * Light mode: primary is dark (L ≈ 35–44%).
-     *             Dark fg (L≈8%) gives ~1.8:1 (FAIL — same dark-on-dark).
-     *             White fg (L≈98%) gives ~9:1 (AAA ✓).
+     * Light mode: primary is dark (L ≈ 22–44%).
+     *             Dark fg would fail on the darker presets.
+     *             White fg (L≈98%) gives 4.8–9.8:1 (AA+, some AAA).
      */
     const primaryFg = theme === "dark" ? "225 25% 10%" : "0 0% 98%";
 

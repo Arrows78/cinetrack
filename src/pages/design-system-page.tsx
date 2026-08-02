@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Check, Moon, Sun } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,9 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tile } from "@/components/ui/tile";
-import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
+import { usePreferences } from "@/features/preferences/use-preferences";
+import { COLOR_PRESETS, type AccentColor, type ColorPreset } from "@/shared/constants/colors";
+import { contrastRatio, wcagLevel } from "@/shared/utils/contrast";
 import { cn } from "@/shared/lib/cn";
 
 // Internal dev tool — reachable only at /design-system, and only registered
@@ -21,9 +24,19 @@ import { cn } from "@/shared/lib/cn";
 // building UI, not end users, so it doesn't need react-i18next or entries in
 // locale-parity.test.ts.
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="space-y-4">
+    <section id={id} className="scroll-mt-40 space-y-4 lg:scroll-mt-20">
       <div>
         <h2 className="font-display text-heading-lg font-bold">{title}</h2>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
@@ -45,23 +58,194 @@ function TokenTile({ label, meta, children }: { label: string; meta?: string; ch
   );
 }
 
-const colorPairs: { label: string; bg: string; fg: string }[] = [
-  { label: "Background", bg: "background", fg: "foreground" },
-  { label: "Card", bg: "card", fg: "card-foreground" },
-  { label: "Popover", bg: "popover", fg: "popover-foreground" },
-  { label: "Primary", bg: "primary", fg: "primary-foreground" },
-  { label: "Secondary", bg: "secondary", fg: "secondary-foreground" },
-  { label: "Muted", bg: "muted", fg: "muted-foreground" },
-  { label: "Accent", bg: "accent", fg: "accent-foreground" },
-  { label: "Destructive", bg: "destructive", fg: "destructive-foreground" },
-  { label: "Success", bg: "success", fg: "success-foreground" },
-  { label: "Warning", bg: "warning", fg: "warning-foreground" },
+function WcagBadge({ ratio }: { ratio: number | null }) {
+  if (ratio === null) return null;
+  const level = wcagLevel(ratio);
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+        level === "AAA" && "bg-success text-success-foreground",
+        level === "AA" && "bg-warning text-warning-foreground",
+        level === "Fail" && "bg-destructive text-destructive-foreground"
+      )}
+      aria-label={`Contrast ratio ${ratio.toFixed(1)} to 1, WCAG ${level}`}
+    >
+      {ratio.toFixed(1)}:1 {level}
+    </span>
+  );
+}
+
+// Reads the *live* CSS custom properties instead of hand-typed hex/HSL —
+// the numbers here can never drift from what's actually in styles/index.css,
+// unlike the header comment there that sat wrong for a long time before this
+// component's math caught it (see contrast.ts).
+function ColorSwatch({ label, bg, fg, refreshKey }: { label: string; bg: string; fg: string; refreshKey: string }) {
+  const [values, setValues] = useState<{ bgHsl: string; fgHsl: string; ratio: number | null }>({
+    bgHsl: "",
+    fgHsl: "",
+    ratio: null,
+  });
+
+  useEffect(() => {
+    // ThemeController writes the accent variables in its own effect. Reading
+    // on the next animation frame guarantees this catalog sees the final
+    // cascade instead of the previous preference for one render.
+    const frame = requestAnimationFrame(() => {
+      const style = getComputedStyle(document.documentElement);
+      const bgHsl = style.getPropertyValue(`--${bg}`).trim();
+      const fgHsl = style.getPropertyValue(`--${fg}`).trim();
+      setValues({ bgHsl, fgHsl, ratio: contrastRatio(bgHsl, fgHsl) });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [bg, fg, refreshKey]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div
+        className="flex h-20 items-center justify-center rounded-card border border-border/50"
+        style={{ backgroundColor: `hsl(var(--${bg}))`, color: `hsl(var(--${fg}))` }}
+      >
+        <span className="text-lg font-semibold">Aa</span>
+      </div>
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="font-mono text-xs text-muted-foreground">
+          --{bg}
+          {values.bgHsl ? ` · ${values.bgHsl}` : ""}
+        </p>
+        <p className="font-mono text-[11px] text-muted-foreground/70">
+          --{fg}
+          {values.fgHsl ? ` · ${values.fgHsl}` : ""}
+        </p>
+      </div>
+      <WcagBadge ratio={values.ratio} />
+    </div>
+  );
+}
+
+const presetThemes = [
+  { key: "dark", label: "Dark", icon: Moon, foreground: "225 25% 10%" },
+  { key: "light", label: "Light", icon: Sun, foreground: "0 0% 98%" },
+] as const;
+
+// Presets not currently selected never reach the DOM, so the catalog reads
+// COLOR_PRESETS directly and displays both theme variants side by side. That
+// makes the accessibility contract visible without toggling app preferences.
+function AccentPresetCard({
+  accent,
+  preset,
+  selected,
+}: {
+  accent: AccentColor;
+  preset: ColorPreset;
+  selected: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-panel border border-border p-3 transition-colors",
+        selected && "border-primary/50 bg-primary/5"
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold">{preset.label}</p>
+          <p className="font-mono text-[10px] text-muted-foreground">{accent}</p>
+        </div>
+        {selected ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground">
+            <Check className="size-3" aria-hidden="true" /> Active
+          </span>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {presetThemes.map((theme) => {
+          const value = preset[theme.key];
+          const ratio = contrastRatio(value, theme.foreground);
+          const Icon = theme.icon;
+
+          return (
+            <div key={theme.key} className="space-y-2">
+              <div
+                className="flex h-16 items-center justify-center rounded-card border border-black/10 text-lg font-semibold"
+                style={{ backgroundColor: `hsl(${value})`, color: `hsl(${theme.foreground})` }}
+              >
+                Aa
+              </div>
+              <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                <Icon className="size-3" aria-hidden="true" />
+                {theme.label}
+              </div>
+              <p className="font-mono text-[10px] text-muted-foreground/70">{value}</p>
+              <WcagBadge ratio={ratio} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const colorGroups: { title: string; description: string; pairs: { label: string; bg: string; fg: string }[] }[] = [
+  {
+    title: "Surface",
+    description: "Neutral UI chrome — the least opinionated colors, used the most often.",
+    pairs: [
+      { label: "Background", bg: "background", fg: "foreground" },
+      { label: "Card", bg: "card", fg: "card-foreground" },
+      { label: "Popover", bg: "popover", fg: "popover-foreground" },
+      { label: "Muted", bg: "muted", fg: "muted-foreground" },
+    ],
+  },
+  {
+    title: "Brand",
+    description:
+      'Identity-carrying. Primary follows the user\'s chosen accent (Settings → "Accent color") and swaps at runtime via ThemeController — the swatch below always reflects whatever is currently active.',
+    pairs: [
+      { label: "Primary", bg: "primary", fg: "primary-foreground" },
+      { label: "Secondary", bg: "secondary", fg: "secondary-foreground" },
+      { label: "Accent", bg: "accent", fg: "accent-foreground" },
+    ],
+  },
+  {
+    title: "Semantic",
+    description: "Status colors — meaning, not decoration. Reused for badges, banners, and confetti alike.",
+    pairs: [
+      { label: "Destructive", bg: "destructive", fg: "destructive-foreground" },
+      { label: "Success", bg: "success", fg: "success-foreground" },
+      { label: "Warning", bg: "warning", fg: "warning-foreground" },
+    ],
+  },
 ];
 
 const lineTokens: { label: string; varName: string }[] = [
   { label: "Border", varName: "border" },
   { label: "Input", varName: "input" },
   { label: "Ring", varName: "ring" },
+];
+
+const typeFamilies: { name: string; role: string; sampleClassName: string; usage: string }[] = [
+  {
+    name: "Syne",
+    role: "Display",
+    sampleClassName: "font-display font-bold",
+    usage: "font-display — headings, hero titles, stat numbers",
+  },
+  {
+    name: "DM Sans",
+    role: "Body",
+    sampleClassName: "font-sans",
+    usage: "font-sans — everything else: labels, buttons, body copy",
+  },
+  {
+    name: "Playfair Display",
+    role: "Editorial serif",
+    sampleClassName: "font-serif italic",
+    usage: "font-serif italic — movie/series synopsis text only",
+  },
 ];
 
 const typeRoles: { name: string; className: string; meta: string; display?: boolean }[] = [
@@ -104,13 +288,16 @@ const shadows: { name: string; className: string }[] = [
 // here as a scale (not reinvented per call site) the same way z-index is.
 const tintScale: { value: string; usage: string }[] = [
   { value: "[0.02]", usage: "Nested content directly under a tinted header (season accordion content)" },
-  { value: "[0.03]", usage: "Panel tone=\"subtle\", tracked-series rows, accordion trigger" },
+  { value: "[0.03]", usage: 'Panel tone="subtle", tracked-series rows, accordion trigger' },
   { value: "[0.04]", usage: "Empty-state icon circle, episode row hover" },
   { value: "5", usage: "Skeleton, sidebar nav surfaces, theme toggle hover, genre chips, seen-toggle idle state" },
   { value: "[0.06]", usage: "Hover/active state over a [0.03] surface, filter-bar track background" },
   { value: "[0.07]", usage: "Decorative timeline connector (history page)" },
   { value: "[0.08]", usage: "Media progress-bar track (progress-bar.tsx, the custom gradient one)" },
-  { value: "10", usage: "Separator, ui/Progress track, Sheet close-button hover, filter-bar active segment, sidebar collapse button" },
+  {
+    value: "10",
+    usage: "Separator, ui/Progress track, Sheet close-button hover, filter-bar active segment, sidebar collapse button",
+  },
   { value: "20", usage: "Unwatched episode dots, seen-toggle idle border" },
 ];
 
@@ -129,7 +316,7 @@ const motionTokens: { name: string; className: string }[] = [
 
 const zIndexScale: { name: string; value: string; usage: string }[] = [
   { name: "raised", value: "10", usage: "Element raised within its own stacking context (e.g. history page)" },
-  { name: "sticky", value: "30", usage: "Sticky mobile header (AppShell)" },
+  { name: "sticky", value: "30", usage: "Sticky mobile header (AppShell), this catalog's quick-nav" },
   { name: "dropdown", value: "40", usage: "Dropdown menus, popovers" },
   { name: "overlay", value: "50", usage: "Dimmed backdrop / floating banners (Sheet, indicators)" },
   { name: "modal", value: "50", usage: "Sheet/Dialog content" },
@@ -141,55 +328,172 @@ const buttonVariantList = ["default", "secondary", "ghost", "outline", "destruct
 const buttonSizeList = ["sm", "default", "lg", "icon"] as const;
 const badgeVariantList = ["default", "secondary", "outline", "movie", "series"] as const;
 
+const navSections = [
+  { id: "colors", label: "Colors" },
+  { id: "typography", label: "Typography" },
+  { id: "radius", label: "Radius" },
+  { id: "shadows", label: "Shadows" },
+  { id: "tint", label: "Tint" },
+  { id: "spacing", label: "Spacing" },
+  { id: "motion", label: "Motion" },
+  { id: "z-index", label: "Z-index" },
+  { id: "components", label: "Components" },
+];
+const navSectionIds = navSections.map((section) => section.id);
+
+function useActiveSection(sectionIds: string[]) {
+  const [activeSection, setActiveSection] = useState(sectionIds[0] ?? "");
+
+  useEffect(() => {
+    const sections = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section !== null);
+
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]?.target.id) setActiveSection(visible[0].target.id);
+      },
+      { rootMargin: "-18% 0px -72% 0px", threshold: [0, 1] }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [sectionIds]);
+
+  return activeSection;
+}
+
 export function DesignSystemPage() {
+  const preferences = usePreferences();
+  const theme = preferences.data?.theme ?? "dark";
+  const accent = preferences.data?.accentColor ?? "violet";
+  const activePreset = COLOR_PRESETS[accent];
+  const activeSection = useActiveSection(navSectionIds);
+  const refreshKey = `${theme}:${accent}`;
+  const semanticPairCount = colorGroups.reduce((total, group) => total + group.pairs.length, 0);
+  const contrastCheckCount = semanticPairCount + Object.keys(COLOR_PRESETS).length * presetThemes.length;
+
   return (
     <div className="space-y-12 pb-16">
-      <div>
-        <p className="text-overline uppercase text-primary/70">Internal tool · dev only</p>
-        <h1 className="font-display text-display-title font-bold">Design system</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Living catalog of tokens (colors, typography, radius, shadows, motion, z-index, tint) and{" "}
-          <code className="font-mono text-xs">components/ui</code> primitives. Source of truth:{" "}
-          <code className="font-mono text-xs">src/styles/index.css</code> and{" "}
-          <code className="font-mono text-xs">tailwind.config.ts</code>.
-        </p>
+      <div className="relative overflow-hidden rounded-hero border border-border bg-card/60 p-6 shadow-elevation-sm sm:p-8">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        <div className="relative">
+          <p className="text-overline uppercase text-primary/80">Internal tool · dev only</p>
+          <h1 className="mt-2 font-display text-display-title font-bold">Design system</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Living catalog of foundations and <code className="font-mono text-xs">components/ui</code> primitives.
+            Sources of truth: <code className="font-mono text-xs">src/styles/index.css</code> and{" "}
+            <code className="font-mono text-xs">tailwind.config.ts</code>. Contrast values are calculated from the real
+            tokens instead of copied into documentation.
+          </p>
+
+          <div className="section-rule mt-6 max-w-xl" aria-hidden="true" />
+
+          <dl className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
+              <dt className="text-xs text-muted-foreground">Current theme</dt>
+              <dd className="mt-1 flex items-center gap-2 text-sm font-semibold capitalize">
+                {theme === "dark" ? (
+                  <Moon className="size-4" aria-hidden="true" />
+                ) : (
+                  <Sun className="size-4" aria-hidden="true" />
+                )}
+                {theme}
+              </dd>
+            </div>
+            <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
+              <dt className="text-xs text-muted-foreground">Active accent</dt>
+              <dd className="mt-1 flex items-center gap-2 text-sm font-semibold">
+                <span
+                  className="size-3 rounded-full"
+                  style={{ backgroundColor: `hsl(${theme === "dark" ? activePreset.dark : activePreset.light})` }}
+                  aria-hidden="true"
+                />
+                {activePreset.label}
+              </dd>
+            </div>
+            <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
+              <dt className="text-xs text-muted-foreground">Catalog sections</dt>
+              <dd className="mt-1 text-sm font-semibold">{navSections.length} foundations & primitives</dd>
+            </div>
+            <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
+              <dt className="text-xs text-muted-foreground">Contrast checks</dt>
+              <dd className="mt-1 text-sm font-semibold">{contrastCheckCount} live or config-backed pairs</dd>
+            </div>
+          </dl>
+        </div>
       </div>
 
-      <Section title="Colors" description="Background/foreground pairs from src/styles/index.css (:root = dark, .light = light).">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {colorPairs.map((pair) => (
-            <TokenTile key={pair.bg} label={pair.label} meta={`--${pair.bg} / --${pair.fg}`}>
-              <div
-                className="flex h-20 items-center justify-center rounded-card border border-border/50"
-                style={{ backgroundColor: `hsl(var(--${pair.bg}))`, color: `hsl(var(--${pair.fg}))` }}
-              >
-                <span className="text-lg font-semibold">Aa</span>
-              </div>
-            </TokenTile>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-          {lineTokens.map((token) => (
-            <TokenTile key={token.varName} label={token.label} meta={`--${token.varName}`}>
-              <div className="h-10 rounded-card border-2" style={{ borderColor: `hsl(var(--${token.varName}))` }} />
-            </TokenTile>
-          ))}
-        </div>
-
-        <div>
-          <p className="mb-3 text-sm font-medium">
-            Accent presets <span className="text-muted-foreground">(override --primary/--ring at runtime)</span>
-          </p>
-          <div className="flex flex-wrap gap-4">
-            {(Object.entries(COLOR_PRESETS) as [AccentColor, (typeof COLOR_PRESETS)[AccentColor]][]).map(
-              ([key, preset]) => (
-                <div key={key} className="flex flex-col items-center gap-1.5">
-                  <div className="size-9 rounded-full" style={{ backgroundColor: preset.swatch }} />
-                  <span className="text-xs text-muted-foreground">{preset.label}</span>
-                </div>
-              )
+      <nav
+        className="sticky top-20 z-sticky -mx-4 flex gap-1 overflow-x-auto border-y border-border bg-background/90 px-4 py-2 backdrop-blur-md lg:top-0 lg:-mx-6 lg:px-6"
+        aria-label="Design system sections"
+      >
+        {navSections.map((item) => (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            aria-current={activeSection === item.id ? "location" : undefined}
+            className={cn(
+              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+              activeSection === item.id
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
             )}
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <Section
+        id="colors"
+        title="Colors"
+        description="Grouped by role, not alphabetically — surface (neutral chrome), brand (identity), semantic (status). Background/foreground pairs from src/styles/index.css (:root = dark, .light = light)."
+      >
+        <div className="space-y-8">
+          {colorGroups.map((group) => (
+            <div key={group.title} className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground/80">{group.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {group.pairs.map((pair) => (
+                  <ColorSwatch key={pair.bg} label={pair.label} bg={pair.bg} fg={pair.fg} refreshKey={refreshKey} />
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lines</h3>
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+              {lineTokens.map((token) => (
+                <TokenTile key={token.varName} label={token.label} meta={`--${token.varName}`}>
+                  <div className="h-10 rounded-card border-2" style={{ borderColor: `hsl(var(--${token.varName}))` }} />
+                </TokenTile>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1 text-sm font-medium">Accent presets</p>
+            <p className="mb-3 max-w-3xl text-xs leading-5 text-muted-foreground/80">
+              Override <code className="font-mono">--primary</code>/<code className="font-mono">--ring</code> at
+              runtime. Both control-fill pairings are shown because the AA contract applies to every preset, not only
+              the one currently selected. Regression tests also cover primary-colored text on each theme background. The
+              active preference is outlined.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {(Object.entries(COLOR_PRESETS) as [AccentColor, ColorPreset][]).map(([key, preset]) => (
+                <AccentPresetCard key={key} accent={key} preset={preset} selected={key === accent} />
+              ))}
+            </div>
           </div>
         </div>
       </Section>
@@ -197,13 +501,31 @@ export function DesignSystemPage() {
       <Separator className="opacity-40" />
 
       <Section
+        id="typography"
         title="Typography"
-        description="Semantic type roles (text-*), additive to the default Tailwind scale. Target for new components — not yet adopted everywhere."
+        description="Three families, each with exactly one job — not the same pairing you'd reach for on any other project."
       >
+        <div className="grid gap-4 sm:grid-cols-3">
+          {typeFamilies.map((family) => (
+            <div key={family.name} className="rounded-panel border border-border bg-card/40 p-5">
+              <p className={cn("text-3xl", family.sampleClassName)}>Aa Bb Cc</p>
+              <p className="mt-3 text-sm font-semibold">{family.name}</p>
+              <p className="text-xs text-muted-foreground">{family.role}</p>
+              <p className="mt-2 font-mono text-[11px] text-muted-foreground/70">{family.usage}</p>
+            </div>
+          ))}
+        </div>
+
         <div className="space-y-4">
+          <p className="text-sm font-medium">Type roles</p>
           {typeRoles.map((role) => (
-            <div key={role.name} className="flex items-baseline justify-between gap-4 border-b border-border/40 pb-3">
-              <p className={cn(role.className, role.display && "font-display")}>The quick brown fox</p>
+            <div
+              key={role.name}
+              className="flex flex-col gap-2 border-b border-border/40 pb-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+            >
+              <p className={cn("min-w-0 break-words", role.className, role.display && "font-display")}>
+                The quick brown fox
+              </p>
               <div className="shrink-0 text-right">
                 <p className="font-mono text-xs">text-{role.name}</p>
                 <p className="text-xs text-muted-foreground">{role.meta}</p>
@@ -215,7 +537,7 @@ export function DesignSystemPage() {
 
       <Separator className="opacity-40" />
 
-      <Section title="Radius" description="Surface scale (posters → hero panels), exposed as rounded-*.">
+      <Section id="radius" title="Radius" description="Surface scale (posters → hero panels), exposed as rounded-*.">
         <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-7">
           {radii.map((radius) => (
             <TokenTile key={radius.name} label={radius.name} meta={`rounded-${radius.name}`}>
@@ -228,6 +550,7 @@ export function DesignSystemPage() {
       <Separator className="opacity-40" />
 
       <Section
+        id="shadows"
         title="Shadows / elevation"
         description="shadow-elevation-* — distinct from Tailwind's own shadow-sm/xl/2xl, already used elsewhere."
       >
@@ -243,13 +566,14 @@ export function DesignSystemPage() {
       <Separator className="opacity-40" />
 
       <Section
+        id="tint"
         title="Tint"
         description={
           'bg-foreground/[value] — a single, theme-invariant class for the "contrast overlay" family (subtle panels, hover states, tracks, dividers). Replaces the old bg-black/[x] dark:bg-white/[x] pair.'
         }
       >
-        <div className="overflow-hidden rounded-panel border border-border">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-panel border border-border">
+          <table className="min-w-[640px] w-full text-sm">
             <thead className="bg-foreground/5">
               <tr>
                 <th className="px-4 py-2 text-left font-medium">Class</th>
@@ -269,9 +593,7 @@ export function DesignSystemPage() {
         <div className="flex flex-wrap gap-4">
           {tintScale.map((tier) => (
             <TokenTile key={tier.value} label={tier.value}>
-              <div
-                className={cn("h-16 w-16 rounded-xl border border-border", `bg-foreground/${tier.value}`)}
-              />
+              <div className={cn("h-16 w-16 rounded-xl border border-border", `bg-foreground/${tier.value}`)} />
             </TokenTile>
           ))}
         </div>
@@ -280,6 +602,7 @@ export function DesignSystemPage() {
       <Separator className="opacity-40" />
 
       <Section
+        id="spacing"
         title="Spacing"
         description="Already tokenized — Tailwind's default scale (no parallel vocabulary invented)."
       >
@@ -297,19 +620,23 @@ export function DesignSystemPage() {
 
       <Separator className="opacity-40" />
 
-      <Section title="Motion" description="Named durations + the --ease-out-expo curve (hover each bar).">
+      <Section id="motion" title="Motion" description="Named durations + the --ease-out-expo curve (hover each bar).">
         <div className="space-y-3">
           {motionTokens.map((token) => (
             <div key={token.name} className="flex items-center gap-4">
               <span className="w-40 shrink-0 font-mono text-xs text-muted-foreground">{token.name}</span>
-              <div className="group h-10 w-full max-w-md overflow-hidden rounded-full bg-foreground/5">
+              <button
+                type="button"
+                className="group h-10 w-full max-w-md overflow-hidden rounded-full bg-foreground/5 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                aria-label={`Preview ${token.name} motion token`}
+              >
                 <div
                   className={cn(
-                    "h-full w-10 rounded-full bg-primary transition-transform ease-out-expo group-hover:translate-x-[calc(100%-2.5rem)]",
+                    "h-full w-10 rounded-full bg-primary transition-transform ease-out-expo group-hover:translate-x-[calc(100%-2.5rem)] group-focus-visible:translate-x-[calc(100%-2.5rem)]",
                     token.className
                   )}
                 />
-              </div>
+              </button>
             </div>
           ))}
         </div>
@@ -317,9 +644,9 @@ export function DesignSystemPage() {
 
       <Separator className="opacity-40" />
 
-      <Section title="Z-index" description="Named scale, additive to Tailwind's default numeric scale.">
-        <div className="overflow-hidden rounded-panel border border-border">
-          <table className="w-full text-sm">
+      <Section id="z-index" title="Z-index" description="Named scale, additive to Tailwind's default numeric scale.">
+        <div className="overflow-x-auto rounded-panel border border-border">
+          <table className="min-w-[640px] w-full text-sm">
             <thead className="bg-foreground/5">
               <tr>
                 <th className="px-4 py-2 text-left font-medium">Token</th>
@@ -343,6 +670,7 @@ export function DesignSystemPage() {
       <Separator className="opacity-40" />
 
       <Section
+        id="components"
         title="Components"
         description="components/ui primitives, unchanged — this catalog documents them, it doesn't modify them."
       >
@@ -391,8 +719,8 @@ export function DesignSystemPage() {
             <CardHeader>
               <CardTitle>Badge</CardTitle>
               <CardDescription>
-                badge.tsx — <code className="font-mono">movie</code>/<code className="font-mono">series</code> are
-                the media-type chip colors, reused both in the detail hero and (with a{" "}
+                badge.tsx — <code className="font-mono">movie</code>/<code className="font-mono">series</code> are the
+                media-type chip colors, reused both in the detail hero and (with a{" "}
                 <code className="font-mono">backdrop-blur-sm</code> className override) over poster art.
               </CardDescription>
             </CardHeader>
@@ -412,8 +740,8 @@ export function DesignSystemPage() {
               <CardTitle>Panel</CardTitle>
               <CardDescription>
                 panel.tsx — flat container, distinct from Card (glass + shadow). <code className="font-mono">tone</code>{" "}
-                = "card" (bg-card/60) or "subtle" (bg-foreground/[0.03]). <code className="font-mono">asChild</code>{" "}
-                to render as another element (Link, article...).
+                = "card" (bg-card/60) or "subtle" (bg-foreground/[0.03]). <code className="font-mono">asChild</code> to
+                render as another element (Link, article...).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -432,8 +760,8 @@ export function DesignSystemPage() {
             <CardHeader>
               <CardTitle>Tile</CardTitle>
               <CardDescription>
-                tile.tsx — minimal bordered box for list rows and small nested blocks. No default background or
-                padding: a plainer, smaller sibling of Panel (rounded-xl vs rounded-panel).
+                tile.tsx — minimal bordered box for list rows and small nested blocks. No default background or padding:
+                a plainer, smaller sibling of Panel (rounded-xl vs rounded-panel).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
