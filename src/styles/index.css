@@ -315,12 +315,22 @@
     @apply border-white/[0.06];
   }
 
+  /* Perforation rule — a row of small ticks fading to transparent, echoing
+     35mm film sprocket holes (see EpisodeDots in season-accordion.tsx, the
+     same idea applied to episode-watched progress). Single foreground-based
+     value works in both themes, same as the rest of the tint scale. */
   .section-rule {
-    @apply h-px w-full bg-gradient-to-r from-black/[0.12] to-transparent;
-  }
-
-  .dark .section-rule {
-    @apply from-white/10;
+    height: 3px;
+    width: 100%;
+    background-image: repeating-linear-gradient(
+      to right,
+      hsl(var(--foreground) / 0.35) 0,
+      hsl(var(--foreground) / 0.35) 3px,
+      transparent 3px,
+      transparent 8px
+    );
+    mask-image: linear-gradient(to right, black, transparent);
+    -webkit-mask-image: linear-gradient(to right, black, transparent);
   }
 
   /* Cinematic entrance animations */

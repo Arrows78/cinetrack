@@ -10,18 +10,21 @@ import { cn } from "@/shared/lib/cn";
 import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
 import { progressRepository } from "@/features/progress/progress-repository";
 
-/* Episode dots strip — shows which eps are watched at a glance */
-function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episodes"]; watchedSet: Set<number> }) {
-  const max = 30;
+/* Episode filmstrip — each episode is a sprocket-hole perforation; watched
+   ones are "lit up" in the accent color, like exposed frames. Shows watch
+   progress at a glance, the way a strip of actual film would give. Exported
+   for the design-system catalog's Signature section. */
+export function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episodes"]; watchedSet: Set<number> }) {
+  const max = 40;
   const shown = episodes.slice(0, max);
   return (
-    <div className="flex flex-wrap items-center gap-[3px]">
+    <div className="inline-flex flex-wrap items-center gap-[3px] rounded-full bg-foreground/[0.06] px-2.5 py-1.5">
       {shown.map((ep) => (
         <motion.div
           key={ep.id}
           layout
           className={cn(
-            "h-2 w-2 rounded-full transition-colors duration-base",
+            "h-2 w-1 rounded-[1px] transition-colors duration-base",
             watchedSet.has(ep.id) ? "bg-primary" : "bg-foreground/20"
           )}
         />
