@@ -1,0 +1,2181 @@
+From 98ef07dbf6487afc0f1dcbfcdea5e66c9b2a8d45 Mon Sep 17 00:00:00 2001
+From: OpenAI <noreply@openai.com>
+Date: Sun, 2 Aug 2026 18:47:12 +0000
+Subject: [PATCH 1/2] fix(design-system): complete catalog contracts and sheet
+ variants
+
+---
+ src/components/ui/sheet.tsx                   | 137 +++-
+ src/pages/design-system-page.tsx              | 691 ++++++++++++++++--
+ src/pages/design-system/catalog-data.ts       | 500 +++++++++++++
+ .../design-system/catalog-primitives.tsx      |  73 +-
+ 4 files changed, 1280 insertions(+), 121 deletions(-)
+
+diff --git a/src/components/ui/sheet.tsx b/src/components/ui/sheet.tsx
+index ef9e388..6fae9b1 100644
+--- a/src/components/ui/sheet.tsx
++++ b/src/components/ui/sheet.tsx
+@@ -1,45 +1,118 @@
+-import type * as React from "react";
++import * as React from "react";
+ import * as DialogPrimitive from "@radix-ui/react-dialog";
+ import { X } from "lucide-react";
++
+ import { cn } from "@/shared/lib/cn";
+ 
++export type SheetSide = "left" | "right" | "top" | "bottom";
++export type SheetSize = "sm" | "md" | "lg" | "xl";
++
++const sideClasses: Record<SheetSide, string> = {
++  left: "inset-y-0 left-0 h-full border-r",
++  right: "inset-y-0 right-0 h-full border-l",
++  top: "inset-x-0 top-0 w-full border-b",
++  bottom: "inset-x-0 bottom-0 w-full border-t",
++};
++
++const horizontalSizeClasses: Record<SheetSize, string> = {
++  sm: "w-[86%] max-w-sm",
++  md: "w-[90%] max-w-md",
++  lg: "w-[92%] max-w-lg",
++  xl: "w-[94%] max-w-2xl",
++};
++
++const verticalSizeClasses: Record<SheetSize, string> = {
++  sm: "h-[36vh] max-h-[36rem]",
++  md: "h-[50vh] max-h-[44rem]",
++  lg: "h-[66vh] max-h-[52rem]",
++  xl: "h-[82vh] max-h-[60rem]",
++};
++
+ export const Sheet = DialogPrimitive.Root;
+ export const SheetTrigger = DialogPrimitive.Trigger;
+ export const SheetClose = DialogPrimitive.Close;
+ 
+-export const SheetTitle = ({ className, ...props }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) => (
+-  <DialogPrimitive.Title className={cn("font-display text-lg font-bold", className)} {...props} />
+-);
++export const SheetOverlay = React.forwardRef<
++  React.ElementRef<typeof DialogPrimitive.Overlay>,
++  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
++>(({ className, ...props }, ref) => (
++  <DialogPrimitive.Overlay
++    ref={ref}
++    className={cn("fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm", className)}
++    {...props}
++  />
++));
++SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
+ 
+-export const SheetDescription = ({
+-  className,
+-  ...props
+-}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>) => (
+-  <DialogPrimitive.Description className={cn("text-sm leading-6 text-muted-foreground", className)} {...props} />
+-);
++export const SheetTitle = React.forwardRef<
++  React.ElementRef<typeof DialogPrimitive.Title>,
++  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
++>(({ className, ...props }, ref) => (
++  <DialogPrimitive.Title ref={ref} className={cn("font-display text-lg font-bold", className)} {...props} />
++));
++SheetTitle.displayName = DialogPrimitive.Title.displayName;
+ 
+-export function SheetContent({
+-  className,
+-  children,
+-  closeLabel = "Close",
+-  ...props
+-}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { closeLabel?: string }) {
++export const SheetDescription = React.forwardRef<
++  React.ElementRef<typeof DialogPrimitive.Description>,
++  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
++>(({ className, ...props }, ref) => (
++  <DialogPrimitive.Description
++    ref={ref}
++    className={cn("text-sm leading-6 text-muted-foreground", className)}
++    {...props}
++  />
++));
++SheetDescription.displayName = DialogPrimitive.Description.displayName;
++
++export function SheetHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
++  return <div className={cn("space-y-1.5 pr-10 text-left", className)} {...props} />;
++}
++
++export function SheetFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+   return (
+-    <DialogPrimitive.Portal>
+-      <DialogPrimitive.Overlay className="fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm" />
+-      <DialogPrimitive.Content
+-        className={cn(
+-          "fixed left-0 top-0 z-modal flex h-full w-[86%] max-w-sm flex-col border-r border-border bg-background/95 p-5 shadow-2xl focus:outline-none",
+-          className
+-        )}
+-        {...props}
+-      >
+-        {children}
+-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+-          <X className="h-4 w-4" aria-hidden="true" />
+-          <span className="sr-only">{closeLabel}</span>
+-        </DialogPrimitive.Close>
+-      </DialogPrimitive.Content>
+-    </DialogPrimitive.Portal>
++    <div
++      className={cn(
++        "mt-auto flex flex-col-reverse gap-2 border-t border-border/60 pt-4 sm:flex-row sm:justify-end",
++        className
++      )}
++      {...props}
++    />
+   );
+ }
++
++export type SheetContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
++  closeLabel?: string;
++  side?: SheetSide;
++  size?: SheetSize;
++};
++
++export const SheetContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, SheetContentProps>(
++  ({ className, children, closeLabel = "Close", side = "left", size = "sm", ...props }, ref) => {
++    const isHorizontal = side === "left" || side === "right";
++
++    return (
++      <DialogPrimitive.Portal>
++        <SheetOverlay />
++        <DialogPrimitive.Content
++          ref={ref}
++          data-side={side}
++          data-size={size}
++          className={cn(
++            "fixed z-modal flex flex-col overflow-y-auto border-border bg-background/95 p-5 shadow-2xl focus:outline-none",
++            sideClasses[side],
++            isHorizontal ? horizontalSizeClasses[size] : verticalSizeClasses[size],
++            className
++          )}
++          {...props}
++        >
++          {children}
++          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
++            <X className="h-4 w-4" aria-hidden="true" />
++            <span className="sr-only">{closeLabel}</span>
++          </DialogPrimitive.Close>
++        </DialogPrimitive.Content>
++      </DialogPrimitive.Portal>
++    );
++  }
++);
++SheetContent.displayName = DialogPrimitive.Content.displayName;
+diff --git a/src/pages/design-system-page.tsx b/src/pages/design-system-page.tsx
+index bcdd7be..1bc6668 100644
+--- a/src/pages/design-system-page.tsx
++++ b/src/pages/design-system-page.tsx
+@@ -1,7 +1,10 @@
+ import { useEffect, useMemo, useState } from "react";
+ import {
+   AlertTriangle,
++  ArrowDown,
++  ArrowLeft,
+   ArrowRight,
++  ArrowUp,
+   Check,
+   CheckCircle2,
+   CircleAlert,
+@@ -20,7 +23,12 @@ import {
+ } from "lucide-react";
+ 
+ import { EmptyState } from "@/components/states/empty-state";
++import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
++import { RemoteErrorState } from "@/components/states/remote-error-state";
++import { FilterBar } from "@/components/media/filter-bar";
++import { LoadMoreButton } from "@/components/media/load-more-button";
+ import { ProgressBar } from "@/components/media/progress-bar";
++import { SearchBar } from "@/components/media/search-bar";
+ import { SectionHeader } from "@/components/media/section-header";
+ import { StatCard } from "@/components/media/stat-card";
+ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+@@ -29,10 +37,19 @@ import { Button } from "@/components/ui/button";
+ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+ import { Input } from "@/components/ui/input";
+ import { Panel } from "@/components/ui/panel";
+-import { Progress } from "@/components/ui/progress";
+ import { Select } from "@/components/ui/select";
+ import { Separator } from "@/components/ui/separator";
+-import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
++import {
++  Sheet,
++  SheetClose,
++  SheetContent,
++  SheetDescription,
++  SheetFooter,
++  SheetHeader,
++  SheetTitle,
++  SheetTrigger,
++  type SheetSide,
++} from "@/components/ui/sheet";
+ import { Skeleton } from "@/components/ui/skeleton";
+ import { Textarea } from "@/components/ui/textarea";
+ import { Tile } from "@/components/ui/tile";
+@@ -45,6 +62,8 @@ import {
+   badgeVariants,
+   buttonSizes,
+   buttonVariants,
++  componentInventory,
++  componentStateModel,
+   contributionChecklist,
+   iconSizes,
+   lineTokens,
+@@ -54,6 +73,8 @@ import {
+   semanticColorGroups,
+   semanticColorUsage,
+   shadows,
++  sheetSides,
++  sheetSizes,
+   spacingSteps,
+   surfaceHierarchy,
+   tintScale,
+@@ -65,6 +86,7 @@ import {
+   AccentPresetCard,
+   ColorSwatch,
+   ComponentSpec,
++  CoverageBadge,
+   Guidance,
+   PrincipleCard,
+   Section,
+@@ -78,6 +100,13 @@ import {
+ 
+ const navSectionIds = navSections.map((section) => section.id);
+ 
++const sheetSideIcons: Record<SheetSide, typeof ArrowRight> = {
++  left: ArrowLeft,
++  right: ArrowRight,
++  top: ArrowUp,
++  bottom: ArrowDown,
++};
++
+ const tintClasses: Record<(typeof tintScale)[number]["value"], string> = {
+   "[0.02]": "bg-foreground/[0.02]",
+   "[0.03]": "bg-foreground/[0.03]",
+@@ -163,8 +192,27 @@ export function DesignSystemPage() {
+   const accent = preferences.data?.accentColor ?? "violet";
+   const activePreset = COLOR_PRESETS[accent];
+   const activeSection = useActiveSection(navSectionIds);
++  const [inventoryQuery, setInventoryQuery] = useState("");
++  const [inventoryGroup, setInventoryGroup] = useState("all");
++  const [patternFilter, setPatternFilter] = useState<"all" | "movies" | "series">("all");
++  const [patternSearch, setPatternSearch] = useState("");
+   const refreshKey = `${theme}:${accent}`;
+   const semanticPairCount = semanticColorGroups.reduce((total, group) => total + group.pairs.length, 0);
++  const inventoryGroups = useMemo(() => Array.from(new Set(componentInventory.map((item) => item.group))).sort(), []);
++  const filteredInventory = useMemo(() => {
++    const normalizedQuery = inventoryQuery.trim().toLowerCase();
++
++    return componentInventory.filter((item) => {
++      const matchesGroup = inventoryGroup === "all" || item.group === inventoryGroup;
++      const matchesQuery =
++        normalizedQuery.length === 0 ||
++        [item.name, item.source, item.layer, item.purpose].some((value) =>
++          value.toLowerCase().includes(normalizedQuery)
++        );
++      return matchesGroup && matchesQuery;
++    });
++  }, [inventoryGroup, inventoryQuery]);
++  const liveComponentCount = componentInventory.filter((item) => item.coverage === "live").length;
+ 
+   return (
+     <div className="space-y-14 pb-20">
+@@ -183,7 +231,7 @@ export function DesignSystemPage() {
+ 
+           <div className="section-rule mt-7 max-w-2xl" aria-hidden="true" />
+ 
+-          <dl className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
++          <dl className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
+               <dt className="text-xs text-muted-foreground">Theme</dt>
+               <dd className="mt-1 flex items-center gap-2 text-sm font-semibold capitalize">
+@@ -210,6 +258,12 @@ export function DesignSystemPage() {
+               <dt className="text-xs text-muted-foreground">Semantic pairs</dt>
+               <dd className="mt-1 text-sm font-semibold">{semanticPairCount} live contrast checks</dd>
+             </div>
++            <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
++              <dt className="text-xs text-muted-foreground">Component coverage</dt>
++              <dd className="mt-1 text-sm font-semibold">
++                {componentInventory.length} indexed · {liveComponentCount} live
++              </dd>
++            </div>
+             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
+               <dt className="text-xs text-muted-foreground">Documentation</dt>
+               <dd className="mt-1 font-mono text-xs font-semibold">docs/design-system.md</dd>
+@@ -724,33 +778,167 @@ export function DesignSystemPage() {
+ 
+       <Separator className="opacity-40" />
+ 
++      <Section
++        id="inventory"
++        eyebrow="Coverage"
++        title="Complete component inventory"
++        description="Every React component source file is indexed here. Live showcase means the component can be rendered safely in isolation; API reference covers context-bound feature components; internal marks providers and controllers that have no standalone visual state."
++      >
++        <div className="grid gap-4 rounded-panel border border-border bg-card/30 p-5 lg:grid-cols-[minmax(0,1fr)_240px]">
++          <div className="space-y-1.5">
++            <FieldLabel htmlFor="component-inventory-search">Search the catalog</FieldLabel>
++            <Input
++              id="component-inventory-search"
++              type="search"
++              value={inventoryQuery}
++              onChange={(event) => setInventoryQuery(event.target.value)}
++              placeholder="Button, media, loading, settings…"
++            />
++          </div>
++          <div className="space-y-1.5">
++            <FieldLabel htmlFor="component-inventory-group">Component group</FieldLabel>
++            <Select
++              id="component-inventory-group"
++              value={inventoryGroup}
++              onChange={(event) => setInventoryGroup(event.target.value)}
++              className="w-full"
++            >
++              <option value="all">All groups</option>
++              {inventoryGroups.map((group) => (
++                <option key={group} value={group}>
++                  {group}
++                </option>
++              ))}
++            </Select>
++          </div>
++        </div>
++
++        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
++          <span className="font-semibold text-foreground">{filteredInventory.length} components shown</span>
++          <CoverageBadge coverage="live" />
++          <CoverageBadge coverage="reference" />
++          <CoverageBadge coverage="internal" />
++        </div>
++
++        {filteredInventory.length === 0 ? (
++          <EmptyState
++            className="rounded-panel border border-border bg-foreground/[0.02] py-12"
++            icon={Search}
++            title="No component found"
++            description="Try a component name, source path, layer or product responsibility."
++            action={
++              <Button
++                type="button"
++                variant="outline"
++                onClick={() => {
++                  setInventoryQuery("");
++                  setInventoryGroup("all");
++                }}
++              >
++                Reset filters
++              </Button>
++            }
++          />
++        ) : (
++          <div className="space-y-8">
++            {inventoryGroups
++              .filter((group) => filteredInventory.some((item) => item.group === group))
++              .map((group) => {
++                const items = filteredInventory.filter((item) => item.group === group);
++
++                return (
++                  <Subsection
++                    key={group}
++                    title={`${group} · ${items.length}`}
++                    description="Source-level coverage is guarded by a test: adding a component file without adding it to this inventory fails the catalog test."
++                  >
++                    <RuleTable
++                      columns={["Component", "Layer", "Coverage", "Responsibility"]}
++                      rows={items.map((item) => ({
++                        key: item.source,
++                        cells: [
++                          <div key={`${item.source}-name`}>
++                            <p className="font-semibold text-foreground">{item.name}</p>
++                            <code className="font-mono text-[10px] text-muted-foreground">{item.source}</code>
++                          </div>,
++                          <Badge key={`${item.source}-layer`} variant="outline">
++                            {item.layer}
++                          </Badge>,
++                          <CoverageBadge key={`${item.source}-coverage`} coverage={item.coverage} />,
++                          item.purpose,
++                        ],
++                      }))}
++                    />
++                  </Subsection>
++                );
++              })}
++          </div>
++        )}
++      </Section>
++
++      <Separator className="opacity-40" />
++
+       <Section
+         id="components"
+         eyebrow="Library"
+         title="Components & variants"
+         description="The component catalog documents API, intent, anatomy, variants, sizes and states. Demos use the real components imported from src/components/ui."
+       >
++        <Subsection
++          title="Shared interaction-state model"
++          description="Mature systems document states as part of the component contract, not as incidental CSS. Not every state applies to every component, but every applicable state must be deliberate."
++        >
++          <RuleTable
++            columns={["State", "Applies to", "Contract"]}
++            rows={componentStateModel.map((item) => ({
++              key: item.state,
++              cells: [<strong>{item.state}</strong>, item.appliesTo, item.expectation],
++            }))}
++          />
++        </Subsection>
++
+         <Subsection title="Actions">
+           <ComponentSpec
+             name="Button"
+             source="components/ui/button.tsx"
+             description="Triggers an action or navigates when composed with asChild. Visual variants express action hierarchy and risk."
+             anatomy={["container", "optional leading icon", "label", "optional trailing icon"]}
++            variants={buttonVariants.map((variant) => variant.name)}
++            states={["enabled", "hover", "focus-visible", "pressed", "disabled", "loading / busy"]}
+             guidance="A user can act immediately. Use links for navigation semantics, composed through asChild when button styling is required."
++            accessibility="Use a visible label whenever possible. Icon-only buttons require an accessible name; loading actions expose aria-busy and prevent duplicate submission."
+             className="lg:col-span-2"
+           >
+             <div className="space-y-6">
+-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+-                {buttonVariants.map((variant) => (
+-                  <div key={variant.name} className="rounded-card border border-border bg-background/50 p-3">
+-                    <Button variant={variant.name} className="w-full">
+-                      {variant.name === "destructive" ? <Trash2 className="size-4" /> : <Sparkles className="size-4" />}
+-                      {variant.name}
+-                    </Button>
+-                    <p className="mt-3 text-xs leading-5 text-muted-foreground">{variant.use}</p>
+-                  </div>
+-                ))}
+-              </div>
++              <RuleTable
++                columns={["Variant", "Small", "Default", "Large", "Icon"]}
++                rows={buttonVariants.map((variant) => ({
++                  key: variant.name,
++                  cells: [
++                    <div key={`${variant.name}-label`}>
++                      <p className="font-semibold text-foreground">{variant.name}</p>
++                      <p className="mt-1 max-w-48 text-xs leading-5 text-muted-foreground">{variant.use}</p>
++                    </div>,
++                    <Button key={`${variant.name}-sm`} variant={variant.name} size="sm">
++                      Action
++                    </Button>,
++                    <Button key={`${variant.name}-default`} variant={variant.name}>
++                      <Sparkles className="size-4" /> Action
++                    </Button>,
++                    <Button key={`${variant.name}-lg`} variant={variant.name} size="lg">
++                      Action
++                    </Button>,
++                    <Button
++                      key={`${variant.name}-icon`}
++                      variant={variant.name}
++                      size="icon"
++                      aria-label={`${variant.name} add action`}
++                    >
++                      {variant.name === "destructive" ? <Trash2 className="size-4" /> : <Plus className="size-4" />}
++                    </Button>,
++                  ],
++                }))}
++              />
+ 
+               <RuleTable
+                 columns={["Size", "Footprint", "Use"]}
+@@ -785,7 +973,10 @@ export function DesignSystemPage() {
+             source="components/ui/badge.tsx"
+             description="Compact, non-interactive metadata or status label. Semantic feedback variants use solid paired foreground tokens."
+             anatomy={["optional icon", "short label"]}
++            variants={badgeVariants.map((variant) => variant)}
++            states={["static metadata", "status with icon", "media type"]}
+             guidance="Label status, category or media type. Use a Button or filter control when the element is interactive."
++            accessibility="Badges do not receive focus. Status variants pair color with a concise word and, for important feedback, an icon or surrounding message."
+           >
+             <div className="flex flex-wrap gap-2">
+               {badgeVariants.map((variant) => (
+@@ -801,57 +992,144 @@ export function DesignSystemPage() {
+         </Subsection>
+ 
+         <Subsection title="Forms">
+-          <ComponentSpec
+-            name="Input, Select & Textarea"
+-            source="components/ui/{input,select,textarea}.tsx"
+-            description="Native form controls with shared surface, focus, disabled and aria-invalid behavior. Labels and messages remain composition responsibilities."
+-            anatomy={["label", "control", "optional helper", "optional error"]}
+-            guidance="Collect or choose user-authored data. Preserve native semantics and associate messages with aria-describedby."
+-            className="lg:col-span-2"
+-          >
+-            <div className="grid gap-6 lg:grid-cols-3">
++          <div className="grid gap-5 lg:grid-cols-3">
++            <ComponentSpec
++              name="Input"
++              source="components/ui/input.tsx"
++              description="Native single-line control with prominent and compact density variants. Labels, helper copy and errors are composed around it."
++              anatomy={["label", "input", "optional helper", "optional error"]}
++              variants={["default · 44px", "sm · 40px"]}
++              states={["empty", "filled", "read-only", "disabled", "invalid", "focus-visible"]}
++              guidance="Collect a short free-form value such as a title, year, query or token."
++              accessibility="Associate labels with htmlFor/id and helper or error copy with aria-describedby. Use aria-invalid only when the current value has failed validation."
++            >
+               <div className="space-y-4">
+                 <div className="space-y-1.5">
+-                  <FieldLabel htmlFor="catalog-title">Title</FieldLabel>
+-                  <Input id="catalog-title" placeholder="Search your library" />
+-                  <p className="text-xs text-muted-foreground">Default · 44px</p>
++                  <FieldLabel htmlFor="catalog-input-default">Default</FieldLabel>
++                  <Input id="catalog-input-default" placeholder="Search your library" />
++                  <p className="text-xs text-muted-foreground">Prominent · 44px touch target</p>
+                 </div>
+                 <div className="space-y-1.5">
+-                  <FieldLabel htmlFor="catalog-compact">Compact field</FieldLabel>
+-                  <Input id="catalog-compact" size="sm" defaultValue="Dense desktop form" />
++                  <FieldLabel htmlFor="catalog-input-compact">Compact</FieldLabel>
++                  <Input id="catalog-input-compact" size="sm" defaultValue="Dense desktop form" />
++                </div>
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-input-readonly">Read-only</FieldLabel>
++                  <Input id="catalog-input-readonly" readOnly value="tt0133093" aria-describedby="readonly-help" />
++                  <p id="readonly-help" className="text-xs text-muted-foreground">
++                    Selectable and copyable; visually distinct from disabled.
++                  </p>
++                </div>
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-input-disabled">Disabled</FieldLabel>
++                  <Input id="catalog-input-disabled" disabled value="Unavailable" />
++                </div>
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-input-invalid">Invalid</FieldLabel>
++                  <Input
++                    id="catalog-input-invalid"
++                    aria-invalid="true"
++                    aria-describedby="catalog-input-error"
++                    defaultValue="999"
++                  />
++                  <p id="catalog-input-error" className="flex items-center gap-1 text-xs text-destructive">
++                    <CircleAlert className="size-3" aria-hidden="true" /> Enter a year between 1888 and today.
++                  </p>
+                 </div>
+               </div>
++            </ComponentSpec>
+ 
++            <ComponentSpec
++              name="Select"
++              source="components/ui/select.tsx"
++              description="Native single-choice control with platform-correct keyboard and screen-reader behavior."
++              anatomy={["label", "select", "options", "optional helper or error"]}
++              states={["enabled", "selected", "focus-visible", "disabled", "invalid"]}
++              guidance="Choose exactly one value from a short, stable set. Prefer a searchable pattern for long or dynamic lists."
++              accessibility="Keep a meaningful selected value, preserve native option semantics and associate validation copy with aria-describedby."
++            >
+               <div className="space-y-4">
+                 <div className="space-y-1.5">
+-                  <FieldLabel htmlFor="catalog-scope">Scope</FieldLabel>
+-                  <Select id="catalog-scope" defaultValue="all">
++                  <FieldLabel htmlFor="catalog-select-default">Default</FieldLabel>
++                  <Select id="catalog-select-default" defaultValue="all" className="w-full">
+                     <option value="all">Movies and series</option>
+                     <option value="movies">Movies</option>
+                     <option value="series">Series</option>
+                   </Select>
+                 </div>
+                 <div className="space-y-1.5">
+-                  <FieldLabel htmlFor="catalog-invalid">Invalid field</FieldLabel>
+-                  <Input
+-                    id="catalog-invalid"
++                  <FieldLabel htmlFor="catalog-select-disabled">Disabled</FieldLabel>
++                  <Select id="catalog-select-disabled" disabled defaultValue="movies" className="w-full">
++                    <option value="movies">Movies</option>
++                  </Select>
++                  <p className="text-xs text-muted-foreground">Explain why a disabled choice cannot be changed.</p>
++                </div>
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-select-invalid">Invalid</FieldLabel>
++                  <Select
++                    id="catalog-select-invalid"
+                     aria-invalid="true"
+-                    aria-describedby="catalog-invalid-message"
+-                    defaultValue="999"
+-                  />
+-                  <p id="catalog-invalid-message" className="flex items-center gap-1 text-xs text-destructive">
+-                    <CircleAlert className="size-3" aria-hidden="true" /> Enter a year between 1888 and today.
++                    aria-describedby="catalog-select-error"
++                    defaultValue=""
++                    className="w-full"
++                  >
++                    <option value="" disabled>
++                      Choose a provider
++                    </option>
++                    <option value="netflix">Netflix</option>
++                    <option value="canal">Canal+</option>
++                  </Select>
++                  <p id="catalog-select-error" className="flex items-center gap-1 text-xs text-destructive">
++                    <CircleAlert className="size-3" aria-hidden="true" /> Select one provider.
+                   </p>
+                 </div>
+               </div>
++            </ComponentSpec>
+ 
+-              <div className="space-y-1.5">
+-                <FieldLabel htmlFor="catalog-notes">Notes</FieldLabel>
+-                <Textarea id="catalog-notes" className="min-h-32" placeholder="Add private notes…" />
+-                <p className="text-xs text-muted-foreground">Keep helper copy actionable and concise.</p>
++            <ComponentSpec
++              name="Textarea"
++              source="components/ui/textarea.tsx"
++              description="Native multi-line control for private notes and longer user-authored content."
++              anatomy={["label", "textarea", "optional character guidance", "optional error"]}
++              states={["empty", "filled", "read-only", "disabled", "invalid", "focus-visible"]}
++              guidance="Collect content that genuinely benefits from multiple lines; do not use it for a short label or query."
++              accessibility="Keep the label persistent, avoid placeholder-only instructions and provide length limits before submission."
++            >
++              <div className="space-y-4">
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-textarea-default">Default</FieldLabel>
++                  <Textarea id="catalog-textarea-default" className="min-h-28" placeholder="Add private notes…" />
++                  <p className="text-xs text-muted-foreground">Keep helper copy actionable and concise.</p>
++                </div>
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-textarea-readonly">Read-only</FieldLabel>
++                  <Textarea
++                    id="catalog-textarea-readonly"
++                    className="min-h-24"
++                    readOnly
++                    value="Imported from a previous backup."
++                  />
++                </div>
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-textarea-disabled">Disabled</FieldLabel>
++                  <Textarea id="catalog-textarea-disabled" className="min-h-20" disabled value="Editing is locked." />
++                </div>
++                <div className="space-y-1.5">
++                  <FieldLabel htmlFor="catalog-textarea-invalid">Invalid</FieldLabel>
++                  <Textarea
++                    id="catalog-textarea-invalid"
++                    className="min-h-24"
++                    aria-invalid="true"
++                    aria-describedby="catalog-textarea-error"
++                    defaultValue="x"
++                  />
++                  <p id="catalog-textarea-error" className="flex items-center gap-1 text-xs text-destructive">
++                    <CircleAlert className="size-3" aria-hidden="true" /> Add at least ten characters.
++                  </p>
++                </div>
+               </div>
+-            </div>
+-          </ComponentSpec>
++            </ComponentSpec>
++          </div>
+         </Subsection>
+ 
+         <Subsection title="Containers">
+@@ -860,8 +1138,10 @@ export function DesignSystemPage() {
+               name="Card"
+               source="components/ui/card.tsx"
+               description="Independent glass-like content module with default padding and elevation."
+-              anatomy={["CardHeader", "CardTitle", "CardDescription", "CardContent"]}
++              anatomy={["Card", "CardHeader", "CardTitle", "CardDescription", "CardContent"]}
++              variants={["full anatomy", "header + content", "content only"]}
+               guidance="Content has its own identity and benefits from separation from the page canvas."
++              accessibility="Use semantic headings inside the card and avoid making the whole surface clickable when it contains nested controls."
+             >
+               <Card>
+                 <CardHeader>
+@@ -879,7 +1159,9 @@ export function DesignSystemPage() {
+               source="components/ui/panel.tsx"
+               description="Flat grouped surface with card and subtle tones, plus asChild composition."
+               anatomy={["container", "caller-owned content"]}
++              variants={["tone=card", "tone=subtle", "asChild composition"]}
+               guidance="Group related content without the visual weight and blur of Card."
++              accessibility="Panel is structural, not interactive. Preserve the semantics of the composed element when using asChild."
+             >
+               <div className="space-y-3">
+                 <Panel>
+@@ -896,7 +1178,9 @@ export function DesignSystemPage() {
+               source="components/ui/tile.tsx"
+               description="Minimal bordered box with no built-in fill or padding."
+               anatomy={["container", "caller-owned spacing"]}
++              variants={["plain", "tinted", "asChild composition"]}
+               guidance="Dense rows, small nested objects and local metadata blocks."
++              accessibility="Tile is a visual recipe only. Use a link or button through asChild when the entire tile is interactive."
+             >
+               <div className="space-y-2">
+                 <Tile className="flex items-center justify-between bg-foreground/[0.03] px-3 py-2 text-sm">
+@@ -912,6 +1196,42 @@ export function DesignSystemPage() {
+           </div>
+         </Subsection>
+ 
++        <Subsection title="Structure">
++          <ComponentSpec
++            name="Separator"
++            source="components/ui/separator.tsx"
++            description="Decorative divider that groups related regions without adding another container surface."
++            anatomy={["single visual rule"]}
++            variants={["horizontal", "vertical"]}
++            states={["decorative only"]}
++            guidance="Clarify grouping when spacing alone is insufficient. Avoid stacking separators and borders for the same boundary."
++            accessibility="The primitive is decorative and intentionally hidden from the accessibility tree. Use a semantic heading or landmark when users need structural navigation."
++          >
++            <div className="space-y-6">
++              <div>
++                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horizontal</p>
++                <div className="space-y-3 rounded-card border border-border bg-background/50 p-4 text-sm">
++                  <span>Metadata</span>
++                  <Separator />
++                  <span>Availability</span>
++                  <Separator className="bg-primary/30" />
++                  <span>Recommendations</span>
++                </div>
++              </div>
++              <div>
++                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical</p>
++                <div className="flex h-12 items-center gap-4 rounded-card border border-border bg-background/50 p-4 text-sm">
++                  <span>Movie</span>
++                  <Separator orientation="vertical" />
++                  <span>2026</span>
++                  <Separator orientation="vertical" className="bg-primary/30" />
++                  <span>142 min</span>
++                </div>
++              </div>
++            </div>
++          </ComponentSpec>
++        </Subsection>
++
+         <Subsection title="Feedback & loading">
+           <div className="grid gap-5 lg:grid-cols-2">
+             <ComponentSpec
+@@ -919,7 +1239,10 @@ export function DesignSystemPage() {
+               source="components/ui/progress.tsx"
+               description="Accessible Radix progress primitive for determinate completion."
+               anatomy={["track", "indicator"]}
++              variants={["default indicator", "semantic indicator via indicatorClassName"]}
++              states={["0%", "in progress", "complete"]}
+               guidance="A bounded operation has measurable completion. Use Skeleton when duration or progress is unknown."
++              accessibility="Provide a nearby text label and keep the numeric value synchronized with the visual indicator."
+             >
+               <div className="grid gap-6">
+                 {[0, 25, 60, 90, 100].map((value) => (
+@@ -933,7 +1256,10 @@ export function DesignSystemPage() {
+               source="components/ui/skeleton.tsx"
+               description="Shape-preserving loading placeholder with reduced-motion support inherited from the root gate."
+               anatomy={["placeholder shape", "shimmer layer"]}
++              variants={["text", "avatar", "media", "composed page skeleton"]}
++              states={["loading", "reduced motion"]}
+               guidance="Content structure is known but data is still loading. Mirror the final geometry to reduce layout shift."
++              accessibility="Skeletons are visual placeholders, not status messages. Announce loading on the containing region when users need confirmation."
+             >
+               <div className="space-y-3">
+                 <Skeleton className="h-4 w-2/3" />
+@@ -948,54 +1274,172 @@ export function DesignSystemPage() {
+         </Subsection>
+ 
+         <Subsection title="Disclosure & overlays">
+-          <div className="grid gap-5 lg:grid-cols-2">
++          <div className="grid gap-5">
+             <ComponentSpec
+               name="Accordion"
+               source="components/ui/accordion.tsx"
+-              description="Radix disclosure for optional supporting content. The trigger owns keyboard behavior, focus and state icon rotation."
+-              anatomy={["item", "trigger", "content"]}
++              description="Radix disclosure for optional supporting content. The trigger owns keyboard behavior, focus, expanded state and icon rotation."
++              anatomy={["Accordion", "AccordionItem", "AccordionTrigger", "AccordionContent"]}
++              variants={["single", "single collapsible", "multiple"]}
++              states={["closed", "open", "focus-visible", "disabled item"]}
+               guidance="Users need to scan multiple headings and open a small subset. Keep critical content visible by default."
++              accessibility="The trigger remains a real button with aria-expanded and keyboard support. Headings should stay concise and describe the hidden content."
+             >
+-              <Accordion type="single" collapsible className="space-y-2">
+-                <AccordionItem value="a">
+-                  <AccordionTrigger>Component guidance</AccordionTrigger>
+-                  <AccordionContent>Document usage, variants, states, content and accessibility.</AccordionContent>
+-                </AccordionItem>
+-                <AccordionItem value="b">
+-                  <AccordionTrigger>Implementation notes</AccordionTrigger>
+-                  <AccordionContent>Prefer semantic tokens and preserve native interaction semantics.</AccordionContent>
+-                </AccordionItem>
+-              </Accordion>
++              <div className="grid gap-5 lg:grid-cols-2">
++                <div className="space-y-3">
++                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
++                    Single · collapsible
++                  </p>
++                  <Accordion type="single" collapsible defaultValue="guidance" className="space-y-2">
++                    <AccordionItem value="guidance">
++                      <AccordionTrigger>Component guidance</AccordionTrigger>
++                      <AccordionContent>Document usage, variants, states, content and accessibility.</AccordionContent>
++                    </AccordionItem>
++                    <AccordionItem value="implementation">
++                      <AccordionTrigger>Implementation notes</AccordionTrigger>
++                      <AccordionContent>
++                        Prefer semantic tokens and preserve native interaction semantics.
++                      </AccordionContent>
++                    </AccordionItem>
++                    <AccordionItem value="disabled" disabled>
++                      <AccordionTrigger>Unavailable section</AccordionTrigger>
++                      <AccordionContent>This content cannot be opened.</AccordionContent>
++                    </AccordionItem>
++                  </Accordion>
++                </div>
++                <div className="space-y-3">
++                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Multiple</p>
++                  <Accordion type="multiple" defaultValue={["tokens", "testing"]} className="space-y-2">
++                    <AccordionItem value="tokens">
++                      <AccordionTrigger>Token contract</AccordionTrigger>
++                      <AccordionContent>
++                        Components consume semantic roles instead of raw palette values.
++                      </AccordionContent>
++                    </AccordionItem>
++                    <AccordionItem value="testing">
++                      <AccordionTrigger>Testing contract</AccordionTrigger>
++                      <AccordionContent>Test keyboard behavior, state changes and accessible names.</AccordionContent>
++                    </AccordionItem>
++                  </Accordion>
++                </div>
++              </div>
+             </ComponentSpec>
+ 
+             <ComponentSpec
+               name="Sheet"
+               source="components/ui/sheet.tsx"
+-              description="Modal left-edge drawer built on Radix Dialog, with accessible title, description and close control primitives."
+-              anatomy={["trigger", "overlay", "content", "title", "description", "close"]}
+-              guidance="Secondary navigation or a focused task needs temporary modal space without leaving the current context."
++              description="Modal edge-anchored surface built on Radix Dialog. It supports four sides, four sizes, structured header/footer slots, an overlay and an accessible close control."
++              anatomy={[
++                "Sheet",
++                "SheetTrigger",
++                "SheetOverlay",
++                "SheetContent",
++                "SheetHeader",
++                "SheetTitle",
++                "SheetDescription",
++                "SheetFooter",
++                "SheetClose",
++              ]}
++              variants={[
++                ...sheetSides.map((side) => `side=${side.name}`),
++                ...sheetSizes.map((size) => `size=${size.name}`),
++              ]}
++              states={["closed", "opening", "open", "closing", "focus trapped", "dismissed"]}
++              guidance="Secondary navigation, inspectors, filters or a focused task need temporary modal space without losing page context."
++              accessibility="Always provide SheetTitle and normally SheetDescription. Focus is trapped while open and returns to the trigger on close; do not disable the visible close control without another obvious dismissal action."
+             >
+-              <Sheet>
+-                <SheetTrigger asChild>
+-                  <Button variant="outline">
+-                    <Menu className="size-4" /> Open sheet
+-                  </Button>
+-                </SheetTrigger>
+-                <SheetContent>
+-                  <SheetTitle>Library filters</SheetTitle>
+-                  <SheetDescription className="mt-2">
+-                    Narrow the current media collection without leaving the page.
+-                  </SheetDescription>
+-                  <div className="mt-6 space-y-3">
+-                    <Panel tone="subtle">
+-                      <p className="text-sm">Movies and series</p>
+-                    </Panel>
+-                    <Panel tone="subtle">
+-                      <p className="text-sm">Unwatched only</p>
+-                    </Panel>
++              <div className="space-y-7">
++                <div>
++                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
++                    Edge variants
++                  </p>
++                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
++                    {sheetSides.map((side) => {
++                      const Icon = sheetSideIcons[side.name];
++
++                      return (
++                        <Sheet key={side.name}>
++                          <SheetTrigger asChild>
++                            <Button variant="outline" className="w-full justify-start">
++                              <Icon className="size-4" /> {side.name}
++                            </Button>
++                          </SheetTrigger>
++                          <SheetContent side={side.name}>
++                            <SheetHeader>
++                              <SheetTitle>{side.name} sheet</SheetTitle>
++                              <SheetDescription>{side.use}</SheetDescription>
++                            </SheetHeader>
++                            <div className="my-6 space-y-3">
++                              <Panel tone="subtle">
++                                <p className="text-sm font-medium">Context-preserving content</p>
++                                <p className="mt-1 text-xs leading-5 text-muted-foreground">
++                                  Keep the task focused and the information hierarchy shallow.
++                                </p>
++                              </Panel>
++                              <Input aria-label={`${side.name} sheet example field`} placeholder="Example field" />
++                            </div>
++                            <SheetFooter>
++                              <SheetClose asChild>
++                                <Button variant="ghost">Cancel</Button>
++                              </SheetClose>
++                              <SheetClose asChild>
++                                <Button>Apply</Button>
++                              </SheetClose>
++                            </SheetFooter>
++                          </SheetContent>
++                        </Sheet>
++                      );
++                    })}
++                  </div>
++                </div>
++
++                <RuleTable
++                  columns={["Side", "Recommended use"]}
++                  rows={sheetSides.map((side) => ({
++                    key: side.name,
++                    cells: [<code className="font-mono text-xs">{side.name}</code>, side.use],
++                  }))}
++                />
++
++                <div>
++                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
++                    Size variants · shown from the right edge
++                  </p>
++                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
++                    {sheetSizes.map((size) => (
++                      <Sheet key={size.name}>
++                        <SheetTrigger asChild>
++                          <Button variant="secondary" className="w-full">
++                            {size.name}
++                          </Button>
++                        </SheetTrigger>
++                        <SheetContent side="right" size={size.name}>
++                          <SheetHeader>
++                            <SheetTitle>{size.name} sheet</SheetTitle>
++                            <SheetDescription>{size.use}</SheetDescription>
++                          </SheetHeader>
++                          <div className="my-6 flex-1 rounded-panel border border-dashed border-border p-4 text-sm text-muted-foreground">
++                            Available task area
++                          </div>
++                          <SheetFooter>
++                            <SheetClose asChild>
++                              <Button>Done</Button>
++                            </SheetClose>
++                          </SheetFooter>
++                        </SheetContent>
++                      </Sheet>
++                    ))}
+                   </div>
+-                </SheetContent>
+-              </Sheet>
++                </div>
++
++                <RuleTable
++                  columns={["Size", "Recommended use"]}
++                  rows={sheetSizes.map((size) => ({
++                    key: size.name,
++                    cells: [<code className="font-mono text-xs">{size.name}</code>, size.use],
++                  }))}
++                />
++              </div>
+             </ComponentSpec>
+           </div>
+         </Subsection>
+@@ -1066,6 +1510,91 @@ export function DesignSystemPage() {
+             />
+           </ComponentSpec>
+ 
++          <ComponentSpec
++            name="Search & filter controls"
++            source="components/media/{search-bar,filter-bar}.tsx"
++            description="Product-level query and segmented-filter compositions built from native input and button primitives."
++            anatomy={["query field", "search icon", "mutually exclusive filter options"]}
++            variants={["empty query", "filled query", "selected filter"]}
++            states={["enabled", "focus-visible", "selected"]}
++            guidance="A media collection needs quick narrowing without opening a separate form or overlay."
++            accessibility="The query remains a labelled input in product usage; filter options are buttons and the selected value must remain programmatically understandable in future API changes."
++          >
++            <div className="space-y-5">
++              <SearchBar
++                value={patternSearch}
++                onChange={setPatternSearch}
++                placeholder="Search titles, people or genres"
++              />
++              <FilterBar
++                value={patternFilter}
++                onChange={setPatternFilter}
++                options={[
++                  { value: "all", label: "All" },
++                  { value: "movies", label: "Movies" },
++                  { value: "series", label: "Series" },
++                ]}
++              />
++              <p className="text-xs text-muted-foreground">
++                Current example: <strong className="text-foreground">{patternSearch || "empty query"}</strong> ·{" "}
++                {patternFilter}
++              </p>
++            </div>
++          </ComponentSpec>
++
++          <ComponentSpec
++            name="Load more"
++            source="components/media/load-more-button.tsx"
++            description="Accessible pagination fallback that can also act as an infinite-scroll sentinel."
++            anatomy={["sentinel", "button", "optional spinner", "label"]}
++            variants={["idle", "fetching", "hidden when complete"]}
++            states={["enabled", "loading / disabled", "not rendered"]}
++            guidance="A large media collection is fetched in pages and users need an explicit keyboard-accessible continuation action."
++            accessibility="The visible button remains available even when IntersectionObserver triggers loading automatically. Busy state preserves the label and prevents duplicate fetches."
++          >
++            <div className="grid gap-4 sm:grid-cols-2">
++              <Panel tone="subtle">
++                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Idle</p>
++                <LoadMoreButton hasNextPage isFetchingNextPage={false} onClick={() => undefined} />
++              </Panel>
++              <Panel tone="subtle">
++                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fetching</p>
++                <LoadMoreButton hasNextPage isFetchingNextPage onClick={() => undefined} />
++              </Panel>
++            </div>
++          </ComponentSpec>
++
++          <ComponentSpec
++            name="Page loading skeletons"
++            source="components/states/loading-skeletons.tsx"
++            description="Page-level compositions that mirror the final hero and media-grid geometry."
++            anatomy={["HeroSkeleton", "GridSkeleton", "Skeleton primitives"]}
++            variants={["hero", "grid with configurable count"]}
++            states={["loading", "reduced motion"]}
++            guidance="The page layout is known but its remote content has not arrived yet."
++            accessibility="Apply a loading label or aria-busy to the containing region when users need an announcement; skeleton shapes themselves remain decorative."
++          >
++            <div className="space-y-5">
++              <HeroSkeleton />
++              <GridSkeleton count={4} />
++            </div>
++          </ComponentSpec>
++
++          <ComponentSpec
++            name="Remote error state"
++            source="components/states/remote-error-state.tsx"
++            description="Maps remote, authentication and local-database failures to plain-language recovery guidance."
++            anatomy={["status icon", "contextual title", "description", "retry action", "optional technical details"]}
++            variants={["connection", "authentication", "local database"]}
++            states={["error", "retry available", "technical details expanded"]}
++            guidance="Remote metadata or local persistence failed and the user needs a recovery path distinct from an empty result."
++            accessibility="The title and message explain the failure without relying on color; the retry action is a real button and technical details use native disclosure."
++          >
++            <div className="rounded-panel border border-border bg-foreground/[0.02]">
++              <RemoteErrorState error={new Error("TMDB connection unavailable")} onRetry={() => undefined} />
++            </div>
++          </ComponentSpec>
++
+           <ComponentSpec
+             name="Feedback message"
+             source="pattern composition"
+diff --git a/src/pages/design-system/catalog-data.ts b/src/pages/design-system/catalog-data.ts
+index 5758ae5..ec7a89a 100644
+--- a/src/pages/design-system/catalog-data.ts
++++ b/src/pages/design-system/catalog-data.ts
+@@ -9,6 +9,7 @@ export const navSections = [
+   { id: "motion", label: "Motion" },
+   { id: "iconography", label: "Icons" },
+   { id: "accessibility", label: "Accessibility" },
++  { id: "inventory", label: "Inventory" },
+   { id: "components", label: "Components" },
+   { id: "patterns", label: "Patterns" },
+   { id: "contribution", label: "Contribution" },
+@@ -269,3 +270,502 @@ export const contributionChecklist = [
+   "Add or update unit tests when a component API or token contract changes.",
+   "Run format, lint, typecheck and tests before committing.",
+ ] as const;
++
++export const componentStateModel = [
++  {
++    state: "Enabled",
++    appliesTo: "All interactive components",
++    expectation:
++      "The control communicates its purpose and is available to pointer, keyboard and assistive technology users.",
++  },
++  {
++    state: "Hover",
++    appliesTo: "Pointer targets",
++    expectation: "A subtle visual change confirms interactivity without being the only way to discover the action.",
++  },
++  {
++    state: "Focus visible",
++    appliesTo: "Keyboard-focusable controls",
++    expectation: "A high-contrast ring remains visible and is never removed without an equivalent replacement.",
++  },
++  {
++    state: "Pressed / active",
++    appliesTo: "Buttons, toggles and disclosure controls",
++    expectation: "The immediate interaction is acknowledged while preserving the control's accessible name.",
++  },
++  {
++    state: "Selected / current",
++    appliesTo: "Navigation, filters, tabs and choices",
++    expectation: "Selection is exposed semantically and reinforced with more than color alone.",
++  },
++  {
++    state: "Disabled",
++    appliesTo: "Unavailable actions and form controls",
++    expectation:
++      "The control cannot be activated, remains legible and is accompanied by context when the reason is not obvious.",
++  },
++  {
++    state: "Loading / busy",
++    appliesTo: "Async actions and remote content",
++    expectation: "Duplicate actions are blocked, progress is announced when useful and layout remains stable.",
++  },
++  {
++    state: "Empty",
++    appliesTo: "Collections and result regions",
++    expectation: "The interface distinguishes no data from loading or failure and offers the next useful action.",
++  },
++  {
++    state: "Error",
++    appliesTo: "Forms, repositories and remote requests",
++    expectation:
++      "Plain-language recovery guidance is paired with an icon, message or status role rather than color alone.",
++  },
++] as const;
++
++export const sheetSides = [
++  { name: "left", use: "Primary or secondary navigation that should feel attached to the application shell." },
++  { name: "right", use: "Inspectors, filters and edit forms that complement the current page." },
++  { name: "top", use: "Compact global controls or time-sensitive information with a horizontal reading flow." },
++  { name: "bottom", use: "Mobile-friendly actions, summaries and short focused tasks." },
++] as const;
++
++export const sheetSizes = [
++  { name: "sm", use: "One decision, a short menu or a compact group of controls." },
++  { name: "md", use: "Default forms and inspectors with a moderate amount of supporting content." },
++  { name: "lg", use: "Multi-section tasks that still benefit from visible page context." },
++  { name: "xl", use: "Complex workflows that need near-page capacity without becoming a route." },
++] as const;
++
++export type ComponentCoverage = "live" | "reference" | "internal";
++export type ComponentLayer = "primitive" | "pattern" | "feature" | "infrastructure";
++
++export type ComponentInventoryItem = {
++  name: string;
++  source: `components/${string}.tsx`;
++  group: string;
++  layer: ComponentLayer;
++  coverage: ComponentCoverage;
++  purpose: string;
++};
++
++function component(
++  name: string,
++  source: ComponentInventoryItem["source"],
++  group: string,
++  layer: ComponentLayer,
++  coverage: ComponentCoverage,
++  purpose: string
++): ComponentInventoryItem {
++  return { name, source, group, layer, coverage, purpose };
++}
++
++export const componentInventory = [
++  component(
++    "AddToListButton",
++    "components/collections/add-to-list-button.tsx",
++    "Collections",
++    "feature",
++    "reference",
++    "Adds or removes media from a user-defined collection."
++  ),
++  component(
++    "BrowserPreviewBanner",
++    "components/desktop/browser-preview-banner.tsx",
++    "Desktop",
++    "pattern",
++    "reference",
++    "Explains browser-only limitations when desktop capabilities are unavailable."
++  ),
++  component(
++    "CommandPalette",
++    "components/desktop/command-palette.tsx",
++    "Desktop",
++    "feature",
++    "reference",
++    "Provides keyboard-first navigation and global actions."
++  ),
++  component(
++    "TokenGate",
++    "components/desktop/token-gate.tsx",
++    "Desktop",
++    "infrastructure",
++    "internal",
++    "Blocks protected desktop flows until the local token is available."
++  ),
++  component(
++    "AppShell",
++    "components/layout/app-shell.tsx",
++    "Layout",
++    "infrastructure",
++    "reference",
++    "Defines the persistent navigation and page-content frame."
++  ),
++  component(
++    "MotionPreferenceGate",
++    "components/layout/motion-preference-gate.tsx",
++    "Layout",
++    "infrastructure",
++    "internal",
++    "Synchronizes reduced-motion preferences with the rendered application."
++  ),
++  component(
++    "OfflineIndicator",
++    "components/layout/offline-indicator.tsx",
++    "Layout",
++    "pattern",
++    "reference",
++    "Communicates loss and recovery of network connectivity."
++  ),
++  component(
++    "SidebarNav",
++    "components/layout/sidebar-nav.tsx",
++    "Layout",
++    "pattern",
++    "reference",
++    "Renders the primary desktop navigation and active-route state."
++  ),
++  component(
++    "ThemeController",
++    "components/layout/theme-controller.tsx",
++    "Layout",
++    "infrastructure",
++    "internal",
++    "Applies persisted theme and accent preferences to the document."
++  ),
++  component(
++    "ThemeToggle",
++    "components/layout/theme-toggle.tsx",
++    "Layout",
++    "pattern",
++    "reference",
++    "Switches between light and dark appearance modes."
++  ),
++  component(
++    "LibraryEditor",
++    "components/library/library-editor.tsx",
++    "Library",
++    "feature",
++    "reference",
++    "Edits saved library metadata and user-specific media state."
++  ),
++  component(
++    "AvailabilityAlertButton",
++    "components/media/availability-alert-button.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Creates or removes an alert for provider availability."
++  ),
++  component(
++    "CastList",
++    "components/media/cast-list.tsx",
++    "Media",
++    "pattern",
++    "reference",
++    "Displays principal cast members with person navigation."
++  ),
++  component(
++    "EpisodeCard",
++    "components/media/episode-card.tsx",
++    "Media",
++    "pattern",
++    "reference",
++    "Summarizes an episode and exposes watch-state actions."
++  ),
++  component(
++    "FilterBar",
++    "components/media/filter-bar.tsx",
++    "Media",
++    "pattern",
++    "live",
++    "Combines media-type filters with count-aware selection controls."
++  ),
++  component(
++    "LoadMoreButton",
++    "components/media/load-more-button.tsx",
++    "Media",
++    "pattern",
++    "live",
++    "Offers explicit and intersection-driven pagination."
++  ),
++  component(
++    "MediaCard",
++    "components/media/media-card.tsx",
++    "Media",
++    "pattern",
++    "reference",
++    "Presents poster art, metadata and primary media actions."
++  ),
++  component(
++    "MediaDetailsHero",
++    "components/media/media-details-hero.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Composes backdrop, title, synopsis and detail-page actions."
++  ),
++  component(
++    "MediaGrid",
++    "components/media/media-grid.tsx",
++    "Media",
++    "pattern",
++    "reference",
++    "Lays out responsive collections of media cards."
++  ),
++  component(
++    "NextEpisodeCard",
++    "components/media/next-episode-card.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Highlights the next episode available to continue."
++  ),
++  component(
++    "Pill",
++    "components/media/pill.tsx",
++    "Media",
++    "primitive",
++    "reference",
++    "Displays compact media metadata or categorical labels."
++  ),
++  component(
++    "ProgressBar",
++    "components/media/progress-bar.tsx",
++    "Media",
++    "pattern",
++    "live",
++    "Visualizes bounded watch progress with an optional label and percentage."
++  ),
++  component(
++    "ProviderAvailability",
++    "components/media/provider-availability.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Groups streaming, rental and purchase provider options."
++  ),
++  component(
++    "RecommendationsPanel",
++    "components/media/recommendations-panel.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Displays related titles and discovery recommendations."
++  ),
++  component(
++    "SearchBar",
++    "components/media/search-bar.tsx",
++    "Media",
++    "pattern",
++    "live",
++    "Provides a labelled search field with clear and submit behavior."
++  ),
++  component(
++    "SeasonAccordion",
++    "components/media/season-accordion.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Groups episodes by season using accessible disclosure controls."
++  ),
++  component(
++    "SectionHeader",
++    "components/media/section-header.tsx",
++    "Media",
++    "pattern",
++    "live",
++    "Introduces repeated page sections with optional copy and actions."
++  ),
++  component(
++    "SeenToggle",
++    "components/media/seen-toggle.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Toggles watched state for a movie or episode."
++  ),
++  component(
++    "StatCard",
++    "components/media/stat-card.tsx",
++    "Media",
++    "pattern",
++    "live",
++    "Presents a metric, context label and optional trend."
++  ),
++  component(
++    "TrailerPanel",
++    "components/media/trailer-panel.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Surfaces playable trailers and fallback messaging."
++  ),
++  component(
++    "WatchNextSection",
++    "components/media/watch-next-section.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Composes prioritized continue-watching recommendations."
++  ),
++  component(
++    "WatchlistButton",
++    "components/media/watchlist-button.tsx",
++    "Media",
++    "feature",
++    "reference",
++    "Adds or removes a title from the watchlist."
++  ),
++  component(
++    "BackupTools",
++    "components/settings/backup-tools.tsx",
++    "Settings",
++    "feature",
++    "reference",
++    "Exports, imports and restores portable application data."
++  ),
++  component(
++    "DesktopSettings",
++    "components/settings/desktop-settings.tsx",
++    "Settings",
++    "feature",
++    "reference",
++    "Configures desktop integration and startup behavior."
++  ),
++  component(
++    "TvTimeImportCard",
++    "components/settings/tvtime-import-card.tsx",
++    "Settings",
++    "feature",
++    "reference",
++    "Imports viewing history from a TV Time export."
++  ),
++  component(
++    "EmptyState",
++    "components/states/empty-state.tsx",
++    "States",
++    "pattern",
++    "live",
++    "Explains an empty result and offers a relevant next action."
++  ),
++  component(
++    "LoadingSkeletons",
++    "components/states/loading-skeletons.tsx",
++    "States",
++    "pattern",
++    "live",
++    "Mirrors page geometry while remote content is loading."
++  ),
++  component(
++    "RemoteErrorState",
++    "components/states/remote-error-state.tsx",
++    "States",
++    "pattern",
++    "live",
++    "Maps remote and local failures to contextual recovery guidance."
++  ),
++  component(
++    "Accordion",
++    "components/ui/accordion.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Provides accessible single or multiple disclosure groups."
++  ),
++  component(
++    "Badge",
++    "components/ui/badge.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Displays compact status, category or media-type information."
++  ),
++  component(
++    "Button",
++    "components/ui/button.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Expresses action hierarchy, size and risk."
++  ),
++  component(
++    "Card",
++    "components/ui/card.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Groups independent content with a shared surface recipe."
++  ),
++  component(
++    "Input",
++    "components/ui/input.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Collects single-line text and search values."
++  ),
++  component(
++    "Panel",
++    "components/ui/panel.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Groups related content on a flat semantic surface."
++  ),
++  component(
++    "Progress",
++    "components/ui/progress.tsx",
++    "UI primitives",
++    "primitive",
++    "reference",
++    "Wraps the accessible Radix progress primitive."
++  ),
++  component(
++    "Select",
++    "components/ui/select.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Collects one value using native select semantics."
++  ),
++  component(
++    "Separator",
++    "components/ui/separator.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Creates semantic horizontal or vertical separation."
++  ),
++  component(
++    "Sheet",
++    "components/ui/sheet.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Provides an accessible edge-anchored modal surface."
++  ),
++  component(
++    "Skeleton",
++    "components/ui/skeleton.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Represents a single loading placeholder shape."
++  ),
++  component(
++    "Textarea",
++    "components/ui/textarea.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Collects multi-line text with shared focus and disabled states."
++  ),
++  component(
++    "Tile",
++    "components/ui/tile.tsx",
++    "UI primitives",
++    "primitive",
++    "live",
++    "Provides a compact bordered container for dense rows."
++  ),
++] satisfies readonly ComponentInventoryItem[];
+diff --git a/src/pages/design-system/catalog-primitives.tsx b/src/pages/design-system/catalog-primitives.tsx
+index 4642dfa..ebb0a17 100644
+--- a/src/pages/design-system/catalog-primitives.tsx
++++ b/src/pages/design-system/catalog-primitives.tsx
+@@ -223,12 +223,56 @@ export function Guidance({ children, tone = "neutral" }: { children: ReactNode;
+   );
+ }
+ 
++const coverageLabels = {
++  live: "Live showcase",
++  reference: "API reference",
++  internal: "Internal",
++} as const;
++
++const coverageClasses = {
++  live: "border-success/30 bg-success/10 text-success",
++  reference: "border-primary/30 bg-primary/10 text-primary",
++  internal: "border-border bg-foreground/5 text-muted-foreground",
++} as const;
++
++export function CoverageBadge({ coverage }: { coverage: keyof typeof coverageLabels }) {
++  return (
++    <span
++      className={cn(
++        "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
++        coverageClasses[coverage]
++      )}
++      data-coverage={coverage}
++    >
++      {coverageLabels[coverage]}
++    </span>
++  );
++}
++
++function MetadataList({ label, values }: { label: string; values: string[] }) {
++  return (
++    <div>
++      <p className="font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
++      <div className="mt-2 flex flex-wrap gap-1.5">
++        {values.map((value) => (
++          <span key={value} className="rounded-md border border-border/70 bg-foreground/[0.03] px-2 py-1 text-[11px]">
++            {value}
++          </span>
++        ))}
++      </div>
++    </div>
++  );
++}
++
+ export function ComponentSpec({
+   name,
+   source,
+   description,
+   anatomy,
++  variants,
++  states,
+   guidance,
++  accessibility,
+   children,
+   className,
+ }: {
+@@ -236,10 +280,20 @@ export function ComponentSpec({
+   source: string;
+   description: string;
+   anatomy?: string[];
++  variants?: string[];
++  states?: string[];
+   guidance?: string;
++  accessibility?: string;
+   children: ReactNode;
+   className?: string;
+ }) {
++  const hasMetadata =
++    Boolean(anatomy?.length) ||
++    Boolean(variants?.length) ||
++    Boolean(states?.length) ||
++    Boolean(guidance) ||
++    Boolean(accessibility);
++
+   return (
+     <article className={cn("rounded-panel border border-border bg-card/40 p-5", className)}>
+       <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
+@@ -251,22 +305,25 @@ export function ComponentSpec({
+           {source}
+         </code>
+       </div>
+-      {(anatomy?.length || guidance) && (
++      {hasMetadata ? (
+         <div className="grid gap-4 border-b border-border/60 py-4 text-xs sm:grid-cols-2">
+-          {anatomy?.length ? (
+-            <div>
+-              <p className="font-semibold uppercase tracking-wide text-muted-foreground">Anatomy</p>
+-              <p className="mt-1 leading-5 text-muted-foreground/80">{anatomy.join(" · ")}</p>
+-            </div>
+-          ) : null}
++          {anatomy?.length ? <MetadataList label="Anatomy" values={anatomy} /> : null}
++          {variants?.length ? <MetadataList label="Variants" values={variants} /> : null}
++          {states?.length ? <MetadataList label="States" values={states} /> : null}
+           {guidance ? (
+             <div>
+               <p className="font-semibold uppercase tracking-wide text-muted-foreground">Use when</p>
+               <p className="mt-1 leading-5 text-muted-foreground/80">{guidance}</p>
+             </div>
+           ) : null}
++          {accessibility ? (
++            <div className="sm:col-span-2">
++              <p className="font-semibold uppercase tracking-wide text-muted-foreground">Accessibility</p>
++              <p className="mt-1 leading-5 text-muted-foreground/80">{accessibility}</p>
++            </div>
++          ) : null}
+         </div>
+-      )}
++      ) : null}
+       <div className="pt-5">{children}</div>
+     </article>
+   );
+-- 
+2.47.3
+
+
+From bce746b74f58950d84486775b02055edfa574864 Mon Sep 17 00:00:00 2001
+From: OpenAI <noreply@openai.com>
+Date: Sun, 2 Aug 2026 18:55:41 +0000
+Subject: [PATCH 2/2] test(design-system): cover catalog interactions and ui
+ contracts
+
+---
+ .../media/__tests__/filter-bar.test.tsx       | 23 ++++++
+ .../media/__tests__/search-bar.test.tsx       | 28 +++++++
+ .../__tests__/loading-skeletons.test.tsx      | 24 ++++++
+ src/components/ui/__tests__/sheet.test.tsx    | 81 +++++++++++++++++++
+ .../ui/__tests__/surface-primitives.test.tsx  | 75 +++++++++++++++++
+ .../__tests__/design-system-page.test.tsx     | 59 ++++++++++++++
+ .../__tests__/catalog-data.test.ts            | 55 +++++++++++++
+ .../__tests__/catalog-primitives.test.tsx     | 54 +++++++++++++
+ 8 files changed, 399 insertions(+)
+ create mode 100644 src/components/media/__tests__/filter-bar.test.tsx
+ create mode 100644 src/components/media/__tests__/search-bar.test.tsx
+ create mode 100644 src/components/states/__tests__/loading-skeletons.test.tsx
+ create mode 100644 src/components/ui/__tests__/sheet.test.tsx
+ create mode 100644 src/components/ui/__tests__/surface-primitives.test.tsx
+ create mode 100644 src/pages/__tests__/design-system-page.test.tsx
+ create mode 100644 src/pages/design-system/__tests__/catalog-data.test.ts
+ create mode 100644 src/pages/design-system/__tests__/catalog-primitives.test.tsx
+
+diff --git a/src/components/media/__tests__/filter-bar.test.tsx b/src/components/media/__tests__/filter-bar.test.tsx
+new file mode 100644
+index 0000000..da80cfc
+--- /dev/null
++++ b/src/components/media/__tests__/filter-bar.test.tsx
+@@ -0,0 +1,23 @@
++import { describe, expect, it, vi } from "vitest";
++import { fireEvent, render, screen } from "@testing-library/react";
++
++import { FilterBar } from "../filter-bar";
++
++const options = [
++  { value: "all", label: "All" },
++  { value: "movies", label: "Movies" },
++  { value: "series", label: "Series" },
++] as const;
++
++describe("FilterBar", () => {
++  it("marks the current value and emits a selected option", () => {
++    const onChange = vi.fn();
++    render(<FilterBar value="all" options={[...options]} onChange={onChange} />);
++
++    expect(screen.getByRole("button", { name: "All" })).toHaveClass("text-foreground");
++    expect(screen.getByRole("button", { name: "Movies" })).toHaveClass("text-muted-foreground");
++
++    fireEvent.click(screen.getByRole("button", { name: "Series" }));
++    expect(onChange).toHaveBeenCalledWith("series");
++  });
++});
+diff --git a/src/components/media/__tests__/search-bar.test.tsx b/src/components/media/__tests__/search-bar.test.tsx
+new file mode 100644
+index 0000000..f3c3626
+--- /dev/null
++++ b/src/components/media/__tests__/search-bar.test.tsx
+@@ -0,0 +1,28 @@
++import { beforeAll, describe, expect, it, vi } from "vitest";
++import { fireEvent, render, screen } from "@testing-library/react";
++
++import i18n from "@/i18n";
++import { SearchBar } from "../search-bar";
++
++describe("SearchBar", () => {
++  beforeAll(async () => {
++    await i18n.changeLanguage("en");
++  });
++
++  it("emits text changes and accepts a custom placeholder", () => {
++    const onChange = vi.fn();
++    render(<SearchBar value="matrix" onChange={onChange} placeholder="Find a title" />);
++
++    const input = screen.getByPlaceholderText("Find a title");
++    expect(input).toHaveValue("matrix");
++
++    fireEvent.change(input, { target: { value: "arrival" } });
++    expect(onChange).toHaveBeenCalledWith("arrival");
++  });
++
++  it("uses the localized placeholder by default", () => {
++    render(<SearchBar value="" onChange={() => undefined} />);
++
++    expect(screen.getByPlaceholderText(i18n.t("searchBar.placeholder"))).toBeInTheDocument();
++  });
++});
+diff --git a/src/components/states/__tests__/loading-skeletons.test.tsx b/src/components/states/__tests__/loading-skeletons.test.tsx
+new file mode 100644
+index 0000000..09dde99
+--- /dev/null
++++ b/src/components/states/__tests__/loading-skeletons.test.tsx
+@@ -0,0 +1,24 @@
++import { describe, expect, it } from "vitest";
++import { render } from "@testing-library/react";
++
++import { GridSkeleton, HeroSkeleton } from "../loading-skeletons";
++
++describe("loading skeleton compositions", () => {
++  it("renders the requested number of grid placeholders", () => {
++    const { container } = render(<GridSkeleton count={4} />);
++
++    expect(container.querySelectorAll(".animate-shimmer")).toHaveLength(4);
++  });
++
++  it("defaults to ten grid placeholders", () => {
++    const { container } = render(<GridSkeleton />);
++
++    expect(container.querySelectorAll(".animate-shimmer")).toHaveLength(10);
++  });
++
++  it("renders the hero geometry", () => {
++    const { container } = render(<HeroSkeleton />);
++
++    expect(container.firstElementChild).toHaveClass("h-[460px]", "rounded-hero");
++  });
++});
+diff --git a/src/components/ui/__tests__/sheet.test.tsx b/src/components/ui/__tests__/sheet.test.tsx
+new file mode 100644
+index 0000000..ac8d317
+--- /dev/null
++++ b/src/components/ui/__tests__/sheet.test.tsx
+@@ -0,0 +1,81 @@
++import { describe, expect, it } from "vitest";
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++
++import {
++  Sheet,
++  SheetClose,
++  SheetContent,
++  SheetDescription,
++  SheetFooter,
++  SheetHeader,
++  SheetTitle,
++  SheetTrigger,
++  type SheetSide,
++  type SheetSize,
++} from "../sheet";
++
++function SheetExample({ side = "left", size = "sm" }: { side?: SheetSide; size?: SheetSize }) {
++  return (
++    <Sheet>
++      <SheetTrigger asChild>
++        <button type="button">Open panel</button>
++      </SheetTrigger>
++      <SheetContent side={side} size={size} closeLabel="Dismiss panel">
++        <SheetHeader>
++          <SheetTitle>Filters</SheetTitle>
++          <SheetDescription>Refine the current media list.</SheetDescription>
++        </SheetHeader>
++        <div>Panel content</div>
++        <SheetFooter>
++          <SheetClose asChild>
++            <button type="button">Apply filters</button>
++          </SheetClose>
++        </SheetFooter>
++      </SheetContent>
++    </Sheet>
++  );
++}
++
++describe("Sheet", () => {
++  it("opens with an accessible title and description, then closes from the built-in control", async () => {
++    render(<SheetExample />);
++
++    fireEvent.click(screen.getByRole("button", { name: "Open panel" }));
++
++    const dialog = await screen.findByRole("dialog", { name: "Filters" });
++    expect(dialog).toHaveAttribute("data-side", "left");
++    expect(dialog).toHaveAttribute("data-size", "sm");
++    expect(screen.getByText("Refine the current media list.")).toBeInTheDocument();
++
++    fireEvent.click(screen.getByRole("button", { name: "Dismiss panel" }));
++    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filters" })).not.toBeInTheDocument());
++  });
++
++  it("closes through a composed SheetClose action", async () => {
++    render(<SheetExample side="right" size="lg" />);
++
++    fireEvent.click(screen.getByRole("button", { name: "Open panel" }));
++    const dialog = await screen.findByRole("dialog", { name: "Filters" });
++    expect(dialog).toHaveAttribute("data-side", "right");
++    expect(dialog).toHaveAttribute("data-size", "lg");
++
++    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
++    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filters" })).not.toBeInTheDocument());
++  });
++
++  it.each([
++    ["left", "sm"],
++    ["right", "md"],
++    ["top", "lg"],
++    ["bottom", "xl"],
++  ] as const)("supports side=%s and size=%s", async (side, size) => {
++    render(<SheetExample side={side} size={size} />);
++
++    fireEvent.click(screen.getByRole("button", { name: "Open panel" }));
++
++    const dialog = await screen.findByRole("dialog", { name: "Filters" });
++    expect(dialog).toHaveAttribute("data-side", side);
++    expect(dialog).toHaveAttribute("data-size", size);
++    expect(dialog.className).toContain(side === "left" || side === "right" ? "h-full" : "w-full");
++  });
++});
+diff --git a/src/components/ui/__tests__/surface-primitives.test.tsx b/src/components/ui/__tests__/surface-primitives.test.tsx
+new file mode 100644
+index 0000000..688870f
+--- /dev/null
++++ b/src/components/ui/__tests__/surface-primitives.test.tsx
+@@ -0,0 +1,75 @@
++import { createRef } from "react";
++import { describe, expect, it, vi } from "vitest";
++import { fireEvent, render, screen } from "@testing-library/react";
++
++import { Panel } from "../panel";
++import { Select } from "../select";
++import { Separator } from "../separator";
++import { Textarea } from "../textarea";
++import { Tile } from "../tile";
++
++describe("surface and form primitives", () => {
++  it("renders Panel tones and supports asChild composition", () => {
++    const { rerender } = render(<Panel>Card panel</Panel>);
++    expect(screen.getByText("Card panel")).toHaveClass("bg-card/60");
++
++    rerender(<Panel tone="subtle">Subtle panel</Panel>);
++    expect(screen.getByText("Subtle panel")).toHaveClass("bg-foreground/[0.03]");
++
++    rerender(
++      <Panel asChild>
++        <a href="/library">Library panel</a>
++      </Panel>
++    );
++    expect(screen.getByRole("link", { name: "Library panel" })).toHaveAttribute("href", "/library");
++  });
++
++  it("renders Tile as a div or composed child", () => {
++    const { rerender } = render(<Tile className="p-2">Tile content</Tile>);
++    expect(screen.getByText("Tile content")).toHaveClass("rounded-xl", "p-2");
++
++    rerender(
++      <Tile asChild>
++        <button type="button">Tile action</button>
++      </Tile>
++    );
++    expect(screen.getByRole("button", { name: "Tile action" })).toHaveClass("border-border");
++  });
++
++  it("forwards refs and native change behavior for Select", () => {
++    const ref = createRef<HTMLSelectElement>();
++    const onChange = vi.fn();
++    render(
++      <Select ref={ref} aria-label="Media type" defaultValue="movie" onChange={onChange}>
++        <option value="movie">Movie</option>
++        <option value="series">Series</option>
++      </Select>
++    );
++
++    fireEvent.change(screen.getByRole("combobox", { name: "Media type" }), { target: { value: "series" } });
++    expect(ref.current).toBe(screen.getByRole("combobox", { name: "Media type" }));
++    expect(ref.current).toHaveValue("series");
++    expect(onChange).toHaveBeenCalledTimes(1);
++  });
++
++  it("forwards refs and native input behavior for Textarea", () => {
++    const ref = createRef<HTMLTextAreaElement>();
++    const onChange = vi.fn();
++    render(<Textarea ref={ref} aria-label="Notes" defaultValue="Initial" onChange={onChange} />);
++
++    fireEvent.change(screen.getByRole("textbox", { name: "Notes" }), { target: { value: "Updated" } });
++    expect(ref.current).toBe(screen.getByRole("textbox", { name: "Notes" }));
++    expect(ref.current).toHaveValue("Updated");
++    expect(onChange).toHaveBeenCalledTimes(1);
++  });
++
++  it("renders horizontal and vertical separators", () => {
++    const { container, rerender } = render(<Separator />);
++    expect(container.firstElementChild).toHaveAttribute("data-orientation", "horizontal");
++    expect(container.firstElementChild).toHaveClass("h-px", "w-full");
++
++    rerender(<Separator orientation="vertical" />);
++    expect(container.firstElementChild).toHaveAttribute("data-orientation", "vertical");
++    expect(container.firstElementChild).toHaveClass("h-full", "w-px");
++  });
++});
+diff --git a/src/pages/__tests__/design-system-page.test.tsx b/src/pages/__tests__/design-system-page.test.tsx
+new file mode 100644
+index 0000000..68d9b5e
+--- /dev/null
++++ b/src/pages/__tests__/design-system-page.test.tsx
+@@ -0,0 +1,59 @@
++import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
++import { fireEvent, render, screen } from "@testing-library/react";
++
++import i18n from "@/i18n";
++import { DesignSystemPage } from "../design-system-page";
++
++vi.mock("@/features/preferences/use-preferences", () => ({
++  usePreferences: () => ({
++    data: { theme: "dark", accentColor: "violet" },
++  }),
++}));
++
++class MockIntersectionObserver {
++  observe() {}
++  unobserve() {}
++  disconnect() {}
++}
++
++describe("DesignSystemPage", () => {
++  beforeAll(async () => {
++    await i18n.changeLanguage("en");
++  });
++
++  beforeEach(() => {
++    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
++    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
++      callback(0);
++      return 1;
++    });
++    vi.stubGlobal("cancelAnimationFrame", () => undefined);
++  });
++
++  afterEach(() => {
++    vi.unstubAllGlobals();
++  });
++
++  it("renders the complete catalog and supports its interactive filters", () => {
++    render(<DesignSystemPage />);
++
++    expect(screen.getByRole("heading", { level: 1, name: "Design system" })).toBeInTheDocument();
++    expect(screen.getByText("51 components shown")).toBeInTheDocument();
++
++    fireEvent.change(screen.getByLabelText("Component group"), { target: { value: "UI primitives" } });
++    expect(screen.getByText("13 components shown")).toBeInTheDocument();
++
++    fireEvent.change(screen.getByLabelText("Search the catalog"), { target: { value: "missing-component" } });
++    expect(screen.getByText("No component found")).toBeInTheDocument();
++
++    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
++    expect(screen.getByText("51 components shown")).toBeInTheDocument();
++
++    const patternSearch = screen.getByPlaceholderText("Search titles, people or genres");
++    fireEvent.change(patternSearch, { target: { value: "Arrival" } });
++    fireEvent.click(screen.getByRole("button", { name: "Series" }));
++
++    const currentQuery = screen.getByText("Arrival");
++    expect(currentQuery.parentElement).toHaveTextContent("Current example: Arrival · series");
++  });
++});
+diff --git a/src/pages/design-system/__tests__/catalog-data.test.ts b/src/pages/design-system/__tests__/catalog-data.test.ts
+new file mode 100644
+index 0000000..6fbdad3
+--- /dev/null
++++ b/src/pages/design-system/__tests__/catalog-data.test.ts
+@@ -0,0 +1,55 @@
++import { readdirSync } from "node:fs";
++import { relative, resolve, sep } from "node:path";
++import { fileURLToPath } from "node:url";
++
++import { describe, expect, it } from "vitest";
++
++import { componentInventory, componentStateModel, navSections, sheetSides, sheetSizes } from "../catalog-data";
++
++const componentsRoot = fileURLToPath(new URL("../../../components", import.meta.url));
++
++function listComponentSources(directory: string): string[] {
++  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
++    const absolutePath = resolve(directory, entry.name);
++
++    if (entry.isDirectory()) {
++      return entry.name === "__tests__" ? [] : listComponentSources(absolutePath);
++    }
++
++    if (!entry.isFile() || !entry.name.endsWith(".tsx")) return [];
++
++    const relativePath = relative(componentsRoot, absolutePath).split(sep).join("/");
++    return [`components/${relativePath}`];
++  });
++}
++
++describe("design-system catalog data", () => {
++  it("indexes every React component source exactly once", () => {
++    const actualSources = componentInventory.map((item) => item.source).sort();
++    const componentSources = listComponentSources(componentsRoot).sort();
++
++    expect(actualSources).toEqual(componentSources);
++    expect(new Set(actualSources).size).toBe(actualSources.length);
++  });
++
++  it("keeps inventory entries complete and searchable", () => {
++    for (const item of componentInventory) {
++      expect(item.name).not.toHaveLength(0);
++      expect(item.group).not.toHaveLength(0);
++      expect(item.purpose).not.toHaveLength(0);
++      expect(["primitive", "pattern", "feature", "infrastructure"]).toContain(item.layer);
++      expect(["live", "reference", "internal"]).toContain(item.coverage);
++    }
++  });
++
++  it("registers unique navigation and state-model identifiers", () => {
++    expect(new Set(navSections.map((section) => section.id)).size).toBe(navSections.length);
++    expect(navSections.some((section) => section.id === "inventory")).toBe(true);
++    expect(new Set(componentStateModel.map((item) => item.state)).size).toBe(componentStateModel.length);
++  });
++
++  it("documents all supported sheet sides and sizes", () => {
++    expect(sheetSides.map((side) => side.name)).toEqual(["left", "right", "top", "bottom"]);
++    expect(sheetSizes.map((size) => size.name)).toEqual(["sm", "md", "lg", "xl"]);
++  });
++});
+diff --git a/src/pages/design-system/__tests__/catalog-primitives.test.tsx b/src/pages/design-system/__tests__/catalog-primitives.test.tsx
+new file mode 100644
+index 0000000..334f0f3
+--- /dev/null
++++ b/src/pages/design-system/__tests__/catalog-primitives.test.tsx
+@@ -0,0 +1,54 @@
++import { describe, expect, it } from "vitest";
++import { render, screen } from "@testing-library/react";
++
++import { ComponentSpec, CoverageBadge } from "../catalog-primitives";
++
++describe("design-system catalog primitives", () => {
++  it.each([
++    ["live", "Live showcase"],
++    ["reference", "API reference"],
++    ["internal", "Internal"],
++  ] as const)("renders the %s coverage badge", (coverage, label) => {
++    render(<CoverageBadge coverage={coverage} />);
++
++    expect(screen.getByText(label)).toHaveAttribute("data-coverage", coverage);
++  });
++
++  it("renders the complete component contract", () => {
++    render(
++      <ComponentSpec
++        name="Example control"
++        source="components/ui/example.tsx"
++        description="A representative component."
++        anatomy={["container", "label"]}
++        variants={["default", "quiet"]}
++        states={["enabled", "disabled"]}
++        guidance="A repeatable action needs a shared contract."
++        accessibility="Expose an accessible name and visible focus state."
++      >
++        <button type="button">Example action</button>
++      </ComponentSpec>
++    );
++
++    expect(screen.getByRole("heading", { name: "Example control" })).toBeInTheDocument();
++    expect(screen.getByText("components/ui/example.tsx")).toBeInTheDocument();
++    expect(screen.getByText("container")).toBeInTheDocument();
++    expect(screen.getByText("quiet")).toBeInTheDocument();
++    expect(screen.getByText("disabled")).toBeInTheDocument();
++    expect(screen.getByText("A repeatable action needs a shared contract.")).toBeInTheDocument();
++    expect(screen.getByText("Expose an accessible name and visible focus state.")).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Example action" })).toBeInTheDocument();
++  });
++
++  it("omits the metadata panel when no metadata is supplied", () => {
++    render(
++      <ComponentSpec name="Minimal" source="minimal.tsx" description="Minimal contract.">
++        <span>Preview</span>
++      </ComponentSpec>
++    );
++
++    expect(screen.queryByText("Anatomy")).not.toBeInTheDocument();
++    expect(screen.queryByText("Accessibility")).not.toBeInTheDocument();
++    expect(screen.getByText("Preview")).toBeInTheDocument();
++  });
++});
+-- 
+2.47.3
+

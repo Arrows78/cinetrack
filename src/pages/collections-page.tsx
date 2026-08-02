@@ -19,10 +19,7 @@ function ListContents({ listId }: { listId: string }) {
   return (
     <div className="grid gap-2">
       {items.data.map((item) => (
-        <Tile
-          key={`${item.mediaType}-${item.mediaId}`}
-          className="flex items-center justify-between px-3 py-2 text-sm"
-        >
+        <Tile key={`${item.mediaType}-${item.mediaId}`} className="flex items-center justify-between px-3 py-2 text-sm">
           <span>
             {item.title}{" "}
             <span className="text-muted-foreground">

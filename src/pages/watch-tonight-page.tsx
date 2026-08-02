@@ -32,10 +32,7 @@ export function WatchTonightPage() {
         <h1 className="font-display text-3xl font-bold">{t("watchTonight.title")}</h1>
         <p className="text-muted-foreground">{t("watchTonight.description")}</p>
       </header>
-      <Panel
-        className="grid gap-3 md:grid-cols-4 animate-in"
-        style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
-      >
+      <Panel className="grid gap-3 md:grid-cols-4 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
         <Select value={genre} onChange={(e) => setGenre(e.target.value)}>
           <option value="">{t("watchTonight.allGenres")}</option>
           {GENRES.movies.map((item) => (

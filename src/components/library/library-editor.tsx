@@ -115,11 +115,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       </label>
       <label className="mt-4 grid gap-1 text-sm">
         <span className="text-muted-foreground">{t("library.privateNotes")}</span>
-        <Textarea
-          className="min-h-24"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
+        <Textarea className="min-h-24" value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">

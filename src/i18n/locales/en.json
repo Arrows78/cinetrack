@@ -55,6 +55,8 @@
   },
   "common": {
     "back": "Back",
+    "close": "Close",
+    "openNavigation": "Open navigation",
     "loading": "Loading…",
     "somethingWentWrong": "Something went wrong",
     "unknownDate": "Unknown date"

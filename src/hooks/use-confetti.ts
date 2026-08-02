@@ -11,7 +11,12 @@ import confetti from "canvas-confetti";
 function themeConfettiColors(): string[] {
   const style = getComputedStyle(document.documentElement);
   const read = (name: string) => style.getPropertyValue(name).trim();
-  return [`hsl(${read("--primary")})`, `hsl(${read("--accent")})`, `hsl(${read("--success")})`, `hsl(${read("--warning")})`];
+  return [
+    `hsl(${read("--primary")})`,
+    `hsl(${read("--accent")})`,
+    `hsl(${read("--success")})`,
+    `hsl(${read("--warning")})`,
+  ];
 }
 
 export function useConfetti() {

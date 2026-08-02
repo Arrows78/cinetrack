@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/shared/lib/cn";
 import { Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { useUiStore } from "@/store/ui-store";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -42,17 +42,30 @@ export function AppShell() {
           <header className="surface sticky top-4 z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
               {canGoBack ? (
-                <Button variant="ghost" size="icon" onClick={handleGoBack} className="-ml-1 h-9 w-9">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleGoBack}
+                  className="-ml-1 h-9 w-9"
+                  aria-label={t("common.back")}
+                >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               ) : (
                 <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="-ml-1 h-9 w-9">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="-ml-1 h-9 w-9"
+                      aria-label={t("common.openNavigation")}
+                    >
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent>
+                  <SheetContent closeLabel={t("common.close")}>
+                    <SheetTitle className="sr-only">{t("sidebar.brand.name")}</SheetTitle>
+                    <SheetDescription className="sr-only">{t("sidebar.brand.tagline")}</SheetDescription>
                     <SidebarNav collapsed={false} onToggleCollapse={() => {}} />
                   </SheetContent>
                 </Sheet>

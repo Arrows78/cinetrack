@@ -17,6 +17,11 @@ describe("Input", () => {
     expect(screen.getByPlaceholderText("Search")).toBeDisabled();
   });
 
+  it("styles aria-invalid controls with the destructive token", () => {
+    render(<Input placeholder="Year" aria-invalid="true" />);
+    expect(screen.getByPlaceholderText("Year")).toHaveClass("aria-[invalid=true]:border-destructive");
+  });
+
   it("calls onChange when the value changes", () => {
     const onChange = vi.fn();
     render(<Input placeholder="Search" onChange={onChange} />);

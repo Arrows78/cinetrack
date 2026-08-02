@@ -55,6 +55,8 @@
   },
   "common": {
     "back": "Retour",
+    "close": "Fermer",
+    "openNavigation": "Ouvrir la navigation",
     "loading": "Chargement…",
     "somethingWentWrong": "Une erreur est survenue",
     "unknownDate": "Date inconnue"

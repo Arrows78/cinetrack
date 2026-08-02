@@ -12,10 +12,7 @@ export function PersonDetailPage() {
   if (!query.data) return <p className="text-muted-foreground">{t("person.loading")}</p>;
   return (
     <div className="space-y-8">
-      <Panel
-        className="flex items-end gap-5 animate-in"
-        style={{ animationDelay: `${staggerDelayMs(0)}ms` }}
-      >
+      <Panel className="flex items-end gap-5 animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <img
           className="h-48 w-32 rounded-2xl object-cover"
           src={

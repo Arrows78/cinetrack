@@ -18,6 +18,15 @@ describe("Badge", () => {
     expect(screen.getByText("Movie")).toHaveClass("bg-primary/80", "text-primary-foreground");
   });
 
+  it.each([
+    ["success", "bg-success", "text-success-foreground"],
+    ["warning", "bg-warning", "text-warning-foreground"],
+    ["destructive", "bg-destructive", "text-destructive-foreground"],
+  ] as const)("applies the %s semantic variant", (variant, backgroundClass, foregroundClass) => {
+    render(<Badge variant={variant}>{variant}</Badge>);
+    expect(screen.getByText(variant)).toHaveClass(backgroundClass, foregroundClass);
+  });
+
   it("merges a custom className", () => {
     render(<Badge className="custom-class">Custom</Badge>);
     expect(screen.getByText("Custom")).toHaveClass("custom-class");
