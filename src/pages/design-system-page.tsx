@@ -25,8 +25,12 @@ import {
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { CastList } from "@/components/media/cast-list";
+import { EpisodeDots } from "@/components/media/season-accordion";
 import { FilterBar } from "@/components/media/filter-bar";
 import { LoadMoreButton } from "@/components/media/load-more-button";
+import { MediaGrid } from "@/components/media/media-grid";
+import { Pill } from "@/components/media/pill";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SearchBar } from "@/components/media/search-bar";
 import { SectionHeader } from "@/components/media/section-header";
@@ -64,6 +68,11 @@ import {
   breakpoints,
   buttonSizes,
   buttonVariants,
+  catalogCast,
+  catalogEpisodes,
+  catalogMedia,
+  catalogPills,
+  catalogWatchedEpisodeIds,
   componentInventory,
   componentStateModel,
   contributionChecklist,
@@ -77,6 +86,7 @@ import {
   shadows,
   sheetSides,
   sheetSizes,
+  signatureApplications,
   spacingSteps,
   surfaceHierarchy,
   tintScale,
@@ -374,6 +384,50 @@ export function DesignSystemPage() {
           <code className="font-mono text-xs">tailwind.config.ts</code>, accent references in{" "}
           <code className="font-mono text-xs">src/shared/constants/colors.ts</code>, and component recipes in{" "}
           <code className="font-mono text-xs">src/components/ui</code>.
+        </Guidance>
+      </Section>
+
+      <Separator className="opacity-40" />
+
+      <Section
+        id="signature"
+        eyebrow="Identity"
+        title="The one deliberate risk"
+        description={
+          'Principle 01 says "cinematic, not ornamental" — in practice, that means spending distinctiveness in one ' +
+          "recognizable place instead of decorating every screen. CineTrack's place is film perforation: episode " +
+          "progress and the section eyebrow both read as sprocket holes on a strip of film, not as generic dots or a " +
+          "gradient line."
+        }
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          {signatureApplications.map((application) => (
+            <div key={application.name} className="rounded-panel border border-border bg-card/40 p-5">
+              <p className="font-mono text-xs text-primary">{application.source}</p>
+              <h3 className="mt-2 font-display text-lg font-bold">{application.name}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{application.detail}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-panel border border-border bg-card/30 p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Live · season-accordion.tsx's EpisodeDots, 8 of 16 episodes watched
+          </p>
+          <div className="mt-4">
+            <EpisodeDots episodes={catalogEpisodes} watchedSet={catalogWatchedEpisodeIds} />
+          </div>
+          <div className="mt-6 border-t border-border/60 pt-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Live · .section-rule, the mark under every SectionHeader title
+            </p>
+            <div className="section-rule mt-4 max-w-sm" aria-hidden="true" />
+          </div>
+        </div>
+
+        <Guidance tone="bad">
+          <strong>Restraint:</strong> this is the one place the app spends visual boldness. Do not add a second
+          "signature" motif elsewhere — a page with two competing distinctive treatments reads as neither.
         </Guidance>
       </Section>
 
@@ -1497,6 +1551,51 @@ export function DesignSystemPage() {
               }
               index={0}
             />
+          </ComponentSpec>
+
+          <ComponentSpec
+            name="Media card & grid"
+            source="components/media/{media-card,media-grid}.tsx"
+            description="Poster art, the cinematic gradient overlay, media-type badge and (for tracked series) a TV Time-style progress bar. The single most recognizable piece of UI in the app."
+            anatomy={[
+              "poster image",
+              "gradient overlay",
+              "rating badge",
+              "media-type badge",
+              "title",
+              "meta row",
+              "optional progress bar",
+            ]}
+            variants={["movie", "series", "with progress", "without progress"]}
+            guidance="Any list of watchable titles — home feed, search results, recommendations, watchlist."
+            accessibility="The whole card is a single link to the detail page; poster alt text carries the title for screen readers."
+          >
+            <MediaGrid items={catalogMedia} />
+          </ComponentSpec>
+
+          <ComponentSpec
+            name="Cast list"
+            source="components/media/cast-list.tsx"
+            description="Principal cast as a compact photo-and-role grid."
+            anatomy={["photo", "name", "character badge"]}
+            guidance="A movie or series detail page needs to credit its cast."
+          >
+            <CastList cast={[...catalogCast]} />
+          </ComponentSpec>
+
+          <ComponentSpec
+            name="Genre / provider pill"
+            source="components/media/pill.tsx"
+            description="A tappable chip that deep-links into search pre-filtered by genre or streaming provider."
+            anatomy={["label"]}
+            guidance="A detail page lists genres or providers that should be explorable, not just informational."
+            accessibility="Renders as a real Link — reachable and activatable by keyboard like any other navigation."
+          >
+            <div className="flex flex-wrap gap-2">
+              {catalogPills.map((pill) => (
+                <Pill key={pill.label} {...pill} />
+              ))}
+            </div>
           </ComponentSpec>
 
           <ComponentSpec

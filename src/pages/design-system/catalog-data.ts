@@ -1,5 +1,6 @@
 export const navSections = [
   { id: "overview", label: "Overview" },
+  { id: "signature", label: "Signature" },
   { id: "color-primitives", label: "Color primitives" },
   { id: "semantic-colors", label: "Semantic colors" },
   { id: "typography", label: "Typography" },
@@ -352,6 +353,106 @@ export const sheetSizes = [
   { name: "xl", use: "Complex workflows that need near-page capacity without becoming a route." },
 ] as const;
 
+// Sample content for pattern demos that need a realistic media/cast shape
+// (MediaCard, MediaGrid, CastList, Pill) — kept here, not invented inline in
+// the page, so it reads as one deliberate demo dataset rather than scattered
+// literals.
+export const catalogMedia: {
+  id: number;
+  mediaType: "movie" | "series";
+  title: string;
+  overview: string;
+  posterPath: null;
+  backdropPath: null;
+  year: number;
+  rating: number;
+  genres: string[];
+  cast: [];
+  progress?: { watched: number; total: number };
+}[] = [
+  {
+    id: 872585,
+    mediaType: "movie",
+    title: "Oppenheimer",
+    overview: "The story of J. Robert Oppenheimer and the making of the atomic bomb.",
+    posterPath: null,
+    backdropPath: null,
+    year: 2023,
+    rating: 8.1,
+    genres: ["Drama", "History"],
+    cast: [],
+  },
+  {
+    id: 94997,
+    mediaType: "series",
+    title: "House of the Dragon",
+    overview: "The Targaryen civil war, 200 years before the events of Game of Thrones.",
+    posterPath: null,
+    backdropPath: null,
+    year: 2022,
+    rating: 8.4,
+    genres: ["Drama", "Fantasy"],
+    cast: [],
+    progress: { watched: 6, total: 10 },
+  },
+  {
+    id: 84958,
+    mediaType: "series",
+    title: "Loki",
+    overview: "The mercurial villain Loki resumes his role as the God of Mischief.",
+    posterPath: null,
+    backdropPath: null,
+    year: 2021,
+    rating: 8.2,
+    genres: ["Sci-Fi", "Fantasy"],
+    cast: [],
+    progress: { watched: 6, total: 6 },
+  },
+] as const;
+
+export const catalogCast = [
+  { id: 1, name: "Cillian Murphy", character: "J. Robert Oppenheimer", profilePath: null },
+  { id: 2, name: "Emily Blunt", character: "Katherine Oppenheimer", profilePath: null },
+  { id: 3, name: "Matt Damon", character: "Leslie Groves", profilePath: null },
+] as const;
+
+export const catalogPills = [
+  { label: "Science Fiction", movieId: 878 },
+  { label: "Christopher Nolan", movieId: 525 },
+  { label: "Netflix", providerId: 8 },
+] as const;
+
+// 16 episodes, first 8 watched — matches the shape EpisodeDots expects
+// (Season["episodes"]) for the Signature section's live demo.
+export const catalogEpisodes = Array.from({ length: 16 }, (_, index) => ({
+  id: index + 1,
+  seasonNumber: 2,
+  episodeNumber: index + 1,
+  title: `Episode ${index + 1}`,
+  overview: "",
+}));
+export const catalogWatchedEpisodeIds = new Set(catalogEpisodes.slice(0, 8).map((episode) => episode.id));
+
+// The one deliberate signature decision — see /design-system#signature.
+// EpisodeDots (season-accordion.tsx) already looked like film-sprocket
+// perforations by accident before this pass leaned into it on purpose;
+// .section-rule (the eyebrow mark under every SectionHeader) got the same
+// idea as a fading row of ticks instead of a plain gradient line.
+export const signatureApplications = [
+  {
+    name: "Episode filmstrip",
+    source: "components/media/season-accordion.tsx",
+    detail:
+      'Each episode is a small perforation: a dark "unexposed" mark when unwatched, lit up in the current accent color when watched — the metaphor maps onto "watching" directly instead of decorating it.',
+  },
+  {
+    name: "Perforation rule",
+    source: "styles/index.css · .section-rule",
+    detail:
+      "The eyebrow mark under every SectionHeader title is a row of small ticks fading to transparent (repeating-linear-gradient + a mask), not a plain gradient hairline.",
+  },
+] as const;
+
 export type ComponentCoverage = "live" | "reference" | "internal";
 export type ComponentLayer = "primitive" | "pattern" | "feature" | "infrastructure";
 
@@ -477,8 +578,8 @@ export const componentInventory = [
     "components/media/cast-list.tsx",
     "Media",
     "pattern",
-    "reference",
-    "Displays principal cast members with person navigation."
+    "live",
+    "Displays principal cast members and their character names."
   ),
   component(
     "EpisodeCard",
@@ -509,7 +610,7 @@ export const componentInventory = [
     "components/media/media-card.tsx",
     "Media",
     "pattern",
-    "reference",
+    "live",
     "Presents poster art, metadata and primary media actions."
   ),
   component(
@@ -525,7 +626,7 @@ export const componentInventory = [
     "components/media/media-grid.tsx",
     "Media",
     "pattern",
-    "reference",
+    "live",
     "Lays out responsive collections of media cards."
   ),
   component(
@@ -541,7 +642,7 @@ export const componentInventory = [
     "components/media/pill.tsx",
     "Media",
     "primitive",
-    "reference",
+    "live",
     "Displays compact media metadata or categorical labels."
   ),
   component(

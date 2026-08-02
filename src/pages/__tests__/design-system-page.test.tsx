@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
 import { DesignSystemPage } from "../design-system-page";
@@ -8,6 +9,13 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
     data: { theme: "dark", accentColor: "violet" },
   }),
+}));
+
+// The catalog's Media card & grid / Genre pill patterns render real
+// MediaCard/Pill components, which route through <Link>. No RouterProvider
+// exists in this render, same as media-card.test.tsx's own mock.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
 }));
 
 class MockIntersectionObserver {
