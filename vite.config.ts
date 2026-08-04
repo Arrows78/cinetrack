@@ -10,6 +10,14 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  environments: {
+    node: {
+      resolve: {
+        conditions: ["node", "browser"],
+      },
+      noExternal: true,
+    },
+  },
   server: {
     port: 1420,
     strictPort: true,

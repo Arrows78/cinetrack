@@ -12,12 +12,7 @@ import { cn } from "@/shared/lib/cn";
 import type { LucideIcon } from "lucide-react";
 
 type HistoryAction =
-  | "movie:watched"
-  | "movie:unwatched"
-  | "episode:watched"
-  | "episode:unwatched"
-  | "watchlist:add"
-  | "watchlist:remove";
+  "movie:watched" | "movie:unwatched" | "episode:watched" | "episode:unwatched" | "watchlist:add" | "watchlist:remove";
 
 const labelByAction: Record<HistoryAction, string> = {
   "movie:watched": "movieWatched",

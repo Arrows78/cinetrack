@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, startTransition } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouterState } from "@tanstack/react-router";
 import { Search, SearchX } from "lucide-react";
@@ -34,8 +34,12 @@ export function SearchPage() {
   const [localQuery, setLocalQuery] = useState(urlQuery);
   const [selectedScope, setSelectedScope] = useState<SearchScope | null>(urlScope);
 
-  useEffect(() => setLocalQuery(urlQuery), [urlQuery]);
-  useEffect(() => setSelectedScope(urlScope), [urlScope]);
+  useEffect(() => {
+    startTransition(() => {
+      setLocalQuery(urlQuery);
+      setSelectedScope(urlScope);
+    });
+  }, [urlQuery, urlScope]);
 
   const scope = selectedScope ?? preferences?.defaultSearchType ?? "all";
   const debouncedQuery = useDebouncedValue(localQuery, 350);
