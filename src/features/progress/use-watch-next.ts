@@ -1,8 +1,9 @@
-import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
-import { invalidateEpisodeQueries } from "@/features/progress/use-progress";
+import { episodeProgressKeys } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { Episode, MediaSummary, TrackedSeriesItem } from "@/types/media";
 
 export interface WatchNextEntry {
@@ -72,10 +73,8 @@ export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
 }
 
 export function useMarkWatchNext() {
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: ({ series, episode }: { series: TrackedSeriesItem; episode: Episode }) => {
+  const mutation = useInvalidatingMutation(
+    ({ series, episode }: { series: TrackedSeriesItem; episode: Episode }) => {
       const summary: MediaSummary & { numberOfEpisodes?: number } = {
         id: series.seriesId,
         mediaType: "series",
@@ -91,8 +90,8 @@ export function useMarkWatchNext() {
       };
       return progressRepository.toggleEpisodeSeen(summary, episode, true);
     },
-    onSuccess: (_, variables) => invalidateEpisodeQueries(queryClient, variables.series.seriesId),
-  });
+    (_data, variables) => episodeProgressKeys(variables.series.seriesId)
+  );
 
   return { markWatched: mutation.mutateAsync, isSaving: mutation.isPending };
 }
