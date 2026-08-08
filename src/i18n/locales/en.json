@@ -333,9 +333,10 @@
     "description": "Three suggestions from your library first, then from the catalog.",
     "allGenres": "All genres",
     "allPlatforms": "All platforms",
-    "searching": "Searching for best options…",
     "maxDuration": "Max duration",
-    "retry": "Retry"
+    "retry": "Retry",
+    "emptyTitle": "No match for these filters",
+    "emptyDesc": "Try a wider genre, platform or duration — or add more titles to your \"to watch\" library."
   },
   "library": {
     "myLibrary": "My library",
