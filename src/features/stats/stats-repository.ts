@@ -17,6 +17,11 @@ export interface WatchForecast {
 
 const FALLBACK_EPISODE_MINUTES = 40;
 const PACE_WINDOW_DAYS = 60;
+// A streak or a catch-up pace never needs to look back further than this —
+// bounds list_recent_viewing_events() so it stays a cheap recent-window
+// fetch instead of a profile's entire lifetime of events, no matter how
+// long the app has been in use.
+const RECENT_EVENTS_WINDOW_DAYS = 400;
 
 interface YearSummary {
   year: number;
@@ -26,6 +31,17 @@ interface YearSummary {
   topTitles: Array<{ title: string; count: number }>;
   favouriteGenre: string | null;
   activeDays: number;
+}
+
+interface StatsOverviewDto {
+  totals: {
+    moviesWatched: number;
+    episodesWatched: number;
+    minutesWatched: number;
+    completedSeries: number;
+    watchlistCompletionPercent: number;
+  };
+  monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
 }
 
 const localDay = (timestamp: string) => format(parseISO(timestamp), "yyyy-MM-dd");
@@ -44,37 +60,22 @@ function currentStreak(events: ViewingEvent[]): number {
   return streak;
 }
 
-function compute(library: LibraryItem[], events: ViewingEvent[]): LibraryStats {
-  const watched = events.filter((event) => event.eventType === "watched" || event.eventType === "rewatched");
+/** The two figures only the (much smaller, slower-growing) library table can answer. */
+function libraryExtras(library: LibraryItem[]): {
+  favouriteGenres: Array<{ name: string; count: number }>;
+  averageUserRating: number | null;
+} {
   const genres = new Map<string, number>();
   for (const item of library) for (const genre of item.genres) genres.set(genre, (genres.get(genre) ?? 0) + 1);
   const ratings = library
     .map((item) => item.userRating)
     .filter((rating): rating is number => rating !== null && rating !== undefined);
-  const interval = { start: startOfMonth(subMonths(new Date(), 11)), end: endOfMonth(new Date()) };
-  const months = eachMonthOfInterval(interval).map((date) => format(date, "yyyy-MM"));
   return {
-    moviesWatched: watched.filter((event) => event.mediaType === "movie").length,
-    episodesWatched: watched.filter((event) => event.episodeId !== null && event.episodeId !== undefined).length,
-    minutesWatched: watched.reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
-    completedSeries: library.filter((item) => item.mediaType === "series" && item.status === "completed").length,
-    averageUserRating: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
     favouriteGenres: [...genres.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([name, count]) => ({ name, count })),
-    monthlyActivity: months.map((month) => {
-      const monthEvents = watched.filter((event) => event.watchedAt.startsWith(month));
-      return {
-        month,
-        count: monthEvents.length,
-        minutes: monthEvents.reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
-      };
-    }),
-    currentStreakDays: currentStreak(watched),
-    watchlistCompletionPercent: library.length
-      ? Math.round((library.filter((item) => item.status === "completed").length / library.length) * 100)
-      : 0,
+    averageUserRating: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
   };
 }
 
@@ -115,24 +116,53 @@ function computeForecast(tracked: TrackedSeriesItem[], events: ViewingEvent[], n
   };
 }
 
-async function loadData(): Promise<{ library: LibraryItem[]; events: ViewingEvent[] }> {
-  const [library, events] = await Promise.all([
-    libraryRepository.list(),
-    invokeCommand<ViewingEvent[]>("list_viewing_events"),
-  ]);
-  return { library, events };
+function recentEventsSince(): string {
+  return subDays(new Date(), RECENT_EVENTS_WINDOW_DAYS).toISOString();
+}
+
+async function loadRecentEvents(): Promise<ViewingEvent[]> {
+  return invokeCommand<ViewingEvent[]>("list_recent_viewing_events", { since: recentEventsSince() });
 }
 
 export const statsRepository = {
   async getStats(): Promise<LibraryStats> {
-    const data = await loadData();
-    return compute(data.library, data.events);
+    const now = new Date();
+    const windowStart = startOfMonth(subMonths(now, 11));
+    const monthLabels = eachMonthOfInterval({ start: windowStart, end: endOfMonth(now) }).map((date) =>
+      format(date, "yyyy-MM")
+    );
+
+    const [library, overview, recentEvents] = await Promise.all([
+      libraryRepository.list(),
+      invokeCommand<StatsOverviewDto>("get_stats_overview", {
+        windowStart: windowStart.toISOString(),
+        monthLabels,
+      }),
+      loadRecentEvents(),
+    ]);
+
+    const extras = libraryExtras(library);
+
+    return {
+      moviesWatched: overview.totals.moviesWatched,
+      episodesWatched: overview.totals.episodesWatched,
+      minutesWatched: overview.totals.minutesWatched,
+      completedSeries: overview.totals.completedSeries,
+      averageUserRating: extras.averageUserRating,
+      favouriteGenres: extras.favouriteGenres,
+      monthlyActivity: overview.monthlyActivity,
+      currentStreakDays: currentStreak(recentEvents),
+      watchlistCompletionPercent: overview.totals.watchlistCompletionPercent,
+    };
   },
   async getYearSummary(year = new Date().getFullYear()): Promise<YearSummary> {
-    const { library, events } = await loadData();
-    const selected = events.filter(
-      (event) => event.eventType !== "unwatched" && event.watchedAt.startsWith(String(year))
-    );
+    const [library, selected] = await Promise.all([
+      libraryRepository.list(),
+      invokeCommand<ViewingEvent[]>("list_viewing_events_for_year", {
+        rangeStart: `${year}-01-01T00:00:00.000Z`,
+        rangeEnd: `${year + 1}-01-01T00:00:00.000Z`,
+      }).then((events) => events.filter((event) => event.eventType !== "unwatched")),
+    ]);
     const titleCounts = new Map<string, number>();
     for (const event of selected) titleCounts.set(event.title, (titleCounts.get(event.title) ?? 0) + 1);
     const genreCounts = new Map<string, number>();
@@ -153,9 +183,10 @@ export const statsRepository = {
     };
   },
   async getForecast(): Promise<WatchForecast> {
-    const [tracked, { events }] = await Promise.all([progressRepository.listTrackedSeries(), loadData()]);
+    const [tracked, events] = await Promise.all([progressRepository.listTrackedSeries(), loadRecentEvents()]);
     return computeForecast(tracked, events);
   },
-  _compute: compute,
+  _currentStreak: currentStreak,
+  _libraryExtras: libraryExtras,
   _computeForecast: computeForecast,
 };

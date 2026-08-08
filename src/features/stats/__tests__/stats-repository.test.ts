@@ -40,7 +40,12 @@ const isoDaysAgo = (days: number) => {
 };
 
 describe("statsRepository", () => {
-  it("aggregates watched minutes and genres", () => {
+  // Totals (movies/episodes/minutes watched, completed series, watchlist
+  // completion) and monthly activity are now aggregated in SQL — see
+  // src-tauri/src/commands/stats.rs's own test suite for their coverage.
+  // What's left as pure, unit-testable TS is genre/rating extraction from
+  // the (much smaller) library table, and the streak walk over events.
+  it("extracts favourite genres from the library", () => {
     const library = [
       {
         profileId: "default",
@@ -58,37 +63,19 @@ describe("statsRepository", () => {
         updatedAt: "2026-01-01",
       },
     ] as unknown as LibraryItem[];
-    const events = [
-      {
-        id: "1",
-        profileId: "default",
-        mediaId: 1,
-        mediaType: "movie",
-        title: "Test",
-        eventType: "watched",
-        watchedAt: new Date().toISOString(),
-        durationMinutes: 120,
-      },
-    ] as ViewingEvent[];
-    const stats = statsRepository._compute(library, events);
-    expect(stats.moviesWatched).toBe(1);
-    expect(stats.minutesWatched).toBe(120);
-    expect(stats.favouriteGenres[0]).toEqual({ name: "Drama", count: 1 });
+
+    expect(statsRepository._libraryExtras(library).favouriteGenres[0]).toEqual({ name: "Drama", count: 1 });
   });
 
-  it("computes averages, completion percent and completed series", () => {
+  it("computes the average user rating across rated items", () => {
     const library = [
       libraryItem({ mediaId: 1, userRating: 8, status: "completed" }),
       libraryItem({ mediaId: 2, userRating: 6, status: "planned" }),
-      libraryItem({ mediaId: 3, mediaType: "series", status: "completed" }),
-      libraryItem({ mediaId: 4, mediaType: "series", status: "watching" }),
+      libraryItem({ mediaId: 3, mediaType: "series", status: "completed", userRating: null }),
     ];
 
-    const stats = statsRepository._compute(library, []);
-
-    expect(stats.averageUserRating).toBe(7);
-    expect(stats.completedSeries).toBe(1);
-    expect(stats.watchlistCompletionPercent).toBe(50);
+    expect(statsRepository._libraryExtras(library).averageUserRating).toBe(7);
+    expect(statsRepository._libraryExtras([]).averageUserRating).toBeNull();
   });
 
   it("counts a streak of consecutive watching days and breaks it on a gap", () => {
@@ -97,21 +84,16 @@ describe("statsRepository", () => {
       event({ watchedAt: isoDaysAgo(1) }),
       event({ watchedAt: isoDaysAgo(2) }),
     ];
-    expect(statsRepository._compute([], consecutive).currentStreakDays).toBe(3);
+    expect(statsRepository._currentStreak(consecutive)).toBe(3);
 
     const withGap = [event({ watchedAt: isoDaysAgo(0) }), event({ watchedAt: isoDaysAgo(2) })];
-    expect(statsRepository._compute([], withGap).currentStreakDays).toBe(1);
+    expect(statsRepository._currentStreak(withGap)).toBe(1);
 
-    expect(statsRepository._compute([], []).currentStreakDays).toBe(0);
+    expect(statsRepository._currentStreak([])).toBe(0);
   });
 
-  it("ignores unwatched events everywhere", () => {
-    const events = [event({ eventType: "unwatched" })];
-    const stats = statsRepository._compute([], events);
-
-    expect(stats.moviesWatched).toBe(0);
-    expect(stats.minutesWatched).toBe(0);
-    expect(stats.currentStreakDays).toBe(0);
+  it("ignores unwatched events in the streak", () => {
+    expect(statsRepository._currentStreak([event({ eventType: "unwatched" })])).toBe(0);
   });
 });
 

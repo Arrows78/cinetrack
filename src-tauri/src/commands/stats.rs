@@ -98,6 +98,205 @@ pub async fn list_viewing_events(pool: State<'_, SqlitePool>) -> Result<Vec<View
     list_viewing_events_impl(&pool, &profile_id).await
 }
 
+async fn list_viewing_events_since_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    since: &str,
+) -> Result<Vec<ViewingEvent>, ApiError> {
+    let rows: Vec<ViewingEventRow> = sqlx::query_as(
+        "SELECT uuid, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number
+         FROM viewing_events WHERE profile_id = $1 AND watched_at >= $2",
+    )
+    .bind(profile_id)
+    .bind(since)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    rows.into_iter().map(|row| row.into_event(profile_id)).collect()
+}
+
+/// Bounded alternative to `list_viewing_events` for computations that only
+/// need a recent window (current streak, catch-up pace) — avoids pulling a
+/// profile's entire lifetime of events for a calculation that never looks
+/// further back than `since`.
+#[tauri::command]
+pub async fn list_recent_viewing_events(
+    since: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<ViewingEvent>, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    list_viewing_events_since_impl(&pool, &profile_id, &since).await
+}
+
+async fn list_viewing_events_for_year_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    range_start: &str,
+    range_end: &str,
+) -> Result<Vec<ViewingEvent>, ApiError> {
+    let rows: Vec<ViewingEventRow> = sqlx::query_as(
+        "SELECT uuid, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number
+         FROM viewing_events WHERE profile_id = $1 AND watched_at >= $2 AND watched_at < $3",
+    )
+    .bind(profile_id)
+    .bind(range_start)
+    .bind(range_end)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    rows.into_iter().map(|row| row.into_event(profile_id)).collect()
+}
+
+/// Bounded alternative to `list_viewing_events` for the yearly "wrapped"
+/// summary — only ever needs one calendar year's worth of events, not the
+/// whole history. `range_start`/`range_end` are ISO instants (end exclusive).
+#[tauri::command]
+pub async fn list_viewing_events_for_year(
+    range_start: String,
+    range_end: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<ViewingEvent>, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    list_viewing_events_for_year_impl(&pool, &profile_id, &range_start, &range_end).await
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatsTotals {
+    pub movies_watched: i64,
+    pub episodes_watched: i64,
+    pub minutes_watched: i64,
+    pub completed_series: i64,
+    pub watchlist_completion_percent: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonthlyActivityBucket {
+    pub month: String,
+    pub count: i64,
+    pub minutes: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatsOverview {
+    pub totals: StatsTotals,
+    pub monthly_activity: Vec<MonthlyActivityBucket>,
+}
+
+#[derive(sqlx::FromRow)]
+struct EventTotalsRow {
+    movies_watched: i64,
+    episodes_watched: i64,
+    minutes_watched: Option<i64>,
+}
+
+#[derive(sqlx::FromRow)]
+struct LibraryTotalsRow {
+    total: i64,
+    completed: i64,
+    completed_series: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct MonthlyActivityRow {
+    month: String,
+    count: i64,
+    minutes: Option<i64>,
+}
+
+/// `month_starts` are "YYYY-MM-01T00:00:00.000Z"-style bounds for the
+/// window to aggregate, oldest first; the response always contains exactly
+/// one bucket per entry (zero-filled), matching what the previous
+/// client-side `eachMonthOfInterval` produced.
+async fn get_stats_overview_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    window_start: &str,
+    month_labels: &[String],
+) -> Result<StatsOverview, ApiError> {
+    let event_totals: EventTotalsRow = sqlx::query_as(
+        "SELECT
+           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
+           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
+           SUM(CASE WHEN event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched
+         FROM viewing_events WHERE profile_id = $1",
+    )
+    .bind(profile_id)
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    let library_totals: LibraryTotalsRow = sqlx::query_as(
+        "SELECT
+           COUNT(*) AS total,
+           COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed,
+           COUNT(CASE WHEN media_type = 'series' AND status = 'completed' THEN 1 END) AS completed_series
+         FROM library_items WHERE profile_id = $1",
+    )
+    .bind(profile_id)
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    let monthly_rows: Vec<MonthlyActivityRow> = sqlx::query_as(
+        "SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS count, SUM(duration_minutes) AS minutes
+         FROM viewing_events
+         WHERE profile_id = $1 AND event_type IN ('watched','rewatched') AND watched_at >= $2
+         GROUP BY month",
+    )
+    .bind(profile_id)
+    .bind(window_start)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    let monthly_by_label: std::collections::HashMap<String, &MonthlyActivityRow> =
+        monthly_rows.iter().map(|row| (row.month.clone(), row)).collect();
+
+    let monthly_activity = month_labels
+        .iter()
+        .map(|label| match monthly_by_label.get(label) {
+            Some(row) => MonthlyActivityBucket { month: label.clone(), count: row.count, minutes: row.minutes.unwrap_or(0) },
+            None => MonthlyActivityBucket { month: label.clone(), count: 0, minutes: 0 },
+        })
+        .collect();
+
+    let watchlist_completion_percent = if library_totals.total > 0 {
+        ((library_totals.completed as f64 / library_totals.total as f64) * 100.0).round() as i64
+    } else {
+        0
+    };
+
+    Ok(StatsOverview {
+        totals: StatsTotals {
+            movies_watched: event_totals.movies_watched,
+            episodes_watched: event_totals.episodes_watched,
+            minutes_watched: event_totals.minutes_watched.unwrap_or(0),
+            completed_series: library_totals.completed_series,
+            watchlist_completion_percent,
+        },
+        monthly_activity,
+    })
+}
+
+/// `window_start` and `month_labels` are computed client-side (date-fns
+/// already owns "current month" logic elsewhere in the app) and passed in,
+/// so this command stays a pure aggregation over a caller-specified window
+/// rather than a second place that decides what "the last 12 months" means.
+#[tauri::command]
+pub async fn get_stats_overview(
+    window_start: String,
+    month_labels: Vec<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<StatsOverview, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    get_stats_overview_impl(&pool, &profile_id, &window_start, &month_labels).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,5 +336,94 @@ mod tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].title, "Test");
         assert_eq!(events[0].event_type, ViewingEventType::Watched);
+    }
+
+    async fn insert_event(
+        pool: &SqlitePool,
+        uuid: &str,
+        watched_at: &str,
+        event_type: &str,
+        media_type: &str,
+        duration_minutes: Option<i64>,
+        episode_id: Option<i64>,
+    ) {
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, created_at)
+             VALUES ($1, 'default', 1, $2, 'Test', $3, $4, $5, $6, $4)",
+        )
+        .bind(uuid)
+        .bind(media_type)
+        .bind(event_type)
+        .bind(watched_at)
+        .bind(duration_minutes)
+        .bind(episode_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn list_recent_only_returns_events_on_or_after_the_cutoff() {
+        let pool = migrated_pool().await;
+        insert_event(&pool, "old", "2025-01-01T00:00:00.000Z", "watched", "movie", None, None).await;
+        insert_event(&pool, "recent", "2026-06-01T00:00:00.000Z", "watched", "movie", None, None).await;
+
+        let events = list_viewing_events_since_impl(&pool, "default", "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id, "recent");
+    }
+
+    #[tokio::test]
+    async fn list_for_year_excludes_events_outside_the_range() {
+        let pool = migrated_pool().await;
+        insert_event(&pool, "before", "2025-12-31T23:59:59.000Z", "watched", "movie", None, None).await;
+        insert_event(&pool, "inside", "2026-06-15T00:00:00.000Z", "watched", "movie", None, None).await;
+        insert_event(&pool, "after", "2027-01-01T00:00:00.000Z", "watched", "movie", None, None).await;
+
+        let events =
+            list_viewing_events_for_year_impl(&pool, "default", "2026-01-01T00:00:00.000Z", "2027-01-01T00:00:00.000Z")
+                .await
+                .unwrap();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id, "inside");
+    }
+
+    #[tokio::test]
+    async fn stats_overview_aggregates_totals_and_zero_fills_empty_months() {
+        let pool = migrated_pool().await;
+        insert_event(&pool, "movie-1", "2026-03-10T00:00:00.000Z", "watched", "movie", Some(100), None).await;
+        insert_event(&pool, "episode-1", "2026-03-12T00:00:00.000Z", "watched", "series", Some(40), Some(9001)).await;
+        insert_event(&pool, "episode-2", "2026-03-15T00:00:00.000Z", "rewatched", "series", Some(40), Some(9002)).await;
+        // An "unwatched" toggle must not count toward totals or minutes.
+        insert_event(&pool, "unwatch-1", "2026-03-20T00:00:00.000Z", "unwatched", "series", Some(999), Some(9003)).await;
+
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ('lib-1', 'default', 1, 'series', 'Show A', 'completed', 'now', 'now'),
+                    ('lib-2', 'default', 2, 'series', 'Show B', 'watching', 'now', 'now'),
+                    ('lib-3', 'default', 3, 'movie', 'Film A', 'planned', 'now', 'now'),
+                    ('lib-4', 'default', 4, 'movie', 'Film B', 'completed', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let month_labels = vec!["2026-02".to_string(), "2026-03".to_string(), "2026-04".to_string()];
+        let overview =
+            get_stats_overview_impl(&pool, "default", "2026-02-01T00:00:00.000Z", &month_labels).await.unwrap();
+
+        assert_eq!(overview.totals.movies_watched, 1);
+        assert_eq!(overview.totals.episodes_watched, 2);
+        assert_eq!(overview.totals.minutes_watched, 180);
+        assert_eq!(overview.totals.completed_series, 1);
+        // 2 completed out of 4 library items.
+        assert_eq!(overview.totals.watchlist_completion_percent, 50);
+
+        assert_eq!(overview.monthly_activity.len(), 3);
+        assert_eq!(overview.monthly_activity[0], MonthlyActivityBucket { month: "2026-02".into(), count: 0, minutes: 0 });
+        assert_eq!(overview.monthly_activity[1], MonthlyActivityBucket { month: "2026-03".into(), count: 3, minutes: 180 });
+        assert_eq!(overview.monthly_activity[2], MonthlyActivityBucket { month: "2026-04".into(), count: 0, minutes: 0 });
     }
 }

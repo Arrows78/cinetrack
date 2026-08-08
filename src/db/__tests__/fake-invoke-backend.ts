@@ -576,6 +576,72 @@ function listViewingEvents(sqlite: DatabaseSync, profileId: string): ViewingEven
   }));
 }
 
+// Mirrors src-tauri/src/commands/stats.rs::list_recent_viewing_events — same
+// bounded-fetch idea (avoid pulling a profile's entire history for a
+// calculation that only ever looks at a recent window), reusing the fake
+// full listViewingEvents() above rather than a second SQL query since this
+// is a test double, not the real aggregation path.
+function listRecentViewingEvents(sqlite: DatabaseSync, profileId: string, since: string): ViewingEvent[] {
+  return listViewingEvents(sqlite, profileId).filter((event) => event.watchedAt >= since);
+}
+
+// Mirrors src-tauri/src/commands/stats.rs::list_viewing_events_for_year.
+function listViewingEventsForYear(
+  sqlite: DatabaseSync,
+  profileId: string,
+  rangeStart: string,
+  rangeEnd: string
+): ViewingEvent[] {
+  return listViewingEvents(sqlite, profileId).filter(
+    (event) => event.watchedAt >= rangeStart && event.watchedAt < rangeEnd
+  );
+}
+
+// Mirrors src-tauri/src/commands/stats.rs::get_stats_overview — same
+// totals/monthly-activity aggregation, computed here with array methods
+// instead of SQL since this is the test double for it, not the real path.
+function getStatsOverview(
+  sqlite: DatabaseSync,
+  profileId: string,
+  windowStart: string,
+  monthLabels: string[]
+): {
+  totals: {
+    moviesWatched: number;
+    episodesWatched: number;
+    minutesWatched: number;
+    completedSeries: number;
+    watchlistCompletionPercent: number;
+  };
+  monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
+} {
+  const events = listViewingEvents(sqlite, profileId);
+  const watched = events.filter((event) => event.eventType === "watched" || event.eventType === "rewatched");
+  const library = listLibrary(sqlite, profileId);
+  const completed = library.filter((item) => item.status === "completed");
+
+  const inWindow = watched.filter((event) => event.watchedAt >= windowStart);
+  const monthlyActivity = monthLabels.map((month) => {
+    const monthEvents = inWindow.filter((event) => event.watchedAt.startsWith(month));
+    return {
+      month,
+      count: monthEvents.length,
+      minutes: monthEvents.reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
+    };
+  });
+
+  return {
+    totals: {
+      moviesWatched: watched.filter((event) => event.mediaType === "movie").length,
+      episodesWatched: watched.filter((event) => event.episodeId !== null && event.episodeId !== undefined).length,
+      minutesWatched: watched.reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
+      completedSeries: library.filter((item) => item.mediaType === "series" && item.status === "completed").length,
+      watchlistCompletionPercent: library.length ? Math.round((completed.length / library.length) * 100) : 0,
+    },
+    monthlyActivity,
+  };
+}
+
 function quickCheck(sqlite: DatabaseSync): { healthy: boolean; detail: string } {
   const rows = sqlite.prepare("PRAGMA quick_check").all() as Array<{ quick_check: string }>;
   const detail = rows.map((row) => row.quick_check).join(", ") || "unknown";
@@ -1076,6 +1142,22 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
       case "list_viewing_events":
         return listViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "list_recent_viewing_events":
+        return listRecentViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId, args.since as string);
+      case "list_viewing_events_for_year":
+        return listViewingEventsForYear(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.rangeStart as string,
+          args.rangeEnd as string
+        );
+      case "get_stats_overview":
+        return getStatsOverview(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.windowStart as string,
+          args.monthLabels as string[]
+        );
       case "check_data_integrity":
         return quickCheck(sqlite);
       case "export_backup_data":
