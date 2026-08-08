@@ -185,6 +185,7 @@ struct ProfileRow {
     name: String,
     avatar: Option<String>,
     created_at: String,
+    supabase_user_id: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -398,7 +399,7 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
                 name: row.name,
                 avatar: row.avatar,
                 created_at: row.created_at,
-                supabase_user_id: None,
+                supabase_user_id: row.supabase_user_id,
             })
             .collect(),
         custom_lists: custom_lists
@@ -490,14 +491,17 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
     }
 
     for item in &data.profiles {
-        sqlx::query("INSERT INTO profiles (uuid, name, avatar, created_at, updated_at) VALUES ($1,$2,$3,$4,$4)")
-            .bind(&item.id)
-            .bind(&item.name)
-            .bind(&item.avatar)
-            .bind(&item.created_at)
-            .execute(&mut *tx)
-            .await
-            .map_err(ApiError::from)?;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, avatar, supabase_user_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$5)",
+        )
+        .bind(&item.id)
+        .bind(&item.name)
+        .bind(&item.avatar)
+        .bind(&item.supabase_user_id)
+        .bind(&item.created_at)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
     }
 
     let now = crate::database::now_iso(&mut *tx).await?;
@@ -787,6 +791,199 @@ mod tests {
         pool
     }
 
+    async fn table_columns(pool: &SqlitePool, table: &str) -> Vec<String> {
+        let mut columns: Vec<String> =
+            sqlx::query_scalar(&format!("SELECT name FROM pragma_table_info('{table}')")).fetch_all(pool).await.unwrap();
+        columns.sort();
+        columns
+    }
+
+    fn sorted(mut columns: Vec<&str>) -> Vec<String> {
+        columns.sort_unstable();
+        columns.into_iter().map(str::to_string).collect()
+    }
+
+    /// Guards the `SELECT * FROM <table>` export queries above against silent
+    /// schema drift: `sqlx::FromRow` maps by column name and simply ignores
+    /// any table column that has no matching Row struct field, so a column
+    /// added to a table later would vanish from every backup export without
+    /// either query erroring. Each expected list mirrors its Row struct's
+    /// fields exactly (checked by hand against 001-initial-schema.ts); a few
+    /// tables list fewer columns than they have — those gaps are intentional
+    /// (see comments) rather than a Row struct oversight.
+    #[tokio::test]
+    async fn full_row_structs_cover_every_table_column_or_document_why_not() {
+        let pool = migrated_pool().await;
+
+        // Full match: these Row structs mirror every column of their table.
+        for (table, expected) in [
+            ("profiles", sorted(vec!["uuid", "name", "avatar", "supabase_user_id", "created_at", "updated_at"])),
+            (
+                "library_items",
+                sorted(vec![
+                    "uuid",
+                    "profile_id",
+                    "media_id",
+                    "media_type",
+                    "title",
+                    "poster_path",
+                    "backdrop_path",
+                    "year",
+                    "rating",
+                    "genres",
+                    "status",
+                    "favourite",
+                    "user_rating",
+                    "notes",
+                    "tags",
+                    "started_at",
+                    "completed_at",
+                    "rewatch_count",
+                    "created_at",
+                    "updated_at",
+                ]),
+            ),
+            (
+                "watchlist_items",
+                sorted(vec![
+                    "uuid",
+                    "profile_id",
+                    "media_id",
+                    "media_type",
+                    "title",
+                    "poster_path",
+                    "backdrop_path",
+                    "year",
+                    "rating",
+                    "created_at",
+                    "updated_at",
+                ]),
+            ),
+            (
+                "episode_progress",
+                sorted(vec![
+                    "uuid",
+                    "profile_id",
+                    "series_id",
+                    "episode_id",
+                    "season_number",
+                    "episode_number",
+                    "watched",
+                    "watched_at",
+                    "created_at",
+                    "updated_at",
+                ]),
+            ),
+            (
+                "tracked_series",
+                sorted(vec![
+                    "uuid",
+                    "profile_id",
+                    "series_id",
+                    "title",
+                    "poster_path",
+                    "backdrop_path",
+                    "total_episodes",
+                    "created_at",
+                    "updated_at",
+                ]),
+            ),
+            ("custom_lists", sorted(vec!["uuid", "profile_id", "name", "description", "created_at", "updated_at"])),
+            (
+                "custom_list_items",
+                sorted(vec![
+                    "uuid",
+                    "list_id",
+                    "media_id",
+                    "media_type",
+                    "title",
+                    "poster_path",
+                    "position",
+                    "added_at",
+                    "updated_at",
+                ]),
+            ),
+            ("availability_snapshots", sorted(vec!["media_id", "media_type", "region", "provider_ids", "checked_at"])),
+        ] {
+            assert_eq!(table_columns(&pool, table).await, expected, "{table} gained/lost a column vs its Row struct");
+        }
+
+        // Documented gaps below: the table legitimately has more columns
+        // than its Row struct — each comment says why the missing ones are
+        // safe to drop from the export today. This still asserts against
+        // the table's real, full column set, so a *new* column added later
+        // fails the test just like the tables above, forcing a conscious
+        // "does the Row struct need this too?" check.
+
+        // seen_movies: `uuid` is discarded on import (a fresh one is always
+        // generated — see import_impl's header comment), and created_at /
+        // updated_at aren't modeled because they always mirror watched_at.
+        assert_eq!(
+            table_columns(&pool, "seen_movies").await,
+            sorted(vec!["uuid", "profile_id", "movie_id", "title", "poster_path", "backdrop_path", "watched_at", "created_at", "updated_at"]),
+        );
+        // viewing_events: created_at isn't modeled because it always mirrors
+        // watched_at (this table is append-only, per the migration header).
+        assert_eq!(
+            table_columns(&pool, "viewing_events").await,
+            sorted(vec![
+                "uuid",
+                "profile_id",
+                "media_id",
+                "media_type",
+                "title",
+                "event_type",
+                "watched_at",
+                "duration_minutes",
+                "episode_id",
+                "season_number",
+                "episode_number",
+                "created_at",
+            ]),
+        );
+        // activity_log: profile_id is reconstructed from metadata.profileId
+        // on import (see import_impl); created_at/updated_at aren't modeled
+        // because they always mirror `timestamp`.
+        assert_eq!(
+            table_columns(&pool, "activity_log").await,
+            sorted(vec![
+                "uuid",
+                "profile_id",
+                "media_id",
+                "media_type",
+                "title",
+                "action",
+                "season_number",
+                "episode_number",
+                "episode_title",
+                "metadata",
+                "timestamp",
+                "created_at",
+                "updated_at",
+            ]),
+        );
+        // availability_alerts: updated_at isn't modeled anywhere in the
+        // AvailabilityAlert domain type, not just here.
+        assert_eq!(
+            table_columns(&pool, "availability_alerts").await,
+            sorted(vec![
+                "uuid",
+                "profile_id",
+                "media_id",
+                "media_type",
+                "title",
+                "region",
+                "provider_ids",
+                "enabled",
+                "created_at",
+                "updated_at",
+            ]),
+        );
+        // preferences: updated_at isn't modeled — PortableData.preferences is
+        // a plain key/value map with no room for per-key metadata.
+        assert_eq!(table_columns(&pool, "preferences").await, sorted(vec!["key", "value", "updated_at"]));
+    }
+
     #[tokio::test]
     async fn quick_check_reports_healthy_on_a_fresh_database() {
         let pool = migrated_pool().await;
@@ -823,6 +1020,22 @@ mod tests {
         assert_eq!(watchlist_count.0, 1);
         let library_status: (String,) = sqlx::query_as("SELECT status FROM library_items").fetch_one(&pool).await.unwrap();
         assert_eq!(library_status.0, "watching");
+    }
+
+    #[tokio::test]
+    async fn export_and_reimport_preserves_the_profiles_supabase_link() {
+        let pool = migrated_pool().await;
+        sqlx::query("UPDATE profiles SET supabase_user_id = 'user-1' WHERE uuid = 'default'").execute(&pool).await.unwrap();
+
+        let exported = export_impl(&pool).await.unwrap();
+        assert_eq!(exported.profiles.len(), 1);
+        assert_eq!(exported.profiles[0].supabase_user_id.as_deref(), Some("user-1"));
+
+        import_impl(&pool, exported).await.unwrap();
+
+        let supabase_user_id: (Option<String>,) =
+            sqlx::query_as("SELECT supabase_user_id FROM profiles WHERE uuid = 'default'").fetch_one(&pool).await.unwrap();
+        assert_eq!(supabase_user_id.0.as_deref(), Some("user-1"));
     }
 
     #[tokio::test]
