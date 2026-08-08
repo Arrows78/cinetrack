@@ -81,6 +81,8 @@ flowchart LR
 - Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats) manage personal data, all of it in SQLite (`sqlite:app.db`).
 - SQLite is only reachable from inside the Tauri webview — a plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at the same dev server `pnpm tauri dev` uses. Every local-data hook already tolerates a failed query (none use React Query's suspense mode), so the UI still renders outside Tauri for layout/styling work; reads/writes to SQLite just fail silently. A small non-blocking banner flags this, see [`src/components/desktop/browser-preview-banner.tsx`](src/components/desktop/browser-preview-banner.tsx).
 
+See [`docs/architecture.md`](docs/architecture.md) for the full request-to-database walkthrough (the Rust command → repository → hook → page shape every domain follows), the error-handling contract, and how to add a new feature domain. See [`docs/design-system.md`](docs/design-system.md) for UI tokens and component rules, and [`docs/auth.md`](docs/auth.md) for the optional Supabase account-sync setup.
+
 ## 📦 Prerequisites
 
 Before getting started, install:
@@ -162,9 +164,11 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 | `pnpm preview`       | Serves the Vite production build locally.                          |
 | `pnpm lint`          | Analyses the project with ESLint.                                  |
 | `pnpm format`        | Formats files with Prettier.                                       |
+| `pnpm format:check`  | Checks formatting without writing changes (what CI runs).          |
 | `pnpm test`          | Runs the Vitest test suite.                                        |
 | `pnpm test:coverage` | Runs the test suite with a coverage report.                        |
 | `pnpm typecheck`     | Checks TypeScript types without emitting output.                   |
+| `pnpm validate`      | Runs the full chain above plus the Rust checks — see below.        |
 | `pnpm tauri dev`     | Starts the desktop application in development mode.                |
 | `pnpm tauri build`   | Creates desktop bundles for the current platform.                  |
 
@@ -205,9 +209,12 @@ cinetrack/
 ├── src-tauri/
 │   ├── capabilities/           # Tauri permissions
 │   ├── src/
-│   │   ├── commands/           # Tauri commands (TMDB proxy, updater config check)
-│   │   ├── tray.rs              # System tray icon and menu
-│   │   ├── lib.rs                # Plugin registration and app bootstrap
+│   │   ├── commands/            # One file per domain: SQL, transactions, cascades, active-profile resolution
+│   │   ├── database/             # Connection pool setup and the single squashed schema migration
+│   │   ├── error.rs               # ApiError, the structured error every command returns
+│   │   ├── models.rs              # Shared types (MediaType, ...) used across commands
+│   │   ├── tray.rs                # System tray icon and menu
+│   │   ├── lib.rs                  # Plugin registration, command registration, app bootstrap
 │   │   └── main.rs
 │   ├── Cargo.toml              # Rust dependencies
 │   └── tauri.conf.json         # Desktop configuration and bundle settings
@@ -234,7 +241,6 @@ Catalogue data, posters, and metadata are loaded from TMDB, so they require an i
 
 ## 🗺️ Roadmap
 
-- [ ] Code-split the frontend bundle (the main chunk currently exceeds Vite's 500 kB warning threshold).
 - [ ] Add more translations beyond English and French.
 
 ## 🙌 Contributing
