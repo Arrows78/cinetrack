@@ -96,6 +96,8 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
               variant="ghost"
               size="icon"
               onClick={onToggleCollapse}
+              aria-label={t("sidebar.collapse")}
+              title={t("sidebar.collapse")}
               className="h-8 w-8 shrink-0 hidden bg-foreground/5 hover:bg-foreground/10 lg:flex"
             >
               <PanelLeftClose className="h-4 w-4" />
@@ -109,6 +111,8 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           variant="ghost"
           size="sm"
           onClick={onToggleCollapse}
+          aria-label={t("sidebar.expand")}
+          title={t("sidebar.expand")}
           className="mb-3 w-full h-8 justify-center rounded-xl bg-foreground/5 text-foreground hover:bg-foreground/10 hidden lg:flex"
         >
           <PanelLeft className="h-4 w-4" />
@@ -167,11 +171,13 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-1">
-            {themeOptions.map(({ value, icon: Icon }) => (
+            {themeOptions.map(({ value, icon: Icon, labelKey }) => (
               <Button
                 key={value}
                 variant="ghost"
                 size="icon"
+                aria-label={t(labelKey)}
+                title={t(labelKey)}
                 className={cn(
                   "h-9 w-full rounded-xl",
                   activeTheme === value && "bg-primary/15 text-primary shadow-glow"

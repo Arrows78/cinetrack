@@ -30,6 +30,7 @@ function ListContents({ listId }: { listId: string }) {
             type="button"
             size="icon"
             variant="ghost"
+            aria-label={t("collections.removeItem", { title: item.title })}
             onClick={() => void items.remove({ mediaId: item.mediaId, mediaType: item.mediaType })}
           >
             <Trash2 className="size-4" />
@@ -127,7 +128,13 @@ export function CollectionsPage() {
                   <h3 className="font-semibold">{list.name}</h3>
                   <p className="text-sm text-muted-foreground">{list.description || t("collections.noDescription")}</p>
                 </button>
-                <Button type="button" size="icon" variant="ghost" onClick={() => void lists.remove(list.id)}>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t("collections.deleteList", { name: list.name })}
+                  onClick={() => void lists.remove(list.id)}
+                >
                   <Trash2 className="size-4" />
                 </Button>
               </div>

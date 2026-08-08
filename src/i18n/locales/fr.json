@@ -253,6 +253,8 @@
     "create": "Créer",
     "noDescription": "Sans description",
     "emptyList": "Cette liste est vide.",
+    "removeItem": "Retirer {{title}} de cette liste",
+    "deleteList": "Supprimer la liste {{name}}",
     "movie": "film",
     "series": "série",
     "customList": "Liste personnalisée",
@@ -380,6 +382,8 @@
     "defaultAccount": "Compte",
     "defaultMember": "Membre",
     "signOut": "Déconnexion",
+    "collapse": "Réduire la barre latérale",
+    "expand": "Déplier la barre latérale",
     "theme": {
       "dark": "Sombre",
       "light": "Clair"

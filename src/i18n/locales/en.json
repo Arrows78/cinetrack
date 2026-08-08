@@ -253,6 +253,8 @@
     "create": "Create",
     "noDescription": "No description",
     "emptyList": "This list is empty.",
+    "removeItem": "Remove {{title}} from this list",
+    "deleteList": "Delete list {{name}}",
     "movie": "movie",
     "series": "series",
     "customList": "Custom list",
@@ -380,6 +382,8 @@
     "defaultAccount": "Account",
     "defaultMember": "Member",
     "signOut": "Sign out",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
     "theme": {
       "dark": "Dark",
       "light": "Light"
