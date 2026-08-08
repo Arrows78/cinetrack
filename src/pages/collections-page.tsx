@@ -4,6 +4,7 @@ import { ListPlus, Trash2 } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
@@ -12,10 +13,15 @@ import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { staggerDelayMs } from "@/shared/utils/animation";
+import type { MediaType } from "@/types/media";
 
 function ListContents({ listId }: { listId: string }) {
   const { t } = useTranslation();
   const items = useCustomListItems(listId);
+  const [pendingRemoval, setPendingRemoval] = useState<{ mediaId: number; mediaType: MediaType; title: string } | null>(
+    null
+  );
+
   if (!items.data?.length) return <p className="text-sm text-muted-foreground">{t("collections.emptyList")}</p>;
   return (
     <div className="grid gap-2">
@@ -32,12 +38,24 @@ function ListContents({ listId }: { listId: string }) {
             size="icon"
             variant="ghost"
             aria-label={t("collections.removeItem", { title: item.title })}
-            onClick={() => void items.remove({ mediaId: item.mediaId, mediaType: item.mediaType })}
+            onClick={() => setPendingRemoval({ mediaId: item.mediaId, mediaType: item.mediaType, title: item.title })}
           >
             <Trash2 className="size-4" />
           </Button>
         </Tile>
       ))}
+      <ConfirmDialog
+        open={pendingRemoval !== null}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        title={t("collections.removeItemConfirmTitle", { title: pendingRemoval?.title })}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => {
+          if (!pendingRemoval) return;
+          void items.remove({ mediaId: pendingRemoval.mediaId, mediaType: pendingRemoval.mediaType });
+          setPendingRemoval(null);
+        }}
+      />
     </div>
   );
 }
@@ -51,6 +69,7 @@ export function CollectionsPage() {
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
   const [openedList, setOpenedList] = useState<string | null>(null);
+  const [pendingDeleteList, setPendingDeleteList] = useState<{ id: string; name: string } | null>(null);
 
   const currentProfile = profiles.data?.find((profile) => profile.id === preferences.data?.activeProfileId);
 
@@ -146,7 +165,7 @@ export function CollectionsPage() {
                     size="icon"
                     variant="ghost"
                     aria-label={t("collections.deleteList", { name: list.name })}
-                    onClick={() => void lists.remove(list.id)}
+                    onClick={() => setPendingDeleteList({ id: list.id, name: list.name })}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -161,6 +180,20 @@ export function CollectionsPage() {
           ))}
         </div>
       </Panel>
+
+      <ConfirmDialog
+        open={pendingDeleteList !== null}
+        onOpenChange={(open) => !open && setPendingDeleteList(null)}
+        title={t("collections.deleteListConfirmTitle", { name: pendingDeleteList?.name })}
+        description={t("collections.deleteListConfirmDescription")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => {
+          if (!pendingDeleteList) return;
+          void lists.remove(pendingDeleteList.id);
+          setPendingDeleteList(null);
+        }}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -18,6 +19,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState("");
   const [rewatchCount, setRewatchCount] = useState(0);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   useEffect(() => {
     if (!library.data) return;
@@ -123,11 +125,24 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
           <Save className="mr-2 size-4" /> {t("library.save")}
         </Button>
         {library.data ? (
-          <Button type="button" variant="ghost" onClick={() => void library.remove()} disabled={library.isSaving}>
+          <Button type="button" variant="ghost" onClick={() => setConfirmingRemove(true)} disabled={library.isSaving}>
             <Trash2 className="mr-2 size-4" /> {t("library.remove")}
           </Button>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={confirmingRemove}
+        onOpenChange={setConfirmingRemove}
+        title={t("library.removeConfirmTitle")}
+        description={t("library.removeConfirmDescription")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => {
+          void library.remove();
+          setConfirmingRemove(false);
+        }}
+      />
     </Panel>
   );
 }

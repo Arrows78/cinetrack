@@ -830,6 +830,14 @@ export const componentInventory = [
     "Groups independent content with a shared surface recipe."
   ),
   component(
+    "ConfirmDialog",
+    "components/ui/confirm-dialog.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Gates an irreversible action behind an explicit confirm/cancel choice."
+  ),
+  component(
     "Input",
     "components/ui/input.tsx",
     "UI primitives",

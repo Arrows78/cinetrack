@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Panel } from "@/components/ui/panel";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
@@ -11,6 +12,8 @@ export function BackupTools() {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const exportBackup = async () => {
     const backup = await portableData.export();
@@ -24,8 +27,10 @@ export function BackupTools() {
     setMessage(t("backup.exported"));
   };
 
-  const importBackup = async (file?: File) => {
+  const confirmImport = async () => {
+    const file = pendingImportFile;
     if (!file) return;
+    setIsImporting(true);
     try {
       if (file.size > MAX_BACKUP_FILE_BYTES) {
         throw new Error(t("backup.fileTooLarge"));
@@ -35,6 +40,8 @@ export function BackupTools() {
       window.localStorage.removeItem(QUERY_CACHE_KEY);
       window.location.reload();
     } catch (error) {
+      setIsImporting(false);
+      setPendingImportFile(null);
       setMessage(error instanceof Error ? error.message : t("backup.importFailed"));
     }
   };
@@ -71,10 +78,25 @@ export function BackupTools() {
           className="hidden"
           type="file"
           accept="application/json,.json"
-          onChange={(event) => void importBackup(event.target.files?.[0])}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) setPendingImportFile(file);
+          }}
         />
       </div>
       {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
+
+      <ConfirmDialog
+        open={pendingImportFile !== null}
+        onOpenChange={(open) => !open && !isImporting && setPendingImportFile(null)}
+        title={t("backup.importConfirmTitle")}
+        description={t("backup.importConfirmDescription")}
+        confirmLabel={t("backup.import")}
+        cancelLabel={t("common.cancel")}
+        isConfirming={isImporting}
+        onConfirm={() => void confirmImport()}
+      />
     </Panel>
   );
 }
