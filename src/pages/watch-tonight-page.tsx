@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { MediaGrid } from "@/components/media/media-grid";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { watchTonightService } from "@/features/watch-tonight/watch-tonight-service";
@@ -63,7 +64,9 @@ export function WatchTonightPage() {
           {t("watchTonight.retry")}
         </Button>
       </Panel>
-      {query.isLoading ? <p>{t("watchTonight.searching")}</p> : <MediaGrid items={query.data ?? []} />}
+      {query.isLoading ? <p>{t("watchTonight.searching")}</p> : null}
+      {query.isError ? <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} /> : null}
+      {!query.isLoading && !query.isError ? <MediaGrid items={query.data ?? []} /> : null}
     </div>
   );
 }

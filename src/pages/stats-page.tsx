@@ -3,6 +3,7 @@ import { BarChart3, CalendarCheck, Clock, Film, Flame, Gauge, Hourglass, Star, T
 import { useStats, useWatchForecast, useWrapped } from "@/features/stats/use-stats";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
@@ -12,6 +13,17 @@ export function StatsPage() {
   const stats = useStats();
   const wrapped = useWrapped();
   const forecast = useWatchForecast();
+  if (stats.isError || wrapped.isError) {
+    return (
+      <RemoteErrorState
+        error={stats.error ?? wrapped.error}
+        onRetry={() => {
+          void stats.refetch();
+          void wrapped.refetch();
+        }}
+      />
+    );
+  }
   if (!stats.data || !wrapped.data) return <p className="text-muted-foreground">{t("stats.loading")}</p>;
   const cards = [
     { label: t("stats.moviesWatched"), value: stats.data.moviesWatched, icon: Film },

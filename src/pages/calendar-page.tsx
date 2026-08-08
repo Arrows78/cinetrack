@@ -7,6 +7,7 @@ import type { CalendarEntry } from "@/types/media";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
 import { EmptyState } from "@/components/states/empty-state";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { staggerDelayMs } from "@/shared/utils/animation";
@@ -33,6 +34,7 @@ export function CalendarPage() {
         <p className="mt-1 text-muted-foreground">{t("calendar.description")}</p>
       </header>
       {calendar.isLoading ? <p className="text-muted-foreground">{t("calendar.loading")}</p> : null}
+      {calendar.isError ? <RemoteErrorState error={calendar.error} onRetry={() => void calendar.refetch()} /> : null}
       {Object.entries(groups).map(([date, entries], index) => (
         <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 1)}ms` }}>
           <h2 className="font-semibold capitalize">{format(parseISO(date), "EEEE d MMMM yyyy")}</h2>
@@ -57,7 +59,7 @@ export function CalendarPage() {
           </div>
         </Panel>
       ))}
-      {!calendar.isLoading && !calendar.data?.length ? (
+      {!calendar.isLoading && !calendar.isError && !calendar.data?.length ? (
         <EmptyState icon={CalendarDays} title={t("calendar.noUpcomingTitle")} description={t("calendar.noUpcoming")} />
       ) : null}
     </div>

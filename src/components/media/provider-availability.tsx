@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useAvailability } from "@/features/media/use-discovery";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
@@ -11,6 +12,7 @@ export function ProviderAvailability({ media }: { media: MediaSummary }) {
   const region = preferences.data?.region ?? "FR";
   const query = useAvailability(media.mediaType, media.id, region);
   const providers = query.data?.flatrate ?? [];
+  if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
   if (!providers.length) return null;
   return (
     <Panel>

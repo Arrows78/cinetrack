@@ -6,6 +6,7 @@ import { SeenToggle } from "@/components/media/seen-toggle";
 import { SectionHeader } from "@/components/media/section-header";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Card } from "@/components/ui/card";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
 import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
@@ -20,6 +21,17 @@ export function SeasonPage() {
   const progressQuery = useEpisodeProgress(parsedSeriesId);
 
   if (seriesQuery.isLoading || seasonQuery.isLoading) return <HeroSkeleton />;
+  if (seriesQuery.isError || seasonQuery.isError) {
+    return (
+      <RemoteErrorState
+        error={seriesQuery.error ?? seasonQuery.error}
+        onRetry={() => {
+          void seriesQuery.refetch();
+          void seasonQuery.refetch();
+        }}
+      />
+    );
+  }
   if (!seriesQuery.data || !seasonQuery.data) return null;
 
   const series = seriesQuery.data;

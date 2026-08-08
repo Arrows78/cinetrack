@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { MediaGrid } from "@/components/media/media-grid";
 import { Panel } from "@/components/ui/panel";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePerson } from "@/features/media/use-discovery";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
@@ -9,6 +10,7 @@ export function PersonDetailPage() {
   const { t } = useTranslation();
   const { personId } = useParams({ from: "/people/$personId" });
   const query = usePerson(Number(personId));
+  if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
   if (!query.data) return <p className="text-muted-foreground">{t("person.loading")}</p>;
   return (
     <div className="space-y-8">
