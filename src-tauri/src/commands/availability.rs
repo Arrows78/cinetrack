@@ -3,7 +3,8 @@ use serde_json::Value;
 use sqlx::SqlitePool;
 use tauri::State;
 
-use crate::database::{current_profile_id, new_uuid, now_iso};
+use crate::commands::macros::profile_scoped_command;
+use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
@@ -215,31 +216,20 @@ async fn save_snapshot_impl(pool: &SqlitePool, snapshot: AvailabilitySnapshot) -
     Ok(())
 }
 
-#[tauri::command]
-pub async fn list_availability_alerts(pool: State<'_, SqlitePool>) -> Result<Vec<AvailabilityAlert>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_alerts_impl(&pool, &profile_id).await
+profile_scoped_command! {
+    pub async fn list_availability_alerts() -> Vec<AvailabilityAlert> => list_alerts_impl
 }
 
-#[tauri::command]
-pub async fn get_availability_alert(
-    media_id: i64,
-    media_type: MediaType,
-    pool: State<'_, SqlitePool>,
-) -> Result<Option<AvailabilityAlert>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_alert_impl(&pool, &profile_id, media_id, media_type).await
+profile_scoped_command! {
+    pub async fn get_availability_alert(media_id: i64, media_type: MediaType) -> Option<AvailabilityAlert> => get_alert_impl
 }
 
-#[tauri::command]
-pub async fn toggle_availability_alert(
-    media: MediaSummaryInput,
-    region: String,
-    provider_ids: Vec<i64>,
-    pool: State<'_, SqlitePool>,
-) -> Result<Option<AvailabilityAlert>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    toggle_impl(&pool, &profile_id, media, region, provider_ids).await
+profile_scoped_command! {
+    pub async fn toggle_availability_alert(
+        media: MediaSummaryInput,
+        region: String,
+        provider_ids: Vec<i64>
+    ) -> Option<AvailabilityAlert> => toggle_impl
 }
 
 #[tauri::command]

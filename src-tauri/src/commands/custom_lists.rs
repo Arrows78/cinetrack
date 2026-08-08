@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tauri::State;
 
+use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -218,10 +219,8 @@ async fn remove_item_impl(pool: &SqlitePool, list_id: &str, media_id: i64, media
     Ok(())
 }
 
-#[tauri::command]
-pub async fn list_custom_lists(pool: State<'_, SqlitePool>) -> Result<Vec<CustomList>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_impl(&pool, &profile_id).await
+profile_scoped_command! {
+    pub async fn list_custom_lists() -> Vec<CustomList> => list_impl
 }
 
 #[tauri::command]

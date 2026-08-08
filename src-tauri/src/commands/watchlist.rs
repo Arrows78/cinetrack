@@ -4,6 +4,7 @@ use sqlx::SqlitePool;
 use tauri::State;
 
 use super::history::{add_history_item_impl, HistoryAction, ViewingHistoryItem};
+use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -178,20 +179,12 @@ async fn remove_impl(pool: &SqlitePool, media_id: i64, media_type: MediaType) ->
     Ok(())
 }
 
-#[tauri::command]
-pub async fn list_watchlist(pool: State<'_, SqlitePool>) -> Result<Vec<WatchlistItem>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_impl(&pool, &profile_id).await
+profile_scoped_command! {
+    pub async fn list_watchlist() -> Vec<WatchlistItem> => list_impl
 }
 
-#[tauri::command]
-pub async fn has_watchlist_item(
-    media_id: i64,
-    media_type: MediaType,
-    pool: State<'_, SqlitePool>,
-) -> Result<bool, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    has_impl(&pool, &profile_id, media_id, media_type).await
+profile_scoped_command! {
+    pub async fn has_watchlist_item(media_id: i64, media_type: MediaType) -> bool => has_impl
 }
 
 #[tauri::command]

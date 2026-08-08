@@ -3,6 +3,7 @@ use serde_json::Value;
 use sqlx::SqlitePool;
 use tauri::State;
 
+use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -303,20 +304,12 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str, media_id: i64, media_t
     Ok(())
 }
 
-#[tauri::command]
-pub async fn list_library(pool: State<'_, SqlitePool>) -> Result<Vec<LibraryItem>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_impl(&pool, &profile_id).await
+profile_scoped_command! {
+    pub async fn list_library() -> Vec<LibraryItem> => list_impl
 }
 
-#[tauri::command]
-pub async fn get_library_item(
-    media_id: i64,
-    media_type: MediaType,
-    pool: State<'_, SqlitePool>,
-) -> Result<Option<LibraryItem>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_impl(&pool, &profile_id, media_id, media_type).await
+profile_scoped_command! {
+    pub async fn get_library_item(media_id: i64, media_type: MediaType) -> Option<LibraryItem> => get_impl
 }
 
 #[tauri::command]
@@ -329,14 +322,8 @@ pub async fn save_library_item(
     upsert_impl(&pool, media, patch.unwrap_or_default(), &profile_id).await
 }
 
-#[tauri::command]
-pub async fn remove_library_item(
-    media_id: i64,
-    media_type: MediaType,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    remove_impl(&pool, &profile_id, media_id, media_type).await
+profile_scoped_command! {
+    pub async fn remove_library_item(media_id: i64, media_type: MediaType) -> () => remove_impl
 }
 
 #[cfg(test)]

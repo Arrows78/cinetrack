@@ -6,6 +6,7 @@ use sqlx::SqlitePool;
 use tauri::State;
 
 use super::history::{add_history_item_impl, HistoryAction, ViewingHistoryItem};
+use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid};
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -427,10 +428,8 @@ async fn list_tracked_series_impl(pool: &SqlitePool, profile_id: &str) -> Result
         .collect())
 }
 
-#[tauri::command]
-pub async fn is_movie_seen(movie_id: i64, pool: State<'_, SqlitePool>) -> Result<bool, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    is_movie_seen_impl(&pool, &profile_id, movie_id).await
+profile_scoped_command! {
+    pub async fn is_movie_seen(movie_id: i64) -> bool => is_movie_seen_impl
 }
 
 #[tauri::command]
@@ -444,10 +443,8 @@ pub async fn toggle_movie_seen(
     toggle_movie_seen_impl(&pool, &profile_id, movie, watched, &watched_at).await
 }
 
-#[tauri::command]
-pub async fn get_episode_progress(series_id: i64, pool: State<'_, SqlitePool>) -> Result<Vec<EpisodeProgress>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_episode_progress_impl(&pool, &profile_id, series_id).await
+profile_scoped_command! {
+    pub async fn get_episode_progress(series_id: i64) -> Vec<EpisodeProgress> => get_episode_progress_impl
 }
 
 #[tauri::command]
@@ -463,10 +460,8 @@ pub async fn toggle_episodes_watched(
     apply_episodes_and_log_impl(&pool, &profile_id, &series, &episodes, watched, &watched_at, history).await
 }
 
-#[tauri::command]
-pub async fn list_tracked_series(pool: State<'_, SqlitePool>) -> Result<Vec<TrackedSeriesItem>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_tracked_series_impl(&pool, &profile_id).await
+profile_scoped_command! {
+    pub async fn list_tracked_series() -> Vec<TrackedSeriesItem> => list_tracked_series_impl
 }
 
 #[cfg(test)]

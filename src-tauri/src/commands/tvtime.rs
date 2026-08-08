@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use sqlx::SqlitePool;
-use tauri::State;
 
+use crate::commands::macros::profile_scoped_command;
 use crate::commands::progress::{apply_episodes_impl, EpisodeInput, SeriesInput};
-use crate::database::{current_profile_id, new_uuid};
+use crate::database::new_uuid;
 use crate::error::ApiError;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -106,20 +106,12 @@ async fn import_movie_seen_impl(pool: &SqlitePool, profile_id: &str, movie: Impo
     Ok(true)
 }
 
-#[tauri::command]
-pub async fn import_series_progress(
-    series: SeriesInput,
-    episodes: Vec<ImportableEpisode>,
-    pool: State<'_, SqlitePool>,
-) -> Result<i64, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    import_series_progress_impl(&pool, &profile_id, series, episodes).await
+profile_scoped_command! {
+    pub async fn import_series_progress(series: SeriesInput, episodes: Vec<ImportableEpisode>) -> i64 => import_series_progress_impl
 }
 
-#[tauri::command]
-pub async fn import_movie_seen(movie: ImportableMovie, pool: State<'_, SqlitePool>) -> Result<bool, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    import_movie_seen_impl(&pool, &profile_id, movie).await
+profile_scoped_command! {
+    pub async fn import_movie_seen(movie: ImportableMovie) -> bool => import_movie_seen_impl
 }
 
 #[cfg(test)]

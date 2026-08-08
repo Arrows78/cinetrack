@@ -3,6 +3,7 @@ mod backup;
 mod custom_lists;
 mod history;
 mod library;
+mod macros;
 mod preferences;
 mod profiles;
 mod progress;
