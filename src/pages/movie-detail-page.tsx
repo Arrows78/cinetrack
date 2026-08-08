@@ -43,12 +43,15 @@ export function MovieDetailPage() {
           </>
         }
         extra={
-          <SeenToggle
-            seen={Boolean(seenQuery.data)}
-            disabled={seenQuery.isSaving}
-            onToggle={() => void seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
-            celebrateOnSeen
-          />
+          <div className="flex flex-col gap-2">
+            <SeenToggle
+              seen={Boolean(seenQuery.data)}
+              disabled={seenQuery.isSaving || seenQuery.isError}
+              onToggle={() => void seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
+              celebrateOnSeen
+            />
+            {seenQuery.isError ? <p className="text-xs text-destructive">{t("media.seenStatusUnavailable")}</p> : null}
+          </div>
         }
       />
       <LibraryEditor media={movie} />

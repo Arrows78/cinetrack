@@ -23,6 +23,7 @@
     "season": "Season",
     "seen": "Seen",
     "markAsSeen": "Mark as seen",
+    "seenStatusUnavailable": "Couldn't load the seen status — try again in a moment.",
     "status": "Status",
     "genres": "Genres",
     "addToWatchlist": "Add to watchlist",
@@ -205,7 +206,8 @@
     "globalProgress": "Global Progress",
     "markSeasonSeen": "Mark season as seen",
     "markSeasonUnseen": "Mark season as unseen",
-    "openSeasonPage": "Open season page"
+    "openSeasonPage": "Open season page",
+    "someSeasonsUnavailable": "Some seasons couldn't load, so marking the whole series is disabled until they do."
   },
   "watchlist": {
     "subtitle": "Filter by type and smartly sort your backlog.",

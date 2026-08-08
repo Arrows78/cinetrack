@@ -12,6 +12,7 @@ import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/next-episode-card";
 import { ProgressBar } from "@/components/media/progress-bar";
+import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { SeasonAccordion } from "@/components/media/season-accordion";
 import { SectionHeader } from "@/components/media/section-header";
@@ -43,6 +44,7 @@ export function SeriesDetailPage() {
   if (!seriesQuery.data) return null;
   const series = seriesQuery.data;
   const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));
+  const failedSeasonQueries = seasonQueries.filter((query) => query.isError);
   const allSeasonsLoaded =
     seasonNumbers.length > 0 &&
     seasons.length === seasonNumbers.length &&
@@ -61,12 +63,17 @@ export function SeriesDetailPage() {
           </>
         }
         extra={
-          <SeenToggle
-            seen={progress.completed}
-            disabled={progressQuery.isSaving || !allSeasonsLoaded}
-            onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })}
-            celebrateOnSeen
-          />
+          <div className="flex flex-col gap-2">
+            <SeenToggle
+              seen={progress.completed}
+              disabled={progressQuery.isSaving || !allSeasonsLoaded}
+              onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })}
+              celebrateOnSeen
+            />
+            {failedSeasonQueries.length > 0 ? (
+              <p className="text-xs text-destructive">{t("series.someSeasonsUnavailable")}</p>
+            ) : null}
+          </div>
         }
       />
       <LibraryEditor media={series} />
@@ -119,6 +126,19 @@ export function SeriesDetailPage() {
       </section>
       <section>
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
+        {failedSeasonQueries.length > 0 ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            <span>{t("series.someSeasonsUnavailable")}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => failedSeasonQueries.forEach((query) => void query.refetch())}
+            >
+              {t("errors.retry")}
+            </Button>
+          </div>
+        ) : null}
         <SeasonAccordion
           series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }}
           seasons={seasons}

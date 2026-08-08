@@ -24,6 +24,8 @@ function NavLink({ item, collapsed, isActive }: NavLinkProps) {
   return (
     <Link
       to={item.to}
+      aria-label={collapsed ? item.label : undefined}
+      title={collapsed ? item.label : undefined}
       className={cn(
         "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-fast",
         isActive

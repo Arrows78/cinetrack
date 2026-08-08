@@ -9,6 +9,7 @@ import { useProfileForSupabaseUser } from "@/features/collections/use-collection
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { LoadingScreen } from "@/components/states/loading-screen";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 
 // Which local profile is active is derived from who is signed in, not
 // picked freely — accessing a profile now requires being the Supabase
@@ -48,6 +49,19 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
 
   if (profileQuery.isLoading || preferencesQuery.isLoading) {
     return <LoadingScreen label={t("profileGate.resolving")} />;
+  }
+
+  // Without these, a failed read fell through to `!profileQuery.data` /
+  // `activeProfileId === undefined` below — a profile lookup that failed
+  // (network, local DB) looked identical to "this account has no profile
+  // yet" and sent the user to profile creation, and a failed preferences
+  // read left `activeProfileId` permanently undefined, stuck on the
+  // resolving screen forever with no way out.
+  if (profileQuery.isError) {
+    return <RemoteErrorState error={profileQuery.error} onRetry={() => void profileQuery.refetch()} />;
+  }
+  if (preferencesQuery.isError) {
+    return <RemoteErrorState error={preferencesQuery.error} onRetry={() => void preferencesQuery.refetch()} />;
   }
 
   if (!profileQuery.data) {

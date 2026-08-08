@@ -5,6 +5,7 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
+import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useLibrary } from "@/features/library/use-library";
 import { useTrackedSeries } from "@/features/progress/use-progress";
@@ -89,7 +90,9 @@ export function LibraryPage() {
         </div>
       </div>
 
-      {libraryQuery.isError ? (
+      {libraryQuery.isLoading ? (
+        <GridSkeleton />
+      ) : libraryQuery.isError ? (
         <RemoteErrorState error={libraryQuery.error} onRetry={() => void libraryQuery.refetch()} />
       ) : filtered.length ? (
         <MediaGrid items={filtered} />

@@ -5,6 +5,7 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
+import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
@@ -77,7 +78,9 @@ export function WatchlistPage() {
         </div>
       </div>
 
-      {watchlistQuery.isError ? (
+      {watchlistQuery.isLoading ? (
+        <GridSkeleton />
+      ) : watchlistQuery.isError ? (
         <RemoteErrorState error={watchlistQuery.error} onRetry={() => void watchlistQuery.refetch()} />
       ) : filtered.length ? (
         <MediaGrid items={filtered} />

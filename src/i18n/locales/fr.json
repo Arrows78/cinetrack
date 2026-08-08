@@ -23,6 +23,7 @@
     "season": "Saison",
     "seen": "Vu",
     "markAsSeen": "Marquer comme vu",
+    "seenStatusUnavailable": "Impossible de charger le statut vu — réessayez dans un instant.",
     "status": "Statut",
     "genres": "Genres",
     "addToWatchlist": "Ajouter à la liste",
@@ -205,7 +206,8 @@
     "globalProgress": "Progression globale",
     "markSeasonSeen": "Marquer la saison comme vue",
     "markSeasonUnseen": "Marquer la saison comme non vue",
-    "openSeasonPage": "Ouvrir la page de la saison"
+    "openSeasonPage": "Ouvrir la page de la saison",
+    "someSeasonsUnavailable": "Certaines saisons n'ont pas pu être chargées, ce qui désactive le marquage de toute la série."
   },
   "watchlist": {
     "subtitle": "Filtrez et triez votre sélection.",
