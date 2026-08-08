@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,34 +12,41 @@ import type { LibraryStatus, MediaSummary } from "@/types/media";
 export function LibraryEditor({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const library = useLibraryItem(media);
-  const [status, setStatus] = useState<LibraryStatus>("planned");
-  const [favourite, setFavourite] = useState(false);
-  const [userRating, setUserRating] = useState("");
-  const [notes, setNotes] = useState("");
-  const [tags, setTags] = useState("");
-  const [rewatchCount, setRewatchCount] = useState(0);
+  const [formState, setFormState] = useState(() => ({
+    status: "planned" as LibraryStatus,
+    favourite: false,
+    userRating: "",
+    notes: "",
+    tags: "",
+    rewatchCount: 0,
+  }));
 
   useEffect(() => {
     if (!library.data) return;
-    setStatus(library.data.status);
-    setFavourite(library.data.favourite);
-    setUserRating(library.data.userRating?.toString() ?? "");
-    setNotes(library.data.notes ?? "");
-    setTags(library.data.tags.join(", "));
-    setRewatchCount(library.data.rewatchCount);
+    const data = library.data;
+    startTransition(() => {
+      setFormState({
+        status: data.status,
+        favourite: data.favourite,
+        userRating: data.userRating?.toString() ?? "",
+        notes: data.notes ?? "",
+        tags: data.tags.join(", "),
+        rewatchCount: data.rewatchCount,
+      });
+    });
   }, [library.data]);
 
   const save = () =>
     library.save({
-      status,
-      favourite,
-      userRating: userRating ? Math.min(10, Math.max(0, Number(userRating))) : null,
-      notes: notes.trim() || null,
-      tags: tags
+      status: formState.status,
+      favourite: formState.favourite,
+      userRating: formState.userRating ? Math.min(10, Math.max(0, Number(formState.userRating))) : null,
+      notes: formState.notes.trim() || null,
+      tags: formState.tags
         .split(",")
         .map((tag) => tag.trim())
         .filter(Boolean),
-      rewatchCount: Math.max(0, rewatchCount),
+      rewatchCount: Math.max(0, formState.rewatchCount),
     });
 
   const statuses: Array<{ value: LibraryStatus; label: string }> = [
@@ -60,19 +67,22 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         </div>
         <Button
           type="button"
-          variant={favourite ? "default" : "outline"}
+          variant={formState.favourite ? "default" : "outline"}
           size="icon"
           aria-label={t("library.favourite")}
-          onClick={() => setFavourite((value) => !value)}
+          onClick={() => setFormState((prev) => ({ ...prev, favourite: !prev.favourite }))}
         >
-          <Heart className={favourite ? "size-4 fill-current" : "size-4"} />
+          <Heart className={formState.favourite ? "size-4 fill-current" : "size-4"} />
         </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <label className="grid gap-1 text-sm">
           <span className="text-muted-foreground">{t("library.status")}</span>
-          <Select value={status} onChange={(event) => setStatus(event.target.value as LibraryStatus)}>
+          <Select
+            value={formState.status}
+            onChange={(event) => setFormState((prev) => ({ ...prev, status: event.target.value as LibraryStatus }))}
+          >
             {statuses.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
@@ -88,8 +98,8 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
             min="0"
             max="10"
             step="0.5"
-            value={userRating}
-            onChange={(event) => setUserRating(event.target.value)}
+            value={formState.userRating}
+            onChange={(event) => setFormState((prev) => ({ ...prev, userRating: event.target.value }))}
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -98,8 +108,8 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
             size="sm"
             type="number"
             min="0"
-            value={rewatchCount}
-            onChange={(event) => setRewatchCount(Number(event.target.value))}
+            value={formState.rewatchCount}
+            onChange={(event) => setFormState((prev) => ({ ...prev, rewatchCount: Number(event.target.value) }))}
           />
         </label>
       </div>
@@ -108,14 +118,18 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         <span className="text-muted-foreground">{t("library.tagsHelp")}</span>
         <Input
           size="sm"
-          value={tags}
-          onChange={(event) => setTags(event.target.value)}
+          value={formState.tags}
+          onChange={(event) => setFormState((prev) => ({ ...prev, tags: event.target.value }))}
           placeholder={t("library.tagsPlaceholder")}
         />
       </label>
       <label className="mt-4 grid gap-1 text-sm">
         <span className="text-muted-foreground">{t("library.privateNotes")}</span>
-        <Textarea className="min-h-24" value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <Textarea
+          className="min-h-24"
+          value={formState.notes}
+          onChange={(event) => setFormState((prev) => ({ ...prev, notes: event.target.value }))}
+        />
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">

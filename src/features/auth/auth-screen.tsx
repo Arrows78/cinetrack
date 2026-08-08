@@ -40,7 +40,7 @@ export function AuthScreen() {
   const [enabledSocialProviders, setEnabledSocialProviders] = useState<SocialAuthProvider[]>([]);
   const [providerSettingsStatus, setProviderSettingsStatus] = useState<ProviderSettingsStatus>("loading");
   const [resendAvailableAt, setResendAvailableAt] = useState(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   const title = useMemo(() => (mode === "signin" ? t("auth.welcomeBack") : t("auth.createAccount")), [mode, t]);
   const visibleError = localError ?? error;

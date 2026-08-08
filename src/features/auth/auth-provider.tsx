@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition, type PropsWithChildren } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import i18next from "i18next";
 
@@ -136,69 +136,72 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const client = getAuthClient();
-
-    if (!client) {
-      setStatus("ready");
-      return;
-    }
-
-    const authClient = client;
     let disposed = false;
     let unlistenDeepLinks: (() => void) | undefined;
+    let authListener: { subscription: { unsubscribe: () => void } } | undefined;
 
-    const { data: authListener } = authClient.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, nextSession: Session | null) => {
-        if (!disposed) {
-          setSession(nextSession);
-        }
-      }
-    );
-
-    async function initialize() {
-      try {
-        if (isTauriRuntime()) {
-          const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
-
-          unlistenDeepLinks = await onOpenUrl((urls: string[]) => {
-            for (const url of urls) {
-              void handleCallbackUrl(url);
-            }
-          });
-
-          const initialUrls = await getCurrent();
-
-          for (const url of initialUrls ?? []) {
-            await handleCallbackUrl(url);
+    if (client) {
+      const authClient = client;
+      const { data: listener } = authClient.auth.onAuthStateChange(
+        (_event: AuthChangeEvent, nextSession: Session | null) => {
+          if (!disposed) {
+            setSession(nextSession);
           }
-        } else if (typeof window !== "undefined") {
-          await handleCallbackUrl(window.location.href);
         }
+      );
 
-        const { data, error: sessionError } = await authClient.auth.getSession();
+      authListener = listener;
 
-        if (sessionError) {
-          throw sessionError;
-        }
+      async function initialize() {
+        try {
+          if (isTauriRuntime()) {
+            const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
 
-        if (!disposed) {
-          setSession(data.session);
-        }
-      } catch (initializationError) {
-        if (!disposed) {
-          setError(getErrorMessage(initializationError));
-        }
-      } finally {
-        if (!disposed) {
-          setStatus("ready");
+            unlistenDeepLinks = await onOpenUrl((urls: string[]) => {
+              for (const url of urls) {
+                void handleCallbackUrl(url);
+              }
+            });
+
+            const initialUrls = await getCurrent();
+
+            for (const url of initialUrls ?? []) {
+              await handleCallbackUrl(url);
+            }
+          } else if (typeof window !== "undefined") {
+            await handleCallbackUrl(window.location.href);
+          }
+
+          const { data, error: sessionError } = await authClient.auth.getSession();
+
+          if (sessionError) {
+            throw sessionError;
+          }
+
+          if (!disposed) {
+            setSession(data.session);
+          }
+        } catch (initializationError) {
+          if (!disposed) {
+            setError(getErrorMessage(initializationError));
+          }
+        } finally {
+          if (!disposed) {
+            setStatus("ready");
+          }
         }
       }
-    }
 
-    void initialize();
+      void initialize();
+    } else {
+      startTransition(() => {
+        setStatus("ready");
+      });
+    }
 
     return () => {
       disposed = true;
-      authListener.subscription.unsubscribe();
+      authListener?.subscription.unsubscribe();
       unlistenDeepLinks?.();
     };
   }, [handleCallbackUrl]);

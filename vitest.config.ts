@@ -19,6 +19,12 @@ export default defineConfig({
     },
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     coverage: {
       reporter: ["text", "html"],
       // Kept broad (rather than scoped to the tested files below) so

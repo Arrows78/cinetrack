@@ -1,11 +1,23 @@
 import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import type * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { cn } from "@/shared/lib/cn";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetClose,
+  SheetOverlayPrimitive,
+  SheetTitlePrimitive,
+  SheetDescriptionPrimitive,
+  SheetContentPrimitive,
+  SheetPortal,
+} from "./sheet-primitives";
 
 export type SheetSide = "left" | "right" | "top" | "bottom";
 export type SheetSize = "sm" | "md" | "lg" | "xl";
+
+export { Sheet, SheetTrigger, SheetClose };
 
 const sideClasses: Record<SheetSide, string> = {
   left: "inset-y-0 left-0 h-full border-r",
@@ -28,41 +40,37 @@ const verticalSizeClasses: Record<SheetSize, string> = {
   xl: "h-[82vh] max-h-[60rem]",
 };
 
-export const Sheet = DialogPrimitive.Root;
-export const SheetTrigger = DialogPrimitive.Trigger;
-export const SheetClose = DialogPrimitive.Close;
-
 export const SheetOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+  React.ElementRef<typeof SheetOverlayPrimitive>,
+  React.ComponentPropsWithoutRef<typeof SheetOverlayPrimitive>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
+  <SheetOverlayPrimitive
     ref={ref}
     className={cn("fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm", className)}
     {...props}
   />
 ));
-SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
+SheetOverlay.displayName = "SheetOverlay";
 
 export const SheetTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+  React.ElementRef<typeof SheetTitlePrimitive>,
+  React.ComponentPropsWithoutRef<typeof SheetTitlePrimitive>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title ref={ref} className={cn("font-display text-lg font-bold", className)} {...props} />
+  <SheetTitlePrimitive ref={ref} className={cn("font-display text-lg font-bold", className)} {...props} />
 ));
-SheetTitle.displayName = DialogPrimitive.Title.displayName;
+SheetTitle.displayName = "SheetTitle";
 
 export const SheetDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+  React.ElementRef<typeof SheetDescriptionPrimitive>,
+  React.ComponentPropsWithoutRef<typeof SheetDescriptionPrimitive>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
+  <SheetDescriptionPrimitive
     ref={ref}
     className={cn("text-sm leading-6 text-muted-foreground", className)}
     {...props}
   />
 ));
-SheetDescription.displayName = DialogPrimitive.Description.displayName;
+SheetDescription.displayName = "SheetDescription";
 
 export function SheetHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("space-y-1.5 pr-10 text-left", className)} {...props} />;
@@ -91,9 +99,9 @@ export const SheetContent = React.forwardRef<React.ElementRef<typeof DialogPrimi
     const isHorizontal = side === "left" || side === "right";
 
     return (
-      <DialogPrimitive.Portal>
+      <SheetPortal>
         <SheetOverlay />
-        <DialogPrimitive.Content
+        <SheetContentPrimitive
           ref={ref}
           data-side={side}
           data-size={size}
@@ -106,13 +114,13 @@ export const SheetContent = React.forwardRef<React.ElementRef<typeof DialogPrimi
           {...props}
         >
           {children}
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <SheetClose className="absolute right-4 top-4 rounded-full p-2 transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <X className="h-4 w-4" aria-hidden="true" />
             <span className="sr-only">{closeLabel}</span>
-          </DialogPrimitive.Close>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
+          </SheetClose>
+        </SheetContentPrimitive>
+      </SheetPortal>
     );
   }
 );
-SheetContent.displayName = DialogPrimitive.Content.displayName;
+SheetContent.displayName = "SheetContent";

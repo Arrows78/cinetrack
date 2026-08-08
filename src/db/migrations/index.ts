@@ -32,7 +32,9 @@ export async function runMigrations(db: Database): Promise<void> {
     } catch (error) {
       await db.execute("ROLLBACK");
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Migration ${migration.version} (${migration.name}) failed: ${message}`);
+      const err = new Error(`Migration ${migration.version} (${migration.name}) failed: ${message}`);
+      Object.assign(err, { cause: error });
+      throw err;
     }
   }
 }
