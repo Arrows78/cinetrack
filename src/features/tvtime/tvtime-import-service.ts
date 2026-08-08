@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import { mediaRepository } from "@/features/media/media-repository";
 import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
 import { newUuid } from "@/shared/lib/id";
@@ -113,7 +114,7 @@ async function importOneSeries(
     });
   }
   if (unresolved > 0) {
-    summary.unmatched.push(`${seriesName} (${unresolved} ép.)`);
+    summary.unmatched.push(`${seriesName} (${i18n.t("tvtimeImport.unresolvedEpisodeCount", { count: unresolved })})`);
   }
 
   const inserted = await tvTimeImportRepository.importSeriesProgress(series, importable);

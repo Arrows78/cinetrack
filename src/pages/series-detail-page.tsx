@@ -92,7 +92,7 @@ export function SeriesDetailPage() {
                 <span className="text-xl font-normal text-muted-foreground">%</span>
               </p>
               <p className="text-sm text-muted-foreground">
-                {progress.watchedEpisodes}/{progress.totalEpisodes} ep.
+                {t("series.episodesFraction", { watched: progress.watchedEpisodes, total: progress.totalEpisodes })}
               </p>
             </div>
             <div className="mt-4">

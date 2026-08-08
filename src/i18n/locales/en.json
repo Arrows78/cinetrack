@@ -45,7 +45,8 @@
     "trailer": "Trailer",
     "openOnYoutube": "Open on YouTube",
     "fallbackTitle": "Season {{number}}",
-    "episodesAvailable": "{{count}} episode(s) available in this season."
+    "episodesAvailable_one": "{{count}} episode available in this season.",
+    "episodesAvailable_other": "{{count}} episodes available in this season."
   },
   "pages": {
     "notFound": "Page not found",
@@ -137,7 +138,8 @@
     "startTyping": "Start typing",
     "startTypingDesc": "Search activates from 2 characters. Use the filter to target movies, series, or both.",
     "noResultsDesc": "Try another title, different language, or a different filter.",
-    "resultsCount": "{{count}} result(s)",
+    "resultsCount_one": "{{count}} result",
+    "resultsCount_other": "{{count}} results",
     "showingResults": "Showing results for {{filters}}"
   },
   "searchBar": {
@@ -194,6 +196,7 @@
     "noSeriesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
     "seriesInfo": "Series Info",
     "currentProgress": "Current Progress",
+    "episodesFraction": "{{watched}}/{{total}} ep.",
     "seasonsAndEpisodes": "Seasons & Episodes",
     "seasonsAndEpisodesDesc": "Each episode can be marked as seen/unseen, with progress per season and overall.",
     "globalProgress": "Global Progress",
@@ -541,6 +544,8 @@
     "selectFiles": "Select CSV files",
     "failed": "Import failed",
     "done": "Imported {{episodes}} episodes across {{series}} series, {{movies}} movies and {{watchlist}} watchlist items.",
+    "unresolvedEpisodeCount_one": "{{count}} ep.",
+    "unresolvedEpisodeCount_other": "{{count}} eps.",
     "unmatched_one": "{{count}} title could not be matched",
     "unmatched_other": "{{count}} titles could not be matched",
     "phase": {

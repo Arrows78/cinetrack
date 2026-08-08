@@ -45,7 +45,8 @@
     "trailer": "Bande-annonce",
     "openOnYoutube": "Ouvrir sur YouTube",
     "fallbackTitle": "Saison {{number}}",
-    "episodesAvailable": "{{count}} épisode(s) disponible(s) dans cette saison."
+    "episodesAvailable_one": "{{count}} épisode disponible dans cette saison.",
+    "episodesAvailable_other": "{{count}} épisodes disponibles dans cette saison."
   },
   "pages": {
     "notFound": "Page introuvable",
@@ -137,7 +138,8 @@
     "startTyping": "Commencez à saisir",
     "startTypingDesc": "La recherche s'active à partir de deux caractères.",
     "noResultsDesc": "Essayez un autre titre ou un autre filtre.",
-    "resultsCount": "{{count}} résultat(s)",
+    "resultsCount_one": "{{count}} résultat",
+    "resultsCount_other": "{{count}} résultats",
     "showingResults": "Résultats pour {{filters}}"
   },
   "searchBar": {
@@ -194,6 +196,7 @@
     "noSeriesAvailableDesc": "Vérifiez votre connexion ou la configuration TMDB.",
     "seriesInfo": "Informations",
     "currentProgress": "Progression actuelle",
+    "episodesFraction": "{{watched}}/{{total}} ép.",
     "seasonsAndEpisodes": "Saisons et épisodes",
     "seasonsAndEpisodesDesc": "Chaque épisode peut être marqué vu ou non vu.",
     "globalProgress": "Progression globale",
@@ -541,6 +544,8 @@
     "selectFiles": "Sélectionner les CSV",
     "failed": "L'import a échoué",
     "done": "{{episodes}} épisodes importés sur {{series}} séries, {{movies}} films et {{watchlist}} entrées de liste.",
+    "unresolvedEpisodeCount_one": "{{count}} ép.",
+    "unresolvedEpisodeCount_other": "{{count}} ép.",
     "unmatched_one": "{{count}} titre n'a pas pu être associé",
     "unmatched_other": "{{count}} titres n'ont pas pu être associés",
     "phase": {
