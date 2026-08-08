@@ -17,7 +17,12 @@ const rustSourcePath = fileURLToPath(new URL("../../../src-tauri/src/database/mi
 
 function extractRustStatements(source: string): string[] {
   const start = source.indexOf("statements: &[");
-  const end = source.indexOf("\nfn is_tolerable_duplicate_column");
+  // Only migration 1 (this function's whole purpose is checking it against
+  // 001-initial-schema.ts) — bounded by the start of the next Migration
+  // entry in MIGRATIONS, not by the end of the file, so later migrations
+  // (002+, each authored directly in both languages in the same commit)
+  // don't get swept into this comparison too.
+  const end = source.indexOf("\n}, Migration {", start);
   if (start === -1 || end === -1) {
     throw new Error("Could not locate the statements array in migrations.rs — has it been renamed/restructured?");
   }

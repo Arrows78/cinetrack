@@ -220,6 +220,22 @@ pub const MIGRATIONS: &[Migration] = &[Migration {
         r#"INSERT OR IGNORE INTO profiles (uuid, name, created_at, updated_at)
          VALUES ('default', 'Principal', strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'), strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'))"#,
     ],
+}, Migration {
+    // Ported from src/db/migrations/002-availability-alerts-unique.ts.
+    // Fixes a real gap: toggle_impl read-then-wrote without a transaction,
+    // so two concurrent toggles for the same media could both insert an
+    // alert. The DELETE clears any duplicate this already produced
+    // (keeping the oldest row) before the UNIQUE index makes it
+    // impossible going forward.
+    version: 9,
+    name: "unique availability alert per profile and media",
+    statements: &[
+        r#"DELETE FROM availability_alerts
+         WHERE rowid NOT IN (
+           SELECT MIN(rowid) FROM availability_alerts GROUP BY profile_id, media_id, media_type
+         )"#,
+        "CREATE UNIQUE INDEX idx_availability_alerts_unique ON availability_alerts(profile_id, media_id, media_type)",
+    ],
 }];
 
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
@@ -301,7 +317,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 1);
+        assert_eq!(version.0, 9);
 
         let mut tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -344,25 +360,26 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 1);
+        assert_eq!(version.0, 9);
     }
 
     #[tokio::test]
     async fn skips_migrations_already_applied_by_the_typescript_runner() {
         let pool = in_memory_pool().await;
         // Simulate an existing database where the old TS runner already
-        // bumped user_version without the Rust runner having created any
-        // table — running migrations must not attempt to re-create them.
+        // created every table and bumped user_version to 1 — running
+        // migrations must not attempt to re-create them (that would error,
+        // since the tables already exist), only apply the migrations still
+        // ahead of that version (9, here).
+        for statement in MIGRATIONS[0].statements {
+            sqlx::query(statement).execute(&pool).await.unwrap();
+        }
         sqlx::query("PRAGMA user_version = 1").execute(&pool).await.unwrap();
 
         run_migrations(&pool).await.unwrap();
 
-        let tables: Vec<String> =
-            sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-                .fetch_all(&pool)
-                .await
-                .unwrap();
-        assert!(tables.is_empty());
+        let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
+        assert_eq!(version.0, 9);
     }
 
     #[tokio::test]

@@ -11,7 +11,17 @@ import type { Migration } from "../migrations/types";
 
 let fakeMigration: Migration;
 
+// Both real migration modules are replaced by the same controllable fake —
+// runMigrations' version gate then skips (or runs) the second entry exactly
+// like the first, since they share a version, so adding a real migration 9
+// in 002-availability-alerts-unique.ts doesn't leak its own SQL into these
+// error-recovery assertions.
 vi.mock("../migrations/001-initial-schema", () => ({
+  get migration() {
+    return fakeMigration;
+  },
+}));
+vi.mock("../migrations/002-availability-alerts-unique", () => ({
   get migration() {
     return fakeMigration;
   },

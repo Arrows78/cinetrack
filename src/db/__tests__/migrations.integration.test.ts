@@ -26,7 +26,7 @@ describe("runMigrations against real SQLite", () => {
     const sqlite = new DatabaseSync(":memory:");
     await runMigrations(createSqliteAdapter(sqlite));
 
-    expect(userVersion(sqlite)).toBe(1);
+    expect(userVersion(sqlite)).toBe(migrations[migrations.length - 1]!.version);
     expect(tableNames(sqlite)).toEqual(
       [
         "activity_log",
@@ -51,7 +51,7 @@ describe("runMigrations against real SQLite", () => {
     await runMigrations(createSqliteAdapter(sqlite));
     await expect(runMigrations(createSqliteAdapter(sqlite))).resolves.not.toThrow();
 
-    expect(userVersion(sqlite)).toBe(1);
+    expect(userVersion(sqlite)).toBe(migrations[migrations.length - 1]!.version);
   });
 
   it("only applies migrations newer than the database's current user_version", async () => {

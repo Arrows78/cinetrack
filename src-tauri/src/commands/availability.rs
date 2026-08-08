@@ -136,13 +136,36 @@ async fn toggle_impl(
     region: String,
     provider_ids: Vec<i64>,
 ) -> Result<Option<AvailabilityAlert>, ApiError> {
-    let existing = get_alert_impl(pool, profile_id, media.id, media.media_type).await?;
+    // Read-then-write inside one transaction (rather than a separate
+    // get_alert_impl(pool, ...) call before opening the transaction) so two
+    // concurrent toggles for the same media can't both observe "absent" and
+    // both insert — the second transaction's read blocks until the first
+    // commits. The UNIQUE index added in migration 9 is the actual
+    // guarantee; this transaction just avoids surfacing a conflict error to
+    // the caller in the common case.
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
+    let existing: Option<AlertRow> = sqlx::query_as(
+        "SELECT * FROM availability_alerts WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
+    )
+    .bind(profile_id)
+    .bind(media.id)
+    .bind(media.media_type.as_db_str())
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
     if let Some(existing) = existing {
-        remove_impl(pool, &existing.id).await?;
+        sqlx::query("DELETE FROM availability_alerts WHERE uuid = $1")
+            .bind(&existing.uuid)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+        tx.commit().await.map_err(ApiError::from)?;
         return Ok(None);
     }
 
-    let created_at = now_iso(pool).await?;
+    let created_at = now_iso(&mut *tx).await?;
     let alert = AvailabilityAlert {
         id: new_uuid(),
         profile_id: profile_id.to_string(),
@@ -167,19 +190,27 @@ async fn toggle_impl(
     .bind(&alert.region)
     .bind(serde_json::to_string(&alert.provider_ids).unwrap())
     .bind(&alert.created_at)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
 
+    tx.commit().await.map_err(ApiError::from)?;
     Ok(Some(alert))
 }
 
-async fn remove_impl(pool: &SqlitePool, id: &str) -> Result<(), ApiError> {
-    sqlx::query("DELETE FROM availability_alerts WHERE uuid = $1")
+/// Scoped to `profile_id` so a profile that only knows another profile's
+/// alert UUID can't delete it — `remove_availability_alert` used to accept
+/// a bare `id` with no ownership check at all.
+async fn remove_impl(pool: &SqlitePool, profile_id: &str, id: &str) -> Result<(), ApiError> {
+    let result = sqlx::query("DELETE FROM availability_alerts WHERE uuid = $1 AND profile_id = $2")
         .bind(id)
+        .bind(profile_id)
         .execute(pool)
         .await
         .map_err(ApiError::from)?;
+    if result.rows_affected() == 0 {
+        return Err(ApiError::not_found("Alerte introuvable."));
+    }
     Ok(())
 }
 
@@ -234,7 +265,8 @@ profile_scoped_command! {
 
 #[tauri::command]
 pub async fn remove_availability_alert(id: String, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
-    remove_impl(&pool, &id).await
+    let profile_id = crate::database::current_profile_id(&pool).await?;
+    remove_impl(&pool, &profile_id, &id).await
 }
 
 #[tauri::command]
@@ -263,6 +295,12 @@ mod tests {
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new().max_connections(2).connect("sqlite::memory:").await.unwrap();
         crate::database::migrations::run_migrations(&pool).await.unwrap();
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('other', 'Other', '2026-01-01', '2026-01-01')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
         pool
     }
 
@@ -367,5 +405,35 @@ mod tests {
     async fn tolerates_corrupt_provider_ids_json() {
         assert_eq!(parse_provider_ids("not json"), Vec::<i64>::new());
         assert_eq!(parse_provider_ids("[8, \"x\", 119]"), vec![8, 119]);
+    }
+
+    #[tokio::test]
+    async fn a_profile_cannot_remove_another_profiles_alert() {
+        let pool = migrated_pool().await;
+        let alert = toggle_impl(&pool, "default", media(7, MediaType::Movie, "Alerte"), "FR".to_string(), vec![8])
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert!(remove_impl(&pool, "other", &alert.id).await.is_err());
+        assert!(get_alert_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_some());
+
+        remove_impl(&pool, "default", &alert.id).await.unwrap();
+        assert!(get_alert_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn the_unique_index_rejects_a_duplicate_alert_bypassing_toggle_impl() {
+        let pool = migrated_pool().await;
+        toggle_impl(&pool, "default", media(7, MediaType::Movie, "Alerte"), "FR".to_string(), vec![8]).await.unwrap();
+
+        let duplicate = sqlx::query(
+            "INSERT INTO availability_alerts (uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at)
+             VALUES ('dup','default',7,'movie','Alerte','FR','[8]',1,'2026-01-01','2026-01-01')",
+        )
+        .execute(&pool)
+        .await;
+
+        assert!(duplicate.is_err(), "the UNIQUE index on (profile_id, media_id, media_type) should reject this insert");
     }
 }
