@@ -435,13 +435,21 @@ function getEpisodeProgress(sqlite: DatabaseSync, profileId: string, seriesId: n
   }));
 }
 
+interface EpisodeHistoryInput {
+  action: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  episodeTitle?: string;
+}
+
 function applyEpisodes(
   sqlite: DatabaseSync,
   profileId: string,
   series: SeriesInput,
   episodes: Episode[],
   watched: boolean,
-  watchedAt: string
+  watchedAt: string,
+  history?: EpisodeHistoryInput | null
 ): number {
   const rows = sqlite
     .prepare(
@@ -528,6 +536,21 @@ function applyEpisodes(
       $totalEpisodes: series.numberOfEpisodes ?? Number(counts[0]?.count ?? 0),
       $watchedAt: watchedAt,
     } as Record<string, SQLInputValue>);
+
+  if (history) {
+    addHistoryItem(sqlite, {
+      id: crypto.randomUUID(),
+      mediaId: series.id,
+      mediaType: "series",
+      title: series.title,
+      action: history.action,
+      timestamp: watchedAt,
+      seasonNumber: history.seasonNumber,
+      episodeNumber: history.episodeNumber,
+      episodeTitle: history.episodeTitle,
+      metadata: { profileId, episodeCount: changedEpisodes.length },
+    });
+  }
 
   return changedEpisodes.length;
 }
@@ -1136,7 +1159,8 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
           args.series as SeriesInput,
           args.episodes as Episode[],
           args.watched as boolean,
-          args.watchedAt as string
+          args.watchedAt as string,
+          args.history as EpisodeHistoryInput | null | undefined
         );
       case "list_tracked_series":
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);

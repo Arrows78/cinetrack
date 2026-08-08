@@ -1,28 +1,35 @@
 import { percent } from "@/shared/utils/format";
-import type { Episode, EpisodeProgress, MediaSummary, SeriesProgress, Season, TrackedSeriesItem } from "@/types/media";
+import type {
+  Episode,
+  EpisodeProgress,
+  HistoryAction,
+  MediaSummary,
+  SeriesProgress,
+  Season,
+  TrackedSeriesItem,
+} from "@/types/media";
 import { invokeCommand } from "@/shared/lib/invoke";
-import { newUuid } from "@/shared/lib/id";
-import { historyRepository } from "@/features/history/history-repository";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
 
 const nowIso = () => new Date().toISOString();
-const uid = newUuid;
 
 export type SeriesInput = MediaSummary & { numberOfEpisodes?: number };
 
-async function profileId() {
-  return (await preferencesRepository.getPreferences()).activeProfileId;
+interface EpisodeHistoryInput {
+  action: HistoryAction;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  episodeTitle?: string;
 }
 
-// The seen_movies/episode_progress/tracked_series/viewing_events writes now
-// live in Rust (see src-tauri/src/commands/progress.rs) — this repository is
-// a thin invoke() wrapper around them, plus the history logging that was
-// already a separate step from the SQL transaction for episode-based
-// actions (see apply_episodes_impl's doc comment on toggle_episodes_watched
-// for why movie toggles log history atomically in Rust while
-// episode/season/series toggles log it here, one level up — matching the
-// original split). getNextEpisode/calculateSeriesProgress are pure
-// computations over already-fetched data and stay in TS.
+// The seen_movies/episode_progress/tracked_series/viewing_events writes live
+// in Rust (see src-tauri/src/commands/progress.rs) — this repository is a
+// thin invoke() wrapper around them. History logging for episode/season/
+// series toggles used to be a separate invoke() call from here (a genuine
+// non-atomicity risk: a crash between the two would toggle progress but
+// silently drop the history entry), so it's now also done in Rust, in the
+// same transaction as the toggle — matching how toggleMovieSeen already
+// worked. getNextEpisode/calculateSeriesProgress are pure computations over
+// already-fetched data and stay in TS.
 export const progressRepository = {
   async isMovieSeen(movieId: number): Promise<boolean> {
     return invokeCommand<boolean>("is_movie_seen", { movieId });
@@ -37,68 +44,42 @@ export const progressRepository = {
   },
 
   async toggleEpisodeSeen(series: SeriesInput, episode: Episode, watched: boolean): Promise<void> {
-    const watchedAt = nowIso();
-    const profile = await profileId();
-    const changed = await this.toggleEpisodesWatched(series, [episode], watched, watchedAt);
-    if (changed > 0) {
-      await historyRepository.add({
-        id: uid(),
-        mediaId: series.id,
-        mediaType: "series",
-        title: series.title,
-        action: watched ? "episode:watched" : "episode:unwatched",
-        timestamp: watchedAt,
-        seasonNumber: episode.seasonNumber,
-        episodeNumber: episode.episodeNumber,
-        episodeTitle: episode.title,
-        metadata: { profileId: profile },
-      });
-    }
+    await this.toggleEpisodesWatched(series, [episode], watched, nowIso(), {
+      action: watched ? "episode:watched" : "episode:unwatched",
+      seasonNumber: episode.seasonNumber,
+      episodeNumber: episode.episodeNumber,
+      episodeTitle: episode.title,
+    });
   },
 
   async toggleEpisodesWatched(
     series: SeriesInput,
     episodes: Episode[],
     watched: boolean,
-    watchedAt = nowIso()
+    watchedAt = nowIso(),
+    history?: EpisodeHistoryInput
   ): Promise<number> {
-    return invokeCommand<number>("toggle_episodes_watched", { series, episodes, watched, watchedAt });
+    return invokeCommand<number>("toggle_episodes_watched", {
+      series,
+      episodes,
+      watched,
+      watchedAt,
+      history: history ?? null,
+    });
   },
 
   async markSeason(series: SeriesInput, season: Season, watched: boolean): Promise<void> {
-    const timestamp = nowIso();
-    const profile = await profileId();
-    const changed = await this.toggleEpisodesWatched(series, season.episodes, watched, timestamp);
-    if (changed > 0) {
-      await historyRepository.add({
-        id: uid(),
-        mediaId: series.id,
-        mediaType: "series",
-        title: series.title,
-        action: watched ? "season:watched" : "season:unwatched",
-        timestamp,
-        seasonNumber: season.seasonNumber,
-        metadata: { episodeCount: changed, profileId: profile },
-      });
-    }
+    await this.toggleEpisodesWatched(series, season.episodes, watched, nowIso(), {
+      action: watched ? "season:watched" : "season:unwatched",
+      seasonNumber: season.seasonNumber,
+    });
   },
 
   async markSeries(series: SeriesInput, seasons: Season[], watched: boolean): Promise<void> {
-    const timestamp = nowIso();
-    const profile = await profileId();
     const episodes = seasons.flatMap((season) => season.episodes);
-    const changed = await this.toggleEpisodesWatched(series, episodes, watched, timestamp);
-    if (changed > 0) {
-      await historyRepository.add({
-        id: uid(),
-        mediaId: series.id,
-        mediaType: "series",
-        title: series.title,
-        action: watched ? "series:watched" : "series:unwatched",
-        timestamp,
-        metadata: { episodeCount: changed, profileId: profile },
-      });
-    }
+    await this.toggleEpisodesWatched(series, episodes, watched, nowIso(), {
+      action: watched ? "series:watched" : "series:unwatched",
+    });
   },
 
   async listTrackedSeries(): Promise<TrackedSeriesItem[]> {

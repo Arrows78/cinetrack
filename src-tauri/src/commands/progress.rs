@@ -225,23 +225,36 @@ async fn get_episode_progress_impl(
         .collect())
 }
 
+/// What history entry (if any) to log alongside an episode/season/series
+/// toggle — supplied by the caller since only it knows which of the three
+/// interactive actions this is; `apply_episodes_and_log_impl` fills in
+/// media_id/title/metadata and writes it in the same transaction as the
+/// toggle itself, so a crash between the two can no longer happen.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EpisodeHistoryInput {
+    pub action: HistoryAction,
+    pub season_number: Option<i64>,
+    pub episode_number: Option<i64>,
+    pub episode_title: Option<String>,
+}
+
 /// Applies a watched/unwatched change to a set of episodes: writes only the
 /// episodes whose state actually changes, records a matching viewing_events
-/// row for each, and refreshes the tracked_series rollup
-/// (`total_episodes = series.numberOfEpisodes ?? watchedCount`). Returns the
-/// number of episodes that changed. Does NOT log history — callers (episode/
-/// season/series toggles, and eventually the tvtime importer) do that
-/// themselves, matching the original TS split between progress-store-sql.ts
-/// and progress-repository.ts. `pub(crate)` so tvtime's future importer,
-/// which needs the same upsert/rollup logic, can reuse this instead of
-/// duplicating it.
-pub(crate) async fn apply_episodes_impl(
+/// row for each, refreshes the tracked_series rollup
+/// (`total_episodes = series.numberOfEpisodes ?? watchedCount`), and — when
+/// `history` is given and at least one episode changed — logs that history
+/// entry in the same transaction. Returns the number of episodes that
+/// changed. `pub(crate)` so tvtime's importer can reuse the same
+/// upsert/rollup logic (passing `history: None`, since it logs nothing).
+pub(crate) async fn apply_episodes_and_log_impl(
     pool: &SqlitePool,
     profile_id: &str,
     series: &SeriesInput,
     episodes: &[EpisodeInput],
     watched: bool,
     watched_at: &str,
+    history: Option<EpisodeHistoryInput>,
 ) -> Result<i64, ApiError> {
     let watched_rows: Vec<(i64,)> =
         sqlx::query_as("SELECT episode_id FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1")
@@ -349,8 +362,37 @@ pub(crate) async fn apply_episodes_impl(
     .await
     .map_err(ApiError::from)?;
 
+    if let Some(history) = history {
+        let item = ViewingHistoryItem {
+            id: new_uuid(),
+            media_id: series.id,
+            media_type: MediaType::Series,
+            title: series.title.clone(),
+            action: history.action,
+            timestamp: watched_at.to_string(),
+            season_number: history.season_number,
+            episode_number: history.episode_number,
+            episode_title: history.episode_title,
+            metadata: Some(json!({ "profileId": profile_id, "episodeCount": changed_episodes.len() })),
+        };
+        add_history_item_impl(&mut *tx, pool, item).await?;
+    }
+
     tx.commit().await.map_err(ApiError::from)?;
     Ok(changed_episodes.len() as i64)
+}
+
+/// Thin wrapper over `apply_episodes_and_log_impl` for callers that never
+/// log history (tvtime's importer, and the existing test suite below).
+pub(crate) async fn apply_episodes_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    series: &SeriesInput,
+    episodes: &[EpisodeInput],
+    watched: bool,
+    watched_at: &str,
+) -> Result<i64, ApiError> {
+    apply_episodes_and_log_impl(pool, profile_id, series, episodes, watched, watched_at, None).await
 }
 
 async fn list_tracked_series_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<TrackedSeriesItem>, ApiError> {
@@ -414,10 +456,11 @@ pub async fn toggle_episodes_watched(
     episodes: Vec<EpisodeInput>,
     watched: bool,
     watched_at: String,
+    history: Option<EpisodeHistoryInput>,
     pool: State<'_, SqlitePool>,
 ) -> Result<i64, ApiError> {
     let profile_id = current_profile_id(&pool).await?;
-    apply_episodes_impl(&pool, &profile_id, &series, &episodes, watched, &watched_at).await
+    apply_episodes_and_log_impl(&pool, &profile_id, &series, &episodes, watched, &watched_at, history).await
 }
 
 #[tauri::command]
@@ -574,6 +617,63 @@ mod tests {
         let pool = migrated_pool().await;
         let s = series(9, None);
         apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
+        assert_eq!(history_count.0, 0);
+    }
+
+    #[tokio::test]
+    async fn apply_episodes_and_log_impl_writes_the_history_entry_in_the_same_transaction() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        let history = EpisodeHistoryInput {
+            action: HistoryAction::EpisodeWatched,
+            season_number: Some(1),
+            episode_number: Some(1),
+            episode_title: Some("Pilot".to_string()),
+        };
+
+        let changed =
+            apply_episodes_and_log_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z", Some(history))
+                .await
+                .unwrap();
+        assert_eq!(changed, 1);
+
+        let row: (String, Option<String>, Option<String>) =
+            sqlx::query_as("SELECT action, episode_title, metadata FROM activity_log WHERE media_id = 9")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(row.0, "episode:watched");
+        assert_eq!(row.1.as_deref(), Some("Pilot"));
+        let metadata: serde_json::Value = serde_json::from_str(&row.2.unwrap()).unwrap();
+        assert_eq!(metadata["episodeCount"], 1);
+    }
+
+    #[tokio::test]
+    async fn apply_episodes_and_log_impl_skips_history_when_nothing_changed() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        let history = EpisodeHistoryInput {
+            action: HistoryAction::EpisodeWatched,
+            season_number: Some(1),
+            episode_number: Some(1),
+            episode_title: Some("Pilot".to_string()),
+        };
+        let changed = apply_episodes_and_log_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:01.000Z",
+            Some(history),
+        )
+        .await
+        .unwrap();
+        assert_eq!(changed, 0);
 
         let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
         assert_eq!(history_count.0, 0);
