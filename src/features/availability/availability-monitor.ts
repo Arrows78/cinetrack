@@ -1,9 +1,10 @@
+import i18n from "@/i18n";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { mediaRepository } from "@/features/media/media-repository";
 import { notificationService } from "@/features/desktop/notification-service";
 
 export const availabilityMonitor = {
-  async checkAll() {
+  async checkAll({ notificationsEnabled = true }: { notificationsEnabled?: boolean } = {}) {
     const alerts = (await availabilityRepository.listAlerts()).filter((item) => item.enabled);
     let changes = 0;
 
@@ -16,11 +17,13 @@ export const availabilityMonitor = {
         const newProviders = preferred.filter((id) => !previous?.providerIds.includes(id));
 
         if (previous && newProviders.length) {
-          await notificationService.send(
-            `${alert.title} est disponible`,
-            `Une nouvelle plateforme correspond à votre alerte (${alert.region}).`
-          );
           changes += 1;
+          if (notificationsEnabled) {
+            await notificationService.send(
+              i18n.t("notifications.availabilityTitle", { title: alert.title }),
+              i18n.t("notifications.availabilityBody", { region: alert.region })
+            );
+          }
         }
 
         await availabilityRepository.saveSnapshot({

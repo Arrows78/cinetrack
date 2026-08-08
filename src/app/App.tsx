@@ -43,8 +43,8 @@ export function App() {
       });
 
     const checkBackgroundNotifications = async () => {
-      await availabilityMonitor.checkAll();
       const preferences = await preferencesRepository.getPreferences();
+      await availabilityMonitor.checkAll({ notificationsEnabled: preferences.notificationsEnabled });
       if (!preferences.notificationsEnabled) return;
       const entries = await calendarService.build();
       await notificationService.notifyDue(entries, preferences);

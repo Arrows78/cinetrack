@@ -270,6 +270,12 @@
     "noUpcomingTitle": "Rien à l'horizon",
     "noUpcoming": "Aucune sortie détectée dans les 60 prochains jours."
   },
+  "notifications": {
+    "episodeBody": "S{{season}}E{{episode}} · {{title}}",
+    "theatricalReleaseBody": "Sortie cinéma aujourd'hui ou très bientôt.",
+    "availabilityTitle": "{{title}} est disponible",
+    "availabilityBody": "Une nouvelle plateforme correspond à votre alerte ({{region}})."
+  },
   "people": {
     "title": "Personnes",
     "description": "Acteurs, actrices, réalisateurs et filmographies.",

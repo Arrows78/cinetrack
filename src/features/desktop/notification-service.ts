@@ -1,4 +1,5 @@
 import { differenceInHours, endOfDay, isAfter, parseISO, startOfDay } from "date-fns";
+import i18n from "@/i18n";
 import { isTauriApp } from "@/shared/lib/platform";
 import type { CalendarEntry, UserPreferences } from "@/types/media";
 
@@ -51,8 +52,12 @@ export const notificationService = {
       if (isAfter(now, endOfDay(releaseDate)) || hours > preferences.notifyHoursBefore || sent.has(entry.id)) continue;
       const body =
         entry.kind === "episode"
-          ? `S${entry.seasonNumber}E${entry.episodeNumber} · ${entry.episodeTitle ?? "Nouvel épisode"}`
-          : "Sortie cinéma aujourd’hui ou très bientôt.";
+          ? i18n.t("notifications.episodeBody", {
+              season: entry.seasonNumber,
+              episode: entry.episodeNumber,
+              title: entry.episodeTitle ?? i18n.t("calendar.newEpisode"),
+            })
+          : i18n.t("notifications.theatricalReleaseBody");
       await this.send(entry.title, body);
       sent.add(entry.id);
       count += 1;
