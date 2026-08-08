@@ -1,3 +1,5 @@
+import { PLATFORM_BRAND_COLORS } from "@/shared/constants/colors";
+
 // `label` is TMDB's own English genre name — kept as a stable identity used
 // internally (matching a movie genre to its series equivalent in
 // home-page.tsx, sorting, deduping), not for display. `labelKey` is the i18n
@@ -45,13 +47,16 @@ export const GENRES = {
   ],
 } as const;
 
+// Brand colors live in shared/constants/colors.ts (PLATFORM_BRAND_COLORS),
+// alongside the other externally-fixed brand palettes (OAUTH_BRAND_COLORS) —
+// not duplicated here as raw hex literals.
 export const PLATFORMS = [
-  { id: 8, label: "Netflix", color: "#E50914", initial: "N" },
-  { id: 119, label: "Prime Video", color: "#00A8E0", initial: "P" },
-  { id: 337, label: "Disney+", color: "#0063E5", initial: "D+" },
-  { id: 384, label: "Max", color: "#5822BF", initial: "M" },
-  { id: 15, label: "Hulu", color: "#1CE783", initial: "H" },
-  { id: 350, label: "Apple TV+", color: "#444444", initial: "A" },
+  { id: 8, label: "Netflix", color: PLATFORM_BRAND_COLORS[8], initial: "N" },
+  { id: 119, label: "Prime Video", color: PLATFORM_BRAND_COLORS[119], initial: "P" },
+  { id: 337, label: "Disney+", color: PLATFORM_BRAND_COLORS[337], initial: "D+" },
+  { id: 384, label: "Max", color: PLATFORM_BRAND_COLORS[384], initial: "M" },
+  { id: 15, label: "Hulu", color: PLATFORM_BRAND_COLORS[15], initial: "H" },
+  { id: 350, label: "Apple TV+", color: PLATFORM_BRAND_COLORS[350], initial: "A" },
 ] as const;
 
 export const GENRE_IDS_MOVIES = GENRES.movies.map((g) => g.id);

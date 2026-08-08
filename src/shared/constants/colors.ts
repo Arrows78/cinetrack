@@ -79,3 +79,19 @@ export const OAUTH_BRAND_COLORS = {
   },
   facebook: "#1877F2",
 } as const;
+
+/**
+ * Official brand colors for streaming platforms (see the "Browse by
+ * platform" grid in home-page.tsx). Same reasoning as OAUTH_BRAND_COLORS:
+ * a platform's brand color is fixed externally, not by CineTrack's own
+ * theme, so it lives here as a documented reference constant instead of a
+ * scattered hex literal in the feature file that consumes it.
+ */
+export const PLATFORM_BRAND_COLORS: Record<number, string> = {
+  8: "#E50914", // Netflix
+  119: "#00A8E0", // Prime Video
+  337: "#0063E5", // Disney+
+  384: "#5822BF", // Max
+  15: "#1CE783", // Hulu
+  350: "#444444", // Apple TV+
+};
