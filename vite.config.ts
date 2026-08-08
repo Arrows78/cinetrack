@@ -10,6 +10,17 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Lets the "node" test environment (see the @vitest-environment pragma in
+  // SQLite-backed test files) actually bundle the node:sqlite built-in —
+  // without this, Vite still treats those files as "client"/browser code.
+  environments: {
+    node: {
+      resolve: {
+        conditions: ["node", "browser"],
+      },
+      noExternal: true,
+    },
+  },
   server: {
     port: 1420,
     strictPort: true,
