@@ -1,7 +1,11 @@
+// @vitest-environment node
+//
 // Runs the real `runMigrations` function against an in-memory SQLite engine
 // (node:sqlite, built into Node 22+) through a thin adapter matching the
 // @tauri-apps/plugin-sql surface, so the actual SQL text is what gets
-// validated — not a reimplementation of it.
+// validated — not a reimplementation of it. Needs the node environment:
+// under the default jsdom environment, Vite treats this file as browser
+// ("client") code and refuses to bundle the node:sqlite built-in into it.
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { migrations, runMigrations } from "../migrations";

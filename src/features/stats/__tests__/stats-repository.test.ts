@@ -1,3 +1,11 @@
+// @vitest-environment node
+//
+// The second describe block below uses useTestSqlite() (see
+// sqlite-test-harness.ts), which relies on the real node:sqlite built-in.
+// Under the default jsdom environment, Vite treats this file as browser
+// ("client") code and refuses to bundle a Node built-in into it — applies
+// to the whole file since environment is a per-file pragma, but the first
+// describe block's plain data assertions don't depend on jsdom either way.
 import { describe, expect, it, vi } from "vitest";
 import { statsRepository } from "../stats-repository";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";

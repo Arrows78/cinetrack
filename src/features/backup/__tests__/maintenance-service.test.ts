@@ -1,3 +1,8 @@
+// @vitest-environment node
+//
+// useTestSqlite() (see sqlite-test-harness.ts) uses the real node:sqlite
+// built-in. Under the default jsdom environment, Vite treats this file as
+// browser ("client") code and refuses to bundle a Node built-in into it.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 
