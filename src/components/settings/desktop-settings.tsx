@@ -67,11 +67,28 @@ export function DesktopSettings() {
         <div className="mt-3 grid gap-2">
           <label className="grid gap-1.5 text-sm font-medium">
             {t("desktop.vaultPassword")}
-            <Input size="sm" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            <Input
+              size="sm"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              aria-describedby="vault-password-hint"
+            />
+            <span id="vault-password-hint" className="text-xs font-normal text-muted-foreground">
+              {t("desktop.vaultPasswordHint")}
+            </span>
           </label>
           <label className="grid gap-1.5 text-sm font-medium">
             {t("desktop.newToken")}
-            <Textarea className="min-h-24 text-sm" value={token} onChange={(event) => setToken(event.target.value)} />
+            <Textarea
+              className="min-h-24 text-sm"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              aria-describedby="tmdb-token-hint"
+            />
+            <span id="tmdb-token-hint" className="text-xs font-normal text-muted-foreground">
+              {t("desktop.newTokenHint")}
+            </span>
           </label>
           <div className="flex gap-2">
             <Button

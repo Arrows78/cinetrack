@@ -179,45 +179,50 @@ export function CollectionsPage() {
           </Button>
         </div>
         {listActionError ? <p className="mt-3 text-sm text-destructive">{listActionError}</p> : null}
-        {lists.isError ? (
+        {lists.isLoading ? (
+          <p className="mt-5 text-sm text-muted-foreground">{t("common.loading")}</p>
+        ) : lists.isError ? (
           <div className="mt-5">
             <RemoteErrorState error={lists.error} onRetry={() => void lists.refetch()} />
           </div>
-        ) : null}
-        <div className="mt-5 grid gap-3">
-          {sortedLists.map((list) => (
-            <Tile asChild key={list.id} className="p-4">
-              <article>
-                <div className="flex items-start justify-between gap-3">
-                  <button
-                    type="button"
-                    className="text-left"
-                    onClick={() => setOpenedList((current) => (current === list.id ? null : list.id))}
-                  >
-                    <h3 className="font-semibold">{list.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {list.description || t("collections.noDescription")}
-                    </p>
-                  </button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    aria-label={t("collections.deleteList", { name: list.name })}
-                    onClick={() => setPendingDeleteList({ id: list.id, name: list.name })}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-                {openedList === list.id ? (
-                  <div className="mt-4">
-                    <ListContents listId={list.id} />
+        ) : sortedLists.length === 0 ? (
+          <p className="mt-5 text-sm text-muted-foreground">{t("collections.noLists")}</p>
+        ) : (
+          <div className="mt-5 grid gap-3">
+            {sortedLists.map((list) => (
+              <Tile asChild key={list.id} className="p-4">
+                <article>
+                  <div className="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      className="text-left"
+                      onClick={() => setOpenedList((current) => (current === list.id ? null : list.id))}
+                    >
+                      <h3 className="font-semibold">{list.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {list.description || t("collections.noDescription")}
+                      </p>
+                    </button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t("collections.deleteList", { name: list.name })}
+                      onClick={() => setPendingDeleteList({ id: list.id, name: list.name })}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
                   </div>
-                ) : null}
-              </article>
-            </Tile>
-          ))}
-        </div>
+                  {openedList === list.id ? (
+                    <div className="mt-4">
+                      <ListContents listId={list.id} />
+                    </div>
+                  ) : null}
+                </article>
+              </Tile>
+            ))}
+          </div>
+        )}
       </Panel>
 
       <ConfirmDialog

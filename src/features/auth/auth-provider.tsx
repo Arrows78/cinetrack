@@ -327,9 +327,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     setSession(null);
     // The next signed-in-or-not profile resolves to different "local"-scoped
-    // data (see ProfileGate) — without this, a signed-out user can briefly
-    // keep seeing the previous account's cached watchlist/library/etc.
-    await queryClient.invalidateQueries({ queryKey: ["local"] });
+    // data (see ProfileGate) — removeQueries (not just invalidateQueries)
+    // evicts it from memory and from the localStorage persister immediately,
+    // rather than merely marking it stale, so a signed-out user can't
+    // briefly keep seeing the previous account's cached watchlist/library/etc.
+    queryClient.removeQueries({ queryKey: ["local"] });
   }, [queryClient]);
 
   const value = useMemo<AuthContextValue>(

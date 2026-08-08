@@ -39,7 +39,11 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
 
     let cancelled = false;
     void preferencesRepository.updatePreference("activeProfileId", resolvedProfileId).then(() => {
-      if (!cancelled) void queryClient.invalidateQueries({ queryKey: ["local"] });
+      // removeQueries, not invalidateQueries — this switches which local
+      // profile is active, so the previous profile's cached watchlist/
+      // library/etc. must be evicted immediately rather than merely marked
+      // stale (which would still render it until the refetch resolves).
+      if (!cancelled) queryClient.removeQueries({ queryKey: ["local"] });
     });
 
     return () => {
