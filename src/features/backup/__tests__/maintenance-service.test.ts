@@ -36,10 +36,37 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
     fsState.files.delete(oldPath);
     fsState.files.set(newPath, content);
   }),
+  remove: vi.fn(async (path: string) => {
+    fsState.files.delete(path);
+  }),
+  readDir: vi.fn(async (dir: string) => {
+    const prefix = `${dir}/`;
+    const names = new Set<string>();
+    for (const path of fsState.files.keys()) {
+      if (path.startsWith(prefix) && !path.slice(prefix.length).includes("/")) {
+        names.add(path.slice(prefix.length));
+      }
+    }
+    return Array.from(names).map((name) => ({ name, isFile: true, isDirectory: false, isSymlink: false }));
+  }),
 }));
+
+// createAutomaticBackup() reads/writes window.localStorage (just the
+// once-per-24h throttle timestamp, not app data) — stubbed here since this
+// file runs under the node environment (no window global), unlike the app
+// itself which always runs in a webview.
+const localStorageState = new Map<string, string>();
+(globalThis as unknown as { window: { localStorage: Storage } }).window = {
+  localStorage: {
+    getItem: (key: string) => localStorageState.get(key) ?? null,
+    setItem: (key: string, value: string) => void localStorageState.set(key, value),
+    removeItem: (key: string) => void localStorageState.delete(key),
+  } as Storage,
+};
 
 beforeEach(() => {
   fsState.files.clear();
+  localStorageState.clear();
 });
 
 const item = (mediaId: number) => ({
@@ -97,5 +124,102 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
     // never touched by the failed rename.
     expect(fsState.files.get("backups/pre-restore.json.tmp")).toBeDefined();
     expect(fsState.files.get("backups/pre-restore.json")).toBe(goodSnapshot);
+  });
+});
+
+// Backups are seeded directly into fsState rather than via repeated
+// createAutomaticBackup() calls — the filename embeds exportedAt
+// (new Date().toISOString()), and two calls executed within the same test
+// can land in the same millisecond, colliding on one file instead of
+// producing two.
+const autoBackupContent = (mediaId: number) =>
+  JSON.stringify({
+    format: "cinetrack-backup",
+    version: 1,
+    exportedAt: "",
+    data: {
+      watchlist: [
+        {
+          id: `seed-${mediaId}`,
+          mediaId,
+          mediaType: "movie",
+          title: `Seed ${mediaId}`,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    },
+  });
+
+describe("maintenanceService automatic backup rotation", () => {
+  useTestSqlite();
+
+  it("creating an automatic backup and restoring it round-trips the data", async () => {
+    const { maintenanceService } = await import("../maintenance-service");
+    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+    await watchlistRepository.save({
+      id: "live-1",
+      mediaId: 1,
+      mediaType: "movie",
+      title: "Live",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    await maintenanceService.createAutomaticBackup(true);
+    await watchlistRepository.remove(1, "movie");
+    expect(await watchlistRepository.list()).toHaveLength(0);
+
+    await maintenanceService.restoreAutomaticBackup();
+    expect((await watchlistRepository.list())[0]?.mediaId).toBe(1);
+  });
+
+  it("restores the most recently created automatic backup, not just any", async () => {
+    fsState.files.set("backups/auto-2026-01-01T00-00-00-000Z.json", autoBackupContent(1));
+    fsState.files.set("backups/auto-2026-06-01T00-00-00-000Z.json", autoBackupContent(2));
+
+    const { maintenanceService } = await import("../maintenance-service");
+    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+
+    await maintenanceService.restoreAutomaticBackup();
+
+    const items = await watchlistRepository.list();
+    expect(items).toHaveLength(1);
+    expect(items[0]!.mediaId).toBe(2);
+  });
+
+  it("prunes automatic backups beyond the retention limit when a new one is created", async () => {
+    for (let day = 1; day <= 7; day++) {
+      fsState.files.set(`backups/auto-2026-01-0${day}T00-00-00-000Z.json`, autoBackupContent(day));
+    }
+
+    const { maintenanceService } = await import("../maintenance-service");
+    await maintenanceService.createAutomaticBackup(true);
+
+    const remaining = Array.from(fsState.files.keys())
+      .filter((path) => path.startsWith("backups/auto-") && path.endsWith(".json"))
+      .sort();
+
+    // The 5 most recent survive (retention limit — see AUTO_BACKUP_RETENTION
+    // in maintenance-service.ts): the 4 newest seeded plus the one just
+    // created. The 3 oldest seeded ones are gone.
+    expect(remaining).toHaveLength(5);
+    expect(remaining).not.toContain("backups/auto-2026-01-01T00-00-00-000Z.json");
+    expect(remaining).not.toContain("backups/auto-2026-01-02T00-00-00-000Z.json");
+    expect(remaining).not.toContain("backups/auto-2026-01-03T00-00-00-000Z.json");
+    expect(remaining).toContain("backups/auto-2026-01-07T00-00-00-000Z.json");
+  });
+
+  it("falls back to the pre-rotation backups/latest.json when no rotated backup exists yet", async () => {
+    fsState.files.set("backups/latest.json", autoBackupContent(9));
+
+    const { maintenanceService } = await import("../maintenance-service");
+    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+
+    const info = await maintenanceService.getAutomaticBackupInfo();
+    expect(info).not.toBeNull();
+
+    await maintenanceService.restoreAutomaticBackup();
+    expect((await watchlistRepository.list())[0]?.mediaId).toBe(9);
   });
 });

@@ -1,11 +1,55 @@
-import { BaseDirectory, exists, mkdir, readTextFile, rename, writeTextFile } from "@tauri-apps/plugin-fs";
+import {
+  BaseDirectory,
+  exists,
+  mkdir,
+  readDir,
+  readTextFile,
+  remove,
+  rename,
+  writeTextFile,
+} from "@tauri-apps/plugin-fs";
 import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 
-const BACKUP_FILE = "backups/latest.json";
+const BACKUP_DIR = "backups";
+const AUTO_BACKUP_PREFIX = "auto-";
+// Keeps the last 5 daily automatic backups instead of one slot an in-flight
+// write could leave corrupt with no fallback — the atomic tmp+rename already
+// protects any single file, but a bad *export* (e.g. a DB that was already
+// unhealthy) would still overwrite the only good backup without this.
+const AUTO_BACKUP_RETENTION = 5;
 const PRE_RESTORE_FILE = "backups/pre-restore.json";
+// Pre-rotation installs wrote a single "backups/latest.json" — read as a
+// fallback so upgrading doesn't orphan an existing automatic backup until
+// the next one happens to be created under the new naming scheme.
+const LEGACY_BACKUP_FILE = "backups/latest.json";
 const LAST_BACKUP_KEY = "cinetrack.last-auto-backup";
+
+// Embeds the backup's own exportedAt in the filename (colons/dots swapped
+// for dashes — Windows rejects `:` in filenames) so plain alphabetical
+// sorting is also chronological, with no directory metadata to read.
+const autoBackupFileName = (exportedAt: string) =>
+  `${BACKUP_DIR}/${AUTO_BACKUP_PREFIX}${exportedAt.replace(/[:.]/g, "-")}.json`;
+
+async function listAutoBackups(): Promise<string[]> {
+  try {
+    const entries = await readDir(BACKUP_DIR, { baseDir: BaseDirectory.AppData });
+    return entries
+      .filter((entry) => entry.isFile && entry.name.startsWith(AUTO_BACKUP_PREFIX) && entry.name.endsWith(".json"))
+      .map((entry) => `${BACKUP_DIR}/${entry.name}`)
+      .sort();
+  } catch {
+    // Directory doesn't exist yet (no automatic backup has ever run).
+    return [];
+  }
+}
+
+async function pruneOldAutoBackups(): Promise<void> {
+  const files = await listAutoBackups();
+  const excess = files.slice(0, Math.max(0, files.length - AUTO_BACKUP_RETENTION));
+  await Promise.all(excess.map((file) => remove(file, { baseDir: BaseDirectory.AppData }).catch(() => undefined)));
+}
 
 // Written to a `.tmp` sibling first, then renamed into place — a rename on
 // the same filesystem is atomic, so a crash, disk-full error, or forced
@@ -14,7 +58,7 @@ const LAST_BACKUP_KEY = "cinetrack.last-auto-backup";
 // mean the one and only automatic backup (or pre-restore snapshot) could be
 // left truncated with no way to recover.
 async function writeNamedBackup(fileName: string, content: string): Promise<void> {
-  await mkdir("backups", { baseDir: BaseDirectory.AppData, recursive: true });
+  await mkdir(BACKUP_DIR, { baseDir: BaseDirectory.AppData, recursive: true });
   const tempFile = `${fileName}.tmp`;
   await writeTextFile(tempFile, content, { baseDir: BaseDirectory.AppData });
   await rename(tempFile, fileName, { oldPathBaseDir: BaseDirectory.AppData, newPathBaseDir: BaseDirectory.AppData });
@@ -23,6 +67,13 @@ async function writeNamedBackup(fileName: string, content: string): Promise<void
 async function readNamedBackup(fileName: string): Promise<string | null> {
   if (!(await exists(fileName, { baseDir: BaseDirectory.AppData }))) return null;
   return readTextFile(fileName, { baseDir: BaseDirectory.AppData });
+}
+
+async function readLatestAutoBackup(): Promise<string | null> {
+  const files = await listAutoBackups();
+  const latest = files[files.length - 1];
+  if (latest) return readNamedBackup(latest);
+  return readNamedBackup(LEGACY_BACKUP_FILE);
 }
 
 function assertReasonableSize(raw: string): void {
@@ -42,7 +93,8 @@ export const maintenanceService = {
     const last = Number(window.localStorage.getItem(LAST_BACKUP_KEY) ?? 0);
     if (!force && Date.now() - last < 24 * 60 * 60 * 1000) return;
     const backup = await portableData.export();
-    await writeNamedBackup(BACKUP_FILE, JSON.stringify(backup, null, 2));
+    await writeNamedBackup(autoBackupFileName(backup.exportedAt), JSON.stringify(backup, null, 2));
+    await pruneOldAutoBackups();
     window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
   },
 
@@ -67,19 +119,20 @@ export const maintenanceService = {
   },
 
   async restoreAutomaticBackup(): Promise<void> {
-    const raw = await readNamedBackup(BACKUP_FILE);
+    const raw = await readLatestAutoBackup();
     if (!raw) throw new Error(i18n.t("backup.noAutomaticBackup"));
     assertReasonableSize(raw);
     await maintenanceService.restoreFromBackup(JSON.parse(raw));
   },
 
   /**
-   * Peeks at the automatic backup's `exportedAt` without validating or
-   * importing it, so a confirmation dialog can show the caller what date
-   * they're about to overwrite everything with before they commit.
+   * Peeks at the most recent automatic backup's `exportedAt` without
+   * validating or importing it, so a confirmation dialog can show the
+   * caller what date they're about to overwrite everything with before
+   * they commit.
    */
   async getAutomaticBackupInfo(): Promise<{ exportedAt: string } | null> {
-    const raw = await readNamedBackup(BACKUP_FILE);
+    const raw = await readLatestAutoBackup();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { exportedAt?: unknown };
     return { exportedAt: typeof parsed.exportedAt === "string" ? parsed.exportedAt : "" };
