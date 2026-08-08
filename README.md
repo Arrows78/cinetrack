@@ -29,6 +29,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
 - Manage multiple local profiles, each with its own watchlist, library, and history.
+- Import a TV Time GDPR export (watched episodes and movies with their original dates, plus the to-watch list) as a one-time bulk migration.
 
 ### Track TV series
 
@@ -48,20 +49,20 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 
 ## 🧱 Technology stack
 
-| Area                   | Technologies                                                    |
-| ---------------------- | --------------------------------------------------------------- |
-| Desktop application    | Tauri 2, Rust                                                   |
-| Frontend               | React 19, TypeScript, Vite                                      |
-| Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui  |
-| Routing                | TanStack Router                                                 |
-| Remote data            | TanStack Query, TMDB API                                        |
-| Optional account sync  | Supabase Auth (email OTP, OAuth)                                |
-| Desktop persistence    | SQLite through `@tauri-apps/plugin-sql`, Stronghold for secrets |
-| UI state               | Zustand                                                         |
-| Validation             | Zod                                                             |
-| Internationalisation   | i18next, react-i18next (English, French)                        |
-| Animation and icons    | Framer Motion, Lucide React                                     |
-| Testing                | Vitest, Testing Library, `cargo test`                           |
+| Area                   | Technologies                                                           |
+| ---------------------- | ---------------------------------------------------------------------- |
+| Desktop application    | Tauri 2, Rust                                                          |
+| Frontend               | React 19, TypeScript, Vite                                             |
+| Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui         |
+| Routing                | TanStack Router                                                        |
+| Remote data            | TanStack Query, TMDB API                                               |
+| Optional account sync  | Supabase Auth (email OTP, OAuth)                                       |
+| Desktop persistence    | SQLite via Rust (`sqlx`) behind Tauri commands, Stronghold for secrets |
+| UI state               | Zustand                                                                |
+| Validation             | Zod                                                                    |
+| Internationalisation   | i18next, react-i18next (English, French)                               |
+| Animation and icons    | Framer Motion, Lucide React                                            |
+| Testing                | Vitest, Testing Library, `cargo test`                                  |
 
 ## 🏗️ Architecture
 
@@ -74,11 +75,13 @@ flowchart LR
     MP --> TMDB[TMDB API]
 
     UI --> LR[Local repositories]
-    LR --> DB[(SQLite app.db)]
+    LR --> IPC[Tauri invoke]
+    IPC --> CMD[Rust commands]
+    CMD --> DB[(SQLite app.db)]
 ```
 
 - `MediaProvider` abstracts catalogue access, making it possible to replace TMDB without coupling the interface to its API.
-- Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats) manage personal data, all of it in SQLite (`sqlite:app.db`).
+- Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats, …) are thin `invoke()` wrappers; the actual SQL, transactions, and cascades live in Rust commands (`src-tauri/src/commands/`), all of it in SQLite (`sqlite:app.db`).
 - SQLite is only reachable from inside the Tauri webview — a plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at the same dev server `pnpm tauri dev` uses. Every local-data hook already tolerates a failed query (none use React Query's suspense mode), so the UI still renders outside Tauri for layout/styling work; reads/writes to SQLite just fail silently. A small non-blocking banner flags this, see [`src/components/desktop/browser-preview-banner.tsx`](src/components/desktop/browser-preview-banner.tsx).
 
 See [`docs/architecture.md`](docs/architecture.md) for the full request-to-database walkthrough (the Rust command → repository → hook → page shape every domain follows), the error-handling contract, and how to add a new feature domain. See [`docs/design-system.md`](docs/design-system.md) for UI tokens and component rules, and [`docs/auth.md`](docs/auth.md) for the optional Supabase account-sync setup.
@@ -183,7 +186,7 @@ cinetrack/
 ├── src/
 │   ├── app/                    # Application setup, router, and QueryClient
 │   ├── components/             # Presentational UI: layout, media, ui/, states/, settings, collections, desktop, library
-│   ├── db/                     # SQLite connection and migrations (shared by every feature)
+│   ├── db/                     # Migration schema + real-SQLite test harness (production reads/writes go through src-tauri/src/commands, not this)
 │   ├── features/                # One folder per domain, each bundling its repository/service with the hooks that use it
 │   │   ├── auth/                #   Supabase session, OAuth, email OTP
 │   │   ├── availability/        #   Streaming-availability alerts and background monitor
@@ -197,6 +200,7 @@ cinetrack/
 │   │   ├── preferences/          #   Theme, language, region, and other user settings
 │   │   ├── progress/              #   Movie/episode watched state and series progress
 │   │   ├── stats/                #   Viewing statistics and yearly wrap-up
+│   │   ├── tvtime/                #   One-time bulk import from a TV Time export
 │   │   ├── watch-tonight/        #   Random pick service
 │   │   └── watchlist/             #   Watchlist repository and hooks
 │   ├── hooks/                   # Generic, repository-free hooks (debounce, confetti)
@@ -235,7 +239,7 @@ The SQLite schema (a single migration, see `src/db/migrations/001-initial-schema
 - `availability_alerts`, `availability_snapshots`;
 - `activity_log`.
 
-Every table (other than `preferences` and the pure-cache `availability_snapshots`) has an internal `id INTEGER PRIMARY KEY` — a storage-engine-only rowid never surfaced outside SQL — plus a public `uuid TEXT UNIQUE` that the app treats as `.id`, and `created_at`/`updated_at` timestamps. See [`docs/database-schema.html`](docs/database-schema.html) for the full diagram.
+Every table (other than `preferences`, keyed by `key`, and the pure-cache `availability_snapshots`, keyed by `(media_id, media_type, region)`) uses a single `uuid TEXT PRIMARY KEY` — generated app-side with `crypto.randomUUID()`, no separate internal integer id — plus `created_at`/`updated_at` timestamps. See [`docs/database-schema.md`](docs/database-schema.md) for the full table-by-table reference and ERD.
 
 Catalogue data, posters, and metadata are loaded from TMDB, so they require an internet connection and a valid API token.
 
