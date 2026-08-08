@@ -38,6 +38,8 @@ A reference color describes the value itself. For example, the violet accent has
 
 Use reference colors only while defining a theme or mapping them to a semantic role.
 
+**Externally-fixed brand colors** (a sign-in provider's logo color, a streaming platform's brand color) are a documented exception: they have no semantic role to map to since the value is fixed by a third party, not by CineTrack's theme. Keep them as named constants next to the other reference values — `OAUTH_BRAND_COLORS` and `PLATFORM_BRAND_COLORS` in `src/shared/constants/colors.ts` — rather than as literals in the feature file that renders them. Purely decorative values with no semantic role (gradients, sheens) follow the same rule but live in `src/shared/constants/decorative-gradients.ts`, which exists specifically so they don't get scattered as literals either.
+
 ### Semantic color
 
 A semantic color describes why a color is used.
