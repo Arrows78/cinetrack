@@ -216,7 +216,6 @@
   "stats": {
     "title": "Stats",
     "description": "Your local activity, without sending your history to a server.",
-    "loading": "Calculating stats…",
     "moviesWatched": "Movies watched",
     "episodesWatched": "Episodes watched",
     "timeWatched": "Time watched",

@@ -4,6 +4,7 @@ import { useStats, useWatchForecast, useWrapped } from "@/features/stats/use-sta
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { StatsSkeleton } from "@/components/states/loading-skeletons";
 import { formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
@@ -25,7 +26,7 @@ export function StatsPage() {
       />
     );
   }
-  if (!stats.data || !wrapped.data) return <p className="text-muted-foreground">{t("stats.loading")}</p>;
+  if (!stats.data || !wrapped.data) return <StatsSkeleton />;
   const cards = [
     { label: t("stats.moviesWatched"), value: stats.data.moviesWatched, icon: Film },
     { label: t("stats.episodesWatched"), value: stats.data.episodesWatched, icon: Tv },

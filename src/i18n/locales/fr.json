@@ -216,7 +216,6 @@
   "stats": {
     "title": "Statistiques",
     "description": "Votre activité locale, sans envoyer votre historique vers un serveur.",
-    "loading": "Calcul des statistiques…",
     "moviesWatched": "Films vus",
     "episodesWatched": "Épisodes vus",
     "timeWatched": "Temps regardé",
