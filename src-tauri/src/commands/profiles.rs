@@ -266,6 +266,7 @@ mod tests {
     async fn removing_a_profile_clears_its_scoped_data() {
         let pool = migrated_pool().await;
         let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+
         sqlx::query(
             "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
              VALUES ('w1', $1, 1, 'movie', 'Test', 'now', 'now')",
@@ -274,17 +275,108 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+             VALUES ('l1', $1, 1, 'movie', 'Test', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO seen_movies (uuid, profile_id, movie_id, title, watched_at, created_at, updated_at)
+             VALUES ('s1', $1, 1, 'Test', 'now', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, created_at, updated_at)
+             VALUES ('e1', $1, 1, 1, 1, 1, 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO tracked_series (uuid, profile_id, series_id, title, created_at, updated_at)
+             VALUES ('t1', $1, 1, 'Test', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+             VALUES ('v1', $1, 1, 'movie', 'Test', 'watched', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO activity_log (uuid, profile_id, media_id, media_type, title, action, timestamp, created_at, updated_at)
+             VALUES ('a1', $1, 1, 'movie', 'Test', 'movie:watched', 'now', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO availability_alerts (uuid, profile_id, media_id, media_type, title, region, provider_ids, created_at, updated_at)
+             VALUES ('al1', $1, 1, 'movie', 'Test', 'FR', '[]', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO custom_lists (uuid, profile_id, name, created_at, updated_at)
+             VALUES ('cl1', $1, 'My List', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        // custom_list_items cascades transitively via custom_lists, not profile_id directly.
+        sqlx::query(
+            "INSERT INTO custom_list_items (uuid, list_id, media_id, media_type, title, position, added_at, updated_at)
+             VALUES ('cli1', 'cl1', 1, 'movie', 'Test', 0, 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         remove_impl(&pool, &created.id).await.unwrap();
 
         let profiles = list_impl(&pool).await.unwrap();
         assert!(!profiles.iter().any(|p| p.id == created.id));
-        let remaining: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM watchlist_items WHERE profile_id = $1")
-            .bind(&created.id)
+
+        for table in [
+            "watchlist_items",
+            "library_items",
+            "seen_movies",
+            "episode_progress",
+            "tracked_series",
+            "viewing_events",
+            "activity_log",
+            "availability_alerts",
+            "custom_lists",
+        ] {
+            let remaining: (i64,) = sqlx::query_as(&format!("SELECT COUNT(*) FROM {table} WHERE profile_id = $1"))
+                .bind(&created.id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            assert_eq!(remaining.0, 0, "{table} should have cascaded on profile deletion");
+        }
+
+        let remaining_list_items: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM custom_list_items")
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(remaining.0, 0);
+        assert_eq!(remaining_list_items.0, 0, "custom_list_items should cascade transitively via custom_lists");
     }
 
     #[tokio::test]
