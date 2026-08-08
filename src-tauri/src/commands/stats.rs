@@ -79,25 +79,6 @@ impl ViewingEventRow {
     }
 }
 
-async fn list_viewing_events_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<ViewingEvent>, ApiError> {
-    let rows: Vec<ViewingEventRow> = sqlx::query_as(
-        "SELECT uuid, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number
-         FROM viewing_events WHERE profile_id = $1",
-    )
-    .bind(profile_id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    rows.into_iter().map(|row| row.into_event(profile_id)).collect()
-}
-
-#[tauri::command]
-pub async fn list_viewing_events(pool: State<'_, SqlitePool>) -> Result<Vec<ViewingEvent>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_viewing_events_impl(&pool, &profile_id).await
-}
-
 async fn list_viewing_events_since_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -116,10 +97,9 @@ async fn list_viewing_events_since_impl(
     rows.into_iter().map(|row| row.into_event(profile_id)).collect()
 }
 
-/// Bounded alternative to `list_viewing_events` for computations that only
-/// need a recent window (current streak, catch-up pace) — avoids pulling a
-/// profile's entire lifetime of events for a calculation that never looks
-/// further back than `since`.
+/// Bounded fetch for computations that only need a recent window (current
+/// streak, catch-up pace) — avoids pulling a profile's entire lifetime of
+/// events for a calculation that never looks further back than `since`.
 #[tauri::command]
 pub async fn list_recent_viewing_events(
     since: String,
@@ -149,9 +129,9 @@ async fn list_viewing_events_for_year_impl(
     rows.into_iter().map(|row| row.into_event(profile_id)).collect()
 }
 
-/// Bounded alternative to `list_viewing_events` for the yearly "wrapped"
-/// summary — only ever needs one calendar year's worth of events, not the
-/// whole history. `range_start`/`range_end` are ISO instants (end exclusive).
+/// Bounded fetch for the yearly "wrapped" summary — only ever needs one
+/// calendar year's worth of events, not the whole history. `range_start`/
+/// `range_end` are ISO instants (end exclusive).
 #[tauri::command]
 pub async fn list_viewing_events_for_year(
     range_start: String,
@@ -309,7 +289,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn lists_viewing_events_scoped_to_the_profile() {
+    async fn lists_recent_viewing_events_scoped_to_the_profile() {
         let pool = migrated_pool().await;
         sqlx::query(
             "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
@@ -332,7 +312,7 @@ mod tests {
         .await
         .unwrap();
 
-        let events = list_viewing_events_impl(&pool, "default").await.unwrap();
+        let events = list_viewing_events_since_impl(&pool, "default", "2025-01-01T00:00:00.000Z").await.unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].title, "Test");
         assert_eq!(events[0].event_type, ViewingEventType::Watched);

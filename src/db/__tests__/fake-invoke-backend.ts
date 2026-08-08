@@ -1140,8 +1140,6 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         );
       case "list_tracked_series":
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
-      case "list_viewing_events":
-        return listViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId);
       case "list_recent_viewing_events":
         return listRecentViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId, args.since as string);
       case "list_viewing_events_for_year":

@@ -29,9 +29,7 @@ pub use profiles::{
     resolve_profile_for_supabase_user,
 };
 pub use progress::{get_episode_progress, is_movie_seen, list_tracked_series, toggle_episodes_watched, toggle_movie_seen};
-pub use stats::{
-    get_stats_overview, list_recent_viewing_events, list_viewing_events, list_viewing_events_for_year,
-};
+pub use stats::{get_stats_overview, list_recent_viewing_events, list_viewing_events_for_year};
 pub use tmdb::tmdb_request;
 pub use tvtime::{import_movie_seen, import_series_progress};
 pub use updater::{has_updater_config, updater_is_configured};
