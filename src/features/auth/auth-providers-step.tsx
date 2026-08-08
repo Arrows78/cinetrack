@@ -1,18 +1,21 @@
+import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { LoaderCircle, Mail } from "lucide-react";
 
 import type { SocialAuthProvider } from "@/features/auth/auth-client";
 import { ProviderIcon } from "@/features/auth/provider-icon";
 import { cn } from "@/shared/lib/cn";
+import { OAUTH_BRAND_COLORS } from "@/shared/constants/colors";
 
 export type ProviderSettingsStatus = "loading" | "ready" | "unavailable";
 
 const providerIds: Array<{
   provider: SocialAuthProvider;
   className: string;
+  style?: CSSProperties;
 }> = [
   { provider: "apple", className: "bg-white text-black" },
-  { provider: "facebook", className: "bg-[#1877f2] text-white" },
+  { provider: "facebook", className: "text-white", style: { backgroundColor: OAUTH_BRAND_COLORS.facebook } },
   { provider: "google", className: "bg-white text-black" },
   { provider: "x", className: "bg-white text-black" },
 ];
@@ -49,7 +52,7 @@ export function AuthProvidersStep({
       </div>
 
       <div className="mt-8 flex flex-wrap justify-center gap-4">
-        {visibleProviders.map(({ provider, className }) => (
+        {visibleProviders.map(({ provider, className, style }) => (
           <button
             key={provider}
             type="button"
@@ -57,6 +60,7 @@ export function AuthProvidersStep({
             title={t("auth.provider.continueWith", { label: provider === "x" ? "X" : provider })}
             disabled={pendingAction !== null || providerSettingsStatus === "loading"}
             onClick={() => onProvider(provider)}
+            style={style}
             className={cn(
               "flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition hover:-translate-y-1 disabled:cursor-wait disabled:opacity-60 sm:h-[72px] sm:w-[72px]",
               className
@@ -87,13 +91,13 @@ export function AuthProvidersStep({
       ) : null}
 
       {providerSettingsStatus === "ready" && enabledSocialProviders.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
+        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-xs leading-5 text-white/90">
           {t("auth.status.noProvidersEnabled")}
         </p>
       ) : null}
 
       {providerSettingsStatus === "unavailable" ? (
-        <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-center text-xs leading-5 text-amber-100">
+        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-xs leading-5 text-white/90">
           {t("auth.status.providerConfigError")}
         </p>
       ) : null}

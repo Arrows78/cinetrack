@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/shared/lib/cn";
+import { MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
@@ -31,13 +32,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
         />
 
         {/* Cinematic gradient overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.1) 70%, transparent 100%)",
-          }}
-        />
+        <div className="absolute inset-0" style={{ background: MEDIA_POSTER_SCRIM }} />
 
         {/* Shine effect on hover */}
         <div className="absolute inset-0 overflow-hidden opacity-0 transition-opacity duration-medium group-hover:opacity-100">
@@ -46,7 +41,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
 
         {/* Top: rating badge */}
         <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-transform duration-base group-hover:scale-110">
-          <span className="text-amber-400">★</span>
+          <span className="text-rating">★</span>
           {formatRating(media.rating)}
         </div>
 

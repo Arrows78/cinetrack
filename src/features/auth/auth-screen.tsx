@@ -195,7 +195,7 @@ export function AuthScreen() {
           </div>
         </div>
 
-        <section className="w-full max-w-[560px] rounded-shell border border-white/10 bg-zinc-900/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">
+        <section className="w-full max-w-[560px] rounded-shell border border-white/10 bg-auth-surface/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">
           <div className="mb-7 grid grid-cols-2 rounded-2xl bg-black/30 p-1">
             {(["signin", "signup"] as const).map((option) => (
               <button
@@ -263,7 +263,7 @@ export function AuthScreen() {
             <p
               role="alert"
               aria-live="polite"
-              className="mt-5 rounded-2xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+              className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-sm text-white/90"
             >
               {visibleError}
             </p>

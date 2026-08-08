@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/cn";
+import { AUTH_BACKDROP_TILE_GRADIENTS, AUTH_BACKDROP_TILE_SHEEN } from "@/shared/constants/decorative-gradients";
 
 const backdropTileKeys = [
   "auth.backdrop.midnight",
@@ -16,21 +17,6 @@ const backdropTileKeys = [
   "auth.backdrop.nocturne",
 ] as const;
 
-const backdropGradients = [
-  "linear-gradient(145deg, #161a28, #2c3658)",
-  "linear-gradient(145deg, #3b1116, #8a272d)",
-  "linear-gradient(145deg, #0f2430, #1d5a70)",
-  "linear-gradient(145deg, #251147, #6d25a8)",
-  "linear-gradient(145deg, #1e1e1e, #585858)",
-  "linear-gradient(145deg, #3a220b, #9c661e)",
-  "linear-gradient(145deg, #12261d, #34704f)",
-  "linear-gradient(145deg, #101825, #314976)",
-  "linear-gradient(145deg, #3c142f, #9e3d77)",
-  "linear-gradient(145deg, #33291c, #8c7048)",
-  "linear-gradient(145deg, #121f39, #315eab)",
-  "linear-gradient(145deg, #17131d, #4d3b60)",
-];
-
 export function AuthBackdrop() {
   const { t } = useTranslation();
 
@@ -44,9 +30,9 @@ export function AuthBackdrop() {
             index % 4 === 1 && "translate-y-8",
             index % 4 === 3 && "-translate-y-5"
           )}
-          style={{ background: backdropGradients[index] }}
+          style={{ background: AUTH_BACKDROP_TILE_GRADIENTS[index] }}
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.2),transparent_45%)]" />
+          <div className="absolute inset-0" style={{ background: AUTH_BACKDROP_TILE_SHEEN }} />
           <p className="absolute inset-x-2 bottom-3 text-center text-overline font-black text-white/70">{t(key)}</p>
         </div>
       ))}

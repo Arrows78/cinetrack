@@ -67,6 +67,11 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        rating: "hsl(var(--rating))",
+        // Theme-invariant tokens for the always-dark auth screen — see
+        // styles/index.css for why it can't use the regular light/dark tokens.
+        "auth-surface": "hsl(var(--auth-surface))",
+        "auth-destructive": "hsl(var(--auth-destructive))",
       },
       borderRadius: {
         lg: "var(--radius)",

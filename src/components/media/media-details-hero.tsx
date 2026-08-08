@@ -68,7 +68,7 @@ export function MediaDetailsHero({
 
             {/* Meta */}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-              <span className="flex items-center gap-1 text-amber-400">
+              <span className="flex items-center gap-1 text-rating">
                 <span>★</span>
                 <span className="font-semibold text-foreground">{formatRating(media.rating)}</span>
               </span>

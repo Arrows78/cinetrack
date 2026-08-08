@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   ArrowDown,
@@ -199,6 +200,7 @@ function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor:
 }
 
 export function DesignSystemPage() {
+  const { t } = useTranslation();
   const preferences = usePreferences();
   const theme = preferences.data?.theme ?? "dark";
   const accent = preferences.data?.accentColor ?? "violet";
@@ -263,7 +265,7 @@ export function DesignSystemPage() {
                   style={{ backgroundColor: `hsl(${theme === "dark" ? activePreset.dark : activePreset.light})` }}
                   aria-hidden="true"
                 />
-                {activePreset.label}
+                {t(`colors.${accent}`)}
               </dd>
             </div>
             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">

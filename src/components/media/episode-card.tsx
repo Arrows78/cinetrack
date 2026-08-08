@@ -64,7 +64,7 @@ export function EpisodeCard({
           {episode.rating && !hidden ? (
             <>
               <span>•</span>
-              <span className="text-amber-400/80">★ {formatRating(episode.rating)}</span>
+              <span className="text-rating/80">★ {formatRating(episode.rating)}</span>
             </>
           ) : null}
         </div>

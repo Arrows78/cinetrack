@@ -5,8 +5,6 @@ export interface ColorPreset {
   dark: string;
   /** HSL values for light theme (darker for readability on light bg) */
   light: string;
-  /** Display label */
-  label: string;
   /** CSS hsl() string for swatches (light variant for settings UI) */
   swatch: string;
 }
@@ -24,51 +22,60 @@ export const COLOR_PRESETS: Record<AccentColor, ColorPreset> = {
   violet: {
     dark: "252 80% 70%",
     light: "252 80% 42%",
-    label: "Violet",
     swatch: "hsl(252 80% 42%)",
   },
   blue: {
     dark: "217 88% 68%",
     light: "217 88% 39%",
-    label: "Bleu",
     swatch: "hsl(217 88% 39%)",
   },
   teal: {
     dark: "174 72% 52%",
     light: "174 72% 22%",
-    label: "Teal",
     swatch: "hsl(174 72% 22%)",
   },
   green: {
     dark: "142 60% 52%",
     light: "142 60% 24%",
-    label: "Vert",
     swatch: "hsl(142 60% 24%)",
   },
   amber: {
     dark: "38 90% 58%",
     light: "38 90% 24%",
-    label: "Ambre",
     swatch: "hsl(38 90% 24%)",
   },
   orange: {
     dark: "22 88% 60%",
     light: "22 88% 39%",
-    label: "Orange",
     swatch: "hsl(22 88% 39%)",
   },
   rose: {
     dark: "338 78% 67%",
     light: "338 78% 41%",
-    label: "Rose",
     swatch: "hsl(338 78% 41%)",
   },
   red: {
     dark: "0 74% 65%",
     light: "0 74% 44%",
-    label: "Rouge",
     swatch: "hsl(0 74% 44%)",
   },
 };
 
 export const DEFAULT_ACCENT: AccentColor = "violet";
+
+/**
+ * Official brand colors for social sign-in providers (see provider-icon.tsx
+ * and auth-providers-step.tsx). These can't be theme tokens — a provider's
+ * brand color is fixed by that provider, not by CineTrack's own light/dark
+ * or accent system — so they live here as a documented reference constant
+ * instead of scattered hex literals.
+ */
+export const OAUTH_BRAND_COLORS = {
+  google: {
+    blue: "#4285F4",
+    green: "#34A853",
+    yellow: "#FBBC05",
+    red: "#EA4335",
+  },
+  facebook: "#1877F2",
+} as const;

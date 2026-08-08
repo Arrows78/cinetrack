@@ -80,16 +80,16 @@ describe("contrastRatio", () => {
     const darkForeground = "225 25% 10%";
     const lightForeground = "0 0% 98%";
 
-    for (const preset of Object.values(COLOR_PRESETS)) {
-      expect(contrastRatio(preset.dark, darkForeground), `${preset.label} dark`).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(preset.light, lightForeground), `${preset.label} light`).toBeGreaterThanOrEqual(4.5);
+    for (const [accent, preset] of Object.entries(COLOR_PRESETS)) {
+      expect(contrastRatio(preset.dark, darkForeground), `${accent} dark`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(preset.light, lightForeground), `${accent} light`).toBeGreaterThanOrEqual(4.5);
       expect(
         contrastRatio(preset.dark, darkTokens.background),
-        `${preset.label} as text on dark background`
+        `${accent} as text on dark background`
       ).toBeGreaterThanOrEqual(4.5);
       expect(
         contrastRatio(preset.light, lightTokens.background),
-        `${preset.label} as text on light background`
+        `${accent} as text on light background`
       ).toBeGreaterThanOrEqual(4.5);
     }
   });

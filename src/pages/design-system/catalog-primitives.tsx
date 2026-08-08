@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Moon, Sun } from "lucide-react";
 
 import type { AccentColor, ColorPreset } from "@/shared/constants/colors";
@@ -151,6 +152,7 @@ export function AccentPresetCard({
   preset: ColorPreset;
   selected: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -160,7 +162,7 @@ export function AccentPresetCard({
     >
       <div className="mb-4 flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold">{preset.label}</p>
+          <p className="text-sm font-semibold">{t(`colors.${accent}`)}</p>
           <p className="font-mono text-caption text-muted-foreground">reference.accent.{accent}</p>
         </div>
         {selected ? (

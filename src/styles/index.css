@@ -106,6 +106,22 @@
   --warning: 38 92% 50%;
   --warning-foreground: 225 25% 10%;
 
+  /* Star-rating gold — formalizes a raw amber-400 literal repeated
+     identically across media-card.tsx/media-details-hero.tsx/episode-card.tsx.
+     Theme-invariant like success/warning above: a gold rating star reads the
+     same regardless of light/dark theme, so no .light override. Lossless
+     rename — matches Tailwind's amber-400 exactly. */
+  --rating: 43 96% 56%;
+
+  /* Auth screen tokens — auth-screen.tsx/auth-backdrop.tsx are deliberately
+     always dark (bg-black/text-white) regardless of the app's light/dark
+     preference, for the cinematic sign-in identity. Using the regular
+     theme-switched tokens above (--card, --destructive, --foreground, ...)
+     would break in light theme, since this screen's background never
+     switches with them. No .light override, by design. */
+  --auth-surface: 240 6% 10%; /* zinc-900 equivalent — the auth panel background */
+  --auth-destructive: 0 84% 60%; /* red-500 equivalent — the auth error message tint */
+
   --border: 222 15% 22%;
   --input: 222 15% 22%;
   --ring: 252 80% 70%; /* matches the default violet dark preset */
