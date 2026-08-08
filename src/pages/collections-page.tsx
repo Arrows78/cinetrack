@@ -22,7 +22,12 @@ function ListContents({ listId }: { listId: string }) {
   const [pendingRemoval, setPendingRemoval] = useState<{ mediaId: number; mediaType: MediaType; title: string } | null>(
     null
   );
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
+  if (items.isLoading) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>;
+  if (items.isError) {
+    return <RemoteErrorState error={items.error} onRetry={() => void items.refetch()} />;
+  }
   if (!items.data?.length) return <p className="text-sm text-muted-foreground">{t("collections.emptyList")}</p>;
   return (
     <div className="grid gap-2">
@@ -45,6 +50,7 @@ function ListContents({ listId }: { listId: string }) {
           </Button>
         </Tile>
       ))}
+      {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}
       <ConfirmDialog
         open={pendingRemoval !== null}
         onOpenChange={(open) => !open && setPendingRemoval(null)}
@@ -53,7 +59,12 @@ function ListContents({ listId }: { listId: string }) {
         cancelLabel={t("common.cancel")}
         onConfirm={() => {
           if (!pendingRemoval) return;
-          void items.remove({ mediaId: pendingRemoval.mediaId, mediaType: pendingRemoval.mediaType });
+          setRemoveError(null);
+          void items
+            .remove({ mediaId: pendingRemoval.mediaId, mediaType: pendingRemoval.mediaType })
+            .catch((error: unknown) =>
+              setRemoveError(error instanceof Error ? error.message : t("desktop.operationFailed"))
+            );
           setPendingRemoval(null);
         }}
       />
@@ -72,6 +83,7 @@ export function CollectionsPage() {
   const [openedList, setOpenedList] = useState<string | null>(null);
   const [pendingDeleteList, setPendingDeleteList] = useState<{ id: string; name: string } | null>(null);
   const [listSort, setListSort] = useState<"recent" | "name">("recent");
+  const [listActionError, setListActionError] = useState<string | null>(null);
 
   const currentProfile = profiles.data?.find((profile) => profile.id === preferences.data?.activeProfileId);
 
@@ -149,17 +161,24 @@ export function CollectionsPage() {
           <Button
             type="button"
             disabled={!listName.trim()}
-            onClick={() =>
-              void lists.create({ name: listName, description: listDescription }).then(() => {
-                setListName("");
-                setListDescription("");
-              })
-            }
+            onClick={() => {
+              setListActionError(null);
+              void lists
+                .create({ name: listName, description: listDescription })
+                .then(() => {
+                  setListName("");
+                  setListDescription("");
+                })
+                .catch((error: unknown) =>
+                  setListActionError(error instanceof Error ? error.message : t("desktop.operationFailed"))
+                );
+            }}
           >
             <ListPlus className="mr-2 size-4" />
             {t("collections.create")}
           </Button>
         </div>
+        {listActionError ? <p className="mt-3 text-sm text-destructive">{listActionError}</p> : null}
         {lists.isError ? (
           <div className="mt-5">
             <RemoteErrorState error={lists.error} onRetry={() => void lists.refetch()} />
@@ -210,7 +229,12 @@ export function CollectionsPage() {
         cancelLabel={t("common.cancel")}
         onConfirm={() => {
           if (!pendingDeleteList) return;
-          void lists.remove(pendingDeleteList.id);
+          setListActionError(null);
+          void lists
+            .remove(pendingDeleteList.id)
+            .catch((error: unknown) =>
+              setListActionError(error instanceof Error ? error.message : t("desktop.operationFailed"))
+            );
           setPendingDeleteList(null);
         }}
       />
