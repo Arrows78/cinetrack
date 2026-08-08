@@ -452,6 +452,8 @@
     "emergencyBackup": "Sauvegarde de secours",
     "backupUpdated": "Sauvegarde de secours actualisée.",
     "restoreBackup": "Restaurer la sauvegarde",
+    "restoreConfirmTitle": "Restaurer la sauvegarde automatique ?",
+    "restoreConfirmDescription": "Ceci remplace tout ce qui est actuellement sur cet appareil — watchlist, bibliothèque, progression, historique, profils — par la sauvegarde du {{date}}. Cette action ne peut pas être annulée depuis cet écran.",
     "shortcuts": "Palette : Ctrl/Cmd+K dans la fenêtre, Ctrl/Cmd+Shift+K au niveau système. Liens : cinetrack://movie/123, cinetrack://series/123 et cinetrack://tonight."
   },
   "sidebar": {

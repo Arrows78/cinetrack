@@ -4,6 +4,7 @@
 // built-in. Under the default jsdom environment, Vite treats this file as
 // browser ("client") code and refuses to bundle a Node built-in into it.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { rename } from "@tauri-apps/plugin-fs";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
@@ -29,6 +30,12 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
     return content;
   }),
   exists: vi.fn(async (path: string) => fsState.files.has(path)),
+  rename: vi.fn(async (oldPath: string, newPath: string) => {
+    const content = fsState.files.get(oldPath);
+    if (content === undefined) throw new Error(`not found: ${oldPath}`);
+    fsState.files.delete(oldPath);
+    fsState.files.set(newPath, content);
+  }),
 }));
 
 beforeEach(() => {
@@ -68,5 +75,27 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
     const { maintenanceService } = await import("../maintenance-service");
 
     await expect(maintenanceService.undoLastRestore()).rejects.toThrow();
+  });
+
+  it("never corrupts the previous pre-restore snapshot if the atomic rename fails mid-write", async () => {
+    const { maintenanceService } = await import("../maintenance-service");
+    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+    await watchlistRepository.save(item(1));
+
+    await maintenanceService.restoreFromBackup({ format: "cinetrack-backup", version: 1, exportedAt: "", data: {} });
+    const goodSnapshot = fsState.files.get("backups/pre-restore.json");
+    expect(goodSnapshot).toBeDefined();
+
+    vi.mocked(rename).mockImplementationOnce(async () => {
+      throw new Error("disk full");
+    });
+    await expect(
+      maintenanceService.restoreFromBackup({ format: "cinetrack-backup", version: 1, exportedAt: "", data: {} })
+    ).rejects.toThrow();
+
+    // The temp file was written, but the previously-valid snapshot was
+    // never touched by the failed rename.
+    expect(fsState.files.get("backups/pre-restore.json.tmp")).toBeDefined();
+    expect(fsState.files.get("backups/pre-restore.json")).toBe(goodSnapshot);
   });
 });

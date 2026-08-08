@@ -127,25 +127,42 @@ struct ViewingEventRow {
 }
 
 async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
-    let watchlist: Vec<WatchlistRow> = sqlx::query_as("SELECT * FROM watchlist_items").fetch_all(pool).await.map_err(ApiError::from)?;
-    let seen_movies: Vec<SeenMovieRow> = sqlx::query_as("SELECT * FROM seen_movies").fetch_all(pool).await.map_err(ApiError::from)?;
+    // All 13 reads share one transaction so the export is a single logical
+    // snapshot — without this, a write landing between two of these
+    // `SELECT *` calls (e.g. a movie marked watched right as the export
+    // reaches viewing_events) could produce a backup mixing state from two
+    // different instants (a watchlist entry gone by the time history
+    // reflects it, or vice versa).
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
+    let watchlist: Vec<WatchlistRow> =
+        sqlx::query_as("SELECT * FROM watchlist_items").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+    let seen_movies: Vec<SeenMovieRow> =
+        sqlx::query_as("SELECT * FROM seen_movies").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
     let episode_progress: Vec<EpisodeProgressRow> =
-        sqlx::query_as("SELECT * FROM episode_progress").fetch_all(pool).await.map_err(ApiError::from)?;
+        sqlx::query_as("SELECT * FROM episode_progress").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
     let tracked_series: Vec<TrackedSeriesRow> =
-        sqlx::query_as("SELECT * FROM tracked_series").fetch_all(pool).await.map_err(ApiError::from)?;
-    let history: Vec<HistoryRow> = sqlx::query_as("SELECT * FROM activity_log").fetch_all(pool).await.map_err(ApiError::from)?;
-    let preferences: Vec<PreferenceRow> = sqlx::query_as("SELECT * FROM preferences").fetch_all(pool).await.map_err(ApiError::from)?;
-    let library: Vec<LibraryRow> = sqlx::query_as("SELECT * FROM library_items").fetch_all(pool).await.map_err(ApiError::from)?;
+        sqlx::query_as("SELECT * FROM tracked_series").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+    let history: Vec<HistoryRow> =
+        sqlx::query_as("SELECT * FROM activity_log").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+    let preferences: Vec<PreferenceRow> =
+        sqlx::query_as("SELECT * FROM preferences").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+    let library: Vec<LibraryRow> =
+        sqlx::query_as("SELECT * FROM library_items").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
     let viewing_events: Vec<ViewingEventRow> =
-        sqlx::query_as("SELECT * FROM viewing_events").fetch_all(pool).await.map_err(ApiError::from)?;
-    let profiles: Vec<ProfileRow> = sqlx::query_as("SELECT * FROM profiles").fetch_all(pool).await.map_err(ApiError::from)?;
-    let custom_lists: Vec<CustomListRow> = sqlx::query_as("SELECT * FROM custom_lists").fetch_all(pool).await.map_err(ApiError::from)?;
+        sqlx::query_as("SELECT * FROM viewing_events").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+    let profiles: Vec<ProfileRow> =
+        sqlx::query_as("SELECT * FROM profiles").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+    let custom_lists: Vec<CustomListRow> =
+        sqlx::query_as("SELECT * FROM custom_lists").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
     let custom_list_items: Vec<CustomListItemRow> =
-        sqlx::query_as("SELECT * FROM custom_list_items").fetch_all(pool).await.map_err(ApiError::from)?;
+        sqlx::query_as("SELECT * FROM custom_list_items").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
     let availability_snapshots: Vec<SnapshotRow> =
-        sqlx::query_as("SELECT * FROM availability_snapshots").fetch_all(pool).await.map_err(ApiError::from)?;
+        sqlx::query_as("SELECT * FROM availability_snapshots").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
     let availability_alerts: Vec<AlertRow> =
-        sqlx::query_as("SELECT * FROM availability_alerts").fetch_all(pool).await.map_err(ApiError::from)?;
+        sqlx::query_as("SELECT * FROM availability_alerts").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+
+    tx.commit().await.map_err(ApiError::from)?;
 
     let mut preferences_map = serde_json::Map::new();
     for row in preferences {

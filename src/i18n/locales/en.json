@@ -452,6 +452,8 @@
     "emergencyBackup": "Emergency backup",
     "backupUpdated": "Emergency backup updated.",
     "restoreBackup": "Restore backup",
+    "restoreConfirmTitle": "Restore the automatic backup?",
+    "restoreConfirmDescription": "This replaces everything currently on this device — watchlist, library, progress, history, profiles — with the backup from {{date}}. This cannot be undone from here.",
     "shortcuts": "Palette: Ctrl/Cmd+K in window, Ctrl/Cmd+Shift+K system-wide. Links: cinetrack://movie/123, cinetrack://series/123 and cinetrack://tonight."
   },
   "sidebar": {

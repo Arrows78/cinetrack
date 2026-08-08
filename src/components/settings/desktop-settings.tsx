@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
 import { isTauriApp } from "@/shared/lib/platform";
+import { formatRelativeDate } from "@/shared/utils/format";
 
 export function DesktopSettings() {
   const { t } = useTranslation();
@@ -17,6 +19,8 @@ export function DesktopSettings() {
   const [autoStart, setAutoStart] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<{ exportedAt: string } | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   useEffect(() => {
     if (isTauriApp())
       void isEnabled()
@@ -33,6 +37,26 @@ export function DesktopSettings() {
       setMessage(error instanceof Error ? error.message : t("desktop.operationFailed"));
     } finally {
       setBusy(false);
+    }
+  };
+  const startRestore = async () => {
+    const info = await maintenanceService.getAutomaticBackupInfo();
+    if (!info) {
+      setMessage(t("backup.noAutomaticBackup"));
+      return;
+    }
+    setPendingRestore(info);
+  };
+  const confirmRestore = async () => {
+    setIsRestoring(true);
+    try {
+      await maintenanceService.restoreAutomaticBackup();
+      window.localStorage.removeItem(QUERY_CACHE_KEY);
+      window.location.reload();
+    } catch (error) {
+      setIsRestoring(false);
+      setPendingRestore(null);
+      setMessage(error instanceof Error ? error.message : t("desktop.operationFailed"));
     }
   };
   return (
@@ -125,17 +149,7 @@ export function DesktopSettings() {
             >
               {t("desktop.emergencyBackup")}
             </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await maintenanceService.restoreAutomaticBackup();
-                  window.localStorage.removeItem(QUERY_CACHE_KEY);
-                  window.location.reload();
-                })
-              }
-            >
+            <Button variant="outline" disabled={busy} onClick={() => void startRestore()}>
               {t("desktop.restoreBackup")}
             </Button>
           </div>
@@ -143,6 +157,18 @@ export function DesktopSettings() {
       ) : null}
       {message ? <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm">{message}</p> : null}
       <p className="text-xs text-muted-foreground">{t("desktop.shortcuts")}</p>
+      <ConfirmDialog
+        open={pendingRestore !== null}
+        onOpenChange={(open) => !open && !isRestoring && setPendingRestore(null)}
+        title={t("desktop.restoreConfirmTitle")}
+        description={t("desktop.restoreConfirmDescription", {
+          date: pendingRestore ? formatRelativeDate(pendingRestore.exportedAt) : "",
+        })}
+        confirmLabel={t("desktop.restoreBackup")}
+        cancelLabel={t("common.cancel")}
+        isConfirming={isRestoring}
+        onConfirm={() => void confirmRestore()}
+      />
     </div>
   );
 }
