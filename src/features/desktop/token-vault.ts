@@ -1,6 +1,7 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { Stronghold, type Client } from "@tauri-apps/plugin-stronghold";
 
+import i18n from "@/i18n";
 import { env } from "@/shared/config/env";
 import { isTauriApp } from "@/shared/lib/platform";
 
@@ -130,7 +131,7 @@ export const tokenVault = {
     const clean = value.trim();
 
     if (!clean) {
-      throw new Error("Le token TMDB est vide.");
+      throw new Error(i18n.t("desktop.tmdbTokenEmpty"));
     }
 
     if (!isTauriApp()) {

@@ -1,4 +1,5 @@
 import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 
@@ -20,7 +21,7 @@ function assertReasonableSize(raw: string): void {
   // .length is UTF-16 code units, not bytes, but it's a close enough proxy
   // for this sanity check — real backups are orders of magnitude smaller.
   if (raw.length > MAX_BACKUP_FILE_BYTES) {
-    throw new Error("Fichier de sauvegarde trop volumineux.");
+    throw new Error(i18n.t("backup.fileTooLarge"));
   }
 }
 
@@ -52,14 +53,14 @@ export const maintenanceService = {
 
   async undoLastRestore(): Promise<void> {
     const raw = await readNamedBackup(PRE_RESTORE_FILE);
-    if (!raw) throw new Error("Aucune sauvegarde pré-restauration trouvée.");
+    if (!raw) throw new Error(i18n.t("backup.noPreRestoreSnapshot"));
     assertReasonableSize(raw);
     await portableData.import(JSON.parse(raw));
   },
 
   async restoreAutomaticBackup(): Promise<void> {
     const raw = await readNamedBackup(BACKUP_FILE);
-    if (!raw) throw new Error("Aucune sauvegarde automatique trouvée.");
+    if (!raw) throw new Error(i18n.t("backup.noAutomaticBackup"));
     assertReasonableSize(raw);
     await maintenanceService.restoreFromBackup(JSON.parse(raw));
   },

@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { cineTrackBackupSchema } from "./backup-schema";
@@ -27,7 +28,12 @@ function parseBackup(value: unknown): CineTrackBackup {
   if (!result.success) {
     const issue = result.error.issues[0];
     const path = issue?.path.length ? ` (${issue.path.join(".")})` : "";
-    throw new Error(`Sauvegarde invalide : ${issue?.message ?? "format non reconnu"}${path}.`);
+    throw new Error(
+      i18n.t("backup.invalidBackupDetail", {
+        message: issue?.message ?? i18n.t("backup.unrecognizedFormat"),
+        path,
+      })
+    );
   }
 
   const data = { ...emptyData(), ...result.data.data } as PortableData;
