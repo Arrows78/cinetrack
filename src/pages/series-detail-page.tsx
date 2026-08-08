@@ -81,9 +81,7 @@ export function SeriesDetailPage() {
         </Panel>
         <div className="space-y-4">
           <Panel tone="subtle">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              {t("series.currentProgress")}
-            </p>
+            <p className="text-overline font-bold uppercase text-muted-foreground">{t("series.currentProgress")}</p>
             <div className="mt-3 flex items-end justify-between gap-3">
               <p className="font-display text-5xl font-bold leading-none">
                 {progress.progressPercent}

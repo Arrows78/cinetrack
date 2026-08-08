@@ -47,9 +47,7 @@ export function AuthBackdrop() {
           style={{ background: backdropGradients[index] }}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.2),transparent_45%)]" />
-          <p className="absolute inset-x-2 bottom-3 text-center text-[11px] font-black tracking-[0.18em] text-white/70">
-            {t(key)}
-          </p>
+          <p className="absolute inset-x-2 bottom-3 text-center text-overline font-black text-white/70">{t(key)}</p>
         </div>
       ))}
       <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/55 to-black" />

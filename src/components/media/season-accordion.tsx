@@ -30,7 +30,7 @@ export function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episod
         />
       ))}
       {episodes.length > max && (
-        <span className="ml-1 text-[10px] text-muted-foreground">+{episodes.length - max}</span>
+        <span className="ml-1 text-caption text-muted-foreground">+{episodes.length - max}</span>
       )}
     </div>
   );

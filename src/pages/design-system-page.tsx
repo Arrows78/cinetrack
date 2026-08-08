@@ -369,7 +369,7 @@ export function DesignSystemPage() {
                 ) : null}
                 <p className="font-mono text-xs text-primary">Layer {layer.step}</p>
                 <h3 className="mt-2 font-display text-lg font-bold">{layer.title}</h3>
-                <code className="mt-3 block break-words rounded-lg bg-foreground/5 p-2 font-mono text-[10px] text-muted-foreground">
+                <code className="mt-3 block break-words rounded-lg bg-foreground/5 p-2 font-mono text-caption text-muted-foreground">
                   {layer.code}
                 </code>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{layer.body}</p>
@@ -747,7 +747,9 @@ export function DesignSystemPage() {
                   )}
                 />
               </button>
-              <code className="font-mono text-[10px] text-muted-foreground">duration-{token.name} · ease-out-expo</code>
+              <code className="font-mono text-caption text-muted-foreground">
+                duration-{token.name} · ease-out-expo
+              </code>
             </div>
           ))}
         </div>
@@ -932,7 +934,7 @@ export function DesignSystemPage() {
                         cells: [
                           <div key={`${item.source}-name`}>
                             <p className="font-semibold text-foreground">{item.name}</p>
-                            <code className="font-mono text-[10px] text-muted-foreground">{item.source}</code>
+                            <code className="font-mono text-caption text-muted-foreground">{item.source}</code>
                           </div>,
                           <Badge key={`${item.source}-layer`} variant="outline">
                             {item.layer}
@@ -1775,7 +1777,7 @@ export function DesignSystemPage() {
         <div className="grid gap-3 md:grid-cols-2">
           {contributionChecklist.map((item, index) => (
             <div key={item} className="flex gap-3 rounded-card border border-border bg-card/30 p-4">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[10px] font-semibold text-primary">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-caption font-semibold text-primary">
                 {index + 1}
               </span>
               <p className="text-sm leading-6 text-muted-foreground">{item}</p>

@@ -131,7 +131,7 @@ export function HomePage() {
 
           <div className="relative px-6 py-8 lg:px-8 lg:py-10">
             {/* Premium badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-primary uppercase animate-in delay-200">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-overline font-semibold text-primary uppercase animate-in delay-200">
               <Sparkles className="h-3 w-3" />
               {t("home.premiumSelection")}
             </div>
@@ -234,7 +234,7 @@ export function HomePage() {
               className="group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/60 px-2 py-4 text-center transition-all duration-fast hover:border-primary/40 hover:bg-primary/10 hover:shadow-glow active:scale-[0.97]"
             >
               <span className="text-2xl leading-none">{genre.icon}</span>
-              <span className="text-[11px] font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
+              <span className="text-caption font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
                 {genre.label}
               </span>
             </Link>

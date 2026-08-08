@@ -54,7 +54,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
         <div className="absolute left-3 top-3">
           <Badge
             variant={media.mediaType === "movie" ? "movie" : "series"}
-            className="px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-sm transition-all duration-base"
+            className="px-2.5 py-0.5 text-overline font-semibold uppercase backdrop-blur-sm transition-all duration-base"
           >
             {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
           </Badge>
@@ -66,19 +66,17 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
             {media.title}
           </p>
           <div className="mt-1.5 flex items-center gap-2">
-            <p className="text-[11px] font-medium tracking-wide text-white/60">
-              {media.year ?? t("media.unknownYear")}
-            </p>
+            <p className="text-caption font-medium text-white/60">{media.year ?? t("media.unknownYear")}</p>
             {media.genres[0] && (
               <>
                 <span className="h-1 w-1 rounded-full bg-white/30" />
-                <p className="truncate text-[11px] font-medium text-white/60">{media.genres[0]}</p>
+                <p className="truncate text-caption font-medium text-white/60">{media.genres[0]}</p>
               </>
             )}
             {showProgress ? (
               <>
                 <span className="h-1 w-1 rounded-full bg-white/30" />
-                <p className="text-[11px] font-medium tabular-nums text-white/60">
+                <p className="text-caption font-medium tabular-nums text-white/60">
                   {progress.watched}/{progress.total}
                 </p>
               </>

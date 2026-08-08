@@ -190,9 +190,7 @@ export function AuthScreen() {
             <span className="text-3xl font-black text-primary">C</span>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/60">
-              {t("sidebar.brand.tagline")}
-            </p>
+            <p className="text-overline font-semibold uppercase text-white/60">{t("sidebar.brand.tagline")}</p>
             <p className="text-3xl font-black tracking-tight">{t("sidebar.brand.name")}</p>
           </div>
         </div>

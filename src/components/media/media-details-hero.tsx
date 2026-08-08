@@ -51,7 +51,7 @@ export function MediaDetailsHero({
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant={media.mediaType === "movie" ? "movie" : "series"}
-                className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                className="px-2.5 py-0.5 text-overline font-bold uppercase"
               >
                 {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
               </Badge>

@@ -68,7 +68,7 @@ export function WcagBadge({ ratio }: { ratio: number | null }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+        "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-caption font-semibold",
         level === "AAA" && "bg-success text-success-foreground",
         level === "AA" && "bg-warning text-warning-foreground",
         level === "Fail" && "bg-destructive text-destructive-foreground"
@@ -123,11 +123,11 @@ export function ColorSwatch({
         <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{usage}</p>
       </div>
       <div className="space-y-1 border-t border-border/60 pt-3">
-        <p className="break-words font-mono text-[11px] text-muted-foreground">
+        <p className="break-words font-mono text-caption text-muted-foreground">
           --{bg}
           {values.bgHsl ? ` · ${values.bgHsl}` : ""}
         </p>
-        <p className="break-words font-mono text-[11px] text-muted-foreground/70">
+        <p className="break-words font-mono text-caption text-muted-foreground/70">
           --{fg}
           {values.fgHsl ? ` · ${values.fgHsl}` : ""}
         </p>
@@ -161,10 +161,10 @@ export function AccentPresetCard({
       <div className="mb-4 flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold">{preset.label}</p>
-          <p className="font-mono text-[10px] text-muted-foreground">reference.accent.{accent}</p>
+          <p className="font-mono text-caption text-muted-foreground">reference.accent.{accent}</p>
         </div>
         {selected ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-caption font-semibold text-primary-foreground">
             <Check className="size-3" aria-hidden="true" /> Active
           </span>
         ) : null}
@@ -184,11 +184,11 @@ export function AccentPresetCard({
               >
                 Aa
               </div>
-              <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+              <div className="flex items-center gap-1 text-caption font-medium text-muted-foreground">
                 <Icon className="size-3" aria-hidden="true" />
                 {theme.label}
               </div>
-              <p className="font-mono text-[10px] text-muted-foreground/70">{value}</p>
+              <p className="font-mono text-caption text-muted-foreground/70">{value}</p>
               <WcagBadge ratio={ratio} />
             </div>
           );
@@ -239,7 +239,7 @@ export function CoverageBadge({ coverage }: { coverage: keyof typeof coverageLab
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+        "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-caption font-semibold",
         coverageClasses[coverage]
       )}
       data-coverage={coverage}
@@ -255,7 +255,7 @@ function MetadataList({ label, values }: { label: string; values: string[] }) {
       <p className="font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {values.map((value) => (
-          <span key={value} className="rounded-md border border-border/70 bg-foreground/[0.03] px-2 py-1 text-[11px]">
+          <span key={value} className="rounded-md border border-border/70 bg-foreground/[0.03] px-2 py-1 text-caption">
             {value}
           </span>
         ))}
@@ -301,7 +301,7 @@ export function ComponentSpec({
           <h3 className="font-display text-heading-sm font-bold">{name}</h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
-        <code className="shrink-0 rounded-lg bg-foreground/5 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+        <code className="shrink-0 rounded-lg bg-foreground/5 px-2 py-1 font-mono text-caption text-muted-foreground">
           {source}
         </code>
       </div>

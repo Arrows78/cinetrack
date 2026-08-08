@@ -86,7 +86,7 @@ export function StatsPage() {
                 style={{ height: `${Math.max(4, (month.count / maxMonth) * 140)}px` }}
                 title={`${month.count} ${t("stats.watches")}`}
               />
-              <span className="text-[10px] text-muted-foreground">{month.month.slice(5)}</span>
+              <span className="text-caption text-muted-foreground">{month.month.slice(5)}</span>
             </div>
           ))}
         </div>

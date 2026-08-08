@@ -45,13 +45,13 @@ export function EpisodeCard({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="text-overline font-bold uppercase text-muted-foreground">
             E{episode.episodeNumber.toString().padStart(2, "0")}
           </span>
-          {watched ? <span className="text-[10px] font-semibold text-primary">{t("media.seen")}</span> : null}
+          {watched ? <span className="text-overline font-semibold text-primary">{t("media.seen")}</span> : null}
         </div>
         <p className="mt-0.5 line-clamp-1 text-sm font-semibold">{hidden ? t("media.hiddenTitle") : episode.title}</p>
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="mt-1 flex items-center gap-1.5 text-caption text-muted-foreground">
           <Calendar className="size-3" />
           <span>{formatDate(episode.airDate)}</span>
           {episode.runtime ? (

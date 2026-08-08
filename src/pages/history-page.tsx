@@ -111,11 +111,11 @@ export function HistoryPage() {
                             S{item.seasonNumber}E{item.episodeNumber} • {item.episodeTitle}
                           </p>
                         ) : null}
-                        <p className="mt-1 text-[11px] text-muted-foreground">
+                        <p className="mt-1 text-caption text-muted-foreground">
                           {t(`history.actions.${labelByAction[action]}`)}
                         </p>
                       </div>
-                      <time className="shrink-0 text-[11px] text-muted-foreground pt-0.5">
+                      <time className="shrink-0 text-caption text-muted-foreground pt-0.5">
                         {formatRelativeDate(item.timestamp)}
                       </time>
                     </div>

@@ -55,7 +55,7 @@ export function SettingsPage() {
                         >
                           {selected ? <Check className="size-4 text-white" /> : null}
                         </div>
-                        <span className="text-[10px] text-muted-foreground">{t(`colors.${key}`)}</span>
+                        <span className="text-caption text-muted-foreground">{t(`colors.${key}`)}</span>
                       </button>
                     );
                   }

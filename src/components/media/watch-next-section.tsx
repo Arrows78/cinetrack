@@ -40,7 +40,7 @@ function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
         <Link
           to="/series/$seriesId"
           params={{ seriesId: String(entry.series.seriesId) }}
-          className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
         >
           <span className="truncate">{entry.series.title}</span>
         </Link>
