@@ -34,6 +34,7 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
         variant="outline"
         disabled={!selected || add.isSaving}
         title={t("collections.addToList")}
+        aria-label={t("collections.addToList")}
         onClick={() => void add.add({ listId: selected, media }).then(() => setSelected(""))}
       >
         <ListPlus className="size-4" />
