@@ -1,18 +1,23 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/cn";
 
 export function ProgressBar({
   value,
   label,
+  ariaLabel,
   showPercent = false,
   size = "default",
   className,
 }: {
   value: number;
   label?: string;
+  /** Accessible name when `label` isn't rendered visibly at this call site (most aren't). Falls back to a generic "N% watched" if neither is given. */
+  ariaLabel?: string;
   showPercent?: boolean;
   size?: "sm" | "default";
   className?: string;
 }) {
+  const { t } = useTranslation();
   const clampedValue = Math.min(100, Math.max(0, value));
   const isComplete = clampedValue >= 100;
 
@@ -29,6 +34,11 @@ export function ProgressBar({
         </div>
       )}
       <div
+        role="progressbar"
+        aria-valuenow={clampedValue}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={ariaLabel ?? label ?? t("media.progressLabel", { percent: clampedValue })}
         className={cn(
           "relative w-full overflow-hidden rounded-full bg-foreground/[0.08]",
           size === "sm" ? "h-1" : "h-1.5"

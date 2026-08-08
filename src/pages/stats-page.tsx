@@ -9,7 +9,9 @@ import { formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
 export function StatsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const monthLabel = (month: string) =>
+    new Intl.DateTimeFormat(i18n.language, { month: "long", year: "numeric" }).format(new Date(`${month}-01`));
   const hours = (minutes: number) =>
     t("stats.durationHoursMinutes", { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
   const stats = useStats();
@@ -98,7 +100,9 @@ export function StatsPage() {
 
       <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
         <h2 className="font-semibold">{t("stats.activity12Months")}</h2>
-        <div className="mt-5 flex h-44 items-end gap-2">
+        {/* Decorative — the sr-only table below is the accessible equivalent,
+            so screen reader users get exact values instead of unlabeled bars. */}
+        <div className="mt-5 flex h-44 items-end gap-2" aria-hidden="true">
           {stats.data.monthlyActivity.map((month) => (
             <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-2">
               <div
@@ -110,6 +114,23 @@ export function StatsPage() {
             </div>
           ))}
         </div>
+        <table className="sr-only">
+          <caption>{t("stats.activity12Months")}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t("stats.month")}</th>
+              <th scope="col">{t("stats.watches")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.data.monthlyActivity.map((month) => (
+              <tr key={month.month}>
+                <td>{monthLabel(month.month)}</td>
+                <td>{month.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Panel>
       <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
         <Panel asChild>
