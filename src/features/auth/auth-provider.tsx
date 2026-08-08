@@ -140,7 +140,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = getAuthClient();
 
     if (!client) {
-      setStatus("ready");
+      // Deferred a microtask out: this branch's setStatus runs synchronously
+      // in the effect body otherwise, which react-hooks/set-state-in-effect
+      // flags — the async client-present branch below is exempt because its
+      // setStatus calls live inside the `initialize()` async function.
+      queueMicrotask(() => setStatus("ready"));
       return;
     }
 

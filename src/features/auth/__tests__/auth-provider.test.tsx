@@ -10,9 +10,10 @@ import { useAuth } from "../auth-context";
 const onAuthStateChangeMock = vi.fn<
   (callback: (event: string, session: unknown) => void) => { data: { subscription: { unsubscribe: () => void } } }
 >(() => ({ data: { subscription: { unsubscribe: vi.fn() } } }));
-const getSessionMock = vi.fn(
-  async (): Promise<{ data: { session: unknown }; error: unknown }> => ({ data: { session: null }, error: null })
-);
+const getSessionMock = vi.fn(async (): Promise<{ data: { session: unknown }; error: unknown }> => ({
+  data: { session: null },
+  error: null,
+}));
 const signInWithOAuthMock = vi.fn();
 const signInWithOtpMock = vi.fn();
 const verifyOtpMock = vi.fn();
@@ -145,7 +146,7 @@ describe("AuthProvider", () => {
       await waitFor(() => expect(result.current.status).toBe("ready"));
 
       await expect(result.current.signInWithProvider("google")).rejects.toThrow();
-      expect(result.current.error).toBeTruthy();
+      await waitFor(() => expect(result.current.error).toBeTruthy());
     });
 
     it("sets the error state and rethrows when Supabase returns an OAuth error", async () => {
@@ -159,6 +160,17 @@ describe("AuthProvider", () => {
   });
 
   describe("requestEmailOtp / verifyEmailOtp", () => {
+    it("throws when Supabase isn't configured", async () => {
+      mockClient = null;
+      const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+
+      await expect(
+        result.current.requestEmailOtp({ email: "a@b.com", marketingOptIn: false, shouldCreateUser: false })
+      ).rejects.toThrow();
+      await expect(result.current.verifyEmailOtp({ email: "a@b.com", token: "123456" })).rejects.toThrow();
+    });
+
     it("requests an OTP for a normalized (trimmed, lowercased) email", async () => {
       signInWithOtpMock.mockResolvedValue({ error: null });
       const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });

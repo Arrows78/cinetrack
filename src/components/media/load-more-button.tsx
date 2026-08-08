@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
@@ -18,7 +18,10 @@ export function LoadMoreButton({ hasNextPage, isFetchingNextPage, onClick }: Loa
   const { t } = useTranslation();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const onClickRef = useRef(onClick);
-  onClickRef.current = onClick;
+
+  useLayoutEffect(() => {
+    onClickRef.current = onClick;
+  }, [onClick]);
 
   useEffect(() => {
     const node = sentinelRef.current;
