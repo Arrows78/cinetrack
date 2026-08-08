@@ -33,7 +33,9 @@ export function AuthBackdrop() {
           style={{ background: AUTH_BACKDROP_TILE_GRADIENTS[index] }}
         >
           <div className="absolute inset-0" style={{ background: AUTH_BACKDROP_TILE_SHEEN }} />
-          <p className="absolute inset-x-2 bottom-3 text-center text-overline font-black text-white/70">{t(key)}</p>
+          <p className="absolute inset-x-2 bottom-3 text-center text-overline font-black text-auth-foreground/70">
+            {t(key)}
+          </p>
         </div>
       ))}
       <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/55 to-black" />

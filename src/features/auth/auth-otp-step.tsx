@@ -32,7 +32,7 @@ export function AuthOtpStep({
       <button
         type="button"
         onClick={onBack}
-        className="mb-7 inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
+        className="mb-7 inline-flex items-center gap-2 text-sm text-auth-foreground/60 hover:text-auth-foreground"
       >
         <ArrowLeft className="h-5 w-5" /> {t("auth.email.changeEmail")}
       </button>
@@ -41,7 +41,7 @@ export function AuthOtpStep({
         <ShieldCheck className="h-6 w-6" />
       </div>
       <h1 className="mt-5 text-3xl font-black">{t("auth.otp.checkInbox")}</h1>
-      <p className="mt-2 text-sm text-white/55">
+      <p className="mt-2 text-sm text-auth-foreground/55">
         {t("auth.otp.enterCode", { length: authConfig.otpLength, email: email.trim() })}
       </p>
 
@@ -55,7 +55,7 @@ export function AuthOtpStep({
         onChange={(event) => onTokenChange(event.target.value.replace(/\D/g, "").slice(0, authConfig.otpLength))}
         placeholder={"0".repeat(authConfig.otpLength)}
         aria-label={t("auth.otp.ariaLabel")}
-        className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-white outline-none placeholder:text-white/20 focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
+        className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-auth-foreground outline-none placeholder:text-auth-foreground/20 focus:border-primary focus-visible:ring-2 focus-visible:ring-ring"
       />
 
       <button
@@ -70,7 +70,7 @@ export function AuthOtpStep({
         type="button"
         disabled={pendingAction !== null || resendSeconds > 0}
         onClick={onResend}
-        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white/65 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-auth-foreground/65 transition hover:bg-white/5 hover:text-auth-foreground disabled:cursor-not-allowed disabled:opacity-45"
       >
         {pendingAction === "resend" ? (
           <LoaderCircle className="h-4 w-4 animate-spin" />

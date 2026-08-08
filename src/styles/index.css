@@ -121,6 +121,7 @@
      switches with them. No .light override, by design. */
   --auth-surface: 240 6% 10%; /* zinc-900 equivalent — the auth panel background */
   --auth-destructive: 0 84% 60%; /* red-500 equivalent — the auth error message tint */
+  --auth-foreground: 0 0% 100%; /* white — the auth screen's text color, same theme-invariant reasoning as above */
 
   --border: 222 15% 22%;
   --input: 222 15% 22%;

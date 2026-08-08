@@ -33,7 +33,7 @@ export function AuthEmailStep({
       <button
         type="button"
         onClick={onBack}
-        className="mb-7 inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
+        className="mb-7 inline-flex items-center gap-2 text-sm text-auth-foreground/60 hover:text-auth-foreground"
       >
         <ArrowLeft className="h-5 w-5" /> {t("auth.email.back")}
       </button>
@@ -41,12 +41,12 @@ export function AuthEmailStep({
       <h1 className="text-3xl font-black">
         {mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}
       </h1>
-      <p className="mt-2 text-sm text-white/55">
+      <p className="mt-2 text-sm text-auth-foreground/55">
         {t("auth.email.sendCodeDescription", { length: authConfig.otpLength })}
       </p>
 
       <div className="mt-7 flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
-        <Mail className="h-6 w-6 text-white/75" />
+        <Mail className="h-6 w-6 text-auth-foreground/75" />
         <input
           autoFocus
           required
@@ -55,12 +55,12 @@ export function AuthEmailStep({
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder={t("auth.email.placeholder")}
-          className="min-w-0 flex-1 rounded-lg bg-transparent text-xl text-white outline-none placeholder:text-white/35 focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-w-0 flex-1 rounded-lg bg-transparent text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35 focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
 
       {mode === "signup" ? (
-        <label className="mt-7 flex cursor-pointer items-start gap-3 text-sm text-white/75">
+        <label className="mt-7 flex cursor-pointer items-start gap-3 text-sm text-auth-foreground/75">
           <button
             type="button"
             role="checkbox"

@@ -182,7 +182,7 @@ export function AuthScreen() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+    <div className="relative min-h-screen overflow-hidden bg-black text-auth-foreground">
       <AuthBackdrop />
       <div className="relative z-10 flex min-h-screen flex-col justify-end px-4 pb-4 pt-24 sm:items-center sm:justify-center sm:p-8">
         <div className="mb-7 flex items-center gap-3 drop-shadow-2xl">
@@ -190,7 +190,9 @@ export function AuthScreen() {
             <span className="text-3xl font-black text-primary">C</span>
           </div>
           <div>
-            <p className="text-overline font-semibold uppercase text-white/60">{t("sidebar.brand.tagline")}</p>
+            <p className="text-overline font-semibold uppercase text-auth-foreground/60">
+              {t("sidebar.brand.tagline")}
+            </p>
             <p className="text-3xl font-black tracking-tight">{t("sidebar.brand.name")}</p>
           </div>
         </div>
@@ -204,7 +206,7 @@ export function AuthScreen() {
                 onClick={() => changeMode(option)}
                 className={cn(
                   "rounded-xl px-4 py-2.5 text-sm font-semibold transition",
-                  mode === option ? "bg-white text-black" : "text-white/60 hover:text-white"
+                  mode === option ? "bg-white text-black" : "text-auth-foreground/60 hover:text-auth-foreground"
                 )}
               >
                 {option === "signin" ? t("auth.tabs.signIn") : t("auth.tabs.signUp")}
@@ -263,13 +265,13 @@ export function AuthScreen() {
             <p
               role="alert"
               aria-live="polite"
-              className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-sm text-white/90"
+              className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-sm text-auth-foreground/90"
             >
               {visibleError}
             </p>
           ) : null}
 
-          <p className="mt-8 text-center text-xs leading-5 text-white/50">
+          <p className="mt-8 text-center text-xs leading-5 text-auth-foreground/50">
             <Trans
               i18nKey="auth.legal.agreeTo"
               components={{

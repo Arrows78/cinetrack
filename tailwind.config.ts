@@ -72,6 +72,7 @@ const config: Config = {
         // styles/index.css for why it can't use the regular light/dark tokens.
         "auth-surface": "hsl(var(--auth-surface))",
         "auth-destructive": "hsl(var(--auth-destructive))",
+        "auth-foreground": "hsl(var(--auth-foreground))",
       },
       borderRadius: {
         lg: "var(--radius)",
