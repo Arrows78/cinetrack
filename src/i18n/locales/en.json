@@ -12,7 +12,8 @@
     "watchTonight": "Watch Tonight",
     "collections": "Collections",
     "calendar": "Calendar",
-    "stats": "Stats"
+    "stats": "Stats",
+    "alerts": "Alerts"
   },
   "media": {
     "overview": "Overview",
@@ -274,6 +275,15 @@
     "removeItemConfirmTitle": "Remove {{title}} from this list?",
     "deleteListConfirmTitle": "Delete the list \"{{name}}\"?",
     "deleteListConfirmDescription": "This deletes the list and all its items. This can't be undone."
+  },
+  "alerts": {
+    "title": "Availability alerts",
+    "subtitle": "Everything you're watching for on a streaming service.",
+    "region": "Region: {{region}}",
+    "remove": "Remove the alert for {{title}}",
+    "removeConfirmTitle": "Remove the alert for \"{{title}}\"?",
+    "emptyTitle": "No active alerts",
+    "emptyDesc": "Turn on an availability alert from a movie or series page to get notified when it shows up on a streaming service."
   },
   "calendar": {
     "title": "Calendar",

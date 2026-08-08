@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  BellRing,
   CalendarDays,
   Clapperboard,
   Dices,
@@ -35,6 +36,7 @@ export const navigationConfig: NavigationItem[] = [
   { label: "Calendar", to: "/calendar", icon: CalendarDays, category: "main", translationKey: "calendar" },
   { label: "Stats", to: "/stats", icon: BarChart3, category: "main", translationKey: "stats" },
   { label: "Activity", to: "/history", icon: History, category: "main", translationKey: "history" },
+  { label: "Alerts", to: "/alerts", icon: BellRing, category: "settings", translationKey: "alerts" },
   { label: "Settings", to: "/settings", icon: Settings, category: "settings", translationKey: "settings" },
 ];
 export const categoryOrder: NavigationCategory[] = ["main", "settings"];

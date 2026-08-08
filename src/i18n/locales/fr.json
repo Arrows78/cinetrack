@@ -12,7 +12,8 @@
     "watchTonight": "Ce soir",
     "collections": "Collections",
     "calendar": "Calendrier",
-    "stats": "Statistiques"
+    "stats": "Statistiques",
+    "alerts": "Alertes"
   },
   "media": {
     "overview": "Synopsis",
@@ -274,6 +275,15 @@
     "removeItemConfirmTitle": "Retirer {{title}} de cette liste ?",
     "deleteListConfirmTitle": "Supprimer la liste « {{name}} » ?",
     "deleteListConfirmDescription": "Cette action supprime la liste et tous ses éléments. Elle est irréversible."
+  },
+  "alerts": {
+    "title": "Alertes de disponibilité",
+    "subtitle": "Tout ce que vous surveillez sur les plateformes de streaming.",
+    "region": "Région : {{region}}",
+    "remove": "Supprimer l'alerte pour {{title}}",
+    "removeConfirmTitle": "Supprimer l'alerte pour « {{title}} » ?",
+    "emptyTitle": "Aucune alerte active",
+    "emptyDesc": "Activez une alerte de disponibilité depuis la fiche d'un film ou d'une série pour être prévenu dès qu'il arrive sur une plateforme de streaming."
   },
   "calendar": {
     "title": "Calendrier",

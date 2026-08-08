@@ -1,7 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { availabilityRepository } from "@/features/availability/availability-repository";
+import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { MediaSummary } from "@/types/media";
+
+export function useAvailabilityAlerts() {
+  const query = useQuery({
+    queryKey: queryKeys.local.availabilityAlerts,
+    queryFn: () => availabilityRepository.listAlerts(),
+  });
+  const removeMutation = useInvalidatingMutation(
+    (id: string) => availabilityRepository.remove(id),
+    [queryKeys.local.availabilityAlerts]
+  );
+  return { ...query, remove: removeMutation.mutateAsync };
+}
+
 export function useAvailabilityAlert(media: MediaSummary, region: string, providerIds: number[]) {
   const client = useQueryClient();
   const query = useQuery({
