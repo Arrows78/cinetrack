@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -51,7 +50,6 @@ export function DesktopSettings() {
     setIsRestoring(true);
     try {
       await maintenanceService.restoreAutomaticBackup();
-      window.localStorage.removeItem(QUERY_CACHE_KEY);
       window.location.reload();
     } catch (error) {
       setIsRestoring(false);

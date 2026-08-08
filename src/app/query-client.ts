@@ -1,6 +1,11 @@
 import { QueryClient } from "@tanstack/react-query";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-export const QUERY_CACHE_KEY = "cinetrack.query-cache.v1";
+// `local.*` (SQLite-backed) queries used to also be persisted to
+// localStorage for up to 7 days as an instant-cold-start cache — removed
+// because it duplicated watchlist/library/history/notes/preferences in a
+// second, less-protected storage location the webview's own JavaScript can
+// read, undermining the local-first privacy story for a purely cosmetic
+// win (SQLite reads over Tauri IPC are already fast). Query state now
+// lives in memory only, for the lifetime of the app process.
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -12,9 +17,4 @@ export const queryClient = new QueryClient({
     },
     mutations: { networkMode: "offlineFirst" },
   },
-});
-export const queryPersister = createSyncStoragePersister({
-  storage: typeof window === "undefined" ? undefined : window.localStorage,
-  key: QUERY_CACHE_KEY,
-  throttleTime: 1000,
 });

@@ -4,7 +4,6 @@ import { Download, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Panel } from "@/components/ui/panel";
-import { QUERY_CACHE_KEY } from "@/app/query-client";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 
@@ -37,7 +36,6 @@ export function BackupTools() {
       }
       const parsed: unknown = JSON.parse(await file.text());
       await maintenanceService.restoreFromBackup(parsed);
-      window.localStorage.removeItem(QUERY_CACHE_KEY);
       window.location.reload();
     } catch (error) {
       setIsImporting(false);
@@ -49,7 +47,6 @@ export function BackupTools() {
   const undoLastImport = async () => {
     try {
       await maintenanceService.undoLastRestore();
-      window.localStorage.removeItem(QUERY_CACHE_KEY);
       window.location.reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t("backup.undoFailed"));
