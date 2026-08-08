@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListPlus, Trash2 } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FilterBar } from "@/components/media/filter-bar";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
@@ -70,8 +71,15 @@ export function CollectionsPage() {
   const [listDescription, setListDescription] = useState("");
   const [openedList, setOpenedList] = useState<string | null>(null);
   const [pendingDeleteList, setPendingDeleteList] = useState<{ id: string; name: string } | null>(null);
+  const [listSort, setListSort] = useState<"recent" | "name">("recent");
 
   const currentProfile = profiles.data?.find((profile) => profile.id === preferences.data?.activeProfileId);
+
+  const sortedLists = useMemo(() => {
+    const base = lists.data ?? [];
+    if (listSort === "name") return base.slice().sort((a, b) => a.name.localeCompare(b.name));
+    return base;
+  }, [lists.data, listSort]);
 
   return (
     <div className="space-y-8">
@@ -112,7 +120,19 @@ export function CollectionsPage() {
       </section>
 
       <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
-        <h2 className="font-semibold">{t("collections.customLists")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold">{t("collections.customLists")}</h2>
+          {(lists.data?.length ?? 0) > 1 ? (
+            <FilterBar
+              value={listSort}
+              onChange={setListSort}
+              options={[
+                { value: "recent", label: t("collections.sortRecent") },
+                { value: "name", label: t("collections.sortName") },
+              ]}
+            />
+          ) : null}
+        </div>
         <div className="mt-4 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
           <Input
             size="sm"
@@ -146,7 +166,7 @@ export function CollectionsPage() {
           </div>
         ) : null}
         <div className="mt-5 grid gap-3">
-          {lists.data?.map((list) => (
+          {sortedLists.map((list) => (
             <Tile asChild key={list.id} className="p-4">
               <article>
                 <div className="flex items-start justify-between gap-3">

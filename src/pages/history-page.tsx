@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -5,6 +6,7 @@ import { History, Clapperboard, Eye, EyeOff, Play, BookmarkPlus, BookmarkMinus }
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Tile } from "@/components/ui/tile";
+import { FilterBar } from "@/components/media/filter-bar";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { formatRelativeDate, percent } from "@/shared/utils/format";
@@ -67,21 +69,42 @@ export function HistoryPage() {
   const { t } = useTranslation();
   const historyQuery = useHistory();
   const trackedSeriesQuery = useTrackedSeries();
+  const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">("all");
+
+  const filteredHistory = useMemo(
+    () => (historyQuery.data ?? []).filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter)),
+    [historyQuery.data, typeFilter]
+  );
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
       {/* Activity timeline */}
       <section>
-        <SectionHeader title={t("history.recentActivity")} subtitle={t("history.recentActivitySubtitle")} index={1} />
+        <SectionHeader
+          title={t("history.recentActivity")}
+          subtitle={t("history.recentActivitySubtitle")}
+          index={1}
+          action={
+            <FilterBar
+              value={typeFilter}
+              onChange={setTypeFilter}
+              options={[
+                { value: "all", label: t("settings.all") },
+                { value: "series", label: t("nav.series") },
+                { value: "movie", label: t("nav.movies") },
+              ]}
+            />
+          }
+        />
 
         {historyQuery.isError ? (
           <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
-        ) : historyQuery.data?.length ? (
+        ) : filteredHistory.length ? (
           <div className="relative">
             {/* Vertical connector */}
             <div className="absolute left-[19px] top-2 bottom-2 w-px bg-foreground/[0.07]" />
 
-            {historyQuery.data.map((item, i) => {
+            {filteredHistory.map((item, i) => {
               const action = item.action as HistoryAction;
               const config = actionConfig[action] ?? actionConfig["movie:watched"];
               const Icon = config.icon;

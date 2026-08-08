@@ -257,6 +257,8 @@
     "linkedTo": "Lié au compte {{email}}",
     "noProfile": "Aucun profil n'est encore associé à ce compte.",
     "customLists": "Listes personnalisées",
+    "sortRecent": "Récent",
+    "sortName": "Nom",
     "namePlaceholder": "Nom",
     "descriptionPlaceholder": "Description facultative",
     "create": "Créer",
