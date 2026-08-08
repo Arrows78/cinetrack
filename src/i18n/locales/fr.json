@@ -198,7 +198,8 @@
     "seasonsAndEpisodesDesc": "Chaque épisode peut être marqué vu ou non vu.",
     "globalProgress": "Progression globale",
     "markSeasonSeen": "Marquer la saison comme vue",
-    "markSeasonUnseen": "Marquer la saison comme non vue"
+    "markSeasonUnseen": "Marquer la saison comme non vue",
+    "openSeasonPage": "Ouvrir la page de la saison"
   },
   "watchlist": {
     "subtitle": "Filtrez et triez votre sélection.",

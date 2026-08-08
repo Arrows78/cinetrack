@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, Maximize2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/media/progress-bar";
@@ -122,6 +123,15 @@ export function SeasonAccordion({
                   >
                     <CheckCheck className="h-4 w-4" />
                     {pct === 100 ? t("series.markSeasonUnseen") : t("series.markSeasonSeen")}
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link
+                      to="/series/$seriesId/season/$seasonNumber"
+                      params={{ seriesId: String(series.id), seasonNumber: String(season.seasonNumber) }}
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                      {t("series.openSeasonPage")}
+                    </Link>
                   </Button>
                 </div>
 

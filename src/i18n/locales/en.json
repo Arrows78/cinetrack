@@ -198,7 +198,8 @@
     "seasonsAndEpisodesDesc": "Each episode can be marked as seen/unseen, with progress per season and overall.",
     "globalProgress": "Global Progress",
     "markSeasonSeen": "Mark season as seen",
-    "markSeasonUnseen": "Mark season as unseen"
+    "markSeasonUnseen": "Mark season as unseen",
+    "openSeasonPage": "Open season page"
   },
   "watchlist": {
     "subtitle": "Filter by type and smartly sort your backlog.",
