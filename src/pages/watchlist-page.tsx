@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 import { Clapperboard } from "lucide-react";
 import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -85,7 +87,16 @@ export function WatchlistPage() {
       ) : filtered.length ? (
         <MediaGrid items={filtered} />
       ) : (
-        <EmptyState icon={Clapperboard} title={t("pages.emptyWatchlist")} description={t("watchlist.emptyDesc")} />
+        <EmptyState
+          icon={Clapperboard}
+          title={t("pages.emptyWatchlist")}
+          description={t("watchlist.emptyDesc")}
+          action={
+            <Button asChild>
+              <Link to="/search">{t("watchlist.exploreCta")}</Link>
+            </Button>
+          }
+        />
       )}
     </div>
   );

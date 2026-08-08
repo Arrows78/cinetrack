@@ -159,6 +159,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
               <button
                 key={value}
                 type="button"
+                aria-pressed={activeTheme === value}
                 onClick={() => void updatePreference({ key: "theme", value })}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-all duration-fast",
@@ -180,6 +181,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
                 variant="ghost"
                 size="icon"
                 aria-label={t(labelKey)}
+                aria-pressed={activeTheme === value}
                 title={t(labelKey)}
                 className={cn(
                   "h-9 w-full rounded-xl",

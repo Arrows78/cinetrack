@@ -46,7 +46,10 @@ export function SettingsPage() {
                     return (
                       <button
                         key={key}
+                        type="button"
                         disabled={isSaving}
+                        aria-pressed={selected}
+                        aria-label={t(`colors.${key}`)}
                         onClick={() => void updatePreference({ key: "accentColor", value: key })}
                         className="flex flex-col items-center gap-1.5 disabled:opacity-50"
                       >
@@ -107,18 +110,21 @@ export function SettingsPage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 variant={preferences?.reduceMotion ? "secondary" : "outline"}
+                aria-pressed={preferences?.reduceMotion ?? false}
                 onClick={() => void updatePreference({ key: "reduceMotion", value: !preferences?.reduceMotion })}
               >
                 {t("settings.reduceAnimations")}
               </Button>
               <Button
                 variant={preferences?.compactMode ? "secondary" : "outline"}
+                aria-pressed={preferences?.compactMode ?? false}
                 onClick={() => void updatePreference({ key: "compactMode", value: !preferences?.compactMode })}
               >
                 {t("settings.compactMode")}
               </Button>
               <Button
                 variant={preferences?.spoilerProtection ? "secondary" : "outline"}
+                aria-pressed={preferences?.spoilerProtection ?? false}
                 onClick={() =>
                   void updatePreference({ key: "spoilerProtection", value: !preferences?.spoilerProtection })
                 }
@@ -127,6 +133,7 @@ export function SettingsPage() {
               </Button>
               <Button
                 variant={preferences?.notificationsEnabled ? "secondary" : "outline"}
+                aria-pressed={preferences?.notificationsEnabled ?? false}
                 onClick={() => void toggleNotifications()}
               >
                 {t("settings.calendarNotifications")}

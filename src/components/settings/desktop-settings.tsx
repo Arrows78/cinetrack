@@ -65,19 +65,14 @@ export function DesktopSettings() {
         <h3 className="font-semibold">{t("desktop.tmdbVault")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{t("desktop.vaultDesc")}</p>
         <div className="mt-3 grid gap-2">
-          <Input
-            size="sm"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={t("desktop.vaultPassword")}
-          />
-          <Textarea
-            className="min-h-24 text-sm"
-            value={token}
-            onChange={(event) => setToken(event.target.value)}
-            placeholder={t("desktop.newToken")}
-          />
+          <label className="grid gap-1.5 text-sm font-medium">
+            {t("desktop.vaultPassword")}
+            <Input size="sm" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </label>
+          <label className="grid gap-1.5 text-sm font-medium">
+            {t("desktop.newToken")}
+            <Textarea className="min-h-24 text-sm" value={token} onChange={(event) => setToken(event.target.value)} />
+          </label>
           <div className="flex gap-2">
             <Button
               disabled={busy || !password || !token.trim()}
@@ -108,6 +103,7 @@ export function DesktopSettings() {
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               variant={autoStart ? "secondary" : "outline"}
+              aria-pressed={autoStart}
               disabled={busy}
               onClick={() =>
                 void run(async () => {
