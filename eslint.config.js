@@ -7,7 +7,10 @@ import prettier from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["dist", "src-tauri/target", "*.config.cjs"],
+    // .claude isn't project source (session state, and any worktrees created
+    // via the worktree tool land under .claude/worktrees/ — their own files
+    // shouldn't be picked up when linting from the main checkout).
+    ignores: ["dist", "src-tauri/target", "*.config.cjs", ".claude"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
