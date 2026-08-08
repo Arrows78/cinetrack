@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { LoaderCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
@@ -41,8 +40,7 @@ export function LoadMoreButton({ hasNextPage, isFetchingNextPage, onClick }: Loa
   if (!hasNextPage) return null;
   return (
     <div ref={sentinelRef} className="flex justify-center pt-8">
-      <Button type="button" variant="outline" onClick={onClick} disabled={isFetchingNextPage}>
-        {isFetchingNextPage ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : null}
+      <Button type="button" variant="outline" onClick={onClick} isLoading={isFetchingNextPage}>
         {isFetchingNextPage ? t("media.loading") : t("media.loadMore")}
       </Button>
     </div>

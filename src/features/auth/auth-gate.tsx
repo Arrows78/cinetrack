@@ -1,8 +1,9 @@
 import type { PropsWithChildren } from "react";
 import { useTranslation, Trans } from "react-i18next";
-import { LoaderCircle, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { AuthScreen } from "@/features/auth/auth-screen";
 import { useAuth } from "@/features/auth/auth-context";
+import { LoadingScreen } from "@/components/states/loading-screen";
 
 export function AuthGate({ children }: PropsWithChildren) {
   const { t } = useTranslation();
@@ -11,14 +12,7 @@ export function AuthGate({ children }: PropsWithChildren) {
   if (!required) return children;
 
   if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card/80 px-5 py-4 text-sm text-muted-foreground shadow-xl">
-          <LoaderCircle className="h-5 w-5 animate-spin text-primary" />
-          {t("auth.gate.restoringSession")}
-        </div>
-      </div>
-    );
+    return <LoadingScreen label={t("auth.gate.restoringSession")} />;
   }
 
   if (!configured) {

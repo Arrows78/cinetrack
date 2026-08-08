@@ -766,6 +766,14 @@ export const componentInventory = [
     "Explains an empty result and offers a relevant next action."
   ),
   component(
+    "LoadingScreen",
+    "components/states/loading-screen.tsx",
+    "States",
+    "pattern",
+    "internal",
+    "Full-screen busy indicator shown while auth session or profile resolution is in flight."
+  ),
+  component(
     "LoadingSkeletons",
     "components/states/loading-skeletons.tsx",
     "States",

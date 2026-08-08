@@ -1,7 +1,6 @@
 import { useEffect, type PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { LoaderCircle } from "lucide-react";
 
 import { authConfig } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/auth-context";
@@ -9,17 +8,7 @@ import { CreateProfileScreen } from "@/features/auth/create-profile-screen";
 import { useProfileForSupabaseUser } from "@/features/collections/use-collections";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
-
-function LoadingScreen({ label }: { label: string }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card/80 px-5 py-4 text-sm text-muted-foreground shadow-xl">
-        <LoaderCircle className="h-5 w-5 animate-spin text-primary" />
-        {label}
-      </div>
-    </div>
-  );
-}
+import { LoadingScreen } from "@/components/states/loading-screen";
 
 // Which local profile is active is derived from who is signed in, not
 // picked freely — accessing a profile now requires being the Supabase

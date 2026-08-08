@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { LoaderCircle, Tv, Upload } from "lucide-react";
+import { Tv, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import {
@@ -49,8 +49,8 @@ export function TvTimeImportCard() {
       <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" disabled={running} onClick={() => inputRef.current?.click()}>
-          {running ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
+        <Button type="button" variant="outline" isLoading={running} onClick={() => inputRef.current?.click()}>
+          {!running && <Upload className="size-4" />}
           {t("tvtimeImport.selectFiles")}
         </Button>
         <input
