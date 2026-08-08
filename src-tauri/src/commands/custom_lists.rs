@@ -135,8 +135,20 @@ async fn create_impl(pool: &SqlitePool, profile_id: &str, name: &str, descriptio
 }
 
 async fn remove_impl(pool: &SqlitePool, list_id: &str) -> Result<(), ApiError> {
-    sqlx::query("DELETE FROM custom_list_items WHERE list_id = $1").bind(list_id).execute(pool).await.map_err(ApiError::from)?;
-    sqlx::query("DELETE FROM custom_lists WHERE uuid = $1").bind(list_id).execute(pool).await.map_err(ApiError::from)?;
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
+    sqlx::query("DELETE FROM custom_list_items WHERE list_id = $1")
+        .bind(list_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+    sqlx::query("DELETE FROM custom_lists WHERE uuid = $1")
+        .bind(list_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+
+    tx.commit().await.map_err(ApiError::from)?;
     Ok(())
 }
 
