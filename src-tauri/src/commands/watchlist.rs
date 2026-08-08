@@ -27,18 +27,18 @@ pub struct WatchlistItem {
 }
 
 #[derive(sqlx::FromRow)]
-struct WatchlistRow {
-    uuid: String,
-    profile_id: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    poster_path: Option<String>,
-    backdrop_path: Option<String>,
-    year: Option<i64>,
-    rating: Option<f64>,
-    created_at: String,
-    updated_at: String,
+pub(crate) struct WatchlistRow {
+    pub(crate) uuid: String,
+    pub(crate) profile_id: String,
+    pub(crate) media_id: i64,
+    pub(crate) media_type: String,
+    pub(crate) title: String,
+    pub(crate) poster_path: Option<String>,
+    pub(crate) backdrop_path: Option<String>,
+    pub(crate) year: Option<i64>,
+    pub(crate) rating: Option<f64>,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
 }
 
 impl From<WatchlistRow> for WatchlistItem {

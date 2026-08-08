@@ -3,14 +3,14 @@ use serde_json::Value;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 use tauri::State;
 
-use crate::commands::availability::{AvailabilityAlert, AvailabilitySnapshot};
-use crate::commands::custom_lists::{CustomList, CustomListItem};
-use crate::commands::history::{HistoryAction, ViewingHistoryItem};
-use crate::commands::library::{LibraryItem, LibraryStatus};
-use crate::commands::profiles::UserProfile;
+use crate::commands::availability::{AlertRow, AvailabilityAlert, AvailabilitySnapshot, SnapshotRow};
+use crate::commands::custom_lists::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
+use crate::commands::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
+use crate::commands::library::{LibraryItem, LibraryRow, LibraryStatus};
+use crate::commands::profiles::{ProfileRow, UserProfile};
 use crate::commands::progress::{EpisodeProgress, TrackedSeriesItem};
 use crate::commands::stats::{ViewingEvent, ViewingEventType};
-use crate::commands::watchlist::WatchlistItem;
+use crate::commands::watchlist::{WatchlistItem, WatchlistRow};
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -69,21 +69,6 @@ fn parse_metadata(raw: Option<String>) -> Option<Value> {
 // ---------------------------------------------------------------------
 
 #[derive(sqlx::FromRow)]
-struct WatchlistRow {
-    uuid: String,
-    profile_id: Option<String>,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    poster_path: Option<String>,
-    backdrop_path: Option<String>,
-    year: Option<i64>,
-    rating: Option<f64>,
-    created_at: String,
-    updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
 struct SeenMovieRow {
     profile_id: Option<String>,
     movie_id: i64,
@@ -121,47 +106,9 @@ struct TrackedSeriesRow {
 }
 
 #[derive(sqlx::FromRow)]
-struct HistoryRow {
-    uuid: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    action: String,
-    season_number: Option<i64>,
-    episode_number: Option<i64>,
-    episode_title: Option<String>,
-    metadata: Option<String>,
-    timestamp: String,
-}
-
-#[derive(sqlx::FromRow)]
 struct PreferenceRow {
     key: String,
     value: String,
-}
-
-#[derive(sqlx::FromRow)]
-struct LibraryRow {
-    uuid: String,
-    profile_id: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    poster_path: Option<String>,
-    backdrop_path: Option<String>,
-    year: Option<i64>,
-    rating: Option<f64>,
-    genres: String,
-    status: String,
-    favourite: bool,
-    user_rating: Option<f64>,
-    notes: Option<String>,
-    tags: String,
-    started_at: Option<String>,
-    completed_at: Option<String>,
-    rewatch_count: i64,
-    created_at: String,
-    updated_at: String,
 }
 
 #[derive(sqlx::FromRow)]
@@ -177,60 +124,6 @@ struct ViewingEventRow {
     episode_id: Option<i64>,
     season_number: Option<i64>,
     episode_number: Option<i64>,
-}
-
-#[derive(sqlx::FromRow)]
-struct ProfileRow {
-    uuid: String,
-    name: String,
-    avatar: Option<String>,
-    created_at: String,
-    supabase_user_id: Option<String>,
-}
-
-#[derive(sqlx::FromRow)]
-struct CustomListRow {
-    uuid: String,
-    profile_id: String,
-    name: String,
-    description: Option<String>,
-    created_at: String,
-    updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-struct CustomListItemRow {
-    uuid: String,
-    list_id: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    poster_path: Option<String>,
-    position: i64,
-    added_at: String,
-    updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-struct SnapshotRow {
-    media_id: i64,
-    media_type: String,
-    region: String,
-    provider_ids: String,
-    checked_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-struct AlertRow {
-    uuid: String,
-    profile_id: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    region: String,
-    provider_ids: String,
-    enabled: bool,
-    created_at: String,
 }
 
 async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
@@ -266,7 +159,7 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
             .into_iter()
             .map(|row| WatchlistItem {
                 id: row.uuid,
-                profile_id: Some(row.profile_id.unwrap_or_else(|| "default".to_string())),
+                profile_id: Some(row.profile_id),
                 media_id: row.media_id,
                 media_type: MediaType::from_db_str(&row.media_type),
                 title: row.title,

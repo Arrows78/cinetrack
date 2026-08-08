@@ -79,17 +79,17 @@ pub struct ViewingHistoryItem {
 }
 
 #[derive(sqlx::FromRow)]
-struct HistoryRow {
-    uuid: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    action: String,
-    season_number: Option<i64>,
-    episode_number: Option<i64>,
-    episode_title: Option<String>,
-    metadata: Option<String>,
-    timestamp: String,
+pub(crate) struct HistoryRow {
+    pub(crate) uuid: String,
+    pub(crate) media_id: i64,
+    pub(crate) media_type: String,
+    pub(crate) title: String,
+    pub(crate) action: String,
+    pub(crate) season_number: Option<i64>,
+    pub(crate) episode_number: Option<i64>,
+    pub(crate) episode_title: Option<String>,
+    pub(crate) metadata: Option<String>,
+    pub(crate) timestamp: String,
 }
 
 impl TryFrom<HistoryRow> for ViewingHistoryItem {

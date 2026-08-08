@@ -19,13 +19,13 @@ pub struct CustomList {
 }
 
 #[derive(sqlx::FromRow)]
-struct CustomListRow {
-    uuid: String,
-    profile_id: String,
-    name: String,
-    description: Option<String>,
-    created_at: String,
-    updated_at: String,
+pub(crate) struct CustomListRow {
+    pub(crate) uuid: String,
+    pub(crate) profile_id: String,
+    pub(crate) name: String,
+    pub(crate) description: Option<String>,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
 }
 
 impl From<CustomListRow> for CustomList {
@@ -67,16 +67,16 @@ pub struct CustomListItem {
 }
 
 #[derive(sqlx::FromRow)]
-struct CustomListItemRow {
-    uuid: String,
-    list_id: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    poster_path: Option<String>,
-    position: i64,
-    added_at: String,
-    updated_at: String,
+pub(crate) struct CustomListItemRow {
+    pub(crate) uuid: String,
+    pub(crate) list_id: String,
+    pub(crate) media_id: i64,
+    pub(crate) media_type: String,
+    pub(crate) title: String,
+    pub(crate) poster_path: Option<String>,
+    pub(crate) position: i64,
+    pub(crate) added_at: String,
+    pub(crate) updated_at: String,
 }
 
 impl From<CustomListItemRow> for CustomListItem {

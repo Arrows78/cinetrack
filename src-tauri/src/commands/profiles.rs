@@ -16,12 +16,12 @@ pub struct UserProfile {
 }
 
 #[derive(sqlx::FromRow)]
-struct ProfileRow {
-    uuid: String,
-    name: String,
-    avatar: Option<String>,
-    created_at: String,
-    supabase_user_id: Option<String>,
+pub(crate) struct ProfileRow {
+    pub(crate) uuid: String,
+    pub(crate) name: String,
+    pub(crate) avatar: Option<String>,
+    pub(crate) created_at: String,
+    pub(crate) supabase_user_id: Option<String>,
 }
 
 impl From<ProfileRow> for UserProfile {

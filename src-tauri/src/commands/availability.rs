@@ -43,25 +43,25 @@ pub struct AvailabilitySnapshot {
 }
 
 #[derive(sqlx::FromRow)]
-struct AlertRow {
-    uuid: String,
-    profile_id: String,
-    media_id: i64,
-    media_type: String,
-    title: String,
-    region: String,
-    provider_ids: String,
-    enabled: bool,
-    created_at: String,
+pub(crate) struct AlertRow {
+    pub(crate) uuid: String,
+    pub(crate) profile_id: String,
+    pub(crate) media_id: i64,
+    pub(crate) media_type: String,
+    pub(crate) title: String,
+    pub(crate) region: String,
+    pub(crate) provider_ids: String,
+    pub(crate) enabled: bool,
+    pub(crate) created_at: String,
 }
 
 #[derive(sqlx::FromRow)]
-struct SnapshotRow {
-    media_id: i64,
-    media_type: String,
-    region: String,
-    provider_ids: String,
-    checked_at: String,
+pub(crate) struct SnapshotRow {
+    pub(crate) media_id: i64,
+    pub(crate) media_type: String,
+    pub(crate) region: String,
+    pub(crate) provider_ids: String,
+    pub(crate) checked_at: String,
 }
 
 /// A corrupt provider_ids cell must not make the whole list/snapshot
