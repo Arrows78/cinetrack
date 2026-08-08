@@ -138,6 +138,16 @@ describe("tokenVault", () => {
       expect(tokenVault.getSnapshot()).toEqual({ unlocked: true, configured: true, source: "env" });
     });
 
+    it("initialize() is a no-op once a token is already set", async () => {
+      vi.doMock("@/shared/config/env", () => ({ env: { VITE_TMDB_API_TOKEN: "env-token" } }));
+      const { tokenVault } = await importFresh();
+
+      await tokenVault.initialize();
+
+      expect(tokenVault.getToken()).toBe("env-token");
+      expect(tokenVault.getSnapshot()).toEqual({ unlocked: true, configured: true, source: "env" });
+    });
+
     it("lock() is a no-op for an env-sourced token", async () => {
       vi.doMock("@/shared/config/env", () => ({ env: { VITE_TMDB_API_TOKEN: "env-token" } }));
       const { tokenVault } = await importFresh();

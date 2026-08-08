@@ -106,9 +106,7 @@ export interface TmdbWatchProviderListResponse {
 }
 
 export type TmdbMultiSearchResultDto =
-  | (TmdbMovieDto & { media_type: "movie" })
-  | (TmdbTvDto & { media_type: "tv" })
-  | { media_type: "person" };
+  (TmdbMovieDto & { media_type: "movie" }) | (TmdbTvDto & { media_type: "tv" }) | { media_type: "person" };
 
 export interface TmdbVideoDto {
   id: string;

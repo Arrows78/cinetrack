@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,16 +20,17 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   const [tags, setTags] = useState("");
   const [rewatchCount, setRewatchCount] = useState(0);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [loadedLibraryData, setLoadedLibraryData] = useState(library.data);
 
-  useEffect(() => {
-    if (!library.data) return;
+  if (library.data && library.data !== loadedLibraryData) {
+    setLoadedLibraryData(library.data);
     setStatus(library.data.status);
     setFavourite(library.data.favourite);
     setUserRating(library.data.userRating?.toString() ?? "");
     setNotes(library.data.notes ?? "");
     setTags(library.data.tags.join(", "));
     setRewatchCount(library.data.rewatchCount);
-  }, [library.data]);
+  }
 
   const save = () =>
     library.save({

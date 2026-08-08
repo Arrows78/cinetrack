@@ -1,9 +1,11 @@
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&display=swap");
 @import url("https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=syne@400,500,600,700,800&display=swap");
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+/* Tailwind v4 reads theme extensions/content globs from the legacy JS
+   config via this compat directive rather than requiring a rewrite to
+   CSS-native @theme — see https://tailwindcss.com/docs/upgrade-guide. */
+@config "../../tailwind.config.ts";
 
 /**
  * WCAG contrast audit — every ratio below is computed (relative-luminance
