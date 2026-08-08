@@ -56,9 +56,19 @@ export default defineConfig({
         // The facade is nearly fully covered since the SQL row-mapping moved
         // to portable-data-export.ts / portable-data-import.ts.
         "src/features/backup/portable-data.ts": { statements: 90, branches: 60, functions: 95, lines: 90 },
+        // Config module read at import time (authConfig/getAuthClient); the
+        // OAuth-error-mapping branch inside getAuthClient itself is thin.
+        "src/features/auth/auth-client.ts": { statements: 90, branches: 80, functions: 100, lines: 90 },
+        // Covers init/session/OAuth/OTP/signOut; excludes the Tauri deep-link
+        // import branch (dynamic import, needs a real webview to exercise).
+        "src/features/auth/auth-provider.tsx": { statements: 80, branches: 70, functions: 100, lines: 80 },
+        "src/features/auth/provider-availability.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         // Includes the real-SQLite path for the Supabase-linking methods —
         // see profile-repository.sql.test.ts.
         "src/features/collections/profile-repository.ts": { statements: 80, branches: 70, functions: 95, lines: 80 },
+        // Excludes the real Stronghold vault's native binding surface —
+        // mocked in tests, so only the module's own branching is measured.
+        "src/features/desktop/token-vault.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
         "src/features/history/history-repository.ts": { statements: 35, branches: 25, functions: 60, lines: 35 },
         "src/features/library/library-repository.ts": { statements: 45, branches: 50, functions: 55, lines: 45 },
         "src/features/preferences/preferences-repository.ts": {
@@ -73,6 +83,16 @@ export default defineConfig({
         // directly (calculateSeriesProgress, getNextEpisode, ...).
         "src/features/progress/progress-repository.ts": { statements: 85, branches: 90, functions: 90, lines: 85 },
         "src/features/stats/stats-repository.ts": { statements: 35, branches: 65, functions: 45, lines: 35 },
+        "src/features/tvtime/tvtime-import-repository.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+        // The matching/dedup/progress-reporting pipeline is covered against
+        // a mocked mediaRepository/tvTimeImportRepository — parse-export.ts
+        // (real CSV parsing) is tested separately.
+        "src/features/tvtime/tvtime-import-service.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
         "src/features/watchlist/watchlist-repository.ts": { statements: 45, branches: 45, functions: 75, lines: 45 },
       },
     },
