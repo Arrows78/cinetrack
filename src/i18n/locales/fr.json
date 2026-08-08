@@ -61,7 +61,9 @@
     "openNavigation": "Ouvrir la navigation",
     "loading": "Chargement…",
     "somethingWentWrong": "Une erreur est survenue",
-    "unknownDate": "Date inconnue"
+    "unknownDate": "Date inconnue",
+    "confirm": "Confirmer",
+    "cancel": "Annuler"
   },
   "theme": {
     "dark": "Sombre",
@@ -267,7 +269,10 @@
     "series": "série",
     "customList": "Liste personnalisée",
     "addToAList": "Ajouter à une liste…",
-    "addToList": "Ajouter à la liste"
+    "addToList": "Ajouter à la liste",
+    "removeItemConfirmTitle": "Retirer {{title}} de cette liste ?",
+    "deleteListConfirmTitle": "Supprimer la liste « {{name}} » ?",
+    "deleteListConfirmDescription": "Cette action supprime la liste et tous ses éléments. Elle est irréversible."
   },
   "calendar": {
     "title": "Calendrier",
@@ -357,7 +362,9 @@
     "tagsPlaceholder": "famille, sf, dimanche",
     "privateNotes": "Notes privées",
     "save": "Enregistrer",
-    "remove": "Retirer"
+    "remove": "Retirer",
+    "removeConfirmTitle": "Retirer ce titre de votre bibliothèque ?",
+    "removeConfirmDescription": "Cette action supprime votre statut, note, notes et tags pour ce titre. Elle est irréversible."
   },
   "browserPreview": {
     "message": "Aperçu navigateur — les données SQLite ne sont pas disponibles en dehors de la fenêtre Tauri."
@@ -400,7 +407,9 @@
     "noPreRestoreSnapshot": "Aucune sauvegarde pré-restauration trouvée.",
     "noAutomaticBackup": "Aucune sauvegarde automatique trouvée.",
     "undoLastImport": "Annuler le dernier import",
-    "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée."
+    "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée.",
+    "importConfirmTitle": "Remplacer toutes vos données ?",
+    "importConfirmDescription": "Importer cette sauvegarde remplace votre watchlist, bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier import »."
   },
   "desktop": {
     "operationComplete": "Opération terminée.",

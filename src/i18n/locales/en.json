@@ -61,7 +61,9 @@
     "openNavigation": "Open navigation",
     "loading": "Loading…",
     "somethingWentWrong": "Something went wrong",
-    "unknownDate": "Unknown date"
+    "unknownDate": "Unknown date",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "theme": {
     "dark": "Dark",
@@ -267,7 +269,10 @@
     "series": "series",
     "customList": "Custom list",
     "addToAList": "Add to a list…",
-    "addToList": "Add to the list"
+    "addToList": "Add to the list",
+    "removeItemConfirmTitle": "Remove {{title}} from this list?",
+    "deleteListConfirmTitle": "Delete the list \"{{name}}\"?",
+    "deleteListConfirmDescription": "This deletes the list and all its items. This can't be undone."
   },
   "calendar": {
     "title": "Calendar",
@@ -357,7 +362,9 @@
     "tagsPlaceholder": "family, sci-fi, sunday",
     "privateNotes": "Private notes",
     "save": "Save",
-    "remove": "Remove"
+    "remove": "Remove",
+    "removeConfirmTitle": "Remove this title from your library?",
+    "removeConfirmDescription": "This deletes your status, rating, notes and tags for it. This can't be undone."
   },
   "browserPreview": {
     "message": "Browser preview — SQLite data isn't available outside the Tauri window."
@@ -400,7 +407,9 @@
     "noPreRestoreSnapshot": "No pre-restore snapshot was found.",
     "noAutomaticBackup": "No automatic backup was found.",
     "undoLastImport": "Undo last import",
-    "undoFailed": "Nothing to undo: no pre-import snapshot was found."
+    "undoFailed": "Nothing to undo: no pre-import snapshot was found.",
+    "importConfirmTitle": "Replace all your data?",
+    "importConfirmDescription": "Importing this backup overwrites your current watchlist, library, history and lists. You can undo this right after with \"Undo last import\"."
   },
   "desktop": {
     "operationComplete": "Operation complete.",
