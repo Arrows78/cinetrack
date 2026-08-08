@@ -55,9 +55,12 @@ const themeOptions = [
 
 function getInitials(name: string | null): string {
   if (!name) return "U";
-  const parts = name.trim().split(" ");
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (!parts.length) return "U";
+  const first = parts[0]?.[0] ?? "";
+  if (parts.length === 1) return first.toUpperCase();
+  const last = parts[parts.length - 1]?.[0] ?? "";
+  return (first + last).toUpperCase();
 }
 
 export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {

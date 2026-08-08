@@ -56,7 +56,7 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
 
     await maintenanceService.undoLastRestore();
     expect(await watchlistRepository.list()).toHaveLength(1);
-    expect((await watchlistRepository.list())[0].mediaId).toBe(1);
+    expect((await watchlistRepository.list())[0]!.mediaId).toBe(1);
   });
 
   it("throws when there is nothing to undo", async () => {

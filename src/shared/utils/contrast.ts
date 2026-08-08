@@ -27,7 +27,7 @@ export function parseHsl(value: string): [number, number, number] | null {
     .map((part) => parseFloat(part));
   if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return null;
 
-  const [hue, saturation, lightness] = parts;
+  const [hue, saturation, lightness] = parts as [number, number, number];
   if (saturation < 0 || saturation > 100 || lightness < 0 || lightness > 100) return null;
 
   // CSS accepts wrapped hue values (for example -30deg or 390deg). Normalize

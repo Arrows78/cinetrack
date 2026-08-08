@@ -14,7 +14,7 @@ function tableNames(sqlite: DatabaseSync): string[] {
 }
 
 function userVersion(sqlite: DatabaseSync): number {
-  return (sqlite.prepare("PRAGMA user_version").all() as Array<{ user_version: number }>)[0].user_version;
+  return (sqlite.prepare("PRAGMA user_version").all() as Array<{ user_version: number }>)[0]!.user_version;
 }
 
 describe("runMigrations against real SQLite", () => {
@@ -72,7 +72,7 @@ describe("runMigrations against real SQLite", () => {
       name: string;
     }>;
     expect(rows).toHaveLength(1);
-    expect(rows[0].name).toBe("Principal");
+    expect(rows[0]!.name).toBe("Principal");
   });
 
   describe("id / uuid columns", () => {
@@ -89,7 +89,7 @@ describe("runMigrations against real SQLite", () => {
         uuid: string;
       }>;
       expect(row).toHaveLength(1);
-      expect(row[0].uuid).toBe("list-uuid-1");
+      expect(row[0]!.uuid).toBe("list-uuid-1");
     });
 
     it("rejects a duplicate uuid", async () => {

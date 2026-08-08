@@ -64,7 +64,7 @@ describe("progressRepository", () => {
 
     const progress = await progressRepository.getEpisodeProgress(9);
     expect(progress).toHaveLength(1);
-    expect(progress[0].episodeId).toBe(100);
+    expect(progress[0]!.episodeId).toBe(100);
 
     const tracked = await progressRepository.listTrackedSeries();
     expect(tracked.find((item) => item.seriesId === 9)?.watchedEpisodes).toBe(1);
@@ -119,7 +119,7 @@ describe("progressRepository", () => {
       .all() as Array<{
       count: number;
     }>;
-    expect(rows[0].count).toBe(2);
+    expect(rows[0]!.count).toBe(2);
   });
 
   it("marking a whole season watched applies every episode in one transaction", async () => {
@@ -183,7 +183,7 @@ describe("progressRepository", () => {
       count: number;
     }>;
 
-    expect(after[0].count).toBe(before[0].count);
+    expect(after[0]!.count).toBe(before[0]!.count);
   });
 
   it("marking a series unwatched logs a series:unwatched history entry", async () => {

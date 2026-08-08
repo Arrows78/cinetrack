@@ -62,7 +62,7 @@ describe("mapMovieDto", () => {
     const movie = mapMovieDto(movieDto({ credits: { cast } }));
 
     expect(movie.cast).toHaveLength(12);
-    expect(movie.cast[0].id).toBe(14);
+    expect(movie.cast[0]!.id).toBe(14);
     expect(movie.cast.map((member) => member.order)).toEqual([...Array(12).keys()]);
   });
 
@@ -141,7 +141,7 @@ describe("mapPage", () => {
     const page = mapPage({ page: 2, total_pages: 10, total_results: 200, results: [movieDto()] }, mapMovieDto);
 
     expect(page).toMatchObject({ page: 2, totalPages: 10, totalResults: 200 });
-    expect(page.results[0].id).toBe(550);
+    expect(page.results[0]!.id).toBe(550);
   });
 });
 
@@ -184,6 +184,6 @@ describe("mapPerson", () => {
     } as TmdbPersonDto);
 
     expect(person.knownFor).toHaveLength(1);
-    expect(person.knownFor[0].mediaType).toBe("series");
+    expect(person.knownFor[0]!.mediaType).toBe("series");
   });
 });

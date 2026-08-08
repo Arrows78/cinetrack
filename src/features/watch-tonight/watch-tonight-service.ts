@@ -25,7 +25,7 @@ async function matchesProvider(movie: Movie, provider?: number): Promise<boolean
 
 function shuffle<T>(items: T[]): T[] {
   return items
-    .map((item) => ({ item, key: crypto.getRandomValues(new Uint32Array(1))[0] }))
+    .map((item) => ({ item, key: crypto.getRandomValues(new Uint32Array(1))[0] ?? 0 }))
     .sort((left, right) => left.key - right.key)
     .map(({ item }) => item);
 }

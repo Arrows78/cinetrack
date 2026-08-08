@@ -126,7 +126,7 @@ describe("calendarService", () => {
     const entries = await calendarService.build(60);
 
     expect(entries).toHaveLength(1);
-    expect(entries[0].mediaId).toBe(11);
+    expect(entries[0]!.mediaId).toBe(11);
   });
 
   it("returns entries sorted by date", async () => {

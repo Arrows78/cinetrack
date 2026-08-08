@@ -49,7 +49,7 @@ describe("tmdbFetch (webview transport)", () => {
 
     await tmdbFetch("/movie/550", { language: "fr-FR", region: "", page: undefined, year: 1999 });
 
-    const [url, init] = fetchSpy.mock.calls[0];
+    const [url, init] = fetchSpy.mock.calls[0]!;
     expect(String(url)).toBe("https://api.themoviedb.org/3/movie/550?language=fr-FR&year=1999");
     expect(init.headers.Authorization).toBe("Bearer test-token");
   });

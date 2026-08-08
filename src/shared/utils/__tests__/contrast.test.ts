@@ -17,7 +17,7 @@ function readVariables(selector: string) {
   if (!match) throw new Error(`Missing ${selector} token block`);
 
   return Object.fromEntries(
-    [...match[1].matchAll(/--([\w-]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()])
+    [...match[1]!.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value!.trim()])
   );
 }
 
