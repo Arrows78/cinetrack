@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
@@ -222,22 +223,28 @@ export function HomePage() {
         />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
           {mergedGenres.map((genre) => (
-            <Link
+            <Panel
+              asChild
+              tone="card"
               key={genre.label}
-              to="/search"
-              search={{
-                q: genre.label,
-                scope: "all",
-                genreMovie: genre.movieId ? String(genre.movieId) : undefined,
-                genreSeries: genre.seriesId ? String(genre.seriesId) : undefined,
-              }}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/60 px-2 py-4 text-center transition-all duration-fast hover:border-primary/40 hover:bg-primary/10 hover:shadow-glow active:scale-[0.97]"
+              className="flex flex-col items-center gap-2 px-2 py-4 text-center transition-all duration-fast hover:border-primary/40 hover:bg-primary/10 hover:shadow-glow active:scale-[0.97]"
             >
-              <span className="text-2xl leading-none">{genre.icon}</span>
-              <span className="text-caption font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
-                {genre.label}
-              </span>
-            </Link>
+              <Link
+                to="/search"
+                search={{
+                  q: genre.label,
+                  scope: "all",
+                  genreMovie: genre.movieId ? String(genre.movieId) : undefined,
+                  genreSeries: genre.seriesId ? String(genre.seriesId) : undefined,
+                }}
+                className="group"
+              >
+                <span className="text-2xl leading-none">{genre.icon}</span>
+                <span className="text-caption font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
+                  {genre.label}
+                </span>
+              </Link>
+            </Panel>
           ))}
         </div>
       </section>
@@ -251,21 +258,27 @@ export function HomePage() {
         />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {PLATFORMS.map((platform) => (
-            <Link
+            <Panel
+              asChild
+              tone="card"
               key={platform.id}
-              to="/search"
-              search={{ q: platform.label, scope: "all", provider: String(platform.id) }}
-              className="group flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-4 transition-all duration-fast hover:scale-[1.02] hover:shadow-glow active:scale-[0.98]"
-              style={{ borderColor: `${platform.color}33` }}
+              className="p-4 transition-all duration-fast hover:scale-[1.02] hover:shadow-glow active:scale-[0.98]"
             >
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
-                style={{ backgroundColor: platform.color }}
+              <Link
+                to="/search"
+                search={{ q: platform.label, scope: "all", provider: String(platform.id) }}
+                className="group flex items-center gap-3"
+                style={{ borderColor: `${platform.color}33` }}
               >
-                {platform.initial}
-              </div>
-              <span className="text-sm font-medium">{platform.label}</span>
-            </Link>
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
+                  style={{ backgroundColor: platform.color }}
+                >
+                  {platform.initial}
+                </div>
+                <span className="text-sm font-medium">{platform.label}</span>
+              </Link>
+            </Panel>
           ))}
         </div>
       </section>

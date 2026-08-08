@@ -24,18 +24,17 @@ export function PeoplePage() {
         <h1 className="font-display text-3xl font-bold">{t("people.title")}</h1>
         <p className="text-muted-foreground">{t("people.description")}</p>
       </header>
-      <label
-        className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 animate-in"
-        style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
-      >
-        <Search className="size-4 text-muted-foreground" />
-        <input
-          className="h-12 flex-1 bg-transparent outline-none"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("people.searchPlaceholder")}
-        />
-      </label>
+      <Panel asChild tone="card" className="flex items-center gap-2 px-4 py-0 animate-in">
+        <label style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
+          <Search className="size-4 text-muted-foreground" />
+          <input
+            className="h-12 flex-1 bg-transparent outline-none"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("people.searchPlaceholder")}
+          />
+        </label>
+      </Panel>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {people.data?.results.map((person, index) => (
           <motion.div

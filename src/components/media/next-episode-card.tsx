@@ -22,7 +22,7 @@ export function NextEpisodeCard({
       </Panel>
     );
   return (
-    <div className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
+    <Panel tone="highlight">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">{t("media.nextEpisode")}</p>
@@ -38,6 +38,6 @@ export function NextEpisodeCard({
         <CheckCircle2 className="mr-2 size-4" />
         {t("media.markAsSeen")}
       </Button>
-    </div>
+    </Panel>
   );
 }

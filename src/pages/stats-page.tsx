@@ -64,14 +64,16 @@ export function StatsPage() {
                 <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
               </article>
             </Panel>
-            <article className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
-              <CalendarCheck className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.catchUpBy")}</p>
-              <p className="mt-1 font-display text-3xl font-bold">
-                {forecast.data.catchUpDate ? formatDate(forecast.data.catchUpDate) : "—"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
-            </article>
+            <Panel asChild tone="highlight">
+              <article>
+                <CalendarCheck className="size-5 text-primary" />
+                <p className="mt-4 text-sm text-muted-foreground">{t("stats.catchUpBy")}</p>
+                <p className="mt-1 font-display text-3xl font-bold">
+                  {forecast.data.catchUpDate ? formatDate(forecast.data.catchUpDate) : "—"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
+              </article>
+            </Panel>
           </div>
         </section>
       ) : null}
@@ -105,26 +107,28 @@ export function StatsPage() {
             </div>
           </article>
         </Panel>
-        <article className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-            {t("stats.wrapped", { year: wrapped.data.year })}
-          </p>
-          <p className="mt-3 font-display text-4xl font-bold">{hours(wrapped.data.minutes)}</p>
-          <p className="text-sm text-muted-foreground">{t("stats.activeDays", { count: wrapped.data.activeDays })}</p>
-          <div className="mt-4 grid gap-2 text-sm">
-            <p>
-              {wrapped.data.movies} {t("stats.films")} · {wrapped.data.episodes} {t("stats.episodes")}
+        <Panel asChild tone="highlight">
+          <article>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+              {t("stats.wrapped", { year: wrapped.data.year })}
             </p>
-            <p>
-              {t("stats.favouriteGenre")} <strong>{wrapped.data.favouriteGenre ?? "—"}</strong>
-            </p>
-            {wrapped.data.topTitles.map((item, index) => (
-              <p key={item.title}>
-                {index + 1}. {item.title} · {item.count}
+            <p className="mt-3 font-display text-4xl font-bold">{hours(wrapped.data.minutes)}</p>
+            <p className="text-sm text-muted-foreground">{t("stats.activeDays", { count: wrapped.data.activeDays })}</p>
+            <div className="mt-4 grid gap-2 text-sm">
+              <p>
+                {wrapped.data.movies} {t("stats.films")} · {wrapped.data.episodes} {t("stats.episodes")}
               </p>
-            ))}
-          </div>
-        </article>
+              <p>
+                {t("stats.favouriteGenre")} <strong>{wrapped.data.favouriteGenre ?? "—"}</strong>
+              </p>
+              {wrapped.data.topTitles.map((item, index) => (
+                <p key={item.title}>
+                  {index + 1}. {item.title} · {item.count}
+                </p>
+              ))}
+            </div>
+          </article>
+        </Panel>
       </section>
     </div>
   );
