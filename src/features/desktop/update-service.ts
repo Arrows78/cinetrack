@@ -1,27 +1,26 @@
 import { invoke } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
+import i18n from "@/i18n";
 import { isTauriApp } from "@/shared/lib/platform";
 
 export const updateService = {
   async checkAndInstall(onProgress?: (downloaded: number, total?: number) => void): Promise<string> {
-    if (!isTauriApp()) return "Les mises à jour natives sont disponibles dans l’application desktop.";
+    if (!isTauriApp()) return i18n.t("desktop.updateNativeOnly");
 
     const configured = await invoke<boolean>("updater_is_configured").catch(() => false);
     if (!configured) {
-      return "Le canal de mise à jour desktop n’est pas encore configuré (endpoint et clé publique requis).";
+      return i18n.t("desktop.updateChannelNotConfigured");
     }
 
     const update = await check().catch((error: unknown) => {
       const detail = error instanceof Error ? error.message : String(error);
       if (/endpoint|pubkey|public key|configuration/i.test(detail)) {
-        throw new Error(
-          "Le canal de mise à jour desktop n’est pas encore configuré (endpoint et clé publique requis)."
-        );
+        throw new Error(i18n.t("desktop.updateChannelNotConfigured"));
       }
       throw error;
     });
-    if (!update) return "CineTrack est à jour.";
+    if (!update) return i18n.t("desktop.upToDate");
     let downloaded = 0;
     let total: number | undefined;
     await update.downloadAndInstall((event) => {
@@ -32,6 +31,6 @@ export const updateService = {
       }
     });
     await relaunch();
-    return `Version ${update.version} installée.`;
+    return i18n.t("desktop.updateInstalled", { version: update.version });
   },
 };

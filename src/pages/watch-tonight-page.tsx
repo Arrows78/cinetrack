@@ -38,7 +38,7 @@ export function WatchTonightPage() {
           <option value="">{t("watchTonight.allGenres")}</option>
           {GENRES.movies.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.label}
+              {t(item.labelKey)}
             </option>
           ))}
         </Select>

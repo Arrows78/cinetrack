@@ -17,8 +17,8 @@ import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import type { MediaSummary, SearchScope } from "@/types/media";
 
 const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
-const getGenreName = (id: string | undefined) =>
-  id ? (ALL_GENRES.find((genre) => String(genre.id) === id)?.label ?? id) : null;
+const getGenreLabelKey = (id: string | undefined) =>
+  id ? ALL_GENRES.find((genre) => String(genre.id) === id)?.labelKey : undefined;
 const getPlatformName = (id: string) => PLATFORMS.find((platform) => String(platform.id) === id)?.label ?? id;
 
 export function SearchPage() {
@@ -56,10 +56,14 @@ export function SearchPage() {
     [searchQuery.items]
   );
 
+  const genreName = (id: string | undefined) => {
+    const labelKey = getGenreLabelKey(id);
+    return labelKey ? t(labelKey) : (id ?? null);
+  };
   const filterTitle = hasFilters
     ? [
-        genreMovie ? getGenreName(genreMovie) : null,
-        genreSeries ? getGenreName(genreSeries) : null,
+        genreMovie ? genreName(genreMovie) : null,
+        genreSeries ? genreName(genreSeries) : null,
         provider ? getPlatformName(provider) : null,
       ]
         .filter(Boolean)

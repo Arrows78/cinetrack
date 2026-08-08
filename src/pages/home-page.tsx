@@ -39,13 +39,31 @@ const SERIES_GENRE_ALIASES: Record<string, string> = {
   War: "War & Politics",
 };
 
+interface MergedGenre {
+  id: number;
+  label: string;
+  labelKey: string;
+  icon: string;
+  movieId: number;
+  seriesId: number;
+}
+
+// `label` stays the stable English TMDB name used for matching/dedup/sort
+// below; `labelKey` is what's actually rendered (see the Link's {t(...)}).
 const useMergedGenres = () =>
   useMemo(() => {
-    const seen = new Map<string, { id: number; label: string; icon: string; movieId: number; seriesId: number }>();
+    const seen = new Map<string, MergedGenre>();
     for (const g of GENRES.movies) {
       const seriesLabel = SERIES_GENRE_ALIASES[g.label] ?? g.label;
       const seriesMatch = GENRES.series.find((s) => s.label === seriesLabel);
-      seen.set(g.label, { id: g.id, label: g.label, icon: g.icon, movieId: g.id, seriesId: seriesMatch?.id ?? 0 });
+      seen.set(g.label, {
+        id: g.id,
+        label: g.label,
+        labelKey: g.labelKey,
+        icon: g.icon,
+        movieId: g.id,
+        seriesId: seriesMatch?.id ?? 0,
+      });
     }
     for (const g of GENRES.series) {
       if (!seen.has(g.label) && !Array.from(seen.values()).some((item) => item.seriesId === g.id)) {
@@ -53,6 +71,7 @@ const useMergedGenres = () =>
         seen.set(g.label, {
           id: g.id,
           label: g.label,
+          labelKey: g.labelKey,
           icon: g.icon,
           movieId: movieMatch?.id ?? 0,
           seriesId: g.id,
@@ -232,7 +251,7 @@ export function HomePage() {
               <Link
                 to="/search"
                 search={{
-                  q: genre.label,
+                  q: t(genre.labelKey),
                   scope: "all",
                   genreMovie: genre.movieId ? String(genre.movieId) : undefined,
                   genreSeries: genre.seriesId ? String(genre.seriesId) : undefined,
@@ -241,7 +260,7 @@ export function HomePage() {
               >
                 <span className="text-2xl leading-none">{genre.icon}</span>
                 <span className="text-caption font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
-                  {genre.label}
+                  {t(genre.labelKey)}
                 </span>
               </Link>
             </Panel>
