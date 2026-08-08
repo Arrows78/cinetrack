@@ -38,7 +38,18 @@ export function AppShell() {
         </aside>
 
         <div className="min-w-0">
-          {/* Mobile header */}
+          {/*
+            Mobile header + hamburger Sheet — unreachable inside the real
+            Tauri window (src-tauri/tauri.conf.json enforces minWidth 1100,
+            above the "lg" breakpoint this hides behind at 1024px), so this
+            never renders in the shipped desktop app. Kept deliberately: the
+            app also runs as a plain browser tab in dev (`pnpm dev` on its
+            own, or a browser pointed at the Tauri dev server — see
+            BrowserPreviewBanner and the README's "About pnpm dev" section),
+            where there's no window-size floor and an actual narrow viewport
+            is possible. Revisit only if that dev/browser-preview mode goes
+            away too.
+          */}
           <header className="surface sticky top-4 z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
               {canGoBack ? (
