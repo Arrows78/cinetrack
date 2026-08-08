@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, coverageConfigDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
@@ -8,6 +8,11 @@ export default defineConfig({
     },
   },
   test: {
+    // Vitest's defaultExclude doesn't know about .claude/worktrees/ (other
+    // worktrees created via the worktree tool, co-located under this
+    // checkout) — without this, `pnpm test` also picks up and runs whatever
+    // test files happen to exist in any sibling worktree's own src/.
+    exclude: [...configDefaults.exclude, ".claude/**"],
     environment: "jsdom",
     environmentOptions: {
       jsdom: {
@@ -25,6 +30,9 @@ export default defineConfig({
       // `pnpm test:coverage` still surfaces the real, large gap on
       // components/pages/hooks — narrowing `include` would hide it.
       include: ["src/**/*.{ts,tsx}"],
+      // Otherwise matches any sibling worktree's own src/ too (see the
+      // `test.exclude` comment above).
+      exclude: [...coverageConfigDefaults.exclude, ".claude/**"],
       // Global thresholds aren't meaningful yet (~10% overall, since most
       // UI has no tests at all — see the coverage report). Only enforce a
       // floor on the specific files that already have characterization
