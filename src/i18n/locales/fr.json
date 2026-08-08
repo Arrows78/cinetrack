@@ -333,9 +333,10 @@
     "description": "Trois propositions issues d'abord de votre bibliothèque, puis du catalogue.",
     "allGenres": "Tous les genres",
     "allPlatforms": "Toutes les plateformes",
-    "searching": "Recherche des meilleures options…",
     "maxDuration": "Durée maximale",
-    "retry": "Relancer"
+    "retry": "Relancer",
+    "emptyTitle": "Aucun résultat pour ces filtres",
+    "emptyDesc": "Essayez un genre, une plateforme ou une durée plus large — ou ajoutez des titres à votre bibliothèque « à voir »."
   },
   "library": {
     "myLibrary": "Ma bibliothèque",

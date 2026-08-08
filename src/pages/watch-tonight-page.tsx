@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Dices } from "lucide-react";
+import { Dices, Popcorn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { MediaGrid } from "@/components/media/media-grid";
+import { EmptyState } from "@/components/states/empty-state";
+import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -64,9 +66,15 @@ export function WatchTonightPage() {
           {t("watchTonight.retry")}
         </Button>
       </Panel>
-      {query.isLoading ? <p>{t("watchTonight.searching")}</p> : null}
+      {query.isLoading ? <GridSkeleton count={3} /> : null}
       {query.isError ? <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} /> : null}
-      {!query.isLoading && !query.isError ? <MediaGrid items={query.data ?? []} /> : null}
+      {!query.isLoading && !query.isError ? (
+        query.data?.length ? (
+          <MediaGrid items={query.data} />
+        ) : (
+          <EmptyState icon={Popcorn} title={t("watchTonight.emptyTitle")} description={t("watchTonight.emptyDesc")} />
+        )
+      ) : null}
     </div>
   );
 }
