@@ -5,6 +5,7 @@
     "series": "Series",
     "search": "Search",
     "watchlist": "Watchlist",
+    "library": "Library",
     "history": "Activity",
     "settings": "Settings",
     "people": "People",
@@ -298,6 +299,12 @@
   "library": {
     "myLibrary": "My library",
     "description": "Status, rating, tags, private notes and rewatches.",
+    "subtitle": "Filter by type and status, and sort everything you're tracking.",
+    "recent": "Recent",
+    "title": "Title",
+    "rating": "Rating",
+    "emptyTitle": "Your library is empty",
+    "emptyDesc": "Add a movie or series to your library from its detail page to track status, ratings and progress here.",
     "favourite": "Favourite",
     "status": "Status",
     "statuses": {

@@ -5,6 +5,7 @@
     "series": "Séries",
     "search": "Recherche",
     "watchlist": "À voir",
+    "library": "Bibliothèque",
     "history": "Activité",
     "settings": "Paramètres",
     "people": "Personnes",
@@ -298,6 +299,12 @@
   "library": {
     "myLibrary": "Ma bibliothèque",
     "description": "Statut, note, tags, avis privé et revisionnages.",
+    "subtitle": "Filtrez par type et statut, triez tout ce que vous suivez.",
+    "recent": "Récent",
+    "title": "Titre",
+    "rating": "Note",
+    "emptyTitle": "Votre bibliothèque est vide",
+    "emptyDesc": "Ajoutez un film ou une série à votre bibliothèque depuis sa fiche pour suivre ici statut, note et progression.",
     "favourite": "Favori",
     "status": "Statut",
     "statuses": {
