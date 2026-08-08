@@ -6,6 +6,7 @@ import { SectionHeader } from "@/components/media/section-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
@@ -13,7 +14,10 @@ import { cn } from "@/shared/lib/cn";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
-  const { data: preferences, updatePreference, isSaving } = usePreferences();
+  const { data: preferences, updatePreference, isSaving, isError, error, refetch } = usePreferences();
+  if (isError) {
+    return <RemoteErrorState error={error} onRetry={() => void refetch()} />;
+  }
   const setLanguage = async (language: "fr" | "en") => {
     await updatePreference({ key: "language", value: language });
     await i18n.changeLanguage(language);
