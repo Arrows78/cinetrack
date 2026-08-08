@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import {
   importTvTimeExport,
+  MAX_TVTIME_FILE_BYTES,
+  MAX_TVTIME_FILES,
   type TvTimeImportProgress,
   type TvTimeImportSummary,
 } from "@/features/tvtime/tvtime-import-service";
@@ -24,10 +26,24 @@ export function TvTimeImportCard() {
     if (!fileList?.length || running) return;
     setSummary(null);
     setError(null);
+
+    const files = [...fileList];
+    if (files.length > MAX_TVTIME_FILES) {
+      setError(t("tvtimeImport.tooManyFiles", { max: MAX_TVTIME_FILES }));
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+    const oversized = files.find((file) => file.size > MAX_TVTIME_FILE_BYTES);
+    if (oversized) {
+      setError(t("tvtimeImport.fileTooLarge", { name: oversized.name }));
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
     setProgress({ phase: "series", done: 0, total: 0, label: "" });
 
     try {
-      const contents = await Promise.all([...fileList].map((file) => file.text()));
+      const contents = await Promise.all(files.map((file) => file.text()));
       const result = await importTvTimeExport(contents, setProgress);
       setSummary(result);
       await queryClient.invalidateQueries({ queryKey: ["local"] });

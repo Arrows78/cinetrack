@@ -23,6 +23,14 @@ export interface TvTimeImportSummary {
 
 const CONCURRENCY = 3;
 
+// A TV Time GDPR export is 4 files at most (see tvtimeImport.hint). These
+// ceilings are well above that — generous enough for legitimate re-exports —
+// but still catch an accidental folder-drop or a huge unrelated file before
+// any file.text() call, which is where an unbounded selection would freeze
+// the UI or spike memory.
+export const MAX_TVTIME_FILES = 10;
+export const MAX_TVTIME_FILE_BYTES = 50 * 1024 * 1024;
+
 // "Bodyguard (2018)" → { title: "Bodyguard", year: 2018 }
 const splitTitleYear = (name: string): { title: string; year: number | null } => {
   const match = /^(.*)\s+\((\d{4})\)$/.exec(name.trim());

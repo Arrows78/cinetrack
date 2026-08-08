@@ -574,6 +574,8 @@
     "description": "Rapatriez votre historique TV Time dans CineTrack : épisodes et films vus avec leurs dates d'origine, plus votre liste à voir.",
     "hint": "Sélectionnez les fichiers CSV de votre export RGPD TV Time (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
     "selectFiles": "Sélectionner les CSV",
+    "tooManyFiles": "Sélectionnez au maximum {{max}} fichiers.",
+    "fileTooLarge": "« {{name}} » est trop volumineux pour être importé.",
     "failed": "L'import a échoué",
     "done": "{{episodes}} épisodes importés sur {{series}} séries, {{movies}} films et {{watchlist}} entrées de liste.",
     "unresolvedEpisodeCount_one": "{{count}} ép.",

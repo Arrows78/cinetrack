@@ -574,6 +574,8 @@
     "description": "Bring your TV Time history into CineTrack: watched episodes and movies with their original dates, plus your to-watch list.",
     "hint": "Select the CSV files from your TV Time GDPR export (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
     "selectFiles": "Select CSV files",
+    "tooManyFiles": "Select at most {{max}} files.",
+    "fileTooLarge": "\"{{name}}\" is too large to import.",
     "failed": "Import failed",
     "done": "Imported {{episodes}} episodes across {{series}} series, {{movies}} movies and {{watchlist}} watchlist items.",
     "unresolvedEpisodeCount_one": "{{count}} ep.",

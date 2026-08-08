@@ -39,8 +39,13 @@ import { preferencesRepository } from "@/features/preferences/preferences-reposi
 
 const languageTag = (language: "en" | "fr") => (language === "fr" ? "fr-FR" : "en-US");
 
+interface Context {
+  language: string;
+  region: string;
+}
+
 export class TmdbMediaProvider implements MediaProvider {
-  private async context(region?: string) {
+  private async context(region?: string): Promise<Context> {
     const preferences = await preferencesRepository.getPreferences();
     return {
       language: languageTag(preferences.language),
@@ -49,6 +54,10 @@ export class TmdbMediaProvider implements MediaProvider {
   }
 
   async getHomeFeed(): Promise<HomeFeed> {
+    // Resolved once and passed to each call below — without this, every one
+    // of these 7 methods independently re-reads preferences for the same
+    // single page load.
+    const context = await this.context();
     const [
       trendingSeries,
       topRatedSeries,
@@ -58,13 +67,13 @@ export class TmdbMediaProvider implements MediaProvider {
       nowPlayingMovies,
       upcomingMovies,
     ] = await Promise.all([
-      this.getTrendingSeries(),
-      this.getTopRatedSeries(),
-      this.getOnTheAirSeries(),
-      this.getTrendingMovies(),
-      this.getTopRatedMovies(),
-      this.getNowPlayingMovies(),
-      this.getUpcomingMovies(),
+      this.getTrendingSeries(1, context),
+      this.getTopRatedSeries(1, context),
+      this.getOnTheAirSeries(1, context),
+      this.getTrendingMovies(1, context),
+      this.getTopRatedMovies(1, context),
+      this.getNowPlayingMovies(1, context),
+      this.getUpcomingMovies(1, context),
     ]);
 
     return {
@@ -78,44 +87,49 @@ export class TmdbMediaProvider implements MediaProvider {
     };
   }
 
-  async getTrendingSeries(page = 1): Promise<PageResult<Series>> {
-    const { language } = await this.context();
+  // The optional `context` param on this and the next 6 methods isn't part
+  // of the MediaProvider interface — it only exists so getHomeFeed can
+  // inject one pre-resolved context instead of each method reading
+  // preferences on its own. Every other caller keeps calling these with
+  // just a page number, same as before.
+  async getTrendingSeries(page = 1, context?: Context): Promise<PageResult<Series>> {
+    const { language } = context ?? (await this.context());
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/trending/tv/week", { language, page });
     return mapPage(response, mapSeriesDto);
   }
 
-  async getTopRatedSeries(page = 1): Promise<PageResult<Series>> {
-    const { language } = await this.context();
+  async getTopRatedSeries(page = 1, context?: Context): Promise<PageResult<Series>> {
+    const { language } = context ?? (await this.context());
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/tv/top_rated", { language, page });
     return mapPage(response, mapSeriesDto);
   }
 
-  async getOnTheAirSeries(page = 1): Promise<PageResult<Series>> {
-    const { language } = await this.context();
+  async getOnTheAirSeries(page = 1, context?: Context): Promise<PageResult<Series>> {
+    const { language } = context ?? (await this.context());
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/tv/on_the_air", { language, page });
     return mapPage(response, mapSeriesDto);
   }
 
-  async getTrendingMovies(page = 1): Promise<PageResult<Movie>> {
-    const { language } = await this.context();
+  async getTrendingMovies(page = 1, context?: Context): Promise<PageResult<Movie>> {
+    const { language } = context ?? (await this.context());
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/trending/movie/week", { language, page });
     return mapPage(response, mapMovieDto);
   }
 
-  async getTopRatedMovies(page = 1): Promise<PageResult<Movie>> {
-    const { language } = await this.context();
+  async getTopRatedMovies(page = 1, context?: Context): Promise<PageResult<Movie>> {
+    const { language } = context ?? (await this.context());
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/movie/top_rated", { language, page });
     return mapPage(response, mapMovieDto);
   }
 
-  async getNowPlayingMovies(page = 1): Promise<PageResult<Movie>> {
-    const { language, region } = await this.context();
+  async getNowPlayingMovies(page = 1, context?: Context): Promise<PageResult<Movie>> {
+    const { language, region } = context ?? (await this.context());
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/movie/now_playing", { language, region, page });
     return mapPage(response, mapMovieDto);
   }
 
-  async getUpcomingMovies(page = 1): Promise<PageResult<Movie>> {
-    const { language, region } = await this.context();
+  async getUpcomingMovies(page = 1, context?: Context): Promise<PageResult<Movie>> {
+    const { language, region } = context ?? (await this.context());
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/movie/upcoming", { language, region, page });
     return mapPage(response, mapMovieDto);
   }
