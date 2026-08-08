@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { History, Clapperboard, Eye, EyeOff, Play, BookmarkPlus, BookmarkMinus } from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { Tile } from "@/components/ui/tile";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { formatRelativeDate, percent } from "@/shared/utils/format";
@@ -147,38 +148,43 @@ export function HistoryPage() {
             {trackedSeriesQuery.data?.map((item, i) => {
               const progress = percent(item.watchedEpisodes, item.totalEpisodes);
               return (
-                <motion.div
+                <Tile
+                  asChild
                   key={item.seriesId}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05, type: "spring", stiffness: 220, damping: 28 }}
-                  className="group relative overflow-hidden rounded-2xl border border-border bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.06]"
+                  className="bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.06]"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold leading-snug">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {item.watchedEpisodes}/{item.totalEpisodes} {t("history.episodesWatched")}
-                      </p>
+                  <motion.div
+                    className="group relative overflow-hidden"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05, type: "spring", stiffness: 220, damping: 28 }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold leading-snug">{item.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {item.watchedEpisodes}/{item.totalEpisodes} {t("history.episodesWatched")}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-display text-2xl font-bold text-primary leading-none">
+                          {progress}
+                          <span className="text-sm font-normal text-primary/60">%</span>
+                        </p>
+                      </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-display text-2xl font-bold text-primary leading-none">
-                        {progress}
-                        <span className="text-sm font-normal text-primary/60">%</span>
-                      </p>
+                    <div className="mt-3">
+                      <ProgressBar value={progress} />
                     </div>
-                  </div>
-                  <div className="mt-3">
-                    <ProgressBar value={progress} />
-                  </div>
-                  {/* Full-card link */}
-                  <Link
-                    to="/series/$seriesId"
-                    params={{ seriesId: String(item.seriesId) }}
-                    className="absolute inset-0 rounded-2xl"
-                    aria-label={item.title}
-                  />
-                </motion.div>
+                    {/* Full-card link */}
+                    <Link
+                      to="/series/$seriesId"
+                      params={{ seriesId: String(item.seriesId) }}
+                      className="absolute inset-0 rounded-xl"
+                      aria-label={item.title}
+                    />
+                  </motion.div>
+                </Tile>
               );
             })}
           </div>
