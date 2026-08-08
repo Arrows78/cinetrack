@@ -7,9 +7,10 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
-const hours = (minutes: number) => `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 export function StatsPage() {
   const { t } = useTranslation();
+  const hours = (minutes: number) =>
+    t("stats.durationHoursMinutes", { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
   const stats = useStats();
   const wrapped = useWrapped();
   const forecast = useWatchForecast();
@@ -29,7 +30,11 @@ export function StatsPage() {
     { label: t("stats.moviesWatched"), value: stats.data.moviesWatched, icon: Film },
     { label: t("stats.episodesWatched"), value: stats.data.episodesWatched, icon: Tv },
     { label: t("stats.timeWatched"), value: hours(stats.data.minutesWatched), icon: Clock },
-    { label: t("stats.currentStreak"), value: `${stats.data.currentStreakDays} j`, icon: Flame },
+    {
+      label: t("stats.currentStreak"),
+      value: t("stats.streakDays", { count: stats.data.currentStreakDays }),
+      icon: Flame,
+    },
     { label: t("stats.averageRating"), value: stats.data.averageUserRating?.toFixed(1) ?? "—", icon: Star },
     { label: t("stats.libraryCompleted"), value: `${stats.data.watchlistCompletionPercent}%`, icon: BarChart3 },
   ];

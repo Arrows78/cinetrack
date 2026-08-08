@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { enUS, fr } from "date-fns/locale";
 import i18n from "@/i18n";
 
@@ -19,6 +19,15 @@ export const formatDate = (value?: string | null) => {
     return value;
   }
 };
+
+/**
+ * Full weekday + date (e.g. "samedi 8 août 2026") — calendar page's group
+ * headers. Uses parseISO rather than `new Date(value)`: TMDB release/air
+ * dates are date-only ("2026-08-08"), which `new Date()` parses as UTC
+ * midnight — shifted a day earlier in any negative-UTC-offset timezone once
+ * displayed locally. parseISO reads a date-only string as local midnight.
+ */
+export const formatFullDate = (value: string) => format(parseISO(value), "EEEE d MMMM yyyy", { locale: dateLocale() });
 
 export const formatRelativeDate = (value?: string | null) => {
   if (!value) return i18n.t("common.unknownDate");

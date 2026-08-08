@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { format, parseISO } from "date-fns";
 import { CalendarDays, Film, Tv } from "lucide-react";
 import { useEffect } from "react";
 import { useCalendar } from "@/features/calendar/use-calendar";
@@ -11,6 +10,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { staggerDelayMs } from "@/shared/utils/animation";
+import { formatFullDate } from "@/shared/utils/format";
 
 export function CalendarPage() {
   const { t } = useTranslation();
@@ -37,7 +37,7 @@ export function CalendarPage() {
       {calendar.isError ? <RemoteErrorState error={calendar.error} onRetry={() => void calendar.refetch()} /> : null}
       {Object.entries(groups).map(([date, entries], index) => (
         <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 1)}ms` }}>
-          <h2 className="font-semibold capitalize">{format(parseISO(date), "EEEE d MMMM yyyy")}</h2>
+          <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
           <div className="mt-3 grid gap-2">
             {entries?.map((entry) => (
               <Tile key={entry.id} className="flex items-center gap-3 px-3 py-3">
