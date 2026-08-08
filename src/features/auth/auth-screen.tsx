@@ -195,7 +195,7 @@ export function AuthScreen() {
           </div>
         </div>
 
-        <section className="w-full max-w-[560px] rounded-shell border border-white/10 bg-[#1d1d1f]/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">
+        <section className="w-full max-w-[560px] rounded-shell border border-white/10 bg-zinc-900/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">
           <div className="mb-7 grid grid-cols-2 rounded-2xl bg-black/30 p-1">
             {(["signin", "signup"] as const).map((option) => (
               <button

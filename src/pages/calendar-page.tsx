@@ -6,6 +6,7 @@ import { useCalendar } from "@/features/calendar/use-calendar";
 import type { CalendarEntry } from "@/types/media";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
+import { EmptyState } from "@/components/states/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { staggerDelayMs } from "@/shared/utils/animation";
@@ -57,9 +58,7 @@ export function CalendarPage() {
         </Panel>
       ))}
       {!calendar.isLoading && !calendar.data?.length ? (
-        <p className="rounded-3xl border border-dashed border-border p-8 text-center text-muted-foreground">
-          {t("calendar.noUpcoming")}
-        </p>
+        <EmptyState icon={CalendarDays} title={t("calendar.noUpcomingTitle")} description={t("calendar.noUpcoming")} />
       ) : null}
     </div>
   );
