@@ -1,12 +1,14 @@
 import { useQuery, type QueryKey } from "@tanstack/react-query";
 import { progressRepository } from "@/features/progress/progress-repository";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { Episode, MediaSummary, Season } from "@/types/media";
 
 export function useMovieSeen(movieId: number) {
+  const profileId = useActiveProfileId();
   const query = useQuery({
-    queryKey: queryKeys.local.movieSeen(movieId),
+    queryKey: queryKeys.local.movieSeen(profileId, movieId),
     queryFn: () => progressRepository.isMovieSeen(movieId),
     enabled: Number.isFinite(movieId),
   });
@@ -15,9 +17,9 @@ export function useMovieSeen(movieId: number) {
     ({ movie, watched }: { movie: MediaSummary; watched: boolean }) =>
       progressRepository.toggleMovieSeen(movie, watched),
     (_data, variables) => [
-      queryKeys.local.movieSeen(variables.movie.id),
-      queryKeys.local.history,
-      queryKeys.local.stats,
+      queryKeys.local.movieSeen(profileId, variables.movie.id),
+      queryKeys.local.history(profileId),
+      queryKeys.local.stats(profileId),
     ]
   );
 
@@ -28,20 +30,21 @@ export function useMovieSeen(movieId: number) {
   };
 }
 
-export function episodeProgressKeys(seriesId: number): QueryKey[] {
+export function episodeProgressKeys(profileId: string, seriesId: number): QueryKey[] {
   return [
-    queryKeys.local.episodeProgress(seriesId),
-    queryKeys.local.watchNextEpisode(seriesId),
-    queryKeys.local.history,
-    queryKeys.local.trackedSeries,
-    queryKeys.local.stats,
-    queryKeys.local.calendar,
+    queryKeys.local.episodeProgress(profileId, seriesId),
+    queryKeys.local.watchNextEpisode(profileId, seriesId),
+    queryKeys.local.history(profileId),
+    queryKeys.local.trackedSeries(profileId),
+    queryKeys.local.stats(profileId),
+    queryKeys.local.calendar(profileId),
   ];
 }
 
 export function useEpisodeProgress(seriesId: number) {
+  const profileId = useActiveProfileId();
   const query = useQuery({
-    queryKey: queryKeys.local.episodeProgress(seriesId),
+    queryKey: queryKeys.local.episodeProgress(profileId, seriesId),
     queryFn: () => progressRepository.getEpisodeProgress(seriesId),
     enabled: Number.isFinite(seriesId),
   });
@@ -56,7 +59,7 @@ export function useEpisodeProgress(seriesId: number) {
       episode: Episode;
       watched: boolean;
     }) => progressRepository.toggleEpisodeSeen(series, episode, watched),
-    (_data, variables) => episodeProgressKeys(variables.series.id)
+    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
   );
 
   const seasonMutation = useInvalidatingMutation(
@@ -69,7 +72,7 @@ export function useEpisodeProgress(seriesId: number) {
       season: Season;
       watched: boolean;
     }) => progressRepository.markSeason(series, season, watched),
-    (_data, variables) => episodeProgressKeys(variables.series.id)
+    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
   );
 
   const seriesMutation = useInvalidatingMutation(
@@ -82,7 +85,7 @@ export function useEpisodeProgress(seriesId: number) {
       seasons: Season[];
       watched: boolean;
     }) => progressRepository.markSeries(series, seasons, watched),
-    (_data, variables) => episodeProgressKeys(variables.series.id)
+    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
   );
 
   return {
@@ -95,8 +98,9 @@ export function useEpisodeProgress(seriesId: number) {
 }
 
 export function useTrackedSeries() {
+  const profileId = useActiveProfileId();
   return useQuery({
-    queryKey: queryKeys.local.trackedSeries,
+    queryKey: queryKeys.local.trackedSeries(profileId),
     queryFn: () => progressRepository.listTrackedSeries(),
   });
 }

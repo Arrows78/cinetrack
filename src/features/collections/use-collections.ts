@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { customListRepository } from "@/features/collections/custom-list-repository";
 import { profileRepository } from "@/features/collections/profile-repository";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { MediaSummary } from "@/types/media";
@@ -8,10 +9,11 @@ import type { MediaSummary } from "@/types/media";
 export function useProfiles() {
   const query = useQuery({ queryKey: queryKeys.local.profiles, queryFn: () => profileRepository.list() });
   const create = useInvalidatingMutation((name: string) => profileRepository.create(name), [queryKeys.local.profiles]);
-  const remove = useInvalidatingMutation(
-    (id: string) => profileRepository.remove(id),
-    [["local"], queryKeys.local.watchTonight]
-  );
+  // Removing a profile can also reset activeProfileId (see
+  // profileRepository.remove) — ["local"] alone already covers every
+  // profile-scoped key regardless of which profile it's keyed under, so
+  // there's no separate watchTonight key to list here.
+  const remove = useInvalidatingMutation((id: string) => profileRepository.remove(id), [["local"]]);
   return {
     ...query,
     create: create.mutateAsync,
@@ -41,14 +43,18 @@ export function useCreateProfileForSupabaseUser() {
 }
 
 export function useCustomLists() {
-  const query = useQuery({ queryKey: queryKeys.local.customLists, queryFn: () => customListRepository.list() });
+  const profileId = useActiveProfileId();
+  const query = useQuery({
+    queryKey: queryKeys.local.customLists(profileId),
+    queryFn: () => customListRepository.list(),
+  });
   const create = useInvalidatingMutation(
     ({ name, description }: { name: string; description?: string }) => customListRepository.create(name, description),
-    [queryKeys.local.customLists]
+    [queryKeys.local.customLists(profileId)]
   );
   const remove = useInvalidatingMutation(
     (id: string) => customListRepository.remove(id),
-    [queryKeys.local.customLists]
+    [queryKeys.local.customLists(profileId)]
   );
   return {
     ...query,
@@ -59,23 +65,28 @@ export function useCustomLists() {
 }
 
 export function useCustomListItems(listId: string) {
+  const profileId = useActiveProfileId();
   const query = useQuery({
-    queryKey: queryKeys.local.customList(listId),
+    queryKey: queryKeys.local.customList(profileId, listId),
     queryFn: () => customListRepository.items(listId),
     enabled: Boolean(listId),
   });
   const remove = useInvalidatingMutation(
     ({ mediaId, mediaType }: { mediaId: number; mediaType: "movie" | "series" }) =>
       customListRepository.removeItem(listId, mediaId, mediaType),
-    [queryKeys.local.customList(listId)]
+    [queryKeys.local.customList(profileId, listId)]
   );
   return { ...query, remove: remove.mutateAsync, isSaving: remove.isPending };
 }
 
 export function useAddToCustomList() {
+  const profileId = useActiveProfileId();
   const mutation = useInvalidatingMutation(
     ({ listId, media }: { listId: string; media: MediaSummary }) => customListRepository.add(listId, media),
-    (_data, variables) => [queryKeys.local.customList(variables.listId), queryKeys.local.customLists]
+    (_data, variables) => [
+      queryKeys.local.customList(profileId, variables.listId),
+      queryKeys.local.customLists(profileId),
+    ]
   );
   return { add: mutation.mutateAsync, isSaving: mutation.isPending };
 }

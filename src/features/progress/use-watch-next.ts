@@ -2,6 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { episodeProgressKeys } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { Episode, MediaSummary, TrackedSeriesItem } from "@/types/media";
@@ -45,13 +46,14 @@ async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
 }
 
 export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
+  const profileId = useActiveProfileId();
   const inProgress = trackedSeries
     .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
     .slice(0, limit);
 
   const queries = useQueries({
     queries: inProgress.map((series) => ({
-      queryKey: queryKeys.local.watchNextEpisode(series.seriesId),
+      queryKey: queryKeys.local.watchNextEpisode(profileId, series.seriesId),
       queryFn: () => resolveNextEpisode(series.seriesId),
       staleTime: 1000 * 60 * 30,
     })),
@@ -73,6 +75,7 @@ export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
 }
 
 export function useMarkWatchNext() {
+  const profileId = useActiveProfileId();
   const mutation = useInvalidatingMutation(
     ({ series, episode }: { series: TrackedSeriesItem; episode: Episode }) => {
       const summary: MediaSummary & { numberOfEpisodes?: number } = {
@@ -90,7 +93,7 @@ export function useMarkWatchNext() {
       };
       return progressRepository.toggleEpisodeSeen(summary, episode, true);
     },
-    (_data, variables) => episodeProgressKeys(variables.series.seriesId)
+    (_data, variables) => episodeProgressKeys(profileId, variables.series.seriesId)
   );
 
   return { markWatched: mutation.mutateAsync, isSaving: mutation.isPending };

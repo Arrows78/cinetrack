@@ -1,32 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { availabilityRepository } from "@/features/availability/availability-repository";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { MediaSummary } from "@/types/media";
 
 export function useAvailabilityAlerts() {
+  const profileId = useActiveProfileId();
   const query = useQuery({
-    queryKey: queryKeys.local.availabilityAlerts,
+    queryKey: queryKeys.local.availabilityAlerts(profileId),
     queryFn: () => availabilityRepository.listAlerts(),
   });
   const removeMutation = useInvalidatingMutation(
     (id: string) => availabilityRepository.remove(id),
-    [queryKeys.local.availabilityAlerts]
+    [queryKeys.local.availabilityAlerts(profileId)]
   );
   return { ...query, remove: removeMutation.mutateAsync };
 }
 
 export function useAvailabilityAlert(media: MediaSummary, region: string, providerIds: number[]) {
+  const profileId = useActiveProfileId();
   const client = useQueryClient();
   const query = useQuery({
-    queryKey: [...queryKeys.local.availabilityAlerts, media.mediaType, media.id],
+    queryKey: [...queryKeys.local.availabilityAlerts(profileId), media.mediaType, media.id],
     queryFn: () => availabilityRepository.getAlert(media.id, media.mediaType),
   });
   const mutation = useMutation({
     mutationFn: () => availabilityRepository.toggle(media, region, providerIds),
     onSuccess: (data) => {
-      client.setQueryData([...queryKeys.local.availabilityAlerts, media.mediaType, media.id], data);
-      void client.invalidateQueries({ queryKey: queryKeys.local.availabilityAlerts });
+      client.setQueryData([...queryKeys.local.availabilityAlerts(profileId), media.mediaType, media.id], data);
+      void client.invalidateQueries({ queryKey: queryKeys.local.availabilityAlerts(profileId) });
     },
   });
   return { ...query, toggle: mutation.mutateAsync, isSaving: mutation.isPending };

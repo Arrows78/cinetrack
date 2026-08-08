@@ -55,6 +55,11 @@ const toggleEpisodeSeenMock = vi.fn(async () => undefined);
 const markSeasonMock = vi.fn(async () => undefined);
 const markSeriesMock = vi.fn(async () => undefined);
 const listTrackedSeriesMock = vi.fn(async () => [] as TrackedSeriesItem[]);
+// useActiveProfileId() (see use-preferences.ts) resolves to this via
+// preferencesRepository.getPreferences() — fixed to "default" so every key
+// assertion below is deterministic regardless of when it resolves (it
+// matches useActiveProfileId's own pre-resolution fallback too).
+const getPreferencesMock = vi.fn(async () => ({ activeProfileId: "default" }) as never);
 
 vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
@@ -66,6 +71,10 @@ vi.mock("@/features/progress/progress-repository", () => ({
     markSeries: markSeriesMock,
     listTrackedSeries: listTrackedSeriesMock,
   },
+}));
+
+vi.mock("@/features/preferences/preferences-repository", () => ({
+  preferencesRepository: { getPreferences: getPreferencesMock },
 }));
 
 function createWrapper() {
@@ -86,6 +95,7 @@ beforeEach(() => {
   markSeasonMock.mockClear();
   markSeriesMock.mockClear();
   listTrackedSeriesMock.mockClear();
+  getPreferencesMock.mockClear();
 });
 
 describe("useMovieSeen", () => {
@@ -114,9 +124,9 @@ describe("useMovieSeen", () => {
 
     expect(toggleMovieSeenMock).toHaveBeenCalledWith(movie, true);
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.movieSeen(7));
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.history);
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.stats);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.movieSeen("default", 7));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.history("default"));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.stats("default"));
   });
 });
 
@@ -134,10 +144,10 @@ describe("useEpisodeProgress", () => {
 
     expect(toggleEpisodeSeenMock).toHaveBeenCalledWith(series, episode, true);
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.episodeProgress(9));
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.watchNextEpisode(9));
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries);
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.episodeProgress("default", 9));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.watchNextEpisode("default", 9));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries("default"));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar("default"));
   });
 
   it("marking a season delegates to progressRepository.markSeason", async () => {

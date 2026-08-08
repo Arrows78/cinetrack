@@ -15,16 +15,20 @@ export function usePreferences() {
     mutationFn: ({ key, value }: { key: keyof UserPreferences; value: UserPreferences[keyof UserPreferences] }) =>
       preferencesRepository.updatePreference(key as never, value as never),
     onSuccess: async (data, variables) => {
+      const previousProfileId = query.data?.activeProfileId;
       queryClient.setQueryData(queryKeys.local.preferences, data);
 
       if (variables.key === "activeProfileId") {
-        await queryClient.invalidateQueries({ queryKey: ["local"] });
+        // removeQueries, not invalidateQueries — switching which profile is
+        // active means the previous profile's cached watchlist/library/etc.
+        // must be evicted immediately, not merely marked stale.
+        queryClient.removeQueries({ queryKey: ["local"] });
       }
 
       if (variables.key === "language" || variables.key === "region") {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["remote"] }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(previousProfileId ?? "default") }),
         ]);
       }
     },
@@ -35,4 +39,22 @@ export function usePreferences() {
     updatePreference: mutation.mutateAsync,
     isSaving: mutation.isPending,
   };
+}
+
+/**
+ * The active local profile's id, used to partition every profile-scoped
+ * "local" query key (see the comment on queryKeys.local) — without this,
+ * switching or removing profiles could read/render a different profile's
+ * cached data before its own query key can be resolved and fetched.
+ * Defaults to "default" while preferences are still loading/erroring,
+ * matching the backend's own fallback (see current_profile_id in
+ * src-tauri/src/database/mod.rs) so the very first render already keys
+ * against the same profile the Rust side would resolve.
+ */
+export function useActiveProfileId(): string {
+  const { data } = useQuery({
+    queryKey: queryKeys.local.preferences,
+    queryFn: () => preferencesRepository.getPreferences(),
+  });
+  return data?.activeProfileId ?? "default";
 }

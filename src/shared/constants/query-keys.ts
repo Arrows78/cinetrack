@@ -18,22 +18,31 @@ export const queryKeys = {
     availability: (mediaType: string, mediaId: number, region: string) =>
       ["remote", "availability", mediaType, mediaId, region] as const,
   },
+  // Every entry below except `preferences` and `profiles` takes the active
+  // profile id as its first argument (see useActiveProfileId in
+  // use-preferences.ts) — the underlying data is scoped to one local
+  // profile, so two profiles must never share a cache entry. `preferences`
+  // and `profiles` are the exceptions: preferences is a single global
+  // key/value store (it's literally what stores which profile is active),
+  // and `profiles` lists every profile, not one profile's data.
   local: {
-    watchlist: ["local", "watchlist"] as const,
-    history: ["local", "history"] as const,
+    watchlist: (profileId: string) => ["local", "watchlist", profileId] as const,
+    history: (profileId: string) => ["local", "history", profileId] as const,
     preferences: ["local", "preferences"] as const,
-    movieSeen: (movieId: number) => ["local", "movieSeen", movieId] as const,
-    episodeProgress: (seriesId: number) => ["local", "episodeProgress", seriesId] as const,
-    trackedSeries: ["local", "trackedSeries"] as const,
-    stats: ["local", "stats"] as const,
-    library: ["local", "library"] as const,
-    libraryItem: (mediaType: string, mediaId: number) => ["local", "library", mediaType, mediaId] as const,
+    movieSeen: (profileId: string, movieId: number) => ["local", "movieSeen", profileId, movieId] as const,
+    episodeProgress: (profileId: string, seriesId: number) =>
+      ["local", "episodeProgress", profileId, seriesId] as const,
+    trackedSeries: (profileId: string) => ["local", "trackedSeries", profileId] as const,
+    stats: (profileId: string) => ["local", "stats", profileId] as const,
+    library: (profileId: string) => ["local", "library", profileId] as const,
+    libraryItem: (profileId: string, mediaType: string, mediaId: number) =>
+      ["local", "library", profileId, mediaType, mediaId] as const,
     profiles: ["local", "profiles"] as const,
-    customLists: ["local", "customLists"] as const,
-    customList: (listId: string) => ["local", "customLists", listId] as const,
-    calendar: ["local", "calendar"] as const,
-    availabilityAlerts: ["local", "availabilityAlerts"] as const,
-    watchTonight: ["local", "watchTonight"] as const,
-    watchNextEpisode: (seriesId: number) => ["local", "watchNext", seriesId] as const,
+    customLists: (profileId: string) => ["local", "customLists", profileId] as const,
+    customList: (profileId: string, listId: string) => ["local", "customLists", profileId, listId] as const,
+    calendar: (profileId: string) => ["local", "calendar", profileId] as const,
+    availabilityAlerts: (profileId: string) => ["local", "availabilityAlerts", profileId] as const,
+    watchTonight: (profileId: string) => ["local", "watchTonight", profileId] as const,
+    watchNextEpisode: (profileId: string, seriesId: number) => ["local", "watchNext", profileId, seriesId] as const,
   },
 };

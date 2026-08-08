@@ -29,6 +29,11 @@ let items: WatchlistItem[];
 // query invalidation wiring.
 const invokeMock = vi.fn(async (command: string, args?: Record<string, unknown>) => {
   switch (command) {
+    // useActiveProfileId() (see use-preferences.ts) reads this via
+    // preferencesRepository.getPreferences() — fixed to "default" so it
+    // matches useActiveProfileId's own pre-resolution fallback.
+    case "get_preferences":
+      return { activeProfileId: "default" };
     case "list_watchlist":
       return items;
     case "has_watchlist_item":

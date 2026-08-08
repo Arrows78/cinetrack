@@ -12,16 +12,18 @@ import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { watchTonightService } from "@/features/watch-tonight/watch-tonight-service";
 import { staggerDelayMs } from "@/shared/utils/animation";
 export function WatchTonightPage() {
   const { t } = useTranslation();
+  const profileId = useActiveProfileId();
   const [genre, setGenre] = useState("");
   const [provider, setProvider] = useState("");
   const [runtime, setRuntime] = useState("120");
   const [seed, setSeed] = useState(0);
   const query = useQuery({
-    queryKey: [...queryKeys.local.watchTonight, genre, provider, runtime, seed],
+    queryKey: [...queryKeys.local.watchTonight(profileId), genre, provider, runtime, seed],
     queryFn: () =>
       watchTonightService.pick({
         genre: genre ? Number(genre) : undefined,
