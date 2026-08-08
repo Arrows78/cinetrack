@@ -24,6 +24,18 @@ export default defineConfig({
     },
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
+    // Default "threads" pool runs test files across multiple worker
+    // threads — fine locally, but CI (more available parallelism) exposed
+    // cross-test module-cache timing issues in the vi.resetModules()-based
+    // token-vault tests that never reproduced locally. A single fork
+    // removes that source of flakiness; the suite is fast enough that
+    // losing file-level parallelism isn't a real cost.
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     coverage: {
       reporter: ["text", "html"],
       // Kept broad (rather than scoped to the tested files below) so
