@@ -37,14 +37,10 @@ export default defineConfig({
       // exercised) — recalibrate the specific file's numbers rather than
       // treating a drop as a real regression without checking first.
       thresholds: {
+        // The 001-008 migration files this used to list one-by-one were
+        // squashed into this single schema file (see git history) — only
+        // one file, and one threshold, left to track.
         "src/db/migrations/001-initial-schema.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
-        "src/db/migrations/002-library-and-events.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
-        "src/db/migrations/003-profiles-and-lists.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
-        "src/db/migrations/004-availability.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
-        "src/db/migrations/005-history-profile-id.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
-        "src/db/migrations/006-index-cleanup.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
-        "src/db/migrations/007-foreign-keys.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
-        "src/db/migrations/008-supabase-user-link.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
         // Exercised end-to-end against a real SQLite engine in
         // migrations.integration.test.ts (see also sqlite-adapter.ts) — not
         // just string-shape-checked like migrations.test.ts.
@@ -63,13 +59,11 @@ export default defineConfig({
           functions: 90,
           lines: 65,
         },
-        // The repository is now a thin facade over the two storage adapters;
-        // the real SQL coverage lives in progress-store-sql.ts (see
-        // progress-repository.sql.test.ts) and the localStorage fallback in
-        // progress-store-browser.ts.
+        // Every domain now runs through Rust commands (see
+        // src-tauri/src/commands) — this repository is a thin invoke()
+        // wrapper plus the progress-calculation helpers unit-tested
+        // directly (calculateSeriesProgress, getNextEpisode, ...).
         "src/features/progress/progress-repository.ts": { statements: 85, branches: 90, functions: 90, lines: 85 },
-        "src/features/progress/progress-store-browser.ts": { statements: 95, branches: 85, functions: 95, lines: 95 },
-        "src/features/progress/progress-store-sql.ts": { statements: 90, branches: 75, functions: 95, lines: 90 },
         "src/features/stats/stats-repository.ts": { statements: 35, branches: 65, functions: 45, lines: 35 },
         "src/features/watchlist/watchlist-repository.ts": { statements: 45, branches: 45, functions: 75, lines: 45 },
       },
