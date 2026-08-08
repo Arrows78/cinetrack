@@ -488,7 +488,10 @@
     "technicalDetails": "Technical details",
     "tmdbTimeout": "TMDB did not respond within {{seconds}}s for {{path}}.",
     "tmdbUnreachable": "Unable to reach TMDB from the WebView: {{details}}",
-    "tmdbNoToken": "No TMDB token available. Unlock the TMDB vault in Settings."
+    "tmdbNoToken": "No TMDB token available. Unlock the TMDB vault in Settings.",
+    "unexpectedTitle": "Something went wrong",
+    "unexpectedDescription": "CineTrack hit an unexpected error and couldn't continue. Your local data is untouched — reloading the app should fix it.",
+    "reload": "Reload"
   },
   "tvtimeImport": {
     "title": "Import from TV Time",

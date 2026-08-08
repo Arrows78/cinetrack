@@ -526,6 +526,14 @@ export const componentInventory = [
     "Synchronizes reduced-motion preferences with the rendered application."
   ),
   component(
+    "RootErrorBoundary",
+    "components/layout/root-error-boundary.tsx",
+    "Layout",
+    "infrastructure",
+    "internal",
+    "Catches render errors outside the router's reach and offers a reload instead of a white screen."
+  ),
+  component(
     "OfflineIndicator",
     "components/layout/offline-indicator.tsx",
     "Layout",

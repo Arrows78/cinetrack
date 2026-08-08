@@ -488,7 +488,10 @@
     "technicalDetails": "Détails techniques",
     "tmdbTimeout": "TMDB n'a pas répondu dans le délai imparti ({{seconds}}s) pour {{path}}.",
     "tmdbUnreachable": "Impossible de joindre TMDB depuis la WebView : {{details}}",
-    "tmdbNoToken": "Aucun token TMDB disponible. Déverrouillez le coffre TMDB dans les paramètres."
+    "tmdbNoToken": "Aucun token TMDB disponible. Déverrouillez le coffre TMDB dans les paramètres.",
+    "unexpectedTitle": "Une erreur est survenue",
+    "unexpectedDescription": "CineTrack a rencontré une erreur inattendue et n'a pas pu continuer. Vos données locales sont intactes — recharger l'application devrait résoudre le problème.",
+    "reload": "Recharger"
   },
   "tvtimeImport": {
     "title": "Importer depuis TV Time",
