@@ -5,6 +5,7 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useWatchlist } from "@/features/watchlist/use-watchlist";
@@ -12,7 +13,8 @@ import { useWatchlist } from "@/features/watchlist/use-watchlist";
 export function WatchlistPage() {
   const { t } = useTranslation();
   const { data: preferences } = usePreferences();
-  const { data: items } = useWatchlist();
+  const watchlistQuery = useWatchlist();
+  const { data: items } = watchlistQuery;
   const { data: trackedSeries } = useTrackedSeries();
   const [selectedFilter, setSelectedFilter] = useState<"all" | "movie" | "series" | null>(null);
   const filter = selectedFilter ?? preferences?.defaultWatchlistFilter ?? "all";
@@ -75,7 +77,9 @@ export function WatchlistPage() {
         </div>
       </div>
 
-      {filtered.length ? (
+      {watchlistQuery.isError ? (
+        <RemoteErrorState error={watchlistQuery.error} onRetry={() => void watchlistQuery.refetch()} />
+      ) : filtered.length ? (
         <MediaGrid items={filtered} />
       ) : (
         <EmptyState icon={Clapperboard} title={t("pages.emptyWatchlist")} description={t("watchlist.emptyDesc")} />

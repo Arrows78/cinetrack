@@ -5,6 +5,7 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { EmptyState } from "@/components/states/empty-state";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useLibrary } from "@/features/library/use-library";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import type { LibraryStatus } from "@/types/media";
@@ -15,7 +16,8 @@ const statusOptions: StatusFilter[] = ["all", "planned", "watching", "paused", "
 
 export function LibraryPage() {
   const { t } = useTranslation();
-  const { data: items } = useLibrary();
+  const libraryQuery = useLibrary();
+  const { data: items } = libraryQuery;
   const { data: trackedSeries } = useTrackedSeries();
   const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -87,7 +89,9 @@ export function LibraryPage() {
         </div>
       </div>
 
-      {filtered.length ? (
+      {libraryQuery.isError ? (
+        <RemoteErrorState error={libraryQuery.error} onRetry={() => void libraryQuery.refetch()} />
+      ) : filtered.length ? (
         <MediaGrid items={filtered} />
       ) : (
         <EmptyState icon={LibraryBig} title={t("library.emptyTitle")} description={t("library.emptyDesc")} />

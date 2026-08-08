@@ -13,6 +13,7 @@ import { SeenToggle } from "@/components/media/seen-toggle";
 import { Panel } from "@/components/ui/panel";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useMovieDetails } from "@/features/media/use-media";
@@ -25,6 +26,9 @@ export function MovieDetailPage() {
   const seenQuery = useMovieSeen(id);
   useImageCache([movieQuery.data?.posterPath, movieQuery.data?.backdropPath]);
   if (movieQuery.isLoading) return <HeroSkeleton />;
+  if (movieQuery.isError) {
+    return <RemoteErrorState error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
+  }
   if (!movieQuery.data) return null;
   const movie = movieQuery.data;
 

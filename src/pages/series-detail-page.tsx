@@ -18,6 +18,7 @@ import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
 import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
@@ -36,6 +37,9 @@ export function SeriesDetailPage() {
   );
   const seasonQueries = useSeriesSeasons(id, seasonNumbers);
   if (seriesQuery.isLoading) return <HeroSkeleton />;
+  if (seriesQuery.isError) {
+    return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
+  }
   if (!seriesQuery.data) return null;
   const series = seriesQuery.data;
   const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));

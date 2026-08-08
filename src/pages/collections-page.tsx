@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -70,7 +71,11 @@ export function CollectionsPage() {
             account read another account's data. Only the current profile
             is shown here now, read-only.
           */}
-          {currentProfile ? (
+          {profiles.isError ? (
+            <div className="mt-4">
+              <RemoteErrorState error={profiles.error} onRetry={() => void profiles.refetch()} />
+            </div>
+          ) : currentProfile ? (
             <Tile className="mt-4 px-3 py-3">
               <p className="font-medium">{currentProfile.name}</p>
               {user?.email ? (
@@ -116,6 +121,11 @@ export function CollectionsPage() {
             {t("collections.create")}
           </Button>
         </div>
+        {lists.isError ? (
+          <div className="mt-5">
+            <RemoteErrorState error={lists.error} onRetry={() => void lists.refetch()} />
+          </div>
+        ) : null}
         <div className="mt-5 grid gap-3">
           {lists.data?.map((list) => (
             <Tile asChild key={list.id} className="p-4">

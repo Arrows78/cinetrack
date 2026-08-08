@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { History, Clapperboard, Eye, EyeOff, Play, BookmarkPlus, BookmarkMinus } from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
+import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { formatRelativeDate, percent } from "@/shared/utils/format";
@@ -72,7 +73,9 @@ export function HistoryPage() {
       <section>
         <SectionHeader title={t("history.recentActivity")} subtitle={t("history.recentActivitySubtitle")} index={1} />
 
-        {historyQuery.data?.length ? (
+        {historyQuery.isError ? (
+          <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
+        ) : historyQuery.data?.length ? (
           <div className="relative">
             {/* Vertical connector */}
             <div className="absolute left-[19px] top-2 bottom-2 w-px bg-foreground/[0.07]" />
@@ -137,7 +140,9 @@ export function HistoryPage() {
           index={2}
         />
 
-        {(trackedSeriesQuery.data ?? []).length ? (
+        {trackedSeriesQuery.isError ? (
+          <RemoteErrorState error={trackedSeriesQuery.error} onRetry={() => void trackedSeriesQuery.refetch()} />
+        ) : (trackedSeriesQuery.data ?? []).length ? (
           <div className="space-y-3">
             {trackedSeriesQuery.data?.map((item, i) => {
               const progress = percent(item.watchedEpisodes, item.totalEpisodes);
