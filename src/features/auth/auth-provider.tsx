@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import i18next from "i18next";
 
 import {
@@ -86,6 +87,7 @@ function normalizeEmail(email: string): string {
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -320,7 +322,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     setSession(null);
-  }, []);
+    // The next signed-in-or-not profile resolves to different "local"-scoped
+    // data (see ProfileGate) — without this, a signed-out user can briefly
+    // keep seeing the previous account's cached watchlist/library/etc.
+    await queryClient.invalidateQueries({ queryKey: ["local"] });
+  }, [queryClient]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
