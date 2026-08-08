@@ -30,7 +30,7 @@ export function PeoplePage() {
         <label style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
           <Search className="size-4 text-muted-foreground" />
           <input
-            className="h-12 flex-1 bg-transparent outline-none"
+            className="h-12 flex-1 rounded-lg bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("people.searchPlaceholder")}

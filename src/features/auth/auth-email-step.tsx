@@ -55,7 +55,7 @@ export function AuthEmailStep({
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder={t("auth.email.placeholder")}
-          className="min-w-0 flex-1 bg-transparent text-xl text-white outline-none placeholder:text-white/35"
+          className="min-w-0 flex-1 rounded-lg bg-transparent text-xl text-white outline-none placeholder:text-white/35 focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
 

@@ -59,7 +59,7 @@ export function CommandPalette() {
           <Search className="size-4 text-muted-foreground" />
           <input
             autoFocus
-            className="h-14 flex-1 bg-transparent outline-none"
+            className="h-14 flex-1 rounded-lg bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("commandPalette.searchPlaceholder")}
