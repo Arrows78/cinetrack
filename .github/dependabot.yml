@@ -44,3 +44,18 @@ updates:
           - "*"
     commit-message:
       prefix: "ci(deps)"
+
+  - package-ecosystem: cargo
+    directory: "/src-tauri"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    groups:
+      cargo:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "build(deps)"
