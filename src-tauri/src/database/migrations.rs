@@ -21,6 +21,17 @@ pub struct Migration {
 // - `viewing_events`: append-only; gets `created_at` only (no `updated_at`).
 // - `custom_list_items`: has business-meaningful `added_at`; gains `updated_at`
 //   (for reordering) but not redundant `created_at`.
+// IMPORTANT — version numbering: this single "initial schema" migration
+// replaces what used to be 8 incremental migrations (see git commit
+// "refactor(db): squash migrations into a single clean schema"), squashed
+// while the app had no shipped users yet. run_migrations() below skips any
+// migration whose version is <= the database's current PRAGMA user_version,
+// so a database created by that old 8-step sequence already sits at
+// user_version 8. The next migration added here MUST use version 9 or
+// higher, not version 2 — reusing an already-passed version number would
+// make it silently skip on any pre-squash install once this app ships
+// publicly. Keep this in sync with src/db/migrations/index.ts's own copy of
+// this warning.
 pub const MIGRATIONS: &[Migration] = &[Migration {
     version: 1,
     name: "initial schema",

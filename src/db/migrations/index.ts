@@ -6,6 +6,17 @@ export type { Migration } from "./types";
 
 // Order matters: each migration runs against the schema left by the ones
 // before it, in this exact sequence.
+//
+// IMPORTANT — version numbering: this single 001-initial-schema.ts replaces
+// what used to be 8 incremental migrations (001 through 008; see git commit
+// "refactor(db): squash migrations into a single clean schema"), squashed
+// while the app had no shipped users yet — `runMigrations` skips any
+// migration whose version is <= the database's current `PRAGMA user_version`
+// (see below), so a database created by that old 8-step sequence already
+// sits at user_version 8. The next migration added here MUST use `version: 9`
+// or higher, not `version: 2` — reusing an already-passed version number
+// would make it silently skip on any pre-squash install once this app ships
+// publicly.
 export const migrations: readonly Migration[] = [m001];
 
 export async function runMigrations(db: Database): Promise<void> {
