@@ -27,6 +27,18 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      # VITE_TMDB_API_TOKEN is inlined into the frontend bundle at build time
+      # (see README.md's security note) — a value present here would ship in
+      # cleartext inside every artifact this job produces. Nothing wires this
+      # secret into the job's env today; this is a tripwire against that
+      # being added later without also gating it out of CI.
+      - name: Refuse to build if a TMDB token is set in this job's env
+        run: |
+          if [ -n "$VITE_TMDB_API_TOKEN" ]; then
+            echo "::error::VITE_TMDB_API_TOKEN is set in the CI environment — it would be baked into the built frontend bundle. Remove it from this workflow's secrets/env." >&2
+            exit 1
+          fi
+
       - name: Lint
         run: pnpm lint
 
