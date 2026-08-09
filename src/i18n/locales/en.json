@@ -466,6 +466,11 @@
     "lastBackupSuccess": "Last automatic backup: {{date}}.",
     "lastBackupFailed": "The last automatic backup attempt failed — retry with Emergency backup.",
     "noBackupYet": "No automatic backup yet.",
+    "diagnostics": "Diagnostics (local log)",
+    "diagnosticsRefresh": "Refresh",
+    "diagnosticsCopy": "Copy",
+    "diagnosticsClear": "Clear",
+    "diagnosticsEmpty": "No log entries yet.",
     "shortcuts": "Palette: Ctrl/Cmd+K in window, Ctrl/Cmd+Shift+K system-wide. Links: cinetrack://movie/123, cinetrack://series/123 and cinetrack://tonight."
   },
   "sidebar": {

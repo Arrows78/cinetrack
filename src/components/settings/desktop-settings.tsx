@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { maintenanceService } from "@/features/backup/maintenance-service";
+import { logger } from "@/features/diagnostics/logger";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
 import { isTauriApp } from "@/shared/lib/platform";
@@ -21,11 +22,19 @@ export function DesktopSettings() {
   const [pendingRestore, setPendingRestore] = useState<{ exportedAt: string } | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupStatus, setBackupStatus] = useState<{ exportedAt: string | null; failed: boolean } | null>(null);
+  const [logLines, setLogLines] = useState<string[] | null>(null);
   const refreshBackupStatus = () => {
     if (isTauriApp())
       void maintenanceService
         .getLastBackupStatus()
         .then(setBackupStatus)
+        .catch(() => undefined);
+  };
+  const refreshLogs = () => {
+    if (isTauriApp())
+      void logger
+        .readRecent()
+        .then(setLogLines)
         .catch(() => undefined);
   };
   useEffect(() => {
@@ -34,6 +43,7 @@ export function DesktopSettings() {
         .then(setAutoStart)
         .catch(() => undefined);
     refreshBackupStatus();
+    refreshLogs();
   }, []);
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -182,6 +192,44 @@ export function DesktopSettings() {
                   : t("desktop.noBackupYet")}
             </p>
           ) : null}
+          <details className="mt-4 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground">{t("desktop.diagnostics")}</summary>
+            <div className="mt-2 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={refreshLogs}>
+                  {t("desktop.diagnosticsRefresh")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!logLines?.length}
+                  onClick={() => void navigator.clipboard.writeText((logLines ?? []).join("\n"))}
+                >
+                  {t("desktop.diagnosticsCopy")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!logLines?.length}
+                  onClick={() =>
+                    void logger
+                      .clear()
+                      .then(refreshLogs)
+                      .catch(() => undefined)
+                  }
+                >
+                  {t("desktop.diagnosticsClear")}
+                </Button>
+              </div>
+              {logLines?.length ? (
+                <pre className="max-h-48 overflow-auto rounded-xl border border-border bg-card p-3 font-mono text-xs whitespace-pre-wrap">
+                  {logLines.join("\n")}
+                </pre>
+              ) : (
+                <p>{t("desktop.diagnosticsEmpty")}</p>
+              )}
+            </div>
+          </details>
         </div>
       ) : null}
       {message ? <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm">{message}</p> : null}

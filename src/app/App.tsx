@@ -12,9 +12,12 @@ import { availabilityMonitor } from "@/features/availability/availability-monito
 import { calendarService } from "@/features/calendar/calendar-service";
 import { desktopService } from "@/features/desktop/desktop-service";
 import { maintenanceService } from "@/features/backup/maintenance-service";
+import { logger } from "@/features/diagnostics/logger";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { notificationService } from "@/features/desktop/notification-service";
 import { isTauriApp } from "@/shared/lib/platform";
+
+const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 export function App() {
   useEffect(() => {
@@ -39,7 +42,7 @@ export function App() {
         cleanup = value;
       })
       .catch((error: unknown) => {
-        console.warn("Desktop initialization failed:", error);
+        logger.warn(`Desktop initialization failed: ${errorMessage(error)}`);
       });
 
     const checkBackgroundNotifications = async () => {
@@ -55,21 +58,21 @@ export function App() {
         const check = await maintenanceService.checkDataIntegrity();
 
         if (!check.healthy) {
-          window.localStorage.setItem("cinetrack.maintenance-error", check.detail);
+          logger.error(`Database integrity check failed: ${check.detail}`);
         } else {
           await maintenanceService.createAutomaticBackup();
         }
 
         await checkBackgroundNotifications();
       } catch (error: unknown) {
-        console.warn("Startup maintenance checks failed:", error);
+        logger.warn(`Startup maintenance checks failed: ${errorMessage(error)}`);
       }
     })();
 
     const interval = window.setInterval(
       () => {
         void checkBackgroundNotifications().catch((error: unknown) => {
-          console.warn("Background notification check failed:", error);
+          logger.warn(`Background notification check failed: ${errorMessage(error)}`);
         });
       },
       1000 * 60 * 60 * 6
