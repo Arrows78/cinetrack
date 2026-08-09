@@ -39,7 +39,7 @@ impl From<ProfileRow> for UserProfile {
 async fn list_impl(pool: &SqlitePool) -> Result<Vec<UserProfile>, ApiError> {
     let now = now_iso(pool).await?;
     sqlx::query(
-        "INSERT OR IGNORE INTO profiles (uuid, name, avatar, created_at, updated_at) VALUES ('default', 'Principal', NULL, $1, $1)",
+        "INSERT OR IGNORE INTO profiles (uuid, name, avatar, created_at, updated_at) VALUES ('default', 'Default', NULL, $1, $1)",
     )
     .bind(&now)
     .execute(pool)
@@ -62,9 +62,12 @@ async fn create_impl(
     supabase_user_id: Option<String>,
 ) -> Result<UserProfile, ApiError> {
     let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(ApiError::bad_request("Profile name is required."));
+    }
     let profile = UserProfile {
         id: new_uuid(),
-        name: if trimmed.is_empty() { "Profil".to_string() } else { trimmed.to_string() },
+        name: trimmed.to_string(),
         avatar,
         created_at: now_iso(pool).await?,
         supabase_user_id,
@@ -113,7 +116,7 @@ async fn link_to_supabase_user_impl(
         .fetch_optional(pool)
         .await
         .map_err(ApiError::from)?;
-    row.map(Into::into).ok_or_else(|| ApiError::not_found("Profil introuvable."))
+    row.map(Into::into).ok_or_else(|| ApiError::not_found("Profile not found."))
 }
 
 /// Resolves which local profile a signed-in Supabase account should land on:
@@ -140,7 +143,7 @@ async fn resolve_for_supabase_user_impl(pool: &SqlitePool, supabase_user_id: &st
 
 async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError> {
     if profile_id == "default" {
-        return Err(ApiError::bad_request("Le profil principal ne peut pas être supprimé."));
+        return Err(ApiError::bad_request("The default profile cannot be deleted."));
     }
 
     let mut tx = pool.begin().await.map_err(ApiError::from)?;

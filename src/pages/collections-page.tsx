@@ -118,7 +118,9 @@ export function CollectionsPage() {
             </div>
           ) : currentProfile ? (
             <Tile className="mt-4 px-3 py-3">
-              <p className="font-medium">{currentProfile.name}</p>
+              <p className="font-medium">
+                {currentProfile.id === "default" ? t("collections.defaultProfileName") : currentProfile.name}
+              </p>
               {user?.email ? (
                 <p className="mt-1 text-sm text-muted-foreground">{t("collections.linkedTo", { email: user.email })}</p>
               ) : null}

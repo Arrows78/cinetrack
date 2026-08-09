@@ -4,12 +4,9 @@ import { Link } from "@tanstack/react-router";
 import { Check, LoaderCircle } from "lucide-react";
 import { SectionHeader } from "@/components/media/section-header";
 import { useMarkWatchNext, type WatchNextEntry } from "@/features/progress/use-watch-next";
-import { buildTmdbImageUrl } from "@/shared/utils/format";
+import { buildTmdbImageUrl, formatEpisodeCode } from "@/shared/utils/format";
 import { cn } from "@/shared/lib/cn";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
-
-const episodeCode = (seasonNumber: number, episodeNumber: number) =>
-  `S${seasonNumber.toString().padStart(2, "0")} | E${episodeNumber.toString().padStart(2, "0")}`;
 
 function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
   const { t } = useTranslation();
@@ -45,7 +42,7 @@ function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
           <span className="truncate">{entry.series.title}</span>
         </Link>
         <p className="mt-1.5 font-display text-lg font-bold leading-tight">
-          {episodeCode(entry.nextEpisode.seasonNumber, entry.nextEpisode.episodeNumber)}
+          {formatEpisodeCode(entry.nextEpisode.seasonNumber, entry.nextEpisode.episodeNumber, { padded: true })}
           {entry.remaining > 1 ? (
             <span className="ml-2 align-middle text-xs font-semibold text-muted-foreground">
               +{entry.remaining - 1}

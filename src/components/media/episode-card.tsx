@@ -2,7 +2,7 @@ import { Calendar, Check, Clock4, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { cn } from "@/shared/lib/cn";
-import { buildTmdbImageUrl, formatDate, formatRating, formatRuntime } from "@/shared/utils/format";
+import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 export function EpisodeCard({
   episode,
@@ -46,7 +46,7 @@ export function EpisodeCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-overline font-bold uppercase text-muted-foreground">
-            E{episode.episodeNumber.toString().padStart(2, "0")}
+            {formatEpisodeNumber(episode.episodeNumber, { padded: true })}
           </span>
           {watched ? <span className="text-overline font-semibold text-primary">{t("media.seen")}</span> : null}
         </div>

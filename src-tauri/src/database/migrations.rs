@@ -218,7 +218,7 @@ pub const MIGRATIONS: &[Migration] = &[Migration {
           updated_at TEXT NOT NULL
         )"#,
         r#"INSERT OR IGNORE INTO profiles (uuid, name, created_at, updated_at)
-         VALUES ('default', 'Principal', strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'), strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'))"#,
+         VALUES ('default', 'Default', strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'), strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'))"#,
     ],
 }, Migration {
     // Ported from src/db/migrations/002-availability-alerts-unique.ts.
@@ -394,7 +394,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(default_profile.0, "Principal");
+        assert_eq!(default_profile.0, "Default");
     }
 
     #[tokio::test]

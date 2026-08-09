@@ -21,9 +21,9 @@
     "seasons": "Seasons",
     "episodes": "Episodes",
     "season": "Season",
-    "seen": "Seen",
-    "markAsSeen": "Mark as seen",
-    "seenStatusUnavailable": "Couldn't load the seen status — try again in a moment.",
+    "seen": "Watched",
+    "markAsSeen": "Mark as watched",
+    "seenStatusUnavailable": "Couldn't load the watched status — try again in a moment.",
     "progressLabel": "{{percent}}% watched",
     "status": "Status",
     "genres": "Genres",
@@ -32,8 +32,8 @@
     "unknownYear": "Unknown year",
     "noOverview": "No overview available for this content.",
     "hiddenTitle": "Hidden title",
-    "markSeen": "Mark seen",
-    "markUnseen": "Mark unseen",
+    "markSeen": "Mark watched",
+    "markUnseen": "Mark unwatched",
     "loading": "Loading…",
     "loadMore": "Load more",
     "availableStreaming": "Available on streaming",
@@ -53,7 +53,7 @@
   },
   "pages": {
     "notFound": "Page not found",
-    "notFoundDesc": "The requested route doesn't exist or hasn't been exposed in the router yet.",
+    "notFoundDesc": "This page doesn't exist.",
     "backToHome": "Back to home",
     "noResults": "No results found",
     "emptyWatchlist": "Your watchlist is empty"
@@ -66,7 +66,11 @@
     "somethingWentWrong": "Something went wrong",
     "unknownDate": "Unknown date",
     "confirm": "Confirm",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "durationHoursMinutes": "{{hours}}h {{minutes}}",
+    "durationMinutes": "{{minutes}} min",
+    "episodeCode": "S{{season}}E{{episode}}",
+    "episodeNumber": "E{{episode}}"
   },
   "theme": {
     "dark": "Dark",
@@ -87,8 +91,8 @@
   },
   "home": {
     "configureTmdb": "Configure your TMDB access",
-    "configureTmdbDesc": "Add your TMDB bearer token to .env under the key VITE_TMDB_API_TOKEN. The app is already ready on the architecture side, local data and UI; only the API authentication is missing to load the catalog.",
-    "premiumSelection": "Premium selection",
+    "configureTmdbDesc": "Add or unlock your TMDB access token in Settings to load the catalog.",
+    "premiumSelection": "Trending this week",
     "viewDetails": "View details",
     "exploreCatalog": "Explore catalog",
     "watchlistHelper": "Titles to watch later",
@@ -126,7 +130,7 @@
     "noActivity": "No activity yet",
     "noActivityDesc": "Start marking content as watched or fill your watchlist to populate this section.",
     "noTrackedSeries": "No tracked series",
-    "noTrackedSeriesDesc": "As soon as you check an episode, the progress appears here with local persistence.",
+    "noTrackedSeriesDesc": "Your progress appears here as soon as you check an episode.",
     "episodesWatched": "episodes watched",
     "actions": {
       "movieWatched": "Movie watched",
@@ -146,7 +150,7 @@
   },
   "search": {
     "globalSearch": "Global Search",
-    "subtitle": "Debounce, empty states and clean filters for movies and series.",
+    "subtitle": "Search movies and series.",
     "startTyping": "Start typing",
     "startTypingDesc": "Search activates from 2 characters. Use the filter to target movies, series, or both.",
     "noResultsDesc": "Try another title, different language, or a different filter.",
@@ -161,7 +165,6 @@
     "defaultLabel": "Filter"
   },
   "settings": {
-    "subtitle": "User preferences persisted locally, desktop first, ready for future mobile port.",
     "subtitleDesktop": "Interface, catalog, privacy and desktop integration.",
     "uiPreferences": "UI Preferences",
     "uiPreferencesDesc": "Customize your local experience.",
@@ -181,10 +184,6 @@
     "compactMode": "Compact mode",
     "spoilerProtection": "Spoiler protection",
     "calendarNotifications": "Calendar notifications",
-    "apiConfig": "API Configuration",
-    "apiConfigDesc": "The application uses TMDB via an abstract provider layer.",
-    "envInstruction": "Add your TMDB bearer token to the",
-    "openTmdbDocs": "Open TMDB docs",
     "desktopSecurity": "Desktop & Security",
     "desktopSecurityDesc": "Encrypted token, shortcuts, startup, updates and recovery.",
     "regionOptions": {
@@ -201,7 +200,7 @@
     }
   },
   "movies": {
-    "subtitle": "Premium display, immersive posters and direct access to detailed sheets.",
+    "subtitle": "Posters, filters, and detailed pages.",
     "noMoviesAvailable": "No movies available",
     "noMoviesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
     "technicalSheet": "Technical Sheet",
@@ -217,10 +216,10 @@
     "currentProgress": "Current Progress",
     "episodesFraction": "{{watched}}/{{total}} ep.",
     "seasonsAndEpisodes": "Seasons & Episodes",
-    "seasonsAndEpisodesDesc": "Each episode can be marked as seen/unseen, with progress per season and overall.",
+    "seasonsAndEpisodesDesc": "Each episode can be marked as watched or unwatched, with progress per season and overall.",
     "globalProgress": "Global Progress",
-    "markSeasonSeen": "Mark season as seen",
-    "markSeasonUnseen": "Mark season as unseen",
+    "markSeasonSeen": "Mark season as watched",
+    "markSeasonUnseen": "Mark season as unwatched",
     "openSeasonPage": "Open season page",
     "someSeasonsUnavailable": "Some seasons couldn't load, so marking the whole series is disabled until they do."
   },
@@ -274,6 +273,7 @@
     "title": "Profiles & Collections",
     "description": "Separate household progressions and organize your media in lists.",
     "localProfiles": "Your profile",
+    "defaultProfileName": "Default profile",
     "linkedTo": "Linked to {{email}}",
     "noProfile": "No profile is linked to this account yet.",
     "customLists": "Custom lists",
@@ -439,10 +439,10 @@
     "fileTooLarge": "This file is too large to be a valid backup.",
     "noPreRestoreSnapshot": "No pre-restore snapshot was found.",
     "noAutomaticBackup": "No automatic backup was found.",
-    "undoLastImport": "Undo last import",
+    "undoLastImport": "Undo last change",
     "undoFailed": "Nothing to undo: no pre-import snapshot was found.",
     "importConfirmTitle": "Replace all your data?",
-    "importConfirmDescription": "Importing this backup overwrites your current watchlist, library, history and lists. You can undo this right after with \"Undo last import\"."
+    "importConfirmDescription": "Importing this backup overwrites your current watchlist, library, history and lists. You can undo this right after with \"Undo last change\"."
   },
   "desktop": {
     "operationComplete": "Operation complete.",
@@ -476,7 +476,7 @@
     "backupUpdated": "Emergency backup updated.",
     "restoreBackup": "Restore backup",
     "restoreConfirmTitle": "Restore the automatic backup?",
-    "restoreConfirmDescription": "This replaces everything currently on this device — watchlist, library, progress, history, profiles — with the backup from {{date}}. This cannot be undone from here.",
+    "restoreConfirmDescription": "This replaces everything currently on this device — watchlist, library, progress, history, profiles — with the backup from {{date}}. You can undo this afterwards from Backup tools.",
     "lastBackupSuccess": "Last automatic backup: {{date}}.",
     "lastBackupFailed": "The last automatic backup attempt failed — retry with Emergency backup.",
     "noBackupYet": "No automatic backup yet.",
@@ -579,9 +579,9 @@
   "errors": {
     "catalogUnavailable": "Unable to load the catalogue",
     "localDataUnavailable": "Unable to open local data",
-    "localDatabase": "CineTrack could not initialise its local database. Restart the desktop app after checking its Tauri SQL permissions.",
+    "localDatabase": "CineTrack couldn't open your local data. Try restarting the app.",
     "tmdbAuthentication": "The TMDB token stored by the desktop app is missing, expired, or rejected. Unlock the vault and save a valid Bearer token again.",
-    "tmdbConnection": "The connection to TMDB failed. CineTrack automatically tries the native backend and then the WebView; also check your network, VPN, or proxy.",
+    "tmdbConnection": "The connection to TMDB failed. Check your network, VPN, or proxy.",
     "retry": "Try again",
     "technicalDetails": "Technical details",
     "tmdbTimeout": "TMDB did not respond within {{seconds}}s for {{path}}.",

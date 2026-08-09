@@ -10,7 +10,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { staggerDelayMs } from "@/shared/utils/animation";
-import { formatFullDate } from "@/shared/utils/format";
+import { formatEpisodeCode, formatFullDate } from "@/shared/utils/format";
 
 export function CalendarPage() {
   const { t } = useTranslation();
@@ -50,7 +50,7 @@ export function CalendarPage() {
                   <p className="font-medium">{entry.title}</p>
                   <p className="text-sm text-muted-foreground">
                     {entry.kind === "episode"
-                      ? `S${entry.seasonNumber}E${entry.episodeNumber} · ${entry.episodeTitle ?? t("calendar.newEpisode")}`
+                      ? `${formatEpisodeCode(entry.seasonNumber ?? 0, entry.episodeNumber ?? 0)} · ${entry.episodeTitle ?? t("calendar.newEpisode")}`
                       : t("calendar.theatricalRelease")}
                   </p>
                 </div>

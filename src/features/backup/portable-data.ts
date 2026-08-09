@@ -38,7 +38,7 @@ function parseBackup(value: unknown): CineTrackBackup {
 
   const data = { ...emptyData(), ...result.data.data } as PortableData;
   if (!data.profiles.some((profile) => profile.id === "default")) {
-    data.profiles.unshift({ id: "default", name: "Principal", createdAt: new Date().toISOString() });
+    data.profiles.unshift({ id: "default", name: "Default", createdAt: new Date().toISOString() });
   }
   const activeProfileId =
     typeof data.preferences.activeProfileId === "string" ? data.preferences.activeProfileId : "default";

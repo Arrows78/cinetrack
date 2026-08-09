@@ -53,7 +53,7 @@
   },
   "pages": {
     "notFound": "Page introuvable",
-    "notFoundDesc": "La route demandée n'existe pas.",
+    "notFoundDesc": "Cette page n'existe pas.",
     "backToHome": "Retour à l'accueil",
     "noResults": "Aucun résultat",
     "emptyWatchlist": "Votre liste est vide"
@@ -66,7 +66,11 @@
     "somethingWentWrong": "Une erreur est survenue",
     "unknownDate": "Date inconnue",
     "confirm": "Confirmer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "durationHoursMinutes": "{{hours}}h {{minutes}}",
+    "durationMinutes": "{{minutes}} min",
+    "episodeCode": "S{{season}}E{{episode}}",
+    "episodeNumber": "E{{episode}}"
   },
   "theme": {
     "dark": "Sombre",
@@ -87,8 +91,8 @@
   },
   "home": {
     "configureTmdb": "Configurez votre accès TMDB",
-    "configureTmdbDesc": "Ajoutez ou déverrouillez votre token Bearer TMDB dans les paramètres.",
-    "premiumSelection": "Sélection du moment",
+    "configureTmdbDesc": "Ajoutez ou déverrouillez votre token TMDB dans les paramètres pour charger le catalogue.",
+    "premiumSelection": "Tendances de la semaine",
     "viewDetails": "Voir la fiche",
     "exploreCatalog": "Explorer le catalogue",
     "watchlistHelper": "Titres à regarder plus tard",
@@ -146,7 +150,7 @@
   },
   "search": {
     "globalSearch": "Recherche globale",
-    "subtitle": "Films, séries et filtres régionaux.",
+    "subtitle": "Recherchez des films et des séries.",
     "startTyping": "Commencez à saisir",
     "startTypingDesc": "La recherche s'active à partir de deux caractères.",
     "noResultsDesc": "Essayez un autre titre ou un autre filtre.",
@@ -161,7 +165,6 @@
     "defaultLabel": "Filtrer"
   },
   "settings": {
-    "subtitle": "Préférences locales et intégration desktop.",
     "subtitleDesktop": "Interface, catalogue, confidentialité et intégration desktop.",
     "uiPreferences": "Préférences d'interface",
     "uiPreferencesDesc": "Personnalisez votre expérience locale.",
@@ -181,10 +184,6 @@
     "compactMode": "Mode compact",
     "spoilerProtection": "Protection anti-spoiler",
     "calendarNotifications": "Notifications calendrier",
-    "apiConfig": "Configuration API",
-    "apiConfigDesc": "CineTrack utilise TMDB via une couche de fournisseur abstraite.",
-    "envInstruction": "Ajoutez votre token Bearer TMDB dans",
-    "openTmdbDocs": "Ouvrir la documentation TMDB",
     "desktopSecurity": "Desktop et sécurité",
     "desktopSecurityDesc": "Token chiffré, raccourcis, démarrage, mises à jour et récupération.",
     "regionOptions": {
@@ -274,6 +273,7 @@
     "title": "Profils et collections",
     "description": "Séparez les progressions du foyer et organisez vos médias dans des listes.",
     "localProfiles": "Votre profil",
+    "defaultProfileName": "Profil par défaut",
     "linkedTo": "Lié au compte {{email}}",
     "noProfile": "Aucun profil n'est encore associé à ce compte.",
     "customLists": "Listes personnalisées",
@@ -439,10 +439,10 @@
     "fileTooLarge": "Ce fichier est trop volumineux pour être une sauvegarde valide.",
     "noPreRestoreSnapshot": "Aucune sauvegarde pré-restauration trouvée.",
     "noAutomaticBackup": "Aucune sauvegarde automatique trouvée.",
-    "undoLastImport": "Annuler le dernier import",
+    "undoLastImport": "Annuler le dernier changement",
     "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée.",
     "importConfirmTitle": "Remplacer toutes vos données ?",
-    "importConfirmDescription": "Importer cette sauvegarde remplace votre watchlist, bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier import »."
+    "importConfirmDescription": "Importer cette sauvegarde remplace votre watchlist, bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement »."
   },
   "desktop": {
     "operationComplete": "Opération terminée.",
@@ -476,7 +476,7 @@
     "backupUpdated": "Sauvegarde de secours actualisée.",
     "restoreBackup": "Restaurer la sauvegarde",
     "restoreConfirmTitle": "Restaurer la sauvegarde automatique ?",
-    "restoreConfirmDescription": "Ceci remplace tout ce qui est actuellement sur cet appareil — watchlist, bibliothèque, progression, historique, profils — par la sauvegarde du {{date}}. Cette action ne peut pas être annulée depuis cet écran.",
+    "restoreConfirmDescription": "Ceci remplace tout ce qui est actuellement sur cet appareil — watchlist, bibliothèque, progression, historique, profils — par la sauvegarde du {{date}}. Vous pourrez annuler cette action ensuite depuis les outils de sauvegarde.",
     "lastBackupSuccess": "Dernière sauvegarde automatique : {{date}}.",
     "lastBackupFailed": "La dernière tentative de sauvegarde automatique a échoué — réessayez avec la sauvegarde de secours.",
     "noBackupYet": "Aucune sauvegarde automatique pour l'instant.",
@@ -579,9 +579,9 @@
   "errors": {
     "catalogUnavailable": "Impossible de charger le catalogue",
     "localDataUnavailable": "Impossible d'ouvrir les données locales",
-    "localDatabase": "CineTrack n'a pas pu initialiser sa base de données locale. Redémarrez l'application desktop après avoir vérifié ses permissions SQL Tauri.",
+    "localDatabase": "CineTrack n'a pas pu ouvrir vos données locales. Essayez de redémarrer l'application.",
     "tmdbAuthentication": "Le token TMDB du coffre desktop est absent, expiré ou refusé. Déverrouillez le coffre et enregistrez de nouveau un token Bearer valide.",
-    "tmdbConnection": "La connexion à TMDB a échoué. CineTrack essaie automatiquement le backend natif puis la WebView ; vérifiez aussi votre connexion, VPN ou proxy.",
+    "tmdbConnection": "La connexion à TMDB a échoué. Vérifiez votre connexion, VPN ou proxy.",
     "retry": "Réessayer",
     "technicalDetails": "Détails techniques",
     "tmdbTimeout": "TMDB n'a pas répondu dans le délai imparti ({{seconds}}s) pour {{path}}.",

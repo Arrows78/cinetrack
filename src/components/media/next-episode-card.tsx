@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { CheckCircle2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
+import { formatEpisodeCode } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 
 export function NextEpisodeCard({
@@ -27,8 +28,7 @@ export function NextEpisodeCard({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">{t("media.nextEpisode")}</p>
           <h3 className="mt-1 font-display text-2xl font-bold">
-            S{episode.seasonNumber.toString().padStart(2, "0")}E{episode.episodeNumber.toString().padStart(2, "0")} ·{" "}
-            {episode.title}
+            {formatEpisodeCode(episode.seasonNumber, episode.episodeNumber, { padded: true })} · {episode.title}
           </h3>
           <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{episode.overview}</p>
         </div>

@@ -209,7 +209,7 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str, id: &str) -> Result<()
         .await
         .map_err(ApiError::from)?;
     if result.rows_affected() == 0 {
-        return Err(ApiError::not_found("Alerte introuvable."));
+        return Err(ApiError::not_found("Alert not found."));
     }
     Ok(())
 }

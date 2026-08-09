@@ -76,7 +76,7 @@ describe("runMigrations against real SQLite", () => {
       name: string;
     }>;
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.name).toBe("Principal");
+    expect(rows[0]!.name).toBe("Default");
   });
 
   describe("id / uuid columns", () => {

@@ -3,6 +3,8 @@ import i18n from "@/i18n";
 import {
   buildTmdbImageUrl,
   formatDate,
+  formatEpisodeCode,
+  formatEpisodeNumber,
   formatRating,
   formatRelativeDate,
   formatRuntime,
@@ -84,6 +86,26 @@ describe("formatRating", () => {
   it("returns a placeholder for missing ratings", () => {
     expect(formatRating(null)).toBe("—");
     expect(formatRating(0)).toBe("—");
+  });
+});
+
+describe("formatEpisodeCode", () => {
+  it("formats raw numbers by default", () => {
+    expect(formatEpisodeCode(1, 2)).toBe("S1E2");
+  });
+
+  it("zero-pads when requested", () => {
+    expect(formatEpisodeCode(1, 2, { padded: true })).toBe("S01E02");
+  });
+});
+
+describe("formatEpisodeNumber", () => {
+  it("formats a raw number by default", () => {
+    expect(formatEpisodeNumber(5)).toBe("E5");
+  });
+
+  it("zero-pads when requested", () => {
+    expect(formatEpisodeNumber(5, { padded: true })).toBe("E05");
   });
 });
 

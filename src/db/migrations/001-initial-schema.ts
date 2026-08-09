@@ -213,6 +213,6 @@ export const migration: Migration = {
     )`,
 
     `INSERT OR IGNORE INTO profiles (uuid, name, created_at, updated_at)
-     VALUES ('default', 'Principal', strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'), strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'))`,
+     VALUES ('default', 'Default', strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'), strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'))`,
   ],
 };

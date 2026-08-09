@@ -43,14 +43,26 @@ export const formatRuntime = (runtime?: number | null) => {
   if (!runtime) return "—";
   const hours = Math.floor(runtime / 60);
   const minutes = runtime % 60;
-  return hours > 0 ? `${hours}h ${minutes.toString().padStart(2, "0")}` : `${minutes} min`;
+  return hours > 0
+    ? i18n.t("common.durationHoursMinutes", { hours, minutes: minutes.toString().padStart(2, "0") })
+    : i18n.t("common.durationMinutes", { minutes });
 };
 
 export const formatRating = (rating?: number | null) => {
   if (!rating) return "—";
-  const fixed = rating.toFixed(1);
-  return isFrench() ? fixed.replace(".", ",") : fixed;
+  return new Intl.NumberFormat(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(rating);
 };
+
+const pad2 = (value: number) => value.toString().padStart(2, "0");
+
+export const formatEpisodeCode = (season: number, episode: number, options?: { padded?: boolean }) =>
+  i18n.t("common.episodeCode", {
+    season: options?.padded ? pad2(season) : season,
+    episode: options?.padded ? pad2(episode) : episode,
+  });
+
+export const formatEpisodeNumber = (episode: number, options?: { padded?: boolean }) =>
+  i18n.t("common.episodeNumber", { episode: options?.padded ? pad2(episode) : episode });
 
 export const yearFromDate = (value?: string | null) => {
   if (!value) return null;

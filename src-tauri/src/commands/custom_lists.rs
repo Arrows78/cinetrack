@@ -110,11 +110,11 @@ const MAX_LIST_NAME_LENGTH: usize = 100;
 async fn create_impl(pool: &SqlitePool, profile_id: &str, name: &str, description: Option<String>) -> Result<CustomList, ApiError> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
-        return Err(ApiError::bad_request("Le nom de la liste est requis."));
+        return Err(ApiError::bad_request("The list name is required."));
     }
     if trimmed.chars().count() > MAX_LIST_NAME_LENGTH {
         return Err(ApiError::bad_request(format!(
-            "Le nom de la liste ne peut pas dépasser {MAX_LIST_NAME_LENGTH} caractères."
+            "The list name cannot exceed {MAX_LIST_NAME_LENGTH} characters."
         )));
     }
 
@@ -159,7 +159,7 @@ where
         .fetch_optional(executor)
         .await
         .map_err(ApiError::from)?;
-    owned.map(|_| ()).ok_or_else(|| ApiError::not_found("Liste introuvable."))
+    owned.map(|_| ()).ok_or_else(|| ApiError::not_found("List not found."))
 }
 
 async fn remove_impl(pool: &SqlitePool, profile_id: &str, list_id: &str) -> Result<(), ApiError> {

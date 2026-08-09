@@ -22,7 +22,7 @@ import { Tile } from "@/components/ui/tile";
 import { FilterBar } from "@/components/media/filter-bar";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SectionHeader } from "@/components/media/section-header";
-import { formatRelativeDate, percent } from "@/shared/utils/format";
+import { formatEpisodeCode, formatRelativeDate, percent } from "@/shared/utils/format";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
@@ -185,7 +185,7 @@ export function HistoryPage() {
                         <p className="truncate font-semibold leading-snug">{item.title}</p>
                         {item.episodeTitle ? (
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            S{item.seasonNumber}E{item.episodeNumber} • {item.episodeTitle}
+                            {formatEpisodeCode(item.seasonNumber ?? 0, item.episodeNumber ?? 0)} • {item.episodeTitle}
                           </p>
                         ) : null}
                         <p className="mt-1 text-caption text-muted-foreground">
