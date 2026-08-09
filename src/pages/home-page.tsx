@@ -150,7 +150,7 @@ export function HomePage() {
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/60 to-transparent" />
 
           <div className="relative px-6 py-8 lg:px-8 lg:py-10">
-            {/* Premium badge */}
+            {/* Trending badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-overline font-semibold text-primary uppercase animate-in delay-200">
               <Sparkles className="h-3 w-3" />
               {t("home.premiumSelection")}

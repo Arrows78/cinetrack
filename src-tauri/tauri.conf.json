@@ -31,8 +31,8 @@
     "targets": "all",
     "category": "Entertainment",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
-    "shortDescription": "Track movies and TV shows, local-first.",
-    "longDescription": "A premium desktop app to track movies, TV shows, watchlists and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
+    "shortDescription": "Track movies and series, local-first.",
+    "longDescription": "A desktop app to track movies, series, watchlists and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
     "copyright": "© 2026 Thomas Jost",
     "publisher": "Thomas Jost",
     "homepage": "https://github.com/Arrows78/cinetrack"
