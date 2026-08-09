@@ -44,7 +44,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 - Switch between light and dark themes and several accent colours.
 - Enable compact mode or reduced motion.
 - Set default filters for search and the watchlist.
-- Sign in with Supabase (email OTP or social OAuth) when account sync is configured; the app otherwise works fully offline with a local-only profile.
+- Sign in with Supabase (email OTP or social OAuth) when optional sign-in is configured; the app otherwise works fully offline with a local-only profile.
 - Review viewing statistics and a yearly "wrapped" summary.
 
 ## 🧱 Technology stack
@@ -56,7 +56,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 | Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui         |
 | Routing                | TanStack Router                                                        |
 | Remote data            | TanStack Query, TMDB API                                               |
-| Optional account sync  | Supabase Auth (email OTP, OAuth)                                       |
+| Optional sign-in       | Supabase Auth (email OTP, OAuth)                                       |
 | Desktop persistence    | SQLite via Rust (`sqlx`) behind Tauri commands, Stronghold for secrets |
 | UI state               | Zustand                                                                |
 | Validation             | Zod                                                                    |
@@ -139,7 +139,7 @@ The application expects the TMDB **API Read Access Token**, which is sent as a B
 
 > **Security note:** `VITE_TMDB_API_TOKEN` is inlined by Vite into the frontend bundle at build time. Keep it set in `.env` only for local/web development. Never set it when producing a desktop bundle for distribution (`pnpm tauri build`) — a value present at that time would ship in cleartext inside the built binary, bypassing the Stronghold vault. Distributed builds should rely solely on the in-app token vault (Settings → TMDB) or leave the variable unset.
 
-### 4. (Optional) Configure Supabase account sync
+### 4. (Optional) Configure Supabase sign-in
 
 CineTrack works fully offline with `VITE_AUTH_REQUIRED=false` (the default). To enable account sign-in (email OTP or social OAuth), follow [`docs/auth.md`](docs/auth.md) for the full Supabase project setup, redirect URLs, and provider configuration.
 
