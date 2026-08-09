@@ -62,9 +62,11 @@ function ListContents({ listId }: { listId: string }) {
           setRemoveError(null);
           void items
             .remove({ mediaId: pendingRemoval.mediaId, mediaType: pendingRemoval.mediaType })
-            .catch((error: unknown) =>
-              setRemoveError(error instanceof Error ? error.message : t("desktop.operationFailed"))
-            );
+            // Generic message only — the raw error (SQL/IPC detail) isn't
+            // shown here, unlike RemoteErrorState's opt-in "technical
+            // details" disclosure, since this compact inline slot has no
+            // room for that pattern.
+            .catch(() => setRemoveError(t("desktop.operationFailed")));
           setPendingRemoval(null);
         }}
       />
@@ -151,6 +153,7 @@ export function CollectionsPage() {
             value={listName}
             onChange={(event) => setListName(event.target.value)}
             placeholder={t("collections.namePlaceholder")}
+            maxLength={100}
           />
           <Input
             size="sm"
@@ -169,9 +172,7 @@ export function CollectionsPage() {
                   setListName("");
                   setListDescription("");
                 })
-                .catch((error: unknown) =>
-                  setListActionError(error instanceof Error ? error.message : t("desktop.operationFailed"))
-                );
+                .catch(() => setListActionError(t("desktop.operationFailed")));
             }}
           >
             <ListPlus className="mr-2 size-4" />
@@ -235,11 +236,7 @@ export function CollectionsPage() {
         onConfirm={() => {
           if (!pendingDeleteList) return;
           setListActionError(null);
-          void lists
-            .remove(pendingDeleteList.id)
-            .catch((error: unknown) =>
-              setListActionError(error instanceof Error ? error.message : t("desktop.operationFailed"))
-            );
+          void lists.remove(pendingDeleteList.id).catch(() => setListActionError(t("desktop.operationFailed")));
           setPendingDeleteList(null);
         }}
       />
