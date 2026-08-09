@@ -293,6 +293,66 @@ async fn upsert_impl(
     Ok(item)
 }
 
+/// Rank used only to decide whether an automatic status sync (see
+/// `auto_sync_status_impl`) is allowed to move a library item forward.
+/// Watching/paused/dropped all count as "started" — none of them should be
+/// clobbered by a stray episode toggle — while completed/rewatching both
+/// count as "finished".
+fn auto_sync_rank(status: LibraryStatus) -> u8 {
+    match status {
+        LibraryStatus::Planned => 0,
+        LibraryStatus::Watching | LibraryStatus::Paused | LibraryStatus::Dropped => 1,
+        LibraryStatus::Completed | LibraryStatus::Rewatching => 2,
+    }
+}
+
+/// Called from progress.rs, inside the same transaction as a "vu" toggle,
+/// to keep an *existing* library entry's status roughly in sync with
+/// actual viewing: watching a movie completes it, watching an episode
+/// starts a series, finishing every episode completes it.
+///
+/// Deliberately never creates a library entry — adding something to the
+/// library stays a separate, explicit action — and never lowers the rank:
+/// unwatching something, or watching a stray episode of an already
+/// dropped/completed show, must not silently undo a manual status change.
+/// Only an explicit manual edit (`save_library_item`) can move a status
+/// back down.
+pub(crate) async fn auto_sync_status_impl(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    profile_id: &str,
+    media_id: i64,
+    media_type: MediaType,
+    target: LibraryStatus,
+    now: &str,
+) -> Result<(), ApiError> {
+    let current: Option<LibraryRow> = sqlx::query_as(
+        "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
+    )
+    .bind(profile_id)
+    .bind(media_id)
+    .bind(media_type.as_db_str())
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    let Some(row) = current else { return Ok(()) };
+    let current_status = LibraryStatus::from_db_str(&row.status)?;
+    if auto_sync_rank(target) <= auto_sync_rank(current_status) {
+        return Ok(());
+    }
+
+    let completed_at = if target == LibraryStatus::Completed { Some(now.to_string()) } else { row.completed_at };
+    sqlx::query("UPDATE library_items SET status = $1, completed_at = $2, updated_at = $3 WHERE uuid = $4")
+        .bind(target.as_db_str())
+        .bind(&completed_at)
+        .bind(now)
+        .bind(&row.uuid)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}
+
 async fn remove_impl(pool: &SqlitePool, profile_id: &str, media_id: i64, media_type: MediaType) -> Result<(), ApiError> {
     sqlx::query("DELETE FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3")
         .bind(profile_id)

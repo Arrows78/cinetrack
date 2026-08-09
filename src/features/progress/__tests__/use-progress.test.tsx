@@ -127,6 +127,7 @@ describe("useMovieSeen", () => {
     expect(invalidatedKeys).toContainEqual(queryKeys.local.movieSeen("default", 7));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.history("default"));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.stats("default"));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.library("default"));
   });
 });
 
@@ -148,6 +149,7 @@ describe("useEpisodeProgress", () => {
     expect(invalidatedKeys).toContainEqual(queryKeys.local.watchNextEpisode("default", 9));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries("default"));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar("default"));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.library("default"));
   });
 
   it("marking a season delegates to progressRepository.markSeason", async () => {

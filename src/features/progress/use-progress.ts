@@ -20,6 +20,9 @@ export function useMovieSeen(movieId: number) {
       queryKeys.local.movieSeen(profileId, variables.movie.id),
       queryKeys.local.history(profileId),
       queryKeys.local.stats(profileId),
+      // Marking a movie seen can auto-complete an existing library entry
+      // (see auto_sync_status_impl in src-tauri/src/commands/library.rs).
+      queryKeys.local.library(profileId),
     ]
   );
 
@@ -38,6 +41,9 @@ export function episodeProgressKeys(profileId: string, seriesId: number): QueryK
     queryKeys.local.trackedSeries(profileId),
     queryKeys.local.stats(profileId),
     queryKeys.local.calendar(profileId),
+    // Watching an episode can auto-start/complete an existing library entry
+    // (see auto_sync_status_impl in src-tauri/src/commands/library.rs).
+    queryKeys.local.library(profileId),
   ];
 }
 
