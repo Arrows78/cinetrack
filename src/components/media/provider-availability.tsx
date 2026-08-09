@@ -4,12 +4,13 @@ import { Tile } from "@/components/ui/tile";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useAvailability } from "@/features/media/use-discovery";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 export function ProviderAvailability({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const preferences = usePreferences();
-  const region = preferences.data?.region ?? "FR";
+  const region = preferences.data?.region ?? DEFAULT_TMDB_REGION;
   const query = useAvailability(media.mediaType, media.id, region);
   const providers = query.data?.flatrate ?? [];
   if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { invokeCommand } from "@/shared/lib/invoke";
+import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import type { UserPreferences } from "@/types/media";
 
 export const preferencesSchema = z.object({
@@ -9,7 +10,7 @@ export const preferencesSchema = z.object({
   region: z
     .string()
     .regex(/^[A-Z]{2}$/)
-    .default("FR"),
+    .default(DEFAULT_TMDB_REGION),
   defaultSearchType: z.enum(["all", "movie", "series"]).default("all"),
   defaultWatchlistFilter: z.enum(["all", "movie", "series"]).default("all"),
   reduceMotion: z.boolean().default(false),

@@ -10,6 +10,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
+import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 
 export function SettingsPage() {
@@ -73,17 +74,17 @@ export function SettingsPage() {
               <label className="grid gap-2 text-sm font-medium">
                 {t("settings.language")}
                 <Select
-                  value={preferences?.language ?? "fr"}
+                  value={preferences?.language ?? "en"}
                   onChange={(event) => void setLanguage(event.target.value as "fr" | "en")}
                 >
-                  <option value="fr">Français</option>
-                  <option value="en">English</option>
+                  <option value="en">{t("settings.languageOptions.english")}</option>
+                  <option value="fr">{t("settings.languageOptions.french")}</option>
                 </Select>
               </label>
               <label className="grid gap-2 text-sm font-medium">
                 {t("settings.region")}
                 <Select
-                  value={preferences?.region ?? "FR"}
+                  value={preferences?.region ?? DEFAULT_TMDB_REGION}
                   onChange={(event) => void updatePreference({ key: "region", value: event.target.value })}
                 >
                   <option value="FR">{t("settings.regionOptions.france")}</option>

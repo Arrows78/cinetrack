@@ -1,5 +1,9 @@
 import { PLATFORM_BRAND_COLORS } from "@/shared/constants/colors";
 
+// English/international default — used wherever a stored region preference
+// hasn't loaded yet, rather than defaulting to a French-specific value.
+export const DEFAULT_TMDB_REGION = "US";
+
 // `label` is TMDB's own English genre name — kept as a stable identity used
 // internally (matching a movie genre to its series equivalent in
 // home-page.tsx, sorting, deduping), not for display. `labelKey` is the i18n
