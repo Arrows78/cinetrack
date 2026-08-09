@@ -30,6 +30,10 @@ const CONCURRENCY = 3;
 // the UI or spike memory.
 export const MAX_TVTIME_FILES = 10;
 export const MAX_TVTIME_FILE_BYTES = 50 * 1024 * 1024;
+// The per-file cap alone still allows up to 10 × 50MB = 500MB read into
+// memory at once (every file's .text() is awaited together, see
+// tvtime-import-card.tsx). This bounds the sum instead.
+export const MAX_TVTIME_TOTAL_BYTES = 150 * 1024 * 1024;
 
 // "Bodyguard (2018)" → { title: "Bodyguard", year: 2018 }
 const splitTitleYear = (name: string): { title: string; year: number | null } => {

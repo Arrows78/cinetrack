@@ -8,6 +8,7 @@ import {
   importTvTimeExport,
   MAX_TVTIME_FILE_BYTES,
   MAX_TVTIME_FILES,
+  MAX_TVTIME_TOTAL_BYTES,
   type TvTimeImportProgress,
   type TvTimeImportSummary,
 } from "@/features/tvtime/tvtime-import-service";
@@ -36,6 +37,12 @@ export function TvTimeImportCard() {
     const oversized = files.find((file) => file.size > MAX_TVTIME_FILE_BYTES);
     if (oversized) {
       setError(t("tvtimeImport.fileTooLarge", { name: oversized.name }));
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > MAX_TVTIME_TOTAL_BYTES) {
+      setError(t("tvtimeImport.totalTooLarge", { max: Math.round(MAX_TVTIME_TOTAL_BYTES / (1024 * 1024)) }));
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
