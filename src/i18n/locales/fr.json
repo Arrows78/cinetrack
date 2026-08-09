@@ -133,8 +133,15 @@
       "movieUnwatched": "Film dé-vu",
       "episodeWatched": "Épisode vu",
       "episodeUnwatched": "Épisode dé-vu",
+      "seasonWatched": "Saison vue",
+      "seasonUnwatched": "Saison non vue",
+      "seriesWatched": "Série vue",
+      "seriesUnwatched": "Série non vue",
       "addedToWatchlist": "Ajouté à la liste",
-      "removedFromWatchlist": "Retiré de la liste"
+      "removedFromWatchlist": "Retiré de la liste",
+      "libraryUpdate": "Bibliothèque mise à jour",
+      "listAdd": "Ajouté à une liste personnalisée",
+      "listRemove": "Retiré d'une liste personnalisée"
     }
   },
   "search": {
@@ -149,6 +156,9 @@
   },
   "searchBar": {
     "placeholder": "Rechercher un film ou une série…"
+  },
+  "filterBar": {
+    "defaultLabel": "Filtrer"
   },
   "settings": {
     "subtitle": "Préférences locales et intégration desktop.",
@@ -184,6 +194,10 @@
       "canada": "Canada",
       "uk": "Royaume-Uni",
       "us": "États-Unis"
+    },
+    "languageOptions": {
+      "english": "Anglais",
+      "french": "Français"
     }
   },
   "movies": {
@@ -351,7 +365,7 @@
     "allGenres": "Tous les genres",
     "allPlatforms": "Toutes les plateformes",
     "maxDuration": "Durée maximale",
-    "retry": "Relancer",
+    "retry": "Choisir à nouveau",
     "emptyTitle": "Aucun résultat pour ces filtres",
     "emptyDesc": "Essayez un genre, une plateforme ou une durée plus large — ou ajoutez des titres à votre bibliothèque « à voir »."
   },
@@ -584,6 +598,7 @@
     "selectFiles": "Sélectionner les CSV",
     "tooManyFiles": "Sélectionnez au maximum {{max}} fichiers.",
     "fileTooLarge": "« {{name}} » est trop volumineux pour être importé.",
+    "totalTooLarge": "Ces fichiers représentent plus de {{max}} Mo au total — sélectionnez-en moins ou de plus petits.",
     "failed": "L'import a échoué",
     "done": "{{episodes}} épisodes importés sur {{series}} séries, {{movies}} films et {{watchlist}} entrées de liste.",
     "unresolvedEpisodeCount_one": "{{count}} ép.",

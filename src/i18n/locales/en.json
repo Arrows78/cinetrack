@@ -133,8 +133,15 @@
       "movieUnwatched": "Movie unwatched",
       "episodeWatched": "Episode watched",
       "episodeUnwatched": "Episode unwatched",
+      "seasonWatched": "Season watched",
+      "seasonUnwatched": "Season unwatched",
+      "seriesWatched": "Series watched",
+      "seriesUnwatched": "Series unwatched",
       "addedToWatchlist": "Added to watchlist",
-      "removedFromWatchlist": "Removed from watchlist"
+      "removedFromWatchlist": "Removed from watchlist",
+      "libraryUpdate": "Library updated",
+      "listAdd": "Added to a list",
+      "listRemove": "Removed from a list"
     }
   },
   "search": {
@@ -149,6 +156,9 @@
   },
   "searchBar": {
     "placeholder": "Search for a movie or series..."
+  },
+  "filterBar": {
+    "defaultLabel": "Filter"
   },
   "settings": {
     "subtitle": "User preferences persisted locally, desktop first, ready for future mobile port.",
@@ -184,6 +194,10 @@
       "canada": "Canada",
       "uk": "United Kingdom",
       "us": "United States"
+    },
+    "languageOptions": {
+      "english": "English",
+      "french": "French"
     }
   },
   "movies": {
@@ -351,7 +365,7 @@
     "allGenres": "All genres",
     "allPlatforms": "All platforms",
     "maxDuration": "Max duration",
-    "retry": "Retry",
+    "retry": "Pick again",
     "emptyTitle": "No match for these filters",
     "emptyDesc": "Try a wider genre, platform or duration — or add more titles to your \"to watch\" library."
   },
@@ -584,6 +598,7 @@
     "selectFiles": "Select CSV files",
     "tooManyFiles": "Select at most {{max}} files.",
     "fileTooLarge": "\"{{name}}\" is too large to import.",
+    "totalTooLarge": "These files add up to more than {{max}} MB combined — select fewer or smaller files.",
     "failed": "Import failed",
     "done": "Imported {{episodes}} episodes across {{series}} series, {{movies}} movies and {{watchlist}} watchlist items.",
     "unresolvedEpisodeCount_one": "{{count}} ep.",
