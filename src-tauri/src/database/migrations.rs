@@ -244,6 +244,49 @@ fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
     is_alter_table && mentions_duplicate_column
 }
 
+const EXPECTED_TABLES: &[&str] = &[
+    "activity_log",
+    "availability_alerts",
+    "availability_snapshots",
+    "custom_list_items",
+    "custom_lists",
+    "episode_progress",
+    "library_items",
+    "preferences",
+    "profiles",
+    "seen_movies",
+    "tracked_series",
+    "viewing_events",
+    "watchlist_items",
+];
+
+/// Catches a database whose PRAGMA user_version claims every migration
+/// already ran but that's actually missing one or more expected tables — a
+/// corrupted file, a version pragma left over from an unrelated database,
+/// or an incomplete manual restore. Without this, run_migrations would
+/// skip every migration (version already at the latest) and the real
+/// problem would only surface much later, as a confusing "no such table"
+/// error from whichever command happens to run first.
+async fn verify_critical_tables(pool: &SqlitePool) -> Result<(), ApiError> {
+    let existing: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+            .fetch_all(pool)
+            .await
+            .map_err(ApiError::from)?;
+
+    let missing: Vec<&str> =
+        EXPECTED_TABLES.iter().copied().filter(|table| !existing.iter().any(|name| name == table)).collect();
+
+    if !missing.is_empty() {
+        return Err(ApiError::internal(format!(
+            "Database is missing expected tables ({}) despite reporting the latest migration version — \
+             the file may be corrupted or was restored incompletely.",
+            missing.join(", ")
+        )));
+    }
+    Ok(())
+}
+
 /// Version-gated migration runner, ported from src/db/migrations/index.ts so
 /// it behaves identically against databases the old TypeScript runner
 /// already created (same `PRAGMA user_version` bookkeeping, same tolerance
@@ -283,6 +326,7 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
         current_version = migration.version;
     }
 
+    verify_critical_tables(pool).await?;
     Ok(())
 }
 
@@ -380,6 +424,19 @@ mod tests {
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
         assert_eq!(version.0, 9);
+    }
+
+    #[tokio::test]
+    async fn rejects_a_database_that_reports_the_latest_version_but_is_missing_tables() {
+        let pool = in_memory_pool().await;
+        // Simulates a corrupted file, a version pragma copied from an
+        // unrelated database, or a restore that didn't finish: the pragma
+        // claims every migration already ran, but no table was ever
+        // created. Without verify_critical_tables this would silently
+        // skip every migration and proceed with a schema-less database.
+        sqlx::query("PRAGMA user_version = 9").execute(&pool).await.unwrap();
+
+        assert!(run_migrations(&pool).await.is_err());
     }
 
     #[tokio::test]
