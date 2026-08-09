@@ -25,7 +25,9 @@ export function AlertsPage() {
     <div className="space-y-8">
       <SectionHeader title={t("alerts.title")} subtitle={t("alerts.subtitle")} index={1} />
 
-      {alerts.isError ? (
+      {alerts.isLoading ? (
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : alerts.isError ? (
         <RemoteErrorState error={alerts.error} onRetry={() => void alerts.refetch()} />
       ) : alerts.data?.length ? (
         <div className="grid gap-3">

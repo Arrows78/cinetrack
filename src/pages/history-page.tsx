@@ -2,7 +2,20 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { History, Clapperboard, Eye, EyeOff, Play, BookmarkPlus, BookmarkMinus } from "lucide-react";
+import {
+  History,
+  Clapperboard,
+  Eye,
+  EyeOff,
+  Play,
+  BookmarkPlus,
+  BookmarkMinus,
+  Layers,
+  Tv,
+  LibraryBig,
+  ListPlus,
+  ListMinus,
+} from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Tile } from "@/components/ui/tile";
@@ -13,18 +26,23 @@ import { formatRelativeDate, percent } from "@/shared/utils/format";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
+import type { HistoryAction } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
-
-type HistoryAction =
-  "movie:watched" | "movie:unwatched" | "episode:watched" | "episode:unwatched" | "watchlist:add" | "watchlist:remove";
 
 const labelByAction: Record<HistoryAction, string> = {
   "movie:watched": "movieWatched",
   "movie:unwatched": "movieUnwatched",
   "episode:watched": "episodeWatched",
   "episode:unwatched": "episodeUnwatched",
+  "season:watched": "seasonWatched",
+  "season:unwatched": "seasonUnwatched",
+  "series:watched": "seriesWatched",
+  "series:unwatched": "seriesUnwatched",
   "watchlist:add": "addedToWatchlist",
   "watchlist:remove": "removedFromWatchlist",
+  "library:update": "libraryUpdate",
+  "list:add": "listAdd",
+  "list:remove": "listRemove",
 };
 
 const actionConfig: Record<HistoryAction, { icon: LucideIcon; dot: string; ring: string }> = {
@@ -48,6 +66,26 @@ const actionConfig: Record<HistoryAction, { icon: LucideIcon; dot: string; ring:
     dot: "bg-foreground/5 text-muted-foreground",
     ring: "border-border",
   },
+  "season:watched": {
+    icon: Layers,
+    dot: "bg-accent/15 text-accent",
+    ring: "border-accent/20",
+  },
+  "season:unwatched": {
+    icon: EyeOff,
+    dot: "bg-foreground/5 text-muted-foreground",
+    ring: "border-border",
+  },
+  "series:watched": {
+    icon: Tv,
+    dot: "bg-primary/15 text-primary",
+    ring: "border-primary/20",
+  },
+  "series:unwatched": {
+    icon: EyeOff,
+    dot: "bg-foreground/5 text-muted-foreground",
+    ring: "border-border",
+  },
   "watchlist:add": {
     icon: BookmarkPlus,
     dot: "bg-success/15 text-success",
@@ -55,6 +93,21 @@ const actionConfig: Record<HistoryAction, { icon: LucideIcon; dot: string; ring:
   },
   "watchlist:remove": {
     icon: BookmarkMinus,
+    dot: "bg-destructive/15 text-destructive",
+    ring: "border-destructive/20",
+  },
+  "library:update": {
+    icon: LibraryBig,
+    dot: "bg-primary/15 text-primary",
+    ring: "border-primary/20",
+  },
+  "list:add": {
+    icon: ListPlus,
+    dot: "bg-success/15 text-success",
+    ring: "border-success/20",
+  },
+  "list:remove": {
+    icon: ListMinus,
     dot: "bg-destructive/15 text-destructive",
     ring: "border-destructive/20",
   },
@@ -92,7 +145,9 @@ export function HistoryPage() {
           }
         />
 
-        {historyQuery.isError ? (
+        {historyQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+        ) : historyQuery.isError ? (
           <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
         ) : filteredHistory.length ? (
           <div className="relative">
@@ -100,8 +155,8 @@ export function HistoryPage() {
             <div className="absolute left-[19px] top-2 bottom-2 w-px bg-foreground/[0.07]" />
 
             {filteredHistory.map((item, i) => {
-              const action = item.action as HistoryAction;
-              const config = actionConfig[action] ?? actionConfig["movie:watched"];
+              const action = item.action;
+              const config = actionConfig[action];
               const Icon = config.icon;
 
               return (
@@ -159,7 +214,9 @@ export function HistoryPage() {
           index={2}
         />
 
-        {trackedSeriesQuery.isError ? (
+        {trackedSeriesQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+        ) : trackedSeriesQuery.isError ? (
           <RemoteErrorState error={trackedSeriesQuery.error} onRetry={() => void trackedSeriesQuery.refetch()} />
         ) : (trackedSeriesQuery.data ?? []).length ? (
           <div className="space-y-3">
