@@ -18,19 +18,35 @@
     "global-shortcut:allow-unregister",
     {
       "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$APPDATA/backups/**" }]
+      "allow": [{ "path": "$APPDATA/backups/**" }, { "path": "$APPDATA/logs/**" }]
     },
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$APPDATA/backups" }]
+      "allow": [{ "path": "$APPDATA/backups" }, { "path": "$APPDATA/logs" }]
     },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$APPDATA/backups/**" }]
+      "allow": [{ "path": "$APPDATA/backups/**" }, { "path": "$APPDATA/logs/**" }]
     },
     {
       "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$APPDATA/backups/**" }, { "path": "$APPDATA/logs/**" }]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [{ "path": "$APPDATA/backups/**" }, { "path": "$APPDATA/logs/**" }]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [{ "path": "$APPDATA/backups/**" }, { "path": "$APPDATA/logs/**" }]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
       "allow": [{ "path": "$APPDATA/backups/**" }]
+    },
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [{ "path": "$APPDATA/logs/**" }]
     }
   ]
 }
