@@ -20,6 +20,7 @@ export function SearchBar({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder ?? t("searchBar.placeholder")}
+        aria-label={placeholder ?? t("searchBar.placeholder")}
         className="pl-11"
       />
     </div>
