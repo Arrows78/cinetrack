@@ -22,8 +22,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' customprotocol: asset:; connect-src 'self' ipc: http://ipc.localhost https://api.themoviedb.org https://*.supabase.co wss://*.supabase.co; img-src 'self' asset: http://asset.localhost data: blob: https://image.tmdb.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.fontshare.com; script-src 'self'",
-      "devCsp": "default-src 'self' customprotocol: asset:; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420 https://api.themoviedb.org https://*.supabase.co wss://*.supabase.co; img-src 'self' asset: http://asset.localhost data: blob: https://image.tmdb.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.fontshare.com; script-src 'self'"
+      "csp": "default-src 'self' customprotocol: asset:; connect-src 'self' ipc: http://ipc.localhost https://api.themoviedb.org https://*.supabase.co wss://*.supabase.co; img-src 'self' asset: http://asset.localhost data: blob: https://image.tmdb.org; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'",
+      "devCsp": "default-src 'self' customprotocol: asset:; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420 https://api.themoviedb.org https://*.supabase.co wss://*.supabase.co; img-src 'self' asset: http://asset.localhost data: blob: https://image.tmdb.org; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'"
     }
   },
   "bundle": {
