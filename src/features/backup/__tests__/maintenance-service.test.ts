@@ -4,7 +4,7 @@
 // built-in. Under the default jsdom environment, Vite treats this file as
 // browser ("client") code and refuses to bundle a Node built-in into it.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { rename } from "@tauri-apps/plugin-fs";
+import { rename, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
@@ -221,5 +221,20 @@ describe("maintenanceService automatic backup rotation", () => {
 
     await maintenanceService.restoreAutomaticBackup();
     expect((await watchlistRepository.list())[0]?.mediaId).toBe(9);
+  });
+
+  it("flags the last backup attempt as failed, then clears the flag on the next success", async () => {
+    const { maintenanceService } = await import("../maintenance-service");
+
+    vi.mocked(writeTextFile).mockImplementationOnce(async () => {
+      throw new Error("disk full");
+    });
+    await expect(maintenanceService.createAutomaticBackup(true)).rejects.toThrow();
+    expect((await maintenanceService.getLastBackupStatus()).failed).toBe(true);
+
+    await maintenanceService.createAutomaticBackup(true);
+    const status = await maintenanceService.getLastBackupStatus();
+    expect(status.failed).toBe(false);
+    expect(status.exportedAt).not.toBeNull();
   });
 });

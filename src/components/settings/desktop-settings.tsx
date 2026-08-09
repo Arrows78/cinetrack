@@ -20,11 +20,20 @@ export function DesktopSettings() {
   const [busy, setBusy] = useState(false);
   const [pendingRestore, setPendingRestore] = useState<{ exportedAt: string } | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<{ exportedAt: string | null; failed: boolean } | null>(null);
+  const refreshBackupStatus = () => {
+    if (isTauriApp())
+      void maintenanceService
+        .getLastBackupStatus()
+        .then(setBackupStatus)
+        .catch(() => undefined);
+  };
   useEffect(() => {
     if (isTauriApp())
       void isEnabled()
         .then(setAutoStart)
         .catch(() => undefined);
+    refreshBackupStatus();
   }, []);
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -155,7 +164,7 @@ export function DesktopSettings() {
                 void run(async () => {
                   await maintenanceService.createAutomaticBackup(true);
                   return t("desktop.backupUpdated");
-                })
+                }).then(refreshBackupStatus)
               }
             >
               {t("desktop.emergencyBackup")}
@@ -164,6 +173,15 @@ export function DesktopSettings() {
               {t("desktop.restoreBackup")}
             </Button>
           </div>
+          {backupStatus ? (
+            <p className={`mt-2 text-xs ${backupStatus.failed ? "text-destructive" : "text-muted-foreground"}`}>
+              {backupStatus.failed
+                ? t("desktop.lastBackupFailed")
+                : backupStatus.exportedAt
+                  ? t("desktop.lastBackupSuccess", { date: formatRelativeDate(backupStatus.exportedAt) })
+                  : t("desktop.noBackupYet")}
+            </p>
+          ) : null}
         </div>
       ) : null}
       {message ? <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm">{message}</p> : null}

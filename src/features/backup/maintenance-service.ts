@@ -25,6 +25,11 @@ const PRE_RESTORE_FILE = "backups/pre-restore.json";
 // the next one happens to be created under the new naming scheme.
 const LEGACY_BACKUP_FILE = "backups/latest.json";
 const LAST_BACKUP_KEY = "cinetrack.last-auto-backup";
+// Just a status flag (no personal data) — not the same category of thing
+// removed from localStorage elsewhere in this app. Lets Settings show
+// "last backup failed" even when an older successful backup still exists
+// on disk, which getAutomaticBackupInfo()'s date alone can't distinguish.
+const LAST_BACKUP_FAILED_KEY = "cinetrack.last-auto-backup-failed";
 
 // Embeds the backup's own exportedAt in the filename (colons/dots swapped
 // for dashes — Windows rejects `:` in filenames) so plain alphabetical
@@ -92,10 +97,16 @@ export const maintenanceService = {
   async createAutomaticBackup(force = false): Promise<void> {
     const last = Number(window.localStorage.getItem(LAST_BACKUP_KEY) ?? 0);
     if (!force && Date.now() - last < 24 * 60 * 60 * 1000) return;
-    const backup = await portableData.export();
-    await writeNamedBackup(autoBackupFileName(backup.exportedAt), JSON.stringify(backup, null, 2));
-    await pruneOldAutoBackups();
-    window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
+    try {
+      const backup = await portableData.export();
+      await writeNamedBackup(autoBackupFileName(backup.exportedAt), JSON.stringify(backup, null, 2));
+      await pruneOldAutoBackups();
+      window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
+      window.localStorage.removeItem(LAST_BACKUP_FAILED_KEY);
+    } catch (error) {
+      window.localStorage.setItem(LAST_BACKUP_FAILED_KEY, "1");
+      throw error;
+    }
   },
 
   /**
@@ -136,5 +147,16 @@ export const maintenanceService = {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { exportedAt?: unknown };
     return { exportedAt: typeof parsed.exportedAt === "string" ? parsed.exportedAt : "" };
+  },
+
+  /**
+   * For a visible "last backup" status in Settings — otherwise a failed
+   * automatic backup fails silently (see App.tsx's console.warn-only
+   * catch) and the user has no way to know their safety net is stale.
+   */
+  async getLastBackupStatus(): Promise<{ exportedAt: string | null; failed: boolean }> {
+    const info = await maintenanceService.getAutomaticBackupInfo();
+    const failed = window.localStorage.getItem(LAST_BACKUP_FAILED_KEY) === "1";
+    return { exportedAt: info?.exportedAt ?? null, failed };
   },
 };
