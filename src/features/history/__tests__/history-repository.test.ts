@@ -42,15 +42,6 @@ describe("historyRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("list_history", { limit: 50 });
   });
 
-  it("add() invokes add_history_item with the item", async () => {
-    invokeMock.mockResolvedValueOnce(undefined);
-    const { historyRepository } = await import("../history-repository");
-    const item = entry();
-
-    await historyRepository.add(item);
-    expect(invokeMock).toHaveBeenCalledWith("add_history_item", { item });
-  });
-
   it("wraps a rejected invoke() into an ApiCommandError", async () => {
     invokeMock.mockRejectedValueOnce({ message: "boom", status: 500 });
     const { historyRepository } = await import("../history-repository");

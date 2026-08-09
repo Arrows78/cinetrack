@@ -7,7 +7,7 @@ mod tray;
 use tauri::{Emitter, Manager};
 
 use commands::{
-    add_custom_list_item, add_history_item, check_data_integrity, create_custom_list, create_profile,
+    add_custom_list_item, check_data_integrity, create_custom_list, create_profile,
     export_backup_data, find_profile_by_supabase_user_id, get_availability_alert, get_availability_snapshot,
     get_episode_progress, get_library_item, get_preferences, get_stats_overview, has_watchlist_item,
     import_backup_data, import_movie_seen, import_series_progress, is_movie_seen, link_profile_to_supabase_user,
@@ -55,7 +55,6 @@ pub fn run() {
             update_preference,
             refresh_preferences,
             list_history,
-            add_history_item,
             list_watchlist,
             has_watchlist_item,
             save_watchlist_item,

@@ -22,7 +22,7 @@ pub use custom_lists::{
     add_custom_list_item, create_custom_list, list_custom_list_items, list_custom_lists, remove_custom_list,
     remove_custom_list_item,
 };
-pub use history::{add_history_item, list_history};
+pub use history::list_history;
 pub use library::{get_library_item, list_library, remove_library_item, save_library_item};
 pub use preferences::{get_preferences, refresh_preferences, update_preference, PreferencesCache};
 pub use profiles::{

@@ -201,11 +201,6 @@ pub async fn list_history(
     list_history_impl(&pool, limit.unwrap_or(50)).await
 }
 
-#[tauri::command]
-pub async fn add_history_item(item: ViewingHistoryItem, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
-    add_history_item_impl(pool.inner(), pool.inner(), item).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

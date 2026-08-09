@@ -1102,9 +1102,6 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return undefined;
       case "list_history":
         return listHistory(sqlite, (args.limit as number | undefined) ?? 50);
-      case "add_history_item":
-        addHistoryItem(sqlite, args.item as Record<string, unknown>);
-        return undefined;
       case "list_watchlist":
         return listWatchlist(sqlite, loadPreferences(sqlite).activeProfileId);
       case "has_watchlist_item":

@@ -8,8 +8,4 @@ export const historyRepository = {
   async list(limit = 50): Promise<ViewingHistoryItem[]> {
     return invokeCommand<ViewingHistoryItem[]>("list_history", { limit });
   },
-
-  async add(item: ViewingHistoryItem): Promise<void> {
-    await invokeCommand<void>("add_history_item", { item });
-  },
 };
