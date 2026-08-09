@@ -105,10 +105,17 @@ async fn list_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<CustomList
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
+const MAX_LIST_NAME_LENGTH: usize = 100;
+
 async fn create_impl(pool: &SqlitePool, profile_id: &str, name: &str, description: Option<String>) -> Result<CustomList, ApiError> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
         return Err(ApiError::bad_request("Le nom de la liste est requis."));
+    }
+    if trimmed.chars().count() > MAX_LIST_NAME_LENGTH {
+        return Err(ApiError::bad_request(format!(
+            "Le nom de la liste ne peut pas dépasser {MAX_LIST_NAME_LENGTH} caractères."
+        )));
     }
 
     let now = now_iso(pool).await?;
@@ -344,6 +351,16 @@ mod tests {
         let pool = migrated_pool().await;
         assert!(create_impl(&pool, "default", "   ", None).await.is_err());
         assert_eq!(list_impl(&pool, "default").await.unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn rejects_a_name_over_the_length_limit() {
+        let pool = migrated_pool().await;
+        let too_long = "a".repeat(MAX_LIST_NAME_LENGTH + 1);
+        assert!(create_impl(&pool, "default", &too_long, None).await.is_err());
+
+        let exactly_at_limit = "a".repeat(MAX_LIST_NAME_LENGTH);
+        assert!(create_impl(&pool, "default", &exactly_at_limit, None).await.is_ok());
     }
 
     #[tokio::test]
