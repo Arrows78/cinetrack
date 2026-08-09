@@ -34,22 +34,31 @@ describe("desktop Tauri capabilities", () => {
     expect(permissions).not.toContain("sql:allow-execute");
   });
 
-  it("scopes filesystem access to the backups directory only", () => {
+  it("scopes filesystem access to the backups and logs directories only", () => {
     const scoped = readScopedPermissions();
     const fsPermissions = scoped.filter((entry) => entry.identifier.startsWith("fs:"));
 
-    // The app only ever touches $APPDATA/backups/latest.json (see
-    // maintenance-service.ts). These permissions must never be granted as
-    // bare, unscoped strings again — that would allow reading/writing any
-    // text file the OS user has access to.
+    // The app only ever touches $APPDATA/backups (maintenance-service.ts)
+    // and $APPDATA/logs (diagnostics/logger.ts). These permissions must
+    // never be granted as bare, unscoped strings again — that would allow
+    // reading/writing any text file the OS user has access to.
     expect(fsPermissions.map((entry) => entry.identifier).sort()).toEqual(
-      ["fs:allow-exists", "fs:allow-mkdir", "fs:allow-read-text-file", "fs:allow-write-text-file"].sort()
+      [
+        "fs:allow-exists",
+        "fs:allow-mkdir",
+        "fs:allow-read-dir",
+        "fs:allow-read-text-file",
+        "fs:allow-remove",
+        "fs:allow-rename",
+        "fs:allow-stat",
+        "fs:allow-write-text-file",
+      ].sort()
     );
 
     for (const entry of fsPermissions) {
       expect(entry.allow, `${entry.identifier} must declare an "allow" scope`).toBeDefined();
       for (const scope of entry.allow ?? []) {
-        expect(scope.path.startsWith("$APPDATA/backups")).toBe(true);
+        expect(scope.path.startsWith("$APPDATA/backups") || scope.path.startsWith("$APPDATA/logs")).toBe(true);
       }
     }
   });
