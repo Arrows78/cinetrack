@@ -1,0 +1,109 @@
+name: Release build
+
+# Builds native CineTrack installers for Linux, Windows and macOS and attaches
+# them to the workflow run as downloadable artifacts — it does NOT create or
+# publish a GitHub Release. Run it manually (Actions tab -> Release build ->
+# Run workflow) whenever you want installers to hand out or test, or push a
+# `v*` tag once you're ready to cut one.
+#
+# Unsigned by default: none of the secrets referenced below
+# (APPLE_CERTIFICATE, WINDOWS_CERTIFICATE, ...) exist in this repository yet,
+# so the Tauri CLI skips code signing and notarization and produces plain
+# unsigned bundles — installable, but flagged by Gatekeeper/SmartScreen.
+# Add the matching secrets under Settings -> Secrets and variables -> Actions
+# (see docs/release-signing.md) and these same steps start signing/notarizing
+# automatically, no workflow changes required.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux
+          - os: windows-latest
+            target: windows
+          - os: macos-latest
+            target: macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Tauri system dependencies (Linux)
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            build-essential \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            patchelf
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and package the app
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # --- macOS signing + notarization (placeholders) ---------------
+          # Populate to codesign the .app before bundling. Leave unset and
+          # the CLI produces an unsigned, ad-hoc .app/.dmg instead.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Populate to notarize with Apple after signing (requires the
+          # signing secrets above too). Leave unset to skip notarization.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+          # --- Windows signing (placeholder) ------------------------------
+          # Populate to sign the .msi/.exe with an OV certificate. Leave
+          # unset and the CLI produces an unsigned installer instead.
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+
+          # --- Updater signature (placeholder) ----------------------------
+          # Only relevant once the desktop update channel (endpoint + public
+          # key in tauri.conf.json's `plugins.updater`) is actually
+          # configured — see desktop.updateChannelNotConfigured in the i18n
+          # locales. Unused until then.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          uploadWorkflowArtifacts: true
+          uploadUpdaterJson: false
