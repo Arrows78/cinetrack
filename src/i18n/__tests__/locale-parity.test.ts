@@ -33,4 +33,29 @@ describe("locale parity", () => {
     expect(empty(en)).toEqual([]);
     expect(empty(fr)).toEqual([]);
   });
+
+  // A key present in both locales can still drift if one translation drops
+  // or renames an interpolation placeholder (e.g. {{count}}) — i18next then
+  // renders the literal "{{count}}" instead of the value at runtime, with
+  // no error anywhere. Catches that without needing to touch every call site.
+  it("every key's interpolation parameters match between locales", () => {
+    const readValue = (locale: unknown, key: string): unknown =>
+      key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], locale);
+
+    const placeholders = (value: unknown): string[] =>
+      typeof value === "string" ? Array.from(value.matchAll(/{{\s*([\w.]+)\s*}}/g), (match) => match[1]!).sort() : [];
+
+    const mismatches = flattenKeys(en)
+      .map((key) => {
+        const enParams = placeholders(readValue(en, key));
+        const frParams = placeholders(readValue(fr, key));
+        return { key, enParams, frParams };
+      })
+      .filter(({ enParams, frParams }) => enParams.join(",") !== frParams.join(","));
+
+    expect(
+      mismatches,
+      mismatches.map(({ key, enParams, frParams }) => `${key}: en=[${enParams}] fr=[${frParams}]`).join("\n")
+    ).toEqual([]);
+  });
 });
