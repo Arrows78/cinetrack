@@ -5,10 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="CineTrack, a premium desktop app for tracking movies, series, watchlists, and episode progress."
+      content="CineTrack, a desktop app for tracking movies, series, watchlists, and episode progress."
     />
     <meta name="theme-color" content="#070a18" />
     <title>CineTrack</title>
+    <script>
+      // Set the real document language before React/i18next mount, mirroring
+      // src/i18n/index.ts's own detection — otherwise a screen reader can
+      // announce a French-preferring user's very first paint as English.
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("cinetrack.language");
+          var lang =
+            stored === "fr" || stored === "en"
+              ? stored
+              : navigator.language.toLowerCase().startsWith("fr")
+                ? "fr"
+                : "en";
+          document.documentElement.lang = lang;
+        } catch {
+          // localStorage unavailable (e.g. private browsing) — keep the "en" default.
+        }
+      })();
+    </script>
   </head>
   <body class="bg-background text-foreground antialiased">
     <div id="root"></div>
