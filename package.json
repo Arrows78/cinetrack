@@ -2,7 +2,7 @@
   "name": "cinetrack-mvp",
   "private": true,
   "version": "0.3.0",
-  "description": "A premium desktop app to track movies, TV shows, watchlists and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
+  "description": "A desktop app to track movies, series, watchlists and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
   "keywords": [
     "tauri",
     "react",
@@ -96,6 +96,7 @@
     "autoprefixer": "^10.5.4",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-i18next": "^6.1.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.8.0",

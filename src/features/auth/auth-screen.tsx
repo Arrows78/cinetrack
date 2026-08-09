@@ -13,6 +13,8 @@ import { cn } from "@/shared/lib/cn";
 type AuthMode = "signin" | "signup";
 type AuthStep = "providers" | "email" | "otp";
 
+const AUTH_MODES: readonly AuthMode[] = ["signin", "signup"];
+
 function PolicyLink({ href, children }: { href?: string; children?: ReactNode }) {
   if (!href) return <span className="font-semibold text-primary">{children}</span>;
 
@@ -199,7 +201,7 @@ export function AuthScreen() {
 
         <section className="w-full max-w-[560px] rounded-shell border border-white/10 bg-auth-surface/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">
           <div className="mb-7 grid grid-cols-2 rounded-2xl bg-black/30 p-1">
-            {(["signin", "signup"] as const).map((option) => (
+            {AUTH_MODES.map((option) => (
               <button
                 key={option}
                 type="button"

@@ -4,6 +4,10 @@ import { PLATFORM_BRAND_COLORS } from "@/shared/constants/colors";
 // hasn't loaded yet, rather than defaulting to a French-specific value.
 export const DEFAULT_TMDB_REGION = "US";
 
+// Matches i18n's own fallbackLng (see src/i18n/index.ts) — used wherever a
+// stored language preference hasn't loaded yet.
+export const DEFAULT_LANGUAGE = "en";
+
 // `label` is TMDB's own English genre name — kept as a stable identity used
 // internally (matching a movie genre to its series equivalent in
 // home-page.tsx, sorting, deduping), not for display. `labelKey` is the i18n

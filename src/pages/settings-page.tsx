@@ -10,7 +10,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
-import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_LANGUAGE, DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 
 export function SettingsPage() {
@@ -74,7 +74,7 @@ export function SettingsPage() {
               <label className="grid gap-2 text-sm font-medium">
                 {t("settings.language")}
                 <Select
-                  value={preferences?.language ?? "en"}
+                  value={preferences?.language ?? DEFAULT_LANGUAGE}
                   onChange={(event) => void setLanguage(event.target.value as "fr" | "en")}
                 >
                   <option value="en">{t("settings.languageOptions.english")}</option>
