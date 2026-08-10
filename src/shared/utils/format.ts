@@ -5,10 +5,21 @@ import i18n from "@/i18n";
 const isFrench = () => (i18n.language ?? "").toLowerCase().startsWith("fr");
 const dateLocale = () => (isFrench() ? fr : enUS);
 
-export const buildTmdbImageUrl = (
-  path: string | null | undefined,
-  size: "w92" | "w185" | "w342" | "w500" | "w780" | "original" = "w780"
-) => (path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined);
+export type TmdbImageSize = "w92" | "w185" | "w342" | "w500" | "w780" | "original";
+
+export const buildTmdbImageUrl = (path: string | null | undefined, size: TmdbImageSize = "w780") =>
+  path ? `https://image.tmdb.org/t/p/${size}${path}` : undefined;
+
+const POSTER_WIDTHS: Array<{ size: TmdbImageSize; width: number }> = [
+  { size: "w185", width: 185 },
+  { size: "w342", width: 342 },
+  { size: "w500", width: 500 },
+  { size: "w780", width: 780 },
+];
+
+/** A `srcset` string spanning TMDB's poster widths, so the browser can pick a size matching the rendered card instead of always downloading `w780`. */
+export const buildTmdbPosterSrcSet = (path: string | null | undefined) =>
+  path ? POSTER_WIDTHS.map(({ size, width }) => `${buildTmdbImageUrl(path, size)} ${width}w`).join(", ") : undefined;
 
 export const formatDate = (value?: string | null) => {
   if (!value) return i18n.t("common.unknownDate");

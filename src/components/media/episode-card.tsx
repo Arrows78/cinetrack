@@ -33,7 +33,7 @@ export function EpisodeCard({
         ) : (
           <img
             src={buildTmdbImageUrl(episode.stillPath, "w342") ?? "https://placehold.co/320x180/111827/374151?text=."}
-            alt={episode.title}
+            alt=""
             className="h-full w-full object-cover"
           />
         )}
@@ -64,7 +64,12 @@ export function EpisodeCard({
           {episode.rating && !hidden ? (
             <>
               <span>•</span>
-              <span className="text-rating/80">★ {formatRating(episode.rating)}</span>
+              <span
+                aria-label={t("media.ratingLabel", { rating: formatRating(episode.rating) })}
+                className="text-rating/80"
+              >
+                <span aria-hidden="true">★ {formatRating(episode.rating)}</span>
+              </span>
             </>
           ) : null}
         </div>
@@ -75,7 +80,7 @@ export function EpisodeCard({
         disabled={disabled}
         onClick={onToggleSeen}
         className={cn(
-          "flex size-11 shrink-0 items-center justify-center rounded-full border-2",
+          "flex size-11 shrink-0 items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           watched ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"
         )}
       >

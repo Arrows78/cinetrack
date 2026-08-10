@@ -32,11 +32,14 @@ describe("MediaCard", () => {
   });
 
   it("falls back to the placeholder poster and unknown year", () => {
-    render(<MediaCard media={makeMedia({ posterPath: null, year: null })} />);
+    const { container } = render(<MediaCard media={makeMedia({ posterPath: null, year: null })} />);
 
-    // Vite inlines the placeholder SVG as a data: URI; the real point is
-    // that the src is not a TMDB URL.
-    expect(screen.getByRole("img")).not.toHaveAttribute("src", expect.stringContaining("image.tmdb.org"));
+    // The poster is decorative (alt="") since the title is already visible
+    // text in the same card, so it isn't exposed via role="img" — query the
+    // DOM directly. Vite inlines the placeholder SVG as a data: URI; the
+    // real point is that the src is not a TMDB URL.
+    const image = container.querySelector("img");
+    expect(image).not.toHaveAttribute("src", expect.stringContaining("image.tmdb.org"));
     expect(screen.getByText("Unknown year")).toBeInTheDocument();
   });
 });

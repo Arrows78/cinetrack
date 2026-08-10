@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import { buildTmdbImageUrl, formatRating, formatRuntime } from "@/shared/utils/format";
+import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 
 export function MediaDetailsHero({
@@ -21,7 +21,7 @@ export function MediaDetailsHero({
     <section className="relative overflow-hidden rounded-shell border border-border">
       {backdrop ? (
         <>
-          <img src={backdrop} alt={media.title} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={backdrop} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div
             className="absolute inset-0"
             style={{
@@ -39,7 +39,9 @@ export function MediaDetailsHero({
         <div className="hidden lg:block">
           <img
             src={poster ?? "https://placehold.co/500x750/111827/374151?text=Poster"}
-            alt={media.title}
+            srcSet={buildTmdbPosterSrcSet(media.posterPath)}
+            sizes="220px"
+            alt=""
             className="w-full rounded-card border border-border object-cover shadow-2xl"
           />
         </div>
@@ -53,13 +55,13 @@ export function MediaDetailsHero({
                 variant={media.mediaType === "movie" ? "movie" : "series"}
                 className="px-2.5 py-0.5 text-overline font-bold uppercase"
               >
-                {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
+                {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
               </Badge>
               {media.status ? <span className="text-xs text-muted-foreground">{media.status}</span> : null}
             </div>
 
             {/* Title */}
-            <h2 className="mt-3 font-display text-4xl font-bold leading-tight text-balance md:text-5xl">
+            <h2 className="mt-3 line-clamp-3 font-display text-4xl font-bold leading-tight text-balance md:text-5xl">
               {media.title}
             </h2>
             {media.originalTitle && media.originalTitle !== media.title ? (
@@ -68,8 +70,11 @@ export function MediaDetailsHero({
 
             {/* Meta */}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-              <span className="flex items-center gap-1 text-rating">
-                <span>★</span>
+              <span
+                aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
+                className="flex items-center gap-1 text-rating"
+              >
+                <span aria-hidden="true">★</span>
                 <span className="font-semibold text-foreground">{formatRating(media.rating)}</span>
               </span>
               {media.year && <span className="text-muted-foreground">{media.year}</span>}

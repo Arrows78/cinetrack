@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/shared/lib/cn";
 import { MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
-import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
+import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
@@ -16,6 +16,7 @@ export interface MediaCardProgress {
 function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: MediaCardProgress }) {
   const { t } = useTranslation();
   const image = buildTmdbImageUrl(media.posterPath, "w500") ?? fallbackPoster;
+  const srcSet = buildTmdbPosterSrcSet(media.posterPath);
   const showProgress = progress !== undefined && progress.total > 0;
   const complete = showProgress && progress.watched >= progress.total;
 
@@ -25,7 +26,9 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
       <div className="relative aspect-[2/3] overflow-hidden">
         <img
           src={image}
-          alt={media.title}
+          srcSet={srcSet}
+          sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
+          alt=""
           loading="lazy"
           decoding="async"
           className="h-full w-full object-cover transition-transform duration-slower ease-out group-hover:scale-[1.07]"
@@ -40,8 +43,13 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
         </div>
 
         {/* Top: rating badge */}
-        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-transform duration-base group-hover:scale-110">
-          <span className="text-rating">★</span>
+        <div
+          aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
+          className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-transform duration-base group-hover:scale-110"
+        >
+          <span className="text-rating" aria-hidden="true">
+            ★
+          </span>
           {formatRating(media.rating)}
         </div>
 
@@ -51,7 +59,7 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
             variant={media.mediaType === "movie" ? "movie" : "series"}
             className="px-2.5 py-0.5 text-overline font-semibold uppercase backdrop-blur-sm transition-all duration-base"
           >
-            {media.mediaType === "movie" ? t("nav.movies") : t("nav.series")}
+            {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
           </Badge>
         </div>
 
@@ -109,11 +117,19 @@ export function MediaCard({ media, progress }: { media: MediaSummary; progress?:
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
     >
       {media.mediaType === "movie" ? (
-        <Link to="/movies/$movieId" params={{ movieId: String(media.id) }}>
+        <Link
+          to="/movies/$movieId"
+          params={{ movieId: String(media.id) }}
+          className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <MediaCardInner media={media} progress={progress} />
         </Link>
       ) : (
-        <Link to="/series/$seriesId" params={{ seriesId: String(media.id) }}>
+        <Link
+          to="/series/$seriesId"
+          params={{ seriesId: String(media.id) }}
+          className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <MediaCardInner media={media} progress={progress} />
         </Link>
       )}
