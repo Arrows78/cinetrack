@@ -97,6 +97,13 @@ jobs:
 
   cargo-audit:
     runs-on: ubuntu-latest
+    # rustsec/audit-check reports its result as a GitHub Check Run, which
+    # needs write access beyond the workflow's default contents:read — without
+    # it the action itself fails with "Resource not accessible by integration"
+    # even when the audit found zero vulnerabilities.
+    permissions:
+      contents: read
+      checks: write
 
     steps:
       - uses: actions/checkout@v7
