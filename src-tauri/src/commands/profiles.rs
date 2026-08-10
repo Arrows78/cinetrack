@@ -172,7 +172,8 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError
         "availability_alerts",
         "activity_log",
     ] {
-        sqlx::query(&format!("DELETE FROM {table} WHERE profile_id = $1"))
+        // `table` iterates a fixed Rust array literal above, never user input.
+        sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table} WHERE profile_id = $1")))
             .bind(profile_id)
             .execute(&mut *tx)
             .await
@@ -367,11 +368,12 @@ mod tests {
             "availability_alerts",
             "custom_lists",
         ] {
-            let remaining: (i64,) = sqlx::query_as(&format!("SELECT COUNT(*) FROM {table} WHERE profile_id = $1"))
-                .bind(&created.id)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+            let remaining: (i64,) =
+                sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table} WHERE profile_id = $1")))
+                    .bind(&created.id)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
             assert_eq!(remaining.0, 0, "{table} should have cascaded on profile deletion");
         }
 

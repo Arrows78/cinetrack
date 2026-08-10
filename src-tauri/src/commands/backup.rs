@@ -397,7 +397,11 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
         "preferences",
         "profiles",
     ] {
-        sqlx::query(&format!("DELETE FROM {table}")).execute(&mut *tx).await.map_err(ApiError::from)?;
+        // `table` iterates a fixed Rust array literal above, never user input.
+        sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table}")))
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
     }
 
     for item in &data.profiles {
@@ -702,8 +706,12 @@ mod tests {
     }
 
     async fn table_columns(pool: &SqlitePool, table: &str) -> Vec<String> {
-        let mut columns: Vec<String> =
-            sqlx::query_scalar(&format!("SELECT name FROM pragma_table_info('{table}')")).fetch_all(pool).await.unwrap();
+        let mut columns: Vec<String> = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+            "SELECT name FROM pragma_table_info('{table}')"
+        )))
+        .fetch_all(pool)
+        .await
+        .unwrap();
         columns.sort();
         columns
     }

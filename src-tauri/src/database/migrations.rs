@@ -307,7 +307,10 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
         let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
         for statement in migration.statements {
-            if let Err(error) = sqlx::query(statement).execute(&mut *tx).await
+            // `statement` is a `&'static str` literal from the fixed MIGRATIONS
+            // table below, never user input — dereferencing keeps it as such
+            // rather than the `&&'static str` iteration produces.
+            if let Err(error) = sqlx::query(*statement).execute(&mut *tx).await
                 && !is_tolerable_duplicate_column(statement, &error)
             {
                 return Err(ApiError::internal(format!(
@@ -317,7 +320,7 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
             }
         }
 
-        sqlx::query(&format!("PRAGMA user_version = {}", migration.version))
+        sqlx::query(sqlx::AssertSqlSafe(format!("PRAGMA user_version = {}", migration.version)))
             .execute(&mut *tx)
             .await
             .map_err(ApiError::from)?;
@@ -416,7 +419,7 @@ mod tests {
         // since the tables already exist), only apply the migrations still
         // ahead of that version (9, here).
         for statement in MIGRATIONS[0].statements {
-            sqlx::query(statement).execute(&pool).await.unwrap();
+            sqlx::query(*statement).execute(&pool).await.unwrap();
         }
         sqlx::query("PRAGMA user_version = 1").execute(&pool).await.unwrap();
 
