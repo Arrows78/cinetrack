@@ -1448,7 +1448,7 @@ export function DesignSystemPage() {
                               <Icon className="size-4" /> {side.name}
                             </Button>
                           </SheetTrigger>
-                          <SheetContent side={side.name}>
+                          <SheetContent side={side.name} closeLabel="Close">
                             <SheetHeader>
                               <SheetTitle>{side.name} sheet</SheetTitle>
                               <SheetDescription>{side.use}</SheetDescription>
@@ -1497,7 +1497,7 @@ export function DesignSystemPage() {
                             {size.name}
                           </Button>
                         </SheetTrigger>
-                        <SheetContent side="right" size={size.name}>
+                        <SheetContent side="right" size={size.name} closeLabel="Close">
                           <SheetHeader>
                             <SheetTitle>{size.name} sheet</SheetTitle>
                             <SheetDescription>{size.use}</SheetDescription>

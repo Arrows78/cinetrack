@@ -81,13 +81,13 @@ export function SheetFooter({ className, ...props }: React.HTMLAttributes<HTMLDi
 }
 
 export type SheetContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-  closeLabel?: string;
+  closeLabel: string;
   side?: SheetSide;
   size?: SheetSize;
 };
 
 export const SheetContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, SheetContentProps>(
-  ({ className, children, closeLabel = "Close", side = "left", size = "sm", ...props }, ref) => {
+  ({ className, children, closeLabel, side = "left", size = "sm", ...props }, ref) => {
     const isHorizontal = side === "left" || side === "right";
 
     return (
