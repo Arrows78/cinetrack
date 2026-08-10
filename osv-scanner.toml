@@ -1,0 +1,80 @@
+# Config for the osv-scan CI job (.github/workflows/ci.yml) — auto-loaded by
+# osv-scanner from the repo root during its recursive scan.
+#
+# Every ID below is an "unmaintained crate" notice (no CVSS score, informational
+# only — RustSec's own site lists them under "informational: unmaintained", not
+# as an exploit) for the GTK3 bindings (atk/gdk/gtk/glib-adjacent macro crates)
+# that `tauri` v2.11.5 pulls in transitively for its Linux tray-icon backend.
+# They aren't reachable from this app's Cargo.toml — bumping past them means
+# waiting on Tauri's own migration to gtk4-rs, not something this repo can fix.
+# `cargo-audit` (see the cargo-audit CI job) already treats "unmaintained" as
+# informational rather than a failure for the same reason; this mirrors that
+# stance for osv-scan instead of drowning any real, actionable finding (like
+# the glib CVE this list deliberately does NOT include) in unfixable noise.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0413"
+reason = "atk — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0416"
+reason = "atk-sys — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0412"
+reason = "gdk — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0418"
+reason = "gdk-sys — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0411"
+reason = "gdkwayland-sys — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0417"
+reason = "gdkx11 — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0414"
+reason = "gdkx11-sys — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0415"
+reason = "gtk — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0420"
+reason = "gtk-sys — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0419"
+reason = "gtk3-macros — unmaintained GTK3 binding, transitive via tauri's Linux tray-icon backend"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+reason = "paste — unmaintained, pulled in by the same GTK3 binding chain above"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+reason = "proc-macro-error — unmaintained, pulled in by the same GTK3 binding chain above"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0081"
+reason = "unic-char-property — unmaintained, transitive via the GTK3 binding chain above"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0075"
+reason = "unic-char-range — unmaintained, transitive via the GTK3 binding chain above"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0080"
+reason = "unic-common — unmaintained, transitive via the GTK3 binding chain above"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0100"
+reason = "unic-ucd-ident — unmaintained, transitive via the GTK3 binding chain above"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0098"
+reason = "unic-ucd-version — unmaintained, transitive via the GTK3 binding chain above"
