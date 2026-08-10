@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tile } from "@/components/ui/tile";
 import { EmptyState } from "@/components/states/empty-state";
+import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { SectionHeader } from "@/components/media/section-header";
 import { useAvailabilityAlerts } from "@/features/availability/use-availability-alerts";
@@ -26,7 +27,7 @@ export function AlertsPage() {
       <SectionHeader title={t("alerts.title")} subtitle={t("alerts.subtitle")} index={1} />
 
       {alerts.isLoading ? (
-        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+        <LoadingState />
       ) : alerts.isError ? (
         <RemoteErrorState error={alerts.error} onRetry={() => void alerts.refetch()} />
       ) : alerts.data?.length ? (

@@ -18,6 +18,9 @@
   "media": {
     "overview": "Overview",
     "cast": "Cast",
+    "movie": "Movie",
+    "series": "Series",
+    "ratingLabel": "Rating: {{rating}} out of 10",
     "seasons": "Seasons",
     "episodes": "Episodes",
     "season": "Season",
@@ -92,6 +95,7 @@
   "home": {
     "configureTmdb": "Configure your TMDB access",
     "configureTmdbDesc": "Add or unlock your TMDB access token in Settings to load the catalog.",
+    "configureTmdbCta": "Go to Settings",
     "premiumSelection": "Trending this week",
     "viewDetails": "View details",
     "exploreCatalog": "Explore catalog",

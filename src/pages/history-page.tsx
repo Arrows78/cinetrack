@@ -17,6 +17,7 @@ import {
   ListMinus,
 } from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
+import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Tile } from "@/components/ui/tile";
 import { FilterBar } from "@/components/media/filter-bar";
@@ -146,7 +147,7 @@ export function HistoryPage() {
         />
 
         {historyQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+          <LoadingState />
         ) : historyQuery.isError ? (
           <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
         ) : filteredHistory.length ? (
@@ -215,7 +216,7 @@ export function HistoryPage() {
         />
 
         {trackedSeriesQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+          <LoadingState />
         ) : trackedSeriesQuery.isError ? (
           <RemoteErrorState error={trackedSeriesQuery.error} onRetry={() => void trackedSeriesQuery.refetch()} />
         ) : (trackedSeriesQuery.data ?? []).length ? (

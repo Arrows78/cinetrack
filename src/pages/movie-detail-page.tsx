@@ -13,6 +13,7 @@ import { SeenToggle } from "@/components/media/seen-toggle";
 import { Panel } from "@/components/ui/panel";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useMovieSeen } from "@/features/progress/use-progress";
@@ -50,7 +51,7 @@ export function MovieDetailPage() {
               onToggle={() => void seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
               celebrateOnSeen
             />
-            {seenQuery.isError ? <p className="text-xs text-destructive">{t("media.seenStatusUnavailable")}</p> : null}
+            {seenQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
           </div>
         }
       />

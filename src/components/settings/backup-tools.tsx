@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Undo2, Upload } from "lucide-react";
+import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Panel } from "@/components/ui/panel";
@@ -11,6 +12,7 @@ export function BackupTools() {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"plain" | "error">("plain");
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -23,6 +25,7 @@ export function BackupTools() {
     anchor.download = `cinetrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+    setMessageTone("plain");
     setMessage(t("backup.exported"));
   };
 
@@ -40,6 +43,7 @@ export function BackupTools() {
     } catch (error) {
       setIsImporting(false);
       setPendingImportFile(null);
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : t("backup.importFailed"));
     }
   };
@@ -49,6 +53,7 @@ export function BackupTools() {
       await maintenanceService.undoLastRestore();
       window.location.reload();
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : t("backup.undoFailed"));
     }
   };
@@ -82,7 +87,11 @@ export function BackupTools() {
           }}
         />
       </div>
-      {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
+      {message ? (
+        <AsyncActionFeedback tone={messageTone} className="mt-3">
+          {message}
+        </AsyncActionFeedback>
+      ) : null}
 
       <ConfirmDialog
         open={pendingImportFile !== null}

@@ -790,6 +790,22 @@ export const componentInventory = [
     "Mirrors page geometry while remote content is loading."
   ),
   component(
+    "LoadingState",
+    "components/states/loading-state.tsx",
+    "States",
+    "pattern",
+    "live",
+    "Inline text loading notice for a page section, as opposed to a full-page skeleton or LoadingScreen."
+  ),
+  component(
+    "PartialErrorState",
+    "components/states/partial-error-state.tsx",
+    "States",
+    "pattern",
+    "live",
+    "Reports a secondary/partial fetch failure alongside otherwise-successful content, with an optional retry."
+  ),
+  component(
     "RemoteErrorState",
     "components/states/remote-error-state.tsx",
     "States",
@@ -804,6 +820,14 @@ export const componentInventory = [
     "primitive",
     "live",
     "Provides accessible single or multiple disclosure groups."
+  ),
+  component(
+    "AsyncActionFeedback",
+    "components/ui/async-action-feedback.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Reports the result of a button-triggered async action (plain, neutral, success or error tone)."
   ),
   component(
     "Badge",
@@ -836,6 +860,14 @@ export const componentInventory = [
     "primitive",
     "live",
     "Gates an irreversible action behind an explicit confirm/cancel choice."
+  ),
+  component(
+    "FormField",
+    "components/ui/form-field.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Composes a label with optional help/error text, wired to its control via aria-describedby."
   ),
   component(
     "Input",
@@ -876,6 +908,14 @@ export const componentInventory = [
     "primitive",
     "live",
     "Creates semantic horizontal or vertical separation."
+  ),
+  component(
+    "SettingToggle",
+    "components/ui/setting-toggle.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Renders an on/off preference as a pressed-state button."
   ),
   component(
     "Sheet",

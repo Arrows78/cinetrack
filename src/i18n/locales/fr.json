@@ -18,6 +18,9 @@
   "media": {
     "overview": "Synopsis",
     "cast": "Distribution",
+    "movie": "Film",
+    "series": "Série",
+    "ratingLabel": "Note : {{rating}} sur 10",
     "seasons": "Saisons",
     "episodes": "Épisodes",
     "season": "Saison",
@@ -92,6 +95,7 @@
   "home": {
     "configureTmdb": "Configurez votre accès TMDB",
     "configureTmdbDesc": "Ajoutez ou déverrouillez votre token TMDB dans les paramètres pour charger le catalogue.",
+    "configureTmdbCta": "Aller aux réglages",
     "premiumSelection": "Tendances de la semaine",
     "viewDetails": "Voir la fiche",
     "exploreCatalog": "Explorer le catalogue",

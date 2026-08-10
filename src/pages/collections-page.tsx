@@ -9,6 +9,7 @@ import { FilterBar } from "@/components/media/filter-bar";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
@@ -24,7 +25,7 @@ function ListContents({ listId }: { listId: string }) {
   );
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  if (items.isLoading) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>;
+  if (items.isLoading) return <LoadingState />;
   if (items.isError) {
     return <RemoteErrorState error={items.error} onRetry={() => void items.refetch()} />;
   }
@@ -183,7 +184,7 @@ export function CollectionsPage() {
         </div>
         {listActionError ? <p className="mt-3 text-sm text-destructive">{listActionError}</p> : null}
         {lists.isLoading ? (
-          <p className="mt-5 text-sm text-muted-foreground">{t("common.loading")}</p>
+          <LoadingState className="mt-5" />
         ) : lists.isError ? (
           <div className="mt-5">
             <RemoteErrorState error={lists.error} onRetry={() => void lists.refetch()} />

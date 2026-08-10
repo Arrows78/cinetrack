@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tv, Upload } from "lucide-react";
+import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import {
@@ -72,7 +73,13 @@ export function TvTimeImportCard() {
       <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" isLoading={running} onClick={() => inputRef.current?.click()}>
+        <Button
+          type="button"
+          variant="outline"
+          isLoading={running}
+          aria-busy={running}
+          onClick={() => inputRef.current?.click()}
+        >
           {!running && <Upload className="size-4" />}
           {t("tvtimeImport.selectFiles")}
         </Button>
@@ -85,7 +92,7 @@ export function TvTimeImportCard() {
           onChange={(event) => void handleFiles(event.target.files)}
         />
         {progress && progress.total > 0 ? (
-          <p className="text-sm tabular-nums text-muted-foreground">
+          <p role="status" aria-live="polite" className="text-sm tabular-nums text-muted-foreground">
             {t(`tvtimeImport.phase.${progress.phase}`)} · {progress.done}/{progress.total}
             {progress.label ? ` · ${progress.label}` : ""}
           </p>
@@ -93,7 +100,7 @@ export function TvTimeImportCard() {
       </div>
 
       {summary ? (
-        <div className="mt-4 rounded-2xl border border-success/30 bg-success/5 px-4 py-3 text-sm">
+        <AsyncActionFeedback tone="success" className="mt-4">
           <p className="font-medium">
             {t("tvtimeImport.done", {
               episodes: summary.episodesImported,
@@ -110,13 +117,13 @@ export function TvTimeImportCard() {
               <p className="mt-1 break-words">{summary.unmatched.join(" · ")}</p>
             </details>
           ) : null}
-        </div>
+        </AsyncActionFeedback>
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-4 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm">
+        <AsyncActionFeedback tone="error" className="mt-4">
           {error}
-        </p>
+        </AsyncActionFeedback>
       ) : null}
     </Panel>
   );

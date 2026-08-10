@@ -6,6 +6,7 @@ import type { CalendarEntry } from "@/types/media";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
 import { EmptyState } from "@/components/states/empty-state";
+import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
@@ -33,7 +34,7 @@ export function CalendarPage() {
         </div>
         <p className="mt-1 text-muted-foreground">{t("calendar.description")}</p>
       </header>
-      {calendar.isLoading ? <p className="text-muted-foreground">{t("calendar.loading")}</p> : null}
+      {calendar.isLoading ? <LoadingState label={t("calendar.loading")} /> : null}
       {calendar.isError ? <RemoteErrorState error={calendar.error} onRetry={() => void calendar.refetch()} /> : null}
       {Object.entries(groups).map(([date, entries], index) => (
         <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 1)}ms` }}>

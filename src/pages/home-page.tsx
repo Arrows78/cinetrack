@@ -91,7 +91,18 @@ export function HomePage() {
   const watchNext = useWatchNext(trackedSeriesQuery.data ?? []);
 
   if (!hasTmdbToken) {
-    return <EmptyState icon={Sparkles} title={t("home.configureTmdb")} description={t("home.configureTmdbDesc")} />;
+    return (
+      <EmptyState
+        icon={Sparkles}
+        title={t("home.configureTmdb")}
+        description={t("home.configureTmdbDesc")}
+        action={
+          <Button asChild>
+            <Link to="/settings">{t("home.configureTmdbCta")}</Link>
+          </Button>
+        }
+      />
+    );
   }
 
   if (homeQuery.isLoading) {

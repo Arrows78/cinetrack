@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
+import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { maintenanceService } from "@/features/backup/maintenance-service";
@@ -18,6 +20,7 @@ export function DesktopSettings() {
   const [token, setToken] = useState("");
   const [autoStart, setAutoStart] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"neutral" | "error">("neutral");
   const [busy, setBusy] = useState(false);
   const [pendingRestore, setPendingRestore] = useState<{ exportedAt: string } | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -48,10 +51,12 @@ export function DesktopSettings() {
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
     setMessage("");
+    setMessageTone("neutral");
     try {
       const result = await action();
       setMessage(typeof result === "string" ? result : t("desktop.operationComplete"));
     } catch (error) {
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : t("desktop.operationFailed"));
     } finally {
       setBusy(false);
@@ -60,6 +65,7 @@ export function DesktopSettings() {
   const startRestore = async () => {
     const info = await maintenanceService.getAutomaticBackupInfo();
     if (!info) {
+      setMessageTone("error");
       setMessage(t("backup.noAutomaticBackup"));
       return;
     }
@@ -73,6 +79,7 @@ export function DesktopSettings() {
     } catch (error) {
       setIsRestoring(false);
       setPendingRestore(null);
+      setMessageTone("error");
       setMessage(error instanceof Error ? error.message : t("desktop.operationFailed"));
     }
   };
@@ -82,31 +89,27 @@ export function DesktopSettings() {
         <h3 className="font-semibold">{t("desktop.tmdbVault")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{t("desktop.vaultDesc")}</p>
         <div className="mt-3 grid gap-2">
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t("desktop.vaultPassword")}
-            <Input
-              size="sm"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              aria-describedby="vault-password-hint"
-            />
-            <span id="vault-password-hint" className="text-xs font-normal text-muted-foreground">
-              {t("desktop.vaultPasswordHint")}
-            </span>
-          </label>
-          <label className="grid gap-1.5 text-sm font-medium">
-            {t("desktop.newToken")}
-            <Textarea
-              className="min-h-24 text-sm"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              aria-describedby="tmdb-token-hint"
-            />
-            <span id="tmdb-token-hint" className="text-xs font-normal text-muted-foreground">
-              {t("desktop.newTokenHint")}
-            </span>
-          </label>
+          <FormField label={t("desktop.vaultPassword")} help={t("desktop.vaultPasswordHint")}>
+            {(describedBy) => (
+              <Input
+                size="sm"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                aria-describedby={describedBy}
+              />
+            )}
+          </FormField>
+          <FormField label={t("desktop.newToken")} help={t("desktop.newTokenHint")}>
+            {(describedBy) => (
+              <Textarea
+                className="min-h-24 text-sm"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                aria-describedby={describedBy}
+              />
+            )}
+          </FormField>
           <div className="flex gap-2">
             <Button
               disabled={busy || !password || !token.trim()}
@@ -232,7 +235,7 @@ export function DesktopSettings() {
           </details>
         </div>
       ) : null}
-      {message ? <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm">{message}</p> : null}
+      {message ? <AsyncActionFeedback tone={messageTone}>{message}</AsyncActionFeedback> : null}
       <p className="text-xs text-muted-foreground">{t("desktop.shortcuts")}</p>
       <ConfirmDialog
         open={pendingRestore !== null}

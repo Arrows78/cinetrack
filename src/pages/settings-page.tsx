@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
 import { FilterBar } from "@/components/media/filter-bar";
 import { SectionHeader } from "@/components/media/section-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { SettingToggle } from "@/components/ui/setting-toggle";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
@@ -109,36 +109,30 @@ export function SettingsPage() {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant={preferences?.reduceMotion ? "secondary" : "outline"}
-                aria-pressed={preferences?.reduceMotion ?? false}
-                onClick={() => void updatePreference({ key: "reduceMotion", value: !preferences?.reduceMotion })}
-              >
-                {t("settings.reduceAnimations")}
-              </Button>
-              <Button
-                variant={preferences?.compactMode ? "secondary" : "outline"}
-                aria-pressed={preferences?.compactMode ?? false}
-                onClick={() => void updatePreference({ key: "compactMode", value: !preferences?.compactMode })}
-              >
-                {t("settings.compactMode")}
-              </Button>
-              <Button
-                variant={preferences?.spoilerProtection ? "secondary" : "outline"}
-                aria-pressed={preferences?.spoilerProtection ?? false}
-                onClick={() =>
+              <SettingToggle
+                label={t("settings.reduceAnimations")}
+                pressed={preferences?.reduceMotion ?? false}
+                onPressedChange={() =>
+                  void updatePreference({ key: "reduceMotion", value: !preferences?.reduceMotion })
+                }
+              />
+              <SettingToggle
+                label={t("settings.compactMode")}
+                pressed={preferences?.compactMode ?? false}
+                onPressedChange={() => void updatePreference({ key: "compactMode", value: !preferences?.compactMode })}
+              />
+              <SettingToggle
+                label={t("settings.spoilerProtection")}
+                pressed={preferences?.spoilerProtection ?? false}
+                onPressedChange={() =>
                   void updatePreference({ key: "spoilerProtection", value: !preferences?.spoilerProtection })
                 }
-              >
-                {t("settings.spoilerProtection")}
-              </Button>
-              <Button
-                variant={preferences?.notificationsEnabled ? "secondary" : "outline"}
-                aria-pressed={preferences?.notificationsEnabled ?? false}
-                onClick={() => void toggleNotifications()}
-              >
-                {t("settings.calendarNotifications")}
-              </Button>
+              />
+              <SettingToggle
+                label={t("settings.calendarNotifications")}
+                pressed={preferences?.notificationsEnabled ?? false}
+                onPressedChange={() => void toggleNotifications()}
+              />
             </div>
           </CardContent>
         </Card>

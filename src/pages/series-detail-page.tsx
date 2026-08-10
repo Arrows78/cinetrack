@@ -12,13 +12,13 @@ import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/next-episode-card";
 import { ProgressBar } from "@/components/media/progress-bar";
-import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { SeasonAccordion } from "@/components/media/season-accordion";
 import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { WatchlistButton } from "@/components/media/watchlist-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
@@ -70,9 +70,7 @@ export function SeriesDetailPage() {
               onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })}
               celebrateOnSeen
             />
-            {failedSeasonQueries.length > 0 ? (
-              <p className="text-xs text-destructive">{t("series.someSeasonsUnavailable")}</p>
-            ) : null}
+            {failedSeasonQueries.length > 0 ? <PartialErrorState message={t("series.someSeasonsUnavailable")} /> : null}
           </div>
         }
       />
@@ -127,17 +125,10 @@ export function SeriesDetailPage() {
       <section>
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
         {failedSeasonQueries.length > 0 ? (
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-            <span>{t("series.someSeasonsUnavailable")}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => failedSeasonQueries.forEach((query) => void query.refetch())}
-            >
-              {t("errors.retry")}
-            </Button>
-          </div>
+          <PartialErrorState
+            message={t("series.someSeasonsUnavailable")}
+            onRetry={() => failedSeasonQueries.forEach((query) => void query.refetch())}
+          />
         ) : null}
         <SeasonAccordion
           series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }}
