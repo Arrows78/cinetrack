@@ -1,5 +1,6 @@
-# Config for the osv-scan CI job (.github/workflows/ci.yml) — auto-loaded by
-# osv-scanner from the repo root during its recursive scan.
+# Config for the osv-scan CI job (.github/workflows/ci.yml) — osv-scanner
+# auto-discovers a config file per lockfile directory during its recursive
+# scan, so this lives next to Cargo.lock rather than at the repo root.
 #
 # Every ID below is an "unmaintained crate" notice (no CVSS score, informational
 # only — RustSec's own site lists them under "informational: unmaintained", not
