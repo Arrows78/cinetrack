@@ -1,10 +1,17 @@
 name: Release build
 
-# Builds native CineTrack installers for Linux, Windows and macOS and attaches
-# them to the workflow run as downloadable artifacts — it does NOT create or
-# publish a GitHub Release. Run it manually (Actions tab -> Release build ->
-# Run workflow) whenever you want installers to hand out or test, or push a
-# `v*` tag once you're ready to cut one.
+# Builds native CineTrack installers for Linux, Windows and macOS. Two ways
+# to trigger it, two different outputs:
+#   - Manual run (Actions tab -> Release build -> Run workflow): installers
+#     are attached to the workflow run as downloadable artifacts only. No
+#     GitHub Release is touched — safe to use freely for one-off test builds.
+#   - Pushing a `v*` tag: same installers, but also published as a DRAFT
+#     GitHub Release attached to that tag (one release, all 3 platforms'
+#     installers uploaded to it by their respective matrix jobs). Draft, not
+#     public, on purpose — review the generated notes and attached files on
+#     the Releases page, then hit "Publish release" yourself. See
+#     docs/release-signing.md's rollback section for what to do if a
+#     published release turns out to be broken.
 #
 # Unsigned by default: none of the secrets referenced below
 # (APPLE_CERTIFICATE, WINDOWS_CERTIFICATE, ...) exist in this repository yet,
@@ -20,7 +27,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -105,5 +112,14 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          # Empty tagName on a manual (workflow_dispatch) run is falsy to
+          # tauri-action, which then skips release creation entirely and
+          # only uploads the workflow artifacts below — exactly today's
+          # manual-run behavior, unchanged.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('CineTrack {0}', github.ref_name) || '' }}
+          releaseBody: "See the commit history for what changed. Installers for Linux, Windows and macOS are attached below."
+          releaseDraft: true
+          prerelease: false
           uploadWorkflowArtifacts: true
           uploadUpdaterJson: false
