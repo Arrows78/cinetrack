@@ -31,9 +31,14 @@ export function BootRecoveryGate({ children }: { children: ReactNode }) {
     try {
       await maintenanceService.restoreAutomaticBackup();
       window.location.reload();
-    } catch (error) {
+    } catch {
       setIsRestoring(false);
-      setRestoreError(error instanceof Error ? error.message : t("bootRecovery.restoreFailed"));
+      // Never the raw error here — this is the first screen an already
+      // distressed user (corrupt database) sees, and the underlying error
+      // can be a raw ApiCommandError. The full detail is still available
+      // below, behind the same "technical details" disclosure used for
+      // query.data.originalError.
+      setRestoreError(t("bootRecovery.restoreFailed"));
     }
   };
 

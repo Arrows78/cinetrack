@@ -94,15 +94,19 @@ describe("BootRecoveryGate", () => {
     await waitFor(() => expect(reloadMock).toHaveBeenCalled());
   });
 
-  it("shows an inline error and stays on the recovery screen when restoring fails", async () => {
+  it("shows a translated error and stays on the recovery screen when restoring fails", async () => {
     bootRecovery = { recovered: true, quarantinedPath: "/data/app.db.corrupt-123", originalError: "boom" };
+    // The rejection carries a raw, untranslated message — the gate must
+    // never surface it directly (this is the first screen an already
+    // distressed user sees), only the translated fallback.
     restoreAutomaticBackup.mockRejectedValueOnce(new Error("No automatic backup was found."));
     renderGate();
     await waitFor(() => expect(screen.getByText(/reset your local database/i)).toBeInTheDocument());
 
     screen.getByRole("button", { name: /restore last automatic backup/i }).click();
 
-    await waitFor(() => expect(screen.getByText("No automatic backup was found.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Couldn't restore the automatic backup.")).toBeInTheDocument());
+    expect(screen.queryByText("No automatic backup was found.")).not.toBeInTheDocument();
     expect(reloadMock).not.toHaveBeenCalled();
   });
 });

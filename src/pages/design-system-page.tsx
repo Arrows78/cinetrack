@@ -729,7 +729,7 @@ export function DesignSystemPage() {
           {motionTokens.map((token) => (
             <div
               key={token.name}
-              className="grid gap-3 rounded-card border border-border p-3 md:grid-cols-[150px_1fr_280px] md:items-center"
+              className="grid gap-3 rounded-card border border-border p-3 md:grid-cols-[9.375rem_1fr_17.5rem] md:items-center"
             >
               <div>
                 <p className="font-mono text-xs">
@@ -861,7 +861,7 @@ export function DesignSystemPage() {
         title="Complete component inventory"
         description="Every React component source file is indexed here. Live showcase means the component can be rendered safely in isolation; API reference covers context-bound feature components; internal marks providers and controllers that have no standalone visual state."
       >
-        <div className="grid gap-4 rounded-panel border border-border bg-card/30 p-5 lg:grid-cols-[minmax(0,1fr)_240px]">
+        <div className="grid gap-4 rounded-panel border border-border bg-card/30 p-5 lg:grid-cols-[minmax(0,1fr)_15rem]">
           <div className="space-y-1.5">
             <FieldLabel htmlFor="component-inventory-search">Search the catalog</FieldLabel>
             <Input

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { logger } from "@/features/diagnostics/logger";
 import { tokenVault } from "@/features/desktop/token-vault";
@@ -21,8 +21,6 @@ export function DesktopSettings() {
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [autoStart, setAutoStart] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<"neutral" | "error">("neutral");
   const [busy, setBusy] = useState(false);
   const [pendingRestore, setPendingRestore] = useState<{ exportedAt: string } | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -52,14 +50,14 @@ export function DesktopSettings() {
   }, []);
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
-    setMessage("");
-    setMessageTone("neutral");
     try {
       const result = await action();
-      setMessage(typeof result === "string" ? result : t("desktop.operationComplete"));
+      toast({
+        description: typeof result === "string" ? result : t("desktop.operationComplete"),
+        variant: "success",
+      });
     } catch (error) {
-      setMessageTone("error");
-      setMessage(error instanceof Error ? error.message : t("desktop.operationFailed"));
+      toast({ description: error instanceof Error ? error.message : t("desktop.operationFailed"), variant: "error" });
     } finally {
       setBusy(false);
     }
@@ -67,8 +65,7 @@ export function DesktopSettings() {
   const startRestore = async () => {
     const info = await maintenanceService.getAutomaticBackupInfo();
     if (!info) {
-      setMessageTone("error");
-      setMessage(t("backup.noAutomaticBackup"));
+      toast({ description: t("backup.noAutomaticBackup"), variant: "error" });
       return;
     }
     setPendingRestore(info);
@@ -81,8 +78,7 @@ export function DesktopSettings() {
     } catch (error) {
       setIsRestoring(false);
       setPendingRestore(null);
-      setMessageTone("error");
-      setMessage(error instanceof Error ? error.message : t("desktop.operationFailed"));
+      toast({ description: error instanceof Error ? error.message : t("desktop.operationFailed"), variant: "error" });
     }
   };
   return (
@@ -242,7 +238,6 @@ export function DesktopSettings() {
           </details>
         </div>
       ) : null}
-      {message ? <AsyncActionFeedback tone={messageTone}>{message}</AsyncActionFeedback> : null}
       <p className="text-xs text-muted-foreground">{t("desktop.shortcuts")}</p>
       <ConfirmDialog
         open={pendingRestore !== null}

@@ -126,6 +126,63 @@ struct ViewingEventRow {
     episode_number: Option<i64>,
 }
 
+// ---------------------------------------------------------------------
+// Per-table macros — replace the shape repeated once per table below:
+// in export_impl, "fetch every row of a table, mapped by sqlx::FromRow";
+// in import_impl, "chunk rows into IMPORT_BATCH_SIZE, build a multi-row
+// INSERT via QueryBuilder, execute". A declarative macro was chosen over
+// a trait + `Box<dyn Trait>` dispatch (the alternative this codebase
+// already uses for command-layer boilerplate, see macros.rs's
+// `profile_scoped_command!`) for the same reason it applied there: the
+// 13-table set is fixed at compile time, never an open set discovered at
+// runtime, so there's nothing to gain from erasing each table's concrete
+// Row/domain type behind a trait object — a macro expands to exactly the
+// hand-written fetch/insert code, just without retyping the surrounding
+// scaffolding for every table.
+//
+// Per-table *conversion* logic (Row -> domain type) stays written out by
+// hand in export_impl, and per-table *bind order* stays written out by
+// hand in each import_table! call below — those differ enough
+// table-to-table (fresh uuid vs. preserved id, JSON-encoded columns,
+// fallible enum parsing, computed defaults/timestamps) that folding them
+// into the macro too would trade a readable, greppable per-table block
+// for a harder-to-audit indirection, on the single most
+// correctness-sensitive path in the app.
+
+/// Fetches every row of `$table` into `Vec<$row_ty>` inside the caller's
+/// already-open transaction `$tx`. Mirrors the pre-refactor's repeated
+/// `sqlx::query_as("SELECT * FROM <table>").fetch_all(&mut *tx).await.map_err(ApiError::from)?`
+/// line exactly — same query, same error mapping, same "runs inside one
+/// shared transaction" behavior — just not retyped 13 times.
+macro_rules! export_table {
+    ($tx:expr, $table:literal, $row_ty:ty) => {{
+        let rows: Vec<$row_ty> = sqlx::query_as(concat!("SELECT * FROM ", $table))
+            .fetch_all(&mut *$tx)
+            .await
+            .map_err(ApiError::from)?;
+        rows
+    }};
+}
+
+/// Chunks `$items` into `IMPORT_BATCH_SIZE`-row batches, builds a
+/// multi-row INSERT from `$sql` (the `INSERT INTO ... (columns)` prefix,
+/// verbatim from the pre-refactor code) via `QueryBuilder`, binds each row
+/// with the `|$b, $item| $bind` closure, and executes each batch against
+/// the caller's open transaction `$tx`. Only fits tables imported as a
+/// batched multi-row INSERT; `profiles` and `preferences` insert one row
+/// at a time by hand in import_impl (there's no natural "batch" shape for
+/// either — a handful of profiles, one row per preference key) and don't
+/// go through this macro.
+macro_rules! import_table {
+    ($tx:expr, $items:expr, $sql:literal, |$b:ident, $item:ident| $bind:block) => {
+        for chunk in $items.chunks(IMPORT_BATCH_SIZE) {
+            let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new($sql);
+            qb.push_values(chunk, |mut $b, $item| $bind);
+            qb.build().execute(&mut *$tx).await.map_err(ApiError::from)?;
+        }
+    };
+}
+
 async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
     // All 13 reads share one transaction so the export is a single logical
     // snapshot — without this, a write landing between two of these
@@ -135,32 +192,19 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
     // reflects it, or vice versa).
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
-    let watchlist: Vec<WatchlistRow> =
-        sqlx::query_as("SELECT * FROM watchlist_items").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let seen_movies: Vec<SeenMovieRow> =
-        sqlx::query_as("SELECT * FROM seen_movies").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let episode_progress: Vec<EpisodeProgressRow> =
-        sqlx::query_as("SELECT * FROM episode_progress").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let tracked_series: Vec<TrackedSeriesRow> =
-        sqlx::query_as("SELECT * FROM tracked_series").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let history: Vec<HistoryRow> =
-        sqlx::query_as("SELECT * FROM activity_log").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let preferences: Vec<PreferenceRow> =
-        sqlx::query_as("SELECT * FROM preferences").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let library: Vec<LibraryRow> =
-        sqlx::query_as("SELECT * FROM library_items").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let viewing_events: Vec<ViewingEventRow> =
-        sqlx::query_as("SELECT * FROM viewing_events").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let profiles: Vec<ProfileRow> =
-        sqlx::query_as("SELECT * FROM profiles").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let custom_lists: Vec<CustomListRow> =
-        sqlx::query_as("SELECT * FROM custom_lists").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let custom_list_items: Vec<CustomListItemRow> =
-        sqlx::query_as("SELECT * FROM custom_list_items").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let availability_snapshots: Vec<SnapshotRow> =
-        sqlx::query_as("SELECT * FROM availability_snapshots").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
-    let availability_alerts: Vec<AlertRow> =
-        sqlx::query_as("SELECT * FROM availability_alerts").fetch_all(&mut *tx).await.map_err(ApiError::from)?;
+    let watchlist = export_table!(tx, "watchlist_items", WatchlistRow);
+    let seen_movies = export_table!(tx, "seen_movies", SeenMovieRow);
+    let episode_progress = export_table!(tx, "episode_progress", EpisodeProgressRow);
+    let tracked_series = export_table!(tx, "tracked_series", TrackedSeriesRow);
+    let history = export_table!(tx, "activity_log", HistoryRow);
+    let preferences = export_table!(tx, "preferences", PreferenceRow);
+    let library = export_table!(tx, "library_items", LibraryRow);
+    let viewing_events = export_table!(tx, "viewing_events", ViewingEventRow);
+    let profiles = export_table!(tx, "profiles", ProfileRow);
+    let custom_lists = export_table!(tx, "custom_lists", CustomListRow);
+    let custom_list_items = export_table!(tx, "custom_list_items", CustomListItemRow);
+    let availability_snapshots = export_table!(tx, "availability_snapshots", SnapshotRow);
+    let availability_alerts = export_table!(tx, "availability_alerts", AlertRow);
 
     tx.commit().await.map_err(ApiError::from)?;
 
@@ -424,12 +468,12 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
             .map_err(ApiError::from)?;
     }
 
-    for chunk in data.watchlist.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO watchlist_items
+    import_table!(
+        tx,
+        data.watchlist,
+        "INSERT INTO watchlist_items
               (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,created_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+        |b, item| {
             b.push_bind(new_uuid())
                 .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
                 .push_bind(item.media_id)
@@ -441,15 +485,14 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.rating)
                 .push_bind(&item.created_at)
                 .push_bind(&item.created_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.seen_movies.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO seen_movies (uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+    import_table!(
+        tx,
+        data.seen_movies,
+        "INSERT INTO seen_movies (uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at) ",
+        |b, item| {
             b.push_bind(new_uuid())
                 .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
                 .push_bind(item.movie_id)
@@ -459,16 +502,15 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(&item.watched_at)
                 .push_bind(&item.watched_at)
                 .push_bind(&item.watched_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.episode_progress.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO episode_progress
+    import_table!(
+        tx,
+        data.episode_progress,
+        "INSERT INTO episode_progress
               (uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+        |b, item| {
             let timestamp = item.watched_at.clone().unwrap_or_else(|| now.clone());
             b.push_bind(new_uuid())
                 .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
@@ -480,16 +522,15 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.watched_at.clone())
                 .push_bind(timestamp.clone())
                 .push_bind(timestamp);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.tracked_series.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO tracked_series
+    import_table!(
+        tx,
+        data.tracked_series,
+        "INSERT INTO tracked_series
               (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+        |b, item| {
             b.push_bind(new_uuid())
                 .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
                 .push_bind(item.series_id)
@@ -499,16 +540,15 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.total_episodes)
                 .push_bind(&item.updated_at)
                 .push_bind(&item.updated_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.history.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO activity_log
+    import_table!(
+        tx,
+        data.history,
+        "INSERT INTO activity_log
               (uuid,profile_id,media_id,media_type,title,action,season_number,episode_number,episode_title,metadata,timestamp,created_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+        |b, item| {
             // profile_id mirrors metadata.profileId — must stay in sync here or
             // imported history silently drops out of list_history's indexed
             // profile_id query.
@@ -532,16 +572,15 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(&item.timestamp)
                 .push_bind(&item.timestamp)
                 .push_bind(&item.timestamp);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.library.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO library_items
+    import_table!(
+        tx,
+        data.library,
+        "INSERT INTO library_items
               (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,genres,status,favourite,user_rating,notes,tags,started_at,completed_at,rewatch_count,created_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+        |b, item| {
             b.push_bind(new_uuid())
                 .push_bind(&item.profile_id)
                 .push_bind(item.media_id)
@@ -562,16 +601,15 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.rewatch_count)
                 .push_bind(&item.created_at)
                 .push_bind(&item.updated_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.viewing_events.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO viewing_events
+    import_table!(
+        tx,
+        data.viewing_events,
+        "INSERT INTO viewing_events
               (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+        |b, item| {
             b.push_bind(&item.id)
                 .push_bind(&item.profile_id)
                 .push_bind(item.media_id)
@@ -584,29 +622,28 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.season_number)
                 .push_bind(item.episode_number)
                 .push_bind(&item.watched_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.custom_lists.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> =
-            QueryBuilder::new("INSERT INTO custom_lists (uuid, profile_id, name, description, created_at, updated_at) ");
-        qb.push_values(chunk, |mut b, item| {
+    import_table!(
+        tx,
+        data.custom_lists,
+        "INSERT INTO custom_lists (uuid, profile_id, name, description, created_at, updated_at) ",
+        |b, item| {
             b.push_bind(&item.id)
                 .push_bind(&item.profile_id)
                 .push_bind(&item.name)
                 .push_bind(&item.description)
                 .push_bind(&item.created_at)
                 .push_bind(&item.updated_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.custom_list_items.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO custom_list_items (uuid,list_id,media_id,media_type,title,poster_path,position,added_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+    import_table!(
+        tx,
+        data.custom_list_items,
+        "INSERT INTO custom_list_items (uuid,list_id,media_id,media_type,title,poster_path,position,added_at,updated_at) ",
+        |b, item| {
             b.push_bind(new_uuid())
                 .push_bind(&item.list_id)
                 .push_bind(item.media_id)
@@ -616,30 +653,28 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.position)
                 .push_bind(&item.added_at)
                 .push_bind(&item.added_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.availability_snapshots.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO availability_snapshots (media_id, media_type, region, provider_ids, checked_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+    import_table!(
+        tx,
+        data.availability_snapshots,
+        "INSERT INTO availability_snapshots (media_id, media_type, region, provider_ids, checked_at) ",
+        |b, item| {
             b.push_bind(item.media_id)
                 .push_bind(item.media_type.as_db_str())
                 .push_bind(&item.region)
                 .push_bind(serde_json::to_string(&item.provider_ids).unwrap())
                 .push_bind(&item.checked_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
-    for chunk in data.availability_alerts.chunks(IMPORT_BATCH_SIZE) {
-        let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
-            "INSERT INTO availability_alerts
+    import_table!(
+        tx,
+        data.availability_alerts,
+        "INSERT INTO availability_alerts
               (uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at) ",
-        );
-        qb.push_values(chunk, |mut b, item| {
+        |b, item| {
             b.push_bind(&item.id)
                 .push_bind(&item.profile_id)
                 .push_bind(item.media_id)
@@ -650,9 +685,8 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.enabled)
                 .push_bind(&item.created_at)
                 .push_bind(&item.created_at);
-        });
-        qb.build().execute(&mut *tx).await.map_err(ApiError::from)?;
-    }
+        }
+    );
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(())

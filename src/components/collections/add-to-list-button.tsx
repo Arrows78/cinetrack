@@ -4,13 +4,13 @@ import { ListPlus } from "lucide-react";
 import type { MediaSummary } from "@/types/media";
 import { useAddToCustomList, useCustomLists } from "@/features/collections/use-collections";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
 
 export function AddToListButton({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const lists = useCustomLists();
   const add = useAddToCustomList();
   const [selected, setSelected] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   if (!lists.data?.length) return null;
 
@@ -21,10 +21,7 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
           aria-label={t("collections.customList")}
           className="h-10 max-w-52 rounded-xl border border-border bg-background px-3 text-sm"
           value={selected}
-          onChange={(event) => {
-            setError(null);
-            setSelected(event.target.value);
-          }}
+          onChange={(event) => setSelected(event.target.value)}
         >
           <option value="">{t("collections.addToAList")}</option>
           {lists.data.map((list) => (
@@ -41,17 +38,15 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
           title={t("collections.addToList")}
           aria-label={t("collections.addToList")}
           onClick={() => {
-            setError(null);
             void add
               .add({ listId: selected, media })
               .then(() => setSelected(""))
-              .catch(() => setError(t("desktop.operationFailed")));
+              .catch(() => toast({ description: t("desktop.operationFailed"), variant: "error" }));
           }}
         >
           <ListPlus className="size-4" />
         </Button>
       </div>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }

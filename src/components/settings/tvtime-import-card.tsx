@@ -2,16 +2,15 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tv, Upload } from "lucide-react";
-import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
+import { toast } from "@/components/ui/use-toast";
 import {
   importTvTimeExport,
   MAX_TVTIME_FILE_BYTES,
   MAX_TVTIME_FILES,
   MAX_TVTIME_TOTAL_BYTES,
   type TvTimeImportProgress,
-  type TvTimeImportSummary,
 } from "@/features/tvtime/tvtime-import-service";
 
 export function TvTimeImportCard() {
@@ -19,31 +18,30 @@ export function TvTimeImportCard() {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<TvTimeImportProgress | null>(null);
-  const [summary, setSummary] = useState<TvTimeImportSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const running = progress !== null;
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList?.length || running) return;
-    setSummary(null);
-    setError(null);
 
     const files = [...fileList];
     if (files.length > MAX_TVTIME_FILES) {
-      setError(t("tvtimeImport.tooManyFiles", { max: MAX_TVTIME_FILES }));
+      toast({ description: t("tvtimeImport.tooManyFiles", { max: MAX_TVTIME_FILES }), variant: "error" });
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
     const oversized = files.find((file) => file.size > MAX_TVTIME_FILE_BYTES);
     if (oversized) {
-      setError(t("tvtimeImport.fileTooLarge", { name: oversized.name }));
+      toast({ description: t("tvtimeImport.fileTooLarge", { name: oversized.name }), variant: "error" });
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
     const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
     if (totalBytes > MAX_TVTIME_TOTAL_BYTES) {
-      setError(t("tvtimeImport.totalTooLarge", { max: Math.round(MAX_TVTIME_TOTAL_BYTES / (1024 * 1024)) }));
+      toast({
+        description: t("tvtimeImport.totalTooLarge", { max: Math.round(MAX_TVTIME_TOTAL_BYTES / (1024 * 1024)) }),
+        variant: "error",
+      });
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
@@ -53,10 +51,35 @@ export function TvTimeImportCard() {
     try {
       const contents = await Promise.all(files.map((file) => file.text()));
       const result = await importTvTimeExport(contents, setProgress);
-      setSummary(result);
       await queryClient.invalidateQueries({ queryKey: ["local"] });
+      toast({
+        description: (
+          <div>
+            <p className="font-medium">
+              {t("tvtimeImport.done", {
+                episodes: result.episodesImported,
+                series: result.seriesImported,
+                movies: result.moviesImported,
+                watchlist: result.watchlistImported,
+              })}
+            </p>
+            {result.unmatched.length ? (
+              <details className="mt-2 text-xs opacity-90">
+                <summary className="cursor-pointer">
+                  {t("tvtimeImport.unmatched", { count: result.unmatched.length })}
+                </summary>
+                <p className="mt-1 break-words">{result.unmatched.join(" · ")}</p>
+              </details>
+            ) : null}
+          </div>
+        ),
+        variant: "success",
+      });
     } catch (importError) {
-      setError(importError instanceof Error ? importError.message : t("tvtimeImport.failed"));
+      toast({
+        description: importError instanceof Error ? importError.message : t("tvtimeImport.failed"),
+        variant: "error",
+      });
     } finally {
       setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
@@ -99,33 +122,6 @@ export function TvTimeImportCard() {
           </p>
         ) : null}
       </div>
-
-      {summary ? (
-        <AsyncActionFeedback tone="success" className="mt-4">
-          <p className="font-medium">
-            {t("tvtimeImport.done", {
-              episodes: summary.episodesImported,
-              series: summary.seriesImported,
-              movies: summary.moviesImported,
-              watchlist: summary.watchlistImported,
-            })}
-          </p>
-          {summary.unmatched.length ? (
-            <details className="mt-2 text-xs text-muted-foreground">
-              <summary className="cursor-pointer">
-                {t("tvtimeImport.unmatched", { count: summary.unmatched.length })}
-              </summary>
-              <p className="mt-1 break-words">{summary.unmatched.join(" · ")}</p>
-            </details>
-          ) : null}
-        </AsyncActionFeedback>
-      ) : null}
-
-      {error ? (
-        <AsyncActionFeedback tone="error" className="mt-4">
-          {error}
-        </AsyncActionFeedback>
-      ) : null}
     </Panel>
   );
 }

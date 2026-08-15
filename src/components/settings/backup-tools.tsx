@@ -1,18 +1,16 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Undo2, Upload } from "lucide-react";
-import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Panel } from "@/components/ui/panel";
+import { toast } from "@/components/ui/use-toast";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 
 export function BackupTools() {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageTone, setMessageTone] = useState<"plain" | "error">("plain");
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [pendingUndo, setPendingUndo] = useState(false);
@@ -30,11 +28,9 @@ export function BackupTools() {
       anchor.download = `cinetrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
       anchor.click();
       URL.revokeObjectURL(url);
-      setMessageTone("plain");
-      setMessage(t("backup.exported"));
+      toast({ description: t("backup.exported"), variant: "success" });
     } catch {
-      setMessageTone("error");
-      setMessage(t("backup.exportFailed"));
+      toast({ description: t("backup.exportFailed"), variant: "error" });
     } finally {
       setIsExporting(false);
     }
@@ -54,8 +50,7 @@ export function BackupTools() {
     } catch (error) {
       setIsImporting(false);
       setPendingImportFile(null);
-      setMessageTone("error");
-      setMessage(error instanceof Error ? error.message : t("backup.importFailed"));
+      toast({ description: error instanceof Error ? error.message : t("backup.importFailed"), variant: "error" });
     }
   };
 
@@ -67,8 +62,7 @@ export function BackupTools() {
     } catch (error) {
       setIsUndoing(false);
       setPendingUndo(false);
-      setMessageTone("error");
-      setMessage(error instanceof Error ? error.message : t("backup.undoFailed"));
+      toast({ description: error instanceof Error ? error.message : t("backup.undoFailed"), variant: "error" });
     }
   };
 
@@ -101,12 +95,6 @@ export function BackupTools() {
           }}
         />
       </div>
-      {message ? (
-        <AsyncActionFeedback tone={messageTone} className="mt-3">
-          {message}
-        </AsyncActionFeedback>
-      ) : null}
-
       <ConfirmDialog
         open={pendingImportFile !== null}
         onOpenChange={(open) => !open && !isImporting && setPendingImportFile(null)}

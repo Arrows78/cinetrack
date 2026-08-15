@@ -34,7 +34,7 @@ export function MediaDetailsHero({
         <div className="absolute inset-0 bg-card/70" />
       )}
 
-      <div className="relative grid gap-6 p-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:p-8">
+      <div className="relative grid gap-6 p-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:p-8">
         {/* Poster */}
         <div className="hidden lg:block">
           <img

@@ -59,13 +59,20 @@ impl From<WatchlistRow> for WatchlistItem {
     }
 }
 
+// See the identical constant in commands/library.rs for why this is a
+// safety bound, not a page size: the frontend grid loads and filters the
+// whole set client-side today.
+const LIST_SAFETY_LIMIT: i64 = 5000;
+
 async fn list_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<WatchlistItem>, ApiError> {
-    let rows: Vec<WatchlistRow> =
-        sqlx::query_as("SELECT * FROM watchlist_items WHERE profile_id = $1 ORDER BY created_at DESC")
-            .bind(profile_id)
-            .fetch_all(pool)
-            .await
-            .map_err(ApiError::from)?;
+    let rows: Vec<WatchlistRow> = sqlx::query_as(
+        "SELECT * FROM watchlist_items WHERE profile_id = $1 ORDER BY created_at DESC LIMIT $2",
+    )
+    .bind(profile_id)
+    .bind(LIST_SAFETY_LIMIT)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
     Ok(rows.into_iter().map(Into::into).collect())
 }
 

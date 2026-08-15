@@ -48,7 +48,7 @@ export function AppShell() {
       <div
         className={cn(
           "mx-auto grid min-h-screen w-full max-w-[106.25rem] grid-cols-1 gap-6 p-4 lg:p-6",
-          sidebarCollapsed ? "lg:grid-cols-[80px_minmax(0,1fr)]" : "lg:grid-cols-[280px_minmax(0,1fr)]"
+          sidebarCollapsed ? "lg:grid-cols-[5rem_minmax(0,1fr)]" : "lg:grid-cols-[17.5rem_minmax(0,1fr)]"
         )}
       >
         <aside className="surface hidden h-[100dvh] sticky top-0 overflow-hidden rounded-shell p-3 lg:block">
