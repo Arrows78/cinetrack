@@ -26,7 +26,7 @@ export function SectionHeader({
       )}
       <div className="flex items-end justify-between gap-4">
         <div className="animate-in" style={{ animationDelay: `${sectionDelay}ms` }}>
-          <h2 className="font-display text-2xl font-bold leading-tight tracking-tight transition-all duration-base md:text-[28px] group-hover:text-primary/90">
+          <h2 className="font-display text-2xl font-bold leading-tight tracking-tight transition-all duration-base md:text-[1.75rem] group-hover:text-primary/90">
             {title}
           </h2>
           {subtitle ? (

@@ -13,7 +13,7 @@ export function GridSkeleton({ count = 10 }: { count?: number }) {
 }
 
 export function HeroSkeleton() {
-  return <Skeleton className="h-[460px] rounded-hero" />;
+  return <Skeleton className="h-[28.75rem] rounded-hero" />;
 }
 
 export function StatsSkeleton() {

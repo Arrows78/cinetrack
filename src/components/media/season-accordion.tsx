@@ -19,13 +19,13 @@ export function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episod
   const max = 40;
   const shown = episodes.slice(0, max);
   return (
-    <div className="inline-flex flex-wrap items-center gap-[3px] rounded-full bg-foreground/[0.06] px-2.5 py-1.5">
+    <div className="inline-flex flex-wrap items-center gap-[0.1875rem] rounded-full bg-foreground/[0.06] px-2.5 py-1.5">
       {shown.map((ep) => (
         <motion.div
           key={ep.id}
           layout
           className={cn(
-            "h-2 w-1 rounded-[1px] transition-colors duration-base",
+            "h-2 w-1 rounded-[0.0625rem] transition-colors duration-base",
             watchedSet.has(ep.id) ? "bg-primary" : "bg-foreground/20"
           )}
         />

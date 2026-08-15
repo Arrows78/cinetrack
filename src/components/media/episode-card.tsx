@@ -27,7 +27,7 @@ export function EpisodeCard({
         watched ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.04]"
       )}
     >
-      <div className="relative aspect-video h-[62px] w-[110px] shrink-0 overflow-hidden rounded-xl bg-muted">
+      <div className="relative aspect-video h-[3.875rem] w-[6.875rem] shrink-0 overflow-hidden rounded-xl bg-muted">
         {hidden ? (
           <div className="flex h-full items-center justify-center">
             <EyeOff className="size-5 text-muted-foreground" />

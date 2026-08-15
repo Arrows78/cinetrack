@@ -153,7 +153,7 @@ export function HistoryPage() {
         ) : filteredHistory.length ? (
           <div className="relative">
             {/* Vertical connector */}
-            <div className="absolute left-[19px] top-2 bottom-2 w-px bg-foreground/[0.07]" />
+            <div className="absolute left-[1.1875rem] top-2 bottom-2 w-px bg-foreground/[0.07]" />
 
             {filteredHistory.map((item, i) => {
               const action = item.action;
@@ -171,7 +171,7 @@ export function HistoryPage() {
                   {/* Icon dot */}
                   <div
                     className={cn(
-                      "relative z-raised flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border",
+                      "relative z-raised flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-full border",
                       config.dot,
                       config.ring
                     )}

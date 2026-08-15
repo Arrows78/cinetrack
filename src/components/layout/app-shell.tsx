@@ -47,7 +47,7 @@ export function AppShell() {
     <div className="min-h-screen text-foreground">
       <div
         className={cn(
-          "mx-auto grid min-h-screen w-full max-w-[1700px] grid-cols-1 gap-6 p-4 lg:p-6",
+          "mx-auto grid min-h-screen w-full max-w-[106.25rem] grid-cols-1 gap-6 p-4 lg:p-6",
           sidebarCollapsed ? "lg:grid-cols-[80px_minmax(0,1fr)]" : "lg:grid-cols-[280px_minmax(0,1fr)]"
         )}
       >

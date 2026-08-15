@@ -36,7 +36,7 @@ function NavLink({ item, collapsed, isActive }: NavLinkProps) {
     >
       <Icon
         className={cn(
-          "h-[18px] w-[18px] shrink-0 transition-all duration-fast",
+          "h-[1.125rem] w-[1.125rem] shrink-0 transition-all duration-fast",
           isActive ? "text-primary" : "group-hover:scale-110"
         )}
       />

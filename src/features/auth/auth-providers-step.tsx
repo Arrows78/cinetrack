@@ -62,7 +62,7 @@ export function AuthProvidersStep({
             onClick={() => onProvider(provider)}
             style={style}
             className={cn(
-              "flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition hover:-translate-y-1 disabled:cursor-wait disabled:opacity-60 sm:h-[72px] sm:w-[72px]",
+              "flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition hover:-translate-y-1 disabled:cursor-wait disabled:opacity-60 sm:h-[4.5rem] sm:w-[4.5rem]",
               className
             )}
           >
@@ -80,7 +80,7 @@ export function AuthProvidersStep({
           title={t("auth.emailButton.title")}
           disabled={pendingAction !== null}
           onClick={onEmail}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition hover:-translate-y-1 disabled:opacity-60 sm:h-[72px] sm:w-[72px]"
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition hover:-translate-y-1 disabled:opacity-60 sm:h-[4.5rem] sm:w-[4.5rem]"
         >
           <Mail className="h-8 w-8" />
         </button>

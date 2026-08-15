@@ -173,7 +173,7 @@ export function HomePage() {
             </h2>
 
             {/* Overview */}
-            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground md:text-[14px] animate-in delay-500">
+            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground animate-in delay-500">
               {hero.overview}
             </p>
 
