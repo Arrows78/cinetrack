@@ -24,7 +24,12 @@ export default defineConfig(() => ({
   server: {
     port: 1420,
     strictPort: true,
-    host: process.env.TAURI_DEV_HOST || "0.0.0.0",
+    // Only binds to every network interface when TAURI_DEV_HOST is set —
+    // that's Tauri's own mobile CLI (`tauri android/ios dev`) exporting it
+    // to reach a physical device on the LAN. Plain `pnpm dev`/`pnpm tauri dev`
+    // has no such need and shouldn't expose the dev server to the network by
+    // default.
+    host: process.env.TAURI_DEV_HOST || "localhost",
     hmr: process.env.TAURI_DEV_HOST
       ? {
           protocol: "ws",

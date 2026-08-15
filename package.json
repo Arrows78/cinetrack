@@ -26,7 +26,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 1420",
+    "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
