@@ -33,6 +33,7 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={t("profileGate.namePlaceholder")}
+            aria-label={t("profileGate.nameLabel")}
             maxLength={60}
           />
           <Button type="submit" disabled={!name.trim() || isSaving}>

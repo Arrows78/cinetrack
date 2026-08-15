@@ -100,12 +100,7 @@ export const tokenVault = {
 
     try {
       const stored = await client.getStore().get(TOKEN_KEY);
-
-      if (!stored) {
-        throw new Error("Token absent");
-      }
-
-      token = decode(stored);
+      token = stored ? decode(stored) : null;
 
       setSnapshot({
         unlocked: true,

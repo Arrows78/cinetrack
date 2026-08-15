@@ -38,7 +38,7 @@ export function WatchTonightPage() {
         <p className="text-muted-foreground">{t("watchTonight.description")}</p>
       </header>
       <Panel className="grid gap-3 md:grid-cols-4 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
-        <Select value={genre} onChange={(e) => setGenre(e.target.value)}>
+        <Select aria-label={t("watchTonight.genre")} value={genre} onChange={(e) => setGenre(e.target.value)}>
           <option value="">{t("watchTonight.allGenres")}</option>
           {GENRES.movies.map((item) => (
             <option key={item.id} value={item.id}>
@@ -46,7 +46,7 @@ export function WatchTonightPage() {
             </option>
           ))}
         </Select>
-        <Select value={provider} onChange={(e) => setProvider(e.target.value)}>
+        <Select aria-label={t("watchTonight.platform")} value={provider} onChange={(e) => setProvider(e.target.value)}>
           <option value="">{t("watchTonight.allPlatforms")}</option>
           {PLATFORMS.map((item) => (
             <option key={item.id} value={item.id}>

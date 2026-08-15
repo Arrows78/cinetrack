@@ -9,6 +9,18 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { useUiStore } from "@/store/ui-store";
 import { usePreferences } from "@/features/preferences/use-preferences";
 
+// `router.history.back()` has nowhere sensible to go when this window has no
+// prior in-app navigation (a deep link, or a reload) — this maps a detail
+// route to its logical parent list for that case.
+function fallbackRouteFor(pathname: string): string {
+  const seasonMatch = /^(\/series\/[^/]+)\/season\//.exec(pathname);
+  if (seasonMatch) return seasonMatch[1]!;
+  if (pathname.startsWith("/series/")) return "/series";
+  if (pathname.startsWith("/movies/")) return "/movies";
+  if (pathname.startsWith("/people/")) return "/people";
+  return "/";
+}
+
 export function AppShell() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -23,7 +35,13 @@ export function AppShell() {
     await updatePreference({ key: "sidebarCollapsed", value: !sidebarCollapsed });
   };
 
-  const handleGoBack = () => router.history.back();
+  const handleGoBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.history.back();
+    } else {
+      void router.navigate({ to: fallbackRouteFor(location.pathname) });
+    }
+  };
 
   return (
     <div className="min-h-screen text-foreground">

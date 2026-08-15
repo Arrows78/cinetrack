@@ -42,15 +42,19 @@ const splitTitleYear = (name: string): { title: string; year: number | null } =>
   return { title: match[1]!.trim(), year: Number(match[2]) };
 };
 
+// Only ever returns a result whose title actually matches — never the
+// first search hit just because nothing better was found. Falling back to
+// an unrelated top result would silently attach the wrong movie/series to
+// the imported history instead of surfacing it as unmatched for review.
 const pickBestMatch = (results: MediaSummary[], title: string, year: number | null): MediaSummary | null => {
   if (!results.length) return null;
   const lowered = title.toLowerCase();
   const titled = results.filter((result) => result.title.toLowerCase() === lowered);
   if (year !== null) {
-    const exact = titled.find((result) => result.year === year) ?? results.find((result) => result.year === year);
+    const exact = titled.find((result) => result.year === year);
     if (exact) return exact;
   }
-  return titled[0] ?? results[0] ?? null;
+  return titled[0] ?? null;
 };
 
 async function mapWithConcurrency<T>(items: T[], worker: (item: T) => Promise<void>): Promise<void> {

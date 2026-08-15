@@ -164,12 +164,12 @@ async fn get_preferences_cached(
     pool: &SqlitePool,
     cache: &PreferencesCache,
 ) -> Result<UserPreferences, ApiError> {
-    if let Some(prefs) = cache.0.lock().unwrap().clone() {
+    if let Some(prefs) = cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone() {
         return Ok(prefs);
     }
 
     let prefs = load_preferences(pool).await?;
-    *cache.0.lock().unwrap() = Some(prefs.clone());
+    *cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(prefs.clone());
     Ok(prefs)
 }
 
@@ -222,7 +222,7 @@ pub async fn update_preference(
     .await
     .map_err(ApiError::from)?;
 
-    *cache.0.lock().unwrap() = Some(updated.clone());
+    *cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(updated.clone());
     Ok(updated)
 }
 
@@ -232,7 +232,7 @@ pub async fn update_preference(
 /// `update_preference`.
 #[tauri::command]
 pub fn refresh_preferences(cache: State<'_, PreferencesCache>) {
-    *cache.0.lock().unwrap() = None;
+    *cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
 }
 
 #[cfg(test)]

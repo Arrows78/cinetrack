@@ -156,6 +156,7 @@ export function CollectionsPage() {
             value={listName}
             onChange={(event) => setListName(event.target.value)}
             placeholder={t("collections.namePlaceholder")}
+            aria-label={t("collections.listNameLabel")}
             maxLength={100}
           />
           <Input
@@ -163,6 +164,7 @@ export function CollectionsPage() {
             value={listDescription}
             onChange={(event) => setListDescription(event.target.value)}
             placeholder={t("collections.descriptionPlaceholder")}
+            aria-label={t("collections.listDescriptionLabel")}
           />
           <Button
             type="button"

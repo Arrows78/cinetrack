@@ -3,6 +3,11 @@ import { mediaRepository } from "@/features/media/media-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
 import type { CalendarEntry, Season } from "@/types/media";
 
+// Bounds the fan-out of per-series TMDB detail/season requests a single
+// calendar build makes. Exported so the page can tell the user when their
+// tracked list is actually longer than what got included.
+export const MAX_TRACKED_SERIES_IN_CALENDAR = 20;
+
 export const calendarService = {
   async build(days = 60): Promise<CalendarEntry[]> {
     const from = startOfDay(new Date());
@@ -27,7 +32,7 @@ export const calendarService = {
       });
     }
 
-    const tracked = (await progressRepository.listTrackedSeries()).slice(0, 20);
+    const tracked = (await progressRepository.listTrackedSeries()).slice(0, MAX_TRACKED_SERIES_IN_CALENDAR);
     await Promise.all(
       tracked.map(async (trackedSeries) => {
         try {

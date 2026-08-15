@@ -15,18 +15,29 @@ export function BackupTools() {
   const [messageTone, setMessageTone] = useState<"plain" | "error">("plain");
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [pendingUndo, setPendingUndo] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const exportBackup = async () => {
-    const backup = await portableData.export();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `cinetrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setMessageTone("plain");
-    setMessage(t("backup.exported"));
+    setIsExporting(true);
+    try {
+      const backup = await portableData.export();
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `cinetrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setMessageTone("plain");
+      setMessage(t("backup.exported"));
+    } catch {
+      setMessageTone("error");
+      setMessage(t("backup.exportFailed"));
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const confirmImport = async () => {
@@ -49,10 +60,13 @@ export function BackupTools() {
   };
 
   const undoLastImport = async () => {
+    setIsUndoing(true);
     try {
       await maintenanceService.undoLastRestore();
       window.location.reload();
     } catch (error) {
+      setIsUndoing(false);
+      setPendingUndo(false);
       setMessageTone("error");
       setMessage(error instanceof Error ? error.message : t("backup.undoFailed"));
     }
@@ -63,15 +77,15 @@ export function BackupTools() {
       <p className="font-semibold">{t("backup.title")}</p>
       <p className="mt-1 text-sm text-muted-foreground">{t("backup.description")}</p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => void exportBackup()}>
+        <Button type="button" variant="outline" disabled={isExporting} onClick={() => void exportBackup()}>
           <Download className="mr-2 size-4" />
           {t("backup.export")}
         </Button>
-        <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
+        <Button type="button" variant="outline" disabled={isImporting} onClick={() => inputRef.current?.click()}>
           <Upload className="mr-2 size-4" />
           {t("backup.import")}
         </Button>
-        <Button type="button" variant="outline" onClick={() => void undoLastImport()}>
+        <Button type="button" variant="outline" disabled={isUndoing} onClick={() => setPendingUndo(true)}>
           <Undo2 className="mr-2 size-4" />
           {t("backup.undoLastImport")}
         </Button>
@@ -102,6 +116,18 @@ export function BackupTools() {
         cancelLabel={t("common.cancel")}
         isConfirming={isImporting}
         onConfirm={() => void confirmImport()}
+      />
+
+      <ConfirmDialog
+        open={pendingUndo}
+        onOpenChange={(open) => !open && !isUndoing && setPendingUndo(false)}
+        title={t("backup.undoConfirmTitle")}
+        description={t("backup.undoConfirmDescription")}
+        confirmLabel={t("backup.undoLastImport")}
+        cancelLabel={t("common.cancel")}
+        confirmVariant="destructive"
+        isConfirming={isUndoing}
+        onConfirm={() => void undoLastImport()}
       />
     </Panel>
   );

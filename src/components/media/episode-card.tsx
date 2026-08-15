@@ -1,5 +1,6 @@
 import { Calendar, Check, Clock4, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Badge } from "@/components/ui/badge";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
@@ -8,6 +9,7 @@ export function EpisodeCard({
   episode,
   onToggleSeen,
   disabled,
+  isLastUnwatched,
 }: {
   episode: Episode;
   onToggleSeen: () => void;
@@ -49,6 +51,11 @@ export function EpisodeCard({
             {formatEpisodeNumber(episode.episodeNumber, { padded: true })}
           </span>
           {watched ? <span className="text-overline font-semibold text-primary">{t("media.seen")}</span> : null}
+          {!watched && isLastUnwatched ? (
+            <Badge variant="outline" className="text-overline text-accent">
+              {t("media.lastUnwatchedEpisode")}
+            </Badge>
+          ) : null}
         </div>
         <p className="mt-0.5 line-clamp-1 text-sm font-semibold">{hidden ? t("media.hiddenTitle") : episode.title}</p>
         <div className="mt-1 flex items-center gap-1.5 text-caption text-muted-foreground">

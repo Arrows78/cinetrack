@@ -130,6 +130,14 @@ pub(crate) async fn toggle_movie_seen_impl(
     watched: bool,
     watched_at: &str,
 ) -> Result<(), ApiError> {
+    // No-op if the movie is already in the requested state — mirrors the
+    // guard `apply_episodes_and_log_impl` already has for episodes, so a
+    // repeated call (retry, double invoke) can't insert a second
+    // viewing_events/activity_log row and inflate the stats that read them.
+    if is_movie_seen_impl(pool, profile_id, movie.id).await? == watched {
+        return Ok(());
+    }
+
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     if watched {
@@ -651,6 +659,34 @@ mod tests {
         let history_count: (i64,) =
             sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'").fetch_one(&pool).await.unwrap();
         assert_eq!(history_count.0, 1);
+    }
+
+    #[tokio::test]
+    async fn does_not_reapply_an_already_applied_movie_toggle() {
+        let pool = migrated_pool().await;
+        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        // Repeating the same "watched" call (retry, double invoke) must be a
+        // no-op — not a second viewing_events/activity_log row.
+        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:01.000Z").await.unwrap();
+
+        let event_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM viewing_events WHERE media_id = 55").fetch_one(&pool).await.unwrap();
+        assert_eq!(event_count.0, 1);
+
+        let history_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'").fetch_one(&pool).await.unwrap();
+        assert_eq!(history_count.0, 1);
+
+        // Repeating "unwatched" while already unwatched is likewise a no-op.
+        toggle_movie_seen_impl(&pool, "default", movie(55), false, "2026-01-01T00:00:02.000Z").await.unwrap();
+        toggle_movie_seen_impl(&pool, "default", movie(55), false, "2026-01-01T00:00:03.000Z").await.unwrap();
+
+        let unwatched_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM viewing_events WHERE media_id = 55 AND event_type = 'unwatched'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(unwatched_count.0, 1);
     }
 
     #[tokio::test]

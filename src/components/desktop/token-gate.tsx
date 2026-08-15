@@ -54,6 +54,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder={t("tokenGate.passwordPlaceholder")}
+            aria-label={t("tokenGate.passwordLabel")}
             required
           />
         ) : null}
@@ -62,6 +63,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
           value={bearer}
           onChange={(event) => setBearer(event.target.value)}
           placeholder={t("tokenGate.tokenPlaceholder")}
+          aria-label={t("tokenGate.tokenLabel")}
         />
         {message ? <p className="mt-3 text-sm text-destructive">{message}</p> : null}
         <Button className="mt-5 w-full" type="submit" disabled={busy || (isTauriApp() && !password)}>

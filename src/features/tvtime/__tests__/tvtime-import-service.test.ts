@@ -176,6 +176,35 @@ describe("importTvTimeExport", () => {
       expect(importSeriesProgressMock).not.toHaveBeenCalled();
     });
 
+    it("reports unmatched rather than attaching an unrelated same-year result", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Bodyguard (2018)",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+      };
+      // No result titled "Bodyguard" — only an unrelated show that happens
+      // to share the same release year. Picking it just because the year
+      // matches would silently attach the wrong series.
+      searchMock.mockResolvedValue({
+        page: 1,
+        totalPages: 1,
+        totalResults: 1,
+        results: [media({ id: 99, title: "Killing Eve", year: 2018 })],
+      });
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(summary.unmatched).toEqual(["Bodyguard (2018)"]);
+      expect(getSeriesDetailsMock).not.toHaveBeenCalled();
+    });
+
     it("reports unresolved episodes (season not on TMDB) without failing the whole series", async () => {
       exportData = {
         ...emptyExportData(),
