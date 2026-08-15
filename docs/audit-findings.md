@@ -63,7 +63,6 @@ Anything that can't be undone — delete, restore, undo-an-import — routes thr
 Remove a line once it's actually fixed — don't let this turn into a second bug tracker.
 
 - [ ] `run_migrations` failing at startup panics the whole process (`src-tauri/src/lib.rs:103-104,141-142`) with no recovery screen and no attempt to restore from the last automatic backup.
-- [ ] `LibraryEditor` can silently overwrite an existing library entry with blank values if the initial fetch failed or was still in flight when the user clicks Save (`src/components/library/library-editor.tsx`, `src-tauri/src/commands/library.rs::upsert_impl`) — needs to block/warn on save while `isError`/`isLoading`.
 - [ ] No remote error/crash reporting in production (only the local rotating log in `src/features/diagnostics/logger.ts`).
 - [ ] No end-to-end test suite; 20/21 pages in `src/pages/` have no tests at all.
 - [ ] No toast/snackbar component exists anywhere in `src/components/ui` — a z-index token is reserved for it (`src/pages/design-system/catalog-data.ts`) but nothing was ever built, which is the direct cause of inconsistent post-action feedback across the app.
