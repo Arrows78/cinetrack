@@ -129,7 +129,9 @@
     "becauseYouLiked": "Because you liked {{title}}",
     "becauseYouLikedSubtitle": "More titles similar to what you've already watched.",
     "becauseYouLoveGenre": "Because you love {{genre}}",
-    "becauseYouLoveGenreSubtitle": "More picks in your favorite genre."
+    "becauseYouLoveGenreSubtitle": "More picks in your favorite genre.",
+    "forYou": "For you",
+    "forYouSubtitle": "Picked from your library and watch history."
   },
   "history": {
     "recentActivity": "Recent Activity",

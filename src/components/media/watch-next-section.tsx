@@ -67,13 +67,21 @@ function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
   );
 }
 
-export function WatchNextSection({ entries, index }: { entries: WatchNextEntry[]; index: number }) {
+export function WatchNextSection({
+  entries,
+  index,
+  size = "default",
+}: {
+  entries: WatchNextEntry[];
+  index: number;
+  size?: "default" | "sub";
+}) {
   const { t } = useTranslation();
   if (!entries.length) return null;
 
   return (
     <section>
-      <SectionHeader title={t("home.watchNext")} subtitle={t("home.watchNextSubtitle")} index={index} />
+      <SectionHeader title={t("home.watchNext")} subtitle={t("home.watchNextSubtitle")} index={index} size={size} />
       <div className="grid gap-3 lg:grid-cols-2">
         {entries.map((entry) => (
           <WatchNextRow key={entry.series.seriesId} entry={entry} />

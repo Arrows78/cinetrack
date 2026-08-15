@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
@@ -77,6 +78,12 @@ export function HomePage() {
       cast: [],
       progress: { watched: item.watchedEpisodes, total: item.totalEpisodes },
     }));
+
+  const hasForYouContent =
+    continueWatching.length > 0 ||
+    watchNext.entries.length > 0 ||
+    (Boolean(becauseYouLiked.seedTitle) && becauseYouLiked.items.length > 0) ||
+    (Boolean(favouriteGenreRail.genre) && favouriteGenreRail.items.length > 0);
 
   let sectionIndex = 0;
 
@@ -163,42 +170,51 @@ export function HomePage() {
         </section>
       ) : null}
 
-      {/* Continue watching — the most actionable personalized content, right after the hero */}
-      {continueWatching.length > 0 ? (
+      {/* "For You" zone — groups every personalized rail under one heading and
+          a tinted panel, instead of four independent top-level sections, so
+          personal content reads as one distinct block against the generic
+          catalogue browsing below it. */}
+      {hasForYouContent ? (
         <section>
-          <SectionHeader
-            title={t("home.continueWatching")}
-            subtitle={t("home.continueWatchingDesc")}
-            index={++sectionIndex}
-          />
-          <MediaGrid items={continueWatching} />
-        </section>
-      ) : null}
+          <SectionHeader title={t("home.forYou")} subtitle={t("home.forYouSubtitle")} index={++sectionIndex} />
+          <Panel tone="highlight" className="space-y-8">
+            {continueWatching.length > 0 ? (
+              <div>
+                <SectionHeader
+                  title={t("home.continueWatching")}
+                  subtitle={t("home.continueWatchingDesc")}
+                  size="sub"
+                />
+                <MediaGrid items={continueWatching} />
+              </div>
+            ) : null}
 
-      {/* Watch next (TV Time-style episode queue) */}
-      {watchNext.entries.length > 0 ? <WatchNextSection entries={watchNext.entries} index={++sectionIndex} /> : null}
+            {watchNext.entries.length > 0 ? (
+              <WatchNextSection entries={watchNext.entries} index={0} size="sub" />
+            ) : null}
 
-      {/* Because you liked <seed title> — TMDB recommendations seeded from the user's own top-rated completed title */}
-      {becauseYouLiked.seedTitle && becauseYouLiked.items.length > 0 ? (
-        <section>
-          <SectionHeader
-            title={t("home.becauseYouLiked", { title: becauseYouLiked.seedTitle })}
-            subtitle={t("home.becauseYouLikedSubtitle")}
-            index={++sectionIndex}
-          />
-          <MediaGrid items={becauseYouLiked.items} />
-        </section>
-      ) : null}
+            {becauseYouLiked.seedTitle && becauseYouLiked.items.length > 0 ? (
+              <div>
+                <SectionHeader
+                  title={t("home.becauseYouLiked", { title: becauseYouLiked.seedTitle })}
+                  subtitle={t("home.becauseYouLikedSubtitle")}
+                  size="sub"
+                />
+                <MediaGrid items={becauseYouLiked.items} />
+              </div>
+            ) : null}
 
-      {/* Because you love <favourite genre> — discover filtered by the user's top library genre */}
-      {favouriteGenreRail.genre && favouriteGenreRail.items.length > 0 ? (
-        <section>
-          <SectionHeader
-            title={t("home.becauseYouLoveGenre", { genre: t(favouriteGenreRail.genre.labelKey) })}
-            subtitle={t("home.becauseYouLoveGenreSubtitle")}
-            index={++sectionIndex}
-          />
-          <MediaGrid items={favouriteGenreRail.items} />
+            {favouriteGenreRail.genre && favouriteGenreRail.items.length > 0 ? (
+              <div>
+                <SectionHeader
+                  title={t("home.becauseYouLoveGenre", { genre: t(favouriteGenreRail.genre.labelKey) })}
+                  subtitle={t("home.becauseYouLoveGenreSubtitle")}
+                  size="sub"
+                />
+                <MediaGrid items={favouriteGenreRail.items} />
+              </div>
+            ) : null}
+          </Panel>
         </section>
       ) : null}
 
