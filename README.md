@@ -28,7 +28,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 - Filter and sort your watchlist and library by media type, status, date, title, or rating.
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
-- Manage multiple profiles, each with its own watchlist, library, and history — creating an additional profile requires optional Supabase sign-in (see "Personalise" below); without it, the app runs on a single local-only profile.
+- Manage multiple profiles, each with its own watchlist, library, and history — switch, create, or remove local-only profiles freely offline; with optional Supabase sign-in configured (see "Personalise" below), a profile can also be linked to an account so it's only reachable by that account.
 - Import a TV Time GDPR export (watched episodes and movies with their original dates, plus the to-watch list) as a one-time bulk migration.
 
 ### Track TV series

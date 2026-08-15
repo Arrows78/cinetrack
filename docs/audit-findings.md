@@ -37,7 +37,8 @@ Anything that can't be undone — delete, restore, undo-an-import — routes thr
 
 - Never surface `error.message` directly to the user, on any screen — not just the main data pages that already have `RemoteErrorState`. A raw message may contain SQL/IPC detail and won't be in the user's language.
 - Never swallow an error silently: `.catch(() => undefined)` or an empty `catch {}` with no `logger.warn`/`logger.error` hides real failures. If the action was user-triggered, surface it too.
-- **Counter-example found:** `src/components/settings/desktop-settings.tsx` has several `.catch(() => undefined)` calls with no log, inconsistent with the same file's own `run()` helper, which does surface errors for button-triggered actions.
+- **Counter-example found:** `src/components/settings/desktop-settings.tsx` has several `.catch(() => undefined)` calls with no log, inconsistent with the same file's own `run()` helper, which does surface errors for button-triggered actions. Fixed 2026-08-15.
+- **New counter-example found (2026-08-15):** `src/components/desktop/boot-recovery-gate.tsx` — added as part of the startup-recovery work below — shows `error.message` inline and unguarded (`setRestoreError(error instanceof Error ? error.message : ...)`), not even behind the `<details>`/"technical details" disclosure `RemoteErrorState` uses elsewhere. It can surface a raw `ApiCommandError` from `maintenanceService.restoreAutomaticBackup()`. This is exactly the pattern this rule exists to prevent, reintroduced in new code — not yet fixed.
 
 ### i18n includes thrown errors
 
@@ -76,8 +77,11 @@ Not bugs — findings that were looked at and had a real tradeoff, decided again
 
 Remove a line once it's actually fixed — don't let this turn into a second bug tracker.
 
-- [ ] No end-to-end test suite; 20/21 pages in `src/pages/` have no tests at all.
+- [ ] No end-to-end test suite; 19/21 pages in `src/pages/` have no tests at all (down from 20/21 — `collections-page.test.tsx` added 2026-08-15).
+- [ ] `boot-recovery-gate.tsx` shows a raw `error.message` unguarded — see the new counter-example under "Error handling" above.
+- [ ] Toast (`src/components/ui/toast.tsx`, added 2026-08-15) is a complete, tested component, but only adopted in 2 files (`library-editor.tsx`, `collections-page.tsx`) — `desktop-settings.tsx`, `backup-tools.tsx`, `tvtime-import-card.tsx`, `token-gate.tsx`, `add-to-list-button.tsx`, and others still use their own local `message`/`AsyncActionFeedback` state. The inconsistent-feedback problem this was built to fix isn't resolved app-wide yet.
+- [ ] `list_library`/`list_watchlist` (`src-tauri/src/commands/library.rs`, `watchlist.rs`) still run an unbounded `SELECT *` with no `LIMIT` — the media grid is now virtualized (`react-virtuoso`, `src/components/media/media-grid.tsx`) so rendering scales, but the query and the IPC payload itself don't yet, for a very large library.
+- [ ] A handful of hardcoded pixel values in composite Tailwind grid templates weren't caught by the earlier px→rem pass (which targeted single-value brackets): `src/components/layout/app-shell.tsx` (sidebar width), `src/components/media/media-details-hero.tsx` (poster column), `src/pages/design-system-page.tsx` (catalog grids, lower priority as a dev-only page).
 - [ ] No release/rollback strategy formalized yet (no signed builds, no published GitHub Release) — acceptable pre-1.0 per `.github/SECURITY.md`, but to revisit before a wider distribution.
 - [ ] `export_impl`/`import_impl` in `src-tauri/src/commands/backup.rs` (~250-280 lines duplicated per table) — a generic per-table abstraction would keep the cost from growing linearly with each new personal-data type. Deferred as its own dedicated pass rather than bundled into a larger batch, given the correctness stakes of the backup/restore path.
-- [ ] `list_library`/`list_watchlist` (`library.rs`, `watchlist.rs`) have no pagination or grid virtualization — fine today, will degrade with a large library. Same reasoning: deferred as its own pass.
-- [ ] TV Time import (`parse-export.ts`'s `normalizeExport`) keeps only the earliest watch date per title, silently dropping rewatches recorded in the source export — now disclosed in the import UI (`tvtimeImport.rewatchNotice`), but not preserved; `viewing_events.event_type` already supports `'rewatched'` at the schema level if this is ever worth doing properly.
+- [ ] TV Time import (`parse-export.ts`'s `normalizeExport`) keeps only the earliest watch date per title, silently dropping rewatches recorded in the source export — disclosed in the import UI (`tvtimeImport.rewatchNotice`), but not preserved; `viewing_events.event_type` already supports `'rewatched'` at the schema level if this is ever worth doing properly.

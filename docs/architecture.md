@@ -90,6 +90,12 @@ All query keys live in one registry, `src/shared/constants/query-keys.ts`, split
 
 Composes hooks; pages never call a repository directly. A page reading remote or local data needs an explicit `RemoteErrorState` (`src/components/states/remote-error-state.tsx`) rather than a silent hang — this is a repeated review finding in the project's own history (`git log --grep=remote-error`) and is treated as a non-negotiable, not a nice-to-have.
 
+## Startup and database recovery
+
+`init_pool_at` (`src-tauri/src/database/mod.rs`) doesn't let a broken database take the whole app down. If `run_migrations` fails against the existing `app.db`, it quarantines that file (renames it aside, never deletes it) and opens a fresh one instead of propagating the error — a corrupt or partially-restored database degrades into "starts fresh" rather than a crash. The one remaining unhandled case is a *second* failure on the fresh file (disk full, permissions): `src-tauri/src/lib.rs` still `.expect()`s there, which is an accepted, narrow last resort, not a fixed limitation.
+
+The frontend surfaces this: `get_boot_recovery` (`src/features/desktop/boot-recovery-repository.ts`) reports whether a quarantine just happened, and `use-boot-recovery.ts` / `BootRecoveryGate` block the rest of the app behind a recovery screen (offering to restore the last automatic backup, or continue with a fresh database) until the user picks one. See `boot-recovery-gate.test.tsx` for the covered scenarios.
+
 ## State management split
 
 - **Server/persisted state** (anything that comes from TMDB or SQLite) lives in TanStack Query, never duplicated into a store.
