@@ -5,6 +5,7 @@ import { AppRouter } from "@/app/router";
 import { BrowserPreviewBanner } from "@/components/desktop/browser-preview-banner";
 import { CommandPalette } from "@/components/desktop/command-palette";
 import { TokenGate } from "@/components/desktop/token-gate";
+import { Toaster } from "@/components/ui/toaster";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
 import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate";
@@ -98,6 +99,7 @@ export function App() {
       </MotionPreferenceGate>
 
       <BrowserPreviewBanner />
+      <Toaster />
 
       {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /> : null}
     </>

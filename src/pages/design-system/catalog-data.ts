@@ -943,6 +943,22 @@ export const componentInventory = [
     "Represents a single loading placeholder shape."
   ),
   component(
+    "Toast",
+    "components/ui/toast.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Radix-backed toast primitives (Provider/Viewport/Root/Title/Description/Close/Action) used by Toaster."
+  ),
+  component(
+    "Toaster",
+    "components/ui/toaster.tsx",
+    "UI primitives",
+    "infrastructure",
+    "live",
+    "Mounted once at the app root; renders every toast(...) call as a stacked notification."
+  ),
+  component(
     "Textarea",
     "components/ui/textarea.tsx",
     "UI primitives",
