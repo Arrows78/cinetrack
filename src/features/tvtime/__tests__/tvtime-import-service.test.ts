@@ -490,14 +490,12 @@ describe("importTvTimeExport", () => {
         watchlist: [],
         tvdbIdsByName: new Map(),
       };
-      searchMock
-        .mockRejectedValueOnce(new TmdbRequestError("rate limited", 429))
-        .mockResolvedValueOnce({
-          page: 1,
-          totalPages: 1,
-          totalResults: 1,
-          results: [media({ id: 9, title: "Inception", mediaType: "movie" })],
-        });
+      searchMock.mockRejectedValueOnce(new TmdbRequestError("rate limited", 429)).mockResolvedValueOnce({
+        page: 1,
+        totalPages: 1,
+        totalResults: 1,
+        results: [media({ id: 9, title: "Inception", mediaType: "movie" })],
+      });
       importMovieSeenMock.mockResolvedValue(true);
 
       const promise = importTvTimeExport(["irrelevant"]);

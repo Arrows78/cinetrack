@@ -1,12 +1,5 @@
 import { useTranslation } from "react-i18next";
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast";
+import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
 
 // Mounted once at the app root (see main.tsx) — every toast(...) call
