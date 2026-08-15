@@ -1,4 +1,5 @@
 import i18n from "@/i18n";
+import { TmdbRequestError } from "@/features/media/api/client";
 import { mediaRepository } from "@/features/media/media-repository";
 import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
 import { newUuid } from "@/shared/lib/id";
@@ -6,6 +7,32 @@ import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import type { MediaSummary, Series } from "@/types/media";
 import { emptyExport, normalizeExport, parseTvTimeFile, type TvTimeEpisode, type TvTimeExport } from "./parse-export";
 import { tvTimeImportRepository, type ImportableEpisode } from "./tvtime-import-repository";
+
+const RATE_LIMIT_MAX_ATTEMPTS = 3;
+const RATE_LIMIT_BASE_DELAY_MS = 1000;
+
+const isRateLimitError = (error: unknown): boolean => error instanceof TmdbRequestError && error.status === 429;
+
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+// TMDB rate-limits (429) under sustained load, and a bulk TV Time import can
+// fire hundreds of lookups through mapWithConcurrency. Without this, a 429
+// burst gets recorded as "title could not be matched" for every lookup
+// still in flight — indistinguishable from a title that genuinely doesn't
+// exist on TMDB. Retries only 429 specifically: a real 404/network error
+// still fails immediately and counts as unmatched, same as before.
+async function withRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await fn();
+    } catch (error) {
+      attempt += 1;
+      if (!isRateLimitError(error) || attempt >= RATE_LIMIT_MAX_ATTEMPTS) throw error;
+      await delay(RATE_LIMIT_BASE_DELAY_MS * 2 ** (attempt - 1));
+    }
+  }
+}
 
 export interface TvTimeImportProgress {
   phase: "series" | "movies" | "watchlist";
@@ -62,16 +89,16 @@ async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): 
   const tvdbId = tvdbIdsByName.get(name.toLowerCase());
   if (tvdbId !== undefined) {
     try {
-      const found = await mediaRepository.findSeriesByTvdbId(tvdbId);
+      const found = await withRateLimitRetry(() => mediaRepository.findSeriesByTvdbId(tvdbId));
       if (found) return found;
     } catch {
       // Fall through to name search.
     }
   }
   const { title, year } = splitTitleYear(name);
-  const page = await mediaRepository.search(title, "series");
+  const page = await withRateLimitRetry(() => mediaRepository.search(title, "series"));
   const match = pickBestMatch(page.results, title, year);
-  return match ? mediaRepository.getSeriesDetails(match.id) : null;
+  return match ? withRateLimitRetry(() => mediaRepository.getSeriesDetails(match.id)) : null;
 }
 
 async function importOneSeries(
@@ -90,7 +117,7 @@ async function importOneSeries(
   const episodeIdByCode = new Map<string, { id: number; runtime: number | null }>();
   for (const seasonNumber of seasonNumbers) {
     try {
-      const season = await mediaRepository.getSeasonDetails(series.id, seasonNumber);
+      const season = await withRateLimitRetry(() => mediaRepository.getSeasonDetails(series.id, seasonNumber));
       for (const episode of season.episodes) {
         episodeIdByCode.set(`${episode.seasonNumber}|${episode.episodeNumber}`, {
           id: episode.id,
@@ -175,7 +202,7 @@ export async function importTvTimeExport(
     async (movie) => {
       onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
       try {
-        const page = await mediaRepository.search(movie.title, "movie");
+        const page = await withRateLimitRetry(() => mediaRepository.search(movie.title, "movie"));
         const match = pickBestMatch(page.results, movie.title, movie.year);
         if (!match) {
           summary.unmatched.push(movie.title);
@@ -205,7 +232,9 @@ export async function importTvTimeExport(
     async (entry) => {
       onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
       try {
-        const page = await mediaRepository.search(entry.title, entry.mediaType === "movie" ? "movie" : "series");
+        const page = await withRateLimitRetry(() =>
+          mediaRepository.search(entry.title, entry.mediaType === "movie" ? "movie" : "series")
+        );
         const match = pickBestMatch(page.results, entry.title, entry.year);
         if (!match) {
           summary.unmatched.push(entry.title);

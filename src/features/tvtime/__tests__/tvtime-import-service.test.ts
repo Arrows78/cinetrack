@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n";
 import type { MediaSummary, Season, Series } from "@/types/media";
 import type { TvTimeExport } from "../parse-export";
@@ -473,6 +473,74 @@ describe("importTvTimeExport", () => {
       expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: "movies", done: 1, total: 1 }));
       expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: "watchlist", done: 0, total: 1 }));
       expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ phase: "watchlist", done: 1, total: 1 }));
+    });
+  });
+
+  describe("TMDB rate-limit (429) handling", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("retries a 429 with backoff instead of marking the title unmatched", async () => {
+      vi.useFakeTimers();
+      const { TmdbRequestError } = await import("@/features/media/api/client");
+      exportData = {
+        episodes: [],
+        movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+        watchlist: [],
+        tvdbIdsByName: new Map(),
+      };
+      searchMock
+        .mockRejectedValueOnce(new TmdbRequestError("rate limited", 429))
+        .mockResolvedValueOnce({
+          page: 1,
+          totalPages: 1,
+          totalResults: 1,
+          results: [media({ id: 9, title: "Inception", mediaType: "movie" })],
+        });
+      importMovieSeenMock.mockResolvedValue(true);
+
+      const promise = importTvTimeExport(["irrelevant"]);
+      await vi.advanceTimersByTimeAsync(1000);
+      const summary = await promise;
+
+      expect(summary.unmatched).toEqual([]);
+      expect(summary.moviesImported).toBe(1);
+      expect(searchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("gives up and marks unmatched once retries are exhausted on a persistent 429", async () => {
+      vi.useFakeTimers();
+      const { TmdbRequestError } = await import("@/features/media/api/client");
+      exportData = {
+        episodes: [],
+        movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+        watchlist: [],
+        tvdbIdsByName: new Map(),
+      };
+      searchMock.mockRejectedValue(new TmdbRequestError("rate limited", 429));
+
+      const promise = importTvTimeExport(["irrelevant"]);
+      await vi.advanceTimersByTimeAsync(10_000);
+      const summary = await promise;
+
+      expect(summary.unmatched).toEqual(["Inception"]);
+      expect(searchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("does not retry a non-429 error", async () => {
+      exportData = {
+        episodes: [],
+        movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+        watchlist: [],
+        tvdbIdsByName: new Map(),
+      };
+      searchMock.mockRejectedValue(new Error("network down"));
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(summary.unmatched).toEqual(["Inception"]);
+      expect(searchMock).toHaveBeenCalledTimes(1);
     });
   });
 });
