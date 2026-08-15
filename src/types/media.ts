@@ -90,9 +90,9 @@ export interface Series extends MediaSummary {
   seasons: Season[];
 }
 
-export interface WatchlistItem {
+export interface LibraryItem {
   id: string;
-  profileId?: string;
+  profileId: string;
   mediaId: number;
   mediaType: MediaType;
   title: string;
@@ -102,10 +102,6 @@ export interface WatchlistItem {
   rating?: number | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface LibraryItem extends WatchlistItem {
-  profileId: string;
   genres: string[];
   status: LibraryStatus;
   favourite: boolean;
@@ -185,7 +181,6 @@ export interface UserPreferences {
   language: "en" | "fr";
   region: string;
   defaultSearchType: SearchScope;
-  defaultWatchlistFilter: SearchScope;
   reduceMotion: boolean;
   compactMode: boolean;
   sidebarCollapsed: boolean;
@@ -306,7 +301,7 @@ export interface LibraryStats {
   favouriteGenres: Array<{ name: string; count: number }>;
   monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
   currentStreakDays: number;
-  watchlistCompletionPercent: number;
+  libraryCompletionPercent: number;
 }
 
 export interface HomeFeed {

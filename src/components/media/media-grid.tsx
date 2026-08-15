@@ -5,7 +5,7 @@ import { MediaCard, type MediaCardProgress } from "./media-card";
 export type MediaGridItem = MediaSummary & { progress?: MediaCardProgress; alreadySeen?: boolean };
 
 // Virtualized: only the rows near the viewport are ever mounted, so a large
-// library/watchlist/search-results grid doesn't pay the DOM/render cost of
+// library/search-results grid doesn't pay the DOM/render cost of
 // every card at once (each MediaCard's grid quick actions run their own
 // data hooks, which made this cost scale with the profile-scoped data too,
 // not just poster count). useWindowScroll — the page itself scrolls (see

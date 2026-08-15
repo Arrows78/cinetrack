@@ -16,28 +16,66 @@ describe("portableData", () => {
 
   it("exports the current state and can round-trip it back in", async () => {
     const { portableData } = await import("../portable-data");
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
     const { libraryRepository } = await import("@/features/library/library-repository");
 
-    await watchlistRepository.save({
-      id: "test-id",
-      mediaId: 1,
-      mediaType: "movie",
-      title: "Round Trip",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
     await libraryRepository.save(makeMedia({ id: 1, title: "Round Trip" }), { status: "watching" });
 
     const backup = await portableData.export();
     expect(backup.format).toBe("cinetrack-backup");
-    expect(backup.data.watchlist).toHaveLength(1);
     expect(backup.data.library).toHaveLength(1);
 
     await portableData.import(backup);
 
-    expect(await watchlistRepository.has(1, "movie")).toBe(true);
     expect((await libraryRepository.get(1, "movie"))?.status).toBe("watching");
+  });
+
+  it("folds a legacy backup's watchlist array into planned library rows, dropping entries that already exist in the library", async () => {
+    const { portableData } = await import("../portable-data");
+    const { libraryRepository } = await import("@/features/library/library-repository");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: {
+        library: [
+          {
+            profileId: "default",
+            mediaId: 1,
+            mediaType: "movie",
+            title: "Already tracked",
+            genres: [],
+            status: "watching",
+            favourite: false,
+            tags: [],
+            rewatchCount: 0,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        watchlist: [
+          {
+            id: "wl-1",
+            mediaId: 1,
+            mediaType: "movie",
+            title: "Stale copy",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+          {
+            id: "wl-2",
+            mediaId: 2,
+            mediaType: "movie",
+            title: "To watch",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      } as never,
+    });
+
+    expect((await libraryRepository.get(1, "movie"))?.status).toBe("watching");
+    expect((await libraryRepository.get(2, "movie"))?.status).toBe("planned");
   });
 
   it("rejects a backup with an unsupported format", async () => {

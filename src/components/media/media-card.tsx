@@ -4,13 +4,13 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Bookmark, BookmarkCheck, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast";
 import { useMovieSeen } from "@/features/progress/use-progress";
-import { useIsInWatchlist, useWatchlist } from "@/features/watchlist/use-watchlist";
-import { newUuid } from "@/shared/lib/id";
+import { useIsInLibrary, useLibraryQuickToggle } from "@/features/library/use-library";
 import { cn } from "@/shared/lib/cn";
 import { MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating } from "@/shared/utils/format";
-import type { MediaSummary, WatchlistItem } from "@/types/media";
+import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
 export interface MediaCardProgress {
@@ -20,7 +20,7 @@ export interface MediaCardProgress {
 
 // Stop the click from also activating the card's wrapping <Link> — these
 // buttons live inside it so they can overlay the poster, not so navigating
-// away is also part of "toggle watchlist"/"toggle seen".
+// away is also part of "toggle library"/"toggle seen".
 function stopCardNavigation(event: MouseEvent): void {
   event.preventDefault();
   event.stopPropagation();
@@ -29,37 +29,27 @@ function stopCardNavigation(event: MouseEvent): void {
 const quickActionButtonClassName =
   "flex size-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-transform duration-base hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
 
-function WatchlistQuickAction({ media }: { media: MediaSummary }) {
+function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
-  const { data: isInWatchlist } = useIsInWatchlist(media.id, media.mediaType);
-  const { addToWatchlist, removeFromWatchlist, isMutating } = useWatchlist();
+  const { data: isInLibrary } = useIsInLibrary(media.id, media.mediaType);
+  const { addPlanned, removeIfPlanned, isMutating } = useLibraryQuickToggle();
 
   const toggle = async () => {
-    if (isInWatchlist) {
-      await removeFromWatchlist({ mediaId: media.id, mediaType: media.mediaType });
+    if (isInLibrary) {
+      const removed = await removeIfPlanned({ mediaId: media.id, mediaType: media.mediaType });
+      if (!removed) {
+        toast({ description: t("media.libraryRemoveBlocked"), variant: "error" });
+      }
       return;
     }
-    const now = new Date().toISOString();
-    const payload: WatchlistItem = {
-      id: newUuid(),
-      mediaId: media.id,
-      mediaType: media.mediaType,
-      title: media.title,
-      posterPath: media.posterPath,
-      backdropPath: media.backdropPath,
-      year: media.year,
-      rating: media.rating,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await addToWatchlist(payload);
+    await addPlanned(media);
   };
 
   return (
     <button
       type="button"
-      aria-label={isInWatchlist ? t("media.inWatchlist") : t("media.addToWatchlist")}
-      aria-pressed={Boolean(isInWatchlist)}
+      aria-label={isInLibrary ? t("media.inLibrary") : t("media.addToLibrary")}
+      aria-pressed={Boolean(isInLibrary)}
       disabled={isMutating}
       onClick={(event) => {
         stopCardNavigation(event);
@@ -67,7 +57,7 @@ function WatchlistQuickAction({ media }: { media: MediaSummary }) {
       }}
       className={quickActionButtonClassName}
     >
-      {isInWatchlist ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+      {isInLibrary ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
     </button>
   );
 }
@@ -100,7 +90,7 @@ function SeenQuickAction({ media }: { media: MediaSummary }) {
 function MediaCardQuickActions({ media }: { media: MediaSummary }) {
   return (
     <div className="absolute right-3 top-14 flex flex-col gap-2 opacity-0 transition-opacity duration-base group-hover:opacity-100 group-focus-within:opacity-100">
-      <WatchlistQuickAction media={media} />
+      <AddToLibraryQuickAction media={media} />
       {media.mediaType === "movie" ? <SeenQuickAction media={media} /> : null}
     </div>
   );

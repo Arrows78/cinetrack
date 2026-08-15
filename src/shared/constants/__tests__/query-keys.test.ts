@@ -3,7 +3,7 @@ import { queryKeys } from "../query-keys";
 
 // Every profile-scoped "local" key factory must produce a distinct key per
 // profile — this is the entire guarantee the app relies on to keep one
-// local profile's cached watchlist/library/etc. from being rendered under
+// local profile's cached library/history/etc. from being rendered under
 // another. A factory that accidentally ignored its profileId argument (or
 // a new one added without it) would let two profiles collide on the same
 // cache entry, silently reintroducing the cross-profile data leak this was
@@ -13,7 +13,6 @@ describe("queryKeys.local — profile isolation", () => {
     const a = "profile-a";
     const b = "profile-b";
 
-    expect(queryKeys.local.watchlist(a)).not.toEqual(queryKeys.local.watchlist(b));
     expect(queryKeys.local.history(a)).not.toEqual(queryKeys.local.history(b));
     expect(queryKeys.local.movieSeen(a, 1)).not.toEqual(queryKeys.local.movieSeen(b, 1));
     expect(queryKeys.local.episodeProgress(a, 1)).not.toEqual(queryKeys.local.episodeProgress(b, 1));
@@ -30,7 +29,7 @@ describe("queryKeys.local — profile isolation", () => {
   });
 
   it("is stable (same profile + same args → identical key) so the cache actually hits", () => {
-    expect(queryKeys.local.watchlist("default")).toEqual(queryKeys.local.watchlist("default"));
+    expect(queryKeys.local.library("default")).toEqual(queryKeys.local.library("default"));
     expect(queryKeys.local.libraryItem("default", "movie", 7)).toEqual(
       queryKeys.local.libraryItem("default", "movie", 7)
     );
@@ -38,8 +37,8 @@ describe("queryKeys.local — profile isolation", () => {
 
   it("every profile-scoped key starts with ['local', <domain>, profileId, ...] so removeQueries({queryKey: ['local']}) still purges it as a prefix", () => {
     const profileId = "profile-a";
-    expect(queryKeys.local.watchlist(profileId)[0]).toBe("local");
-    expect(queryKeys.local.watchlist(profileId)).toContain(profileId);
+    expect(queryKeys.local.library(profileId)[0]).toBe("local");
+    expect(queryKeys.local.library(profileId)).toContain(profileId);
     expect(queryKeys.local.libraryItem(profileId, "movie", 7)).toContain(profileId);
   });
 

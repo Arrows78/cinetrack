@@ -12,7 +12,6 @@ export const preferencesSchema = z.object({
     .regex(/^[A-Z]{2}$/)
     .default(DEFAULT_TMDB_REGION),
   defaultSearchType: z.enum(["all", "movie", "series"]).default("all"),
-  defaultWatchlistFilter: z.enum(["all", "movie", "series"]).default("all"),
   reduceMotion: z.boolean().default(false),
   compactMode: z.boolean().default(false),
   sidebarCollapsed: z.boolean().default(false),

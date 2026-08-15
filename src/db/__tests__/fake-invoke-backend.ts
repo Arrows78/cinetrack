@@ -15,7 +15,6 @@ import type {
   TrackedSeriesItem,
   UserPreferences,
   ViewingEvent,
-  WatchlistItem,
 } from "@/types/media";
 import type { LibraryPatch } from "@/features/library/library-repository";
 import type { PortableData } from "@/features/backup/portable-data-common";
@@ -119,105 +118,6 @@ function addHistoryItem(sqlite: DatabaseSync, item: Record<string, unknown>) {
     } as Record<string, SQLInputValue>);
 }
 
-function rowToWatchlistItem(row: Record<string, unknown>): WatchlistItem {
-  return {
-    id: String(row.uuid),
-    profileId: String(row.profile_id ?? "default"),
-    mediaId: Number(row.media_id),
-    mediaType: row.media_type === "movie" ? "movie" : "series",
-    title: String(row.title),
-    posterPath: row.poster_path ? String(row.poster_path) : null,
-    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
-    year: row.year == null ? null : Number(row.year),
-    rating: row.rating == null ? null : Number(row.rating),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  };
-}
-
-function listWatchlist(sqlite: DatabaseSync, profileId: string): WatchlistItem[] {
-  const rows = sqlite
-    .prepare("SELECT * FROM watchlist_items WHERE profile_id = $profileId ORDER BY created_at DESC")
-    .all({ $profileId: profileId }) as Array<Record<string, unknown>>;
-  return rows.map(rowToWatchlistItem);
-}
-
-function hasWatchlistItem(sqlite: DatabaseSync, profileId: string, mediaId: number, mediaType: string): boolean {
-  const rows = sqlite
-    .prepare(
-      "SELECT COUNT(*) count FROM watchlist_items WHERE profile_id=$profileId AND media_id=$mediaId AND media_type=$mediaType"
-    )
-    .all({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType }) as Array<{ count: number }>;
-  return Number(rows[0]?.count ?? 0) > 0;
-}
-
-function upsertWatchlistItem(sqlite: DatabaseSync, item: WatchlistItem): void {
-  const profileId = loadPreferences(sqlite).activeProfileId;
-  const alreadyExists = hasWatchlistItem(sqlite, profileId, item.mediaId, item.mediaType);
-  const now = new Date().toISOString();
-
-  sqlite
-    .prepare(
-      `INSERT INTO watchlist_items
-        (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,created_at,updated_at)
-       VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$posterPath,$backdropPath,$year,$rating,$createdAt,$createdAt)
-       ON CONFLICT (profile_id, media_id, media_type) DO UPDATE SET
-         title = excluded.title,
-         poster_path = excluded.poster_path,
-         backdrop_path = excluded.backdrop_path,
-         year = excluded.year,
-         rating = excluded.rating,
-         updated_at = excluded.updated_at`
-    )
-    .run({
-      $uuid: crypto.randomUUID(),
-      $profileId: profileId,
-      $mediaId: item.mediaId,
-      $mediaType: item.mediaType,
-      $title: item.title,
-      $posterPath: item.posterPath ?? null,
-      $backdropPath: item.backdropPath ?? null,
-      $year: item.year ?? null,
-      $rating: item.rating ?? null,
-      $createdAt: item.createdAt || now,
-    } as Record<string, SQLInputValue>);
-
-  if (!alreadyExists) {
-    addHistoryItem(sqlite, {
-      id: crypto.randomUUID(),
-      mediaId: item.mediaId,
-      mediaType: item.mediaType,
-      title: item.title,
-      action: "watchlist:add",
-      timestamp: now,
-      metadata: { profileId },
-    });
-  }
-}
-
-function removeWatchlistItem(sqlite: DatabaseSync, mediaId: number, mediaType: string): void {
-  const profileId = loadPreferences(sqlite).activeProfileId;
-  const existing = listWatchlist(sqlite, profileId).find(
-    (current) => current.mediaId === mediaId && current.mediaType === mediaType
-  );
-
-  sqlite
-    .prepare("DELETE FROM watchlist_items WHERE profile_id=$profileId AND media_id=$mediaId AND media_type=$mediaType")
-    .run({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType });
-
-  if (existing) {
-    addHistoryItem(sqlite, {
-      id: crypto.randomUUID(),
-      mediaId,
-      mediaType,
-      title: existing.title,
-      action: "watchlist:remove",
-      timestamp: new Date().toISOString(),
-      metadata: { profileId },
-    });
-  }
-}
-
 function rowToLibraryItem(row: Record<string, unknown>): LibraryItem {
   return {
     id: String(row.uuid),
@@ -264,9 +164,19 @@ function getLibraryItem(
   return rows[0] ? rowToLibraryItem(rows[0]) : null;
 }
 
+function hasLibraryItem(sqlite: DatabaseSync, profileId: string, mediaId: number, mediaType: string): boolean {
+  const rows = sqlite
+    .prepare(
+      "SELECT COUNT(*) count FROM library_items WHERE profile_id=$profileId AND media_id=$mediaId AND media_type=$mediaType"
+    )
+    .all({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType }) as Array<{ count: number }>;
+  return Number(rows[0]?.count ?? 0) > 0;
+}
+
 function upsertLibraryItem(sqlite: DatabaseSync, media: MediaSummary, patch: LibraryPatch): LibraryItem {
   const profileId = loadPreferences(sqlite).activeProfileId;
   const current = getLibraryItem(sqlite, profileId, media.id, media.mediaType);
+  const isNew = !current;
   const now = new Date().toISOString();
   const status = patch.status ?? current?.status ?? "planned";
   const item: LibraryItem = {
@@ -339,15 +249,57 @@ function upsertLibraryItem(sqlite: DatabaseSync, media: MediaSummary, patch: Lib
       $updatedAt: item.updatedAt,
     } as Record<string, SQLInputValue>);
 
+  if (isNew) {
+    addHistoryItem(sqlite, {
+      id: crypto.randomUUID(),
+      mediaId: item.mediaId,
+      mediaType: item.mediaType,
+      title: item.title,
+      action: "watchlist:add",
+      timestamp: now,
+      metadata: { profileId },
+    });
+  }
+
   return item;
 }
 
 function removeLibraryItem(sqlite: DatabaseSync, profileId: string, mediaId: number, mediaType: string): void {
+  const existing = getLibraryItem(sqlite, profileId, mediaId, mediaType);
+
   sqlite
     .prepare(
       "DELETE FROM library_items WHERE profile_id = $profileId AND media_id = $mediaId AND media_type = $mediaType"
     )
     .run({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType });
+
+  if (existing) {
+    addHistoryItem(sqlite, {
+      id: crypto.randomUUID(),
+      mediaId,
+      mediaType,
+      title: existing.title,
+      action: "watchlist:remove",
+      timestamp: new Date().toISOString(),
+      metadata: { profileId },
+    });
+  }
+}
+
+// Backs the guarded quick "add to library" toggle: only removes (and logs)
+// a row still in the default `planned` status, a no-op otherwise —
+// mirrors remove_if_planned_impl in src-tauri/src/commands/library.rs.
+function removeLibraryItemIfPlanned(
+  sqlite: DatabaseSync,
+  profileId: string,
+  mediaId: number,
+  mediaType: string
+): boolean {
+  const existing = getLibraryItem(sqlite, profileId, mediaId, mediaType);
+  if (!existing || existing.status !== "planned") return false;
+
+  removeLibraryItem(sqlite, profileId, mediaId, mediaType);
+  return true;
 }
 
 function isMovieSeen(sqlite: DatabaseSync, profileId: string, movieId: number): boolean {
@@ -634,7 +586,7 @@ function getStatsOverview(
     episodesWatched: number;
     minutesWatched: number;
     completedSeries: number;
-    watchlistCompletionPercent: number;
+    libraryCompletionPercent: number;
   };
   monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
 } {
@@ -659,7 +611,7 @@ function getStatsOverview(
       episodesWatched: watched.filter((event) => event.episodeId !== null && event.episodeId !== undefined).length,
       minutesWatched: watched.reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
       completedSeries: library.filter((item) => item.mediaType === "series" && item.status === "completed").length,
-      watchlistCompletionPercent: library.length ? Math.round((completed.length / library.length) * 100) : 0,
+      libraryCompletionPercent: library.length ? Math.round((completed.length / library.length) * 100) : 0,
     },
     monthlyActivity,
   };
@@ -674,19 +626,6 @@ function quickCheck(sqlite: DatabaseSync): { healthy: boolean; detail: string } 
 function exportBackupData(sqlite: DatabaseSync): PortableData {
   const rowsOf = (table: string) => sqlite.prepare(`SELECT * FROM ${table}`).all() as Array<Record<string, unknown>>;
 
-  const watchlist = rowsOf("watchlist_items").map((row) => ({
-    id: String(row.uuid),
-    profileId: String(row.profile_id ?? "default"),
-    mediaId: Number(row.media_id),
-    mediaType: row.media_type === "movie" ? "movie" : "series",
-    title: String(row.title),
-    posterPath: row.poster_path ? String(row.poster_path) : null,
-    backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
-    year: row.year === null || row.year === undefined ? null : Number(row.year),
-    rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  }));
   const seenMovies = rowsOf("seen_movies").map((row) => ({
     profileId: String(row.profile_id ?? "default"),
     movieId: Number(row.movie_id),
@@ -814,7 +753,6 @@ function exportBackupData(sqlite: DatabaseSync): PortableData {
   }));
 
   return {
-    watchlist,
     seenMovies,
     episodeProgress,
     trackedSeries,
@@ -842,7 +780,6 @@ function importBackupData(sqlite: DatabaseSync, data: PortableData): void {
     "episode_progress",
     "tracked_series",
     "seen_movies",
-    "watchlist_items",
     "preferences",
     "profiles",
   ]) {
@@ -866,26 +803,6 @@ function importBackupData(sqlite: DatabaseSync, data: PortableData): void {
     sqlite
       .prepare("INSERT INTO preferences (key, value, updated_at) VALUES ($key,$value,$updatedAt)")
       .run({ $key: key, $value: JSON.stringify(value), $updatedAt: now } as Record<string, SQLInputValue>);
-  }
-  for (const item of data.watchlist) {
-    sqlite
-      .prepare(
-        `INSERT INTO watchlist_items
-          (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,created_at,updated_at)
-         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$posterPath,$backdropPath,$year,$rating,$createdAt,$createdAt)`
-      )
-      .run({
-        $uuid: crypto.randomUUID(),
-        $profileId: item.profileId ?? "default",
-        $mediaId: item.mediaId,
-        $mediaType: item.mediaType,
-        $title: item.title,
-        $posterPath: item.posterPath ?? null,
-        $backdropPath: item.backdropPath ?? null,
-        $year: item.year ?? null,
-        $rating: item.rating ?? null,
-        $createdAt: item.createdAt,
-      } as Record<string, SQLInputValue>);
   }
   for (const item of data.seenMovies) {
     sqlite
@@ -1102,25 +1019,17 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         return undefined;
       case "list_history":
         return listHistory(sqlite, (args.limit as number | undefined) ?? 50);
-      case "list_watchlist":
-        return listWatchlist(sqlite, loadPreferences(sqlite).activeProfileId);
-      case "has_watchlist_item":
-        return hasWatchlistItem(
+      case "list_library":
+        return listLibrary(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "get_library_item":
+        return getLibraryItem(
           sqlite,
           loadPreferences(sqlite).activeProfileId,
           args.mediaId as number,
           args.mediaType as string
         );
-      case "save_watchlist_item":
-        upsertWatchlistItem(sqlite, args.item as WatchlistItem);
-        return undefined;
-      case "remove_watchlist_item":
-        removeWatchlistItem(sqlite, args.mediaId as number, args.mediaType as string);
-        return undefined;
-      case "list_library":
-        return listLibrary(sqlite, loadPreferences(sqlite).activeProfileId);
-      case "get_library_item":
-        return getLibraryItem(
+      case "has_library_item":
+        return hasLibraryItem(
           sqlite,
           loadPreferences(sqlite).activeProfileId,
           args.mediaId as number,
@@ -1136,6 +1045,13 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
           args.mediaType as string
         );
         return undefined;
+      case "remove_planned_library_item":
+        return removeLibraryItemIfPlanned(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.mediaId as number,
+          args.mediaType as string
+        );
       case "is_movie_seen":
         return isMovieSeen(sqlite, loadPreferences(sqlite).activeProfileId, args.movieId as number);
       case "toggle_movie_seen":

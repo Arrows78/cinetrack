@@ -2,7 +2,7 @@
 
 CineTrack can remain local-only, or require an account backed by Supabase Auth. The implementation uses PKCE for OAuth, a `cinetrack://auth/callback` deep link in Tauri, and six-digit email OTPs for passwordless email sign-in.
 
-Authentication identifies the current user and gates the interface. Existing watchlist, progress, activity, and preferences remain stored locally, partitioned by profile: each Supabase account is linked to exactly one local profile (see `docs/database-schema.md`) — the first account to sign in on a machine claims the pre-existing `'default'` profile, every account after that gets its own. This does not sync data across devices: a machine's SQLite file stays local to that machine. Add a remote sync layer before promising cross-device continuity.
+Authentication identifies the current user and gates the interface. Existing library, progress, activity, and preferences remain stored locally, partitioned by profile: each Supabase account is linked to exactly one local profile (see `docs/database-schema.md`) — the first account to sign in on a machine claims the pre-existing `'default'` profile, every account after that gets its own. This does not sync data across devices: a machine's SQLite file stays local to that machine. Add a remote sync layer before promising cross-device continuity.
 
 ## 1. Create and configure the Supabase project
 

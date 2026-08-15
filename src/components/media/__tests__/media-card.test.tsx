@@ -10,14 +10,12 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
 }));
 
-const watchlistHasMock = vi.fn();
-const watchlistListMock = vi.fn();
-vi.mock("@/features/watchlist/watchlist-repository", () => ({
-  watchlistRepository: {
-    has: (...args: unknown[]) => watchlistHasMock(...args),
-    list: (...args: unknown[]) => watchlistListMock(...args),
+const libraryHasMock = vi.fn();
+vi.mock("@/features/library/library-repository", () => ({
+  libraryRepository: {
+    has: (...args: unknown[]) => libraryHasMock(...args),
     save: vi.fn(),
-    remove: vi.fn(),
+    removeIfPlanned: vi.fn(),
   },
 }));
 
@@ -43,8 +41,7 @@ describe("MediaCard", () => {
   });
 
   beforeEach(() => {
-    watchlistHasMock.mockReset().mockResolvedValue(false);
-    watchlistListMock.mockReset().mockResolvedValue([]);
+    libraryHasMock.mockReset().mockResolvedValue(false);
     isMovieSeenMock.mockReset().mockResolvedValue(false);
   });
 
@@ -77,14 +74,14 @@ describe("MediaCard", () => {
     expect(screen.getByText("Unknown year")).toBeInTheDocument();
   });
 
-  it("shows an add-to-watchlist quick action that toggles state on click", async () => {
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+  it("shows an add-to-library quick action that toggles state on click", async () => {
+    const { libraryRepository } = await import("@/features/library/library-repository");
     renderCard(makeMedia({ id: 7, mediaType: "movie" }));
 
-    const button = await screen.findByRole("button", { name: "Add to watchlist" });
+    const button = await screen.findByRole("button", { name: "Add to library" });
     button.click();
 
-    await waitFor(() => expect(watchlistRepository.save).toHaveBeenCalled());
+    await waitFor(() => expect(libraryRepository.save).toHaveBeenCalled());
   });
 
   it("shows a mark-seen quick action for movies", async () => {
@@ -94,7 +91,7 @@ describe("MediaCard", () => {
 
   it("does not show a mark-seen quick action for series", async () => {
     renderCard(makeMedia({ id: 8, mediaType: "series" }));
-    await screen.findByRole("button", { name: "Add to watchlist" });
+    await screen.findByRole("button", { name: "Add to library" });
     expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
   });
 });

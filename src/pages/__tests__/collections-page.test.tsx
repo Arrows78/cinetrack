@@ -39,7 +39,6 @@ const preferencesData = {
   language: "en" as const,
   region: "FR",
   defaultSearchType: "all" as const,
-  defaultWatchlistFilter: "all" as const,
   reduceMotion: false,
   compactMode: false,
   sidebarCollapsed: false,

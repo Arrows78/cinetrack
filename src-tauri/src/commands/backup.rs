@@ -10,7 +10,6 @@ use crate::commands::library::{LibraryItem, LibraryRow, LibraryStatus};
 use crate::commands::profiles::{ProfileRow, UserProfile};
 use crate::commands::progress::{EpisodeProgress, TrackedSeriesItem};
 use crate::commands::stats::{ViewingEvent, ViewingEventType};
-use crate::commands::watchlist::{WatchlistItem, WatchlistRow};
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -35,7 +34,6 @@ pub struct SeenMovie {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PortableData {
-    pub watchlist: Vec<WatchlistItem>,
     pub seen_movies: Vec<SeenMovie>,
     pub episode_progress: Vec<EpisodeProgress>,
     pub tracked_series: Vec<TrackedSeriesItem>,
@@ -65,7 +63,7 @@ fn parse_metadata(raw: Option<String>) -> Option<Value> {
 // Export — each table read in full (no profile scoping, no WHERE clause),
 // independent of the other command modules' own (profile-scoped) queries,
 // matching how the original portable-data-export.ts never reused
-// watchlist-repository.ts's queries either.
+// library-repository.ts's queries either.
 // ---------------------------------------------------------------------
 
 #[derive(sqlx::FromRow)]
@@ -184,15 +182,14 @@ macro_rules! import_table {
 }
 
 async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
-    // All 13 reads share one transaction so the export is a single logical
+    // All 12 reads share one transaction so the export is a single logical
     // snapshot — without this, a write landing between two of these
     // `SELECT *` calls (e.g. a movie marked watched right as the export
     // reaches viewing_events) could produce a backup mixing state from two
-    // different instants (a watchlist entry gone by the time history
-    // reflects it, or vice versa).
+    // different instants (a library entry not yet updated by the time
+    // history reflects it, or vice versa).
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
-    let watchlist = export_table!(tx, "watchlist_items", WatchlistRow);
     let seen_movies = export_table!(tx, "seen_movies", SeenMovieRow);
     let episode_progress = export_table!(tx, "episode_progress", EpisodeProgressRow);
     let tracked_series = export_table!(tx, "tracked_series", TrackedSeriesRow);
@@ -216,22 +213,6 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
     }
 
     Ok(PortableData {
-        watchlist: watchlist
-            .into_iter()
-            .map(|row| WatchlistItem {
-                id: row.uuid,
-                profile_id: Some(row.profile_id),
-                media_id: row.media_id,
-                media_type: MediaType::from_db_str(&row.media_type),
-                title: row.title,
-                poster_path: row.poster_path,
-                backdrop_path: row.backdrop_path,
-                year: row.year,
-                rating: row.rating,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-            })
-            .collect(),
         seen_movies: seen_movies
             .into_iter()
             .map(|row| SeenMovie {
@@ -414,8 +395,8 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
 // constraints never trip mid-import. Rows whose app-level identity is the
 // `uuid` column (profiles, custom lists, history, viewing events, alerts)
 // reuse the backup's `id` field as that uuid so identity survives a round
-// trip; rows with no app-level identity (watchlist, seen movies, episode
-// progress, tracked series, list items, library items) get a fresh uuid.
+// trip; rows with no app-level identity (seen movies, episode progress,
+// tracked series, list items, library items) get a fresh uuid.
 // ---------------------------------------------------------------------
 
 // Keeps each multi-row INSERT's placeholder count well under SQLite's
@@ -467,26 +448,6 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
             .await
             .map_err(ApiError::from)?;
     }
-
-    import_table!(
-        tx,
-        data.watchlist,
-        "INSERT INTO watchlist_items
-              (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,created_at,updated_at) ",
-        |b, item| {
-            b.push_bind(new_uuid())
-                .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
-                .push_bind(item.media_id)
-                .push_bind(item.media_type.as_db_str())
-                .push_bind(&item.title)
-                .push_bind(&item.poster_path)
-                .push_bind(&item.backdrop_path)
-                .push_bind(item.year)
-                .push_bind(item.rating)
-                .push_bind(&item.created_at)
-                .push_bind(&item.created_at);
-        }
-    );
 
     import_table!(
         tx,
@@ -791,22 +752,6 @@ mod tests {
                 ]),
             ),
             (
-                "watchlist_items",
-                sorted(vec![
-                    "uuid",
-                    "profile_id",
-                    "media_id",
-                    "media_type",
-                    "title",
-                    "poster_path",
-                    "backdrop_path",
-                    "year",
-                    "rating",
-                    "created_at",
-                    "updated_at",
-                ]),
-            ),
-            (
                 "episode_progress",
                 sorted(vec![
                     "uuid",
@@ -940,15 +885,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn exports_and_reimports_watchlist_and_library_round_trip() {
+    async fn exports_and_reimports_library_round_trip() {
         let pool = migrated_pool().await;
-        sqlx::query(
-            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
-             VALUES ('w1', 'default', 1, 'movie', 'Round Trip', 'now', 'now')",
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
         sqlx::query(
             "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
              VALUES ('l1', 'default', 1, 'movie', 'Round Trip', 'watching', 'now', 'now')",
@@ -958,13 +896,10 @@ mod tests {
         .unwrap();
 
         let exported = export_impl(&pool).await.unwrap();
-        assert_eq!(exported.watchlist.len(), 1);
         assert_eq!(exported.library.len(), 1);
 
         import_impl(&pool, exported).await.unwrap();
 
-        let watchlist_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM watchlist_items").fetch_one(&pool).await.unwrap();
-        assert_eq!(watchlist_count.0, 1);
         let library_status: (String,) = sqlx::query_as("SELECT status FROM library_items").fetch_one(&pool).await.unwrap();
         assert_eq!(library_status.0, "watching");
     }
@@ -985,26 +920,39 @@ mod tests {
         assert_eq!(supabase_user_id.0.as_deref(), Some("user-1"));
     }
 
+    fn library_item(id: &str, media_id: i64, title: &str) -> LibraryItem {
+        LibraryItem {
+            id: id.to_string(),
+            profile_id: "default".to_string(),
+            media_id,
+            media_type: MediaType::Movie,
+            title: title.to_string(),
+            poster_path: None,
+            backdrop_path: None,
+            year: None,
+            rating: None,
+            genres: Vec::new(),
+            status: LibraryStatus::Planned,
+            favourite: false,
+            user_rating: None,
+            notes: None,
+            tags: Vec::new(),
+            started_at: None,
+            completed_at: None,
+            rewatch_count: 0,
+            created_at: "2026-01-01T00:00:00.000Z".to_string(),
+            updated_at: "2026-01-01T00:00:00.000Z".to_string(),
+        }
+    }
+
     #[tokio::test]
-    async fn import_preserves_history_uuid_but_not_watchlist_uuid() {
+    async fn import_preserves_history_uuid_but_not_library_uuid() {
         let pool = migrated_pool().await;
         // export_impl already includes the migration-seeded "default"
         // profile — no need to add another one (that would violate the
         // profiles.uuid UNIQUE constraint on import).
         let mut data = export_impl(&pool).await.unwrap();
-        data.watchlist.push(WatchlistItem {
-            id: "original-watchlist-id".to_string(),
-            profile_id: Some("default".to_string()),
-            media_id: 1,
-            media_type: MediaType::Movie,
-            title: "Test".to_string(),
-            poster_path: None,
-            backdrop_path: None,
-            year: None,
-            rating: None,
-            created_at: "2026-01-01T00:00:00.000Z".to_string(),
-            updated_at: "2026-01-01T00:00:00.000Z".to_string(),
-        });
+        data.library.push(library_item("original-library-id", 1, "Test"));
         data.history.push(ViewingHistoryItem {
             id: "original-history-id".to_string(),
             media_id: 1,
@@ -1020,38 +968,11 @@ mod tests {
 
         import_impl(&pool, data).await.unwrap();
 
-        let watchlist_uuid: (String,) = sqlx::query_as("SELECT uuid FROM watchlist_items").fetch_one(&pool).await.unwrap();
-        assert_ne!(watchlist_uuid.0, "original-watchlist-id");
+        let library_uuid: (String,) = sqlx::query_as("SELECT uuid FROM library_items").fetch_one(&pool).await.unwrap();
+        assert_ne!(library_uuid.0, "original-library-id");
 
         let history_uuid: (String,) = sqlx::query_as("SELECT uuid FROM activity_log").fetch_one(&pool).await.unwrap();
         assert_eq!(history_uuid.0, "original-history-id");
-    }
-
-    #[tokio::test]
-    async fn import_defaults_watchlist_profile_id_when_absent() {
-        let pool = migrated_pool().await;
-        // export_impl already includes the migration-seeded "default"
-        // profile — no need to add another one (that would violate the
-        // profiles.uuid UNIQUE constraint on import).
-        let mut data = export_impl(&pool).await.unwrap();
-        data.watchlist.push(WatchlistItem {
-            id: "w1".to_string(),
-            profile_id: None,
-            media_id: 1,
-            media_type: MediaType::Movie,
-            title: "Test".to_string(),
-            poster_path: None,
-            backdrop_path: None,
-            year: None,
-            rating: None,
-            created_at: "2026-01-01T00:00:00.000Z".to_string(),
-            updated_at: "2026-01-01T00:00:00.000Z".to_string(),
-        });
-
-        import_impl(&pool, data).await.unwrap();
-
-        let profile_id: (String,) = sqlx::query_as("SELECT profile_id FROM watchlist_items").fetch_one(&pool).await.unwrap();
-        assert_eq!(profile_id.0, "default");
     }
 
     #[tokio::test]
@@ -1060,24 +981,12 @@ mod tests {
         let mut data = export_impl(&pool).await.unwrap();
         let row_count = IMPORT_BATCH_SIZE * 2 + 1;
         for index in 0..row_count {
-            data.watchlist.push(WatchlistItem {
-                id: format!("w{index}"),
-                profile_id: Some("default".to_string()),
-                media_id: index as i64,
-                media_type: MediaType::Movie,
-                title: format!("Title {index}"),
-                poster_path: None,
-                backdrop_path: None,
-                year: None,
-                rating: None,
-                created_at: "2026-01-01T00:00:00.000Z".to_string(),
-                updated_at: "2026-01-01T00:00:00.000Z".to_string(),
-            });
+            data.library.push(library_item(&format!("l{index}"), index as i64, &format!("Title {index}")));
         }
 
         import_impl(&pool, data).await.unwrap();
 
-        let watchlist_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM watchlist_items").fetch_one(&pool).await.unwrap();
-        assert_eq!(watchlist_count.0, row_count as i64);
+        let library_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM library_items").fetch_one(&pool).await.unwrap();
+        assert_eq!(library_count.0, row_count as i64);
     }
 }

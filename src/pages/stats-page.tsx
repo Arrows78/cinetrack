@@ -39,7 +39,7 @@ export function StatsPage() {
       icon: Flame,
     },
     { label: t("stats.averageRating"), value: stats.data.averageUserRating?.toFixed(1) ?? "—", icon: Star },
-    { label: t("stats.libraryCompleted"), value: `${stats.data.watchlistCompletionPercent}%`, icon: BarChart3 },
+    { label: t("stats.libraryCompleted"), value: `${stats.data.libraryCompletionPercent}%`, icon: BarChart3 },
   ];
   const maxMonth = Math.max(1, ...stats.data.monthlyActivity.map((month) => month.count));
   return (

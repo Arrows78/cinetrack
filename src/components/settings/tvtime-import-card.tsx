@@ -60,7 +60,7 @@ export function TvTimeImportCard() {
                 episodes: result.episodesImported,
                 series: result.seriesImported,
                 movies: result.moviesImported,
-                watchlist: result.watchlistImported,
+                planned: result.plannedImported,
               })}
             </p>
             {result.unmatched.length ? (

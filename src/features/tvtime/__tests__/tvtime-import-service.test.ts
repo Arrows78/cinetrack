@@ -16,9 +16,9 @@ vi.mock("@/features/media/media-repository", () => ({
   },
 }));
 
-const watchlistSaveMock = vi.fn();
-vi.mock("@/features/watchlist/watchlist-repository", () => ({
-  watchlistRepository: { save: (...args: unknown[]) => watchlistSaveMock(...args) },
+const librarySaveMock = vi.fn();
+vi.mock("@/features/library/library-repository", () => ({
+  libraryRepository: { save: (...args: unknown[]) => librarySaveMock(...args) },
 }));
 
 const importSeriesProgressMock = vi.fn();
@@ -36,8 +36,6 @@ vi.mock("../parse-export", () => ({
   parseTvTimeFile: vi.fn(),
   normalizeExport: () => exportData,
 }));
-
-vi.mock("@/shared/lib/id", () => ({ newUuid: () => "generated-uuid" }));
 
 const { importTvTimeExport } = await import("../tvtime-import-service");
 
@@ -80,7 +78,7 @@ describe("importTvTimeExport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     exportData = emptyExportData();
-    watchlistSaveMock.mockResolvedValue(undefined);
+    librarySaveMock.mockResolvedValue(undefined);
     importSeriesProgressMock.mockResolvedValue(0);
     importMovieSeenMock.mockResolvedValue(false);
   });
@@ -391,8 +389,8 @@ describe("importTvTimeExport", () => {
     });
   });
 
-  describe("watchlist import", () => {
-    it("saves a matched watchlist entry with a fresh id and timestamps", async () => {
+  describe("planned (TV Time watchlist) import", () => {
+    it("saves a matched entry to the library with a planned status", async () => {
       exportData = { ...emptyExportData(), watchlist: [{ title: "Dune", mediaType: "movie", year: 2021 }] };
       searchMock.mockResolvedValue({
         page: 1,
@@ -404,20 +402,21 @@ describe("importTvTimeExport", () => {
       const summary = await importTvTimeExport(["irrelevant"]);
 
       expect(searchMock).toHaveBeenCalledWith("Dune", "movie");
-      expect(watchlistSaveMock).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "generated-uuid", mediaId: 9, mediaType: "movie", title: "Dune", rating: 8.1 })
+      expect(librarySaveMock).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 9, mediaType: "movie", title: "Dune", rating: 8.1 }),
+        { status: "planned" }
       );
-      expect(summary.watchlistImported).toBe(1);
+      expect(summary.plannedImported).toBe(1);
     });
 
-    it("reports an unmatched watchlist entry without saving anything", async () => {
+    it("reports an unmatched entry without saving anything", async () => {
       exportData = { ...emptyExportData(), watchlist: [{ title: "Unknown Title", mediaType: "series", year: null }] };
       searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
       expect(summary.unmatched).toEqual(["Unknown Title"]);
-      expect(watchlistSaveMock).not.toHaveBeenCalled();
+      expect(librarySaveMock).not.toHaveBeenCalled();
     });
 
     it("catches a save failure and reports the entry as unmatched instead of throwing", async () => {
@@ -428,12 +427,12 @@ describe("importTvTimeExport", () => {
         totalResults: 1,
         results: [media({ id: 9, mediaType: "movie", title: "Dune", year: 2021 })],
       });
-      watchlistSaveMock.mockRejectedValueOnce(new Error("disk full"));
+      librarySaveMock.mockRejectedValueOnce(new Error("disk full"));
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
       expect(summary.unmatched).toEqual(["Dune"]);
-      expect(summary.watchlistImported).toBe(0);
+      expect(summary.plannedImported).toBe(0);
     });
   });
 

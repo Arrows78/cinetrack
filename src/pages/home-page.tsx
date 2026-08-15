@@ -16,7 +16,7 @@ import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useWatchNext } from "@/features/progress/use-watch-next";
-import { useWatchlist } from "@/features/watchlist/use-watchlist";
+import { useLibrary } from "@/features/library/use-library";
 import { useHomeFeed } from "@/features/media/use-media";
 import { WatchNextSection } from "@/components/media/watch-next-section";
 import type { HomeFeed } from "@/types/media";
@@ -84,7 +84,8 @@ const useMergedGenres = () =>
 export function HomePage() {
   const { t } = useTranslation();
   const homeQuery = useHomeFeed();
-  const watchlistQuery = useWatchlist();
+  const libraryQuery = useLibrary();
+  const plannedCount = (libraryQuery.data ?? []).filter((item) => item.status === "planned").length;
   const trackedSeriesQuery = useTrackedSeries();
   const historyQuery = useHistory();
   const mergedGenres = useMergedGenres();
@@ -185,9 +186,9 @@ export function HomePage() {
                 helper={t("home.trackedHelper")}
               />
               <StatCard
-                label={t("nav.watchlist")}
-                value={String(watchlistQuery.data?.length ?? 0)}
-                helper={t("home.watchlistHelper")}
+                label={t("library.statuses.planned")}
+                value={String(plannedCount)}
+                helper={t("home.plannedHelper")}
               />
               <StatCard
                 label={t("nav.history")}

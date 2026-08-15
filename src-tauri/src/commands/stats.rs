@@ -149,7 +149,7 @@ pub struct StatsTotals {
     pub episodes_watched: i64,
     pub minutes_watched: i64,
     pub completed_series: i64,
-    pub watchlist_completion_percent: i64,
+    pub library_completion_percent: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -245,7 +245,7 @@ async fn get_stats_overview_impl(
         })
         .collect();
 
-    let watchlist_completion_percent = if library_totals.total > 0 {
+    let library_completion_percent = if library_totals.total > 0 {
         ((library_totals.completed as f64 / library_totals.total as f64) * 100.0).round() as i64
     } else {
         0
@@ -257,7 +257,7 @@ async fn get_stats_overview_impl(
             episodes_watched: event_totals.episodes_watched,
             minutes_watched: event_totals.minutes_watched.unwrap_or(0),
             completed_series: library_totals.completed_series,
-            watchlist_completion_percent,
+            library_completion_percent,
         },
         monthly_activity,
     })
@@ -399,7 +399,7 @@ mod tests {
         assert_eq!(overview.totals.minutes_watched, 180);
         assert_eq!(overview.totals.completed_series, 1);
         // 2 completed out of 4 library items.
-        assert_eq!(overview.totals.watchlist_completion_percent, 50);
+        assert_eq!(overview.totals.library_completion_percent, 50);
 
         assert_eq!(overview.monthly_activity.len(), 3);
         assert_eq!(overview.monthly_activity[0], MonthlyActivityBucket { month: "2026-02".into(), count: 0, minutes: 0 });

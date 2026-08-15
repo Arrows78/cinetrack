@@ -16,7 +16,6 @@ export function CommandPalette() {
         [t("commandPalette.commands.series"), "/series"],
         [t("commandPalette.commands.search"), "/search"],
         [t("commandPalette.commands.watchTonight"), "/watch-tonight"],
-        [t("commandPalette.commands.watchlist"), "/watchlist"],
         [t("commandPalette.commands.library"), "/library"],
         [t("commandPalette.commands.calendar"), "/calendar"],
         [t("commandPalette.commands.collections"), "/collections"],

@@ -26,7 +26,7 @@ import "@fontsource/syne/800.css";
 import "@/styles/index.css";
 
 // One-time cleanup for installs upgrading from a version that persisted
-// local.* query data (watchlist/library/history/notes/preferences) to
+// local.* query data (library/history/notes/preferences) to
 // localStorage — removing the persister going forward doesn't erase what
 // it already wrote. Safe to call unconditionally: a no-op once the key is
 // gone.

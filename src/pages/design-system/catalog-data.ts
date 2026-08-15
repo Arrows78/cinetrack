@@ -743,12 +743,12 @@ export const componentInventory = [
     "Composes prioritized continue-watching recommendations."
   ),
   component(
-    "WatchlistButton",
-    "components/media/watchlist-button.tsx",
+    "AddToLibraryButton",
+    "components/media/add-to-library-button.tsx",
     "Media",
     "feature",
     "reference",
-    "Adds or removes a title from the watchlist."
+    "Adds or removes a title from the library."
   ),
   component(
     "BackupTools",

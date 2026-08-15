@@ -250,14 +250,6 @@ mod tests {
         let created = create_impl(&pool, "Alex", None, None).await.unwrap();
 
         sqlx::query(
-            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
-             VALUES ('w1', $1, 1, 'movie', 'Test', 'now', 'now')",
-        )
-        .bind(&created.id)
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query(
             "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
              VALUES ('l1', $1, 1, 'movie', 'Test', 'now', 'now')",
         )

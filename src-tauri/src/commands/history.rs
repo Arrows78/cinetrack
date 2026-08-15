@@ -7,6 +7,13 @@ use crate::database::current_profile_id;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
+// `LibraryAdd`/`LibraryRemove` deliberately keep the "watchlist:add"/
+// "watchlist:remove" wire strings (see migration 10 in migrations.rs):
+// renaming the on-disk strings too would need a SQLite `CHECK`-constraint
+// table rebuild, for a purely cosmetic gain, and would risk any existing
+// user's already-stored `activity_log` rows. Only the Rust identifier
+// changed to reflect that these are now written by `library.rs`, not a
+// separate watchlist feature.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HistoryAction {
     #[serde(rename = "movie:watched")]
@@ -26,9 +33,9 @@ pub enum HistoryAction {
     #[serde(rename = "series:unwatched")]
     SeriesUnwatched,
     #[serde(rename = "watchlist:add")]
-    WatchlistAdd,
+    LibraryAdd,
     #[serde(rename = "watchlist:remove")]
-    WatchlistRemove,
+    LibraryRemove,
     #[serde(rename = "library:update")]
     LibraryUpdate,
     #[serde(rename = "list:add")]
@@ -50,8 +57,8 @@ impl HistoryAction {
             HistoryAction::SeasonUnwatched => "season:unwatched",
             HistoryAction::SeriesWatched => "series:watched",
             HistoryAction::SeriesUnwatched => "series:unwatched",
-            HistoryAction::WatchlistAdd => "watchlist:add",
-            HistoryAction::WatchlistRemove => "watchlist:remove",
+            HistoryAction::LibraryAdd => "watchlist:add",
+            HistoryAction::LibraryRemove => "watchlist:remove",
             HistoryAction::LibraryUpdate => "library:update",
             HistoryAction::ListAdd => "list:add",
             HistoryAction::ListRemove => "list:remove",
@@ -133,7 +140,7 @@ pub(crate) async fn list_history_impl(pool: &SqlitePool, limit: u32) -> Result<V
 }
 
 /// Generic over the executor so callers that already opened their own
-/// transaction (e.g. watchlist's upsert/remove, which must log history
+/// transaction (e.g. library's upsert/remove, which must log history
 /// atomically with their own write) can pass `&mut *tx` instead of forcing a
 /// second, separate transaction. `pool` is only used for the active-profile
 /// fallback when `item.metadata` doesn't already carry a `profileId` —

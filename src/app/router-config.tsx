@@ -45,11 +45,6 @@ const searchRoute = createRoute({
   path: "/search",
   component: lazyRouteComponent(() => import("@/pages/search-page"), "SearchPage"),
 });
-const watchlistRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/watchlist",
-  component: lazyRouteComponent(() => import("@/pages/watchlist-page"), "WatchlistPage"),
-});
 const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/library",
@@ -119,7 +114,6 @@ const routeTree = rootRoute.addChildren([
   seriesDetailRoute,
   seasonRoute,
   searchRoute,
-  watchlistRoute,
   libraryRoute,
   historyRoute,
   collectionsRoute,

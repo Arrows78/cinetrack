@@ -1,8 +1,7 @@
 import i18n from "@/i18n";
 import { TmdbRequestError } from "@/features/media/api/client";
 import { mediaRepository } from "@/features/media/media-repository";
-import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
-import { newUuid } from "@/shared/lib/id";
+import { libraryRepository } from "@/features/library/library-repository";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import type { MediaSummary, Series } from "@/types/media";
 import { emptyExport, normalizeExport, parseTvTimeFile, type TvTimeEpisode, type TvTimeExport } from "./parse-export";
@@ -45,7 +44,7 @@ export interface TvTimeImportSummary {
   seriesImported: number;
   episodesImported: number;
   moviesImported: number;
-  watchlistImported: number;
+  plannedImported: number;
   unmatched: string[];
 }
 
@@ -168,7 +167,7 @@ export async function importTvTimeExport(
     seriesImported: 0,
     episodesImported: 0,
     moviesImported: 0,
-    watchlistImported: 0,
+    plannedImported: 0,
     unmatched: [],
   };
 
@@ -239,20 +238,8 @@ export async function importTvTimeExport(
         if (!match) {
           summary.unmatched.push(entry.title);
         } else {
-          const now = new Date().toISOString();
-          await watchlistRepository.save({
-            id: newUuid(),
-            mediaId: match.id,
-            mediaType: entry.mediaType,
-            title: match.title,
-            posterPath: match.posterPath,
-            backdropPath: match.backdropPath,
-            year: match.year,
-            rating: match.rating,
-            createdAt: now,
-            updatedAt: now,
-          });
-          summary.watchlistImported += 1;
+          await libraryRepository.save(match, { status: "planned" });
+          summary.plannedImported += 1;
         }
       } catch {
         summary.unmatched.push(entry.title);

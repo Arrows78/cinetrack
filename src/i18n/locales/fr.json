@@ -4,7 +4,6 @@
     "movies": "Films",
     "series": "Séries",
     "search": "Recherche",
-    "watchlist": "À voir",
     "library": "Bibliothèque",
     "history": "Activité",
     "settings": "Paramètres",
@@ -32,8 +31,9 @@
     "progressLabel": "{{percent}}% regardé",
     "status": "Statut",
     "genres": "Genres",
-    "addToWatchlist": "Ajouter à la liste",
-    "inWatchlist": "Dans la liste",
+    "addToLibrary": "Ajouter à la bibliothèque",
+    "inLibrary": "Dans la bibliothèque",
+    "libraryRemoveBlocked": "Ce titre a déjà une progression dans votre bibliothèque — modifiez son statut plutôt que de le retirer ici.",
     "unknownYear": "Année inconnue",
     "noOverview": "Aucun synopsis disponible.",
     "hiddenTitle": "Titre masqué",
@@ -60,8 +60,7 @@
     "notFound": "Page introuvable",
     "notFoundDesc": "Cette page n'existe pas.",
     "backToHome": "Retour à l'accueil",
-    "noResults": "Aucun résultat",
-    "emptyWatchlist": "Votre liste est vide"
+    "noResults": "Aucun résultat"
   },
   "common": {
     "back": "Retour",
@@ -101,7 +100,7 @@
     "premiumSelection": "Tendances de la semaine",
     "viewDetails": "Voir la fiche",
     "exploreCatalog": "Explorer le catalogue",
-    "watchlistHelper": "Titres à regarder plus tard",
+    "plannedHelper": "Titres à regarder plus tard",
     "trackedHelper": "Progressions locales",
     "activityHelper": "Dernières actions enregistrées",
     "continueWatching": "Continuer à regarder",
@@ -130,7 +129,7 @@
   },
   "history": {
     "recentActivity": "Activité récente",
-    "recentActivitySubtitle": "Films vus, épisodes marqués et mouvements de liste.",
+    "recentActivitySubtitle": "Films vus, épisodes marqués et changements de bibliothèque.",
     "seriesInProgress": "Séries en cours",
     "seriesInProgressSubtitle": "Votre progression locale.",
     "noActivity": "Aucune activité",
@@ -147,8 +146,8 @@
       "seasonUnwatched": "Saison non vue",
       "seriesWatched": "Série vue",
       "seriesUnwatched": "Série non vue",
-      "addedToWatchlist": "Ajouté à la liste",
-      "removedFromWatchlist": "Retiré de la liste",
+      "addedToLibrary": "Ajouté à la bibliothèque",
+      "removedFromLibrary": "Retiré de la bibliothèque",
       "libraryUpdate": "Bibliothèque mise à jour",
       "listAdd": "Ajouté à une liste personnalisée",
       "listRemove": "Retiré d'une liste personnalisée"
@@ -229,14 +228,6 @@
     "openSeasonPage": "Ouvrir la page de la saison",
     "someSeasonsUnavailable": "Certaines saisons n'ont pas pu être chargées, ce qui désactive le marquage de toute la série."
   },
-  "watchlist": {
-    "subtitle": "Filtrez et triez votre sélection.",
-    "recent": "Récent",
-    "title": "Titre",
-    "rating": "Note",
-    "emptyDesc": "Ajoutez des films ou séries depuis leur fiche.",
-    "exploreCta": "Découvrir des films et séries"
-  },
   "stats": {
     "title": "Statistiques",
     "description": "Votre activité locale, sans envoyer votre historique vers un serveur.",
@@ -299,7 +290,7 @@
     "switchProfileFailed": "Impossible de changer de profil. Réessayez.",
     "deleteProfile": "Supprimer le profil {{name}}",
     "deleteProfileConfirmTitle": "Supprimer le profil « {{name}} » ?",
-    "deleteProfileConfirmDescription": "Ceci supprime définitivement la liste à voir, la bibliothèque, l'historique et les listes de ce profil. C'est irréversible.",
+    "deleteProfileConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible.",
     "deleteProfileFailed": "Impossible de supprimer le profil. Réessayez.",
     "customLists": "Listes personnalisées",
     "sortRecent": "Récent",
@@ -455,7 +446,6 @@
       "series": "Séries",
       "search": "Recherche",
       "watchTonight": "Que regarder ce soir ?",
-      "watchlist": "À voir",
       "library": "Bibliothèque",
       "calendar": "Calendrier",
       "collections": "Collections",
@@ -484,7 +474,7 @@
     "undoConfirmDescription": "Cela restaure vos données à leur état juste avant le dernier import — annulant tout ce que vous avez fait depuis.",
     "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée.",
     "importConfirmTitle": "Remplacer toutes vos données ?",
-    "importConfirmDescription": "Importer cette sauvegarde remplace votre watchlist, bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement »."
+    "importConfirmDescription": "Importer cette sauvegarde remplace votre bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement »."
   },
   "desktop": {
     "operationComplete": "Opération terminée.",
@@ -518,7 +508,7 @@
     "backupUpdated": "Sauvegarde de secours actualisée.",
     "restoreBackup": "Restaurer la sauvegarde",
     "restoreConfirmTitle": "Restaurer la sauvegarde automatique ?",
-    "restoreConfirmDescription": "Ceci remplace tout ce qui est actuellement sur cet appareil — watchlist, bibliothèque, progression, historique, profils — par la sauvegarde du {{date}}. Vous pourrez annuler cette action ensuite depuis les outils de sauvegarde.",
+    "restoreConfirmDescription": "Ceci remplace tout ce qui est actuellement sur cet appareil — bibliothèque, progression, historique, profils — par la sauvegarde du {{date}}. Vous pourrez annuler cette action ensuite depuis les outils de sauvegarde.",
     "lastBackupSuccess": "Dernière sauvegarde automatique : {{date}}.",
     "lastBackupFailed": "La dernière tentative de sauvegarde automatique a échoué — réessayez avec la sauvegarde de secours.",
     "noBackupYet": "Aucune sauvegarde automatique pour l'instant.",
@@ -644,7 +634,7 @@
     "fileTooLarge": "« {{name}} » est trop volumineux pour être importé.",
     "totalTooLarge": "Ces fichiers représentent plus de {{max}} Mo au total — sélectionnez-en moins ou de plus petits.",
     "failed": "L'import a échoué",
-    "done": "{{episodes}} épisodes importés sur {{series}} séries, {{movies}} films et {{watchlist}} entrées de liste.",
+    "done": "{{episodes}} épisodes importés sur {{series}} séries, {{movies}} films et {{planned}} titres ajoutés à votre bibliothèque.",
     "unresolvedEpisodeCount_one": "{{count}} ép.",
     "unresolvedEpisodeCount_other": "{{count}} ép.",
     "unmatched_one": "{{count}} titre n'a pas pu être associé",

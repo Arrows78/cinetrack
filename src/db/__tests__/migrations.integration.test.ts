@@ -41,7 +41,6 @@ describe("runMigrations against real SQLite", () => {
         "seen_movies",
         "tracked_series",
         "viewing_events",
-        "watchlist_items",
       ].sort()
     );
   });
@@ -122,7 +121,7 @@ describe("runMigrations against real SQLite", () => {
 
       expect(() =>
         sqlite.exec(
-          `INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+          `INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
            VALUES ('w1', 'ghost', 1, 'movie', 'Orphan', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
         )
       ).toThrow(/FOREIGN KEY constraint failed/);

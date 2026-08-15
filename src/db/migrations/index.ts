@@ -2,6 +2,7 @@ import type Database from "@tauri-apps/plugin-sql";
 import type { Migration } from "./types";
 import { migration as m001 } from "./001-initial-schema";
 import { migration as m002 } from "./002-availability-alerts-unique";
+import { migration as m003 } from "./003-merge-watchlist-into-library";
 
 export type { Migration } from "./types";
 
@@ -18,7 +19,7 @@ export type { Migration } from "./types";
 // or higher, not `version: 2` — reusing an already-passed version number
 // would make it silently skip on any pre-squash install once this app ships
 // publicly.
-export const migrations: readonly Migration[] = [m001, m002];
+export const migrations: readonly Migration[] = [m001, m002, m003];
 
 export async function runMigrations(db: Database): Promise<void> {
   const rows = await db.select<Array<{ user_version: number }>>("PRAGMA user_version");

@@ -236,6 +236,44 @@ pub const MIGRATIONS: &[Migration] = &[Migration {
          )"#,
         "CREATE UNIQUE INDEX idx_availability_alerts_unique ON availability_alerts(profile_id, media_id, media_type)",
     ],
+}, Migration {
+    // Folds watchlist_items into library_items — the two tables had become
+    // near-duplicates (same unique key, watchlist_items a strict subset of
+    // library_items' columns) with no reconciliation between them; a
+    // `planned`-status library row already meant "to watch" everywhere else
+    // in the app (see watch-tonight-service.ts). Library always wins: a
+    // watchlist row is dropped whenever a library row already exists for the
+    // same (profile_id, media_id, media_type) — never overwrites real
+    // status/rating/notes/favourite. A watchlist-only row becomes a new
+    // `planned` library row, reusing its own uuid (safe: by construction no
+    // library row exists yet for that key, so no PK collision).
+    //
+    // Deliberately NOT touching activity_log or its CHECK constraint:
+    // existing 'watchlist:add'/'watchlist:remove' rows keep reading fine
+    // forever, and library.rs's add/remove paths now write those same two
+    // strings going forward too (see HistoryAction::LibraryAdd/LibraryRemove
+    // in history.rs, which keep the old wire strings on purpose) — only the
+    // Rust identifier changed, not the wire format, so no activity_log
+    // schema change is needed at all.
+    version: 10,
+    name: "merge watchlist_items into library_items",
+    statements: &[
+        r#"INSERT INTO library_items (
+          uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating,
+          genres, status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count,
+          created_at, updated_at
+        )
+        SELECT
+          w.uuid, w.profile_id, w.media_id, w.media_type, w.title, w.poster_path, w.backdrop_path, w.year, w.rating,
+          '[]', 'planned', 0, NULL, NULL, '[]', NULL, NULL, 0,
+          w.created_at, w.updated_at
+        FROM watchlist_items w
+        WHERE NOT EXISTS (
+          SELECT 1 FROM library_items l
+          WHERE l.profile_id = w.profile_id AND l.media_id = w.media_id AND l.media_type = w.media_type
+        )"#,
+        "DROP TABLE watchlist_items",
+    ],
 }];
 
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
@@ -359,7 +397,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 9);
+        assert_eq!(version.0, 10);
 
         let mut tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -384,7 +422,6 @@ mod tests {
                 "seen_movies",
                 "tracked_series",
                 "viewing_events",
-                "watchlist_items",
             ]
         );
 
@@ -402,7 +439,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 9);
+        assert_eq!(version.0, 10);
     }
 
     #[tokio::test]
@@ -412,7 +449,7 @@ mod tests {
         // created every table and bumped user_version to 1 — running
         // migrations must not attempt to re-create them (that would error,
         // since the tables already exist), only apply the migrations still
-        // ahead of that version (9, here).
+        // ahead of that version (10, here).
         for statement in MIGRATIONS[0].statements {
             sqlx::query(*statement).execute(&pool).await.unwrap();
         }
@@ -421,7 +458,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 9);
+        assert_eq!(version.0, 10);
     }
 
     #[tokio::test]
@@ -432,7 +469,7 @@ mod tests {
         // claims every migration already ran, but no table was ever
         // created. Without verify_critical_tables this would silently
         // skip every migration and proceed with a schema-less database.
-        sqlx::query("PRAGMA user_version = 9").execute(&pool).await.unwrap();
+        sqlx::query("PRAGMA user_version = 10").execute(&pool).await.unwrap();
 
         assert!(run_migrations(&pool).await.is_err());
     }
@@ -444,7 +481,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let orphan_insert = sqlx::query(
-            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
              VALUES ('a', 'missing-profile', 1, 'movie', 'Title', 'now', 'now')",
         )
         .execute(&pool)
@@ -458,6 +495,51 @@ mod tests {
         .execute(&pool)
         .await;
         assert!(bad_media_type.is_err());
+    }
+
+    #[tokio::test]
+    async fn merges_watchlist_rows_into_library_library_wins_on_conflict() {
+        let pool = in_memory_pool().await;
+        sqlx::query("PRAGMA foreign_keys = ON").execute(&pool).await.unwrap();
+
+        // Simulate a pre-merge database at version 1 (has both tables).
+        for statement in MIGRATIONS[0].statements {
+            sqlx::query(*statement).execute(&pool).await.unwrap();
+        }
+        sqlx::query("PRAGMA user_version = 1").execute(&pool).await.unwrap();
+
+        // A library row with real progress AND a colliding watchlist row for
+        // the same title — library must win, watchlist row must be dropped.
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, favourite, created_at, updated_at)
+             VALUES ('lib-1', 'default', 1, 'movie', 'Already tracked', 'watching', 1, 'now', 'now')",
+        ).execute(&pool).await.unwrap();
+        sqlx::query(
+            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+             VALUES ('wl-1', 'default', 1, 'movie', 'Stale copy', 'now', 'now')",
+        ).execute(&pool).await.unwrap();
+        // A watchlist-only row — must become a new planned library row.
+        sqlx::query(
+            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, year, rating, created_at, updated_at)
+             VALUES ('wl-2', 'default', 2, 'movie', 'To watch', 2020, 7.5, 'now', 'now')",
+        ).execute(&pool).await.unwrap();
+
+        run_migrations(&pool).await.unwrap();
+
+        let existing: (String, String, bool) =
+            sqlx::query_as("SELECT title, status, favourite FROM library_items WHERE media_id = 1")
+                .fetch_one(&pool).await.unwrap();
+        assert_eq!(existing, ("Already tracked".to_string(), "watching".to_string(), true));
+
+        let migrated: (String, String) =
+            sqlx::query_as("SELECT title, status FROM library_items WHERE media_id = 2")
+                .fetch_one(&pool).await.unwrap();
+        assert_eq!(migrated, ("To watch".to_string(), "planned".to_string()));
+
+        let table_exists: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='watchlist_items'",
+        ).fetch_one(&pool).await.unwrap();
+        assert_eq!(table_exists, 0);
     }
 
     #[tokio::test]

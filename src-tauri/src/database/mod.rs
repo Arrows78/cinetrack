@@ -35,7 +35,6 @@ pub const PROFILE_SCOPED_TABLES: &[&str] = &[
     "seen_movies",
     "tracked_series",
     "viewing_events",
-    "watchlist_items",
 ];
 
 /// Reported to the frontend (see `commands::boot::get_boot_recovery`) so it

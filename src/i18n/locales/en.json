@@ -4,7 +4,6 @@
     "movies": "Movies",
     "series": "Series",
     "search": "Search",
-    "watchlist": "Watchlist",
     "library": "Library",
     "history": "Activity",
     "settings": "Settings",
@@ -32,8 +31,9 @@
     "progressLabel": "{{percent}}% watched",
     "status": "Status",
     "genres": "Genres",
-    "addToWatchlist": "Add to watchlist",
-    "inWatchlist": "In watchlist",
+    "addToLibrary": "Add to library",
+    "inLibrary": "In library",
+    "libraryRemoveBlocked": "This title already has progress in your library — update its status instead of removing it here.",
     "unknownYear": "Unknown year",
     "noOverview": "No overview available for this content.",
     "hiddenTitle": "Hidden title",
@@ -60,8 +60,7 @@
     "notFound": "Page not found",
     "notFoundDesc": "This page doesn't exist.",
     "backToHome": "Back to home",
-    "noResults": "No results found",
-    "emptyWatchlist": "Your watchlist is empty"
+    "noResults": "No results found"
   },
   "common": {
     "back": "Back",
@@ -101,7 +100,7 @@
     "premiumSelection": "Trending this week",
     "viewDetails": "View details",
     "exploreCatalog": "Explore catalog",
-    "watchlistHelper": "Titles to watch later",
+    "plannedHelper": "Titles to watch later",
     "trackedHelper": "Local progressions",
     "activityHelper": "Latest recorded actions",
     "continueWatching": "Continue watching",
@@ -130,11 +129,11 @@
   },
   "history": {
     "recentActivity": "Recent Activity",
-    "recentActivitySubtitle": "Films watched, episodes marked, and watchlist movements.",
+    "recentActivitySubtitle": "Films watched, episodes marked, and library changes.",
     "seriesInProgress": "Series In Progress",
     "seriesInProgressSubtitle": "Your local progress on followed series.",
     "noActivity": "No activity yet",
-    "noActivityDesc": "Start marking content as watched or fill your watchlist to populate this section.",
+    "noActivityDesc": "Start marking content as watched or add titles to your library to populate this section.",
     "noTrackedSeries": "No tracked series",
     "noTrackedSeriesDesc": "Your progress appears here as soon as you check an episode.",
     "episodesWatched": "episodes watched",
@@ -147,8 +146,8 @@
       "seasonUnwatched": "Season unwatched",
       "seriesWatched": "Series watched",
       "seriesUnwatched": "Series unwatched",
-      "addedToWatchlist": "Added to watchlist",
-      "removedFromWatchlist": "Removed from watchlist",
+      "addedToLibrary": "Added to library",
+      "removedFromLibrary": "Removed from library",
       "libraryUpdate": "Library updated",
       "listAdd": "Added to a list",
       "listRemove": "Removed from a list"
@@ -229,14 +228,6 @@
     "openSeasonPage": "Open season page",
     "someSeasonsUnavailable": "Some seasons couldn't load, so marking the whole series is disabled until they do."
   },
-  "watchlist": {
-    "subtitle": "Filter by type and smartly sort your backlog.",
-    "recent": "Recent",
-    "title": "Title",
-    "rating": "Rating",
-    "emptyDesc": "Add movies or series from cards or detail pages to find them here.",
-    "exploreCta": "Discover movies & series"
-  },
   "stats": {
     "title": "Stats",
     "description": "Your local activity, without sending your history to a server.",
@@ -299,7 +290,7 @@
     "switchProfileFailed": "Couldn't switch profiles. Please try again.",
     "deleteProfile": "Delete profile {{name}}",
     "deleteProfileConfirmTitle": "Delete the profile \"{{name}}\"?",
-    "deleteProfileConfirmDescription": "This permanently deletes this profile's watchlist, library, history and lists. This can't be undone.",
+    "deleteProfileConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone.",
     "deleteProfileFailed": "Couldn't delete the profile. Please try again.",
     "customLists": "Custom lists",
     "sortRecent": "Recent",
@@ -455,7 +446,6 @@
       "series": "Series",
       "search": "Search",
       "watchTonight": "What to watch tonight?",
-      "watchlist": "Watchlist",
       "library": "Library",
       "calendar": "Calendar",
       "collections": "Collections",
@@ -484,7 +474,7 @@
     "undoConfirmDescription": "This restores your data to how it was right before the last import — reversing anything you've done since.",
     "undoFailed": "Nothing to undo: no pre-import snapshot was found.",
     "importConfirmTitle": "Replace all your data?",
-    "importConfirmDescription": "Importing this backup overwrites your current watchlist, library, history and lists. You can undo this right after with \"Undo last change\"."
+    "importConfirmDescription": "Importing this backup overwrites your current library, history and lists. You can undo this right after with \"Undo last change\"."
   },
   "desktop": {
     "operationComplete": "Operation complete.",
@@ -518,7 +508,7 @@
     "backupUpdated": "Emergency backup updated.",
     "restoreBackup": "Restore backup",
     "restoreConfirmTitle": "Restore the automatic backup?",
-    "restoreConfirmDescription": "This replaces everything currently on this device — watchlist, library, progress, history, profiles — with the backup from {{date}}. You can undo this afterwards from Backup tools.",
+    "restoreConfirmDescription": "This replaces everything currently on this device — library, progress, history, profiles — with the backup from {{date}}. You can undo this afterwards from Backup tools.",
     "lastBackupSuccess": "Last automatic backup: {{date}}.",
     "lastBackupFailed": "The last automatic backup attempt failed — retry with Emergency backup.",
     "noBackupYet": "No automatic backup yet.",
@@ -644,7 +634,7 @@
     "fileTooLarge": "\"{{name}}\" is too large to import.",
     "totalTooLarge": "These files add up to more than {{max}} MB combined — select fewer or smaller files.",
     "failed": "Import failed",
-    "done": "Imported {{episodes}} episodes across {{series}} series, {{movies}} movies and {{watchlist}} watchlist items.",
+    "done": "Imported {{episodes}} episodes across {{series}} series, {{movies}} movies and {{planned}} titles added to your library.",
     "unresolvedEpisodeCount_one": "{{count}} ep.",
     "unresolvedEpisodeCount_other": "{{count}} eps.",
     "unmatched_one": "{{count}} title could not be matched",
@@ -652,7 +642,7 @@
     "phase": {
       "series": "Series",
       "movies": "Movies",
-      "watchlist": "Watchlist"
+      "watchlist": "To watch"
     }
   }
 }

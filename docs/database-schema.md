@@ -1,6 +1,6 @@
 # CineTrack — database schema
 
-The database is local SQLite, embedded in the app via Tauri — no server, everything lives on the machine. It's designed to be **multi-profile** from the start: almost every table carries a `profile_id` that isolates one profile's data from the others, with `FOREIGN KEY … ON DELETE CASCADE` constraints guaranteeing no row survives the deletion of its profile or its list. A profile is only *optionally* linked to a Supabase account: fully offline (the default, `VITE_AUTH_REQUIRED=false`), a user can create, switch between, and remove as many local-only profiles as they want with no account involved at all (`src/pages/collections-page.tsx`). Linking only comes into play once Supabase sign-in is required — see below.
+The database is local SQLite, embedded in the app via Tauri — no server, everything lives on the machine. It's designed to be **multi-profile** from the start: almost every table carries a `profile_id` that isolates one profile's data from the others, with `FOREIGN KEY … ON DELETE CASCADE` constraints guaranteeing no row survives the deletion of its profile or its list. A profile is only _optionally_ linked to a Supabase account: fully offline (the default, `VITE_AUTH_REQUIRED=false`), a user can create, switch between, and remove as many local-only profiles as they want with no account involved at all (`src/pages/collections-page.tsx`). Linking only comes into play once Supabase sign-in is required — see below.
 
 Every table's primary key is a `uuid TEXT PRIMARY KEY`, generated app-side with `crypto.randomUUID()` (see [`src/shared/lib/id.ts`](../src/shared/lib/id.ts)) — there is no separate internal integer id. Two tables deliberately don't follow this: `preferences` (`key` is already a stable natural primary key) and `availability_snapshots` (a pure cache keyed by `(media_id, media_type, region)`, with no row ever referenced individually).
 
@@ -40,7 +40,7 @@ No declared relation — table intentionally independent from profiles. No `uuid
 
 ## Library & progress
 
-The functional core of the app. Three ideas deliberately coexist: a current _state_ (`library_items`, `status`), an immutable _event log_ (`viewing_events`, used for statistics), and lighter tables that are faster to query for day-to-day interactive use (watchlist, seen/unseen, episode progress, tracked shows).
+The functional core of the app. Three ideas deliberately coexist: a current _state_ (`library_items`, `status`), an immutable _event log_ (`viewing_events`, used for statistics), and lighter tables that are faster to query for day-to-day interactive use (seen/unseen, episode progress, tracked shows).
 
 ### `library_items`
 
@@ -63,6 +63,8 @@ Indexes: `(profile_id, status, updated_at DESC)`, `(profile_id, updated_at DESC)
 
 Relations: a profile owns `0..n` library entries. Deleting the profile deletes the row (`ON DELETE CASCADE`). Updates go through `INSERT … ON CONFLICT DO UPDATE` rather than `INSERT OR REPLACE`, so `uuid`/`created_at` survive a status change.
 
+`library_items` also covers what used to be a separate `watchlist_items` table, folded in by migration 10 (`src-tauri/src/database/migrations.rs`): a `planned` status row is the "to watch" equivalent — adding a title to the library defaults it to `planned` rather than writing to a second table. The migration is one-way and non-destructive: an existing `watchlist_items` row becomes a new `planned` library row unless a library row already exists for the same `(profile_id, media_id, media_type)`, in which case the library row wins and the watchlist row is dropped.
+
 ### `viewing_events`
 
 Every watch (or un-watch) generates a row here: a whole movie or a specific episode, with its duration. This is **this** table — not `library_items.status` — that feeds the statistics (minutes watched, consecutive-day streaks, monthly activity).
@@ -80,21 +82,6 @@ Every watch (or un-watch) generates a row here: a whole movie or a specific epis
 Indexes: `(profile_id, watched_at DESC)`, `(media_id, media_type)`.
 
 Relations: a profile logs `0..n` events.
-
-### `watchlist_items`
-
-The simple "to watch" list — lighter than `library_items`, with no status or rating. Used to be called `profile_watchlist` before the single schema: the `profile_` prefix distinguished this table from an old, non-profile-scoped `watchlist` table, now removed.
-
-| Column                                                    | Type | Notes                                                          |
-| --------------------------------------------------------- | ---- | -------------------------------------------------------------- |
-| `uuid` **PK**                                             | TEXT | public identifier of the row                                   |
-| `profile_id`, `media_id`, `media_type` `FK` **UK**        | …    | → `profiles.uuid` ; `UNIQUE(profile_id, media_id, media_type)` |
-| `title`, `poster_path`, `backdrop_path`, `year`, `rating` | …    | TMDB copy taken when added                                     |
-| `created_at`, `updated_at`                                | TEXT | ISO dates                                                      |
-
-Indexes: `(profile_id, created_at DESC)`, `(media_id, media_type)`.
-
-Relations: a profile has `0..n` entries to watch.
 
 ### `seen_movies`
 
@@ -169,7 +156,7 @@ Relations: a profile has `0..n` history rows.
 
 ## Custom lists
 
-The collections users create themselves — "Christmas movies", "Rewatch with…" — distinct from the system watchlist.
+The collections users create themselves — "Christmas movies", "Rewatch with…" — distinct from the library.
 
 ### `custom_lists`
 
@@ -265,12 +252,6 @@ erDiagram
         string event_type
         string watched_at
     }
-    WATCHLIST_ITEMS {
-        string uuid PK
-        string profile_id FK
-        int media_id
-        string media_type
-    }
     SEEN_MOVIES {
         string uuid PK
         string profile_id FK
@@ -322,7 +303,6 @@ erDiagram
 
     PROFILES ||--o{ LIBRARY_ITEMS : tracks
     PROFILES ||--o{ VIEWING_EVENTS : logs
-    PROFILES ||--o{ WATCHLIST_ITEMS : "wants to watch"
     PROFILES ||--o{ SEEN_MOVIES : "has watched"
     PROFILES ||--o{ EPISODE_PROGRESS : progresses
     PROFILES ||--o{ TRACKED_SERIES : tracks

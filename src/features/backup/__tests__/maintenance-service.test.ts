@@ -69,13 +69,13 @@ beforeEach(() => {
   localStorageState.clear();
 });
 
-const item = (mediaId: number) => ({
-  id: "test-id",
-  mediaId,
+const media = (mediaId: number) => ({
+  id: mediaId,
   mediaType: "movie" as const,
   title: `Movie ${mediaId}`,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
+  overview: "",
+  genres: [] as string[],
+  cast: [] as never[],
 });
 
 describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
@@ -83,19 +83,19 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
 
   it("snapshots the current state before importing, and undo restores it", async () => {
     const { maintenanceService } = await import("../maintenance-service");
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+    const { libraryRepository } = await import("@/features/library/library-repository");
 
-    await watchlistRepository.save(item(1));
-    const before = await watchlistRepository.list();
+    await libraryRepository.save(media(1), { status: "planned" });
+    const before = await libraryRepository.list();
     expect(before).toHaveLength(1);
 
-    const replacement = { format: "cinetrack-backup", version: 1, exportedAt: "", data: { watchlist: [] } };
+    const replacement = { format: "cinetrack-backup", version: 1, exportedAt: "", data: { library: [] } };
     await maintenanceService.restoreFromBackup(replacement);
-    expect(await watchlistRepository.list()).toHaveLength(0);
+    expect(await libraryRepository.list()).toHaveLength(0);
 
     await maintenanceService.undoLastRestore();
-    expect(await watchlistRepository.list()).toHaveLength(1);
-    expect((await watchlistRepository.list())[0]!.mediaId).toBe(1);
+    expect(await libraryRepository.list()).toHaveLength(1);
+    expect((await libraryRepository.list())[0]!.mediaId).toBe(1);
   });
 
   it("throws when there is nothing to undo", async () => {
@@ -106,8 +106,8 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
 
   it("never corrupts the previous pre-restore snapshot if the atomic rename fails mid-write", async () => {
     const { maintenanceService } = await import("../maintenance-service");
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
-    await watchlistRepository.save(item(1));
+    const { libraryRepository } = await import("@/features/library/library-repository");
+    await libraryRepository.save(media(1), { status: "planned" });
 
     await maintenanceService.restoreFromBackup({ format: "cinetrack-backup", version: 1, exportedAt: "", data: {} });
     const goodSnapshot = fsState.files.get("backups/pre-restore.json");
@@ -138,12 +138,17 @@ const autoBackupContent = (mediaId: number) =>
     version: 1,
     exportedAt: "",
     data: {
-      watchlist: [
+      library: [
         {
-          id: `seed-${mediaId}`,
+          profileId: "default",
           mediaId,
           mediaType: "movie",
           title: `Seed ${mediaId}`,
+          genres: [],
+          status: "planned",
+          favourite: false,
+          tags: [],
+          rewatchCount: 0,
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-01T00:00:00.000Z",
         },
@@ -156,22 +161,15 @@ describe("maintenanceService automatic backup rotation", () => {
 
   it("creating an automatic backup and restoring it round-trips the data", async () => {
     const { maintenanceService } = await import("../maintenance-service");
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
-    await watchlistRepository.save({
-      id: "live-1",
-      mediaId: 1,
-      mediaType: "movie",
-      title: "Live",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
+    const { libraryRepository } = await import("@/features/library/library-repository");
+    await libraryRepository.save(media(1), { status: "planned" });
 
     await maintenanceService.createAutomaticBackup(true);
-    await watchlistRepository.remove(1, "movie");
-    expect(await watchlistRepository.list()).toHaveLength(0);
+    await libraryRepository.remove(1, "movie");
+    expect(await libraryRepository.list()).toHaveLength(0);
 
     await maintenanceService.restoreAutomaticBackup();
-    expect((await watchlistRepository.list())[0]?.mediaId).toBe(1);
+    expect((await libraryRepository.list())[0]?.mediaId).toBe(1);
   });
 
   it("restores the most recently created automatic backup, not just any", async () => {
@@ -179,11 +177,11 @@ describe("maintenanceService automatic backup rotation", () => {
     fsState.files.set("backups/auto-2026-06-01T00-00-00-000Z.json", autoBackupContent(2));
 
     const { maintenanceService } = await import("../maintenance-service");
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+    const { libraryRepository } = await import("@/features/library/library-repository");
 
     await maintenanceService.restoreAutomaticBackup();
 
-    const items = await watchlistRepository.list();
+    const items = await libraryRepository.list();
     expect(items).toHaveLength(1);
     expect(items[0]!.mediaId).toBe(2);
   });
@@ -214,13 +212,13 @@ describe("maintenanceService automatic backup rotation", () => {
     fsState.files.set("backups/latest.json", autoBackupContent(9));
 
     const { maintenanceService } = await import("../maintenance-service");
-    const { watchlistRepository } = await import("@/features/watchlist/watchlist-repository");
+    const { libraryRepository } = await import("@/features/library/library-repository");
 
     const info = await maintenanceService.getAutomaticBackupInfo();
     expect(info).not.toBeNull();
 
     await maintenanceService.restoreAutomaticBackup();
-    expect((await watchlistRepository.list())[0]?.mediaId).toBe(9);
+    expect((await libraryRepository.list())[0]?.mediaId).toBe(9);
   });
 
   it("flags the last backup attempt as failed, then clears the flag on the next success", async () => {

@@ -16,7 +16,7 @@ import { Panel } from "@/components/ui/panel";
 import { SeasonAccordion } from "@/components/media/season-accordion";
 import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
-import { WatchlistButton } from "@/components/media/watchlist-button";
+import { AddToLibraryButton } from "@/components/media/add-to-library-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -58,7 +58,7 @@ export function SeriesDetailPage() {
         media={series}
         actions={
           <>
-            <WatchlistButton media={series} />
+            <AddToLibraryButton media={series} />
             <AvailabilityAlertButton media={series} />
           </>
         }

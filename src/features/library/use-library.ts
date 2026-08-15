@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { libraryRepository, type LibraryPatch } from "@/features/library/library-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { MediaSummary } from "@/types/media";
 
 export function useLibrary() {
@@ -39,4 +40,41 @@ export function useLibraryItem(media: MediaSummary) {
     },
   });
   return { ...query, save: save.mutateAsync, remove: remove.mutateAsync, isSaving: save.isPending || remove.isPending };
+}
+
+export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaType"]) {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    queryKey: [...queryKeys.local.library(profileId), "has", mediaId, mediaType],
+    queryFn: () => libraryRepository.has(mediaId, mediaType),
+  });
+}
+
+// Backs the grid/detail-page quick "add to library" toggle — a lighter
+// weight pair than useLibraryItem (no full LibraryItem fetch) matching the
+// presence-only shape useIsInLibrary already provides for reads.
+export function useLibraryQuickToggle() {
+  const profileId = useActiveProfileId();
+  const invalidateKeys = [
+    queryKeys.local.library(profileId),
+    queryKeys.local.history(profileId),
+    queryKeys.local.stats(profileId),
+    queryKeys.local.watchTonight(profileId),
+  ];
+
+  const addPlanned = useInvalidatingMutation(
+    (media: MediaSummary) => libraryRepository.save(media, { status: "planned" }),
+    invalidateKeys
+  );
+  const removeIfPlanned = useInvalidatingMutation(
+    ({ mediaId, mediaType }: { mediaId: number; mediaType: MediaSummary["mediaType"] }) =>
+      libraryRepository.removeIfPlanned(mediaId, mediaType),
+    invalidateKeys
+  );
+
+  return {
+    addPlanned: addPlanned.mutateAsync,
+    removeIfPlanned: removeIfPlanned.mutateAsync,
+    isMutating: addPlanned.isPending || removeIfPlanned.isPending,
+  };
 }

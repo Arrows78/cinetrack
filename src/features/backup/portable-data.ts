@@ -2,7 +2,7 @@ import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { cineTrackBackupSchema } from "./backup-schema";
-import { emptyData, type PortableData } from "./portable-data-common";
+import { emptyData, foldLegacyWatchlistIntoLibrary, type PortableData } from "./portable-data-common";
 
 export interface CineTrackBackup {
   format: "cinetrack-backup";
@@ -36,7 +36,13 @@ function parseBackup(value: unknown): CineTrackBackup {
     );
   }
 
-  const data = { ...emptyData(), ...result.data.data } as PortableData;
+  // `watchlist` only exists on backups exported before the watchlist/library
+  // merge (migration 10) — fold it into planned-status library rows before
+  // Rust ever sees this payload, which no longer knows about that table.
+  const { watchlist: legacyWatchlist, ...rest } = result.data.data;
+  const data = { ...emptyData(), ...rest } as PortableData;
+  data.library = foldLegacyWatchlistIntoLibrary(data.library, legacyWatchlist);
+
   if (!data.profiles.some((profile) => profile.id === "default")) {
     data.profiles.unshift({ id: "default", name: "Default", createdAt: new Date().toISOString() });
   }

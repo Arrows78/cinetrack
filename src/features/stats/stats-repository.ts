@@ -39,7 +39,7 @@ interface StatsOverviewDto {
     episodesWatched: number;
     minutesWatched: number;
     completedSeries: number;
-    watchlistCompletionPercent: number;
+    libraryCompletionPercent: number;
   };
   monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
 }
@@ -158,7 +158,7 @@ export const statsRepository = {
       favouriteGenres: extras.favouriteGenres,
       monthlyActivity: overview.monthlyActivity,
       currentStreakDays: currentStreak(recentEvents),
-      watchlistCompletionPercent: overview.totals.watchlistCompletionPercent,
+      libraryCompletionPercent: overview.totals.libraryCompletionPercent,
     };
   },
   async getYearSummary(year = new Date().getFullYear()): Promise<YearSummary> {

@@ -26,7 +26,6 @@ export const queryKeys = {
   // key/value store (it's literally what stores which profile is active),
   // and `profiles` lists every profile, not one profile's data.
   local: {
-    watchlist: (profileId: string) => ["local", "watchlist", profileId] as const,
     history: (profileId: string) => ["local", "history", profileId] as const,
     preferences: ["local", "preferences"] as const,
     movieSeen: (profileId: string, movieId: number) => ["local", "movieSeen", profileId, movieId] as const,

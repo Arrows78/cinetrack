@@ -11,7 +11,7 @@ import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { Panel } from "@/components/ui/panel";
-import { WatchlistButton } from "@/components/media/watchlist-button";
+import { AddToLibraryButton } from "@/components/media/add-to-library-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -39,7 +39,7 @@ export function MovieDetailPage() {
         media={movie}
         actions={
           <>
-            <WatchlistButton media={movie} />
+            <AddToLibraryButton media={movie} />
             <AvailabilityAlertButton media={movie} />
           </>
         }

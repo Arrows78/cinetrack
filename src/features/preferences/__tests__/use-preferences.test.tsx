@@ -10,7 +10,6 @@ const defaultPreferences: UserPreferences = {
   language: "en",
   region: "FR",
   defaultSearchType: "all",
-  defaultWatchlistFilter: "all",
   reduceMotion: false,
   compactMode: false,
   sidebarCollapsed: false,

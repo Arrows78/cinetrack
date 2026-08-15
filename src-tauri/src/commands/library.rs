@@ -1,8 +1,9 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use sqlx::SqlitePool;
 use tauri::State;
 
+use super::history::{add_history_item_impl, HistoryAction, ViewingHistoryItem};
 use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
@@ -207,6 +208,7 @@ async fn upsert_impl(
     profile_id: &str,
 ) -> Result<LibraryItem, ApiError> {
     let current = get_impl(pool, profile_id, media.id, media.media_type).await?;
+    let is_new = current.is_none();
     let now = now_iso(pool).await?;
     let status = patch.status.unwrap_or_else(|| current.as_ref().map_or(LibraryStatus::Planned, |c| c.status));
 
@@ -255,6 +257,8 @@ async fn upsert_impl(
         updated_at: now,
     };
 
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
     sqlx::query(
         "INSERT INTO library_items (
           uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
@@ -297,10 +301,31 @@ async fn upsert_impl(
     .bind(item.rewatch_count)
     .bind(&item.created_at)
     .bind(&item.updated_at)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
 
+    // Only the first time an item is created — matching the exact idempotent
+    // pattern used by the pre-merge watchlist feature (see git history),
+    // never on a plain status/rating/notes update.
+    if is_new {
+        let timestamp = now_iso(&mut *tx).await?;
+        let history_item = ViewingHistoryItem {
+            id: new_uuid(),
+            media_id: item.media_id,
+            media_type: item.media_type,
+            title: item.title.clone(),
+            action: HistoryAction::LibraryAdd,
+            timestamp,
+            season_number: None,
+            episode_number: None,
+            episode_title: None,
+            metadata: Some(json!({ "profileId": profile_id })),
+        };
+        add_history_item_impl(&mut *tx, pool, history_item).await?;
+    }
+
+    tx.commit().await.map_err(ApiError::from)?;
     Ok(item)
 }
 
@@ -364,15 +389,104 @@ pub(crate) async fn auto_sync_status_impl(
     Ok(())
 }
 
+async fn has_impl(pool: &SqlitePool, profile_id: &str, media_id: i64, media_type: MediaType) -> Result<bool, ApiError> {
+    let row: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
+    )
+    .bind(profile_id)
+    .bind(media_id)
+    .bind(media_type.as_db_str())
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(row.0 > 0)
+}
+
 async fn remove_impl(pool: &SqlitePool, profile_id: &str, media_id: i64, media_type: MediaType) -> Result<(), ApiError> {
+    let existing = get_impl(pool, profile_id, media_id, media_type).await?;
+
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
     sqlx::query("DELETE FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3")
         .bind(profile_id)
         .bind(media_id)
         .bind(media_type.as_db_str())
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
+
+    if let Some(item) = existing {
+        let timestamp = now_iso(&mut *tx).await?;
+        let history_item = ViewingHistoryItem {
+            id: new_uuid(),
+            media_id,
+            media_type,
+            title: item.title,
+            action: HistoryAction::LibraryRemove,
+            timestamp,
+            season_number: None,
+            episode_number: None,
+            episode_title: None,
+            metadata: Some(json!({ "profileId": profile_id })),
+        };
+        add_history_item_impl(&mut *tx, pool, history_item).await?;
+    }
+
+    tx.commit().await.map_err(ApiError::from)?;
     Ok(())
+}
+
+/// Backs the grid/detail quick "add to library" toggle, whose remove side
+/// must never destroy real progress: only removes (and logs) a row that's
+/// still in the default `planned` status, a no-op returning `false`
+/// otherwise (already started/finished, or already gone) — unlike
+/// `remove_library_item`, which is unconditional and sits behind
+/// `LibraryEditor`'s own `ConfirmDialog`.
+async fn remove_if_planned_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    media_id: i64,
+    media_type: MediaType,
+) -> Result<bool, ApiError> {
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let existing: Option<LibraryRow> = sqlx::query_as(
+        "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 AND status = 'planned' LIMIT 1",
+    )
+    .bind(profile_id)
+    .bind(media_id)
+    .bind(media_type.as_db_str())
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    let Some(row) = existing else {
+        tx.commit().await.map_err(ApiError::from)?;
+        return Ok(false);
+    };
+
+    sqlx::query("DELETE FROM library_items WHERE uuid = $1")
+        .bind(&row.uuid)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+
+    let timestamp = now_iso(&mut *tx).await?;
+    let history_item = ViewingHistoryItem {
+        id: new_uuid(),
+        media_id,
+        media_type,
+        title: row.title,
+        action: HistoryAction::LibraryRemove,
+        timestamp,
+        season_number: None,
+        episode_number: None,
+        episode_title: None,
+        metadata: Some(json!({ "profileId": profile_id })),
+    };
+    add_history_item_impl(&mut *tx, pool, history_item).await?;
+
+    tx.commit().await.map_err(ApiError::from)?;
+    Ok(true)
 }
 
 profile_scoped_command! {
@@ -381,6 +495,10 @@ profile_scoped_command! {
 
 profile_scoped_command! {
     pub async fn get_library_item(media_id: i64, media_type: MediaType) -> Option<LibraryItem> => get_impl
+}
+
+profile_scoped_command! {
+    pub async fn has_library_item(media_id: i64, media_type: MediaType) -> bool => has_impl
 }
 
 #[tauri::command]
@@ -397,9 +515,14 @@ profile_scoped_command! {
     pub async fn remove_library_item(media_id: i64, media_type: MediaType) -> () => remove_impl
 }
 
+profile_scoped_command! {
+    pub async fn remove_planned_library_item(media_id: i64, media_type: MediaType) -> bool => remove_if_planned_impl
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commands::history::list_history_impl;
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
@@ -520,5 +643,84 @@ mod tests {
         remove_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
 
         assert!(get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn has_impl_reports_presence() {
+        let pool = migrated_pool().await;
+        assert!(!has_impl(&pool, "default", 7, MediaType::Movie).await.unwrap());
+
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+
+        assert!(has_impl(&pool, "default", 7, MediaType::Movie).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn records_a_history_entry_only_the_first_time_an_item_is_created() {
+        let pool = migrated_pool().await;
+
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+        let updated_patch = LibraryPatch { status: Some(LibraryStatus::Watching), ..Default::default() };
+        upsert_impl(&pool, media(7), updated_patch, "default").await.unwrap();
+
+        let history = list_history_impl(&pool, 50).await.unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].action, HistoryAction::LibraryAdd);
+    }
+
+    #[tokio::test]
+    async fn removes_an_item_and_records_a_removal_history_entry() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+
+        remove_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+
+        let history = list_history_impl(&pool, 50).await.unwrap();
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0].action, HistoryAction::LibraryRemove);
+    }
+
+    #[tokio::test]
+    async fn does_not_record_a_removal_history_entry_when_the_item_was_never_present() {
+        let pool = migrated_pool().await;
+
+        remove_impl(&pool, "default", 404, MediaType::Movie).await.unwrap();
+
+        assert!(list_history_impl(&pool, 50).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn remove_if_planned_removes_and_logs_when_status_is_still_planned() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+
+        let removed = remove_if_planned_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+
+        assert!(removed);
+        assert!(get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
+        let history = list_history_impl(&pool, 50).await.unwrap();
+        assert_eq!(history[0].action, HistoryAction::LibraryRemove);
+    }
+
+    #[tokio::test]
+    async fn remove_if_planned_is_a_no_op_once_the_item_has_real_progress() {
+        let pool = migrated_pool().await;
+        let patch = LibraryPatch { status: Some(LibraryStatus::Watching), ..Default::default() };
+        upsert_impl(&pool, media(7), patch, "default").await.unwrap();
+
+        let removed = remove_if_planned_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+
+        assert!(!removed);
+        let still_there = get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().unwrap();
+        assert_eq!(still_there.status, LibraryStatus::Watching);
+    }
+
+    #[tokio::test]
+    async fn remove_if_planned_is_a_no_op_when_the_item_does_not_exist() {
+        let pool = migrated_pool().await;
+
+        let removed = remove_if_planned_impl(&pool, "default", 404, MediaType::Movie).await.unwrap();
+
+        assert!(!removed);
     }
 }

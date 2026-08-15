@@ -8,7 +8,7 @@
 [![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-CineTrack is a local-first desktop application built with **Tauri**, **React**, **TypeScript**, and **SQLite**. It uses the [TMDB](https://www.themoviedb.org/) catalogue to explore films and TV series while keeping your watchlist, viewing progress, and activity history on your device.
+CineTrack is a local-first desktop application built with **Tauri**, **React**, **TypeScript**, and **SQLite**. It uses the [TMDB](https://www.themoviedb.org/) catalogue to explore films and TV series while keeping your library, viewing progress, and activity history on your device.
 
 > [!NOTE]
 > The interface is available in English and French, with the internationalisation architecture in place for adding more languages.
@@ -24,11 +24,11 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 
 ### Organise
 
-- Add films and TV series to your watchlist, a unified library (planned/watching/completed/dropped/rewatching), or custom lists.
-- Filter and sort your watchlist and library by media type, status, date, title, or rating.
+- Add films and TV series to your library (planned/watching/completed/dropped/rewatching) or custom lists.
+- Filter and sort your library by media type, status, date, title, or rating.
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
-- Manage multiple profiles, each with its own watchlist, library, and history — switch, create, or remove local-only profiles freely offline; with optional Supabase sign-in configured (see "Personalise" below), a profile can also be linked to an account so it's only reachable by that account.
+- Manage multiple profiles, each with its own library and history — switch, create, or remove local-only profiles freely offline; with optional Supabase sign-in configured (see "Personalise" below), a profile can also be linked to an account so it's only reachable by that account.
 - Import a TV Time GDPR export (watched episodes and movies with their original dates, plus the to-watch list) as a one-time bulk migration.
 
 ### Track TV series
@@ -43,7 +43,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 
 - Switch between light and dark themes and several accent colours.
 - Enable compact mode or reduced motion.
-- Set default filters for search and the watchlist.
+- Set a default filter for search.
 - Sign in with Supabase (email OTP or social OAuth) when optional sign-in is configured; the app otherwise works fully offline with a local-only profile.
 - Review viewing statistics and a yearly "wrapped" summary.
 
@@ -81,7 +81,7 @@ flowchart LR
 ```
 
 - `MediaProvider` abstracts catalogue access, making it possible to replace TMDB without coupling the interface to its API.
-- Local repositories (one per domain: watchlist, library, progress, history, preferences, profiles, collections, availability, stats, …) are thin `invoke()` wrappers; the actual SQL, transactions, and cascades live in Rust commands (`src-tauri/src/commands/`), all of it in SQLite (`sqlite:app.db`).
+- Local repositories (one per domain: library, progress, history, preferences, profiles, collections, availability, stats, …) are thin `invoke()` wrappers; the actual SQL, transactions, and cascades live in Rust commands (`src-tauri/src/commands/`), all of it in SQLite (`sqlite:app.db`).
 - SQLite is only reachable from inside the Tauri webview — a plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at the same dev server `pnpm tauri dev` uses. Every local-data hook already tolerates a failed query (none use React Query's suspense mode), so the UI still renders outside Tauri for layout/styling work; reads/writes to SQLite just fail silently. A small non-blocking banner flags this, see [`src/components/desktop/browser-preview-banner.tsx`](src/components/desktop/browser-preview-banner.tsx).
 
 See [`docs/architecture.md`](docs/architecture.md) for the full request-to-database walkthrough (the Rust command → repository → hook → page shape every domain follows), the error-handling contract, and how to add a new feature domain. See [`docs/design-system.md`](docs/design-system.md) for UI tokens and component rules, and [`docs/auth.md`](docs/auth.md) for the optional Supabase account-sync setup.
@@ -174,9 +174,9 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 | `pnpm test:coverage` | Runs the test suite with a coverage report.                        |
 | `pnpm typecheck`     | Checks TypeScript types without emitting output.                   |
 | `pnpm validate`      | Runs the full chain above plus the Rust checks — see below.        |
-| `pnpm cargo:check`   | Runs `cargo check` on the Rust side.                                |
-| `pnpm cargo:clippy`  | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side.  |
-| `pnpm cargo:test`    | Runs `cargo test` on the Rust side.                                 |
+| `pnpm cargo:check`   | Runs `cargo check` on the Rust side.                               |
+| `pnpm cargo:clippy`  | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side. |
+| `pnpm cargo:test`    | Runs `cargo test` on the Rust side.                                |
 | `pnpm tauri dev`     | Starts the desktop application in development mode.                |
 | `pnpm tauri build`   | Creates desktop bundles for the current platform.                  |
 
@@ -207,8 +207,7 @@ cinetrack/
 │   │   ├── progress/              #   Movie/episode watched state and series progress
 │   │   ├── stats/                #   Viewing statistics and yearly wrap-up
 │   │   ├── tvtime/                #   One-time bulk import from a TV Time export
-│   │   ├── watch-tonight/        #   Random pick service
-│   │   └── watchlist/             #   Watchlist repository and hooks
+│   │   └── watch-tonight/        #   Random pick service
 │   ├── hooks/                   # Generic, repository-free hooks (debounce, confetti)
 │   ├── i18n/                    # Internationalisation setup and translations
 │   ├── pages/                   # Route components composed from feature hooks
@@ -240,7 +239,7 @@ CineTrack does not require a user account or an application server to save perso
 The SQLite schema (a single migration, see `src/db/migrations/001-initial-schema.ts`) includes:
 
 - `profiles`, `preferences`;
-- `watchlist_items`, `library_items`, `viewing_events`, `seen_movies`, `episode_progress`, `tracked_series`;
+- `library_items`, `viewing_events`, `seen_movies`, `episode_progress`, `tracked_series`;
 - `custom_lists`, `custom_list_items`;
 - `availability_alerts`, `availability_snapshots`;
 - `activity_log`.

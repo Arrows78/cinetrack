@@ -1571,7 +1571,7 @@ export function DesignSystemPage() {
               "optional progress bar",
             ]}
             variants={["movie", "series", "with progress", "without progress"]}
-            guidance="Any list of watchable titles — home feed, search results, recommendations, watchlist."
+            guidance="Any list of watchable titles — home feed, search results, recommendations, library."
             accessibility="The whole card is a single link to the detail page; poster alt text carries the title for screen readers."
           >
             <MediaGrid items={catalogMedia} />
@@ -1629,7 +1629,7 @@ export function DesignSystemPage() {
             <EmptyState
               className="rounded-panel border border-border bg-foreground/[0.02] py-12"
               icon={Film}
-              title="Your watchlist is empty"
+              title="Your library is empty"
               description="Save a movie or series to build a queue for later."
               action={
                 <Button>

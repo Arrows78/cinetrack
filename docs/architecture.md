@@ -19,26 +19,31 @@ flowchart LR
 ```
 
 - **Catalogue data** (titles, images, cast, availability) comes from TMDB through `MediaProvider` (`src/features/media/media-provider.ts`, implemented by `tmdb-media-provider.ts`), fetched with TanStack Query. Nothing else in the app talks to the network.
-- **Personal data** (watchlist, library, progress, history, profiles, preferences, custom lists, availability alerts) lives in local SQLite (`sqlite:app.db`), reachable only from inside the Tauri webview — a plain browser tab has no IPC bridge, even pointed at the same dev server.
+- **Personal data** (library, progress, history, profiles, preferences, custom lists, availability alerts) lives in local SQLite (`sqlite:app.db`), reachable only from inside the Tauri webview — a plain browser tab has no IPC bridge, even pointed at the same dev server.
 
 Outside the Tauri window (`pnpm dev` alone, or a browser tab), the UI still renders — no hook uses React Query's suspense mode — but every SQLite read/write fails silently; `browser-preview-banner.tsx` flags this. That failure mode is intentional, not a bug to chase.
 
 ## The feature shape
 
-Every domain under `src/features/<domain>/` follows the same four layers. Reading them bottom-up, using `watchlist` as the running example:
+Every domain under `src/features/<domain>/` follows the same four layers. Reading them bottom-up, using `library` as the running example:
 
-### 1. Rust command layer — `src-tauri/src/commands/watchlist.rs`
+### 1. Rust command layer — `src-tauri/src/commands/library.rs`
 
 Owns the SQL, transactions, cascades, and active-profile resolution. A command is a thin `#[tauri::command]` wrapper around an `_impl` function that does the real work against a `SqlitePool`:
 
 ```rust
 #[tauri::command]
-pub async fn save_watchlist_item(item: WatchlistItem, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
-    upsert_impl(&pool, item).await
+pub async fn save_library_item(
+    media: MediaSummaryInput,
+    patch: Option<LibraryPatch>,
+    pool: State<'_, SqlitePool>,
+) -> Result<LibraryItem, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    upsert_impl(&pool, media, patch.unwrap_or_default(), &profile_id).await
 }
 ```
 
-`current_profile_id(pool)` (`src-tauri/src/database/mod.rs`) resolves which local profile a read/write applies to by reading the `activeProfileId` preference, defaulting to `"default"`. Commands that mutate more than one table wrap the work in `pool.begin()` / `tx.commit()` (see `watchlist.rs`, `progress.rs`, `backup.rs`, `tvtime.rs`, `profiles.rs`) so a failure partway through doesn't leave orphaned rows — a real bug of exactly this shape (a list-deletion command running two unwrapped `DELETE`s) was fixed in `custom_lists.rs::remove_impl`, which is now the pattern every new multi-statement command should copy.
+`current_profile_id(pool)` (`src-tauri/src/database/mod.rs`) resolves which local profile a read/write applies to by reading the `activeProfileId` preference, defaulting to `"default"`. Commands that mutate more than one table wrap the work in `pool.begin()` / `tx.commit()` (see `library.rs`, `progress.rs`, `backup.rs`, `tvtime.rs`, `profiles.rs`) so a failure partway through doesn't leave orphaned rows — a real bug of exactly this shape (a list-deletion command running two unwrapped `DELETE`s) was fixed in `custom_lists.rs::remove_impl`, which is now the pattern every new multi-statement command should copy. `library.rs::upsert_impl` also shows the idempotent-mutation pattern from `CLAUDE.md`: it only appends a history entry the first time an item is created (`is_new`, captured before the insert), never on a plain status/rating update — the same guard `remove_impl` and the guarded `remove_if_planned_impl` apply on the delete side.
 
 Every command returns `Result<T, ApiError>` (`src-tauri/src/error.rs`), a small serializable struct:
 
@@ -53,16 +58,16 @@ pub struct ApiError {
 
 `status` mirrors an HTTP status code (`ApiError::not_found`, `::conflict`, `::bad_request`, `::internal`) so the same shape could back a real HTTP API later without changing any frontend caller.
 
-### 2. TS repository — `src/features/watchlist/watchlist-repository.ts`
+### 2. TS repository — `src/features/library/library-repository.ts`
 
 A thin `invokeCommand()` wrapper, deliberately without business logic:
 
 ```ts
-export const watchlistRepository = {
-  async save(item: WatchlistItem): Promise<void> {
-    await invokeCommand<void>("save_watchlist_item", { item });
+export const libraryRepository = {
+  async save(media: MediaSummary, patch: LibraryPatch = {}): Promise<LibraryItem> {
+    return invokeCommand<LibraryItem>("save_library_item", { media, patch });
   },
-  // list, has, remove follow the same shape
+  // list, get, has, remove, removeIfPlanned follow the same shape
 };
 ```
 
@@ -70,29 +75,31 @@ export const watchlistRepository = {
 
 Two repositories intentionally break the "thin wrapper" rule and say so in a comment: `stats-repository.ts` (aggregation/streak/forecast math done in TS rather than SQL) and `profile-repository.ts` (its `remove()` makes a follow-up `invoke()` call to reset `activeProfileId` when the removed profile was the active one). Both are documented, deliberate exceptions — not a pattern to copy without the same justification. `progress-repository.ts` used to be a third exception (it orchestrated two IPC calls plus a client-side history write) until history logging moved into the same Rust transaction as the toggle itself — it's a plain thin wrapper now.
 
-### 3. Hook — `src/features/watchlist/use-watchlist.ts`
+### 3. Hook — `src/features/library/use-library.ts`
 
 Wraps the repository in TanStack Query: `useQuery` for reads, and `useInvalidatingMutation` (`src/shared/lib/query-mutation.ts`) for writes — a small helper that fires a mutation and then invalidates a fixed (or result-derived) list of query keys:
 
 ```ts
-const remove = useInvalidatingMutation(
-  ({ mediaId, mediaType }: { mediaId: number; mediaType: WatchlistItem["mediaType"] }) =>
-    watchlistRepository.remove(mediaId, mediaType),
-  [queryKeys.local.watchlist, queryKeys.local.history]
+const removeIfPlanned = useInvalidatingMutation(
+  ({ mediaId, mediaType }: { mediaId: number; mediaType: MediaSummary["mediaType"] }) =>
+    libraryRepository.removeIfPlanned(mediaId, mediaType),
+  [queryKeys.local.library(profileId), queryKeys.local.history(profileId)]
 );
 ```
+
+`useLibraryQuickToggle` (the grid/detail-page "add to library" toggle behind `AddToLibraryButton`/`AddToLibraryQuickAction`) pairs this with a guarded remove: it only deletes an item still in the default `planned` status, leaving anything with real progress (`watching`, `completed`, ...) untouched — see `remove_if_planned_impl` in the Rust layer above.
 
 `queryKeys.local.history` is invalidated by most local mutations because most of them also write an activity-log entry server-side. `useInvalidatingMutation` isn't a fit for every hook — `useLibraryItem`, `useAvailabilityAlert`, and `usePreferences` also call `setQueryData` with the mutation's result or branch on which field changed, so they stay as plain `useMutation` rather than bending the helper to cover every shape (see the comment in `query-mutation.ts`).
 
 All query keys live in one registry, `src/shared/constants/query-keys.ts`, split into `remote.*` (TMDB) and `local.*` (SQLite) namespaces. There is no query-cache persister anymore: `local.*` results used to be persisted to `localStorage` for a fast cold start, but that duplicated personal data in a second, less-protected storage location the webview's own JavaScript can read, so it was removed (`src/app/query-client.ts`, see the comment there) — all query state, `remote.*` and `local.*` alike, now lives in memory only for the process's lifetime. `src/main.tsx` only clears the old `cinetrack.query-cache.v1` key left over from before the removal.
 
-### 4. Page — `src/pages/watchlist-page.tsx`
+### 4. Page — `src/pages/library-page.tsx`
 
 Composes hooks; pages never call a repository directly. A page reading remote or local data needs an explicit `RemoteErrorState` (`src/components/states/remote-error-state.tsx`) rather than a silent hang — this is a repeated review finding in the project's own history (`git log --grep=remote-error`) and is treated as a non-negotiable, not a nice-to-have.
 
 ## Startup and database recovery
 
-`init_pool_at` (`src-tauri/src/database/mod.rs`) doesn't let a broken database take the whole app down. If `run_migrations` fails against the existing `app.db`, it quarantines that file (renames it aside, never deletes it) and opens a fresh one instead of propagating the error — a corrupt or partially-restored database degrades into "starts fresh" rather than a crash. The one remaining unhandled case is a *second* failure on the fresh file (disk full, permissions): `src-tauri/src/lib.rs` still `.expect()`s there, which is an accepted, narrow last resort, not a fixed limitation.
+`init_pool_at` (`src-tauri/src/database/mod.rs`) doesn't let a broken database take the whole app down. If `run_migrations` fails against the existing `app.db`, it quarantines that file (renames it aside, never deletes it) and opens a fresh one instead of propagating the error — a corrupt or partially-restored database degrades into "starts fresh" rather than a crash. The one remaining unhandled case is a _second_ failure on the fresh file (disk full, permissions): `src-tauri/src/lib.rs` still `.expect()`s there, which is an accepted, narrow last resort, not a fixed limitation.
 
 The frontend surfaces this: `get_boot_recovery` (`src/features/desktop/boot-recovery-repository.ts`) reports whether a quarantine just happened, and `use-boot-recovery.ts` / `BootRecoveryGate` block the rest of the app behind a recovery screen (offering to restore the last automatic backup, or continue with a fresh database) until the user picks one. See `boot-recovery-gate.test.tsx` for the covered scenarios.
 

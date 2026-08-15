@@ -12,7 +12,6 @@ mod stats;
 mod tmdb;
 mod tvtime;
 mod updater;
-mod watchlist;
 
 pub use availability::{
     get_availability_alert, get_availability_snapshot, list_availability_alerts, remove_availability_alert,
@@ -25,7 +24,10 @@ pub use custom_lists::{
     remove_custom_list_item,
 };
 pub use history::list_history;
-pub use library::{get_library_item, list_library, remove_library_item, save_library_item};
+pub use library::{
+    get_library_item, has_library_item, list_library, remove_library_item, remove_planned_library_item,
+    save_library_item,
+};
 pub use preferences::{get_preferences, refresh_preferences, set_active_profile, update_preference, PreferencesCache};
 pub use profiles::{
     create_profile, find_profile_by_supabase_user_id, link_profile_to_supabase_user, list_profiles, remove_profile,
@@ -36,4 +38,3 @@ pub use stats::{get_stats_overview, list_recent_viewing_events, list_viewing_eve
 pub use tmdb::tmdb_request;
 pub use tvtime::{import_movie_seen, import_series_progress};
 pub use updater::{has_updater_config, updater_is_configured};
-pub use watchlist::{has_watchlist_item, list_watchlist, remove_watchlist_item, save_watchlist_item};

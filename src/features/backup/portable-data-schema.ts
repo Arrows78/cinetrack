@@ -23,7 +23,10 @@ const historyAction = z.enum([
   "list:remove",
 ]);
 
-export const watchlistItemSchema = z.object({
+// Kept only to parse backups exported before the watchlist/library merge
+// (migration 10) — new backups never populate the `watchlist` field below;
+// see foldLegacyWatchlistIntoLibrary in portable-data-common.ts.
+export const legacyWatchlistItemSchema = z.object({
   id: z.string(),
   profileId: z.string().optional(),
   mediaId: z.number(),
@@ -180,7 +183,7 @@ export const MAX_PROFILES = 50;
 export const MAX_LISTS = 500;
 
 export const portableDataSchema = z.object({
-  watchlist: z.array(watchlistItemSchema).max(MAX_LIST_ITEMS).optional(),
+  watchlist: z.array(legacyWatchlistItemSchema).max(MAX_LIST_ITEMS).optional(),
   seenMovies: z.array(seenMovieSchema).max(MAX_LIST_ITEMS).optional(),
   episodeProgress: z.array(episodeProgressSchema).max(MAX_EVENT_ITEMS).optional(),
   trackedSeries: z.array(trackedSeriesItemSchema).max(MAX_LIST_ITEMS).optional(),

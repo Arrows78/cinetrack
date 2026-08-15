@@ -4,7 +4,7 @@ import { EpisodeCard } from "@/components/media/episode-card";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { SectionHeader } from "@/components/media/section-header";
-import { WatchlistButton } from "@/components/media/watchlist-button";
+import { AddToLibraryButton } from "@/components/media/add-to-library-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Card } from "@/components/ui/card";
@@ -43,7 +43,7 @@ export function SeasonPage() {
     <div className="space-y-8">
       <MediaDetailsHero
         media={series}
-        actions={<WatchlistButton media={series} />}
+        actions={<AddToLibraryButton media={series} />}
         extra={
           <SeenToggle
             seen={allWatched}

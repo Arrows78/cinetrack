@@ -30,7 +30,7 @@ Run a single test file: `pnpm vitest run path/to/file.test.ts` (or `pnpm vitest 
 Two-sided data model, kept deliberately separate:
 
 - **Catalogue data** (movies/series metadata, images) comes from TMDB through `MediaProvider` (`src/features/media/media-provider.ts`, implemented by `tmdb-media-provider.ts`), fetched via TanStack Query. This is the only network dependency.
-- **Personal data** (watchlist, library, progress, history, profiles, preferences, custom lists, availability alerts) lives in local SQLite (`sqlite:app.db`), reachable only from inside the Tauri webview.
+- **Personal data** (library, progress, history, profiles, preferences, custom lists, availability alerts) lives in local SQLite (`sqlite:app.db`), reachable only from inside the Tauri webview.
 
 Every domain follows the same feature shape under `src/features/<domain>/`: a **Rust command layer** (`src-tauri/src/commands/<domain>.rs`) owns transactions, cascades, and active-profile resolution; the TS **repository** (`<domain>-repository.ts`) is a thin `invokeCommand()` wrapper with no business logic of its own; a **hook** (`use-<domain>.ts`) wraps the repository in TanStack Query (`useQuery` for reads, `useInvalidatingMutation` from `src/shared/lib/query-mutation.ts` for writes, invalidating the relevant `queryKeys` — usually including `queryKeys.local.history` since most mutations also write an activity-log entry). Pages (`src/pages/`) compose these hooks; they don't call repositories directly.
 
@@ -44,7 +44,7 @@ Outside the Tauri window (`pnpm dev` alone, or a browser tab), the UI still rend
 
 These patterns come from real bugs found in an August 2026 audit (see `docs/audit-findings.md` for the full writeups) — apply them to new code, not just the specific spots that were fixed.
 
-**Idempotent mutations.** Any command that both updates a current-state row and appends to an append-only log (`viewing_events`, `activity_log`) must check the requested state actually differs from the current one *before* writing anything. A repeated call — retry, double-click, a caller invoking it twice — must be a no-op, never a duplicate log entry; duplicate `viewing_events` rows silently corrupt the stats/wrapped features that read them. `apply_episodes_and_log_impl` (`src-tauri/src/commands/progress.rs`) is the reference implementation to copy (see the `does_not_reapply_an_already_applied_episode` test); `toggle_movie_seen_impl` in the same file was missing this guard.
+**Idempotent mutations.** Any command that both updates a current-state row and appends to an append-only log (`viewing_events`, `activity_log`) must check the requested state actually differs from the current one _before_ writing anything. A repeated call — retry, double-click, a caller invoking it twice — must be a no-op, never a duplicate log entry; duplicate `viewing_events` rows silently corrupt the stats/wrapped features that read them. `apply_episodes_and_log_impl` (`src-tauri/src/commands/progress.rs`) is the reference implementation to copy (see the `does_not_reapply_an_already_applied_episode` test); `toggle_movie_seen_impl` in the same file was missing this guard.
 
 **Authorization belongs in the Rust command, not the React gate.** A frontend gate (e.g. `ProfileGate`) controls what renders, not what's callable — any `invoke()` name is reachable directly from the webview regardless of what's on screen. A command that reads or writes profile-scoped data must itself verify the caller may act on that profile; never assume the UI already checked.
 
