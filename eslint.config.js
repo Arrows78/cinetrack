@@ -48,6 +48,8 @@ export default tseslint.config(
           "jsx-attributes": {
             exclude: [
               "className",
+              "listClassName",
+              "itemClassName",
               "styleName",
               "style",
               "type",
