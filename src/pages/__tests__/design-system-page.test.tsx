@@ -5,6 +5,8 @@ import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
 import { DesignSystemPage } from "../design-system-page";
+import type * as WatchlistRepositoryModule from "@/features/watchlist/watchlist-repository";
+import type * as ProgressRepositoryModule from "@/features/progress/progress-repository";
 
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
@@ -19,14 +21,14 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 // other real export (calculateSeriesProgress, getNextEpisode, ...) intact
 // for whatever else in this 60+ component catalog might use them.
 vi.mock("@/features/watchlist/watchlist-repository", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/watchlist/watchlist-repository")>();
+  const actual = await importOriginal<typeof WatchlistRepositoryModule>();
   return {
     ...actual,
     watchlistRepository: { ...actual.watchlistRepository, has: () => Promise.resolve(false) },
   };
 });
 vi.mock("@/features/progress/progress-repository", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/progress/progress-repository")>();
+  const actual = await importOriginal<typeof ProgressRepositoryModule>();
   return {
     ...actual,
     progressRepository: { ...actual.progressRepository, isMovieSeen: () => Promise.resolve(false) },
