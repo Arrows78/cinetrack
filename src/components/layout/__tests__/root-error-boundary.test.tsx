@@ -32,7 +32,8 @@ describe("RootErrorBoundary", () => {
 
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Technical details"));
-    expect(screen.getByText("Kaboom")).toBeInTheDocument();
+    expect(screen.getByText(/written to the local log/i)).toBeInTheDocument();
+    expect(screen.queryByText("Kaboom")).not.toBeInTheDocument();
   });
 
   it("reloads the page from the fallback's action", () => {

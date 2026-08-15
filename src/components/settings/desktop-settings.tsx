@@ -12,6 +12,7 @@ import { logger } from "@/features/diagnostics/logger";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
 import { isTauriApp } from "@/shared/lib/platform";
+import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatRelativeDate } from "@/shared/utils/format";
 
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -57,7 +58,8 @@ export function DesktopSettings() {
         variant: "success",
       });
     } catch (error) {
-      toast({ description: error instanceof Error ? error.message : t("desktop.operationFailed"), variant: "error" });
+      logger.warn(`Desktop settings action failed: ${errorMessage(error)}`);
+      toast({ description: displayMessage(error, t("desktop.operationFailed")), variant: "error" });
     } finally {
       setBusy(false);
     }
@@ -78,7 +80,8 @@ export function DesktopSettings() {
     } catch (error) {
       setIsRestoring(false);
       setPendingRestore(null);
-      toast({ description: error instanceof Error ? error.message : t("desktop.operationFailed"), variant: "error" });
+      logger.warn(`Automatic backup restore failed: ${errorMessage(error)}`);
+      toast({ description: displayMessage(error, t("desktop.operationFailed")), variant: "error" });
     }
   };
   return (

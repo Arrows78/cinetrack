@@ -3,6 +3,11 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18next from "i18next";
+// Side-effect import: initializes the shared i18next singleton with real
+// resources (auth-provider.tsx calls `i18next.t(...)` directly, bypassing
+// this module) — without it every `t()` call in this file, app-side and
+// test-side alike, silently returns `undefined` instead of a real string.
+import "@/i18n";
 
 import { AuthProvider } from "../auth-provider";
 import { useAuth } from "../auth-context";
@@ -42,6 +47,16 @@ vi.mock("@/features/auth/auth-client", () => ({
   isTauriRuntime: () => mockIsTauriRuntime,
 }));
 
+// Without this, `initialize()`'s Tauri branch (isTauriRuntime() === true)
+// calls the real plugin, which throws outside an actual Tauri webview — an
+// unrelated failure that used to race with signInWithProvider's own error
+// state and made assertions on `result.current.error` pass or fail by luck
+// depending on which `setError` call landed last.
+vi.mock("@tauri-apps/plugin-deep-link", () => ({
+  onOpenUrl: vi.fn(async () => () => undefined),
+  getCurrent: vi.fn(async () => null),
+}));
+
 function createWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return function Wrapper({ children }: PropsWithChildren) {
@@ -54,7 +69,8 @@ function createWrapper() {
 }
 
 describe("AuthProvider", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await i18next.changeLanguage("en");
     vi.clearAllMocks();
     mockClient = fakeClient;
     mockIsTauriRuntime = false;
@@ -90,13 +106,13 @@ describe("AuthProvider", () => {
     expect(result.current.user).toBe(session.user);
   });
 
-  it("surfaces a getSession() error via the error state", async () => {
+  it("surfaces a getSession() error via the error state, never the raw message", async () => {
     getSessionMock.mockResolvedValue({ data: { session: null }, error: new Error("boom") });
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.status).toBe("ready"));
 
-    expect(result.current.error).toBe("boom");
+    expect(result.current.error).toBe(i18next.t("auth.errors.default"));
   });
 
   it("updates the session when the Supabase client reports an auth state change", async () => {
@@ -146,16 +162,16 @@ describe("AuthProvider", () => {
       await waitFor(() => expect(result.current.status).toBe("ready"));
 
       await expect(result.current.signInWithProvider("google")).rejects.toThrow();
-      await waitFor(() => expect(result.current.error).toBeTruthy());
+      await waitFor(() => expect(result.current.error).toBe(i18next.t("auth.errors.invalidOAuthUrl")));
     });
 
-    it("sets the error state and rethrows when Supabase returns an OAuth error", async () => {
+    it("sets the error state and rethrows when Supabase returns an OAuth error, never the raw message", async () => {
       signInWithOAuthMock.mockResolvedValue({ data: {}, error: new Error("oauth failed") });
       const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
       await waitFor(() => expect(result.current.status).toBe("ready"));
 
       await expect(result.current.signInWithProvider("google")).rejects.toBeTruthy();
-      await waitFor(() => expect(result.current.error).toBe("oauth failed"));
+      await waitFor(() => expect(result.current.error).toBe(i18next.t("auth.errors.default")));
     });
   });
 
@@ -250,13 +266,13 @@ describe("AuthProvider", () => {
       expect(signOutMock).not.toHaveBeenCalled();
     });
 
-    it("sets the error state and rethrows on failure", async () => {
+    it("sets the error state and rethrows on failure, never the raw message", async () => {
       signOutMock.mockResolvedValue({ error: new Error("network error") });
       const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
       await waitFor(() => expect(result.current.status).toBe("ready"));
 
       await expect(result.current.signOut()).rejects.toBeTruthy();
-      await waitFor(() => expect(result.current.error).toBe("network error"));
+      await waitFor(() => expect(result.current.error).toBe(i18next.t("auth.errors.default")));
     });
   });
 

@@ -10,6 +10,7 @@ import {
 } from "@tauri-apps/plugin-fs";
 import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
+import { UserFacingError } from "@/shared/lib/user-facing-error";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 
 const BACKUP_DIR = "backups";
@@ -85,7 +86,7 @@ function assertReasonableSize(raw: string): void {
   // .length is UTF-16 code units, not bytes, but it's a close enough proxy
   // for this sanity check — real backups are orders of magnitude smaller.
   if (raw.length > MAX_BACKUP_FILE_BYTES) {
-    throw new Error(i18n.t("backup.fileTooLarge"));
+    throw new UserFacingError(i18n.t("backup.fileTooLarge"));
   }
 }
 
@@ -124,14 +125,14 @@ export const maintenanceService = {
 
   async undoLastRestore(): Promise<void> {
     const raw = await readNamedBackup(PRE_RESTORE_FILE);
-    if (!raw) throw new Error(i18n.t("backup.noPreRestoreSnapshot"));
+    if (!raw) throw new UserFacingError(i18n.t("backup.noPreRestoreSnapshot"));
     assertReasonableSize(raw);
     await portableData.import(JSON.parse(raw));
   },
 
   async restoreAutomaticBackup(): Promise<void> {
     const raw = await readLatestAutoBackup();
-    if (!raw) throw new Error(i18n.t("backup.noAutomaticBackup"));
+    if (!raw) throw new UserFacingError(i18n.t("backup.noAutomaticBackup"));
     assertReasonableSize(raw);
     await maintenanceService.restoreFromBackup(JSON.parse(raw));
   },

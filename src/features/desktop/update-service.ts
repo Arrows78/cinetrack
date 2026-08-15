@@ -3,6 +3,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import i18n from "@/i18n";
 import { isTauriApp } from "@/shared/lib/platform";
+import { UserFacingError } from "@/shared/lib/user-facing-error";
 
 export const updateService = {
   async checkAndInstall(onProgress?: (downloaded: number, total?: number) => void): Promise<string> {
@@ -16,7 +17,7 @@ export const updateService = {
     const update = await check().catch((error: unknown) => {
       const detail = error instanceof Error ? error.message : String(error);
       if (/endpoint|pubkey|public key|configuration/i.test(detail)) {
-        throw new Error(i18n.t("desktop.updateChannelNotConfigured"));
+        throw new UserFacingError(i18n.t("desktop.updateChannelNotConfigured"));
       }
       throw error;
     });

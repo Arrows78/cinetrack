@@ -7,6 +7,10 @@ import { Panel } from "@/components/ui/panel";
 import { toast } from "@/components/ui/use-toast";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { maintenanceService } from "@/features/backup/maintenance-service";
+import { logger } from "@/features/diagnostics/logger";
+import { displayMessage, UserFacingError } from "@/shared/lib/user-facing-error";
+
+const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 export function BackupTools() {
   const { t } = useTranslation();
@@ -42,7 +46,7 @@ export function BackupTools() {
     setIsImporting(true);
     try {
       if (file.size > MAX_BACKUP_FILE_BYTES) {
-        throw new Error(t("backup.fileTooLarge"));
+        throw new UserFacingError(t("backup.fileTooLarge"));
       }
       const parsed: unknown = JSON.parse(await file.text());
       await maintenanceService.restoreFromBackup(parsed);
@@ -50,7 +54,8 @@ export function BackupTools() {
     } catch (error) {
       setIsImporting(false);
       setPendingImportFile(null);
-      toast({ description: error instanceof Error ? error.message : t("backup.importFailed"), variant: "error" });
+      logger.warn(`Backup import failed: ${errorMessage(error)}`);
+      toast({ description: displayMessage(error, t("backup.importFailed")), variant: "error" });
     }
   };
 
@@ -62,7 +67,8 @@ export function BackupTools() {
     } catch (error) {
       setIsUndoing(false);
       setPendingUndo(false);
-      toast({ description: error instanceof Error ? error.message : t("backup.undoFailed"), variant: "error" });
+      logger.warn(`Undo last import failed: ${errorMessage(error)}`);
+      toast({ description: displayMessage(error, t("backup.undoFailed")), variant: "error" });
     }
   };
 

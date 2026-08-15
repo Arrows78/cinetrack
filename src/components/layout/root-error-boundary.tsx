@@ -3,6 +3,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import i18n from "@/i18n";
 import { EmptyState } from "@/components/states/empty-state";
 import { Button } from "@/components/ui/button";
+import { logger } from "@/features/diagnostics/logger";
 
 interface RootErrorBoundaryState {
   error: Error | null;
@@ -21,7 +22,7 @@ export class RootErrorBoundary extends Component<PropsWithChildren, RootErrorBou
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("Unhandled render error:", error, info.componentStack);
+    logger.error(`Unhandled render error: ${error.message}\n${info.componentStack}`);
   }
 
   private handleReload = () => {
@@ -46,7 +47,9 @@ export class RootErrorBoundary extends Component<PropsWithChildren, RootErrorBou
             </Button>
             <details className="max-w-xl text-left text-xs text-muted-foreground">
               <summary className="cursor-pointer text-center">{i18n.t("errors.technicalDetails")}</summary>
-              <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">{error.message}</p>
+              <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">
+                {i18n.t("errors.technicalDetailsLogged")}
+              </p>
             </details>
           </div>
         }

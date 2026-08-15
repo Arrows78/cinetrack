@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTokenVault } from "@/features/desktop/use-token-vault";
 import { tokenVault } from "@/features/desktop/token-vault";
+import { logger } from "@/features/diagnostics/logger";
 import { isTauriApp } from "@/shared/lib/platform";
+import { displayMessage } from "@/shared/lib/user-facing-error";
 
 export function TokenGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -30,7 +32,8 @@ export function TokenGate({ children }: { children: ReactNode }) {
       else if (!(await tokenVault.unlock(password))) setMessage(t("tokenGate.noToken"));
       if (!isTauriApp() && bearer.trim()) window.location.reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("tokenGate.openFailed"));
+      logger.warn(`Token gate submit failed: ${error instanceof Error ? error.message : String(error)}`);
+      setMessage(displayMessage(error, t("tokenGate.openFailed")));
     } finally {
       setBusy(false);
     }

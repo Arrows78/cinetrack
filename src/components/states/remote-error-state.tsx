@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
+import { logger } from "@/features/diagnostics/logger";
 
 interface RemoteErrorStateProps {
   error: unknown;
@@ -20,6 +22,10 @@ export function RemoteErrorState({ error, onRetry }: RemoteErrorStateProps) {
   const message = errorMessage(error);
   const authenticationError = /TMDB\s+(401|403)|token/i.test(message);
   const localDatabaseError = /sql\.(execute|select|load|close) not allowed|plugin:sql|sqlite|database/i.test(message);
+
+  useEffect(() => {
+    if (message) logger.error(`Remote error state: ${message}`);
+  }, [message]);
 
   return (
     <EmptyState
@@ -41,7 +47,9 @@ export function RemoteErrorState({ error, onRetry }: RemoteErrorStateProps) {
           {message ? (
             <details className="max-w-xl text-left text-xs text-muted-foreground">
               <summary className="cursor-pointer text-center">{t("errors.technicalDetails")}</summary>
-              <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">{message}</p>
+              <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">
+                {t("errors.technicalDetailsLogged")}
+              </p>
             </details>
           ) : null}
         </div>

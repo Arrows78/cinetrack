@@ -17,6 +17,8 @@ import {
   type EmailOtpRequest,
   type EmailOtpVerification,
 } from "@/features/auth/auth-context";
+import { logger } from "@/features/diagnostics/logger";
+import { UserFacingError } from "@/shared/lib/user-facing-error";
 
 interface AuthErrorLike {
   code?: string;
@@ -54,10 +56,11 @@ function getErrorMessage(error: unknown): string {
     return i18next.t("auth.errors.badCodeVerifier");
   }
 
-  if (error instanceof Error && error.message) {
+  if (error instanceof UserFacingError) {
     return error.message;
   }
 
+  logger.warn(`Auth error: ${error instanceof Error ? error.message : String(error)}`);
   return i18next.t("auth.errors.default");
 }
 
@@ -213,7 +216,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = getAuthClient();
 
     if (!client) {
-      throw new Error(i18next.t("auth.errors.notConfigured"));
+      throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
     }
 
     setError(null);
@@ -234,13 +237,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       if (desktop) {
         if (!data.url) {
-          throw new Error(i18next.t("auth.errors.noOAuthUrl"));
+          throw new UserFacingError(i18next.t("auth.errors.noOAuthUrl"));
         }
 
         const authorizationUrl = new URL(data.url);
 
         if (authorizationUrl.protocol !== "https:") {
-          throw new Error(i18next.t("auth.errors.invalidOAuthUrl"));
+          throw new UserFacingError(i18next.t("auth.errors.invalidOAuthUrl"));
         }
 
         const { openUrl } = await import("@tauri-apps/plugin-opener");
@@ -256,7 +259,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = getAuthClient();
 
     if (!client) {
-      throw new Error(i18next.t("auth.errors.notConfigured"));
+      throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
     }
 
     setError(null);
@@ -288,7 +291,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = getAuthClient();
 
     if (!client) {
-      throw new Error(i18next.t("auth.errors.notConfigured"));
+      throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
     }
 
     setError(null);

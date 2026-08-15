@@ -621,6 +621,7 @@
     "tmdbConnection": "La connexion à TMDB a échoué. Vérifiez votre connexion, VPN ou proxy.",
     "retry": "Réessayer",
     "technicalDetails": "Détails techniques",
+    "technicalDetailsLogged": "Cette erreur a été enregistrée dans le journal local (Paramètres → Diagnostic).",
     "tmdbTimeout": "TMDB n'a pas répondu dans le délai imparti ({{seconds}}s) pour {{path}}.",
     "tmdbUnreachable": "Impossible de joindre TMDB depuis la WebView : {{details}}",
     "tmdbNoToken": "Aucun token TMDB disponible. Déverrouillez le coffre TMDB dans les paramètres.",

@@ -621,6 +621,7 @@
     "tmdbConnection": "The connection to TMDB failed. Check your network, VPN, or proxy.",
     "retry": "Try again",
     "technicalDetails": "Technical details",
+    "technicalDetailsLogged": "This error was written to the local log (Settings → Diagnostics).",
     "tmdbTimeout": "TMDB did not respond within {{seconds}}s for {{path}}.",
     "tmdbUnreachable": "Unable to reach TMDB from the WebView: {{details}}",
     "tmdbNoToken": "No TMDB token available. Unlock the TMDB vault in Settings.",

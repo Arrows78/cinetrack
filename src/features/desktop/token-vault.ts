@@ -4,6 +4,7 @@ import { Stronghold, type Client } from "@tauri-apps/plugin-stronghold";
 import i18n from "@/i18n";
 import { env } from "@/shared/config/env";
 import { isTauriApp } from "@/shared/lib/platform";
+import { UserFacingError } from "@/shared/lib/user-facing-error";
 
 const CLIENT_NAME = "cinetrack";
 const TOKEN_KEY = "tmdb-bearer-token";
@@ -126,7 +127,7 @@ export const tokenVault = {
     const clean = value.trim();
 
     if (!clean) {
-      throw new Error(i18n.t("desktop.tmdbTokenEmpty"));
+      throw new UserFacingError(i18n.t("desktop.tmdbTokenEmpty"));
     }
 
     if (!isTauriApp()) {

@@ -18,10 +18,12 @@ describe("RemoteErrorState", () => {
     expect(screen.getByText(/unable to open local data/i)).toBeInTheDocument();
   });
 
-  it("falls back to a connection message and exposes technical details", () => {
+  it("falls back to a connection message and points to the local log instead of the raw error", () => {
     render(<RemoteErrorState error={new Error("socket hang up")} onRetry={() => {}} />);
     expect(screen.getByText(/connection to TMDB failed/i)).toBeInTheDocument();
-    expect(screen.getByText("socket hang up")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Technical details"));
+    expect(screen.getByText(/written to the local log/i)).toBeInTheDocument();
+    expect(screen.queryByText("socket hang up")).not.toBeInTheDocument();
   });
 
   it("calls onRetry when the retry button is clicked", () => {

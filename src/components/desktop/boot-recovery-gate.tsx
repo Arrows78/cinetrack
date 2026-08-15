@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { DatabaseBackup, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { EmptyState } from "@/components/states/empty-state";
 import { LoadingScreen } from "@/components/states/loading-screen";
 import { maintenanceService } from "@/features/backup/maintenance-service";
+import { logger } from "@/features/diagnostics/logger";
 import { useBootRecovery } from "@/features/desktop/use-boot-recovery";
 import { isTauriApp } from "@/shared/lib/platform";
 
@@ -21,6 +22,12 @@ export function BootRecoveryGate({ children }: { children: ReactNode }) {
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (query.data?.originalError) {
+      logger.error(`Boot recovery: ${query.data.originalError} (quarantined: ${query.data.quarantinedPath ?? "n/a"})`);
+    }
+  }, [query.data?.originalError, query.data?.quarantinedPath]);
+
   if (!isTauriApp()) return children;
   if (query.isLoading) return <LoadingScreen label={t("bootRecovery.checking")} />;
   if (!query.data?.recovered || dismissed) return children;
@@ -35,9 +42,7 @@ export function BootRecoveryGate({ children }: { children: ReactNode }) {
       setIsRestoring(false);
       // Never the raw error here — this is the first screen an already
       // distressed user (corrupt database) sees, and the underlying error
-      // can be a raw ApiCommandError. The full detail is still available
-      // below, behind the same "technical details" disclosure used for
-      // query.data.originalError.
+      // can be a raw ApiCommandError.
       setRestoreError(t("bootRecovery.restoreFailed"));
     }
   };
@@ -68,9 +73,7 @@ export function BootRecoveryGate({ children }: { children: ReactNode }) {
               <details className="mt-2 max-w-md text-left text-xs text-muted-foreground">
                 <summary className="cursor-pointer text-center">{t("errors.technicalDetails")}</summary>
                 <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">
-                  {query.data.originalError}
-                  <br />
-                  {query.data.quarantinedPath}
+                  {t("errors.technicalDetailsLogged")}
                 </p>
               </details>
             </div>
