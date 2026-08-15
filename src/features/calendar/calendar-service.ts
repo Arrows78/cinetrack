@@ -1,12 +1,19 @@
 import { addDays, endOfDay, isAfter, isBefore, parseISO, startOfDay } from "date-fns";
 import { mediaRepository } from "@/features/media/media-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
+import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import type { CalendarEntry, Season } from "@/types/media";
 
-// Bounds the fan-out of per-series TMDB detail/season requests a single
-// calendar build makes. Exported so the page can tell the user when their
-// tracked list is actually longer than what got included.
-export const MAX_TRACKED_SERIES_IN_CALENDAR = 20;
+// How many per-series TMDB detail/season lookups run at once. Every tracked
+// series is included (no arbitrary cap) — this only bounds how many of
+// those lookups are in flight simultaneously, so a large tracked list takes
+// longer rather than firing hundreds of requests at once.
+const SERIES_LOOKUP_CONCURRENCY = 5;
+// Upcoming movies beyond this many pages are not worth paginating into for
+// a 60-day window — TMDB's "upcoming" list is sorted by release date, so
+// this is a safety ceiling, not the normal stopping condition (build() stops
+// as soon as a page's results move past `to`).
+const MAX_UPCOMING_MOVIE_PAGES = 10;
 
 export const calendarService = {
   async build(days = 60): Promise<CalendarEntry[]> {
@@ -14,27 +21,40 @@ export const calendarService = {
     const to = endOfDay(addDays(from, days));
     const entries: CalendarEntry[] = [];
 
-    const upcoming = await mediaRepository
-      .getUpcomingMovies(1)
-      .catch(() => ({ page: 1, totalPages: 0, totalResults: 0, results: [] }));
-    for (const movie of upcoming.results) {
-      if (!movie.releaseDate) continue;
-      const date = parseISO(movie.releaseDate);
-      if (isBefore(date, from) || isAfter(date, to)) continue;
-      entries.push({
-        id: `movie-${movie.id}-${movie.releaseDate}`,
-        mediaId: movie.id,
-        mediaType: "movie",
-        title: movie.title,
-        date: movie.releaseDate,
-        kind: "movie-release",
-        posterPath: movie.posterPath,
-      });
+    for (let page = 1; page <= MAX_UPCOMING_MOVIE_PAGES; page += 1) {
+      const upcoming = await mediaRepository
+        .getUpcomingMovies(page)
+        .catch(() => ({ page, totalPages: page, totalResults: 0, results: [] }));
+      if (!upcoming.results.length) break;
+
+      let sawEntryPastWindow = false;
+      for (const movie of upcoming.results) {
+        if (!movie.releaseDate) continue;
+        const date = parseISO(movie.releaseDate);
+        if (isAfter(date, to)) {
+          sawEntryPastWindow = true;
+          continue;
+        }
+        if (isBefore(date, from)) continue;
+        entries.push({
+          id: `movie-${movie.id}-${movie.releaseDate}`,
+          mediaId: movie.id,
+          mediaType: "movie",
+          title: movie.title,
+          date: movie.releaseDate,
+          kind: "movie-release",
+          posterPath: movie.posterPath,
+        });
+      }
+      // TMDB's upcoming list is sorted by ascending release date, so once a
+      // page starts returning dates past the window, later pages only would too.
+      if (sawEntryPastWindow || page >= upcoming.totalPages) break;
     }
 
-    const tracked = (await progressRepository.listTrackedSeries()).slice(0, MAX_TRACKED_SERIES_IN_CALENDAR);
-    await Promise.all(
-      tracked.map(async (trackedSeries) => {
+    const tracked = await progressRepository.listTrackedSeries();
+    await mapWithConcurrency(
+      tracked,
+      async (trackedSeries) => {
         try {
           const details = await mediaRepository.getSeriesDetails(trackedSeries.seriesId);
           const recentSeasonNumbers = details.seasons
@@ -68,7 +88,8 @@ export const calendarService = {
         } catch {
           // A single unavailable series must not hide the rest of the calendar.
         }
-      })
+      },
+      SERIES_LOOKUP_CONCURRENCY
     );
 
     return entries.sort((left, right) => left.date.localeCompare(right.date));

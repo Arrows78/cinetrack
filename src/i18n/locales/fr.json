@@ -324,7 +324,6 @@
   "calendar": {
     "title": "Calendrier",
     "description": "Sorties de films et prochains épisodes des séries suivies.",
-    "truncatedNotice": "Épisodes affichés pour {{shown}} de vos {{total}} séries suivies.",
     "loading": "Chargement du calendrier…",
     "newEpisode": "Nouvel épisode",
     "theatricalRelease": "Sortie cinéma",

@@ -139,4 +139,42 @@ describe("calendarService", () => {
 
     expect(entries.map((entry) => entry.mediaId)).toEqual([2, 3, 1]);
   });
+
+  it("paginates past the first page of upcoming movies while results stay inside the window", async () => {
+    mocks.getUpcomingMovies.mockImplementation((page: number) => {
+      if (page === 1) return Promise.resolve({ page: 1, totalPages: 2, totalResults: 2, results: [movie(1, day(1))] });
+      if (page === 2) return Promise.resolve({ page: 2, totalPages: 2, totalResults: 2, results: [movie(2, day(2))] });
+      return Promise.resolve(emptyPage);
+    });
+
+    const entries = await calendarService.build(60);
+
+    expect(mocks.getUpcomingMovies).toHaveBeenCalledTimes(2);
+    expect(entries.map((entry) => entry.mediaId)).toEqual([1, 2]);
+  });
+
+  it("stops paginating once a page's results move past the window", async () => {
+    mocks.getUpcomingMovies.mockImplementation((page: number) => {
+      if (page === 1) return Promise.resolve({ page: 1, totalPages: 3, totalResults: 3, results: [movie(1, day(90))] });
+      return Promise.resolve({ page, totalPages: 3, totalResults: 3, results: [movie(page + 10, day(1))] });
+    });
+
+    await calendarService.build(60);
+
+    expect(mocks.getUpcomingMovies).toHaveBeenCalledTimes(1);
+  });
+
+  it("includes every tracked series, not just a capped first batch", async () => {
+    const trackedCount = 25;
+    mocks.listTrackedSeries.mockResolvedValue(
+      Array.from({ length: trackedCount }, (_, index) => ({ seriesId: index + 1 }))
+    );
+    mocks.getSeriesDetails.mockImplementation((seriesId: number) => Promise.resolve(series(seriesId, [1])));
+    mocks.getSeasonDetails.mockResolvedValue(season(1, [{ id: 1, airDate: day(1) }]));
+
+    const entries = await calendarService.build(60);
+
+    expect(mocks.getSeriesDetails).toHaveBeenCalledTimes(trackedCount);
+    expect(entries).toHaveLength(trackedCount);
+  });
 });

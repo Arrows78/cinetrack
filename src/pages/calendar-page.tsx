@@ -3,8 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { CalendarDays, Film, Tv } from "lucide-react";
 import { useEffect } from "react";
 import { useCalendar } from "@/features/calendar/use-calendar";
-import { MAX_TRACKED_SERIES_IN_CALENDAR } from "@/features/calendar/calendar-service";
-import { useTrackedSeries } from "@/features/progress/use-progress";
 import type { CalendarEntry } from "@/types/media";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop/notification-service";
@@ -20,8 +18,6 @@ export function CalendarPage() {
   const { t } = useTranslation();
   const calendar = useCalendar();
   const preferences = usePreferences();
-  const trackedSeries = useTrackedSeries();
-  const truncatedSeriesCount = (trackedSeries.data?.length ?? 0) - MAX_TRACKED_SERIES_IN_CALENDAR;
   useEffect(() => {
     if (calendar.data && preferences.data) void notificationService.notifyDue(calendar.data, preferences.data);
   }, [calendar.data, preferences.data]);
@@ -38,14 +34,6 @@ export function CalendarPage() {
           <h1 className="font-display text-3xl font-bold">{t("calendar.title")}</h1>
         </div>
         <p className="mt-1 text-muted-foreground">{t("calendar.description")}</p>
-        {truncatedSeriesCount > 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t("calendar.truncatedNotice", {
-              shown: MAX_TRACKED_SERIES_IN_CALENDAR,
-              total: trackedSeries.data?.length ?? 0,
-            })}
-          </p>
-        ) : null}
       </header>
       {calendar.isLoading ? <LoadingState label={t("calendar.loading")} /> : null}
       {calendar.isError ? <RemoteErrorState error={calendar.error} onRetry={() => void calendar.refetch()} /> : null}
@@ -54,7 +42,11 @@ export function CalendarPage() {
           <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
           <div className="mt-3 grid gap-2">
             {entries?.map((entry) => (
-              <Tile asChild key={entry.id} className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-foreground/[0.04]">
+              <Tile
+                asChild
+                key={entry.id}
+                className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-foreground/[0.04]"
+              >
                 <Link
                   to={
                     entry.kind === "episode" && entry.seasonNumber !== undefined

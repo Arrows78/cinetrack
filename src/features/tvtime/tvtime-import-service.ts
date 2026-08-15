@@ -2,6 +2,7 @@ import i18n from "@/i18n";
 import { mediaRepository } from "@/features/media/media-repository";
 import { watchlistRepository } from "@/features/watchlist/watchlist-repository";
 import { newUuid } from "@/shared/lib/id";
+import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import type { MediaSummary, Series } from "@/types/media";
 import { emptyExport, normalizeExport, parseTvTimeFile, type TvTimeEpisode, type TvTimeExport } from "./parse-export";
 import { tvTimeImportRepository, type ImportableEpisode } from "./tvtime-import-repository";
@@ -56,18 +57,6 @@ const pickBestMatch = (results: MediaSummary[], title: string, year: number | nu
   }
   return titled[0] ?? null;
 };
-
-async function mapWithConcurrency<T>(items: T[], worker: (item: T) => Promise<void>): Promise<void> {
-  let cursor = 0;
-  const runners = Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor;
-      cursor += 1;
-      await worker(items[index]!);
-    }
-  });
-  await Promise.all(runners);
-}
 
 async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): Promise<Series | null> {
   const tvdbId = tvdbIdsByName.get(name.toLowerCase());
@@ -165,73 +154,85 @@ export async function importTvTimeExport(
 
   const seriesEntries = [...episodesBySeries.entries()];
   let seriesDone = 0;
-  await mapWithConcurrency(seriesEntries, async ([seriesName, episodes]) => {
-    onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
-    try {
-      await importOneSeries(seriesName, episodes, data, summary);
-    } catch {
-      summary.unmatched.push(seriesName);
-    }
-    seriesDone += 1;
-    onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
-  });
+  await mapWithConcurrency(
+    seriesEntries,
+    async ([seriesName, episodes]) => {
+      onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
+      try {
+        await importOneSeries(seriesName, episodes, data, summary);
+      } catch {
+        summary.unmatched.push(seriesName);
+      }
+      seriesDone += 1;
+      onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
+    },
+    CONCURRENCY
+  );
 
   let moviesDone = 0;
-  await mapWithConcurrency(data.movies, async (movie) => {
-    onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
-    try {
-      const page = await mediaRepository.search(movie.title, "movie");
-      const match = pickBestMatch(page.results, movie.title, movie.year);
-      if (!match) {
+  await mapWithConcurrency(
+    data.movies,
+    async (movie) => {
+      onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
+      try {
+        const page = await mediaRepository.search(movie.title, "movie");
+        const match = pickBestMatch(page.results, movie.title, movie.year);
+        if (!match) {
+          summary.unmatched.push(movie.title);
+        } else {
+          const inserted = await tvTimeImportRepository.importMovieSeen({
+            movieId: match.id,
+            title: match.title,
+            posterPath: match.posterPath,
+            backdropPath: match.backdropPath,
+            runtime: movie.runtimeMinutes ?? match.runtime ?? null,
+            watchedAt: movie.watchedAt,
+          });
+          if (inserted) summary.moviesImported += 1;
+        }
+      } catch {
         summary.unmatched.push(movie.title);
-      } else {
-        const inserted = await tvTimeImportRepository.importMovieSeen({
-          movieId: match.id,
-          title: match.title,
-          posterPath: match.posterPath,
-          backdropPath: match.backdropPath,
-          runtime: movie.runtimeMinutes ?? match.runtime ?? null,
-          watchedAt: movie.watchedAt,
-        });
-        if (inserted) summary.moviesImported += 1;
       }
-    } catch {
-      summary.unmatched.push(movie.title);
-    }
-    moviesDone += 1;
-    onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
-  });
+      moviesDone += 1;
+      onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
+    },
+    CONCURRENCY
+  );
 
   let watchlistDone = 0;
-  await mapWithConcurrency(data.watchlist, async (entry) => {
-    onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
-    try {
-      const page = await mediaRepository.search(entry.title, entry.mediaType === "movie" ? "movie" : "series");
-      const match = pickBestMatch(page.results, entry.title, entry.year);
-      if (!match) {
+  await mapWithConcurrency(
+    data.watchlist,
+    async (entry) => {
+      onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
+      try {
+        const page = await mediaRepository.search(entry.title, entry.mediaType === "movie" ? "movie" : "series");
+        const match = pickBestMatch(page.results, entry.title, entry.year);
+        if (!match) {
+          summary.unmatched.push(entry.title);
+        } else {
+          const now = new Date().toISOString();
+          await watchlistRepository.save({
+            id: newUuid(),
+            mediaId: match.id,
+            mediaType: entry.mediaType,
+            title: match.title,
+            posterPath: match.posterPath,
+            backdropPath: match.backdropPath,
+            year: match.year,
+            rating: match.rating,
+            createdAt: now,
+            updatedAt: now,
+          });
+          summary.watchlistImported += 1;
+        }
+      } catch {
         summary.unmatched.push(entry.title);
-      } else {
-        const now = new Date().toISOString();
-        await watchlistRepository.save({
-          id: newUuid(),
-          mediaId: match.id,
-          mediaType: entry.mediaType,
-          title: match.title,
-          posterPath: match.posterPath,
-          backdropPath: match.backdropPath,
-          year: match.year,
-          rating: match.rating,
-          createdAt: now,
-          updatedAt: now,
-        });
-        summary.watchlistImported += 1;
       }
-    } catch {
-      summary.unmatched.push(entry.title);
-    }
-    watchlistDone += 1;
-    onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
-  });
+      watchlistDone += 1;
+      onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
+    },
+    CONCURRENCY
+  );
 
   return summary;
 }

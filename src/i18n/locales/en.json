@@ -324,7 +324,6 @@
   "calendar": {
     "title": "Calendar",
     "description": "Movie releases and upcoming episodes from followed series.",
-    "truncatedNotice": "Showing episodes for {{shown}} of your {{total}} tracked series.",
     "loading": "Loading calendar…",
     "newEpisode": "New episode",
     "theatricalRelease": "Theatrical release",
