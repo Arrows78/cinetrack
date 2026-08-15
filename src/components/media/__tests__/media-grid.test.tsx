@@ -10,16 +10,6 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
 }));
 
-const watchlistHasMock = vi.fn();
-vi.mock("@/features/watchlist/watchlist-repository", () => ({
-  watchlistRepository: {
-    has: (...args: unknown[]) => watchlistHasMock(...args),
-    list: () => Promise.resolve([]),
-    save: vi.fn(),
-    remove: vi.fn(),
-  },
-}));
-
 const isMovieSeenMock = vi.fn();
 vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
@@ -42,7 +32,6 @@ describe("MediaGrid", () => {
   });
 
   beforeEach(() => {
-    watchlistHasMock.mockReset().mockResolvedValue(false);
     isMovieSeenMock.mockReset().mockResolvedValue(false);
   });
 

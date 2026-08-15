@@ -48,7 +48,7 @@ const isoDaysAgo = (days: number) => {
 };
 
 describe("currentStreak / libraryExtras", () => {
-  // Totals (movies/episodes/minutes watched, completed series, watchlist
+  // Totals (movies/episodes/minutes watched, completed series, library
   // completion) and monthly activity are now aggregated in SQL — see
   // src-tauri/src/commands/stats.rs's own test suite for their coverage.
   // What's left as pure, unit-testable TS is genre/rating extraction from
