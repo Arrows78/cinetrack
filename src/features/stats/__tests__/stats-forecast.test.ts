@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { statsRepository } from "../stats-repository";
+import { computeForecast } from "../stats-repository";
 import type { TrackedSeriesItem, ViewingEvent } from "@/types/media";
 
 const tracked = (watched: number, total: number): TrackedSeriesItem => ({
@@ -29,10 +29,10 @@ const episodeEvent = (daysAgo: number, minutes = 50): ViewingEvent => ({
   episodeNumber: daysAgo,
 });
 
-describe("statsRepository._computeForecast", () => {
+describe("computeForecast", () => {
   it("projects the catch-up date from the recent pace", () => {
     const events = [episodeEvent(1), episodeEvent(3), episodeEvent(10), episodeEvent(20)];
-    const forecast = statsRepository._computeForecast([tracked(4, 12)], events);
+    const forecast = computeForecast([tracked(4, 12)], events);
 
     expect(forecast.backlogEpisodes).toBe(8);
     expect(forecast.backlogMinutes).toBe(8 * 50);
@@ -42,13 +42,13 @@ describe("statsRepository._computeForecast", () => {
   });
 
   it("returns no catch-up date without backlog or without pace", () => {
-    expect(statsRepository._computeForecast([tracked(12, 12)], [episodeEvent(2)]).catchUpDate).toBeNull();
-    expect(statsRepository._computeForecast([tracked(2, 12)], [episodeEvent(90)]).catchUpDate).toBeNull();
+    expect(computeForecast([tracked(12, 12)], [episodeEvent(2)]).catchUpDate).toBeNull();
+    expect(computeForecast([tracked(2, 12)], [episodeEvent(90)]).catchUpDate).toBeNull();
   });
 
   it("falls back to a default runtime when events carry none", () => {
     const event = { ...episodeEvent(5), durationMinutes: null };
-    const forecast = statsRepository._computeForecast([tracked(0, 10)], [event]);
+    const forecast = computeForecast([tracked(0, 10)], [event]);
     expect(forecast.backlogMinutes).toBe(10 * 40);
   });
 });

@@ -46,7 +46,8 @@ interface StatsOverviewDto {
 
 const localDay = (timestamp: string) => format(parseISO(timestamp), "yyyy-MM-dd");
 
-function currentStreak(events: ViewingEvent[]): number {
+/** Exported for tests only — not part of the statsRepository public surface. */
+export function currentStreak(events: ViewingEvent[]): number {
   const days = new Set(
     events.filter((event) => event.eventType !== "unwatched").map((event) => localDay(event.watchedAt))
   );
@@ -60,8 +61,12 @@ function currentStreak(events: ViewingEvent[]): number {
   return streak;
 }
 
-/** The two figures only the (much smaller, slower-growing) library table can answer. */
-function libraryExtras(library: LibraryItem[]): {
+/**
+ * The two figures only the (much smaller, slower-growing) library table can
+ * answer. Exported for tests only — not part of the statsRepository public
+ * surface.
+ */
+export function libraryExtras(library: LibraryItem[]): {
   favouriteGenres: Array<{ name: string; count: number }>;
   averageUserRating: number | null;
 } {
@@ -79,7 +84,12 @@ function libraryExtras(library: LibraryItem[]): {
   };
 }
 
-function computeForecast(tracked: TrackedSeriesItem[], events: ViewingEvent[], now = new Date()): WatchForecast {
+/** Exported for tests only — not part of the statsRepository public surface. */
+export function computeForecast(
+  tracked: TrackedSeriesItem[],
+  events: ViewingEvent[],
+  now = new Date()
+): WatchForecast {
   const episodeEvents = events.filter(
     (event) =>
       (event.eventType === "watched" || event.eventType === "rewatched") &&
@@ -186,7 +196,4 @@ export const statsRepository = {
     const [tracked, events] = await Promise.all([progressRepository.listTrackedSeries(), loadRecentEvents()]);
     return computeForecast(tracked, events);
   },
-  _currentStreak: currentStreak,
-  _libraryExtras: libraryExtras,
-  _computeForecast: computeForecast,
 };

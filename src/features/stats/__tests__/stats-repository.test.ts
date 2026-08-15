@@ -7,7 +7,7 @@
 // to the whole file since environment is a per-file pragma, but the first
 // describe block's plain data assertions don't depend on jsdom either way.
 import { describe, expect, it, vi } from "vitest";
-import { statsRepository } from "../stats-repository";
+import { currentStreak, libraryExtras } from "../stats-repository";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeMedia } from "@/shared/test-utils";
 import type { LibraryItem, ViewingEvent } from "@/types/media";
@@ -47,7 +47,7 @@ const isoDaysAgo = (days: number) => {
   return date.toISOString();
 };
 
-describe("statsRepository", () => {
+describe("currentStreak / libraryExtras", () => {
   // Totals (movies/episodes/minutes watched, completed series, watchlist
   // completion) and monthly activity are now aggregated in SQL — see
   // src-tauri/src/commands/stats.rs's own test suite for their coverage.
@@ -72,7 +72,7 @@ describe("statsRepository", () => {
       },
     ] as unknown as LibraryItem[];
 
-    expect(statsRepository._libraryExtras(library).favouriteGenres[0]).toEqual({ name: "Drama", count: 1 });
+    expect(libraryExtras(library).favouriteGenres[0]).toEqual({ name: "Drama", count: 1 });
   });
 
   it("computes the average user rating across rated items", () => {
@@ -82,8 +82,8 @@ describe("statsRepository", () => {
       libraryItem({ mediaId: 3, mediaType: "series", status: "completed", userRating: null }),
     ];
 
-    expect(statsRepository._libraryExtras(library).averageUserRating).toBe(7);
-    expect(statsRepository._libraryExtras([]).averageUserRating).toBeNull();
+    expect(libraryExtras(library).averageUserRating).toBe(7);
+    expect(libraryExtras([]).averageUserRating).toBeNull();
   });
 
   it("counts a streak of consecutive watching days and breaks it on a gap", () => {
@@ -92,16 +92,16 @@ describe("statsRepository", () => {
       event({ watchedAt: isoDaysAgo(1) }),
       event({ watchedAt: isoDaysAgo(2) }),
     ];
-    expect(statsRepository._currentStreak(consecutive)).toBe(3);
+    expect(currentStreak(consecutive)).toBe(3);
 
     const withGap = [event({ watchedAt: isoDaysAgo(0) }), event({ watchedAt: isoDaysAgo(2) })];
-    expect(statsRepository._currentStreak(withGap)).toBe(1);
+    expect(currentStreak(withGap)).toBe(1);
 
-    expect(statsRepository._currentStreak([])).toBe(0);
+    expect(currentStreak([])).toBe(0);
   });
 
   it("ignores unwatched events in the streak", () => {
-    expect(statsRepository._currentStreak([event({ eventType: "unwatched" })])).toBe(0);
+    expect(currentStreak([event({ eventType: "unwatched" })])).toBe(0);
   });
 });
 
