@@ -1,21 +1,26 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ListPlus, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, ListPlus, Trash2, UserPlus } from "lucide-react";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FilterBar } from "@/components/media/filter-bar";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { toast } from "@/components/ui/use-toast";
 import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { authConfig } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCustomListItems, useCustomLists, useProfiles } from "@/features/collections/use-collections";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { staggerDelayMs } from "@/shared/utils/animation";
-import type { MediaType } from "@/types/media";
+import type { MediaType, UserProfile } from "@/types/media";
 
 function ListContents({ listId }: { listId: string }) {
   const { t } = useTranslation();
@@ -78,6 +83,7 @@ function ListContents({ listId }: { listId: string }) {
 export function CollectionsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const profiles = useProfiles();
   const lists = useCustomLists();
   const preferences = usePreferences();
@@ -88,7 +94,40 @@ export function CollectionsPage() {
   const [listSort, setListSort] = useState<"recent" | "name">("recent");
   const [listActionError, setListActionError] = useState<string | null>(null);
 
+  const [newProfileName, setNewProfileName] = useState("");
+  const [pendingDeleteProfile, setPendingDeleteProfile] = useState<UserProfile | null>(null);
+  const [switchingProfileId, setSwitchingProfileId] = useState<string | null>(null);
+
   const currentProfile = profiles.data?.find((profile) => profile.id === preferences.data?.activeProfileId);
+
+  // Only ever offered when auth isn't required (see the comment on the
+  // read-only branch below for why a free switcher is otherwise a security
+  // hole) — and set_active_profile itself refuses to switch into a profile
+  // linked to a Supabase account without proof of that account, so this
+  // can't be used to hop into somebody else's claimed profile even if auth
+  // gets turned on later without this UI being hidden in time.
+  const switchToProfile = async (profileId: string) => {
+    setSwitchingProfileId(profileId);
+    try {
+      await preferencesRepository.setActiveProfile(profileId);
+      queryClient.removeQueries({ queryKey: ["local"] });
+    } catch {
+      toast({ description: t("collections.switchProfileFailed"), variant: "error" });
+    } finally {
+      setSwitchingProfileId(null);
+    }
+  };
+
+  const createProfile = async () => {
+    const name = newProfileName.trim();
+    if (!name) return;
+    try {
+      await profiles.create(name);
+      setNewProfileName("");
+    } catch {
+      toast({ description: t("collections.createProfileFailed"), variant: "error" });
+    }
+  };
 
   const sortedLists = useMemo(() => {
     const base = lists.data ?? [];
@@ -106,28 +145,90 @@ export function CollectionsPage() {
       <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
         <Panel>
           <h2 className="font-semibold">{t("collections.localProfiles")}</h2>
-          {/*
-            Access to a profile is derived from who is signed in (see
-            ProfileGate) — this used to be a free switcher letting anyone
-            click into any local profile, which would have let a signed-in
-            account read another account's data. Only the current profile
-            is shown here now, read-only.
-          */}
           {profiles.isError ? (
             <div className="mt-4">
               <RemoteErrorState error={profiles.error} onRetry={() => void profiles.refetch()} />
             </div>
-          ) : currentProfile ? (
-            <Tile className="mt-4 px-3 py-3">
-              <p className="font-medium">
-                {currentProfile.id === "default" ? t("collections.defaultProfileName") : currentProfile.name}
-              </p>
-              {user?.email ? (
-                <p className="mt-1 text-sm text-muted-foreground">{t("collections.linkedTo", { email: user.email })}</p>
-              ) : null}
-            </Tile>
+          ) : authConfig.required ? (
+            // Access to a profile is derived from who is signed in (see
+            // ProfileGate) — this used to be a free switcher letting anyone
+            // click into any local profile, which would have let a signed-in
+            // account read another account's data. Only the current profile
+            // is shown here now, read-only, whenever sign-in is required.
+            currentProfile ? (
+              <Tile className="mt-4 px-3 py-3">
+                <p className="font-medium">
+                  {currentProfile.id === "default" ? t("collections.defaultProfileName") : currentProfile.name}
+                </p>
+                {user?.email ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("collections.linkedTo", { email: user.email })}
+                  </p>
+                ) : null}
+              </Tile>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">{t("collections.noProfile")}</p>
+            )
           ) : (
-            <p className="mt-4 text-sm text-muted-foreground">{t("collections.noProfile")}</p>
+            // No Supabase account is in play at all offline — set_active_profile
+            // (src-tauri/src/commands/preferences.rs) only ever rejects a switch
+            // into a profile that's linked to one, so free switching between
+            // these local-only profiles is safe.
+            <div className="mt-4 space-y-3">
+              {(profiles.data ?? []).map((profile) => {
+                const isActive = profile.id === preferences.data?.activeProfileId;
+                const label = profile.id === "default" ? t("collections.defaultProfileName") : profile.name;
+                return (
+                  <Tile key={profile.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium disabled:cursor-default"
+                      disabled={isActive || switchingProfileId !== null}
+                      onClick={() => void switchToProfile(profile.id)}
+                    >
+                      <span className="truncate">{label}</span>
+                      {isActive ? (
+                        <Badge variant="success" className="gap-1">
+                          <Check className="size-3" aria-hidden="true" />
+                          {t("collections.activeProfile")}
+                        </Badge>
+                      ) : null}
+                    </button>
+                    {profile.id !== "default" ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={t("collections.deleteProfile", { name: label })}
+                        disabled={switchingProfileId !== null}
+                        onClick={() => setPendingDeleteProfile(profile)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    ) : null}
+                  </Tile>
+                );
+              })}
+              <div className="flex gap-2">
+                <Input
+                  size="sm"
+                  value={newProfileName}
+                  onChange={(event) => setNewProfileName(event.target.value)}
+                  placeholder={t("collections.newProfileNamePlaceholder")}
+                  aria-label={t("collections.newProfileNameLabel")}
+                  maxLength={60}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!newProfileName.trim() || profiles.isSaving}
+                  onClick={() => void createProfile()}
+                >
+                  <UserPlus className="mr-2 size-4" />
+                  {t("collections.createProfile")}
+                </Button>
+              </div>
+            </div>
           )}
         </Panel>
 
@@ -243,6 +344,26 @@ export function CollectionsPage() {
           setListActionError(null);
           void lists.remove(pendingDeleteList.id).catch(() => setListActionError(t("desktop.operationFailed")));
           setPendingDeleteList(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingDeleteProfile !== null}
+        onOpenChange={(open) => !open && setPendingDeleteProfile(null)}
+        title={t("collections.deleteProfileConfirmTitle", {
+          name:
+            pendingDeleteProfile?.id === "default" ? t("collections.defaultProfileName") : pendingDeleteProfile?.name,
+        })}
+        description={t("collections.deleteProfileConfirmDescription")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => {
+          if (!pendingDeleteProfile) return;
+          const target = pendingDeleteProfile;
+          setPendingDeleteProfile(null);
+          void profiles.remove(target.id).catch(() => {
+            toast({ description: t("collections.deleteProfileFailed"), variant: "error" });
+          });
         }}
       />
     </div>
