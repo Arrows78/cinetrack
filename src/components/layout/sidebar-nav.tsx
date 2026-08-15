@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { PanelLeftClose, PanelLeft, Moon, Sun, LogOut } from "lucide-react";
-import { useNavigationItems, type NavigationItem } from "@/shared/constants/navigation";
+import { navigationSections, useNavigationItems, type NavigationItem } from "@/shared/constants/navigation";
 import { cn } from "@/shared/lib/cn";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -57,10 +57,53 @@ function NavLink({ item, collapsed, isActive, onNavigate }: NavLinkProps) {
   );
 }
 
+interface NavSectionProps {
+  labelKey?: string;
+  items: NavigationItem[];
+  collapsed: boolean;
+  pathname: string;
+  onNavigate?: () => void;
+  // Expanded mode leans on the header text for grouping, so a divider would
+  // be redundant there; collapsed mode has no header to read, so a thin
+  // divider takes over as the only grouping signal.
+  showDivider: boolean;
+}
+
+function NavSection({ labelKey, items, collapsed, pathname, onNavigate, showDivider }: NavSectionProps) {
+  const { t } = useTranslation();
+  if (!items.length) return null;
+
+  return (
+    <div>
+      {showDivider && <Separator className={cn("mb-2 opacity-30", collapsed && "mx-auto w-8")} />}
+      {!collapsed && labelKey && (
+        <p className="mb-1.5 px-3 text-overline uppercase text-muted-foreground">{t(labelKey)}</p>
+      )}
+      <nav className="space-y-0.5">
+        {items.map((item) => (
+          <NavLink
+            key={item.to}
+            item={item}
+            collapsed={collapsed}
+            isActive={pathname === item.to || pathname.startsWith(`${item.to}/`)}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
 const themeOptions = [
   { value: "dark" as const, icon: Moon, labelKey: "sidebar.theme.dark" },
   { value: "light" as const, icon: Sun, labelKey: "sidebar.theme.light" },
 ];
+
+// Shared surface recipe for the footer's two grouped blocks (theme switcher,
+// account card) — same bordered-panel treatment used by both so the footer
+// reads as one consistent "account" region rather than two unrelated bits
+// bolted underneath the nav.
+const FOOTER_SURFACE_CLASS = "rounded-2xl border border-black/[0.07] dark:border-white/5 bg-foreground/5";
 
 function getInitials(name: string | null): string {
   if (!name) return "U";
@@ -81,8 +124,12 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
   const activeTheme = preferences?.theme ?? "dark";
   const userName = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? null;
 
-  const mainItems = navigationItems.filter((item) => item.category === "main");
-  const settingsItems = navigationItems.filter((item) => item.category === "settings");
+  const groupedSections = navigationSections.map((section) => ({
+    ...section,
+    items: navigationItems.filter((item) => item.category === section.category),
+  }));
+  const topSections = groupedSections.filter((section) => section.category !== "account");
+  const accountSection = groupedSections.find((section) => section.category === "account");
 
   return (
     <div className={cn("flex h-full flex-col", collapsed ? "px-2 py-4" : "px-4 py-5")}>
@@ -129,41 +176,41 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
         </Button>
       )}
 
-      {/* Navigation — flex-1 distributes space, settings pinned to bottom */}
-      <div className="flex-1 min-h-0 flex flex-col justify-between">
-        <nav className="space-y-0.5">
-          {mainItems.map((item) => (
-            <NavLink
-              key={item.to}
-              item={item}
+      {/* Navigation — flex-1 distributes space, account section pinned to bottom */}
+      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto">
+        <div className={cn("space-y-4", collapsed && "space-y-2")}>
+          {topSections.map((section, index) => (
+            <NavSection
+              key={section.category}
+              labelKey={section.labelKey}
+              items={section.items}
               collapsed={collapsed}
-              isActive={pathname === item.to || pathname.startsWith(`${item.to}/`)}
+              pathname={pathname}
               onNavigate={onNavigate}
+              showDivider={collapsed && index > 0}
             />
           ))}
-        </nav>
+        </div>
 
-        <nav className="space-y-0.5">
-          <Separator className="mb-2 opacity-30" />
-          {settingsItems.map((item) => (
-            <NavLink
-              key={item.to}
-              item={item}
-              collapsed={collapsed}
-              isActive={pathname === item.to || pathname.startsWith(`${item.to}/`)}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </nav>
+        {accountSection && (
+          <NavSection
+            labelKey={accountSection.labelKey}
+            items={accountSection.items}
+            collapsed={collapsed}
+            pathname={pathname}
+            onNavigate={onNavigate}
+            showDivider
+          />
+        )}
       </div>
 
-      {/* Footer */}
+      {/* Footer — theme switcher and account card, grouped as one region */}
       <div className="pt-4 space-y-3">
         <Separator className="opacity-30" />
 
         {/* Theme switcher */}
         {!collapsed ? (
-          <div className="flex gap-1 rounded-2xl bg-foreground/5 p-1">
+          <div className={cn(FOOTER_SURFACE_CLASS, "flex gap-1 p-1")}>
             {themeOptions.map(({ value, icon: Icon, labelKey }) => (
               <button
                 key={value}
@@ -183,7 +230,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
             ))}
           </div>
         ) : (
-          <div className="flex flex-col gap-1">
+          <div className={cn(FOOTER_SURFACE_CLASS, "flex flex-col gap-1 p-1")}>
             {themeOptions.map(({ value, icon: Icon, labelKey }) => (
               <Button
                 key={value}
@@ -204,17 +251,12 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
           </div>
         )}
 
-        {/* User card */}
-        <div
-          className={cn(
-            "flex items-center gap-3 rounded-2xl border border-black/[0.07] dark:border-white/5 bg-foreground/5 p-2.5",
-            collapsed && "justify-center p-2"
-          )}
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary ring-2 ring-primary/10">
-            {getInitials(userName)}
-          </div>
-          {!collapsed && (
+        {/* Account card */}
+        {!collapsed ? (
+          <div className={cn(FOOTER_SURFACE_CLASS, "flex items-center gap-3 p-2.5")}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
+              {getInitials(userName)}
+            </div>
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium">
                 {user?.user_metadata?.full_name ??
@@ -222,24 +264,46 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                   user?.email ??
                   t("sidebar.defaultAccount")}
               </p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="truncate text-overline uppercase text-muted-foreground">
                 {user?.user_metadata?.role ?? t("sidebar.defaultMember")}
               </p>
             </div>
-          )}
-          <button
-            type="button"
-            aria-label={t("sidebar.signOut")}
-            title={t("sidebar.signOut")}
-            onClick={() => void signOut()}
-            className={cn(
-              "flex shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground",
-              collapsed ? "h-8 w-8" : "h-8 w-8"
-            )}
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
+            <button
+              type="button"
+              aria-label={t("sidebar.signOut")}
+              title={t("sidebar.signOut")}
+              onClick={() => void signOut()}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className={cn(FOOTER_SURFACE_CLASS, "space-y-1 p-1")}>
+            <div
+              className="flex h-9 w-full items-center justify-center rounded-xl"
+              title={
+                user?.user_metadata?.full_name ??
+                user?.user_metadata?.name ??
+                user?.email ??
+                t("sidebar.defaultAccount")
+              }
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
+                {getInitials(userName)}
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label={t("sidebar.signOut")}
+              title={t("sidebar.signOut")}
+              onClick={() => void signOut()}
+              className="flex h-8 w-full items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -537,6 +537,12 @@
     "theme": {
       "dark": "Sombre",
       "light": "Clair"
+    },
+    "sections": {
+      "discover": "Découvrir",
+      "library": "Ma bibliothèque",
+      "insights": "Aperçus",
+      "account": "Compte"
     }
   },
   "auth": {

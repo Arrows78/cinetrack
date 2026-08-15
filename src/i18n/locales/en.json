@@ -537,6 +537,12 @@
     "theme": {
       "dark": "Dark",
       "light": "Light"
+    },
+    "sections": {
+      "discover": "Discover",
+      "library": "My Library",
+      "insights": "Insights",
+      "account": "Account"
     }
   },
   "auth": {
