@@ -32,15 +32,16 @@ export const Sheet = DialogPrimitive.Root;
 export const SheetTrigger = DialogPrimitive.Trigger;
 export const SheetClose = DialogPrimitive.Close;
 
+// Shared with ConfirmDialog's own Radix overlay — the two aren't the same
+// component (ConfirmDialog doesn't use SheetOverlay), so this constant is
+// the seam that keeps their backdrop treatment from drifting apart.
+export const DIALOG_OVERLAY_CLASSNAME = "fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm";
+
 export const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn("fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm", className)}
-    {...props}
-  />
+  <DialogPrimitive.Overlay ref={ref} className={cn(DIALOG_OVERLAY_CLASSNAME, className)} {...props} />
 ));
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 

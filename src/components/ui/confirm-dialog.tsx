@@ -2,6 +2,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 import { Button } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button";
+import { DIALOG_OVERLAY_CLASSNAME } from "@/components/ui/sheet";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -35,7 +36,7 @@ export function ConfirmDialog({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm" />
+        <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
         <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-modal w-[90%] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-shell border border-border bg-background/95 p-5 shadow-2xl focus:outline-none">
           <DialogPrimitive.Title className="font-display text-lg font-bold">{title}</DialogPrimitive.Title>
           {description ? (
