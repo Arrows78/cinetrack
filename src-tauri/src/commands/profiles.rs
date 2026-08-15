@@ -148,37 +148,15 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError
 
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
-    let list_rows: Vec<(String,)> = sqlx::query_as("SELECT uuid FROM custom_lists WHERE profile_id = $1")
-        .bind(profile_id)
-        .fetch_all(&mut *tx)
-        .await
-        .map_err(ApiError::from)?;
-    for (list_uuid,) in &list_rows {
-        sqlx::query("DELETE FROM custom_list_items WHERE list_id = $1")
-            .bind(list_uuid)
-            .execute(&mut *tx)
-            .await
-            .map_err(ApiError::from)?;
-    }
-
-    for table in [
-        "custom_lists",
-        "watchlist_items",
-        "seen_movies",
-        "episode_progress",
-        "tracked_series",
-        "library_items",
-        "viewing_events",
-        "availability_alerts",
-        "activity_log",
-    ] {
-        // `table` iterates a fixed Rust array literal above, never user input.
-        sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table} WHERE profile_id = $1")))
-            .bind(profile_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(ApiError::from)?;
-    }
+    // No manual per-table cleanup needed here: every profile-scoped table
+    // declares `profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON
+    // DELETE CASCADE` (see migrations.rs), the pool is opened with
+    // `.foreign_keys(true)` (see database::init_pool), and `custom_list_items`
+    // cascades a second level down through `custom_lists`'s own FK — SQLite
+    // cascades multiple levels in one statement. Deleting the profile row
+    // alone is enough; `removing_a_profile_clears_its_scoped_data` below
+    // asserts this holds for every one of those tables, `custom_list_items`
+    // included.
     sqlx::query("DELETE FROM profiles WHERE uuid = $1")
         .bind(profile_id)
         .execute(&mut *tx)
