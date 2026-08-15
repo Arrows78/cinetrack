@@ -41,6 +41,20 @@ export function getAuthRedirectUrl(): string {
   return "http://localhost:1420/";
 }
 
+// persistSession defaults Supabase's storage to plain window.localStorage —
+// unencrypted, unlike the TMDB bearer token in token-vault.ts, which sits
+// behind a Stronghold vault requiring a password. Evaluated moving this
+// session behind Stronghold too and deliberately didn't: autoRefreshToken
+// needs to read it silently on every launch to restore the signed-in state,
+// and Stronghold requires an unlocked, password-derived vault — putting the
+// session behind it means either a password prompt on every launch (a much
+// worse UX than the risk it defends against) or a second secret (an
+// auto-unlock key in the OS keychain) to bootstrap Stronghold silently,
+// which is a real feature in its own right, not a mechanical move. Given
+// this app's CSP (script-src 'self', no eval, no third-party JS) already
+// closes off the common classic-XSS path that this would defend against,
+// the risk doesn't currently justify that cost. Revisit if the CSP ever
+// loosens or this app starts rendering untrusted HTML/scripts.
 export function getAuthClient(): SupabaseClient | null {
   if (!authConfig.configured || !supabaseUrl || !supabasePublishableKey) {
     return null;

@@ -638,6 +638,7 @@
     "title": "Import from TV Time",
     "description": "Bring your TV Time history into CineTrack: watched episodes and movies with their original dates, plus your to-watch list.",
     "hint": "Select the CSV files from your TV Time GDPR export (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
+    "rewatchNotice": "If a title was watched more than once in your TV Time history, only the earliest watch date is imported — rewatches from before this import aren't preserved.",
     "selectFiles": "Select CSV files",
     "tooManyFiles": "Select at most {{max}} files.",
     "fileTooLarge": "\"{{name}}\" is too large to import.",

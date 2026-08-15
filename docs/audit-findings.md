@@ -1,6 +1,6 @@
 # Audit findings — patterns, pitfalls, and open items
 
-This document is the code-grounded companion to the "Data integrity & authorization" and "Non-negotiables" sections of `CLAUDE.md`. It grew out of a full product/technical/security/UX audit run on 2026-08-15 (architecture, code quality, performance, security, database, tests, DevOps, product, UI/design, accessibility, responsive, edge cases). The audit report itself isn't checked into this repo; this document keeps the durable, generalizable part of it — the patterns to apply to *new* code — plus a short living checklist of what from that audit is still unfixed. Prune a pattern once it's second nature, and delete a checklist item once it's fixed; don't let this file grow into a permanent archive.
+This document is the code-grounded companion to the "Data integrity & authorization" and "Non-negotiables" sections of `CLAUDE.md`. It grew out of a full product/technical/security/UX audit run on 2026-08-15 (architecture, code quality, performance, security, database, tests, DevOps, product, UI/design, accessibility, responsive, edge cases). The audit report itself isn't checked into this repo; this document keeps the durable, generalizable part of it — the patterns to apply to _new_ code — plus a short living checklist of what from that audit is still unfixed. Prune a pattern once it's second nature, and delete a checklist item once it's fixed; don't let this file grow into a permanent archive.
 
 ## Patterns to apply going forward
 
@@ -60,18 +60,24 @@ Anything that can't be undone — delete, restore, undo-an-import — routes thr
 
 ### Startup database failures must degrade, not crash
 
-A migration failure at launch (corrupt file, a stale `PRAGMA user_version` left over from an unrelated database, an incomplete manual restore) is not the same class of problem as a disk-full or permissions error — it's recoverable, because a *fresh* database at the same path migrates cleanly. Don't let it take the whole process down with no way for the user to respond.
+A migration failure at launch (corrupt file, a stale `PRAGMA user_version` left over from an unrelated database, an incomplete manual restore) is not the same class of problem as a disk-full or permissions error — it's recoverable, because a _fresh_ database at the same path migrates cleanly. Don't let it take the whole process down with no way for the user to respond.
 
-- **Reference implementation:** `database::init_pool` (`src-tauri/src/database/mod.rs`) — on a migration failure it closes the pool, quarantines the broken file (renamed aside, never deleted) alongside its WAL/SHM sidecars, and retries once against a brand new file. Only a *second* failure (something no database-level recovery can route around) still propagates an error. The frontend reads the outcome via `get_boot_recovery` and `BootRecoveryGate` (`src/components/desktop/boot-recovery-gate.tsx`), offering to restore the last automatic backup before the rest of the app — including auth/profile resolution, which also depends on this pool — ever mounts.
-- **Rule:** a Rust command layer that owns a resource the whole app depends on (the SQLite pool, here) should have a real recovery path for the failure modes that have one, and surface *that* state to the frontend explicitly — not just bubble every failure up to a process-level panic.
+- **Reference implementation:** `database::init_pool` (`src-tauri/src/database/mod.rs`) — on a migration failure it closes the pool, quarantines the broken file (renamed aside, never deleted) alongside its WAL/SHM sidecars, and retries once against a brand new file. Only a _second_ failure (something no database-level recovery can route around) still propagates an error. The frontend reads the outcome via `get_boot_recovery` and `BootRecoveryGate` (`src/components/desktop/boot-recovery-gate.tsx`), offering to restore the last automatic backup before the rest of the app — including auth/profile resolution, which also depends on this pool — ever mounts.
+- **Rule:** a Rust command layer that owns a resource the whole app depends on (the SQLite pool, here) should have a real recovery path for the failure modes that have one, and surface _that_ state to the frontend explicitly — not just bubble every failure up to a process-level panic.
+
+### Evaluated and deliberately left alone
+
+Not bugs — findings that were looked at and had a real tradeoff, decided against for now. Listed so a future pass doesn't re-flag them without the context of why.
+
+- **Supabase session in plain `localStorage` vs. the TMDB token's Stronghold vault:** see the comment on `getAuthClient` in `src/features/auth/auth-client.ts`. Moving the session behind Stronghold would mean either a password prompt on every launch or a second bootstrap secret (OS keychain) to unlock it silently — a real feature, not a mechanical change — and this app's CSP already closes off the classic-XSS path that would matter here. Revisit if the CSP loosens or the app starts rendering untrusted HTML.
+- **No remote error/crash reporting in production** (only the local rotating log in `src/features/diagnostics/logger.ts`): would add a real network dependency and telemetry to an app whose only other one is TMDB — a privacy/product decision, explicitly deferred rather than picking a vendor unprompted.
 
 ## Open items from the 2026-08-15 audit (not yet fixed)
 
 Remove a line once it's actually fixed — don't let this turn into a second bug tracker.
 
-- [ ] No remote error/crash reporting in production (only the local rotating log in `src/features/diagnostics/logger.ts`).
 - [ ] No end-to-end test suite; 20/21 pages in `src/pages/` have no tests at all.
-- [ ] No toast/snackbar component exists anywhere in `src/components/ui` — a z-index token is reserved for it (`src/pages/design-system/catalog-data.ts`) but nothing was ever built, which is the direct cause of inconsistent post-action feedback across the app.
-- [ ] Multiple local profiles are promoted in the README but have no reachable UI to create one when `VITE_AUTH_REQUIRED=false` (the default) — either build the offline profile-management screen or drop the claim until it's built.
 - [ ] No release/rollback strategy formalized yet (no signed builds, no published GitHub Release) — acceptable pre-1.0 per `.github/SECURITY.md`, but to revisit before a wider distribution.
-- [ ] Watchlist, library status, and the `favourite` flag never reconcile with each other (no "already seen" badge on the watchlist, no way to view just favourites).
+- [ ] `export_impl`/`import_impl` in `src-tauri/src/commands/backup.rs` (~250-280 lines duplicated per table) — a generic per-table abstraction would keep the cost from growing linearly with each new personal-data type. Deferred as its own dedicated pass rather than bundled into a larger batch, given the correctness stakes of the backup/restore path.
+- [ ] `list_library`/`list_watchlist` (`library.rs`, `watchlist.rs`) have no pagination or grid virtualization — fine today, will degrade with a large library. Same reasoning: deferred as its own pass.
+- [ ] TV Time import (`parse-export.ts`'s `normalizeExport`) keeps only the earliest watch date per title, silently dropping rewatches recorded in the source export — now disclosed in the import UI (`tvtimeImport.rewatchNotice`), but not preserved; `viewing_events.event_type` already supports `'rewatched'` at the schema level if this is ever worth doing properly.
