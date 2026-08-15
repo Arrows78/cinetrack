@@ -12,6 +12,7 @@ import type {
   PersonSummary,
 } from "@/types/media";
 import { yearFromDate } from "@/shared/utils/format";
+import { GENRES } from "@/shared/constants/discover";
 import type {
   TmdbCastDto,
   TmdbEpisodeDto,
@@ -24,6 +25,17 @@ import type {
   TmdbVideoDto,
   TmdbPersonDto,
 } from "./types";
+
+// TMDB's list/discover/trending/search endpoints only return `genre_ids`
+// (no genre names) — only the single-title detail endpoint returns the
+// full `genres` array. Without this fallback, any title added to the
+// library from a grid card (rather than its detail page) is stored with
+// no genres at all, which silently breaks anything that reads
+// LibraryItem.genres (favourite-genre stats, the personalized home rail).
+const resolveGenreNames = (ids: number[] | undefined, list: ReadonlyArray<{ id: number; label: string }>): string[] =>
+  (ids ?? [])
+    .map((id) => list.find((genre) => genre.id === id)?.label)
+    .filter((label): label is string => Boolean(label));
 
 const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
   (cast ?? [])
@@ -49,7 +61,7 @@ export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   releaseDate: dto.release_date,
   year: yearFromDate(dto.release_date),
   rating: dto.vote_average,
-  genres: dto.genres?.map((genre) => genre.name) ?? [],
+  genres: dto.genres?.map((genre) => genre.name) ?? resolveGenreNames(dto.genre_ids, GENRES.movies),
   genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.production_countries?.map((country) => country.name) ?? [],
   language: dto.spoken_languages?.[0]?.english_name,
@@ -81,7 +93,7 @@ export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
   releaseDate: dto.first_air_date,
   year: yearFromDate(dto.first_air_date),
   rating: dto.vote_average,
-  genres: dto.genres?.map((genre) => genre.name) ?? [],
+  genres: dto.genres?.map((genre) => genre.name) ?? resolveGenreNames(dto.genre_ids, GENRES.series),
   genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.origin_country ?? [],
   language: dto.languages?.[0],

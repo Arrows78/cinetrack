@@ -52,6 +52,18 @@ describe("mapMovieDto", () => {
     expect(mapMovieDto(movieDto()).genreIds).toEqual([]);
   });
 
+  it("resolves genre names from genre_ids when TMDB only returned ids (list/discover/trending endpoints)", () => {
+    expect(mapMovieDto(movieDto({ genre_ids: [18, 53] })).genres).toEqual(["Drama", "Thriller"]);
+  });
+
+  it("prefers the full genres array over genre_ids when both are present", () => {
+    expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }], genre_ids: [53] })).genres).toEqual(["Drame"]);
+  });
+
+  it("drops unknown genre ids instead of producing an empty label", () => {
+    expect(mapMovieDto(movieDto({ genre_ids: [999999] })).genres).toEqual([]);
+  });
+
   it("sorts cast by billing order and caps it at 12", () => {
     const cast: TmdbCastDto[] = Array.from({ length: 15 }, (_, index) => ({
       id: index,
@@ -116,6 +128,10 @@ describe("mapSeriesDto", () => {
     );
     expect(mapSeriesDto(tvDto()).numberOfSeasons).toBe(0);
     expect(mapSeriesDto(tvDto()).runtime).toBeNull();
+  });
+
+  it("resolves genre names from genre_ids via the series genre list, not the movie one", () => {
+    expect(mapSeriesDto(tvDto({ genre_ids: [10759, 35] })).genres).toEqual(["Action & Adventure", "Comedy"]);
   });
 });
 
