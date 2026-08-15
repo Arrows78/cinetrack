@@ -335,6 +335,9 @@ describe("importTvTimeExport", () => {
         backdropPath: null,
         runtime: 148,
         watchedAt: "2026-01-01T00:00:00.000Z",
+        year: 2010,
+        rating: 9,
+        genres: [],
       });
       expect(summary.moviesImported).toBe(1);
     });

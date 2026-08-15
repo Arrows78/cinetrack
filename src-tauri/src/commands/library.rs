@@ -342,36 +342,100 @@ fn auto_sync_rank(status: LibraryStatus) -> u8 {
     }
 }
 
-/// Called from progress.rs, inside the same transaction as a "vu" toggle,
-/// to keep an *existing* library entry's status roughly in sync with
-/// actual viewing: watching a movie completes it, watching an episode
-/// starts a series, finishing every episode completes it.
+/// Identity + TMDB metadata needed to *create* a library row from a viewing
+/// action (`auto_sync_status_impl`'s create-path) — bundled into one struct
+/// (rather than separate `media_id`/`media_type`/... parameters) to keep
+/// that function's argument count reasonable.
+#[derive(Debug, Clone)]
+pub(crate) struct AutoSyncMedia {
+    pub media_id: i64,
+    pub media_type: MediaType,
+    pub title: String,
+    pub poster_path: Option<String>,
+    pub backdrop_path: Option<String>,
+    pub year: Option<i64>,
+    pub rating: Option<f64>,
+    pub genres: Vec<String>,
+}
+
+/// Called from progress.rs/tvtime.rs, inside the same transaction as a "vu"
+/// toggle, to keep a library entry's status roughly in sync with actual
+/// viewing: watching a movie completes it, watching an episode starts a
+/// series, finishing every episode completes it.
 ///
-/// Deliberately never creates a library entry — adding something to the
-/// library stays a separate, explicit action — and never lowers the rank:
-/// unwatching something, or watching a stray episode of an already
-/// dropped/completed show, must not silently undo a manual status change.
-/// Only an explicit manual edit (`save_library_item`) can move a status
-/// back down.
+/// Creates the library entry if none exists yet (status = `target`,
+/// logging a `LibraryAdd` history entry the same way a manual add does) —
+/// viewing activity is now itself enough to bring a title into the library,
+/// rather than requiring an explicit add first. If an entry already exists,
+/// this never lowers its rank: unwatching something, or watching a stray
+/// episode of an already dropped/completed show, must not silently undo a
+/// manual status change. Only an explicit manual edit (`save_library_item`)
+/// can move an existing status back down.
 pub(crate) async fn auto_sync_status_impl(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    pool: &SqlitePool,
     profile_id: &str,
-    media_id: i64,
-    media_type: MediaType,
     target: LibraryStatus,
     now: &str,
+    media: &AutoSyncMedia,
 ) -> Result<(), ApiError> {
     let current: Option<LibraryRow> = sqlx::query_as(
         "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
     )
     .bind(profile_id)
-    .bind(media_id)
-    .bind(media_type.as_db_str())
+    .bind(media.media_id)
+    .bind(media.media_type.as_db_str())
     .fetch_optional(&mut **tx)
     .await
     .map_err(ApiError::from)?;
 
-    let Some(row) = current else { return Ok(()) };
+    let Some(row) = current else {
+        let is_currently_watching = matches!(target, LibraryStatus::Watching | LibraryStatus::Rewatching);
+        let started_at = is_currently_watching.then(|| now.to_string());
+        let completed_at = (target == LibraryStatus::Completed).then(|| now.to_string());
+        let uuid = new_uuid();
+
+        sqlx::query(
+            "INSERT INTO library_items (
+              uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
+              status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,NULL,NULL,$12,$13,$14,0,$15,$15)",
+        )
+        .bind(&uuid)
+        .bind(profile_id)
+        .bind(media.media_id)
+        .bind(media.media_type.as_db_str())
+        .bind(&media.title)
+        .bind(&media.poster_path)
+        .bind(&media.backdrop_path)
+        .bind(media.year)
+        .bind(media.rating)
+        .bind(serde_json::to_string(&media.genres).unwrap())
+        .bind(target.as_db_str())
+        .bind("[]")
+        .bind(&started_at)
+        .bind(&completed_at)
+        .bind(now)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+
+        let history_item = ViewingHistoryItem {
+            id: new_uuid(),
+            media_id: media.media_id,
+            media_type: media.media_type,
+            title: media.title.clone(),
+            action: HistoryAction::LibraryAdd,
+            timestamp: now.to_string(),
+            season_number: None,
+            episode_number: None,
+            episode_title: None,
+            metadata: Some(json!({ "profileId": profile_id })),
+        };
+        add_history_item_impl(&mut **tx, pool, history_item).await?;
+        return Ok(());
+    };
+
     let current_status = LibraryStatus::from_db_str(&row.status)?;
     if auto_sync_rank(target) <= auto_sync_rank(current_status) {
         return Ok(());
@@ -722,5 +786,102 @@ mod tests {
         let removed = remove_if_planned_impl(&pool, "default", 404, MediaType::Movie).await.unwrap();
 
         assert!(!removed);
+    }
+
+    fn auto_sync_media(media_id: i64, media_type: MediaType) -> AutoSyncMedia {
+        AutoSyncMedia {
+            media_id,
+            media_type,
+            title: "Auto-synced Title".to_string(),
+            poster_path: None,
+            backdrop_path: None,
+            year: Some(2021),
+            rating: Some(8.2),
+            genres: vec!["Sci-Fi".to_string()],
+        }
+    }
+
+    #[tokio::test]
+    async fn auto_sync_creates_an_entry_with_the_target_status_when_none_exists() {
+        let pool = migrated_pool().await;
+        let mut tx = pool.begin().await.unwrap();
+
+        auto_sync_status_impl(
+            &mut tx,
+            &pool,
+            "default",
+            LibraryStatus::Completed,
+            "2026-01-01T00:00:00.000Z",
+            &auto_sync_media(42, MediaType::Movie),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+
+        let item = get_impl(&pool, "default", 42, MediaType::Movie).await.unwrap().unwrap();
+        assert_eq!(item.status, LibraryStatus::Completed);
+        assert_eq!(item.title, "Auto-synced Title");
+        assert_eq!(item.completed_at.as_deref(), Some("2026-01-01T00:00:00.000Z"));
+
+        let history = list_history_impl(&pool, 50).await.unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].action, HistoryAction::LibraryAdd);
+    }
+
+    #[tokio::test]
+    async fn auto_sync_create_path_sets_started_at_for_a_watching_target() {
+        let pool = migrated_pool().await;
+        let mut tx = pool.begin().await.unwrap();
+
+        auto_sync_status_impl(
+            &mut tx,
+            &pool,
+            "default",
+            LibraryStatus::Watching,
+            "2026-01-01T00:00:00.000Z",
+            &auto_sync_media(43, MediaType::Series),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+
+        let item = get_impl(&pool, "default", 43, MediaType::Series).await.unwrap().unwrap();
+        assert_eq!(item.status, LibraryStatus::Watching);
+        assert_eq!(item.started_at.as_deref(), Some("2026-01-01T00:00:00.000Z"));
+        assert_eq!(item.completed_at, None);
+    }
+
+    #[tokio::test]
+    async fn auto_sync_does_not_recreate_or_relog_once_an_entry_exists() {
+        let pool = migrated_pool().await;
+        let mut tx = pool.begin().await.unwrap();
+        auto_sync_status_impl(
+            &mut tx,
+            &pool,
+            "default",
+            LibraryStatus::Watching,
+            "2026-01-01T00:00:00.000Z",
+            &auto_sync_media(44, MediaType::Movie),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+
+        // Same target again (idempotent) — must not touch the row or log again.
+        let mut tx = pool.begin().await.unwrap();
+        auto_sync_status_impl(
+            &mut tx,
+            &pool,
+            "default",
+            LibraryStatus::Watching,
+            "2026-01-01T00:00:01.000Z",
+            &auto_sync_media(44, MediaType::Movie),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+
+        let history = list_history_impl(&pool, 50).await.unwrap();
+        assert_eq!(history.len(), 1);
     }
 }

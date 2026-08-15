@@ -6,7 +6,7 @@ use sqlx::SqlitePool;
 use tauri::State;
 
 use super::history::{add_history_item_impl, HistoryAction, ViewingHistoryItem};
-use super::library::{auto_sync_status_impl, LibraryStatus};
+use super::library::{auto_sync_status_impl, AutoSyncMedia, LibraryStatus};
 use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid};
 use crate::error::ApiError;
@@ -20,6 +20,10 @@ pub struct MovieInput {
     pub poster_path: Option<String>,
     pub backdrop_path: Option<String>,
     pub runtime: Option<i64>,
+    pub year: Option<i64>,
+    pub rating: Option<f64>,
+    #[serde(default)]
+    pub genres: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -50,6 +54,10 @@ pub struct SeriesInput {
     pub backdrop_path: Option<String>,
     pub runtime: Option<i64>,
     pub number_of_episodes: Option<i64>,
+    pub year: Option<i64>,
+    pub rating: Option<f64>,
+    #[serde(default)]
+    pub genres: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,7 +197,7 @@ pub(crate) async fn toggle_movie_seen_impl(
         id: new_uuid(),
         media_id: movie.id,
         media_type: MediaType::Movie,
-        title: movie.title,
+        title: movie.title.clone(),
         action: if watched { HistoryAction::MovieWatched } else { HistoryAction::MovieUnwatched },
         timestamp: watched_at.to_string(),
         season_number: None,
@@ -200,7 +208,17 @@ pub(crate) async fn toggle_movie_seen_impl(
     add_history_item_impl(&mut *tx, pool, history_item).await?;
 
     if watched {
-        auto_sync_status_impl(&mut tx, profile_id, movie.id, MediaType::Movie, LibraryStatus::Completed, watched_at).await?;
+        let media = AutoSyncMedia {
+            media_id: movie.id,
+            media_type: MediaType::Movie,
+            title: movie.title.clone(),
+            poster_path: movie.poster_path.clone(),
+            backdrop_path: movie.backdrop_path.clone(),
+            year: movie.year,
+            rating: movie.rating,
+            genres: movie.genres.clone(),
+        };
+        auto_sync_status_impl(&mut tx, pool, profile_id, LibraryStatus::Completed, watched_at, &media).await?;
     }
 
     tx.commit().await.map_err(ApiError::from)?;
@@ -379,17 +397,36 @@ pub(crate) async fn apply_episodes_and_log_impl(
     .map_err(ApiError::from)?;
 
     // Auto-sync toward Watching/Completed only — never toward a "lower"
-    // status, and never for a series with no library entry yet (see
-    // auto_sync_status_impl's own doc comment for the full rule).
-    let auto_sync_target = if total_episodes > 0 && watched_episodes >= total_episodes {
-        Some(LibraryStatus::Completed)
-    } else if watched_episodes >= 1 {
-        Some(LibraryStatus::Watching)
-    } else {
-        None
-    };
-    if let Some(target) = auto_sync_target {
-        auto_sync_status_impl(&mut tx, profile_id, series.id, MediaType::Series, target, watched_at).await?;
+    // status (see auto_sync_status_impl's own doc comment for the full
+    // rule) — and only on a watch, never an unwatch: this block recomputes
+    // from the live watched-count regardless of which action triggered it,
+    // so without this guard, un-marking one episode of an otherwise fully
+    // (or partially) watched series could push an existing status *up*
+    // (e.g. Planned -> Watching) purely as a side effect of removing
+    // progress. Uses `series.number_of_episodes` directly (not the
+    // `total_episodes` local, which falls back to `watched_episodes` for
+    // the tracked_series rollup above) so a series with an unknown TMDB
+    // episode count can still register as "Watching" but never falsely
+    // "Completed" from a single episode.
+    if watched {
+        let auto_sync_target = match series.number_of_episodes {
+            Some(total) if total > 0 && watched_episodes >= total => Some(LibraryStatus::Completed),
+            _ if watched_episodes >= 1 => Some(LibraryStatus::Watching),
+            _ => None,
+        };
+        if let Some(target) = auto_sync_target {
+            let media = AutoSyncMedia {
+                media_id: series.id,
+                media_type: MediaType::Series,
+                title: series.title.clone(),
+                poster_path: series.poster_path.clone(),
+                backdrop_path: series.backdrop_path.clone(),
+                year: series.year,
+                rating: series.rating,
+                genres: series.genres.clone(),
+            };
+            auto_sync_status_impl(&mut tx, pool, profile_id, target, watched_at, &media).await?;
+        }
     }
 
     if let Some(history) = history {
@@ -505,7 +542,16 @@ mod tests {
     }
 
     fn movie(id: i64) -> MovieInput {
-        MovieInput { id, title: "Test Movie".to_string(), poster_path: None, backdrop_path: None, runtime: Some(118) }
+        MovieInput {
+            id,
+            title: "Test Movie".to_string(),
+            poster_path: None,
+            backdrop_path: None,
+            runtime: Some(118),
+            year: Some(2020),
+            rating: Some(7.5),
+            genres: vec!["Drama".to_string()],
+        }
     }
 
     fn series(id: i64, number_of_episodes: Option<i64>) -> SeriesInput {
@@ -516,6 +562,9 @@ mod tests {
             backdrop_path: None,
             runtime: None,
             number_of_episodes,
+            year: Some(2019),
+            rating: Some(8.0),
+            genres: vec!["Drama".to_string()],
         }
     }
 
@@ -570,12 +619,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn marking_a_movie_seen_never_creates_a_library_entry() {
+    async fn marking_a_movie_seen_creates_a_library_entry_if_none_exists() {
         let pool = migrated_pool().await;
 
         toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
 
-        assert_eq!(library_status(&pool, 55, "movie").await, None);
+        assert_eq!(library_status(&pool, 55, "movie").await, Some("completed".to_string()));
     }
 
     #[tokio::test]
@@ -614,13 +663,71 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn watching_the_first_episode_with_no_prior_library_entry_creates_one_as_watching() {
+        let pool = migrated_pool().await;
+        let s = series(9, Some(3));
+
+        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        assert_eq!(library_status(&pool, 9, "series").await, Some("watching".to_string()));
+    }
+
+    #[tokio::test]
+    async fn a_series_with_unknown_episode_count_never_auto_completes_from_watched_count_alone() {
+        let pool = migrated_pool().await;
+        // number_of_episodes: None — the old code coalesced this to
+        // watched_episodes itself, so the very first episode watched read
+        // as "100% complete". Confirms the fix: status advances to
+        // Watching, never straight to Completed, regardless of how many
+        // episodes get marked watched.
+        let s = series(9, None);
+
+        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2), episode(3, 3)], true, "2026-01-01T00:00:00.000Z")
+            .await
+            .unwrap();
+
+        assert_eq!(library_status(&pool, 9, "series").await, Some("watching".to_string()));
+    }
+
+    #[tokio::test]
+    async fn unwatching_an_episode_never_auto_advances_an_existing_planned_status() {
+        let pool = migrated_pool().await;
+        let s = series(9, Some(3));
+        // Two episodes already watched via some independent path (seeded
+        // directly, bypassing apply_episodes_impl so this doesn't itself
+        // trigger an auto-sync) while the library entry is "planned".
+        for episode_id in [1, 2] {
+            sqlx::query(
+                "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at)
+                 VALUES ($1, 'default', 9, $2, 1, $2, 1, 'now', 'now', 'now')",
+            )
+            .bind(new_uuid())
+            .bind(episode_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        }
+        seed_library_status(&pool, 9, "series", "planned").await;
+
+        // Unwatching one episode still leaves one watched — under the old
+        // unconditional auto-sync this recomputed target=Watching (rank 1 >
+        // Planned's rank 0) and silently advanced the status from an
+        // unwatch action. It must now stay untouched.
+        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], false, "2026-01-01T00:00:01.000Z").await.unwrap();
+
+        assert_eq!(library_status(&pool, 9, "series").await, Some("planned".to_string()));
+    }
+
+    #[tokio::test]
     async fn unwatching_episodes_never_downgrades_a_completed_library_entry() {
         let pool = migrated_pool().await;
         let s = series(9, Some(2));
+        // Watching both episodes auto-creates the library entry as
+        // "completed" (2/2 watched) — no separate seeding needed.
         apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2)], true, "2026-01-01T00:00:00.000Z")
             .await
             .unwrap();
-        seed_library_status(&pool, 9, "series", "completed").await;
+        assert_eq!(library_status(&pool, 9, "series").await, Some("completed".to_string()));
 
         apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], false, "2026-01-01T00:00:01.000Z").await.unwrap();
 
@@ -771,6 +878,10 @@ mod tests {
     #[tokio::test]
     async fn apply_episodes_does_not_log_history() {
         let pool = migrated_pool().await;
+        // Pre-seed the library entry so watching an episode doesn't also
+        // auto-create one (which would log its own LibraryAdd entry,
+        // unrelated to what this test checks).
+        seed_library_status(&pool, 9, "series", "planned").await;
         let s = series(9, None);
         apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
 
@@ -781,6 +892,9 @@ mod tests {
     #[tokio::test]
     async fn apply_episodes_and_log_impl_writes_the_history_entry_in_the_same_transaction() {
         let pool = migrated_pool().await;
+        // Pre-seed so the auto-create's own LibraryAdd entry doesn't also
+        // land in activity_log and interfere with the single-row fetch below.
+        seed_library_status(&pool, 9, "series", "planned").await;
         let s = series(9, None);
         let history = EpisodeHistoryInput {
             action: HistoryAction::EpisodeWatched,
@@ -809,6 +923,7 @@ mod tests {
     #[tokio::test]
     async fn apply_episodes_and_log_impl_skips_history_when_nothing_changed() {
         let pool = migrated_pool().await;
+        seed_library_status(&pool, 9, "series", "planned").await;
         let s = series(9, None);
         apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
 

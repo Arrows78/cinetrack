@@ -16,6 +16,9 @@ export interface ImportableMovie {
   backdropPath?: string | null;
   runtime?: number | null;
   watchedAt: string;
+  year?: number | null;
+  rating?: number | null;
+  genres?: string[];
 }
 
 // The batch upsert/rollup logic (reusing the same Rust code as the

@@ -1,10 +1,12 @@
 use serde::Deserialize;
 use sqlx::SqlitePool;
 
+use crate::commands::library::{auto_sync_status_impl, AutoSyncMedia, LibraryStatus};
 use crate::commands::macros::profile_scoped_command;
 use crate::commands::progress::{apply_episodes_impl, EpisodeInput, SeriesInput};
 use crate::database::new_uuid;
 use crate::error::ApiError;
+use crate::models::MediaType;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -25,12 +27,20 @@ pub struct ImportableMovie {
     pub backdrop_path: Option<String>,
     pub runtime: Option<i64>,
     pub watched_at: String,
+    pub year: Option<i64>,
+    pub rating: Option<f64>,
+    #[serde(default)]
+    pub genres: Vec<String>,
 }
 
 /// Batch writes for the TV Time import. Unlike the interactive progress
 /// commands this preserves the original watch date of every episode
 /// (per-episode `watched_at` override, see `EpisodeInput`) and does not log
-/// to the activity log — viewing_events carry the history. Reuses
+/// to the activity log — viewing_events carry the history. (A library entry
+/// auto-created as a side effect of this import, via `auto_sync_status_impl`
+/// inside `apply_episodes_and_log_impl`, still logs its own `LibraryAdd`
+/// entry — that's a separate, genuine "added to library" event, not part of
+/// the watch history this comment is about.) Reuses
 /// `apply_episodes_impl` (same upsert/rollup logic as the interactive
 /// episode/season/series toggles) instead of duplicating it. Returns the
 /// number of episodes actually inserted — already-watched ones are skipped,
@@ -102,6 +112,18 @@ async fn import_movie_seen_impl(pool: &SqlitePool, profile_id: &str, movie: Impo
     .await
     .map_err(ApiError::from)?;
 
+    let media = AutoSyncMedia {
+        media_id: movie.movie_id,
+        media_type: MediaType::Movie,
+        title: movie.title.clone(),
+        poster_path: movie.poster_path.clone(),
+        backdrop_path: movie.backdrop_path.clone(),
+        year: movie.year,
+        rating: movie.rating,
+        genres: movie.genres.clone(),
+    };
+    auto_sync_status_impl(&mut tx, pool, profile_id, LibraryStatus::Completed, &movie.watched_at, &media).await?;
+
     tx.commit().await.map_err(ApiError::from)?;
     Ok(true)
 }
@@ -133,6 +155,9 @@ mod tests {
             backdrop_path: None,
             runtime: None,
             number_of_episodes: None,
+            year: Some(2019),
+            rating: Some(8.0),
+            genres: vec!["Drama".to_string()],
         }
     }
 
@@ -178,6 +203,15 @@ mod tests {
     #[tokio::test]
     async fn does_not_log_history_for_series_import() {
         let pool = migrated_pool().await;
+        // Pre-seed the library entry so the import doesn't also auto-create
+        // one (which would log its own unrelated LibraryAdd entry).
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ('lib-9', 'default', 9, 'series', 'Test Show', 'planned', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
         import_series_progress_impl(&pool, "default", series(9), vec![episode(1, 1, "2020-01-01T00:00:00.000Z")])
             .await
             .unwrap();
@@ -208,6 +242,9 @@ mod tests {
             backdrop_path: None,
             runtime: Some(100),
             watched_at: "2020-01-01T00:00:00.000Z".to_string(),
+            year: Some(2020),
+            rating: Some(7.5),
+            genres: vec!["Drama".to_string()],
         }
     }
 
@@ -228,9 +265,53 @@ mod tests {
     #[tokio::test]
     async fn does_not_log_history_for_movie_import() {
         let pool = migrated_pool().await;
+        // Pre-seed the library entry so the import doesn't also auto-create
+        // one (which would log its own unrelated LibraryAdd entry).
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ('lib-1', 'default', 1, 'movie', 'Test Movie', 'planned', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
         import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
 
         let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
         assert_eq!(history_count.0, 0);
+    }
+
+    #[tokio::test]
+    async fn importing_a_watched_movie_creates_a_library_entry_when_none_exists() {
+        let pool = migrated_pool().await;
+
+        import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
+
+        let status: Option<String> =
+            sqlx::query_scalar("SELECT status FROM library_items WHERE media_id = 1 AND media_type = 'movie'")
+                .fetch_optional(&pool)
+                .await
+                .unwrap();
+        assert_eq!(status, Some("completed".to_string()));
+    }
+
+    #[tokio::test]
+    async fn importing_a_watched_movie_advances_an_existing_planned_entry_to_completed() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ('lib-1', 'default', 1, 'movie', 'Test Movie', 'planned', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
+
+        let status: Option<String> =
+            sqlx::query_scalar("SELECT status FROM library_items WHERE media_id = 1 AND media_type = 'movie'")
+                .fetch_optional(&pool)
+                .await
+                .unwrap();
+        assert_eq!(status, Some("completed".to_string()));
     }
 }

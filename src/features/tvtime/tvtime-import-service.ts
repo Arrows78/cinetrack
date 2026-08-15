@@ -213,6 +213,9 @@ export async function importTvTimeExport(
             backdropPath: match.backdropPath,
             runtime: movie.runtimeMinutes ?? match.runtime ?? null,
             watchedAt: movie.watchedAt,
+            year: match.year,
+            rating: match.rating,
+            genres: match.genres,
           });
           if (inserted) summary.moviesImported += 1;
         }
