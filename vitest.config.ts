@@ -65,8 +65,9 @@ export default defineConfig({
         // migrations.integration.test.ts (see also sqlite-adapter.ts) — not
         // just string-shape-checked like migrations.test.ts.
         "src/db/migrations/index.ts": { statements: 95, branches: 75, functions: 95, lines: 95 },
-        // The facade is nearly fully covered since the SQL row-mapping moved
-        // to portable-data-export.ts / portable-data-import.ts.
+        // The facade is nearly fully covered since the SQL row-mapping lives
+        // in Rust (export_impl/import_impl, src-tauri/src/commands/backup.rs)
+        // — this file only validates and orchestrates the invoke() calls.
         "src/features/backup/portable-data.ts": { statements: 90, branches: 60, functions: 95, lines: 90 },
         // Config module read at import time (authConfig/getAuthClient); the
         // OAuth-error-mapping branch inside getAuthClient itself is thin.
@@ -78,8 +79,11 @@ export default defineConfig({
         // already-passing test).
         "src/features/auth/auth-provider.tsx": { statements: 80, branches: 70, functions: 90, lines: 80 },
         "src/features/auth/provider-availability.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
-        // Includes the real-SQLite path for the Supabase-linking methods —
-        // see profile-repository.sql.test.ts.
+        // Mocks invoke() rather than a real SQLite engine (the SQL side is
+        // covered in profiles.rs) — this only tests the invoke() mapping and
+        // the one bit of client-side orchestration this repository keeps
+        // (resetting activeProfileId on profile removal), per its own header
+        // comment. See profile-repository.test.ts.
         "src/features/collections/profile-repository.ts": { statements: 80, branches: 70, functions: 95, lines: 80 },
         // Excludes the real Stronghold vault's native binding surface —
         // mocked in tests, so only the module's own branching is measured.

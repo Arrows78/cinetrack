@@ -4,7 +4,7 @@
 
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -28,7 +28,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 - Filter and sort your watchlist and library by media type, status, date, title, or rating.
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
-- Manage multiple local profiles, each with its own watchlist, library, and history.
+- Manage multiple profiles, each with its own watchlist, library, and history — creating an additional profile requires optional Supabase sign-in (see "Personalise" below); without it, the app runs on a single local-only profile.
 - Import a TV Time GDPR export (watched episodes and movies with their original dates, plus the to-watch list) as a one-time bulk migration.
 
 ### Track TV series
@@ -166,16 +166,21 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 | `pnpm build`         | Checks TypeScript types and creates the frontend production build. |
 | `pnpm preview`       | Serves the Vite production build locally.                          |
 | `pnpm lint`          | Analyses the project with ESLint.                                  |
+| `pnpm lint:fix`      | Analyses the project with ESLint and applies automatic fixes.      |
 | `pnpm format`        | Formats files with Prettier.                                       |
 | `pnpm format:check`  | Checks formatting without writing changes (what CI runs).          |
 | `pnpm test`          | Runs the Vitest test suite.                                        |
+| `pnpm test:watch`    | Runs the Vitest test suite in watch mode.                          |
 | `pnpm test:coverage` | Runs the test suite with a coverage report.                        |
 | `pnpm typecheck`     | Checks TypeScript types without emitting output.                   |
 | `pnpm validate`      | Runs the full chain above plus the Rust checks — see below.        |
+| `pnpm cargo:check`   | Runs `cargo check` on the Rust side.                                |
+| `pnpm cargo:clippy`  | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side.  |
+| `pnpm cargo:test`    | Runs `cargo test` on the Rust side.                                 |
 | `pnpm tauri dev`     | Starts the desktop application in development mode.                |
 | `pnpm tauri build`   | Creates desktop bundles for the current platform.                  |
 
-For the Rust side, run `cargo check --manifest-path src-tauri/Cargo.toml` and `cargo test --manifest-path src-tauri/Cargo.toml` (both also run in CI).
+For the Rust side, use `pnpm cargo:check`, `pnpm cargo:clippy`, and `pnpm cargo:test` (all three also run in CI).
 
 Generated Tauri bundles are written to `src-tauri/target/release/bundle/`.
 
@@ -194,6 +199,7 @@ cinetrack/
 │   │   ├── calendar/            #   Release and episode calendar
 │   │   ├── collections/         #   Profiles and custom lists
 │   │   ├── desktop/             #   Tray/deep-link wiring, updater, notifications, TMDB token vault
+│   │   ├── diagnostics/          #   In-app diagnostic logger
 │   │   ├── history/              #   Local activity timeline
 │   │   ├── library/              #   Unified watch status, ratings, tags
 │   │   ├── media/                #   TMDB client + MediaProvider, search/discovery hooks, image cache
@@ -214,7 +220,7 @@ cinetrack/
 │   ├── capabilities/           # Tauri permissions
 │   ├── src/
 │   │   ├── commands/            # One file per domain: SQL, transactions, cascades, active-profile resolution
-│   │   ├── database/             # Connection pool setup and the single squashed schema migration
+│   │   ├── database/             # Connection pool setup and the schema migrations (squashed initial schema + later fixes)
 │   │   ├── error.rs               # ApiError, the structured error every command returns
 │   │   ├── models.rs              # Shared types (MediaType, ...) used across commands
 │   │   ├── tray.rs                # System tray icon and menu

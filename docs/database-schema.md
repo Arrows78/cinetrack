@@ -4,9 +4,9 @@ The database is local SQLite, embedded in the app via Tauri — no server, every
 
 Every table's primary key is a `uuid TEXT PRIMARY KEY`, generated app-side with `crypto.randomUUID()` (see [`src/shared/lib/id.ts`](../src/shared/lib/id.ts)) — there is no separate internal integer id. Two tables deliberately don't follow this: `preferences` (`key` is already a stable natural primary key) and `availability_snapshots` (a pure cache keyed by `(media_id, media_type, region)`, with no row ever referenced individually).
 
-**13 active tables · 1 migration · 1 database file per machine.**
+**13 active tables · 2 migrations · 1 database file per machine.**
 
-The full DDL lives in [`src/db/migrations/001-initial-schema.ts`](../src/db/migrations/001-initial-schema.ts) (ported verbatim to Rust in [`src-tauri/src/database/migrations.rs`](../src-tauri/src/database/migrations.rs), which is what the desktop app actually runs against — the TypeScript copy backs the test harness). This document is a readable companion to that file, not a replacement for it.
+The full DDL lives in [`src/db/migrations/001-initial-schema.ts`](../src/db/migrations/001-initial-schema.ts) plus a follow-up [`002-availability-alerts-unique.ts`](../src/db/migrations/002-availability-alerts-unique.ts) (ported verbatim to Rust in [`src-tauri/src/database/migrations.rs`](../src-tauri/src/database/migrations.rs), which is what the desktop app actually runs against — the TypeScript copies back the test harness). This document is a readable companion to that file, not a replacement for it.
 
 ## Profiles & preferences
 
@@ -14,7 +14,7 @@ The foundation for everything else: each profile has its own library, history, a
 
 ### `profiles`
 
-A profile = a person using the app. **Every** table below attaches to it via `profile_id` (which points to `profiles.uuid`). The `'default'` profile is created automatically by the migration and can never be deleted. A profile must be **linked to a Supabase account** to be accessible: the first account that signs in automatically claims `'default'` (and its existing data), any following account must create its own profile.
+A profile = a person using the app. **Every** table below attaches to it via `profile_id` (which points to `profiles.uuid`). The `'default'` profile is created automatically by the migration and can never be deleted. A profile must be **linked to a Supabase account** to be accessible: the first account that signs in automatically claims `'default'` (and its existing data), any following account must create its own profile. This is enforced by the app's `ProfileGate` (`src/features/auth/profile-gate.tsx`), not by a SQLite constraint or a check inside the Rust commands themselves — see the "Authorization belongs in the Rust command" rule in `CLAUDE.md`.
 
 | Column                     | Type | Notes                                                                                                                          |
 | -------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -220,7 +220,7 @@ Relations: a list contains `0..n` items.
 | `enabled`                         | BOOL | defaults to true               |
 | `created_at`, `updated_at`        | TEXT | ISO dates                      |
 
-Indexes: `(profile_id, created_at DESC)`, `(enabled, profile_id)`.
+Indexes: `(profile_id, created_at DESC)`, `(enabled, profile_id)`, plus a `UNIQUE(profile_id, media_id, media_type)` index added by migration 9 to stop a profile from ending up with two alerts for the same title.
 
 Relations: a profile creates `0..n` alerts.
 

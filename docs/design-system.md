@@ -82,6 +82,10 @@ Use smaller gaps inside a component, medium gaps between related groups, and lar
 
 Compact mode applies `.compact` to the root and scales rem-based typography and spacing to 90%. Prefer rem-backed utilities and avoid pixel literals that bypass density scaling.
 
+### Responsive breakpoints
+
+CineTrack uses Tailwind's default breakpoints (`sm` 640px, `md` 768px, `lg` 1024px, `xl` 1280px, `2xl` 1536px), but `src-tauri/tauri.conf.json` fixes the window's `minWidth` at 1100px — above `lg`. In the packaged app, `sm:`/`md:`/`lg:` are therefore mechanically always active; only `xl:`/`2xl:` ever produce a real reflow when the window is resized. `AppShell`'s sidebar/mobile-header split (`lg:` in `src/components/layout/app-shell.tsx`) is real code but unreachable in the shipped app — it only shows via `pnpm dev` in a resized browser, the same degraded preview surface that has no SQLite access (see `CLAUDE.md`). Don't add `sm:`/`md:` to product content expecting it to matter in production.
+
 ## Shape and elevation
 
 Radius communicates surface scale and nesting:
@@ -119,7 +123,7 @@ Both the app preference and `prefers-reduced-motion` are honored. CSS motion is 
 
 ## Component model
 
-A component variant should represent repeatable product meaning. Do not add a variant only to avoid writing a local class once.
+A component variant should represent repeatable product meaning. Do not add a variant only to avoid writing a local class once. This section covers the primitives with the most product-facing rules (buttons, form controls, status, overlays) — it is not the full inventory of `src/components/ui` (which also has `Accordion`, `AsyncActionFeedback`, `ConfirmDialog`, `FormField`, `Progress`, `Separator`, `SettingToggle`, `Skeleton`, `Tile`, …). See `/design-system` for the complete, current catalog.
 
 Every documented component should cover:
 

@@ -68,7 +68,7 @@ export const watchlistRepository = {
 
 `invokeCommand()` (`src/shared/lib/invoke.ts`) normalizes every Rust failure into `ApiCommandError { message, status }` — the exact mirror of Rust's `ApiError`. Don't catch and re-stringify IPC errors anywhere else; let this shape flow up to a remote-error state.
 
-Two repositories intentionally break the "thin wrapper" rule and say so in a comment: `stats-repository.ts` (aggregation/streak/forecast math done in TS rather than SQL) and `progress-repository.ts` (orchestrates two IPC calls plus a history write from the client). Both are documented, deliberate exceptions — not a pattern to copy without the same justification.
+Two repositories intentionally break the "thin wrapper" rule and say so in a comment: `stats-repository.ts` (aggregation/streak/forecast math done in TS rather than SQL) and `profile-repository.ts` (its `remove()` makes a follow-up `invoke()` call to reset `activeProfileId` when the removed profile was the active one). Both are documented, deliberate exceptions — not a pattern to copy without the same justification. `progress-repository.ts` used to be a third exception (it orchestrated two IPC calls plus a client-side history write) until history logging moved into the same Rust transaction as the toggle itself — it's a plain thin wrapper now.
 
 ### 3. Hook — `src/features/watchlist/use-watchlist.ts`
 
@@ -84,7 +84,7 @@ const remove = useInvalidatingMutation(
 
 `queryKeys.local.history` is invalidated by most local mutations because most of them also write an activity-log entry server-side. `useInvalidatingMutation` isn't a fit for every hook — `useLibraryItem`, `useAvailabilityAlert`, and `usePreferences` also call `setQueryData` with the mutation's result or branch on which field changed, so they stay as plain `useMutation` rather than bending the helper to cover every shape (see the comment in `query-mutation.ts`).
 
-All query keys live in one registry, `src/shared/constants/query-keys.ts`, split into `remote.*` (TMDB) and `local.*` (SQLite) namespaces. That namespace split is also what lets the query-cache persister (`src/main.tsx`) only persist `local.*` to `localStorage`, leaving unbounded `remote.*` results (discover/search/images) as in-memory-only cache.
+All query keys live in one registry, `src/shared/constants/query-keys.ts`, split into `remote.*` (TMDB) and `local.*` (SQLite) namespaces. There is no query-cache persister anymore: `local.*` results used to be persisted to `localStorage` for a fast cold start, but that duplicated personal data in a second, less-protected storage location the webview's own JavaScript can read, so it was removed (`src/app/query-client.ts`, see the comment there) — all query state, `remote.*` and `local.*` alike, now lives in memory only for the process's lifetime. `src/main.tsx` only clears the old `cinetrack.query-cache.v1` key left over from before the removal.
 
 ### 4. Page — `src/pages/watchlist-page.tsx`
 
@@ -113,3 +113,5 @@ Extending the app with a 16th feature domain touches a small, fixed set of place
 5. New keys in **both** `src/i18n/locales/en.json` and `src/i18n/locales/fr.json` — `locale-parity.test.ts` fails the build otherwise.
 
 There's no per-domain boilerplate beyond that — no generated code, no domain registry to update elsewhere.
+
+`src/features/tvtime/` is the one domain that deliberately skips steps 3 and 4: it's a one-shot import flow with no state of its own to query, so it has no `use-tvtime.ts` hook and no dedicated `local.tvtime` query key — the importing component invalidates the local query cache directly instead. Don't take it as the template for a domain that actually persists and reads its own state.
