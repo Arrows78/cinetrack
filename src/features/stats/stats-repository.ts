@@ -85,11 +85,7 @@ export function libraryExtras(library: LibraryItem[]): {
 }
 
 /** Exported for tests only — not part of the statsRepository public surface. */
-export function computeForecast(
-  tracked: TrackedSeriesItem[],
-  events: ViewingEvent[],
-  now = new Date()
-): WatchForecast {
+export function computeForecast(tracked: TrackedSeriesItem[], events: ViewingEvent[], now = new Date()): WatchForecast {
   const episodeEvents = events.filter(
     (event) =>
       (event.eventType === "watched" || event.eventType === "rewatched") &&
