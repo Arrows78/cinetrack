@@ -16,8 +16,8 @@ use commands::{
     list_watchlist, refresh_preferences, remove_availability_alert,
     remove_custom_list, remove_custom_list_item, remove_library_item, remove_profile, remove_watchlist_item,
     resolve_profile_for_supabase_user, save_availability_snapshot, save_library_item, save_watchlist_item,
-    tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen, update_preference,
-    updater_is_configured, PreferencesCache,
+    set_active_profile, tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
+    update_preference, updater_is_configured, PreferencesCache,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -53,6 +53,7 @@ pub fn run() {
             updater_is_configured,
             get_preferences,
             update_preference,
+            set_active_profile,
             refresh_preferences,
             list_history,
             list_watchlist,

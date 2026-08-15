@@ -24,7 +24,7 @@ pub use custom_lists::{
 };
 pub use history::list_history;
 pub use library::{get_library_item, list_library, remove_library_item, save_library_item};
-pub use preferences::{get_preferences, refresh_preferences, update_preference, PreferencesCache};
+pub use preferences::{get_preferences, refresh_preferences, set_active_profile, update_preference, PreferencesCache};
 pub use profiles::{
     create_profile, find_profile_by_supabase_user_id, link_profile_to_supabase_user, list_profiles, remove_profile,
     resolve_profile_for_supabase_user,

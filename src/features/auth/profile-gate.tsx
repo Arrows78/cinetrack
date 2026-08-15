@@ -38,7 +38,7 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
     if (!resolvedProfileId || activeProfileId === resolvedProfileId) return;
 
     let cancelled = false;
-    void preferencesRepository.updatePreference("activeProfileId", resolvedProfileId).then(() => {
+    void preferencesRepository.setActiveProfile(resolvedProfileId, supabaseUserId).then(() => {
       // removeQueries, not invalidateQueries — this switches which local
       // profile is active, so the previous profile's cached watchlist/
       // library/etc. must be evicted immediately rather than merely marked
@@ -49,7 +49,7 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
     return () => {
       cancelled = true;
     };
-  }, [resolvedProfileId, activeProfileId, queryClient]);
+  }, [resolvedProfileId, activeProfileId, queryClient, supabaseUserId]);
 
   if (profileQuery.isLoading || preferencesQuery.isLoading) {
     return <LoadingScreen label={t("profileGate.resolving")} />;

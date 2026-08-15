@@ -41,11 +41,19 @@ export const preferencesRepository = {
     return invokeCommand<UserPreferences>("get_preferences");
   },
 
-  async updatePreference<Key extends keyof UserPreferences>(
+  async updatePreference<Key extends Exclude<keyof UserPreferences, "activeProfileId">>(
     key: Key,
     value: UserPreferences[Key]
   ): Promise<UserPreferences> {
     return invokeCommand<UserPreferences>("update_preference", { key, value });
+  },
+
+  // The only legitimate way to switch activeProfileId — Rust rejects it via
+  // the generic updatePreference above. See set_active_profile_impl's own
+  // doc comment (src-tauri/src/commands/preferences.rs) for what
+  // supabaseUserId does and doesn't prove.
+  async setActiveProfile(profileId: string, supabaseUserId?: string | null): Promise<UserPreferences> {
+    return invokeCommand<UserPreferences>("set_active_profile", { profileId, supabaseUserId: supabaseUserId ?? null });
   },
 
   // Callers that write preferences storage directly (bulk backup restore)

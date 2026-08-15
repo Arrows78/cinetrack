@@ -79,26 +79,6 @@ describe("usePreferences", () => {
     expect(invokeMock).toHaveBeenCalledWith("update_preference", { key: "theme", value: "light" });
   });
 
-  it("switching activeProfileId purges every local.* cache entry instead of leaving it stale", async () => {
-    const { usePreferences } = await import("../use-preferences");
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const Wrapper = ({ children }: PropsWithChildren) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    );
-    const { result } = renderHook(() => usePreferences(), { wrapper: Wrapper });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    // Simulate a profile-scoped query (e.g. useWatchlist) already having
-    // cached data for the profile that's about to stop being active.
-    client.setQueryData(["local", "watchlist", "default"], [{ id: "stale-item" }]);
-    expect(client.getQueryData(["local", "watchlist", "default"])).toBeDefined();
-
-    await act(async () => {
-      await result.current.updatePreference({ key: "activeProfileId", value: "someone-else" });
-    });
-
-    expect(client.getQueryData(["local", "watchlist", "default"])).toBeUndefined();
-  });
 });
 
 describe("useActiveProfileId", () => {

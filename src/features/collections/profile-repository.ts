@@ -49,7 +49,7 @@ export const profileRepository = {
 
     const preferences = await preferencesRepository.getPreferences();
     if (preferences.activeProfileId === profileId) {
-      await preferencesRepository.updatePreference("activeProfileId", "default");
+      await preferencesRepository.setActiveProfile("default");
     }
   },
 };

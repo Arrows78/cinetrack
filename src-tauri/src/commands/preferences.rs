@@ -188,7 +188,29 @@ pub async fn update_preference(
     pool: State<'_, SqlitePool>,
     cache: State<'_, PreferencesCache>,
 ) -> Result<UserPreferences, ApiError> {
-    let current = get_preferences_cached(&pool, &cache).await?;
+    // activeProfileId controls which profile every other profile-scoped
+    // command reads/writes (see current_profile_id in database/mod.rs) — it
+    // must never be settable as "just another preference key" with no check
+    // on the target. Route it through set_active_profile instead, which
+    // confirms the profile exists and, when it's linked to a Supabase
+    // account, that the caller actually proved they're signed in as that
+    // account (see that command's own doc comment for exactly what this
+    // does and doesn't guarantee).
+    if key == "activeProfileId" {
+        return Err(ApiError::bad_request(
+            "activeProfileId must be set via set_active_profile, not update_preference.",
+        ));
+    }
+    write_preference(key, value, &pool, &cache).await
+}
+
+async fn write_preference(
+    key: String,
+    value: Value,
+    pool: &SqlitePool,
+    cache: &PreferencesCache,
+) -> Result<UserPreferences, ApiError> {
+    let current = get_preferences_cached(pool, cache).await?;
 
     let mut merged = match serde_json::to_value(&current) {
         Ok(Value::Object(map)) => map,
@@ -208,7 +230,7 @@ pub async fn update_preference(
         .get(&key)
         .ok_or_else(|| ApiError::bad_request(format!("Unknown preference key: {key}")))?;
 
-    let timestamp = now_iso(&*pool).await?;
+    let timestamp = now_iso(pool).await?;
 
     sqlx::query(
         "INSERT INTO preferences (key, value, updated_at)
@@ -218,12 +240,75 @@ pub async fn update_preference(
     .bind(&key)
     .bind(stored_value.to_string())
     .bind(&timestamp)
-    .execute(&*pool)
+    .execute(pool)
     .await
     .map_err(ApiError::from)?;
 
     *cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(updated.clone());
     Ok(updated)
+}
+
+/// The one legitimate way to switch `activeProfileId`. Every other
+/// profile-scoped Rust command trusts `current_profile_id()` (which just
+/// re-reads this preference) with no further check of its own — so this is
+/// the single choke point where a switch either has to be self-evidently
+/// safe, or has to be justified by the same proof `resolve_profile_for_
+/// supabase_user` already relies on elsewhere in this codebase.
+///
+/// This is *not* cryptographic verification — `supabase_user_id` is a bare
+/// string over the same untrusted `invoke()` boundary as everything else
+/// here, exactly like `resolve_profile_for_supabase_user_impl` already
+/// trusts it. What it closes is the gap where `update_preference` accepted
+/// `activeProfileId` as literally any string with zero check at all: a
+/// caller can no longer switch into a profile that doesn't exist, or into
+/// one that's linked to a Supabase account without at least echoing back
+/// that account's id (which, in the real app, `ProfileGate` only ever does
+/// after `resolve_profile_for_supabase_user` itself confirmed the match).
+/// `default` is exempt — it's the app's pre-Supabase-auth fallback profile,
+/// already special-cased the same way in `resolve_for_supabase_user_impl`
+/// (auto-claimed rather than gated) and as the only profile `remove_impl`
+/// refuses to ever delete, so it's always a safe landing pad.
+async fn set_active_profile_impl(
+    pool: &SqlitePool,
+    cache: &PreferencesCache,
+    profile_id: &str,
+    supabase_user_id: Option<&str>,
+) -> Result<UserPreferences, ApiError> {
+    let owner: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT supabase_user_id FROM profiles WHERE uuid = $1")
+            .bind(profile_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
+
+    let Some((linked_supabase_user_id,)) = owner else {
+        return Err(ApiError::not_found("Profile not found."));
+    };
+
+    if profile_id != "default"
+        && let Some(required) = linked_supabase_user_id
+        && supabase_user_id != Some(required.as_str())
+    {
+        return Err(ApiError::forbidden("This profile requires signing in with the account it's linked to."));
+    }
+
+    write_preference(
+        "activeProfileId".to_string(),
+        Value::String(profile_id.to_string()),
+        pool,
+        cache,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn set_active_profile(
+    profile_id: String,
+    supabase_user_id: Option<String>,
+    pool: State<'_, SqlitePool>,
+    cache: State<'_, PreferencesCache>,
+) -> Result<UserPreferences, ApiError> {
+    set_active_profile_impl(&pool, &cache, &profile_id, supabase_user_id.as_deref()).await
 }
 
 /// Forces the next `get_preferences` call to reload from disk instead of
@@ -305,5 +390,71 @@ mod tests {
             ..UserPreferences::default()
         };
         assert!(validate(&prefs).is_err());
+    }
+
+    #[tokio::test]
+    async fn set_active_profile_switches_freely_to_an_unclaimed_profile() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+        sqlx::query("INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('alex', 'Alex', 'now', 'now')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let updated = set_active_profile_impl(&pool, &cache, "alex", None).await.unwrap();
+        assert_eq!(updated.active_profile_id, "alex");
+    }
+
+    #[tokio::test]
+    async fn set_active_profile_rejects_a_nonexistent_profile() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        assert!(set_active_profile_impl(&pool, &cache, "ghost", None).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn set_active_profile_rejects_a_claimed_profile_without_the_matching_supabase_user() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at, supabase_user_id)
+             VALUES ('alex', 'Alex', 'now', 'now', 'user-1')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert!(set_active_profile_impl(&pool, &cache, "alex", None).await.is_err());
+        assert!(set_active_profile_impl(&pool, &cache, "alex", Some("someone-else")).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn set_active_profile_allows_a_claimed_profile_with_the_matching_supabase_user() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at, supabase_user_id)
+             VALUES ('alex', 'Alex', 'now', 'now', 'user-1')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let updated = set_active_profile_impl(&pool, &cache, "alex", Some("user-1")).await.unwrap();
+        assert_eq!(updated.active_profile_id, "alex");
+    }
+
+    #[tokio::test]
+    async fn set_active_profile_always_allows_switching_to_default_even_if_claimed() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+        sqlx::query("UPDATE profiles SET supabase_user_id = 'user-1' WHERE uuid = 'default'")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let updated = set_active_profile_impl(&pool, &cache, "default", None).await.unwrap();
+        assert_eq!(updated.active_profile_id, "default");
     }
 }

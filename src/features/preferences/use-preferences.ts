@@ -11,19 +11,14 @@ export function usePreferences() {
     queryFn: () => preferencesRepository.getPreferences(),
   });
 
+  type WritablePreferenceKey = Exclude<keyof UserPreferences, "activeProfileId">;
+
   const mutation = useMutation({
-    mutationFn: ({ key, value }: { key: keyof UserPreferences; value: UserPreferences[keyof UserPreferences] }) =>
+    mutationFn: ({ key, value }: { key: WritablePreferenceKey; value: UserPreferences[WritablePreferenceKey] }) =>
       preferencesRepository.updatePreference(key as never, value as never),
     onSuccess: async (data, variables) => {
       const previousProfileId = query.data?.activeProfileId;
       queryClient.setQueryData(queryKeys.local.preferences, data);
-
-      if (variables.key === "activeProfileId") {
-        // removeQueries, not invalidateQueries — switching which profile is
-        // active means the previous profile's cached watchlist/library/etc.
-        // must be evicted immediately, not merely marked stale.
-        queryClient.removeQueries({ queryKey: ["local"] });
-      }
 
       if (variables.key === "language" || variables.key === "region") {
         await Promise.all([

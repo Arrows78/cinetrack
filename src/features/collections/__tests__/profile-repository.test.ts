@@ -101,7 +101,7 @@ describe("profileRepository", () => {
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "remove_profile") return undefined;
       if (command === "get_preferences") return preferences;
-      if (command === "update_preference") return { ...preferences, activeProfileId: "default" };
+      if (command === "set_active_profile") return { ...preferences, activeProfileId: "default" };
       throw new Error(`Unhandled command: ${command}`);
     });
     const { profileRepository } = await import("../profile-repository");
@@ -109,7 +109,7 @@ describe("profileRepository", () => {
     await profileRepository.remove("removed-id");
 
     expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id" });
-    expect(invokeMock).toHaveBeenCalledWith("update_preference", { key: "activeProfileId", value: "default" });
+    expect(invokeMock).toHaveBeenCalledWith("set_active_profile", { profileId: "default", supabaseUserId: null });
   });
 
   it("remove() leaves activeProfileId untouched when the removed profile wasn't active", async () => {
@@ -139,6 +139,6 @@ describe("profileRepository", () => {
 
     await profileRepository.remove("other-id");
 
-    expect(invokeMock).not.toHaveBeenCalledWith("update_preference", expect.anything());
+    expect(invokeMock).not.toHaveBeenCalledWith("set_active_profile", expect.anything());
   });
 });

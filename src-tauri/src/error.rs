@@ -31,6 +31,10 @@ impl ApiError {
         Self::with_status(message, 404)
     }
 
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::with_status(message, 403)
+    }
+
     pub fn conflict(message: impl Into<String>) -> Self {
         Self::with_status(message, 409)
     }
