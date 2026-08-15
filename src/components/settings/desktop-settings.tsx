@@ -14,6 +14,8 @@ import { updateService } from "@/features/desktop/update-service";
 import { isTauriApp } from "@/shared/lib/platform";
 import { formatRelativeDate } from "@/shared/utils/format";
 
+const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
 export function DesktopSettings() {
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
@@ -31,20 +33,20 @@ export function DesktopSettings() {
       void maintenanceService
         .getLastBackupStatus()
         .then(setBackupStatus)
-        .catch(() => undefined);
+        .catch((error: unknown) => logger.warn(`Failed to refresh backup status: ${errorMessage(error)}`));
   };
   const refreshLogs = () => {
     if (isTauriApp())
       void logger
         .readRecent()
         .then(setLogLines)
-        .catch(() => undefined);
+        .catch((error: unknown) => logger.warn(`Failed to refresh diagnostic logs: ${errorMessage(error)}`));
   };
   useEffect(() => {
     if (isTauriApp())
       void isEnabled()
         .then(setAutoStart)
-        .catch(() => undefined);
+        .catch((error: unknown) => logger.warn(`Failed to read autostart state: ${errorMessage(error)}`));
     refreshBackupStatus();
     refreshLogs();
   }, []);
@@ -213,12 +215,17 @@ export function DesktopSettings() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!logLines?.length}
+                  disabled={!logLines?.length || busy}
                   onClick={() =>
-                    void logger
-                      .clear()
-                      .then(refreshLogs)
-                      .catch(() => undefined)
+                    void run(async () => {
+                      try {
+                        await logger.clear();
+                        setLogLines(await logger.readRecent());
+                      } catch (error) {
+                        logger.error(`Failed to clear diagnostic logs: ${errorMessage(error)}`);
+                        throw error;
+                      }
+                    })
                   }
                 >
                   {t("desktop.diagnosticsClear")}
