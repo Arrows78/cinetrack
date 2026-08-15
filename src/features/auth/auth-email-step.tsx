@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Check, LoaderCircle, Mail } from "lucide-react";
 
+import { Input } from "@/components/ui/input";
 import { authConfig } from "@/features/auth/auth-client";
 import { cn } from "@/shared/lib/cn";
 
@@ -47,7 +48,7 @@ export function AuthEmailStep({
 
       <div className="mt-7 flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
         <Mail className="h-6 w-6 text-auth-foreground/75" />
-        <input
+        <Input
           autoFocus
           required
           type="email"
@@ -56,7 +57,7 @@ export function AuthEmailStep({
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder={t("auth.email.placeholder")}
           aria-label={t("auth.email.emailLabel")}
-          className="min-w-0 flex-1 rounded-lg bg-transparent text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35 focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-auto flex-1 min-w-0 h-auto rounded-lg border-0 bg-transparent px-0 py-0 text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35 focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
 
