@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { LibraryBig } from "lucide-react";
+import { Heart, LibraryBig } from "lucide-react";
 import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
@@ -24,6 +24,7 @@ export function LibraryPage() {
   const { data: trackedSeries } = useTrackedSeries();
   const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
 
   const filtered = useMemo(() => {
@@ -35,7 +36,8 @@ export function LibraryPage() {
     );
     const base = (items ?? [])
       .filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter))
-      .filter((item) => (statusFilter === "all" ? true : item.status === statusFilter));
+      .filter((item) => (statusFilter === "all" ? true : item.status === statusFilter))
+      .filter((item) => (favouritesOnly ? item.favourite : true));
     return base
       .slice()
       .sort((a, b) => {
@@ -56,7 +58,7 @@ export function LibraryPage() {
         cast: [],
         progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
       }));
-  }, [items, trackedSeries, typeFilter, statusFilter, sort]);
+  }, [items, trackedSeries, typeFilter, statusFilter, favouritesOnly, sort]);
 
   return (
     <div className="space-y-8">
@@ -89,6 +91,16 @@ export function LibraryPage() {
               { value: "rating", label: t("library.rating") },
             ]}
           />
+          <Button
+            type="button"
+            variant={favouritesOnly ? "default" : "outline"}
+            size="sm"
+            aria-pressed={favouritesOnly}
+            onClick={() => setFavouritesOnly((value) => !value)}
+          >
+            <Heart className={favouritesOnly ? "mr-2 size-4 fill-current" : "mr-2 size-4"} />
+            {t("library.favouritesOnly")}
+          </Button>
         </div>
       </div>
 

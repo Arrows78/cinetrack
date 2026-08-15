@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { PartialErrorState } from "@/components/states/partial-error-state";
+import { toast } from "@/components/ui/use-toast";
 import { useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
@@ -81,17 +82,26 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   }
 
   const save = () =>
-    library.save({
-      status,
-      favourite,
-      userRating: userRating ? Math.min(10, Math.max(0, Number(userRating))) : null,
-      notes: notes.trim() || null,
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      rewatchCount: Math.max(0, rewatchCount),
-    });
+    library
+      .save({
+        status,
+        favourite,
+        userRating: userRating ? Math.min(10, Math.max(0, Number(userRating))) : null,
+        notes: notes.trim() || null,
+        tags: tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        rewatchCount: Math.max(0, rewatchCount),
+      })
+      .then(() => {
+        toast({ description: t("library.saved"), variant: "success" });
+      })
+      .catch(() => {
+        // Never surface error.message here — it's the raw ApiCommandError
+        // from invokeCommand()/Rust, not a translated, user-facing string.
+        toast({ description: t("library.saveFailed"), variant: "error" });
+      });
 
   const statuses: Array<{ value: LibraryStatus; label: string }> = [
     { value: "planned", label: t("library.statuses.planned") },

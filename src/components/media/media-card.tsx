@@ -1,11 +1,16 @@
+import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { Bookmark, BookmarkCheck, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useMovieSeen } from "@/features/progress/use-progress";
+import { useIsInWatchlist, useWatchlist } from "@/features/watchlist/use-watchlist";
+import { newUuid } from "@/shared/lib/id";
 import { cn } from "@/shared/lib/cn";
 import { MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating } from "@/shared/utils/format";
-import type { MediaSummary } from "@/types/media";
+import type { MediaSummary, WatchlistItem } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
 export interface MediaCardProgress {
@@ -13,7 +18,103 @@ export interface MediaCardProgress {
   total: number;
 }
 
-function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: MediaCardProgress }) {
+// Stop the click from also activating the card's wrapping <Link> — these
+// buttons live inside it so they can overlay the poster, not so navigating
+// away is also part of "toggle watchlist"/"toggle seen".
+function stopCardNavigation(event: MouseEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+const quickActionButtonClassName =
+  "flex size-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-transform duration-base hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+
+function WatchlistQuickAction({ media }: { media: MediaSummary }) {
+  const { t } = useTranslation();
+  const { data: isInWatchlist } = useIsInWatchlist(media.id, media.mediaType);
+  const { addToWatchlist, removeFromWatchlist, isMutating } = useWatchlist();
+
+  const toggle = async () => {
+    if (isInWatchlist) {
+      await removeFromWatchlist({ mediaId: media.id, mediaType: media.mediaType });
+      return;
+    }
+    const now = new Date().toISOString();
+    const payload: WatchlistItem = {
+      id: newUuid(),
+      mediaId: media.id,
+      mediaType: media.mediaType,
+      title: media.title,
+      posterPath: media.posterPath,
+      backdropPath: media.backdropPath,
+      year: media.year,
+      rating: media.rating,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await addToWatchlist(payload);
+  };
+
+  return (
+    <button
+      type="button"
+      aria-label={isInWatchlist ? t("media.inWatchlist") : t("media.addToWatchlist")}
+      aria-pressed={Boolean(isInWatchlist)}
+      disabled={isMutating}
+      onClick={(event) => {
+        stopCardNavigation(event);
+        void toggle();
+      }}
+      className={quickActionButtonClassName}
+    >
+      {isInWatchlist ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+    </button>
+  );
+}
+
+function SeenQuickAction({ media }: { media: MediaSummary }) {
+  const { t } = useTranslation();
+  const seenQuery = useMovieSeen(media.id);
+
+  return (
+    <button
+      type="button"
+      aria-label={seenQuery.data ? t("media.markUnseen") : t("media.markSeen")}
+      aria-pressed={Boolean(seenQuery.data)}
+      disabled={seenQuery.isSaving}
+      onClick={(event) => {
+        stopCardNavigation(event);
+        void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
+      }}
+      className={cn(quickActionButtonClassName, seenQuery.data && "bg-success text-success-foreground")}
+    >
+      <Check className="size-4" />
+    </button>
+  );
+}
+
+// Movies only: marking a series "seen" means toggling every episode across
+// every season (see SeenToggle's use on series-detail-page.tsx), which needs
+// that series' full season/episode list loaded — too heavy to fetch just for
+// a grid-card hover action. Movies are a single cheap toggle either way.
+function MediaCardQuickActions({ media }: { media: MediaSummary }) {
+  return (
+    <div className="absolute right-3 top-14 flex flex-col gap-2 opacity-0 transition-opacity duration-base group-hover:opacity-100 group-focus-within:opacity-100">
+      <WatchlistQuickAction media={media} />
+      {media.mediaType === "movie" ? <SeenQuickAction media={media} /> : null}
+    </div>
+  );
+}
+
+function MediaCardInner({
+  media,
+  progress,
+  alreadySeen,
+}: {
+  media: MediaSummary;
+  progress?: MediaCardProgress;
+  alreadySeen?: boolean;
+}) {
   const { t } = useTranslation();
   const image = buildTmdbImageUrl(media.posterPath, "w500") ?? fallbackPoster;
   const srcSet = buildTmdbPosterSrcSet(media.posterPath);
@@ -53,14 +154,25 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
           {formatRating(media.rating)}
         </div>
 
-        {/* Type chip */}
-        <div className="absolute left-3 top-3">
+        <MediaCardQuickActions media={media} />
+
+        {/* Type chip + already-seen badge */}
+        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           <Badge
             variant={media.mediaType === "movie" ? "movie" : "series"}
             className="px-2.5 py-0.5 text-overline font-semibold uppercase backdrop-blur-sm transition-all duration-base"
           >
             {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
           </Badge>
+          {alreadySeen ? (
+            <Badge
+              variant="success"
+              className="gap-1 px-2.5 py-0.5 text-overline font-semibold uppercase backdrop-blur-sm transition-all duration-base"
+            >
+              <Check className="size-3" aria-hidden="true" />
+              {t("media.alreadySeen")}
+            </Badge>
+          ) : null}
         </div>
 
         {/* Bottom: title + year + genre */}
@@ -108,7 +220,15 @@ function MediaCardInner({ media, progress }: { media: MediaSummary; progress?: M
   );
 }
 
-export function MediaCard({ media, progress }: { media: MediaSummary; progress?: MediaCardProgress }) {
+export function MediaCard({
+  media,
+  progress,
+  alreadySeen,
+}: {
+  media: MediaSummary;
+  progress?: MediaCardProgress;
+  alreadySeen?: boolean;
+}) {
   return (
     <motion.div
       className="group"
@@ -122,7 +242,7 @@ export function MediaCard({ media, progress }: { media: MediaSummary; progress?:
           params={{ movieId: String(media.id) }}
           className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <MediaCardInner media={media} progress={progress} />
+          <MediaCardInner media={media} progress={progress} alreadySeen={alreadySeen} />
         </Link>
       ) : (
         <Link
@@ -130,7 +250,7 @@ export function MediaCard({ media, progress }: { media: MediaSummary; progress?:
           params={{ seriesId: String(media.id) }}
           className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <MediaCardInner media={media} progress={progress} />
+          <MediaCardInner media={media} progress={progress} alreadySeen={alreadySeen} />
         </Link>
       )}
     </motion.div>

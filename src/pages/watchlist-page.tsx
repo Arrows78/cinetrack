@@ -12,6 +12,12 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useWatchlist } from "@/features/watchlist/use-watchlist";
+import { useLibrary } from "@/features/library/use-library";
+
+// Library statuses that count as "already seen" for the watchlist badge —
+// matches auto_sync_rank's own "finished" tier in progress.rs, so this
+// reads the same signal the app already treats as authoritative elsewhere.
+const SEEN_LIBRARY_STATUSES = new Set(["completed", "rewatching"]);
 
 export function WatchlistPage() {
   const { t } = useTranslation();
@@ -19,6 +25,7 @@ export function WatchlistPage() {
   const watchlistQuery = useWatchlist();
   const { data: items } = watchlistQuery;
   const { data: trackedSeries } = useTrackedSeries();
+  const { data: libraryItems } = useLibrary();
   const [selectedFilter, setSelectedFilter] = useState<"all" | "movie" | "series" | null>(null);
   const filter = selectedFilter ?? preferences?.defaultWatchlistFilter ?? "all";
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
@@ -29,6 +36,11 @@ export function WatchlistPage() {
         series.seriesId,
         { watched: series.watchedEpisodes, total: series.totalEpisodes },
       ])
+    );
+    const seenKeys = new Set(
+      (libraryItems ?? [])
+        .filter((item) => SEEN_LIBRARY_STATUSES.has(item.status))
+        .map((item) => `${item.mediaType}-${item.mediaId}`)
     );
     const base = (items ?? []).filter((item) => (filter === "all" ? true : item.mediaType === filter));
     return base
@@ -50,8 +62,9 @@ export function WatchlistPage() {
         genres: [],
         cast: [],
         progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
+        alreadySeen: seenKeys.has(`${item.mediaType}-${item.mediaId}`),
       }));
-  }, [items, trackedSeries, filter, sort]);
+  }, [items, trackedSeries, libraryItems, filter, sort]);
 
   return (
     <div className="space-y-8">

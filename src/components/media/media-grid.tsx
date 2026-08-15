@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import type { MediaSummary } from "@/types/media";
 import { MediaCard, type MediaCardProgress } from "./media-card";
 
-export type MediaGridItem = MediaSummary & { progress?: MediaCardProgress };
+export type MediaGridItem = MediaSummary & { progress?: MediaCardProgress; alreadySeen?: boolean };
 
 // Cap the entrance cascade: with an uncapped stagger a 100-item grid kept
 // its last cards invisible for over five seconds. Items past the first two
@@ -28,7 +28,7 @@ export function MediaGrid({ items }: { items: MediaGridItem[] }) {
           // scrollbar stays stable.
           className="[contain-intrinsic-size:auto_380px] [content-visibility:auto]"
         >
-          <MediaCard media={media} progress={media.progress} />
+          <MediaCard media={media} progress={media.progress} alreadySeen={media.alreadySeen} />
         </motion.div>
       ))}
     </div>

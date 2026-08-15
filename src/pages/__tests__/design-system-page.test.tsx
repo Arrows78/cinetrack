@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
@@ -9,7 +10,28 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
     data: { theme: "dark", accentColor: "violet" },
   }),
+  useActiveProfileId: () => "default",
 }));
+
+// The catalog's Media card pattern renders a real MediaCard, whose grid-card
+// quick actions (watchlist/seen toggle) are wired to real data hooks — stub
+// just the two invoke()-backed methods those actions call, keeping every
+// other real export (calculateSeriesProgress, getNextEpisode, ...) intact
+// for whatever else in this 60+ component catalog might use them.
+vi.mock("@/features/watchlist/watchlist-repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/watchlist/watchlist-repository")>();
+  return {
+    ...actual,
+    watchlistRepository: { ...actual.watchlistRepository, has: () => Promise.resolve(false) },
+  };
+});
+vi.mock("@/features/progress/progress-repository", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/progress/progress-repository")>();
+  return {
+    ...actual,
+    progressRepository: { ...actual.progressRepository, isMovieSeen: () => Promise.resolve(false) },
+  };
+});
 
 // The catalog's Media card & grid / Genre pill patterns render real
 // MediaCard/Pill components, which route through <Link>. No RouterProvider
@@ -47,19 +69,24 @@ describe("DesignSystemPage", () => {
   // consistently under 1s locally, but the default 5000ms budget has been
   // observed to trip under CI's more limited parallelism/CPU headroom.
   it("renders the complete catalog and supports its interactive filters", () => {
-    render(<DesignSystemPage />);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <DesignSystemPage />
+      </QueryClientProvider>
+    );
 
     expect(screen.getByRole("heading", { level: 1, name: "Design system" })).toBeInTheDocument();
-    expect(screen.getByText("60 components shown")).toBeInTheDocument();
+    expect(screen.getByText("62 components shown")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Component group"), { target: { value: "UI primitives" } });
-    expect(screen.getByText("17 components shown")).toBeInTheDocument();
+    expect(screen.getByText("19 components shown")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search the catalog"), { target: { value: "missing-component" } });
     expect(screen.getByText("No component found")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
-    expect(screen.getByText("60 components shown")).toBeInTheDocument();
+    expect(screen.getByText("62 components shown")).toBeInTheDocument();
 
     const patternSearch = screen.getByPlaceholderText("Search titles, people or genres");
     fireEvent.change(patternSearch, { target: { value: "Arrival" } });

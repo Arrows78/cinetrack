@@ -4,7 +4,7 @@ import i18n from "@/i18n";
 import { LibraryEditor } from "../library-editor";
 import type { MediaSummary } from "@/types/media";
 
-const save = vi.fn();
+const save = vi.fn(() => Promise.resolve());
 const refetch = vi.fn();
 const useLibraryItemMock = vi.fn();
 
