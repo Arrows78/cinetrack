@@ -527,6 +527,14 @@ export const componentInventory = [
     "Defines the persistent navigation and page-content frame."
   ),
   component(
+    "MobileTabBar",
+    "components/layout/mobile-tab-bar.tsx",
+    "Layout",
+    "pattern",
+    "reference",
+    "Bottom navigation for below-lg widths — primary sections plus a More sheet for the rest."
+  ),
+  component(
     "MotionPreferenceGate",
     "components/layout/motion-preference-gate.tsx",
     "Layout",

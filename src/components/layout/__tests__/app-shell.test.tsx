@@ -64,4 +64,10 @@ describe("AppShell", () => {
     renderShell();
     expect(screen.getByText(i18n.t("common.back"))).toBeInTheDocument();
   });
+
+  it("renders the mobile tab bar's More trigger", () => {
+    routerState.pathname = "/";
+    renderShell();
+    expect(screen.getByRole("button", { name: i18n.t("common.more") })).toBeInTheDocument();
+  });
 });

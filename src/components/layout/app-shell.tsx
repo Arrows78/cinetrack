@@ -2,11 +2,10 @@ import { useTranslation } from "react-i18next";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/shared/lib/cn";
-import { Menu, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-import { useUiStore } from "@/store/ui-store";
+import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { usePreferences } from "@/features/preferences/use-preferences";
 
 // `router.history.back()` has nowhere sensible to go when this window has no
@@ -25,7 +24,6 @@ export function AppShell() {
   const { t } = useTranslation();
   const router = useRouter();
   const location = useRouterState({ select: (state) => state.location });
-  const { mobileNavOpen, setMobileNavOpen } = useUiStore();
   const { data: preferences, updatePreference } = usePreferences();
 
   const canGoBack = location.pathname !== "/";
@@ -57,20 +55,16 @@ export function AppShell() {
 
         <div className="min-w-0">
           {/*
-            Mobile header + hamburger Sheet — unreachable inside the real
-            Tauri window (src-tauri/tauri.conf.json enforces minWidth 1100,
-            above the "lg" breakpoint this hides behind at 1024px), so this
-            never renders in the shipped desktop app. Kept deliberately: the
-            app also runs as a plain browser tab in dev (`pnpm dev` on its
-            own, or a browser pointed at the Tauri dev server — see
-            BrowserPreviewBanner and the README's "About pnpm dev" section),
-            where there's no window-size floor and an actual narrow viewport
-            is possible. Revisit only if that dev/browser-preview mode goes
-            away too.
+            Mobile/tablet header — live below "lg" (1024px) in the shipped
+            app now that src-tauri/tauri.conf.json's minWidth is 360, not
+            just in pnpm dev's browser-preview surface. Primary navigation
+            lives in MobileTabBar (fixed at the bottom, rendered below);
+            this header is just the back button (when there's somewhere to
+            go back to) and the brand.
           */}
           <header className="surface sticky top-4 z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
-              {canGoBack ? (
+              {canGoBack && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -80,24 +74,6 @@ export function AppShell() {
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-              ) : (
-                <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="-ml-1 h-9 w-9"
-                      aria-label={t("common.openNavigation")}
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent closeLabel={t("common.close")}>
-                    <SheetTitle className="sr-only">{t("sidebar.brand.name")}</SheetTitle>
-                    <SheetDescription className="sr-only">{t("sidebar.brand.tagline")}</SheetDescription>
-                    <SidebarNav collapsed={false} onToggleCollapse={() => {}} />
-                  </SheetContent>
-                </Sheet>
               )}
               <div>
                 <p className="text-overline uppercase text-muted-foreground">{t("sidebar.brand.tagline")}</p>
@@ -117,7 +93,10 @@ export function AppShell() {
             </button>
           )}
 
-          <main className="pb-10">
+          {/* pb-24 clears the fixed MobileTabBar (plus its own safe-area
+              inset) below lg; above it the tab bar doesn't render, so pb-10
+              matches the desktop back-button/content rhythm instead. */}
+          <main className="pb-24 lg:pb-10">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
@@ -132,6 +111,8 @@ export function AppShell() {
           </main>
         </div>
       </div>
+
+      <MobileTabBar />
     </div>
   );
 }

@@ -38,7 +38,7 @@ Every domain follows the same feature shape under `src/features/<domain>/`: a **
 
 Outside the Tauri window (`pnpm dev` alone, or a browser tab), the UI still renders — no hook uses React Query's suspense mode — but every SQLite read/write fails silently; `browser-preview-banner.tsx` flags this. Don't treat that failure mode as a bug to fix.
 
-`tauri.conf.json` fixes the window's `minWidth` at 1100px. Tailwind's `sm:`/`md:`/`lg:` breakpoints (640/768/1024) are therefore mechanically always active in the shipped app — only `xl:`/`2xl:` ever toggle when the window is resized. Don't add `sm:`/`md:` to product content expecting it to matter in production; it only affects the `pnpm dev` browser-preview surface (see the comment in `src/components/layout/app-shell.tsx`, the one place this used to be spelled out — now here too).
+`tauri.conf.json`'s window `minWidth` is 360px (a small-phone floor, lowered from a former 1100px specifically so Tailwind's `sm:`/`md:`/`lg:` breakpoints — 640/768/1024 — are actually reachable by resizing the window, not just in `pnpm dev`'s browser-preview surface). `app-shell.tsx` splits its layout at `lg:` — a sidebar above it, a mobile header + bottom `MobileTabBar` below — and this split is live in the shipped desktop app, not vestigial. Prepping for an eventual mobile build (Tauri Mobile — see `src-tauri/gen/apple`) reuses the exact same breakpoint.
 
 ## Data integrity & authorization
 

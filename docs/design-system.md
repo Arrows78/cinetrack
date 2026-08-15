@@ -84,7 +84,7 @@ Compact mode applies `.compact` to the root and scales rem-based typography and 
 
 ### Responsive breakpoints
 
-CineTrack uses Tailwind's default breakpoints (`sm` 640px, `md` 768px, `lg` 1024px, `xl` 1280px, `2xl` 1536px), but `src-tauri/tauri.conf.json` fixes the window's `minWidth` at 1100px — above `lg`. In the packaged app, `sm:`/`md:`/`lg:` are therefore mechanically always active; only `xl:`/`2xl:` ever produce a real reflow when the window is resized. `AppShell`'s sidebar/mobile-header split (`lg:` in `src/components/layout/app-shell.tsx`) is real code but unreachable in the shipped app — it only shows via `pnpm dev` in a resized browser, the same degraded preview surface that has no SQLite access (see `CLAUDE.md`). Don't add `sm:`/`md:` to product content expecting it to matter in production.
+CineTrack uses Tailwind's default breakpoints (`sm` 640px, `md` 768px, `lg` 1024px, `xl` 1280px, `2xl` 1536px). `src-tauri/tauri.conf.json`'s window `minWidth` is 360px, so every breakpoint is reachable by resizing the real desktop window, not just via `pnpm dev`'s browser-preview surface. `AppShell`'s sidebar/mobile-header split (`lg:` in `src/components/layout/app-shell.tsx`) is live in the shipped app: a sidebar above `lg`, a mobile header plus a fixed bottom `MobileTabBar` below it. This same split is what an eventual Tauri Mobile build (see `src-tauri/gen/apple`) reuses — a phone screen simply always renders the below-`lg` layout.
 
 ## Shape and elevation
 

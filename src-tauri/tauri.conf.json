@@ -15,8 +15,8 @@
         "title": "CineTrack",
         "width": 1440,
         "height": 960,
-        "minWidth": 1100,
-        "minHeight": 760,
+        "minWidth": 360,
+        "minHeight": 640,
         "resizable": true,
         "fullscreen": false,
         "maximized": true

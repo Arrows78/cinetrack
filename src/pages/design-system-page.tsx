@@ -649,7 +649,7 @@ export function DesignSystemPage() {
         description="Radius communicates scale and nesting. Larger containers receive larger radii; nested controls should usually step down."
       >
         <Subsection title="Radius scale">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
             {radii.map((radius) => (
               <TokenTile key={radius.name} label={radius.name} meta={`rounded-${radius.name}`}>
                 <div className={cn("h-24 w-full border border-primary/30 bg-primary/15", radius.className)} />
@@ -682,7 +682,7 @@ export function DesignSystemPage() {
         description="Depth should explain hierarchy. Shadows represent physical separation; primary glow represents emphasis. They are not interchangeable."
       >
         <Subsection title="Elevation scale">
-          <div className="grid grid-cols-2 gap-6 rounded-panel bg-foreground/5 p-6 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-6 rounded-panel bg-foreground/5 p-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
             {shadows.map((shadow) => (
               <TokenTile key={shadow.name} label={shadow.name} meta={shadow.usage}>
                 <div className={cn("h-24 w-full rounded-panel bg-card", shadow.className)} />

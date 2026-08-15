@@ -11,19 +11,26 @@ import { useAuth } from "@/features/auth/auth-context";
 interface SidebarNavProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  // Passed when SidebarNav renders inside MobileTabBar's "More" sheet, so
+  // picking a destination also closes the sheet instead of leaving it open
+  // over the page it just navigated to. The desktop <aside> usage has
+  // nothing to close, so it simply omits this prop.
+  onNavigate?: () => void;
 }
 
 interface NavLinkProps {
   item: NavigationItem;
   collapsed: boolean;
   isActive: boolean;
+  onNavigate?: () => void;
 }
 
-function NavLink({ item, collapsed, isActive }: NavLinkProps) {
+function NavLink({ item, collapsed, isActive, onNavigate }: NavLinkProps) {
   const Icon = item.icon;
   return (
     <Link
       to={item.to}
+      onClick={onNavigate}
       aria-label={collapsed ? item.label : undefined}
       title={collapsed ? item.label : undefined}
       className={cn(
@@ -65,7 +72,7 @@ function getInitials(name: string | null): string {
   return (first + last).toUpperCase();
 }
 
-export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
+export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarNavProps) {
   const { t } = useTranslation();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigationItems = useNavigationItems();
@@ -131,6 +138,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
               item={item}
               collapsed={collapsed}
               isActive={pathname === item.to || pathname.startsWith(`${item.to}/`)}
+              onNavigate={onNavigate}
             />
           ))}
         </nav>
@@ -143,6 +151,7 @@ export function SidebarNav({ collapsed, onToggleCollapse }: SidebarNavProps) {
               item={item}
               collapsed={collapsed}
               isActive={pathname === item.to || pathname.startsWith(`${item.to}/`)}
+              onNavigate={onNavigate}
             />
           ))}
         </nav>
