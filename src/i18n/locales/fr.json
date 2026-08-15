@@ -383,6 +383,7 @@
   "library": {
     "myLibrary": "Ma bibliothèque",
     "description": "Statut, note, tags, avis privé et revisionnages.",
+    "loadError": "Impossible de charger votre statut enregistré pour ce titre. Réessayez avant de modifier quoi que ce soit — enregistrer maintenant risquerait d'écraser ce qui est déjà stocké.",
     "subtitle": "Filtrez par type et statut, triez tout ce que vous suivez.",
     "recent": "Récent",
     "title": "Titre",

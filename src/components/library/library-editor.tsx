@@ -6,7 +6,9 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
@@ -20,7 +22,13 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   const [tags, setTags] = useState("");
   const [rewatchCount, setRewatchCount] = useState(0);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
-  const [loadedLibraryData, setLoadedLibraryData] = useState(library.data);
+  // Deliberately *not* seeded from `library.data`: if the query already has
+  // this item cached at mount (e.g. revisiting a title within the same
+  // session), initializing this to `library.data` would make the sync check
+  // below a same-reference no-op on the very first render, leaving status/
+  // favourite/etc. stuck at their blank literal defaults instead of the
+  // real cached values.
+  const [loadedLibraryData, setLoadedLibraryData] = useState<typeof library.data>();
 
   if (library.data && library.data !== loadedLibraryData) {
     setLoadedLibraryData(library.data);
@@ -30,6 +38,46 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     setNotes(library.data.notes ?? "");
     setTags(library.data.tags.join(", "));
     setRewatchCount(library.data.rewatchCount);
+  }
+
+  // Saving always sends all 6 fields (see save() below), and upsert_impl on
+  // the Rust side merges them in as the new source of truth — never a
+  // partial patch. Rendering the editable form (and its Save button) before
+  // we actually know the existing state — still loading, or the fetch
+  // failed — would let a click overwrite a real "watching, 8/10, tagged"
+  // entry with these blank defaults. Block on both states instead of just
+  // disabling Save, so there's no window where the form exists with stale
+  // data underneath it.
+  if (library.isLoading) {
+    return (
+      <Panel>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold">{t("library.myLibrary")}</p>
+            <p className="text-sm text-muted-foreground">{t("library.description")}</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-14" />
+          <Skeleton className="h-14" />
+          <Skeleton className="h-14" />
+        </div>
+        <Skeleton className="mt-4 h-14" />
+        <Skeleton className="mt-4 h-24" />
+      </Panel>
+    );
+  }
+
+  if (library.isError) {
+    return (
+      <Panel>
+        <div className="mb-4">
+          <p className="font-semibold">{t("library.myLibrary")}</p>
+          <p className="text-sm text-muted-foreground">{t("library.description")}</p>
+        </div>
+        <PartialErrorState message={t("library.loadError")} onRetry={() => void library.refetch()} />
+      </Panel>
+    );
   }
 
   const save = () =>

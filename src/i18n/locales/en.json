@@ -383,6 +383,7 @@
   "library": {
     "myLibrary": "My library",
     "description": "Status, rating, tags, private notes and rewatches.",
+    "loadError": "Couldn't load your saved status for this title. Try again before making changes — saving now could overwrite what's already stored.",
     "subtitle": "Filter by type and status, and sort everything you're tracking.",
     "recent": "Recent",
     "title": "Title",
