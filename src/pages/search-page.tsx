@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { SearchX } from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -32,6 +32,7 @@ const parseSearchScope = (value: string | null): SearchScope | null =>
 
 export function SearchPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate({ from: "/search" });
   const { data: preferences } = usePreferences();
   const location = useRouterState({ select: (state) => state.location });
   const searchParams = new URLSearchParams(location.search);
@@ -40,22 +41,44 @@ export function SearchPage() {
   const provider = searchParams.get("provider") || undefined;
   const urlQuery = searchParams.get("q") || "";
   const urlScope = parseSearchScope(searchParams.get("scope"));
+
+  // Typing/scope changes push back into the URL (below, debounced for the
+  // query) so a refresh or a shared link doesn't lose the in-progress
+  // search. These refs track what *we* last pushed so that round-trip
+  // doesn't get misread as an external navigation and clobber newer local
+  // state — external changes (browser back/forward, a genre/platform Link
+  // from another page) still flow through the checks below.
+  // Normalized to the same "empty means undefined" shape the sync effect
+  // below writes to the URL, so the mount-time comparison doesn't see a
+  // false mismatch between "" (from URLSearchParams) and undefined.
+  const lastPushedQueryRef = useRef<string | undefined>(urlQuery || undefined);
+  const lastPushedScopeRef = useRef<SearchScope | undefined>(urlScope ?? undefined);
+
   const [localQuery, setLocalQuery] = useState(urlQuery);
   const [prevUrlQuery, setPrevUrlQuery] = useState(urlQuery);
   if (urlQuery !== prevUrlQuery) {
     setPrevUrlQuery(urlQuery);
-    setLocalQuery(urlQuery);
+    if ((urlQuery || undefined) !== lastPushedQueryRef.current) setLocalQuery(urlQuery);
   }
 
   const [selectedScope, setSelectedScope] = useState<SearchScope | null>(urlScope);
   const [prevUrlScope, setPrevUrlScope] = useState<SearchScope | null>(urlScope);
   if (urlScope !== prevUrlScope) {
     setPrevUrlScope(urlScope);
-    setSelectedScope(urlScope);
+    if ((urlScope ?? undefined) !== lastPushedScopeRef.current) setSelectedScope(urlScope);
   }
 
   const scope = selectedScope ?? preferences?.defaultSearchType ?? "all";
   const debouncedQuery = useDebouncedValue(localQuery, 350);
+
+  useEffect(() => {
+    const nextQuery = debouncedQuery || undefined;
+    const nextScope = selectedScope ?? undefined;
+    if (nextQuery === lastPushedQueryRef.current && nextScope === lastPushedScopeRef.current) return;
+    lastPushedQueryRef.current = nextQuery;
+    lastPushedScopeRef.current = nextScope;
+    void navigate({ search: (prev) => ({ ...prev, q: nextQuery, scope: nextScope }), replace: true });
+  }, [debouncedQuery, selectedScope, navigate]);
   const searchQuery = useSearchHook(debouncedQuery, scope, {
     genreMovie,
     genreSeries,
