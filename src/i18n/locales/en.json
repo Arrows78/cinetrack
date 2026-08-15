@@ -265,6 +265,14 @@
     "paceBasis": "Based on the last two months",
     "catchUpBy": "Caught up by"
   },
+  "bootRecovery": {
+    "checking": "Checking your local data…",
+    "title": "We had to reset your local database",
+    "description": "CineTrack couldn't open your existing data, so it started fresh to get you back up and running. Your previous file was kept, untouched, in case you need it — restore your last automatic backup now, or continue with a clean slate.",
+    "restoreCta": "Restore last automatic backup",
+    "continueCta": "Continue with a fresh start",
+    "restoreFailed": "Couldn't restore the automatic backup."
+  },
   "profileGate": {
     "resolving": "Loading your profile…",
     "createTitle": "Create your profile",

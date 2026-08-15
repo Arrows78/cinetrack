@@ -1,7 +1,10 @@
 pub mod migrations;
 
 use std::fs::create_dir_all;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use serde::Serialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use sqlx::SqlitePool;
 use tauri::{AppHandle, Manager, Runtime};
@@ -9,6 +12,55 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::error::ApiError;
 
 const DB_FILE_NAME: &str = "app.db";
+
+/// Reported to the frontend (see `commands::boot::get_boot_recovery`) so it
+/// can show a one-time notice and offer to restore the last automatic
+/// backup, instead of the app silently starting from an empty database with
+/// no explanation.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BootRecovery {
+    pub recovered: bool,
+    pub quarantined_path: Option<String>,
+    pub original_error: Option<String>,
+}
+
+async fn open_pool(db_path: &Path) -> Result<SqlitePool, ApiError> {
+    let options = SqliteConnectOptions::new()
+        .filename(db_path)
+        .create_if_missing(true)
+        .foreign_keys(true)
+        .journal_mode(SqliteJournalMode::Wal)
+        .synchronous(SqliteSynchronous::Normal);
+
+    SqlitePoolOptions::new().connect_with(options).await.map_err(ApiError::from)
+}
+
+/// Renames the broken database file (and its WAL/SHM sidecars, if present)
+/// aside instead of deleting it — a corrupt file might still hold data worth
+/// hand-recovering later, and the user's real recovery path (restoring the
+/// last automatic backup) doesn't need it. The pool that failed to migrate
+/// must already be closed before this runs: on Windows a rename fails while
+/// any connection still holds the file open.
+fn quarantine_broken_database(db_path: &Path) -> Result<String, ApiError> {
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let quarantined: PathBuf = db_path.with_extension(format!("db.corrupt-{timestamp}"));
+
+    std::fs::rename(db_path, &quarantined)
+        .map_err(|error| ApiError::internal(format!("Couldn't quarantine the broken database file: {error}")))?;
+
+    for suffix in ["-wal", "-shm"] {
+        let sidecar = db_path.with_file_name(format!("{DB_FILE_NAME}{suffix}"));
+        if sidecar.exists() {
+            let _ = std::fs::rename(&sidecar, quarantined.with_file_name(format!(
+                "{}{suffix}",
+                quarantined.file_name().and_then(|n| n.to_str()).unwrap_or(DB_FILE_NAME)
+            )));
+        }
+    }
+
+    Ok(quarantined.to_string_lossy().into_owned())
+}
 
 /// Opens the same SQLite file `tauri-plugin-sql` uses today
 /// (`sqlite:app.db`, resolved against the app's *config* dir — not the data
@@ -19,7 +71,16 @@ const DB_FILE_NAME: &str = "app.db";
 /// `SqliteConnectOptions` applies `foreign_keys`/`journal_mode`/`synchronous`
 /// to every connection the pool opens (not just the first one obtained),
 /// which is stronger than a one-off `PRAGMA` execute right after connecting.
-pub async fn init_pool<R: Runtime>(app: &AppHandle<R>) -> Result<SqlitePool, ApiError> {
+///
+/// A migration failure (corrupt file, a version pragma left over from an
+/// unrelated database, an incomplete manual restore — see
+/// `migrations::verify_critical_tables`) no longer takes the whole process
+/// down with it. Instead: quarantine the broken file and retry once against
+/// a brand new one, which migrates cleanly since it starts empty. Only if
+/// *that* also fails (disk full, permissions — something no database-level
+/// recovery can route around) does this still propagate an error, exactly
+/// like before.
+pub async fn init_pool<R: Runtime>(app: &AppHandle<R>) -> Result<(SqlitePool, BootRecovery), ApiError> {
     let app_config_dir = app
         .path()
         .app_config_dir()
@@ -27,22 +88,41 @@ pub async fn init_pool<R: Runtime>(app: &AppHandle<R>) -> Result<SqlitePool, Api
     create_dir_all(&app_config_dir)
         .map_err(|error| ApiError::internal(format!("Couldn't create app config dir: {error}")))?;
 
-    let db_path = app_config_dir.join(DB_FILE_NAME);
-    let options = SqliteConnectOptions::new()
-        .filename(db_path)
-        .create_if_missing(true)
-        .foreign_keys(true)
-        .journal_mode(SqliteJournalMode::Wal)
-        .synchronous(SqliteSynchronous::Normal);
+    init_pool_at(&app_config_dir.join(DB_FILE_NAME)).await
+}
 
-    let pool = SqlitePoolOptions::new()
-        .connect_with(options)
-        .await
-        .map_err(ApiError::from)?;
+/// The path-only, `AppHandle`-free core of `init_pool` — split out so the
+/// quarantine-and-retry behavior is directly unit-testable against a real,
+/// file-backed SQLite database instead of only the in-memory pools the rest
+/// of this codebase's tests use (quarantining is a filesystem rename, which
+/// `sqlite::memory:` has none of).
+async fn init_pool_at(db_path: &Path) -> Result<(SqlitePool, BootRecovery), ApiError> {
+    let pool = open_pool(db_path).await?;
 
-    migrations::run_migrations(&pool).await?;
+    match migrations::run_migrations(&pool).await {
+        Ok(()) => Ok((pool, BootRecovery::default())),
+        Err(migration_error) => {
+            pool.close().await;
+            let quarantined_path = quarantine_broken_database(db_path)?;
 
-    Ok(pool)
+            let fresh_pool = open_pool(db_path).await?;
+            migrations::run_migrations(&fresh_pool).await.map_err(|fresh_error| {
+                ApiError::internal(format!(
+                    "Recovery failed too, after quarantining {quarantined_path}: {fresh_error} \
+                     (original error: {migration_error})"
+                ))
+            })?;
+
+            Ok((
+                fresh_pool,
+                BootRecovery {
+                    recovered: true,
+                    quarantined_path: Some(quarantined_path),
+                    original_error: Some(migration_error.message),
+                },
+            ))
+        }
+    }
 }
 
 /// Resolves the active profile id the same way every repository used to via
@@ -90,6 +170,17 @@ mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
 
+    /// A fresh, unique path under the OS temp dir — a real file, not
+    /// `sqlite::memory:`, since quarantining is a filesystem rename that an
+    /// in-memory database has nothing to exercise. Not cleaned up
+    /// automatically (no extra dev-dependency just for that); OS temp
+    /// cleanup handles it eventually, and each test gets its own path so
+    /// leftovers never collide with a later run.
+    fn temp_db_path(label: &str) -> PathBuf {
+        let unique = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        std::env::temp_dir().join(format!("cinetrack-test-{label}-{unique}.db"))
+    }
+
     async fn in_memory_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
@@ -128,5 +219,44 @@ mod tests {
             .unwrap();
 
         assert_eq!(current_profile_id(&pool).await.unwrap(), "guest");
+    }
+
+    #[tokio::test]
+    async fn init_pool_at_is_a_clean_no_op_success_on_a_healthy_database() {
+        let path = temp_db_path("healthy");
+
+        let (pool, boot_recovery) = init_pool_at(&path).await.unwrap();
+        assert!(!boot_recovery.recovered);
+        assert!(boot_recovery.quarantined_path.is_none());
+        assert_eq!(current_profile_id(&pool).await.unwrap(), "default");
+
+        pool.close().await;
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[tokio::test]
+    async fn init_pool_at_quarantines_a_broken_database_and_starts_fresh() {
+        let path = temp_db_path("broken");
+
+        // Simulates exactly the corruption verify_critical_tables exists to
+        // catch (see migrations.rs): a pragma claiming every migration
+        // already ran, but none of the tables actually exist.
+        let broken = SqlitePoolOptions::new().connect(&format!("sqlite://{}?mode=rwc", path.display())).await.unwrap();
+        sqlx::query("PRAGMA user_version = 9").execute(&broken).await.unwrap();
+        broken.close().await;
+
+        let (pool, boot_recovery) = init_pool_at(&path).await.unwrap();
+
+        assert!(boot_recovery.recovered);
+        let quarantined_path = boot_recovery.quarantined_path.clone().expect("a quarantined path");
+        assert!(std::path::Path::new(&quarantined_path).exists(), "the broken file should still exist, just moved");
+        assert!(boot_recovery.original_error.is_some());
+
+        // The fresh database is fully usable.
+        assert_eq!(current_profile_id(&pool).await.unwrap(), "default");
+
+        pool.close().await;
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&quarantined_path);
     }
 }

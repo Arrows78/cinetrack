@@ -1,5 +1,6 @@
 mod availability;
 mod backup;
+mod boot;
 mod custom_lists;
 mod history;
 mod library;
@@ -18,6 +19,7 @@ pub use availability::{
     save_availability_snapshot, toggle_availability_alert,
 };
 pub use backup::{check_data_integrity, export_backup_data, import_backup_data};
+pub use boot::get_boot_recovery;
 pub use custom_lists::{
     add_custom_list_item, create_custom_list, list_custom_list_items, list_custom_lists, remove_custom_list,
     remove_custom_list_item,

@@ -265,6 +265,14 @@
     "paceBasis": "Sur les deux derniers mois",
     "catchUpBy": "À jour le"
   },
+  "bootRecovery": {
+    "checking": "Vérification de vos données locales…",
+    "title": "Nous avons dû réinitialiser votre base de données locale",
+    "description": "CineTrack n'a pas pu ouvrir vos données existantes, donc l'application a redémarré sur une base vierge pour vous permettre de continuer. Votre ancien fichier a été conservé, intact, au cas où vous en auriez besoin — restaurez votre dernière sauvegarde automatique maintenant, ou continuez avec une base vierge.",
+    "restoreCta": "Restaurer la dernière sauvegarde automatique",
+    "continueCta": "Continuer avec une base vierge",
+    "restoreFailed": "Impossible de restaurer la sauvegarde automatique."
+  },
   "profileGate": {
     "resolving": "Chargement de votre profil…",
     "createTitle": "Créez votre profil",

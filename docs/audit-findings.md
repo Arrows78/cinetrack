@@ -58,11 +58,17 @@ Anything that can't be undone — delete, restore, undo-an-import — routes thr
 
 **Rule:** when a change removes or moves the thing a doc/comment describes, update that doc/comment in the same change.
 
+### Startup database failures must degrade, not crash
+
+A migration failure at launch (corrupt file, a stale `PRAGMA user_version` left over from an unrelated database, an incomplete manual restore) is not the same class of problem as a disk-full or permissions error — it's recoverable, because a *fresh* database at the same path migrates cleanly. Don't let it take the whole process down with no way for the user to respond.
+
+- **Reference implementation:** `database::init_pool` (`src-tauri/src/database/mod.rs`) — on a migration failure it closes the pool, quarantines the broken file (renamed aside, never deleted) alongside its WAL/SHM sidecars, and retries once against a brand new file. Only a *second* failure (something no database-level recovery can route around) still propagates an error. The frontend reads the outcome via `get_boot_recovery` and `BootRecoveryGate` (`src/components/desktop/boot-recovery-gate.tsx`), offering to restore the last automatic backup before the rest of the app — including auth/profile resolution, which also depends on this pool — ever mounts.
+- **Rule:** a Rust command layer that owns a resource the whole app depends on (the SQLite pool, here) should have a real recovery path for the failure modes that have one, and surface *that* state to the frontend explicitly — not just bubble every failure up to a process-level panic.
+
 ## Open items from the 2026-08-15 audit (not yet fixed)
 
 Remove a line once it's actually fixed — don't let this turn into a second bug tracker.
 
-- [ ] `run_migrations` failing at startup panics the whole process (`src-tauri/src/lib.rs:103-104,141-142`) with no recovery screen and no attempt to restore from the last automatic backup.
 - [ ] No remote error/crash reporting in production (only the local rotating log in `src/features/diagnostics/logger.ts`).
 - [ ] No end-to-end test suite; 20/21 pages in `src/pages/` have no tests at all.
 - [ ] No toast/snackbar component exists anywhere in `src/components/ui` — a z-index token is reserved for it (`src/pages/design-system/catalog-data.ts`) but nothing was ever built, which is the direct cause of inconsistent post-action feedback across the app.

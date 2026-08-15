@@ -78,7 +78,6 @@ describe("usePreferences", () => {
     await waitFor(() => expect(result.current.data?.theme).toBe("light"));
     expect(invokeMock).toHaveBeenCalledWith("update_preference", { key: "theme", value: "light" });
   });
-
 });
 
 describe("useActiveProfileId", () => {

@@ -173,7 +173,8 @@ export const breakpoints = [
   {
     name: "lg",
     value: "1024px",
-    usage: "The desktop/mobile split — AppShell swaps the sidebar for the mobile header here. Unreachable in the packaged app (tauri.conf.json sets minWidth: 1100, above this breakpoint) — only exercised via `pnpm dev` in a resized browser.",
+    usage:
+      "The desktop/mobile split — AppShell swaps the sidebar for the mobile header here. Unreachable in the packaged app (tauri.conf.json sets minWidth: 1100, above this breakpoint) — only exercised via `pnpm dev` in a resized browser.",
   },
   { name: "xl", value: "1280px", usage: "Further grid reflow on wide layouts (e.g. the genre grid on Home)." },
   { name: "2xl", value: "1536px", usage: "Rare — used sparingly for grids that still have room to add a column." },
@@ -508,6 +509,14 @@ export const componentInventory = [
     "infrastructure",
     "internal",
     "Blocks protected desktop flows until the local token is available."
+  ),
+  component(
+    "BootRecoveryGate",
+    "components/desktop/boot-recovery-gate.tsx",
+    "Desktop",
+    "infrastructure",
+    "internal",
+    "Offers to restore the last automatic backup after the database had to be reset at startup."
   ),
   component(
     "AppShell",
