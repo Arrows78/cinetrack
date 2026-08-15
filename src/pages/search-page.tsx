@@ -21,6 +21,12 @@ const getGenreLabelKey = (id: string | undefined) =>
   id ? ALL_GENRES.find((genre) => String(genre.id) === id)?.labelKey : undefined;
 const getPlatformName = (id: string) => PLATFORMS.find((platform) => String(platform.id) === id)?.label ?? id;
 
+const VALID_SEARCH_SCOPES: readonly SearchScope[] = ["all", "movie", "series"];
+// A user can hand-edit the URL's ?scope= param — don't trust it as SearchScope
+// without checking it's actually one of the values that type allows.
+const parseSearchScope = (value: string | null): SearchScope | null =>
+  VALID_SEARCH_SCOPES.includes(value as SearchScope) ? (value as SearchScope) : null;
+
 export function SearchPage() {
   const { t } = useTranslation();
   const { data: preferences } = usePreferences();
@@ -30,7 +36,7 @@ export function SearchPage() {
   const genreSeries = searchParams.get("genreSeries") || undefined;
   const provider = searchParams.get("provider") || undefined;
   const urlQuery = searchParams.get("q") || "";
-  const urlScope = searchParams.get("scope") as SearchScope | null;
+  const urlScope = parseSearchScope(searchParams.get("scope"));
   const [localQuery, setLocalQuery] = useState(urlQuery);
   const [prevUrlQuery, setPrevUrlQuery] = useState(urlQuery);
   if (urlQuery !== prevUrlQuery) {
