@@ -599,6 +599,22 @@ export const componentInventory = [
     "Displays principal cast members and their character names."
   ),
   component(
+    "CatalogueBrowse",
+    "components/media/catalogue-browse.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Links out to genre- and platform-filtered search results."
+  ),
+  component(
+    "CatalogueSections",
+    "components/media/catalogue-sections.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Renders the shared trending/top-rated/upcoming rows used by both the home dashboard and Search's default browse state."
+  ),
+  component(
     "EpisodeCard",
     "components/media/episode-card.tsx",
     "Media",

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouterState } from "@tanstack/react-router";
-import { Search, SearchX } from "lucide-react";
+import { SearchX } from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
@@ -10,9 +10,12 @@ import { LoadMoreButton } from "@/components/media/load-more-button";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SearchBar } from "@/components/media/search-bar";
 import { SectionHeader } from "@/components/media/section-header";
+import { CatalogueSections, CATALOGUE_SECTIONS } from "@/components/media/catalogue-sections";
+import { BrowseByGenre, BrowseByPlatform } from "@/components/media/catalogue-browse";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSearch as useSearchHook } from "@/features/media/use-search";
+import { useHomeFeed } from "@/features/media/use-media";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import type { MediaSummary, SearchScope } from "@/types/media";
 
@@ -62,6 +65,11 @@ export function SearchPage() {
 
   const hasFilters = Boolean(genreMovie || genreSeries || provider);
   const showResults = hasFilters || debouncedQuery.trim().length >= 2;
+  // No query typed yet and no filter applied: browse the same catalogue
+  // sections as the home dashboard instead of an empty "start typing" state.
+  // Same query key as useHomeFeed on the home page, so this is a cache hit
+  // (not a new network call) whenever the user came from there.
+  const homeFeedQuery = useHomeFeed();
   const grouped = useMemo(
     () => ({
       movies: searchQuery.items.filter((item) => item.mediaType === "movie"),
@@ -106,44 +114,59 @@ export function SearchPage() {
         </div>
       </div>
 
-      {searchQuery.isLoading ? <GridSkeleton count={8} /> : null}
-      {searchQuery.isError ? (
-        <RemoteErrorState error={searchQuery.error} onRetry={() => void searchQuery.refetch()} />
-      ) : null}
-      {!searchQuery.isError && !showResults && !hasFilters ? (
-        <EmptyState icon={Search} title={t("search.startTyping")} description={t("search.startTypingDesc")} />
-      ) : null}
-      {showResults && !searchQuery.isLoading && !searchQuery.isError && !searchQuery.items.length ? (
-        <EmptyState icon={SearchX} title={t("pages.noResults")} description={t("search.noResultsDesc")} />
-      ) : null}
+      {!showResults ? (
+        <>
+          {homeFeedQuery.isLoading ? <GridSkeleton count={8} /> : null}
+          {homeFeedQuery.isError ? (
+            <RemoteErrorState error={homeFeedQuery.error} onRetry={() => void homeFeedQuery.refetch()} />
+          ) : null}
+          {!homeFeedQuery.isLoading && !homeFeedQuery.isError ? (
+            <>
+              <CatalogueSections feed={homeFeedQuery.data} startIndex={2} />
+              <BrowseByGenre startIndex={2 + CATALOGUE_SECTIONS.length} />
+              <BrowseByPlatform startIndex={3 + CATALOGUE_SECTIONS.length} />
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          {searchQuery.isLoading ? <GridSkeleton count={8} /> : null}
+          {searchQuery.isError ? (
+            <RemoteErrorState error={searchQuery.error} onRetry={() => void searchQuery.refetch()} />
+          ) : null}
+          {!searchQuery.isLoading && !searchQuery.isError && !searchQuery.items.length ? (
+            <EmptyState icon={SearchX} title={t("pages.noResults")} description={t("search.noResultsDesc")} />
+          ) : null}
 
-      {scope === "all" && grouped.series.length > 0 ? (
-        <section>
-          <SectionHeader
-            title={t("nav.series")}
-            subtitle={t("search.resultsCount", { count: grouped.series.length })}
-            index={2}
-          />
-          <MediaGrid items={grouped.series as MediaSummary[]} />
-        </section>
-      ) : null}
-      {scope === "all" && grouped.movies.length > 0 ? (
-        <section>
-          <SectionHeader
-            title={t("nav.movies")}
-            subtitle={t("search.resultsCount", { count: grouped.movies.length })}
-            index={grouped.series.length > 0 ? 3 : 2}
-          />
-          <MediaGrid items={grouped.movies as MediaSummary[]} />
-        </section>
-      ) : null}
-      {scope !== "all" && searchQuery.items.length ? <MediaGrid items={searchQuery.items} /> : null}
+          {scope === "all" && grouped.series.length > 0 ? (
+            <section>
+              <SectionHeader
+                title={t("nav.series")}
+                subtitle={t("search.resultsCount", { count: grouped.series.length })}
+                index={2}
+              />
+              <MediaGrid items={grouped.series as MediaSummary[]} />
+            </section>
+          ) : null}
+          {scope === "all" && grouped.movies.length > 0 ? (
+            <section>
+              <SectionHeader
+                title={t("nav.movies")}
+                subtitle={t("search.resultsCount", { count: grouped.movies.length })}
+                index={grouped.series.length > 0 ? 3 : 2}
+              />
+              <MediaGrid items={grouped.movies as MediaSummary[]} />
+            </section>
+          ) : null}
+          {scope !== "all" && searchQuery.items.length ? <MediaGrid items={searchQuery.items} /> : null}
 
-      <LoadMoreButton
-        hasNextPage={searchQuery.hasNextPage}
-        isFetchingNextPage={searchQuery.isFetchingNextPage}
-        onClick={() => void searchQuery.fetchNextPage()}
-      />
+          <LoadMoreButton
+            hasNextPage={searchQuery.hasNextPage}
+            isFetchingNextPage={searchQuery.isFetchingNextPage}
+            onClick={() => void searchQuery.fetchNextPage()}
+          />
+        </>
+      )}
     </div>
   );
 }

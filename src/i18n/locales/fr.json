@@ -125,7 +125,11 @@
     "browseByPlatform": "Explorer par plateforme",
     "browseByPlatformSubtitle": "Trouvez des contenus sur vos services préférés.",
     "watchNext": "À suivre",
-    "watchNextSubtitle": "Reprenez là où vous vous êtes arrêté"
+    "watchNextSubtitle": "Reprenez là où vous vous êtes arrêté",
+    "becauseYouLiked": "Parce que vous avez aimé {{title}}",
+    "becauseYouLikedSubtitle": "D'autres titres proches de ce que vous avez déjà regardé.",
+    "becauseYouLoveGenre": "Parce que vous aimez {{genre}}",
+    "becauseYouLoveGenreSubtitle": "D'autres suggestions dans votre genre favori."
   },
   "history": {
     "recentActivity": "Activité récente",
@@ -156,8 +160,6 @@
   "search": {
     "globalSearch": "Recherche globale",
     "subtitle": "Recherchez des films et des séries.",
-    "startTyping": "Commencez à saisir",
-    "startTypingDesc": "La recherche s'active à partir de deux caractères.",
     "noResultsDesc": "Essayez un autre titre ou un autre filtre.",
     "resultsCount_one": "{{count}} résultat",
     "resultsCount_other": "{{count}} résultats",

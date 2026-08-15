@@ -125,7 +125,11 @@
     "browseByPlatform": "Browse by Platform",
     "browseByPlatformSubtitle": "Find series and movies on your favorite streaming services.",
     "watchNext": "Watch next",
-    "watchNextSubtitle": "Pick up right where you left off"
+    "watchNextSubtitle": "Pick up right where you left off",
+    "becauseYouLiked": "Because you liked {{title}}",
+    "becauseYouLikedSubtitle": "More titles similar to what you've already watched.",
+    "becauseYouLoveGenre": "Because you love {{genre}}",
+    "becauseYouLoveGenreSubtitle": "More picks in your favorite genre."
   },
   "history": {
     "recentActivity": "Recent Activity",
@@ -156,8 +160,6 @@
   "search": {
     "globalSearch": "Global Search",
     "subtitle": "Search movies and series.",
-    "startTyping": "Start typing",
-    "startTypingDesc": "Search activates from 2 characters. Use the filter to target movies, series, or both.",
     "noResultsDesc": "Try another title, different language, or a different filter.",
     "resultsCount_one": "{{count}} result",
     "resultsCount_other": "{{count}} results",
