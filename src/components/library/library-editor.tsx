@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -165,15 +166,19 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         </label>
       </div>
 
-      <label className="mt-4 grid gap-1 text-sm">
-        <span className="text-muted-foreground">{t("library.tagsHelp")}</span>
-        <Input
-          size="sm"
-          value={tags}
-          onChange={(event) => setTags(event.target.value)}
-          placeholder={t("library.tagsPlaceholder")}
-        />
-      </label>
+      <div className="mt-4">
+        <FormField label={t("library.tags")} help={t("library.tagsHelp")}>
+          {(describedById) => (
+            <Input
+              size="sm"
+              value={tags}
+              onChange={(event) => setTags(event.target.value)}
+              placeholder={t("library.tagsPlaceholder")}
+              aria-describedby={describedById}
+            />
+          )}
+        </FormField>
+      </div>
       <label className="mt-4 grid gap-1 text-sm">
         <span className="text-muted-foreground">{t("library.privateNotes")}</span>
         <Textarea className="min-h-24" value={notes} onChange={(event) => setNotes(event.target.value)} />
