@@ -28,8 +28,14 @@ const toastVariants = cva(
     variants: {
       variant: {
         default: "border-border bg-card text-card-foreground",
-        success: "border-success/30 bg-success/10 text-success-foreground",
-        error: "border-destructive/30 bg-destructive/10 text-destructive-foreground",
+        // text-success/text-destructive, not the *-foreground tokens: those
+        // are calibrated for dark text on a solid, saturated fill (see
+        // Badge's filled variants) — on this translucent /10 background,
+        // paired with -foreground the text nearly disappears (dark-on-dark
+        // in the dark theme, light-on-light in the light theme). Matches
+        // the same bg-X/N + text-X pairing partial-error-state.tsx uses.
+        success: "border-success/30 bg-success/10 text-success",
+        error: "border-destructive/30 bg-destructive/10 text-destructive",
       },
     },
     defaultVariants: {
