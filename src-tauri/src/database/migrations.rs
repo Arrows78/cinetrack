@@ -244,21 +244,16 @@ fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
     is_alter_table && mentions_duplicate_column
 }
 
-const EXPECTED_TABLES: &[&str] = &[
-    "activity_log",
-    "availability_alerts",
-    "availability_snapshots",
-    "custom_list_items",
-    "custom_lists",
-    "episode_progress",
-    "library_items",
-    "preferences",
-    "profiles",
-    "seen_movies",
-    "tracked_series",
-    "viewing_events",
-    "watchlist_items",
-];
+/// Every table the schema is expected to have: `PROFILE_SCOPED_TABLES` plus
+/// the tables that aren't scoped by a direct `profile_id` column —
+/// `profiles` itself (what those tables reference), `custom_list_items`
+/// (scoped only transitively via `custom_lists`), and the two
+/// global/cache tables `preferences` and `availability_snapshots`.
+fn expected_tables() -> Vec<&'static str> {
+    let mut tables: Vec<&'static str> = super::PROFILE_SCOPED_TABLES.to_vec();
+    tables.extend(["custom_list_items", "preferences", "profiles", "availability_snapshots"]);
+    tables
+}
 
 /// Catches a database whose PRAGMA user_version claims every migration
 /// already ran but that's actually missing one or more expected tables — a
@@ -275,7 +270,7 @@ async fn verify_critical_tables(pool: &SqlitePool) -> Result<(), ApiError> {
             .map_err(ApiError::from)?;
 
     let missing: Vec<&str> =
-        EXPECTED_TABLES.iter().copied().filter(|table| !existing.iter().any(|name| name == table)).collect();
+        expected_tables().into_iter().filter(|table| !existing.iter().any(|name| name == table)).collect();
 
     if !missing.is_empty() {
         return Err(ApiError::internal(format!(

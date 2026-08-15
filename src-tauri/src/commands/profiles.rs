@@ -148,15 +148,15 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError
 
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
-    // No manual per-table cleanup needed here: every profile-scoped table
-    // declares `profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON
-    // DELETE CASCADE` (see migrations.rs), the pool is opened with
-    // `.foreign_keys(true)` (see database::init_pool), and `custom_list_items`
-    // cascades a second level down through `custom_lists`'s own FK — SQLite
-    // cascades multiple levels in one statement. Deleting the profile row
-    // alone is enough; `removing_a_profile_clears_its_scoped_data` below
-    // asserts this holds for every one of those tables, `custom_list_items`
-    // included.
+    // No manual per-table cleanup needed here: every table in
+    // `database::PROFILE_SCOPED_TABLES` declares
+    // `profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE`
+    // (see migrations.rs), the pool is opened with `.foreign_keys(true)`
+    // (see database::init_pool), and `custom_list_items` cascades a second
+    // level down through `custom_lists`'s own FK — SQLite cascades multiple
+    // levels in one statement. Deleting the profile row alone is enough;
+    // `removing_a_profile_clears_its_scoped_data` below asserts this holds
+    // for every one of those tables, `custom_list_items` included.
     sqlx::query("DELETE FROM profiles WHERE uuid = $1")
         .bind(profile_id)
         .execute(&mut *tx)
@@ -335,17 +335,7 @@ mod tests {
         let profiles = list_impl(&pool).await.unwrap();
         assert!(!profiles.iter().any(|p| p.id == created.id));
 
-        for table in [
-            "watchlist_items",
-            "library_items",
-            "seen_movies",
-            "episode_progress",
-            "tracked_series",
-            "viewing_events",
-            "activity_log",
-            "availability_alerts",
-            "custom_lists",
-        ] {
+        for table in crate::database::PROFILE_SCOPED_TABLES {
             let remaining: (i64,) =
                 sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table} WHERE profile_id = $1")))
                     .bind(&created.id)

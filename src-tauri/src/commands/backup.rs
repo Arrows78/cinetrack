@@ -382,22 +382,17 @@ const IMPORT_BATCH_SIZE: usize = 200;
 async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
-    for table in [
-        "availability_alerts",
-        "availability_snapshots",
-        "custom_list_items",
-        "custom_lists",
-        "viewing_events",
-        "library_items",
-        "activity_log",
-        "episode_progress",
-        "tracked_series",
-        "seen_movies",
-        "watchlist_items",
-        "preferences",
-        "profiles",
-    ] {
-        // `table` iterates a fixed Rust array literal above, never user input.
+    // Child-first purge order: `custom_list_items` before `custom_lists`
+    // (its own FK target), everything in `PROFILE_SCOPED_TABLES` before
+    // `profiles` (what they all reference) — `availability_snapshots` and
+    // `preferences` have no FK of their own, so they're unconstrained.
+    let purge_order: Vec<&str> = ["availability_snapshots", "custom_list_items"]
+        .into_iter()
+        .chain(crate::database::PROFILE_SCOPED_TABLES.iter().copied())
+        .chain(["preferences", "profiles"])
+        .collect();
+    for table in purge_order {
+        // `table` iterates a fixed Rust list built above, never user input.
         sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table}")))
             .execute(&mut *tx)
             .await

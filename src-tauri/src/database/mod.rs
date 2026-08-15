@@ -13,6 +13,31 @@ use crate::error::ApiError;
 
 const DB_FILE_NAME: &str = "app.db";
 
+/// Every table that carries a direct
+/// `profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE`
+/// column (see migrations.rs's schema) — the single source of truth for
+/// "which tables does deleting a profile clear," shared by the command
+/// layer's cascade delete, backup import's pre-import purge, and the
+/// migration runner's schema-completeness check, instead of each retyping
+/// its own copy.
+///
+/// `custom_list_items` is deliberately NOT included: it has no `profile_id`
+/// column of its own and scopes to a profile only transitively, through its
+/// own `list_id TEXT NOT NULL REFERENCES custom_lists(uuid) ON DELETE CASCADE`.
+/// Callers that need it too (a full-schema table list, a full-database
+/// purge) add it alongside this const rather than folding it in here.
+pub const PROFILE_SCOPED_TABLES: &[&str] = &[
+    "activity_log",
+    "availability_alerts",
+    "custom_lists",
+    "episode_progress",
+    "library_items",
+    "seen_movies",
+    "tracked_series",
+    "viewing_events",
+    "watchlist_items",
+];
+
 /// Reported to the frontend (see `commands::boot::get_boot_recovery`) so it
 /// can show a one-time notice and offer to restore the last automatic
 /// backup, instead of the app silently starting from an empty database with
