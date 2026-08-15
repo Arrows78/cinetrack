@@ -35,5 +35,17 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-updater = "2"
 
-[profile.dev.package.scrypt]
-opt-level = 3
+# Native "sorry, something went wrong" dialog for the one failure mode that
+# happens before any window (or even the webview) exists: a second startup
+# migration failure after the quarantine-and-retry in database::init_pool_at
+# already failed once. Linux uses the gtk3 backend specifically (not the
+# default xdg-portal one) because message dialogs aren't part of the
+# xdg-desktop-portal spec — rfd's portal backend falls back to shelling out
+# to the `zenity` binary for them, which isn't guaranteed installed. GTK3
+# itself already is: webkit2gtk (required for the Tauri webview on Linux)
+# pulls it in regardless.
+[target.'cfg(target_os = "linux")'.dependencies]
+rfd = { version = "0.15", default-features = false, features = ["gtk3"] }
+
+[target.'cfg(any(target_os = "macos", windows))'.dependencies]
+rfd = { version = "0.15", default-features = false }

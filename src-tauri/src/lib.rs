@@ -20,6 +20,27 @@ use commands::{
     update_preference, updater_is_configured, PreferencesCache,
 };
 
+// Last-resort safety net: `Builder::run` returns a clean `Result` (setup
+// failures — see the `.setup()` closure below — surface here rather than
+// panicking inside Tauri itself), but this runs before any window or
+// webview exists, so there is nothing on screen to show an error in. A
+// native OS dialog is the only way the user ever sees this instead of the
+// app just silently failing to open. Desktop only: rfd has no mobile
+// backend, and this app ships desktop-only anyway (no mobile config).
+#[cfg(desktop)]
+fn show_startup_error_dialog(error: &tauri::Error) {
+    rfd::MessageDialog::new()
+        .set_title("CineTrack")
+        .set_description(format!(
+            "CineTrack n'a pas pu démarrer : {error}\n\n\
+             Vos données ne sont pas perdues. Si une sauvegarde automatique existe, \
+             vous pourrez la restaurer une fois le problème résolu.",
+        ))
+        .set_level(rfd::MessageLevel::Error)
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -140,5 +161,14 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|error| {
+            #[cfg(desktop)]
+            {
+                show_startup_error_dialog(&error);
+                std::process::exit(1);
+            }
+
+            #[cfg(mobile)]
+            panic!("error while running tauri application: {error}");
+        });
 }
