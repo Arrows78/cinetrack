@@ -481,14 +481,12 @@
       "noneYetLink": "Créez-en une depuis votre bibliothèque."
     },
     "sections": {
+      "recentlyWatched": "Vu récemment",
+      "recentlyWatchedDesc": "Vos derniers visionnages, dans l'ordre",
       "watchNext": "À suivre",
       "watchNextDescSeries": "Reprenez là où vous vous êtes arrêtés",
-      "watchNextDescMovies": "Ajoutés à votre bibliothèque, pas encore vus",
       "haventStarted": "Pas commencé",
-      "haventStartedDesc": "Prêtes quand vous voulez",
-      "finished": "Terminé",
-      "finishedDescSeries": "Tous les épisodes diffusés ont été vus",
-      "finishedDescMovies": "Déjà vu"
+      "haventStartedDesc": "Prêtes quand vous voulez"
     }
   },
   "browserPreview": {
