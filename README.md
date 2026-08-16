@@ -252,6 +252,39 @@ Catalogue data, posters, and metadata are loaded from TMDB, so they require an i
 
 - [ ] Add more translations beyond English and French.
 
+### Inspired by TV Time — near-term
+
+Concrete, non-social improvements identified from a screen-by-screen review of TV Time, scoped to what fits CineTrack's local-first, no-account-required model:
+
+- [ ] Let a profile declare which streaming services it subscribes to, to prioritise "Watch tonight", Discover, and "where to watch" by what's actually accessible.
+- [ ] "Not interested" on a Watch Tonight suggestion, to stop it resurfacing without adding it to the library first.
+- [ ] A "Sync with system" theme option alongside the existing manual light/dark switch.
+- [ ] A configurable lead time for release/episode notifications (on air / 1 hour before / the day before), instead of a single on/off toggle.
+- [ ] Show an episode's air date next to its watched date, to make tracking gaps visible.
+- [ ] A "biggest binge session" record on the Stats page (most episodes watched in a single day).
+- [ ] Show the app version/build number and a "clear image cache" action in Settings.
+
+### Inspired by TV Time — visual/UX polish
+
+Layout and presentation changes only — no new data model, reusing what the app already tracks:
+
+- [ ] Group the library into labelled sections shown together (e.g. Watching / Up next / Haven't started) instead of one status filter at a time.
+- [ ] A grid/list density toggle on the library, for a compact row view alongside the poster grid.
+- [ ] "In N days" countdown chips on the calendar/upcoming view, alongside the release date.
+- [ ] A consistent "current period highlighted, history muted" convention across every Stats chart.
+- [ ] Removable active-filter chips above filtered lists (library, search), not just a dropdown.
+
+### Inspired by TV Time — deferred
+
+Real strengths of TV Time worth revisiting later, deliberately out of scope for now (they need a backend/account model CineTrack doesn't have today, or are a bigger product bet than the items above):
+
+- [ ] Social layer: following/followers, per-episode comments, activity feed.
+- [ ] Topic-based community groups (genre/franchise fan communities).
+- [ ] Achievements/badges (action-based, not just watch-count milestones).
+- [ ] Character-level voting per episode ("who was your favourite?").
+- [ ] A shareable, branded "my stats" export card for social sharing.
+- [ ] Per-episode emotional reaction logging, alongside the star rating.
+
 ## 🙌 Contributing
 
 Issues and pull requests are welcome, whether you are fixing a bug, improving the documentation, or proposing a feature.
