@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { FolderHeart, Heart, LibraryBig, ListPlus, Trash2 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid, type MediaGridItem } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
-import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
 import { EmptyState } from "@/components/states/empty-state";
@@ -77,7 +77,7 @@ function ListItemRow({ listId }: { listId: string }) {
   );
 }
 
-function ManageListsPanel({
+function ListsAccordionContent({
   lists,
   listFilter,
   onListDeleted,
@@ -94,9 +94,8 @@ function ManageListsPanel({
   const [listActionError, setListActionError] = useState<string | null>(null);
 
   return (
-    <Panel className="mt-4">
-      <h2 className="font-semibold">{t("library.lists.title")}</h2>
-      <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+    <>
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
         <Input
           size="sm"
           value={listName}
@@ -193,7 +192,7 @@ function ManageListsPanel({
           setPendingDeleteList(null);
         }}
       />
-    </Panel>
+    </>
   );
 }
 
@@ -208,7 +207,6 @@ export function LibraryPage() {
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
   const [listFilter, setListFilter] = useState("all");
-  const [manageListsOpen, setManageListsOpen] = useState(false);
   const listItems = useCustomListItems(listFilter === "all" ? "" : listFilter);
 
   const filtered = useMemo(() => {
@@ -322,33 +320,39 @@ export function LibraryPage() {
             {t("library.favouritesOnly")}
           </Button>
           {(lists.data?.length ?? 0) > 0 ? (
-            <label className="flex items-center gap-2 text-sm">
-              <span className="sr-only">{t("library.lists.filterLabel")}</span>
-              <Select
-                aria-label={t("library.lists.filterLabel")}
-                value={listFilter}
-                onChange={(event) => setListFilter(event.target.value)}
-                className="h-9 max-w-48 text-sm"
-              >
-                <option value="all">{t("library.lists.allLists")}</option>
-                {lists.data?.map((list) => (
-                  <option key={list.id} value={list.id}>
-                    {list.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              aria-label={t("library.lists.filterLabel")}
+              value={listFilter}
+              onChange={(event) => setListFilter(event.target.value)}
+              className="max-w-48"
+            >
+              <option value="all">{t("library.lists.allLists")}</option>
+              {lists.data?.map((list) => (
+                <option key={list.id} value={list.id}>
+                  {list.name}
+                </option>
+              ))}
+            </Select>
           ) : null}
-          <Button type="button" variant="outline" size="sm" onClick={() => setManageListsOpen((value) => !value)}>
-            <FolderHeart className="mr-2 size-4" />
-            {t("library.lists.manageToggle")}
-          </Button>
         </div>
       </div>
 
-      {manageListsOpen ? (
-        <ManageListsPanel lists={lists} listFilter={listFilter} onListDeleted={resetListFilter} />
-      ) : null}
+      <Accordion type="single" collapsible>
+        <AccordionItem value="lists">
+          <AccordionTrigger>
+            <span className="flex items-center gap-2">
+              <FolderHeart className="size-4 text-primary" aria-hidden="true" />
+              {t("library.lists.title")}
+              {lists.data?.length ? (
+                <span className="font-normal text-muted-foreground">({lists.data.length})</span>
+              ) : null}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <ListsAccordionContent lists={lists} listFilter={listFilter} onListDeleted={resetListFilter} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {libraryQuery.isLoading || (isFilteredToList && listItems.isLoading) ? (
         <GridSkeleton />

@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { LibraryEditor } from "../library-editor";
 import type { MediaSummary } from "@/types/media";
@@ -10,6 +12,19 @@ const useLibraryItemMock = vi.fn();
 
 vi.mock("@/features/library/use-library", () => ({
   useLibraryItem: () => useLibraryItemMock(),
+}));
+
+// LibraryEditor now renders AddToListButton inline (see the "within the
+// library panel" fix) — stub the lists it reads so this suite stays focused
+// on the save/remove form instead of also exercising list data.
+vi.mock("@/features/library/custom-list-repository", () => ({
+  customListRepository: { list: () => Promise.resolve([]) },
+}));
+
+// AddToListButton's no-lists-yet state links to /library — no RouterProvider
+// exists in this render, same workaround as media-card.test.tsx's own mock.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
 }));
 
 const media: MediaSummary = {
@@ -37,6 +52,15 @@ const libraryItem = {
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
+
+// AddToListButton (rendered inline once the entry has loaded, see below)
+// reads real react-query hooks — only that render path needs a QueryClient.
+function renderLoaded() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<LibraryEditor media={media} />, {
+    wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  });
+}
 
 describe("LibraryEditor", () => {
   beforeAll(async () => {
@@ -96,7 +120,7 @@ describe("LibraryEditor", () => {
       refetch,
     });
 
-    render(<LibraryEditor media={media} />);
+    renderLoaded();
 
     const saveButton = screen.getByRole("button", { name: /save/i });
     expect(saveButton).toBeEnabled();
@@ -112,5 +136,25 @@ describe("LibraryEditor", () => {
         rewatchCount: 1,
       })
     );
+  });
+
+  it("renders the add-to-list control inside the same library panel", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    const { container } = renderLoaded();
+
+    // Both live inside the editor's single top-level Panel — this used to be
+    // a separate, unlabeled control rendered below it instead.
+    const panel = container.firstElementChild;
+    expect(panel).toHaveTextContent("Add to a list");
+    expect(panel).toHaveTextContent("Save");
   });
 });

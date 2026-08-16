@@ -6,7 +6,6 @@ import { AvailabilityAlertButton } from "@/components/media/availability-alert-b
 import { ProviderAvailability } from "@/components/media/provider-availability";
 import { RecommendationsPanel } from "@/components/media/recommendations-panel";
 import { TrailerPanel } from "@/components/media/trailer-panel";
-import { AddToListButton } from "@/components/library/add-to-list-button";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
@@ -75,7 +74,6 @@ export function SeriesDetailPage() {
         }
       />
       <LibraryEditor media={series} />
-      <AddToListButton media={series} />
       <ProviderAvailability media={series} />
       <TrailerPanel mediaType="series" mediaId={series.id} />
       <NextEpisodeCard

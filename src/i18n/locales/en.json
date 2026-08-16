@@ -408,7 +408,6 @@
       "title": "Custom lists",
       "filterLabel": "Filter by list",
       "allLists": "All lists",
-      "manageToggle": "Manage my lists",
       "namePlaceholder": "Name",
       "nameLabel": "List name",
       "descriptionPlaceholder": "Optional description",
@@ -422,10 +421,13 @@
       "deleteListConfirmTitle": "Delete the list \"{{name}}\"?",
       "deleteListConfirmDescription": "This deletes the list and all its items. This can't be undone.",
       "emptyListTitle": "This list is empty",
-      "emptyListDesc": "Open \"Manage my lists\" to add titles to it.",
+      "emptyListDesc": "Open the \"Custom lists\" section below to add titles to it.",
       "customList": "Custom list",
       "addToAList": "Add to a list…",
-      "addToList": "Add to the list"
+      "addToList": "Add to the list",
+      "addToAListLabel": "Add to a list",
+      "noneYetPrefix": "You don't have any lists yet.",
+      "noneYetLink": "Create one from your library."
     }
   },
   "browserPreview": {

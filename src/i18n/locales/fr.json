@@ -408,7 +408,6 @@
       "title": "Listes personnalisées",
       "filterLabel": "Filtrer par liste",
       "allLists": "Toutes les listes",
-      "manageToggle": "Gérer mes listes",
       "namePlaceholder": "Nom",
       "nameLabel": "Nom de la liste",
       "descriptionPlaceholder": "Description facultative",
@@ -422,10 +421,13 @@
       "deleteListConfirmTitle": "Supprimer la liste « {{name}} » ?",
       "deleteListConfirmDescription": "Cette action supprime la liste et tous ses éléments. Elle est irréversible.",
       "emptyListTitle": "Cette liste est vide",
-      "emptyListDesc": "Ouvrez « Gérer mes listes » pour y ajouter des titres.",
+      "emptyListDesc": "Ouvrez la section « Listes personnalisées » ci-dessous pour y ajouter des titres.",
       "customList": "Liste personnalisée",
       "addToAList": "Ajouter à une liste…",
-      "addToList": "Ajouter à la liste"
+      "addToList": "Ajouter à la liste",
+      "addToAListLabel": "Ajouter à une liste",
+      "noneYetPrefix": "Vous n'avez pas encore de liste.",
+      "noneYetLink": "Créez-en une depuis votre bibliothèque."
     }
   },
   "browserPreview": {

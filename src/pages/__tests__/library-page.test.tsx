@@ -167,7 +167,7 @@ describe("LibraryPage — lists", () => {
   it("creates a new list from the manage-lists panel", async () => {
     renderPage();
 
-    screen.getByRole("button", { name: "Manage my lists" }).click();
+    screen.getByRole("button", { name: /Custom lists/i }).click();
     fireEvent.change(await screen.findByLabelText("List name"), { target: { value: "Weekend" } });
 
     const createButton = screen.getByRole("button", { name: "Create" });
@@ -181,7 +181,7 @@ describe("LibraryPage — lists", () => {
     customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
     renderPage();
 
-    screen.getByRole("button", { name: "Manage my lists" }).click();
+    screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Delete list Weekend" })).click();
 
     const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });

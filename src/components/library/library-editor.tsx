@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
+import { AddToListButton } from "@/components/library/add-to-list-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-field";
@@ -193,6 +194,11 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
             <Trash2 className="mr-2 size-4" /> {t("library.remove")}
           </Button>
         ) : null}
+      </div>
+
+      <div className="mt-6 border-t border-border pt-4">
+        <p className="mb-2 text-sm font-medium">{t("library.lists.addToAListLabel")}</p>
+        <AddToListButton media={media} />
       </div>
 
       <ConfirmDialog

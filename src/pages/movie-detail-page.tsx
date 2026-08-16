@@ -4,7 +4,6 @@ import { AvailabilityAlertButton } from "@/components/media/availability-alert-b
 import { ProviderAvailability } from "@/components/media/provider-availability";
 import { RecommendationsPanel } from "@/components/media/recommendations-panel";
 import { TrailerPanel } from "@/components/media/trailer-panel";
-import { AddToListButton } from "@/components/library/add-to-list-button";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
@@ -56,7 +55,6 @@ export function MovieDetailPage() {
         }
       />
       <LibraryEditor media={movie} />
-      <AddToListButton media={movie} />
       <ProviderAvailability media={movie} />
       <TrailerPanel mediaType="movie" mediaId={movie.id} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
