@@ -30,7 +30,7 @@ export const navigationConfig: NavigationItem[] = [
   { label: "Home", to: "/", icon: House, category: "home", translationKey: "home" },
   { label: "Series", to: "/series", icon: Tv, category: "discover", translationKey: "series" },
   { label: "Movies", to: "/movies", icon: Film, category: "discover", translationKey: "movies" },
-  { label: "Search", to: "/search", icon: Search, category: "discover", translationKey: "search" },
+  { label: "Explore", to: "/search", icon: Search, category: "discover", translationKey: "search" },
   { label: "People", to: "/people", icon: Users, category: "discover", translationKey: "people" },
   { label: "Tonight", to: "/watch-tonight", icon: Dices, category: "discover", translationKey: "watchTonight" },
   { label: "Library", to: "/library", icon: LibraryBig, category: "library", translationKey: "library" },
