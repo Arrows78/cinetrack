@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { PanelLeftClose, PanelLeft, Moon, Sun, LogOut } from "lucide-react";
 import { navigationSections, useNavigationItems, type NavigationItem } from "@/shared/constants/navigation";
 import { cn } from "@/shared/lib/cn";
+import { BrandMarkIcon } from "@/components/layout/brand-mark-icon";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -135,14 +136,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
     <div className={cn("flex h-full flex-col", collapsed ? "px-2 py-4" : "px-4 py-5")}>
       {/* Header */}
       <div className={cn("flex items-center gap-3", collapsed ? "justify-center mb-3" : "mb-6")}>
-        <div
-          className={cn(
-            "flex shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-glow",
-            collapsed ? "h-10 w-10" : "h-11 w-11"
-          )}
-        >
-          <span className={cn("font-black", collapsed ? "text-base" : "text-lg")}>C</span>
-        </div>
+        <BrandMarkIcon className={collapsed ? "h-10 w-10" : "h-11 w-11"} />
         {!collapsed && (
           <div className="flex flex-1 items-center justify-between min-w-0">
             <div className="min-w-0">

@@ -186,11 +186,11 @@ export function AuthScreen() {
 
   return (
     <div className="relative flex min-h-screen flex-col bg-black text-auth-foreground lg:flex-row">
-      <div className="relative order-1 min-h-56 flex-1 sm:min-h-72 lg:h-auto">
+      <div className="relative order-1 min-h-56 flex-1 sm:min-h-72 lg:h-auto lg:w-2/3 lg:flex-none">
         <AuthBackdrop />
       </div>
 
-      <div className="relative z-10 order-2 flex shrink-0 flex-col justify-start bg-auth-surface px-5 py-8 sm:px-8 lg:w-[28rem] lg:flex-none lg:justify-center lg:px-10">
+      <div className="relative z-10 order-2 flex shrink-0 flex-col justify-start bg-auth-surface px-5 py-8 sm:px-8 lg:w-1/3 lg:flex-none lg:justify-center lg:px-10">
         <div className="mb-7">
           <AuthBrandMark />
         </div>

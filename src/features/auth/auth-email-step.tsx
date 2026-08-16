@@ -57,7 +57,7 @@ export function AuthEmailStep({
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder={t("auth.email.placeholder")}
           aria-label={t("auth.email.emailLabel")}
-          className="w-auto flex-1 min-w-0 h-auto rounded-lg border-0 bg-transparent px-0 py-0 text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35 focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-auto flex-1 min-w-0 h-auto border-0 bg-transparent px-0 py-0 text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35 focus-visible:ring-0"
         />
       </div>
 

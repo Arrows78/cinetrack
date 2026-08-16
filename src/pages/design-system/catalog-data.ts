@@ -527,6 +527,14 @@ export const componentInventory = [
     "Defines the persistent navigation and page-content frame."
   ),
   component(
+    "BrandMarkIcon",
+    "components/layout/brand-mark-icon.tsx",
+    "Layout",
+    "primitive",
+    "reference",
+    "The app's icon mark — shared between the sidebar and the auth screens so the brand doesn't change identity across the sign-in boundary."
+  ),
+  component(
     "MobileTabBar",
     "components/layout/mobile-tab-bar.tsx",
     "Layout",
