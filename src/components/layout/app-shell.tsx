@@ -98,7 +98,18 @@ export function AppShell() {
               inset) below lg; above it the tab bar doesn't render, so pb-10
               matches the desktop back-button/content rhythm instead. */}
           <main className="pb-24 lg:pb-10">
-            <AnimatePresence mode="wait">
+            {/* No `mode="wait"`: it holds the incoming page unmounted until
+                the outgoing one's exit animation resolves, and a lazy-loaded
+                route component (every page here is `lazyRouteComponent`) can
+                leave that exit promise unresolved on a fast series-to-series
+                navigation — the new page then never mounts, leaving the
+                content area permanently blank while the shell around it
+                (sidebar, back button) stays visible, since neither is inside
+                this AnimatePresence. Default mode lets the two cross-fade
+                instead of strictly sequencing them — barely visible at 180ms
+                — trading a fixable near-invisible overlap for an unfixable
+                stuck page. */}
+            <AnimatePresence>
               <motion.div
                 key={location.pathname}
                 initial={{ opacity: 0, y: 8 }}
