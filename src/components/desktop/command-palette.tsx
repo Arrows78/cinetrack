@@ -2,16 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useRouterState } from "@tanstack/react-router";
-import { Bell, BellOff, Eye, EyeOff, Film, Moon, Search, Sun, Tv } from "lucide-react";
+import { Bell, BellOff, Bookmark, BookmarkCheck, Eye, EyeOff, Film, Moon, Search, Sun, Tv } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useNavigationItems } from "@/shared/constants/navigation";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useSearch } from "@/features/media/use-search";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
+import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { notificationService } from "@/features/desktop/notification-service";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
@@ -22,7 +24,7 @@ interface PaletteItem {
   label: string;
   sublabel?: string;
   icon: LucideIcon;
-  section: "command" | "title";
+  section: "contextual" | "command" | "title";
   run: () => void;
 }
 
@@ -113,10 +115,22 @@ export function CommandPalette() {
   const alertMedia = currentDetail?.media ?? EMPTY_PLACEHOLDER_MEDIA;
   const alertQuery = useAvailabilityAlert(alertMedia, region, providerIds, { enabled: Boolean(currentDetail) });
   const movieSeenQuery = useMovieSeen(currentDetail?.mediaType === "movie" ? currentDetail.id : Number.NaN);
+  const libraryToggle = useAddToLibraryToggle(alertMedia, { enabled: Boolean(currentDetail) });
 
   const contextualItems = useMemo<PaletteItem[]>(() => {
     if (!currentDetail) return [];
     const items: PaletteItem[] = [];
+
+    items.push({
+      key: "context-toggle-library",
+      label: t(libraryToggle.isInLibrary ? "media.inLibrary" : "media.addToLibrary"),
+      icon: libraryToggle.isInLibrary ? BookmarkCheck : Bookmark,
+      section: "contextual",
+      run: () => {
+        setOpen(false);
+        void libraryToggle.toggle();
+      },
+    });
 
     if (currentDetail.mediaType === "movie") {
       const seen = Boolean(movieSeenQuery.data);
@@ -125,7 +139,7 @@ export function CommandPalette() {
         key: "context-toggle-seen",
         label: t(seen ? "media.markUnseen" : "media.markSeen"),
         icon: seen ? EyeOff : Eye,
-        section: "command",
+        section: "contextual",
         run: () => {
           setOpen(false);
           void movieSeenQuery.toggleMovieSeen({ movie, watched: !seen });
@@ -138,7 +152,7 @@ export function CommandPalette() {
       key: "context-toggle-alert",
       label: t(hasAlert ? "media.disableAlert" : "media.availabilityAlert"),
       icon: hasAlert ? BellOff : Bell,
-      section: "command",
+      section: "contextual",
       run: () => {
         setOpen(false);
         void (async () => {
@@ -149,8 +163,8 @@ export function CommandPalette() {
     });
 
     return items;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- movieSeenQuery/alertQuery carry their own reactive .data already listed
-  }, [currentDetail, movieSeenQuery.data, alertQuery.data, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- movieSeenQuery/alertQuery/libraryToggle carry their own reactive .data already listed
+  }, [currentDetail, movieSeenQuery.data, alertQuery.data, libraryToggle.isInLibrary, t]);
 
   const commands = useMemo<PaletteItem[]>(() => {
     const pages: PaletteItem[] = navigationItems.map((item) => ({
@@ -255,8 +269,7 @@ export function CommandPalette() {
     };
   }, []);
 
-  if (!open) return null;
-
+  const contextualResults = results.filter((item) => item.section === "contextual");
   const commandResults = results.filter((item) => item.section === "command");
   const titleResultsOnly = results.filter((item) => item.section === "title");
   const registerItemRef = (index: number, node: HTMLButtonElement | null) => {
@@ -264,68 +277,104 @@ export function CommandPalette() {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-command-palette grid place-items-start bg-black/55 p-4 pt-[12vh] backdrop-blur-sm"
-      onMouseDown={() => setOpen(false)}
-    >
-      <div
-        className="mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="relative flex items-center border-b border-border">
-          <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("commandPalette.searchPlaceholder")}
-            aria-label={t("commandPalette.searchPlaceholder")}
-            className="h-14 rounded-none border-none bg-transparent pl-11 pr-16 ring-offset-0 focus-visible:ring-0"
-          />
-          <kbd className="absolute right-4 top-1/2 -translate-y-1/2 rounded border px-2 py-1 text-xs text-muted-foreground">
-            Esc
-          </kbd>
-        </div>
-        <div className="max-h-96 overflow-y-auto p-2 pb-3">
-          {commandResults.map((item) => {
-            const index = results.indexOf(item);
-            return (
-              <PaletteRow
-                key={item.key}
-                item={item}
-                index={index}
-                selectedIndex={selectedIndex}
-                onRegisterRef={registerItemRef}
-                onHover={setSelectedIndex}
+    <>
+      {open ? (
+        <div
+          className="fixed inset-0 z-command-palette grid place-items-start bg-black/55 p-4 pt-[12vh] backdrop-blur-sm"
+          onMouseDown={() => setOpen(false)}
+        >
+          <div
+            className="mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="relative flex items-center border-b border-border">
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("commandPalette.searchPlaceholder")}
+                aria-label={t("commandPalette.searchPlaceholder")}
+                className="h-14 rounded-none border-none bg-transparent pl-11 pr-16 ring-offset-0 focus-visible:ring-0"
               />
-            );
-          })}
+              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 rounded border px-2 py-1 text-xs text-muted-foreground">
+                Esc
+              </kbd>
+            </div>
+            <div className="max-h-96 overflow-y-auto p-2 pb-3">
+              {contextualResults.length ? (
+                <p className="px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("commandPalette.onThisPage")}
+                </p>
+              ) : null}
+              {contextualResults.map((item) => {
+                const index = results.indexOf(item);
+                return (
+                  <PaletteRow
+                    key={item.key}
+                    item={item}
+                    index={index}
+                    selectedIndex={selectedIndex}
+                    onRegisterRef={registerItemRef}
+                    onHover={setSelectedIndex}
+                  />
+                );
+              })}
 
-          {titleResultsOnly.length || isSearchingTitles ? (
-            <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {isSearchingTitles ? t("commandPalette.searchingTitles") : t("commandPalette.titles")}
-            </p>
-          ) : null}
-          {titleResultsOnly.map((item) => {
-            const index = results.indexOf(item);
-            return (
-              <PaletteRow
-                key={item.key}
-                item={item}
-                index={index}
-                selectedIndex={selectedIndex}
-                onRegisterRef={registerItemRef}
-                onHover={setSelectedIndex}
-              />
-            );
-          })}
+              {commandResults.map((item) => {
+                const index = results.indexOf(item);
+                return (
+                  <PaletteRow
+                    key={item.key}
+                    item={item}
+                    index={index}
+                    selectedIndex={selectedIndex}
+                    onRegisterRef={registerItemRef}
+                    onHover={setSelectedIndex}
+                  />
+                );
+              })}
 
-          {!results.length && !isSearchingTitles ? (
-            <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("pages.noResults")}</p>
-          ) : null}
+              {titleResultsOnly.length || isSearchingTitles ? (
+                <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {isSearchingTitles ? t("commandPalette.searchingTitles") : t("commandPalette.titles")}
+                </p>
+              ) : null}
+              {titleResultsOnly.map((item) => {
+                const index = results.indexOf(item);
+                return (
+                  <PaletteRow
+                    key={item.key}
+                    item={item}
+                    index={index}
+                    selectedIndex={selectedIndex}
+                    onRegisterRef={registerItemRef}
+                    onHover={setSelectedIndex}
+                  />
+                );
+              })}
+
+              {!results.length && !isSearchingTitles ? (
+                <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("pages.noResults")}</p>
+              ) : null}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      ) : null}
+      {/* Rendered even while the palette itself is closed: clicking the
+          contextual library action closes the palette immediately, and if
+          that click turns out to be blocked (real progress on the title),
+          this is what surfaces the confirmation to finish the removal. */}
+      <ConfirmDialog
+        open={libraryToggle.confirmingForceRemove}
+        onOpenChange={libraryToggle.setConfirmingForceRemove}
+        title={t("library.removeConfirmTitle")}
+        description={t("library.removeConfirmDescription")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={libraryToggle.confirmForceRemove}
+      />
+    </>
   );
 }
 

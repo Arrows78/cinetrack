@@ -34,6 +34,7 @@ const saveMock = vi.fn(async (subject: MediaSummary, patch: LibraryPatch) => {
 const removeMock = vi.fn(async (mediaId: number, mediaType: string) => {
   items = items.filter((i) => !(i.mediaId === mediaId && i.mediaType === mediaType));
 });
+const removeIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
 
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
@@ -41,6 +42,7 @@ vi.mock("@/features/library/library-repository", () => ({
     get: getMock,
     save: saveMock,
     remove: removeMock,
+    removeIfPlanned: (mediaId: number, mediaType: string) => removeIfPlannedMock(mediaId, mediaType),
   },
 }));
 
@@ -111,5 +113,47 @@ describe("useLibraryItem", () => {
     expect(removeMock).toHaveBeenCalledWith(7, "movie");
     await waitFor(() => expect(item.current.data).toBeNull());
     await waitFor(() => expect(library.current.data).toHaveLength(0));
+  });
+});
+
+describe("useLibraryQuickToggle", () => {
+  beforeEach(() => {
+    items = [];
+    saveMock.mockClear();
+    removeIfPlannedMock.mockClear().mockResolvedValue(true);
+    removeMock.mockClear();
+  });
+
+  it("addPlanned saves with the planned status", async () => {
+    const { useLibraryQuickToggle } = await import("../use-library");
+    const { result } = renderHook(() => useLibraryQuickToggle(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await result.current.addPlanned(media);
+    });
+
+    expect(saveMock).toHaveBeenCalledWith(media, { status: "planned" });
+  });
+
+  it("removeIfPlanned forwards to the guarded repository method", async () => {
+    const { useLibraryQuickToggle } = await import("../use-library");
+    const { result } = renderHook(() => useLibraryQuickToggle(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await result.current.removeIfPlanned({ mediaId: 7, mediaType: "movie" });
+    });
+
+    expect(removeIfPlannedMock).toHaveBeenCalledWith(7, "movie");
+  });
+
+  it("forceRemove calls the real, unguarded delete", async () => {
+    const { useLibraryQuickToggle } = await import("../use-library");
+    const { result } = renderHook(() => useLibraryQuickToggle(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await result.current.forceRemove({ mediaId: 7, mediaType: "movie" });
+    });
+
+    expect(removeMock).toHaveBeenCalledWith(7, "movie");
   });
 });

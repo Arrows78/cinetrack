@@ -4,9 +4,9 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Bookmark, BookmarkCheck, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/use-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useMovieSeen } from "@/features/progress/use-progress";
-import { useIsInLibrary, useLibraryQuickToggle } from "@/features/library/use-library";
+import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { cn } from "@/shared/lib/cn";
 import { MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating } from "@/shared/utils/format";
@@ -31,34 +31,34 @@ const quickActionButtonClassName =
 
 function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
-  const { data: isInLibrary } = useIsInLibrary(media.id, media.mediaType);
-  const { addPlanned, removeIfPlanned, isMutating } = useLibraryQuickToggle();
-
-  const toggle = async () => {
-    if (isInLibrary) {
-      const removed = await removeIfPlanned({ mediaId: media.id, mediaType: media.mediaType });
-      if (!removed) {
-        toast({ description: t("media.libraryRemoveBlocked"), variant: "error" });
-      }
-      return;
-    }
-    await addPlanned(media);
-  };
+  const { isInLibrary, toggle, isMutating, confirmingForceRemove, setConfirmingForceRemove, confirmForceRemove } =
+    useAddToLibraryToggle(media);
 
   return (
-    <button
-      type="button"
-      aria-label={isInLibrary ? t("media.inLibrary") : t("media.addToLibrary")}
-      aria-pressed={Boolean(isInLibrary)}
-      disabled={isMutating}
-      onClick={(event) => {
-        stopCardNavigation(event);
-        void toggle();
-      }}
-      className={quickActionButtonClassName}
-    >
-      {isInLibrary ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
-    </button>
+    <>
+      <button
+        type="button"
+        aria-label={isInLibrary ? t("media.inLibrary") : t("media.addToLibrary")}
+        aria-pressed={isInLibrary}
+        disabled={isMutating}
+        onClick={(event) => {
+          stopCardNavigation(event);
+          void toggle();
+        }}
+        className={quickActionButtonClassName}
+      >
+        {isInLibrary ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+      </button>
+      <ConfirmDialog
+        open={confirmingForceRemove}
+        onOpenChange={setConfirmingForceRemove}
+        title={t("library.removeConfirmTitle")}
+        description={t("library.removeConfirmDescription")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={confirmForceRemove}
+      />
+    </>
   );
 }
 

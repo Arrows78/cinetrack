@@ -46,11 +46,12 @@ export function useLibraryItem(media: MediaSummary) {
   return { ...query, save: save.mutateAsync, remove: remove.mutateAsync, isSaving: save.isPending || remove.isPending };
 }
 
-export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaType"]) {
+export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaType"], options?: { enabled?: boolean }) {
   const profileId = useActiveProfileId();
   return useQuery({
     queryKey: [...queryKeys.local.library(profileId), "has", mediaId, mediaType],
     queryFn: () => libraryRepository.has(mediaId, mediaType),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -76,10 +77,19 @@ export function useLibraryQuickToggle() {
       libraryRepository.removeIfPlanned(mediaId, mediaType),
     invalidateKeys
   );
+  // The real, unguarded delete — used once removeIfPlanned reports the item
+  // has real progress and the caller has confirmed discarding it anyway
+  // (see useAddToLibraryToggle), never as a silent fallback.
+  const forceRemove = useInvalidatingMutation(
+    ({ mediaId, mediaType }: { mediaId: number; mediaType: MediaSummary["mediaType"] }) =>
+      libraryRepository.remove(mediaId, mediaType),
+    invalidateKeys
+  );
 
   return {
     addPlanned: addPlanned.mutateAsync,
     removeIfPlanned: removeIfPlanned.mutateAsync,
-    isMutating: addPlanned.isPending || removeIfPlanned.isPending,
+    forceRemove: forceRemove.mutateAsync,
+    isMutating: addPlanned.isPending || removeIfPlanned.isPending || forceRemove.isPending,
   };
 }

@@ -31,7 +31,6 @@
     "genres": "Genres",
     "addToLibrary": "Add to library",
     "inLibrary": "In library",
-    "libraryRemoveBlocked": "This title already has progress in your library — update its status instead of removing it here.",
     "unknownYear": "Unknown year",
     "noOverview": "No overview available for this content.",
     "hiddenTitle": "Hidden title",
@@ -490,7 +489,8 @@
     "switchToLight": "Switch to light theme",
     "switchToDark": "Switch to dark theme",
     "titles": "Titles",
-    "searchingTitles": "Searching titles…"
+    "searchingTitles": "Searching titles…",
+    "onThisPage": "On this page"
   },
   "backup": {
     "title": "Portable backup",

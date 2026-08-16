@@ -11,11 +11,14 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const libraryHasMock = vi.fn();
+const removeIfPlannedMock = vi.fn();
+const forceRemoveMock = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     has: (...args: unknown[]) => libraryHasMock(...args),
     save: vi.fn(),
-    removeIfPlanned: vi.fn(),
+    removeIfPlanned: (...args: unknown[]) => removeIfPlannedMock(...args),
+    remove: (...args: unknown[]) => forceRemoveMock(...args),
   },
 }));
 
@@ -43,6 +46,8 @@ describe("MediaCard", () => {
   beforeEach(() => {
     libraryHasMock.mockReset().mockResolvedValue(false);
     isMovieSeenMock.mockReset().mockResolvedValue(false);
+    removeIfPlannedMock.mockReset().mockResolvedValue(true);
+    forceRemoveMock.mockReset().mockResolvedValue(undefined);
   });
 
   it("renders the title, year, first genre and rating", () => {
@@ -82,6 +87,22 @@ describe("MediaCard", () => {
     button.click();
 
     await waitFor(() => expect(libraryRepository.save).toHaveBeenCalled());
+  });
+
+  it("offers to really remove a title once removeIfPlanned reports it has real progress", async () => {
+    libraryHasMock.mockResolvedValue(true);
+    removeIfPlannedMock.mockResolvedValue(false);
+    renderCard(makeMedia({ id: 7, mediaType: "movie" }));
+
+    const button = await screen.findByRole("button", { name: "In library" });
+    button.click();
+
+    await waitFor(() => expect(removeIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
+    expect(await screen.findByText("Remove this title from your library?")).toBeInTheDocument();
+
+    screen.getByRole("button", { name: "Confirm" }).click();
+
+    await waitFor(() => expect(forceRemoveMock).toHaveBeenCalledWith(7, "movie"));
   });
 
   it("shows a mark-seen quick action for movies", async () => {

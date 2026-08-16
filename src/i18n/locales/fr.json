@@ -31,7 +31,6 @@
     "genres": "Genres",
     "addToLibrary": "Ajouter à la bibliothèque",
     "inLibrary": "Dans la bibliothèque",
-    "libraryRemoveBlocked": "Ce titre a déjà une progression dans votre bibliothèque — modifiez son statut plutôt que de le retirer ici.",
     "unknownYear": "Année inconnue",
     "noOverview": "Aucun synopsis disponible.",
     "hiddenTitle": "Titre masqué",
@@ -490,7 +489,8 @@
     "switchToLight": "Passer au thème clair",
     "switchToDark": "Passer au thème sombre",
     "titles": "Titres",
-    "searchingTitles": "Recherche de titres…"
+    "searchingTitles": "Recherche de titres…",
+    "onThisPage": "Sur cette fiche"
   },
   "backup": {
     "title": "Sauvegarde portable",

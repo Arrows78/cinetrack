@@ -67,6 +67,19 @@ vi.mock("@/features/desktop/notification-service", () => ({
   notificationService: { requestPermission: () => requestPermissionMock() },
 }));
 
+const libraryHasMock = vi.fn<() => Promise<boolean>>(async () => false);
+const librarySaveMock = vi.fn<(media: MediaSummary, patch: unknown) => Promise<undefined>>(async () => undefined);
+const libraryRemoveIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
+const libraryRemoveMock = vi.fn<(mediaId: number, mediaType: string) => Promise<undefined>>(async () => undefined);
+vi.mock("@/features/library/library-repository", () => ({
+  libraryRepository: {
+    has: () => libraryHasMock(),
+    save: (media: MediaSummary, patch: unknown) => librarySaveMock(media, patch),
+    removeIfPlanned: (mediaId: number, mediaType: string) => libraryRemoveIfPlannedMock(mediaId, mediaType),
+    remove: (mediaId: number, mediaType: string) => libraryRemoveMock(mediaId, mediaType),
+  },
+}));
+
 const movie = (overrides: Partial<MediaSummary> = {}): MediaSummary => ({
   id: 1,
   mediaType: "movie",
@@ -118,6 +131,10 @@ describe("CommandPalette", () => {
     toggleAlertMock.mockClear();
     requestPermissionMock.mockClear();
     requestPermissionMock.mockResolvedValue(true);
+    libraryHasMock.mockClear().mockResolvedValue(false);
+    librarySaveMock.mockClear();
+    libraryRemoveIfPlannedMock.mockClear().mockResolvedValue(true);
+    libraryRemoveMock.mockClear();
     theme = "dark";
     searchItems = [];
     searchIsLoading = false;
@@ -265,6 +282,74 @@ describe("CommandPalette", () => {
 
       await waitFor(() => expect(screen.getByRole("button", { name: "Mark watched" })).toBeInTheDocument());
       expect(screen.getByRole("button", { name: "Availability alert" })).toBeInTheDocument();
+    });
+
+    it("groups contextual actions under an 'On this page' heading, separate from the menu", async () => {
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Mark watched" })).toBeInTheDocument());
+      const heading = screen.getByText("On this page");
+      const markWatched = screen.getByRole("button", { name: "Mark watched" });
+      const addToLibrary = screen.getByRole("button", { name: "Add to library" });
+      const homePage = screen.getByRole("button", { name: "Home" });
+
+      const position = (node: Element) => Array.from(document.querySelectorAll("p, button")).indexOf(node);
+      expect(position(heading)).toBeLessThan(position(addToLibrary));
+      expect(position(addToLibrary)).toBeLessThan(position(markWatched));
+      expect(position(markWatched)).toBeLessThan(position(homePage));
+    });
+
+    it("offers no 'On this page' heading off a detail page", () => {
+      renderPalette();
+      openPalette();
+
+      expect(screen.queryByText("On this page")).not.toBeInTheDocument();
+    });
+
+    it("adds a title that isn't in the library yet", async () => {
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => screen.getByRole("button", { name: "Add to library" }));
+      fireEvent.click(screen.getByRole("button", { name: "Add to library" }));
+
+      await waitFor(() => expect(librarySaveMock).toHaveBeenCalledWith(cachedMovie, { status: "planned" }));
+    });
+
+    it("removes a still-planned title directly, with no confirmation needed", async () => {
+      libraryHasMock.mockResolvedValue(true);
+      libraryRemoveIfPlannedMock.mockResolvedValue(true);
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => screen.getByRole("button", { name: "In library" }));
+      fireEvent.click(screen.getByRole("button", { name: "In library" }));
+
+      await waitFor(() => expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
+      expect(libraryRemoveMock).not.toHaveBeenCalled();
+      expect(screen.queryByText("Remove this title from your library?")).not.toBeInTheDocument();
+    });
+
+    it("falls back to a confirmation once removeIfPlanned reports real progress", async () => {
+      libraryHasMock.mockResolvedValue(true);
+      libraryRemoveIfPlannedMock.mockResolvedValue(false);
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => screen.getByRole("button", { name: "In library" }));
+      fireEvent.click(screen.getByRole("button", { name: "In library" }));
+
+      await waitFor(() => expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
+      expect(await screen.findByText("Remove this title from your library?")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+      await waitFor(() => expect(libraryRemoveMock).toHaveBeenCalledWith(7, "movie"));
     });
 
     it("offers only the availability alert on a cached series page, not mark-watched", async () => {
