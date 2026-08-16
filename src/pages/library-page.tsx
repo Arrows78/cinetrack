@@ -377,22 +377,24 @@ export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie"
         </div>
       </div>
 
-      <Accordion type="single" collapsible>
-        <AccordionItem value="lists">
-          <AccordionTrigger>
-            <span className="flex items-center gap-2">
-              <FolderHeart className="size-4 text-primary" aria-hidden="true" />
-              {t("library.lists.title")}
-              {lists.data?.length ? (
-                <span className="font-normal text-muted-foreground">({lists.data.length})</span>
-              ) : null}
-            </span>
-          </AccordionTrigger>
-          <AccordionContent>
-            <ListsAccordionContent lists={lists} listFilter={listFilter} onListDeleted={resetListFilter} />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      {lockedMediaType ? null : (
+        <Accordion type="single" collapsible>
+          <AccordionItem value="lists">
+            <AccordionTrigger>
+              <span className="flex items-center gap-2">
+                <FolderHeart className="size-4 text-primary" aria-hidden="true" />
+                {t("library.lists.title")}
+                {lists.data?.length ? (
+                  <span className="font-normal text-muted-foreground">({lists.data.length})</span>
+                ) : null}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <ListsAccordionContent lists={lists} listFilter={listFilter} onListDeleted={resetListFilter} />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
 
       {libraryQuery.isLoading || (isFilteredToList && listItems.isLoading) ? (
         <GridSkeleton />
