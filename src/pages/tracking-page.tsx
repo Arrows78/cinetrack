@@ -107,8 +107,18 @@ function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove:
 
 // Reusable across /tracking (every type) and the /movies and /series
 // "Upcoming" tab (lockedMediaType pre-constrains it, same releases/episodes/
-// availability filters otherwise).
-export function TrackingList({ lockedMediaType }: { lockedMediaType?: "movie" | "series" }) {
+// availability filters otherwise). onBrowseAll/browseAllLabel are only set
+// by the /movies and /series tab hosts, which can jump their own tab state
+// to Discover — the standalone /tracking page has no such tab to jump to.
+export function TrackingList({
+  lockedMediaType,
+  onBrowseAll,
+  browseAllLabel,
+}: {
+  lockedMediaType?: "movie" | "series";
+  onBrowseAll?: () => void;
+  browseAllLabel?: string;
+}) {
   const { t } = useTranslation();
   const tracking = useTracking();
   const alerts = useAvailabilityAlerts();
@@ -135,6 +145,15 @@ export function TrackingList({ lockedMediaType }: { lockedMediaType?: "movie" | 
     return acc;
   }, {});
   const showScopeBadge = scopeFilter === "all";
+  // A movie entry is never tagged "episode" and a series entry is never
+  // tagged "release" (see calendar-service.ts) — offering the other type's
+  // filter here would just be a button that always empties the list.
+  const typeFilterOptions: { value: TypeFilter; label: string }[] = [
+    { value: "all", label: t("settings.all") },
+    ...(lockedMediaType === "series" ? [] : [{ value: "release" as const, label: t("tracking.typeRelease") }]),
+    ...(lockedMediaType === "movie" ? [] : [{ value: "episode" as const, label: t("tracking.typeEpisode") }]),
+    { value: "availability", label: t("tracking.typeAvailability") },
+  ];
 
   return (
     <div className="space-y-6">
@@ -152,12 +171,7 @@ export function TrackingList({ lockedMediaType }: { lockedMediaType?: "movie" | 
           value={typeFilter}
           onChange={setTypeFilter}
           groupLabel={t("tracking.filterType")}
-          options={[
-            { value: "all", label: t("settings.all") },
-            { value: "release", label: t("tracking.typeRelease") },
-            { value: "episode", label: t("tracking.typeEpisode") },
-            { value: "availability", label: t("tracking.typeAvailability") },
-          ]}
+          options={typeFilterOptions}
         />
       </div>
 
@@ -199,6 +213,14 @@ export function TrackingList({ lockedMediaType }: { lockedMediaType?: "movie" | 
 
       {!tracking.isLoading && !tracking.isError && !filtered.length ? (
         <EmptyState icon={CalendarDays} title={t("tracking.noResultsTitle")} description={t("tracking.noResults")} />
+      ) : null}
+
+      {onBrowseAll && !tracking.isLoading && !tracking.isError && filtered.length ? (
+        <div className="flex justify-center pt-2">
+          <Button type="button" variant="outline" onClick={onBrowseAll}>
+            {browseAllLabel}
+          </Button>
+        </div>
       ) : null}
 
       <ConfirmDialog

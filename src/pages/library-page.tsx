@@ -202,8 +202,18 @@ function ListsAccordionContent({
 // Reusable across /library (every type, type filter shown) and the /movies
 // and /series "My list" tab (lockedMediaType hides that filter and
 // pre-constrains it instead) — same filters, sort, custom lists and
-// grid/list rendering either way.
-export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie" | "series" }) {
+// grid/list rendering either way. onBrowseAll/browseAllLabel are only set
+// by the /movies and /series tab hosts, which can jump their own tab state
+// to Discover — the standalone /library page has no such tab to jump to.
+export function LibraryExplorer({
+  lockedMediaType,
+  onBrowseAll,
+  browseAllLabel,
+}: {
+  lockedMediaType?: "movie" | "series";
+  onBrowseAll?: () => void;
+  browseAllLabel?: string;
+}) {
   const { t } = useTranslation();
   const libraryQuery = useLibrary();
   const { data: items } = libraryQuery;
@@ -430,6 +440,14 @@ export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie"
           }
         />
       )}
+
+      {onBrowseAll && filtered.length ? (
+        <div className="flex justify-center pt-2">
+          <Button type="button" variant="outline" onClick={onBrowseAll}>
+            {browseAllLabel}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

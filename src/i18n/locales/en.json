@@ -231,7 +231,9 @@
   "mediaHub": {
     "myList": "My list",
     "upcoming": "Upcoming",
-    "discover": "Discover"
+    "discover": "Discover",
+    "browseAllMovies": "Browse all movies",
+    "browseAllSeries": "Browse all series"
   },
   "movies": {
     "subtitle": "Posters, filters, and detailed pages.",

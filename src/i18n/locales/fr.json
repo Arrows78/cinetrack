@@ -231,7 +231,9 @@
   "mediaHub": {
     "myList": "Ma liste",
     "upcoming": "À venir",
-    "discover": "Découvrir"
+    "discover": "Découvrir",
+    "browseAllMovies": "Parcourir tous les films",
+    "browseAllSeries": "Parcourir toutes les séries"
   },
   "movies": {
     "subtitle": "Affiches, filtres et fiches détaillées.",

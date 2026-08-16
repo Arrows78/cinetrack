@@ -32,8 +32,20 @@ export function SeriesPage() {
         ]}
       />
 
-      {tab === "list" ? <LibraryExplorer lockedMediaType="series" /> : null}
-      {tab === "upcoming" ? <TrackingList lockedMediaType="series" /> : null}
+      {tab === "list" ? (
+        <LibraryExplorer
+          lockedMediaType="series"
+          onBrowseAll={() => setTab("discover")}
+          browseAllLabel={t("mediaHub.browseAllSeries")}
+        />
+      ) : null}
+      {tab === "upcoming" ? (
+        <TrackingList
+          lockedMediaType="series"
+          onBrowseAll={() => setTab("discover")}
+          browseAllLabel={t("mediaHub.browseAllSeries")}
+        />
+      ) : null}
       {tab === "discover" ? (
         <MediaListPage
           query={query}
