@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tv, Upload } from "lucide-react";
+import { ProgressBar } from "@/components/media/progress-bar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -13,9 +14,11 @@ import {
   MAX_TVTIME_FILE_BYTES,
   MAX_TVTIME_FILES,
   MAX_TVTIME_TOTAL_BYTES,
+  type RetryableUnmatched,
   type TvTimeImportProgress,
 } from "@/features/tvtime/tvtime-import-service";
 import { extractCsvEntries, ZipTooLargeError } from "@/features/tvtime/zip";
+import { TvTimeUnmatchedResolver } from "./tvtime-unmatched-resolver";
 
 interface PendingImport {
   data: TvTimeExport;
@@ -34,6 +37,7 @@ export function TvTimeImportCard() {
   const [isPreparing, setIsPreparing] = useState(false);
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [progress, setProgress] = useState<TvTimeImportProgress | null>(null);
+  const [retryableItems, setRetryableItems] = useState<RetryableUnmatched[]>([]);
 
   const running = progress !== null;
 
@@ -106,6 +110,7 @@ export function TvTimeImportCard() {
     try {
       const result = await applyTvTimeImport(data, setProgress);
       await queryClient.invalidateQueries({ queryKey: ["local"] });
+      setRetryableItems(result.retryable);
       toast({
         description: (
           <div>
@@ -120,6 +125,11 @@ export function TvTimeImportCard() {
             {result.ambiguous.length ? (
               <p className="mt-1 text-xs opacity-90">
                 {t("tvtimeImport.ambiguous", { count: result.ambiguous.length })}
+              </p>
+            ) : null}
+            {result.retryable.length ? (
+              <p className="mt-1 text-xs opacity-90">
+                {t("tvtimeImport.retry.pointer", { count: result.retryable.length })}
               </p>
             ) : null}
             {result.unmatched.length ? (
@@ -174,56 +184,72 @@ export function TvTimeImportCard() {
   })();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Tv className="size-5 text-primary" aria-hidden="true" />
-          {t("tvtimeImport.title")}
-        </CardTitle>
-        <CardDescription>{t("tvtimeImport.description")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
-        <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.rewatchNotice")}</p>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Tv className="size-5 text-primary" aria-hidden="true" />
+            {t("tvtimeImport.title")}
+          </CardTitle>
+          <CardDescription>{t("tvtimeImport.description")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.rewatchNotice")}</p>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            isLoading={running || isPreparing}
-            aria-busy={running || isPreparing}
-            onClick={() => inputRef.current?.click()}
-          >
-            {!running && !isPreparing && <Upload className="size-4" />}
-            {t("tvtimeImport.selectFiles")}
-          </Button>
-          <input
-            ref={inputRef}
-            className="hidden"
-            type="file"
-            accept=".csv,.zip,text/csv,application/zip"
-            multiple
-            onChange={(event) => void prepareImport(event.target.files)}
-          />
+          <div className="mt-4 flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              isLoading={running || isPreparing}
+              aria-busy={running || isPreparing}
+              onClick={() => inputRef.current?.click()}
+            >
+              {!running && !isPreparing && <Upload className="size-4" />}
+              {t("tvtimeImport.selectFiles")}
+            </Button>
+            <input
+              ref={inputRef}
+              className="hidden"
+              type="file"
+              accept=".csv,.zip,text/csv,application/zip"
+              multiple
+              onChange={(event) => void prepareImport(event.target.files)}
+            />
+          </div>
           {progress && progress.total > 0 ? (
-            <p role="status" aria-live="polite" className="text-sm tabular-nums text-muted-foreground">
-              {t(`tvtimeImport.phase.${progress.phase}`)} · {progress.done}/{progress.total}
-              {progress.label ? ` · ${progress.label}` : ""}
-            </p>
+            // A fixed-height row, own line, with the current title truncated
+            // to one line — this used to sit inline next to the button and
+            // grow/shrink the whole card on every tick as series names of
+            // different lengths streamed through, which looked like the
+            // layout was randomly jumping around during an import.
+            <div className="mt-3" role="status" aria-live="polite">
+              <ProgressBar
+                value={Math.round((progress.done / progress.total) * 100)}
+                label={`${t(`tvtimeImport.phase.${progress.phase}`)} · ${progress.done}/${progress.total}`}
+                showPercent
+              />
+              {progress.label ? <p className="mt-1 truncate text-xs text-muted-foreground">{progress.label}</p> : null}
+            </div>
           ) : null}
-        </div>
-      </CardContent>
+        </CardContent>
 
-      <ConfirmDialog
-        open={pending !== null}
-        onOpenChange={(open) => !open && setPending(null)}
-        title={t("tvtimeImport.preflight.title")}
-        description={preflightDescription}
-        confirmLabel={t("tvtimeImport.preflight.confirm")}
-        cancelLabel={t("common.cancel")}
-        confirmVariant="default"
-        onConfirm={() => void confirmImport()}
+        <ConfirmDialog
+          open={pending !== null}
+          onOpenChange={(open) => !open && setPending(null)}
+          title={t("tvtimeImport.preflight.title")}
+          description={preflightDescription}
+          confirmLabel={t("tvtimeImport.preflight.confirm")}
+          cancelLabel={t("common.cancel")}
+          confirmVariant="default"
+          onConfirm={() => void confirmImport()}
+        />
+      </Card>
+
+      <TvTimeUnmatchedResolver
+        items={retryableItems}
+        onResolved={(item) => setRetryableItems((current) => current.filter((entry) => entry !== item))}
       />
-    </Card>
+    </>
   );
 }

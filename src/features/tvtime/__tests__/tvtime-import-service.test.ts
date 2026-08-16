@@ -37,7 +37,8 @@ vi.mock("../parse-export", () => ({
   normalizeExport: () => exportData,
 }));
 
-const { importTvTimeExport } = await import("../tvtime-import-service");
+const { importTvTimeExport, resolveRetryableSeries, resolveRetryableMovie, resolveRetryableWatchlist } =
+  await import("../tvtime-import-service");
 
 function media(overrides: Partial<MediaSummary> = {}): MediaSummary {
   return {
@@ -527,6 +528,161 @@ describe("importTvTimeExport", () => {
 
       expect(summary.unmatched).toEqual(["Dune"]);
       expect(summary.plannedImported).toBe(0);
+    });
+  });
+
+  describe("retryable unmatched items", () => {
+    it("carries the episodes and a searchable title for an unmatched series", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Bodyguard (2018)",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+      };
+      searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(summary.retryable).toEqual([
+        {
+          kind: "series",
+          label: "Bodyguard (2018)",
+          searchTitle: "Bodyguard",
+          searchYear: 2018,
+          episodes: exportData.episodes,
+        },
+      ]);
+    });
+
+    it("carries the original row for an unmatched movie", async () => {
+      exportData = {
+        ...emptyExportData(),
+        movies: [{ title: "Unknown Movie", year: 1999, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+      };
+      searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(summary.retryable).toEqual([
+        {
+          kind: "movie",
+          label: "Unknown Movie",
+          searchTitle: "Unknown Movie",
+          searchYear: 1999,
+          movie: exportData.movies[0],
+        },
+      ]);
+    });
+
+    it("carries the original row for an unmatched watchlist entry", async () => {
+      exportData = { ...emptyExportData(), watchlist: [{ title: "Unknown Title", mediaType: "series", year: null }] };
+      searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(summary.retryable).toEqual([
+        {
+          kind: "watchlist",
+          label: "Unknown Title",
+          searchTitle: "Unknown Title",
+          searchYear: null,
+          entry: exportData.watchlist[0],
+        },
+      ]);
+    });
+
+    it("also records a retryable entry when an unexpected error interrupts a series", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Breaking Bad",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+      };
+      searchMock.mockRejectedValue(new Error("network down"));
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(summary.retryable).toEqual([
+        {
+          kind: "series",
+          label: "Breaking Bad",
+          searchTitle: "Breaking Bad",
+          searchYear: null,
+          episodes: exportData.episodes,
+        },
+      ]);
+    });
+
+    it("resolveRetryableSeries attaches a manually-picked series to the retryable item's episodes", async () => {
+      const item = {
+        kind: "series" as const,
+        label: "Bodyguard (2018)",
+        searchTitle: "Bodyguard",
+        searchYear: 2018,
+        episodes: [
+          {
+            seriesName: "Bodyguard (2018)",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+      };
+      getSeasonDetailsMock.mockResolvedValue(season(500, 1, 1));
+      importSeriesProgressMock.mockResolvedValue(1);
+
+      const result = await resolveRetryableSeries(item, series({ id: 77 }));
+
+      expect(getSeasonDetailsMock).toHaveBeenCalledWith(77, 1);
+      expect(importSeriesProgressMock).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 77 }),
+        expect.arrayContaining([expect.objectContaining({ episodeId: 500 })])
+      );
+      expect(result).toEqual({ episodesImported: 1 });
+    });
+
+    it("resolveRetryableMovie writes a manually-picked movie match", async () => {
+      const item = {
+        kind: "movie" as const,
+        label: "Unknown Movie",
+        searchTitle: "Unknown Movie",
+        searchYear: 1999,
+        movie: { title: "Unknown Movie", year: 1999, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: 90 },
+      };
+      importMovieSeenMock.mockResolvedValue(true);
+
+      const inserted = await resolveRetryableMovie(item, media({ id: 42, mediaType: "movie", title: "The Movie" }));
+
+      expect(importMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ movieId: 42, runtime: 90 }));
+      expect(inserted).toBe(true);
+    });
+
+    it("resolveRetryableWatchlist saves a manually-picked match as planned", async () => {
+      const item = {
+        kind: "watchlist" as const,
+        label: "Unknown Title",
+        searchTitle: "Unknown Title",
+        searchYear: null,
+        entry: { title: "Unknown Title", mediaType: "series" as const, year: null },
+      };
+      const match = media({ id: 8, title: "The Show" });
+
+      await resolveRetryableWatchlist(item, match);
+
+      expect(librarySaveMock).toHaveBeenCalledWith(match, { status: "planned" });
     });
   });
 

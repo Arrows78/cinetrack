@@ -799,6 +799,14 @@ export const componentInventory = [
     "Imports viewing history from a TV Time export."
   ),
   component(
+    "TvTimeUnmatchedResolver",
+    "components/settings/tvtime-unmatched-resolver.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Lets the user search TMDB and manually match a title the automatic import couldn't resolve."
+  ),
+  component(
     "EmptyState",
     "components/states/empty-state.tsx",
     "States",

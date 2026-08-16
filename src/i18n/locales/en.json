@@ -683,6 +683,20 @@
       "skippedRows_other": "{{count}} rows had no watch date and will be skipped.",
       "confirm": "Import",
       "namesTruncated": "{{names}} and {{extra}} more"
+    },
+    "retry": {
+      "title_one": "{{count}} title needs your input",
+      "title_other": "{{count}} titles need your input",
+      "description": "Search TMDB yourself and pick the right title — nothing here imports until you choose one.",
+      "searchLabel": "Search title",
+      "noResults": "No results.",
+      "choose": "Choose",
+      "resolved": "Added \"{{title}}\".",
+      "resolveFailed": "Couldn't add this title. Try again.",
+      "episodeCount_one": "{{count}} episode",
+      "episodeCount_other": "{{count}} episodes",
+      "pointer_one": "{{count}} title needs your input below.",
+      "pointer_other": "{{count}} titles need your input below."
     }
   }
 }

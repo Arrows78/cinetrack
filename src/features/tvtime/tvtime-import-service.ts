@@ -13,6 +13,8 @@ import {
   type TvTimeEpisode,
   type TvTimeExport,
   type TvTimeFile,
+  type TvTimeMovie,
+  type TvTimeWatchlistEntry,
 } from "./parse-export";
 import { tvTimeImportRepository, type ImportableEpisode } from "./tvtime-import-repository";
 
@@ -49,6 +51,36 @@ export interface TvTimeImportProgress {
   label: string;
 }
 
+// Carries enough of the original TV Time row(s) to retry a match by hand —
+// unlike `unmatched` (display strings only, for the completion toast), this
+// is what the manual-resolution panel (tvtime-unmatched-resolver.tsx) reads
+// to let the user search TMDB themselves and finish the import for that
+// title once they pick a result. Not populated for the separate "series
+// matched, but some of its episodes aren't on TMDB" case — re-searching
+// can't fix a season that genuinely isn't there.
+export interface RetryableSeries {
+  kind: "series";
+  label: string;
+  searchTitle: string;
+  searchYear: number | null;
+  episodes: TvTimeEpisode[];
+}
+export interface RetryableMovie {
+  kind: "movie";
+  label: string;
+  searchTitle: string;
+  searchYear: number | null;
+  movie: TvTimeMovie;
+}
+export interface RetryableWatchlistEntry {
+  kind: "watchlist";
+  label: string;
+  searchTitle: string;
+  searchYear: number | null;
+  entry: TvTimeWatchlistEntry;
+}
+export type RetryableUnmatched = RetryableSeries | RetryableMovie | RetryableWatchlistEntry;
+
 export interface TvTimeImportSummary {
   seriesImported: number;
   episodesImported: number;
@@ -61,6 +93,8 @@ export interface TvTimeImportSummary {
    * second look, unlike a confident single/year-exact match.
    */
   ambiguous: string[];
+  /** Structured version of the `unmatched` titles a user can actually retry. */
+  retryable: RetryableUnmatched[];
 }
 
 const CONCURRENCY = 3;
@@ -84,6 +118,25 @@ const splitTitleYear = (name: string): { title: string; year: number | null } =>
   if (!match) return { title: name.trim(), year: null };
   return { title: match[1]!.trim(), year: Number(match[2]) };
 };
+
+const retryableSeriesFrom = (seriesName: string, episodes: TvTimeEpisode[]): RetryableSeries => {
+  const { title, year } = splitTitleYear(seriesName);
+  return { kind: "series", label: seriesName, searchTitle: title, searchYear: year, episodes };
+};
+const retryableMovieFrom = (movie: TvTimeMovie): RetryableMovie => ({
+  kind: "movie",
+  label: movie.title,
+  searchTitle: movie.title,
+  searchYear: movie.year,
+  movie,
+});
+const retryableWatchlistFrom = (entry: TvTimeWatchlistEntry): RetryableWatchlistEntry => ({
+  kind: "watchlist",
+  label: entry.title,
+  searchTitle: entry.title,
+  searchYear: entry.year,
+  entry,
+});
 
 // Loosens title comparison past exact-string equality — TV Time and TMDB
 // don't always agree on punctuation/diacritics/a leading article for the
@@ -170,20 +223,13 @@ async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): 
   return { series: await withRateLimitRetry(() => mediaRepository.getSeriesDetails(match.id)), ambiguous };
 }
 
-async function importOneSeries(
-  seriesName: string,
-  episodes: TvTimeEpisode[],
-  data: TvTimeExport,
-  summary: TvTimeImportSummary
-): Promise<void> {
-  const resolved = await resolveSeries(seriesName, data.tvdbIdsByName);
-  if (!resolved.series) {
-    summary.unmatched.push(seriesName);
-    return;
-  }
-  if (resolved.ambiguous) summary.ambiguous.push(seriesName);
-  const series = resolved.series;
-
+// Season lookups + the actual write, given an already-resolved series —
+// shared by the automatic pass below and resolveRetryableSeries (the manual
+// panel's entry point once the user has picked a series themselves).
+async function attachEpisodesToSeries(
+  series: Series,
+  episodes: TvTimeEpisode[]
+): Promise<{ episodesImported: number; unresolvedCount: number }> {
   const seasonNumbers = [...new Set(episodes.map((episode) => episode.seasonNumber))];
   const episodeIdByCode = new Map<string, { id: number; runtime: number | null }>();
   for (const seasonNumber of seasonNumbers) {
@@ -196,16 +242,16 @@ async function importOneSeries(
         });
       }
     } catch {
-      // Season unavailable on TMDB — its episodes are reported unmatched below.
+      // Season unavailable on TMDB — its episodes are reported unresolved below.
     }
   }
 
   const importable: ImportableEpisode[] = [];
-  let unresolved = 0;
+  let unresolvedCount = 0;
   for (const episode of episodes) {
     const resolvedEpisode = episodeIdByCode.get(`${episode.seasonNumber}|${episode.episodeNumber}`);
     if (!resolvedEpisode) {
-      unresolved += 1;
+      unresolvedCount += 1;
       continue;
     }
     importable.push({
@@ -216,15 +262,68 @@ async function importOneSeries(
       runtimeMinutes: episode.runtimeMinutes ?? resolvedEpisode.runtime,
     });
   }
-  if (unresolved > 0) {
-    summary.unmatched.push(`${seriesName} (${i18n.t("tvtimeImport.unresolvedEpisodeCount", { count: unresolved })})`);
-  }
 
   const inserted = await tvTimeImportRepository.importSeriesProgress(series, importable);
-  if (inserted > 0) {
-    summary.seriesImported += 1;
-    summary.episodesImported += inserted;
+  return { episodesImported: inserted, unresolvedCount };
+}
+
+async function importOneSeries(
+  seriesName: string,
+  episodes: TvTimeEpisode[],
+  data: TvTimeExport,
+  summary: TvTimeImportSummary
+): Promise<void> {
+  const resolved = await resolveSeries(seriesName, data.tvdbIdsByName);
+  if (!resolved.series) {
+    summary.unmatched.push(seriesName);
+    summary.retryable.push(retryableSeriesFrom(seriesName, episodes));
+    return;
   }
+  if (resolved.ambiguous) summary.ambiguous.push(seriesName);
+
+  const { episodesImported, unresolvedCount } = await attachEpisodesToSeries(resolved.series, episodes);
+  if (unresolvedCount > 0) {
+    summary.unmatched.push(
+      `${seriesName} (${i18n.t("tvtimeImport.unresolvedEpisodeCount", { count: unresolvedCount })})`
+    );
+  }
+  if (episodesImported > 0) {
+    summary.seriesImported += 1;
+    summary.episodesImported += episodesImported;
+  }
+}
+
+/** Manual-panel entry point: attaches a user-picked series to a retryable item's episodes. */
+export async function resolveRetryableSeries(
+  item: RetryableSeries,
+  series: Series
+): Promise<{ episodesImported: number }> {
+  const { episodesImported } = await attachEpisodesToSeries(series, item.episodes);
+  return { episodesImported };
+}
+
+async function importMatchedMovie(movie: TvTimeMovie, match: MediaSummary): Promise<boolean> {
+  return tvTimeImportRepository.importMovieSeen({
+    movieId: match.id,
+    title: match.title,
+    posterPath: match.posterPath,
+    backdropPath: match.backdropPath,
+    runtime: movie.runtimeMinutes ?? match.runtime ?? null,
+    watchedAt: movie.watchedAt,
+    year: match.year,
+    rating: match.rating,
+    genres: match.genres,
+  });
+}
+
+/** Manual-panel entry point: writes a retryable movie item once the user has picked its TMDB match. */
+export async function resolveRetryableMovie(item: RetryableMovie, match: MediaSummary): Promise<boolean> {
+  return importMatchedMovie(item.movie, match);
+}
+
+/** Manual-panel entry point: adds a retryable watchlist item to the library once matched. */
+export async function resolveRetryableWatchlist(_item: RetryableWatchlistEntry, match: MediaSummary): Promise<void> {
+  await libraryRepository.save(match, { status: "planned" });
 }
 
 /**
@@ -245,6 +344,7 @@ export async function applyTvTimeImport(
     plannedImported: 0,
     unmatched: [],
     ambiguous: [],
+    retryable: [],
   };
 
   const episodesBySeries = new Map<string, TvTimeEpisode[]>();
@@ -264,6 +364,7 @@ export async function applyTvTimeImport(
         await importOneSeries(seriesName, episodes, data, summary);
       } catch {
         summary.unmatched.push(seriesName);
+        summary.retryable.push(retryableSeriesFrom(seriesName, episodes));
       }
       seriesDone += 1;
       onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
@@ -281,23 +382,15 @@ export async function applyTvTimeImport(
         const { match, ambiguous } = pickBestMatch(results, queriedTitle, movie.year);
         if (!match) {
           summary.unmatched.push(movie.title);
+          summary.retryable.push(retryableMovieFrom(movie));
         } else {
           if (ambiguous) summary.ambiguous.push(movie.title);
-          const inserted = await tvTimeImportRepository.importMovieSeen({
-            movieId: match.id,
-            title: match.title,
-            posterPath: match.posterPath,
-            backdropPath: match.backdropPath,
-            runtime: movie.runtimeMinutes ?? match.runtime ?? null,
-            watchedAt: movie.watchedAt,
-            year: match.year,
-            rating: match.rating,
-            genres: match.genres,
-          });
+          const inserted = await importMatchedMovie(movie, match);
           if (inserted) summary.moviesImported += 1;
         }
       } catch {
         summary.unmatched.push(movie.title);
+        summary.retryable.push(retryableMovieFrom(movie));
       }
       moviesDone += 1;
       onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
@@ -318,6 +411,7 @@ export async function applyTvTimeImport(
         const { match, ambiguous } = pickBestMatch(results, queriedTitle, entry.year);
         if (!match) {
           summary.unmatched.push(entry.title);
+          summary.retryable.push(retryableWatchlistFrom(entry));
         } else {
           if (ambiguous) summary.ambiguous.push(entry.title);
           await libraryRepository.save(match, { status: "planned" });
@@ -325,6 +419,7 @@ export async function applyTvTimeImport(
         }
       } catch {
         summary.unmatched.push(entry.title);
+        summary.retryable.push(retryableWatchlistFrom(entry));
       }
       watchlistDone += 1;
       onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });

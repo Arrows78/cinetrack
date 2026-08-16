@@ -53,6 +53,7 @@ describe("TvTimeImportCard", () => {
       plannedImported: 0,
       unmatched: [],
       ambiguous: [],
+      retryable: [],
     });
   });
 
@@ -78,6 +79,39 @@ describe("TvTimeImportCard", () => {
 
     await waitFor(() => expect(applyTvTimeImportMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" })));
+  });
+
+  it("truncates a long current-title instead of letting it grow the card", async () => {
+    let resolveImport!: (summary: unknown) => void;
+    applyTvTimeImportMock.mockImplementationOnce(
+      (_data: unknown, onProgress: (p: unknown) => void) =>
+        new Promise((resolve) => {
+          resolveImport = resolve;
+          onProgress({
+            phase: "series",
+            done: 1,
+            total: 2,
+            label: "A Very Long Series Title That Should Never Widen Or Grow This Card",
+          });
+        })
+    );
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+    (await screen.findByRole("button", { name: "Import" })).click();
+
+    const label = await screen.findByText(/A Very Long Series Title/);
+    expect(label).toHaveClass("truncate");
+
+    resolveImport({
+      seriesImported: 1,
+      episodesImported: 1,
+      moviesImported: 0,
+      plannedImported: 0,
+      unmatched: [],
+      ambiguous: [],
+      retryable: [],
+    });
   });
 
   it("extracts the CSVs from a selected .zip and includes them in the pre-flight summary", async () => {
