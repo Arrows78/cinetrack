@@ -5,9 +5,9 @@ import { UserPlus } from "lucide-react";
 import { AuthBackdrop } from "@/features/auth/auth-backdrop";
 import { AuthBrandMark } from "@/features/auth/auth-brand-mark";
 import { AuthStepIcon } from "@/features/auth/auth-step-icon";
-import { AuthSubmitButton } from "@/features/auth/auth-submit-button";
 import { AuthTextField } from "@/features/auth/auth-text-field";
 import { useAuth } from "@/features/auth/auth-context";
+import { Button } from "@/components/ui/button";
 import { useCreateProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 
 // Shares AuthScreen's split stage/panel layout and input treatment (see
@@ -55,9 +55,16 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
             maxLength={60}
           />
 
-          <AuthSubmitButton className="mt-7" disabled={!name.trim() || isSaving} loading={isSaving}>
+          <Button
+            type="submit"
+            variant="authPrimary"
+            size="auth"
+            className="mt-7"
+            disabled={!name.trim() || isSaving}
+            isLoading={isSaving}
+          >
             {t("profileGate.createSubmit")}
-          </AuthSubmitButton>
+          </Button>
         </form>
 
         {error ? (

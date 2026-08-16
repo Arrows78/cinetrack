@@ -5,7 +5,7 @@ import { LoaderCircle, RotateCw, ShieldCheck } from "lucide-react";
 import { authConfig } from "@/features/auth/auth-client";
 import { AuthBackLink } from "@/features/auth/auth-back-link";
 import { AuthStepIcon } from "@/features/auth/auth-step-icon";
-import { AuthSubmitButton } from "@/features/auth/auth-submit-button";
+import { Button } from "@/components/ui/button";
 
 interface AuthOtpStepProps {
   email: string;
@@ -53,9 +53,16 @@ export function AuthOtpStep({
         className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-auth-foreground outline-none placeholder:text-auth-foreground/20 focus:border-primary"
       />
 
-      <AuthSubmitButton className="mt-6" disabled={pendingAction !== null} loading={pendingAction === "otp"}>
+      <Button
+        type="submit"
+        variant="authPrimary"
+        size="auth"
+        className="mt-6"
+        disabled={pendingAction !== null}
+        isLoading={pendingAction === "otp"}
+      >
         {t("auth.otp.verify")}
-      </AuthSubmitButton>
+      </Button>
 
       <button
         type="button"

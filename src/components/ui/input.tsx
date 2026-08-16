@@ -12,6 +12,9 @@ const inputVariants = cva(
         // Compact form fields (settings, filters, editors) — no explicit
         // text size, matching the hand-rolled markup this variant replaces.
         sm: "h-10 rounded-xl bg-background px-3",
+        // Borderless field for a row that draws its own underline (see
+        // auth-text-field.tsx) — no box, no ring, just the bare text.
+        underline: "h-auto rounded-none border-0 bg-transparent px-0 py-0 text-xl ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0",
       },
     },
     defaultVariants: {

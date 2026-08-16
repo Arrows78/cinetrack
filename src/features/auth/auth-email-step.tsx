@@ -4,8 +4,8 @@ import { Check, Mail } from "lucide-react";
 
 import { authConfig } from "@/features/auth/auth-client";
 import { AuthBackLink } from "@/features/auth/auth-back-link";
-import { AuthSubmitButton } from "@/features/auth/auth-submit-button";
 import { AuthTextField } from "@/features/auth/auth-text-field";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/cn";
 
 interface AuthEmailStepProps {
@@ -73,9 +73,16 @@ export function AuthEmailStep({
         </label>
       ) : null}
 
-      <AuthSubmitButton className="mt-10" disabled={pendingAction !== null} loading={pendingAction === "email"}>
+      <Button
+        type="submit"
+        variant="authPrimary"
+        size="auth"
+        className="mt-10"
+        disabled={pendingAction !== null}
+        isLoading={pendingAction === "email"}
+      >
         {t("auth.email.sendCode")}
-      </AuthSubmitButton>
+      </Button>
     </form>
   );
 }
