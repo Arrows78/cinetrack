@@ -464,7 +464,11 @@
     "unlock": "Déverrouiller"
   },
   "commandPalette": {
-    "searchPlaceholder": "Rechercher une action…"
+    "searchPlaceholder": "Rechercher une page, une action, ou un titre…",
+    "switchToLight": "Passer au thème clair",
+    "switchToDark": "Passer au thème sombre",
+    "titles": "Titres",
+    "searchingTitles": "Recherche de titres…"
   },
   "backup": {
     "title": "Sauvegarde portable",

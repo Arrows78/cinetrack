@@ -464,7 +464,11 @@
     "unlock": "Unlock"
   },
   "commandPalette": {
-    "searchPlaceholder": "Search for an action…"
+    "searchPlaceholder": "Search for a page, an action, or a title…",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "titles": "Titles",
+    "searchingTitles": "Searching titles…"
   },
   "backup": {
     "title": "Portable backup",
