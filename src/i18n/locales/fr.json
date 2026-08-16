@@ -642,18 +642,29 @@
       "configInstruction": "Ajoutez <1>VITE_SUPABASE_URL</1> et <3>VITE_SUPABASE_PUBLISHABLE_KEY</3> à votre fichier .env, ou définissez <5>VITE_AUTH_REQUIRED=false</5> pour garder CineTrack en mode local uniquement."
     },
     "backdrop": {
-      "midnight": "MIDNIGHT",
-      "redHorizon": "RED HORIZON",
-      "theVoyage": "THE VOYAGE",
-      "neonCity": "NEON CITY",
-      "theArchive": "THE ARCHIVE",
-      "lastSignal": "LAST SIGNAL",
-      "wildNorth": "WILD NORTH",
-      "orbit": "ORBIT",
-      "afterglow": "AFTERGLOW",
-      "dust": "DUST",
-      "blueRoom": "BLUE ROOM",
-      "nocturne": "NOCTURNE"
+      "midnight": "Minuit",
+      "redHorizon": "Horizon rouge",
+      "theVoyage": "Le Voyage",
+      "neonCity": "Neon City",
+      "theArchive": "Les Archives",
+      "lastSignal": "Dernier Signal",
+      "wildNorth": "Nord Sauvage",
+      "orbit": "Orbite",
+      "afterglow": "Lueur du Soir",
+      "dust": "Poussière",
+      "blueRoom": "Chambre Bleue",
+      "nocturne": "Nocturne",
+      "genres": {
+        "thriller": "Thriller",
+        "action": "Action",
+        "drama": "Drame",
+        "sciFi": "Science-fiction",
+        "mystery": "Mystère",
+        "suspense": "Suspense",
+        "adventure": "Aventure",
+        "romance": "Romance",
+        "western": "Western"
+      }
     }
   },
   "errors": {

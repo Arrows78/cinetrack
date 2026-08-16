@@ -5,6 +5,7 @@ import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client
 import { useAuth } from "@/features/auth/auth-context";
 import { getEnabledSocialProviders } from "@/features/auth/provider-availability";
 import { AuthBackdrop } from "@/features/auth/auth-backdrop";
+import { AuthBrandMark } from "@/features/auth/auth-brand-mark";
 import { AuthEmailStep } from "@/features/auth/auth-email-step";
 import { AuthOtpStep } from "@/features/auth/auth-otp-step";
 import { AuthProvidersStep, type ProviderSettingsStatus } from "@/features/auth/auth-providers-step";
@@ -187,16 +188,8 @@ export function AuthScreen() {
     <div className="relative min-h-screen overflow-hidden bg-black text-auth-foreground">
       <AuthBackdrop />
       <div className="relative z-10 flex min-h-screen flex-col justify-end px-4 pb-4 pt-24 sm:items-center sm:justify-center sm:p-8">
-        <div className="mb-7 flex items-center gap-3 drop-shadow-2xl">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-black/80 ring-1 ring-white/15">
-            <span className="text-3xl font-black text-primary">C</span>
-          </div>
-          <div>
-            <p className="text-overline font-semibold uppercase text-auth-foreground/60">
-              {t("sidebar.brand.tagline")}
-            </p>
-            <p className="text-3xl font-black tracking-tight">{t("sidebar.brand.name")}</p>
-          </div>
+        <div className="mb-7">
+          <AuthBrandMark />
         </div>
 
         <section className="w-full max-w-[35rem] rounded-shell border border-white/10 bg-auth-surface/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">

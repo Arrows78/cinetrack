@@ -1,12 +1,16 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { UserPlus } from "lucide-react";
+import { LoaderCircle, UserPlus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { AuthBackdrop } from "@/features/auth/auth-backdrop";
+import { AuthBrandMark } from "@/features/auth/auth-brand-mark";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCreateProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 
+// Shares AuthScreen's backdrop, card, and input treatment (see
+// auth-email-step.tsx for the same underline-field/pill-button pattern) —
+// this is the very next screen after sign-up, and a plain, neutral card
+// here used to break the cinematic scene AuthScreen had just set.
 export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string }) {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
@@ -20,34 +24,61 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
-      <div className="surface w-full max-w-xl rounded-shell p-8">
-        <UserPlus className="h-10 w-10 text-primary" />
-        <h1 className="mt-5 text-2xl font-bold">{t("profileGate.createTitle")}</h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          {t("profileGate.createDescription", { email: user?.email ?? "" })}
-        </p>
-        <form className="mt-6 flex gap-2" onSubmit={handleSubmit}>
-          <Input
-            autoFocus
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t("profileGate.namePlaceholder")}
-            aria-label={t("profileGate.nameLabel")}
-            maxLength={60}
-          />
-          <Button type="submit" disabled={!name.trim() || isSaving}>
-            {t("profileGate.createSubmit")}
-          </Button>
-        </form>
-        {error ? <p className="mt-3 text-sm text-destructive">{t("profileGate.createError")}</p> : null}
-        <button
-          type="button"
-          className="mt-6 text-sm text-muted-foreground underline-offset-4 hover:underline"
-          onClick={() => void signOut()}
-        >
-          {t("profileGate.signOut")}
-        </button>
+    <div className="relative min-h-screen overflow-hidden bg-black text-auth-foreground">
+      <AuthBackdrop />
+      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-7 px-4 py-10 sm:p-8">
+        <AuthBrandMark />
+        <div className="w-full max-w-xl rounded-shell border border-white/10 bg-auth-surface/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <UserPlus className="h-6 w-6" />
+          </div>
+          <h1 className="mt-5 text-2xl font-black">{t("profileGate.createTitle")}</h1>
+          <p className="mt-3 text-sm leading-6 text-auth-foreground/55">
+            {t("profileGate.createDescription", { email: user?.email ?? "" })}
+          </p>
+
+          <form className="mt-7" onSubmit={handleSubmit}>
+            <div className="flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
+              <UserPlus className="h-5 w-5 shrink-0 text-auth-foreground/75" aria-hidden="true" />
+              <input
+                autoFocus
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={t("profileGate.namePlaceholder")}
+                aria-label={t("profileGate.nameLabel")}
+                maxLength={60}
+                className="h-auto w-full min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35 focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={!name.trim() || isSaving}
+              className="mt-7 flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-black uppercase tracking-[0.08em] text-primary-foreground transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+            >
+              {isSaving ? <LoaderCircle className="h-6 w-6 animate-spin" /> : t("profileGate.createSubmit")}
+            </button>
+          </form>
+
+          {error ? (
+            <p
+              role="alert"
+              aria-live="polite"
+              className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-sm text-auth-foreground/90"
+            >
+              {t("profileGate.createError")}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            className="mt-6 text-sm text-auth-foreground/60 underline-offset-4 hover:text-auth-foreground hover:underline"
+            onClick={() => void signOut()}
+          >
+            {t("profileGate.signOut")}
+          </button>
+        </div>
       </div>
     </div>
   );
