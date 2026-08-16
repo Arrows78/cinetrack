@@ -8,6 +8,7 @@
 // describe block's plain data assertions don't depend on jsdom either way.
 import { describe, expect, it, vi } from "vitest";
 import {
+  biggestBingeDay,
   currentStreak,
   libraryExtras,
   longestStreak,
@@ -154,6 +155,27 @@ describe("longestStreak", () => {
 
   it("ignores unwatched events", () => {
     expect(longestStreak([event({ eventType: "unwatched" })])).toBe(0);
+  });
+});
+
+describe("biggestBingeDay", () => {
+  it("finds the day with the most watches, not the most recent one", () => {
+    const events = [
+      event({ watchedAt: isoDaysAgo(10) }),
+      event({ watchedAt: isoDaysAgo(3) }),
+      event({ watchedAt: isoDaysAgo(3) }),
+      event({ watchedAt: isoDaysAgo(3) }),
+      event({ watchedAt: isoDaysAgo(0) }),
+    ];
+
+    const result = biggestBingeDay(events);
+
+    expect(result?.count).toBe(3);
+  });
+
+  it("ignores unwatched events and returns null when there's nothing to rank", () => {
+    expect(biggestBingeDay([event({ eventType: "unwatched" })])).toBeNull();
+    expect(biggestBingeDay([])).toBeNull();
   });
 });
 

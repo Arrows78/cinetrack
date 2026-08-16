@@ -337,6 +337,7 @@ export interface LibraryStats {
   monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
   currentStreakDays: number;
   longestStreakDays: number;
+  biggestBingeDay: { day: string; count: number } | null;
   libraryCompletionPercent: number;
   heatmap: Array<{ day: number; hour: number; count: number }>;
 }

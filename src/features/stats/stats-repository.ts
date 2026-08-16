@@ -93,6 +93,24 @@ export function longestStreak(events: ViewingEvent[]): number {
   return longest;
 }
 
+/**
+ * The single calendar day (within the same bounded window as
+ * currentStreak/longestStreak) with the most watched movies/episodes — a
+ * "biggest binge" record, distinct from the total-time-watched figures
+ * elsewhere on the page. Exported for tests only — not part of the
+ * statsRepository public surface.
+ */
+export function biggestBingeDay(events: ViewingEvent[]): { day: string; count: number } | null {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    if (event.eventType === "unwatched") continue;
+    const day = localDay(event.watchedAt);
+    counts.set(day, (counts.get(day) ?? 0) + 1);
+  }
+  const [day, count] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+  return day && count ? { day, count } : null;
+}
+
 const HEATMAP_HOURS = 24;
 const HEATMAP_DAYS = 7;
 
@@ -272,6 +290,7 @@ export const statsRepository = {
       monthlyActivity: overview.monthlyActivity,
       currentStreakDays: currentStreak(recentEvents),
       longestStreakDays: longestStreak(recentEvents),
+      biggestBingeDay: biggestBingeDay(recentEvents),
       libraryCompletionPercent: overview.totals.libraryCompletionPercent,
       heatmap: viewingHeatmap(recentEvents),
     };

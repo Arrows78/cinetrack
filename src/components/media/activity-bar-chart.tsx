@@ -1,4 +1,4 @@
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { cn } from "@/shared/lib/cn";
 
 export interface ActivityBarChartDatum {
@@ -13,6 +13,9 @@ export interface ActivityBarChartDatum {
 const MUTED_FOREGROUND = "hsl(var(--muted-foreground))";
 const CURSOR_FILL = "hsl(var(--foreground) / 0.06)";
 const PRIMARY = "hsl(var(--primary))";
+// The "current period" bar, everything else muted — same convention on
+// every Stats chart so "where am I right now" reads the same way everywhere.
+const HISTORY_FILL = "hsl(var(--foreground) / 0.12)";
 const TOOLTIP_CONTENT_STYLE = {
   background: "hsl(var(--popover))",
   border: "1px solid hsl(var(--border))",
@@ -33,12 +36,15 @@ export function ActivityBarChart({
   tooltipLabel,
   height = 176,
   className,
+  highlightLast = false,
 }: {
   data: ActivityBarChartDatum[];
   /** Series name shown in the tooltip, e.g. "watches". */
   tooltipLabel: string;
   height?: number;
   className?: string;
+  /** Renders the last bar (the current month/year, in every caller's data — always chronological, ending now) in primary, every other bar muted. */
+  highlightLast?: boolean;
 }) {
   return (
     <div aria-hidden="true" className={cn("mt-5", className)} style={{ height }}>
@@ -50,7 +56,13 @@ export function ActivityBarChart({
             contentStyle={TOOLTIP_CONTENT_STYLE}
             formatter={(value) => [value ?? 0, tooltipLabel]}
           />
-          <Bar dataKey="value" fill={PRIMARY} fillOpacity={0.8} radius={[6, 6, 0, 0]} maxBarSize={40} />
+          <Bar dataKey="value" fill={PRIMARY} fillOpacity={0.8} radius={[6, 6, 0, 0]} maxBarSize={40}>
+            {highlightLast
+              ? data.map((entry, index) => (
+                  <Cell key={entry.label} fill={index === data.length - 1 ? PRIMARY : HISTORY_FILL} />
+                ))
+              : null}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

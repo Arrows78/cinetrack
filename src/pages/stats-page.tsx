@@ -13,6 +13,7 @@ import {
   Hourglass,
   Minus,
   PieChart,
+  Popcorn,
   Repeat,
   Star,
   ThumbsUp,
@@ -159,7 +160,7 @@ export function StatsPage() {
 
       <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
         <h2 className="mb-3 font-semibold">{t("stats.records")}</h2>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Panel asChild className="min-w-0">
             <article>
               <Trophy className="size-5 text-primary" />
@@ -167,6 +168,22 @@ export function StatsPage() {
               <p className="mt-1 font-display text-3xl font-bold">
                 {t("stats.streakDays", { count: stats.data.longestStreakDays })}
               </p>
+            </article>
+          </Panel>
+          <Panel asChild className="min-w-0">
+            <article>
+              <Popcorn className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.biggestBinge")}</p>
+              {stats.data.biggestBingeDay ? (
+                <>
+                  <p className="mt-1 font-display text-3xl font-bold">
+                    {t("stats.watchCount", { count: stats.data.biggestBingeDay.count })}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatDate(stats.data.biggestBingeDay.day)}</p>
+                </>
+              ) : (
+                <p className="mt-1 font-display text-3xl font-bold">—</p>
+              )}
             </article>
           </Panel>
           <Panel asChild className="min-w-0">
@@ -289,6 +306,7 @@ export function StatsPage() {
         <ActivityBarChart
           data={stats.data.monthlyActivity.map((month) => ({ label: month.month.slice(5), value: month.count }))}
           tooltipLabel={t("stats.watches")}
+          highlightLast
         />
         {/* div carries sr-only, not the table — a table's default auto
             layout ignores width:1px/height:1px and sizes to its content
@@ -324,6 +342,7 @@ export function StatsPage() {
               value: bucket.moviesWatched + bucket.episodesWatched,
             }))}
             tooltipLabel={t("stats.watches")}
+            highlightLast
           />
           <div className="sr-only">
             <table>
