@@ -12,7 +12,12 @@ export function BrandMarkIcon({ className }: { className?: string }) {
         className
       )}
     >
-      <Clapperboard className="h-1/2 w-1/2 text-primary-foreground" aria-hidden="true" />
+      {/* Fixed white, not text-primary-foreground: that token is tuned for
+          AA contrast against a solid primary fill and goes near-black in
+          dark theme — wrong here since the badge is a primary→accent
+          gradient (light violet to dark teal), and the OS app icon (see
+          src-tauri/icons/icon.svg) already draws this same glyph in white. */}
+      <Clapperboard className="h-1/2 w-1/2 text-white" aria-hidden="true" />
     </div>
   );
 }
