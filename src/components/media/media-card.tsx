@@ -190,9 +190,11 @@ function MediaCardInner({
           </div>
         </div>
 
-        {/* TV Time-style progress bar — inProgress (primary): still catching
-            up. caughtUp (warning): every aired episode watched, but the show
-            could still return. finished (success): the show itself is over. */}
+        {/* TV Time-style progress bar — primary while still catching up;
+            green once every released episode is watched. caughtUp (a
+            renewed/returning show) gets a lighter shade of that same green
+            instead of a separate color/badge — "done for now" without
+            claiming the show itself is over. */}
         {showProgress ? (
           <div
             role="progressbar"
@@ -205,7 +207,7 @@ function MediaCardInner({
             <div
               className={cn(
                 "h-full shadow-sm transition-all duration-medium",
-                tone === "finished" ? "bg-success" : tone === "caughtUp" ? "bg-warning" : "bg-primary"
+                tone === "finished" ? "bg-success" : tone === "caughtUp" ? "bg-success/60" : "bg-primary"
               )}
               style={{ width: `${barPercent}%` }}
             />

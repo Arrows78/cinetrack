@@ -13,9 +13,9 @@ export type ProgressBarTone = "inProgress" | "caughtUp" | "finished";
 /**
  * The three states a progress bar can be in, shared between MediaCard and
  * MediaListRow: still catching up (primary), caught up with everything
- * aired so far but the show itself could still return (warning), or
- * genuinely over (success) — see docs/design-system.md's token list for why
- * these three and not new colors.
+ * aired so far but the show itself could still return (a lighter shade of
+ * success — not a third color/badge, since "caught up" isn't a claim the
+ * show has ended), or genuinely over (full success).
  */
 export function progressBarTone(watched: number, total: number, seriesStatus?: string | null): ProgressBarTone {
   if (watched < total) return "inProgress";

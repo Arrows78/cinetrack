@@ -2,9 +2,12 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/cn";
 import type { ProgressBarTone } from "@/shared/utils/series-status";
 
+// Only two hues (primary/success) — caughtUp is a lighter shade of the same
+// green as finished, not a third color: "done for now" without a separate
+// badge claiming the show itself has ended. See progressBarTone().
 const TONE_FILL: Record<ProgressBarTone, string> = {
   inProgress: "hsl(var(--primary))",
-  caughtUp: "hsl(var(--warning))",
+  caughtUp: "hsl(var(--success) / 0.6)",
   finished: "hsl(var(--success))",
 };
 
