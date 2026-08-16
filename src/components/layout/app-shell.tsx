@@ -43,14 +43,14 @@ export function AppShell() {
   };
 
   return (
-    <div className="min-h-screen text-foreground">
+    <div className="min-h-dvh text-foreground">
       <div
         className={cn(
-          "mx-auto grid min-h-screen w-full max-w-[106.25rem] grid-cols-1 gap-6 p-4 lg:items-start lg:p-6",
+          "mx-auto grid w-full max-w-[106.25rem] grid-cols-1 gap-6 p-4 lg:items-start lg:p-6",
           sidebarCollapsed ? "lg:grid-cols-[5rem_minmax(0,1fr)]" : "lg:grid-cols-[17.5rem_minmax(0,1fr)]"
         )}
       >
-        <aside className="surface hidden h-[100dvh] sticky top-0 overflow-hidden rounded-shell p-3 lg:block">
+        <aside className="surface hidden max-h-[100dvh] self-start sticky top-0 overflow-hidden rounded-shell p-3 lg:block">
           <SidebarNav collapsed={sidebarCollapsed} onToggleCollapse={() => void handleToggleSidebar()} />
         </aside>
 
