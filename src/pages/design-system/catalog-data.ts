@@ -679,6 +679,22 @@ export const componentInventory = [
     "Lays out responsive collections of media cards."
   ),
   component(
+    "MediaList",
+    "components/media/media-list.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Virtualized compact-row alternative to MediaGrid, toggled from the library page."
+  ),
+  component(
+    "MediaListRow",
+    "components/media/media-list-row.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "A single compact row: poster thumbnail, title/meta, progress, and a watched toggle."
+  ),
+  component(
     "NextEpisodeCard",
     "components/media/next-episode-card.tsx",
     "Media",

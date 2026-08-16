@@ -228,6 +228,11 @@
       "dataDesc": "Move your data in and out of CineTrack."
     }
   },
+  "mediaHub": {
+    "myList": "My list",
+    "upcoming": "Upcoming",
+    "discover": "Discover"
+  },
   "movies": {
     "subtitle": "Posters, filters, and detailed pages.",
     "noMoviesAvailable": "No movies available",
@@ -296,6 +301,7 @@
     "nextYear": "Next year",
     "records": "Records",
     "longestStreak": "Longest streak",
+    "biggestBinge": "Biggest binge day",
     "mostRewatched": "Most rewatched",
     "rewatchCount_one": "Watched again {{count}} time",
     "rewatchCount_other": "Watched again {{count}} times",
@@ -428,6 +434,8 @@
     "exploreCta": "Discover movies & series",
     "favourite": "Favourite",
     "favouritesOnly": "Favourites",
+    "gridView": "Grid view",
+    "listView": "List view",
     "status": "Status",
     "statuses": {
       "planned": "To watch",

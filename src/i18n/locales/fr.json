@@ -228,6 +228,11 @@
       "dataDesc": "Faites entrer et sortir vos données de CineTrack."
     }
   },
+  "mediaHub": {
+    "myList": "Ma liste",
+    "upcoming": "À venir",
+    "discover": "Découvrir"
+  },
   "movies": {
     "subtitle": "Affiches, filtres et fiches détaillées.",
     "noMoviesAvailable": "Aucun film disponible",
@@ -296,6 +301,7 @@
     "nextYear": "Année suivante",
     "records": "Records",
     "longestStreak": "Plus longue série",
+    "biggestBinge": "Plus grosse séance",
     "mostRewatched": "Le plus revu",
     "rewatchCount_one": "Revu {{count}} fois",
     "rewatchCount_other": "Revu {{count}} fois",
@@ -428,6 +434,8 @@
     "exploreCta": "Découvrir des films et séries",
     "favourite": "Favori",
     "favouritesOnly": "Favoris",
+    "gridView": "Vue en grille",
+    "listView": "Vue en liste",
     "status": "Statut",
     "statuses": {
       "planned": "À voir",

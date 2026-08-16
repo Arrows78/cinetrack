@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { FolderHeart, Heart, LibraryBig, ListPlus, Trash2 } from "lucide-react";
+import { FolderHeart, Heart, LayoutGrid, LibraryBig, List, ListPlus, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid, type MediaGridItem } from "@/components/media/media-grid";
+import { MediaList } from "@/components/media/media-list";
 import { SectionHeader } from "@/components/media/section-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -196,16 +197,21 @@ function ListsAccordionContent({
   );
 }
 
-export function LibraryPage() {
+// Reusable across /library (every type, type filter shown) and the /movies
+// and /series "My list" tab (lockedMediaType hides that filter and
+// pre-constrains it instead) — same filters, sort, custom lists and
+// grid/list rendering either way.
+export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie" | "series" }) {
   const { t } = useTranslation();
   const libraryQuery = useLibrary();
   const { data: items } = libraryQuery;
   const { data: trackedSeries } = useTrackedSeries();
   const lists = useCustomLists();
-  const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">(lockedMediaType ?? "all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [listFilter, setListFilter] = useState("all");
   const listItems = useCustomListItems(listFilter === "all" ? "" : listFilter);
 
@@ -281,17 +287,18 @@ export function LibraryPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-5">
-        <SectionHeader title={t("library.myLibrary")} subtitle={t("library.subtitle")} index={1} />
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <FilterBar
-            value={typeFilter}
-            onChange={setTypeFilter}
-            options={[
-              { value: "all", label: t("settings.all") },
-              { value: "series", label: t("nav.series") },
-              { value: "movie", label: t("nav.movies") },
-            ]}
-          />
+          {lockedMediaType ? null : (
+            <FilterBar
+              value={typeFilter}
+              onChange={setTypeFilter}
+              options={[
+                { value: "all", label: t("settings.all") },
+                { value: "series", label: t("nav.series") },
+                { value: "movie", label: t("nav.movies") },
+              ]}
+            />
+          )}
           <FilterBar
             value={statusFilter}
             onChange={setStatusFilter}
@@ -319,6 +326,30 @@ export function LibraryPage() {
             <Heart className={favouritesOnly ? "mr-2 size-4 fill-current" : "mr-2 size-4"} />
             {t("library.favouritesOnly")}
           </Button>
+          <div className="flex items-center gap-1 rounded-full border border-border p-1">
+            <Button
+              type="button"
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="icon"
+              aria-label={t("library.gridView")}
+              aria-pressed={viewMode === "grid"}
+              onClick={() => setViewMode("grid")}
+              className="size-8 rounded-full"
+            >
+              <LayoutGrid className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="icon"
+              aria-label={t("library.listView")}
+              aria-pressed={viewMode === "list"}
+              onClick={() => setViewMode("list")}
+              className="size-8 rounded-full"
+            >
+              <List className="size-4" />
+            </Button>
+          </div>
           {(lists.data?.length ?? 0) > 0 ? (
             <Select
               aria-label={t("library.lists.filterLabel")}
@@ -361,7 +392,11 @@ export function LibraryPage() {
       ) : isFilteredToList && listItems.isError ? (
         <RemoteErrorState error={listItems.error} onRetry={() => void listItems.refetch()} />
       ) : filtered.length ? (
-        <MediaGrid items={filtered} />
+        viewMode === "grid" ? (
+          <MediaGrid items={filtered} />
+        ) : (
+          <MediaList items={filtered} />
+        )
       ) : isFilteredToList ? (
         <EmptyState
           icon={FolderHeart}
@@ -380,6 +415,16 @@ export function LibraryPage() {
           }
         />
       )}
+    </div>
+  );
+}
+
+export function LibraryPage() {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-8">
+      <SectionHeader title={t("library.myLibrary")} subtitle={t("library.subtitle")} index={1} />
+      <LibraryExplorer />
     </div>
   );
 }

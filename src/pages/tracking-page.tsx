@@ -105,7 +105,10 @@ function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove:
   );
 }
 
-export function TrackingPage() {
+// Reusable across /tracking (every type) and the /movies and /series
+// "Upcoming" tab (lockedMediaType pre-constrains it, same releases/episodes/
+// availability filters otherwise).
+export function TrackingList({ lockedMediaType }: { lockedMediaType?: "movie" | "series" }) {
   const { t } = useTranslation();
   const tracking = useTracking();
   const alerts = useAvailabilityAlerts();
@@ -117,9 +120,11 @@ export function TrackingPage() {
     () =>
       (tracking.data ?? []).filter(
         (entry) =>
-          (scopeFilter === "all" || entry.scope === scopeFilter) && (typeFilter === "all" || entry.type === typeFilter)
+          (scopeFilter === "all" || entry.scope === scopeFilter) &&
+          (typeFilter === "all" || entry.type === typeFilter) &&
+          (!lockedMediaType || entry.mediaType === lockedMediaType)
       ),
-    [tracking.data, scopeFilter, typeFilter]
+    [tracking.data, scopeFilter, typeFilter, lockedMediaType]
   );
 
   const availableNow = filtered.filter((entry) => entry.type === "availability" && entry.available);
@@ -133,14 +138,6 @@ export function TrackingPage() {
 
   return (
     <div className="space-y-6">
-      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <div className="flex items-center gap-3">
-          <CalendarDays className="size-7 text-primary" />
-          <h1 className="font-display text-3xl font-bold">{t("tracking.title")}</h1>
-        </div>
-        <p className="mt-1 text-muted-foreground">{t("tracking.description")}</p>
-      </header>
-
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <FilterBar
           value={scopeFilter}
@@ -216,6 +213,22 @@ export function TrackingPage() {
           setPendingRemoval(null);
         }}
       />
+    </div>
+  );
+}
+
+export function TrackingPage() {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-6">
+      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
+        <div className="flex items-center gap-3">
+          <CalendarDays className="size-7 text-primary" />
+          <h1 className="font-display text-3xl font-bold">{t("tracking.title")}</h1>
+        </div>
+        <p className="mt-1 text-muted-foreground">{t("tracking.description")}</p>
+      </header>
+      <TrackingList />
     </div>
   );
 }
