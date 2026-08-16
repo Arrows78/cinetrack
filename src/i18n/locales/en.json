@@ -280,7 +280,17 @@
     "backlogEpisodes_other": "{{count}} episodes left",
     "pacePerWeek": "Episodes per week",
     "paceBasis": "Based on the last two months",
-    "catchUpBy": "Caught up by"
+    "catchUpBy": "Caught up by",
+    "thisMonth": "This month",
+    "watchesThisMonth": "Watched this month",
+    "timeThisMonth": "Watch time this month",
+    "deltaUp": "+{{value}} vs last month",
+    "deltaDown": "-{{value}} vs last month",
+    "deltaFlat": "same as last month",
+    "activityByYear": "Activity by year",
+    "year": "Year",
+    "previousYear": "Previous year",
+    "nextYear": "Next year"
   },
   "bootRecovery": {
     "checking": "Checking your local data…",
@@ -368,7 +378,7 @@
   },
   "watchTonight": {
     "title": "What to watch tonight?",
-    "description": "Three suggestions from your library first, then from the catalog.",
+    "description": "Four movies and four series from your library first, then from the catalog.",
     "allGenres": "All genres",
     "allPlatforms": "All platforms",
     "genre": "Genre",
@@ -454,20 +464,7 @@
     "unlock": "Unlock"
   },
   "commandPalette": {
-    "searchPlaceholder": "Search for an action…",
-    "commands": {
-      "home": "Home",
-      "movies": "Movies",
-      "series": "Series",
-      "search": "Search",
-      "watchTonight": "What to watch tonight?",
-      "library": "Library",
-      "tracking": "Tracking",
-      "stats": "Stats",
-      "history": "Activity",
-      "people": "People",
-      "settings": "Settings"
-    }
+    "searchPlaceholder": "Search for an action…"
   },
   "backup": {
     "title": "Portable backup",

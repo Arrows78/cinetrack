@@ -11,7 +11,9 @@ export type MediaGridItem = MediaSummary & { progress?: MediaCardProgress; alrea
 // not just poster count). useWindowScroll — the page itself scrolls (see
 // AppShell; there's no separate inner scroll container) — lets Virtuoso
 // track the window's scroll position instead of wrapping its own.
-export function MediaGrid({ items }: { items: MediaGridItem[] }) {
+const DEFAULT_LIST_CLASS_NAME = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 2xl:grid-cols-5";
+
+export function MediaGrid({ items, listClassName }: { items: MediaGridItem[]; listClassName?: string }) {
   return (
     <VirtuosoGrid
       useWindowScroll
@@ -24,7 +26,7 @@ export function MediaGrid({ items }: { items: MediaGridItem[] }) {
       // grid instead of a reasonable first screenful.
       initialItemCount={Math.min(items.length, 20)}
       computeItemKey={(_index, media) => `${media.mediaType}-${media.id}`}
-      listClassName="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 2xl:grid-cols-5"
+      listClassName={listClassName ?? DEFAULT_LIST_CLASS_NAME}
       itemContent={(_index, media) => (
         <MediaCard media={media} progress={media.progress} alreadySeen={media.alreadySeen} />
       )}

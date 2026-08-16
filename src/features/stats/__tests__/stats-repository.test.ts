@@ -7,7 +7,7 @@
 // to the whole file since environment is a per-file pragma, but the first
 // describe block's plain data assertions don't depend on jsdom either way.
 import { describe, expect, it, vi } from "vitest";
-import { currentStreak, libraryExtras } from "../stats-repository";
+import { currentStreak, libraryExtras, monthOverMonthComparison } from "../stats-repository";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeMedia } from "@/shared/test-utils";
 import type { LibraryItem, ViewingEvent } from "@/types/media";
@@ -102,6 +102,27 @@ describe("currentStreak / libraryExtras", () => {
 
   it("ignores unwatched events in the streak", () => {
     expect(currentStreak([event({ eventType: "unwatched" })])).toBe(0);
+  });
+});
+
+describe("monthOverMonthComparison", () => {
+  it("returns null with fewer than two months of activity", () => {
+    expect(monthOverMonthComparison([])).toBeNull();
+    expect(monthOverMonthComparison([{ month: "2026-06", count: 3, minutes: 90 }])).toBeNull();
+  });
+
+  it("compares the last two months and signs the deltas", () => {
+    const result = monthOverMonthComparison([
+      { month: "2026-05", count: 4, minutes: 200 },
+      { month: "2026-06", count: 7, minutes: 150 },
+    ]);
+
+    expect(result).toEqual({
+      current: { count: 7, minutes: 150 },
+      previous: { count: 4, minutes: 200 },
+      countDelta: 3,
+      minutesDelta: -50,
+    });
   });
 });
 

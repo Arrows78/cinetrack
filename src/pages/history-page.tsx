@@ -21,6 +21,7 @@ import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Tile } from "@/components/ui/tile";
 import { FilterBar } from "@/components/media/filter-bar";
+import { LoadMoreButton } from "@/components/media/load-more-button";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { formatEpisodeCode, formatRelativeDate, percent } from "@/shared/utils/format";
@@ -121,7 +122,10 @@ export function HistoryPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">("all");
 
   const filteredHistory = useMemo(
-    () => (historyQuery.data ?? []).filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter)),
+    () =>
+      (historyQuery.data?.pages.flat() ?? []).filter((item) =>
+        typeFilter === "all" ? true : item.mediaType === typeFilter
+      ),
     [historyQuery.data, typeFilter]
   );
 
@@ -205,6 +209,11 @@ export function HistoryPage() {
         ) : (
           <EmptyState icon={History} title={t("history.noActivity")} description={t("history.noActivityDesc")} />
         )}
+        <LoadMoreButton
+          hasNextPage={historyQuery.hasNextPage}
+          isFetchingNextPage={historyQuery.isFetchingNextPage}
+          onClick={() => void historyQuery.fetchNextPage()}
+        />
       </section>
 
       {/* Tracked series */}

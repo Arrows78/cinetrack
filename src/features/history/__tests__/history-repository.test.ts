@@ -42,6 +42,18 @@ describe("historyRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("list_history", { limit: 50 });
   });
 
+  it("list() forwards a cursor's timestamp/id as beforeTimestamp/beforeId", async () => {
+    invokeMock.mockResolvedValueOnce([]);
+    const { historyRepository } = await import("../history-repository");
+
+    await historyRepository.list(50, { beforeTimestamp: "2026-01-01T00:00:00.000Z", beforeId: "abc" });
+    expect(invokeMock).toHaveBeenCalledWith("list_history", {
+      limit: 50,
+      beforeTimestamp: "2026-01-01T00:00:00.000Z",
+      beforeId: "abc",
+    });
+  });
+
   it("wraps a rejected invoke() into an ApiCommandError", async () => {
     invokeMock.mockRejectedValueOnce({ message: "boom", status: 500 });
     const { historyRepository } = await import("../history-repository");

@@ -27,13 +27,34 @@ function createWrapper() {
 }
 
 describe("useHistory", () => {
-  it("loads history from the repository", async () => {
+  it("loads the first page of history from the repository", async () => {
     const { useHistory } = await import("../use-history");
     const { result } = renderHook(() => useHistory(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.data).toEqual([item]);
-    expect(listMock).toHaveBeenCalled();
+    expect(result.current.data?.pages).toEqual([[item]]);
+    expect(listMock).toHaveBeenCalledWith(50, undefined);
+  });
+
+  it("fetches the next page using the last item's timestamp/id as the cursor", async () => {
+    const fullPage = Array.from({ length: 50 }, (_, index) => ({
+      ...item,
+      id: `history-${index}`,
+      timestamp: `2026-01-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`,
+    }));
+    listMock.mockResolvedValueOnce(fullPage).mockResolvedValueOnce([item]);
+
+    const { useHistory } = await import("../use-history");
+    const { result } = renderHook(() => useHistory(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.hasNextPage).toBe(true);
+
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+
+    const last = fullPage[fullPage.length - 1]!;
+    expect(listMock).toHaveBeenLastCalledWith(50, { beforeTimestamp: last.timestamp, beforeId: last.id });
   });
 });

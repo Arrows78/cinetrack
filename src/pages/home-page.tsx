@@ -140,7 +140,7 @@ export function HomePage() {
               />
               <StatCard
                 label={t("nav.history")}
-                value={String(historyQuery.data?.length ?? 0)}
+                value={String(historyQuery.data?.pages[0]?.length ?? 0)}
                 helper={t("home.activityHelper")}
               />
             </div>

@@ -280,7 +280,17 @@
     "backlogEpisodes_other": "{{count}} épisodes restants",
     "pacePerWeek": "Épisodes par semaine",
     "paceBasis": "Sur les deux derniers mois",
-    "catchUpBy": "À jour le"
+    "catchUpBy": "À jour le",
+    "thisMonth": "Ce mois-ci",
+    "watchesThisMonth": "Visionnages ce mois-ci",
+    "timeThisMonth": "Temps regardé ce mois-ci",
+    "deltaUp": "+{{value}} vs le mois dernier",
+    "deltaDown": "-{{value}} vs le mois dernier",
+    "deltaFlat": "comme le mois dernier",
+    "activityByYear": "Activité par année",
+    "year": "Année",
+    "previousYear": "Année précédente",
+    "nextYear": "Année suivante"
   },
   "bootRecovery": {
     "checking": "Vérification de vos données locales…",
@@ -368,7 +378,7 @@
   },
   "watchTonight": {
     "title": "Que regarder ce soir ?",
-    "description": "Trois propositions issues d'abord de votre bibliothèque, puis du catalogue.",
+    "description": "Quatre films et quatre séries issus d'abord de votre bibliothèque, puis du catalogue.",
     "allGenres": "Tous les genres",
     "allPlatforms": "Toutes les plateformes",
     "genre": "Genre",
@@ -454,20 +464,7 @@
     "unlock": "Déverrouiller"
   },
   "commandPalette": {
-    "searchPlaceholder": "Rechercher une action…",
-    "commands": {
-      "home": "Accueil",
-      "movies": "Films",
-      "series": "Séries",
-      "search": "Recherche",
-      "watchTonight": "Que regarder ce soir ?",
-      "library": "Bibliothèque",
-      "tracking": "Suivi",
-      "stats": "Statistiques",
-      "history": "Activité",
-      "people": "Personnes",
-      "settings": "Paramètres"
-    }
+    "searchPlaceholder": "Rechercher une action…"
   },
   "backup": {
     "title": "Sauvegarde portable",

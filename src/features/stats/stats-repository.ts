@@ -33,6 +33,13 @@ interface YearSummary {
   activeDays: number;
 }
 
+export interface YearlyActivityBucket {
+  year: number;
+  moviesWatched: number;
+  episodesWatched: number;
+  minutesWatched: number;
+}
+
 interface StatsOverviewDto {
   totals: {
     moviesWatched: number;
@@ -81,6 +88,33 @@ export function libraryExtras(library: LibraryItem[]): {
       .slice(0, 8)
       .map(([name, count]) => ({ name, count })),
     averageUserRating: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
+  };
+}
+
+export interface MonthComparison {
+  current: { count: number; minutes: number };
+  previous: { count: number; minutes: number };
+  countDelta: number;
+  minutesDelta: number;
+}
+
+/**
+ * The current month vs. the one before it, both already present in
+ * `monthlyActivity`'s trailing entries — no extra fetch needed. Returns
+ * `null` for a profile too new to have two months of data yet.
+ * Exported for tests only — not part of the statsRepository public surface.
+ */
+export function monthOverMonthComparison(
+  monthlyActivity: Array<{ month: string; count: number; minutes: number }>
+): MonthComparison | null {
+  if (monthlyActivity.length < 2) return null;
+  const current = monthlyActivity[monthlyActivity.length - 1]!;
+  const previous = monthlyActivity[monthlyActivity.length - 2]!;
+  return {
+    current: { count: current.count, minutes: current.minutes },
+    previous: { count: previous.count, minutes: previous.minutes },
+    countDelta: current.count - previous.count,
+    minutesDelta: current.minutes - previous.minutes,
   };
 }
 
@@ -191,5 +225,11 @@ export const statsRepository = {
   async getForecast(): Promise<WatchForecast> {
     const [tracked, events] = await Promise.all([progressRepository.listTrackedSeries(), loadRecentEvents()]);
     return computeForecast(tracked, events);
+  },
+  // One bucket per calendar year with at least one watch — powers the Stats
+  // page's year-over-year chart and bounds its year switcher, in one query
+  // instead of probing getYearSummary one year at a time.
+  async getYearlyActivity(): Promise<YearlyActivityBucket[]> {
+    return invokeCommand<YearlyActivityBucket[]>("list_yearly_activity");
   },
 };

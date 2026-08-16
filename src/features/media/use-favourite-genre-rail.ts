@@ -39,15 +39,15 @@ export function useFavouriteGenreRail() {
     genreSeries: genre?.seriesId ? String(genre.seriesId) : undefined,
   });
 
-  // Capped like the other "For You" rails (useWatchNext's default limit) —
-  // this is a serendipitous suggestion, not a browsable catalogue page, so
-  // it shouldn't render every paginated search result.
+  // Capped like the sibling "Because you liked" rail — this is a
+  // serendipitous suggestion, not a browsable catalogue page, so it
+  // shouldn't render every paginated search result.
   const items = useMemo<MediaSummary[]>(() => {
     if (!genre || searchQuery.items.length === 0) return [];
     const keySet = buildLibraryKeySet(library);
     return searchQuery.items
       .filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet))
-      .slice(0, 6);
+      .slice(0, 8);
   }, [genre, searchQuery.items, library]);
 
   return { genre, items, isLoading: Boolean(genre) && searchQuery.isLoading };

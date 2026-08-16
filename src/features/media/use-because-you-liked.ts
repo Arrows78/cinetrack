@@ -54,14 +54,14 @@ export function useBecauseYouLiked() {
 
   const recommendationsQuery = useRecommendations(seed?.mediaType ?? "movie", seed?.mediaId ?? Number.NaN);
 
-  // Capped like the other "For You" rails (useWatchNext's default limit) —
-  // this is a serendipitous suggestion, not a browsable catalogue page, so
-  // it shouldn't render TMDB's full ~20-result page.
+  // Capped like the other "For You" rails — this is a serendipitous
+  // suggestion, not a browsable catalogue page, so it shouldn't render
+  // TMDB's full ~20-result page.
   const items = useMemo<MediaSummary[]>(() => {
     const results = recommendationsQuery.data?.results ?? [];
     if (results.length === 0) return [];
     const keySet = buildLibraryKeySet(library);
-    return results.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet)).slice(0, 6);
+    return results.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet)).slice(0, 8);
   }, [recommendationsQuery.data, library]);
 
   return { seedTitle: seed?.title ?? null, items, isLoading: Boolean(seed) && recommendationsQuery.isLoading };

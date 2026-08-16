@@ -6,12 +6,16 @@ import type { PropsWithChildren } from "react";
 const getStatsMock = vi.fn(async () => ({ totalWatched: 10 }) as never);
 const getYearSummaryMock = vi.fn(async (year: number) => ({ year }) as never);
 const getForecastMock = vi.fn(async () => ({ backlogEpisodes: 3 }) as never);
+const getYearlyActivityMock = vi.fn(async () => [
+  { year: 2026, moviesWatched: 5, episodesWatched: 2, minutesWatched: 300 },
+]);
 
 vi.mock("@/features/stats/stats-repository", () => ({
   statsRepository: {
     getStats: getStatsMock,
     getYearSummary: getYearSummaryMock,
     getForecast: getForecastMock,
+    getYearlyActivity: getYearlyActivityMock,
   },
 }));
 
@@ -47,5 +51,13 @@ describe("stats hooks", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data).toEqual({ backlogEpisodes: 3 });
+  });
+
+  it("useYearlyActivity loads the per-year buckets", async () => {
+    const { useYearlyActivity } = await import("../use-stats");
+    const { result } = renderHook(() => useYearlyActivity(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data).toEqual([{ year: 2026, moviesWatched: 5, episodesWatched: 2, minutesWatched: 300 }]);
   });
 });

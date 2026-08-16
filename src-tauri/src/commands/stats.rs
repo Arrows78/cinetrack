@@ -277,6 +277,65 @@ pub async fn get_stats_overview(
     get_stats_overview_impl(&pool, &profile_id, &window_start, &month_labels).await
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YearlyActivityBucket {
+    pub year: i64,
+    pub movies_watched: i64,
+    pub episodes_watched: i64,
+    pub minutes_watched: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct YearlyActivityRow {
+    year: i64,
+    movies_watched: i64,
+    episodes_watched: i64,
+    minutes_watched: Option<i64>,
+}
+
+impl From<YearlyActivityRow> for YearlyActivityBucket {
+    fn from(row: YearlyActivityRow) -> Self {
+        Self {
+            year: row.year,
+            movies_watched: row.movies_watched,
+            episodes_watched: row.episodes_watched,
+            minutes_watched: row.minutes_watched.unwrap_or(0),
+        }
+    }
+}
+
+/// One row per calendar year that has at least one `watched`/`rewatched`
+/// event — every year in the profile's history in a single query, powering
+/// the Stats page's year-over-year chart and bounding its year switcher
+/// (rather than probing `list_viewing_events_for_year` one year at a time,
+/// or guessing how far back to look).
+async fn list_yearly_activity_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+    let rows: Vec<YearlyActivityRow> = sqlx::query_as(
+        "SELECT
+           CAST(strftime('%Y', watched_at) AS INTEGER) AS year,
+           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
+           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
+           SUM(CASE WHEN event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched
+         FROM viewing_events
+         WHERE profile_id = $1 AND event_type IN ('watched','rewatched')
+         GROUP BY year
+         ORDER BY year ASC",
+    )
+    .bind(profile_id)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    Ok(rows.into_iter().map(Into::into).collect())
+}
+
+#[tauri::command]
+pub async fn list_yearly_activity(pool: State<'_, SqlitePool>) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    list_yearly_activity_impl(&pool, &profile_id).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,5 +464,48 @@ mod tests {
         assert_eq!(overview.monthly_activity[0], MonthlyActivityBucket { month: "2026-02".into(), count: 0, minutes: 0 });
         assert_eq!(overview.monthly_activity[1], MonthlyActivityBucket { month: "2026-03".into(), count: 3, minutes: 180 });
         assert_eq!(overview.monthly_activity[2], MonthlyActivityBucket { month: "2026-04".into(), count: 0, minutes: 0 });
+    }
+
+    #[tokio::test]
+    async fn yearly_activity_groups_by_year_and_ignores_unwatched_toggles() {
+        let pool = migrated_pool().await;
+        insert_event(&pool, "y2025-movie", "2025-06-01T00:00:00.000Z", "watched", "movie", Some(100), None).await;
+        insert_event(&pool, "y2026-movie", "2026-01-10T00:00:00.000Z", "watched", "movie", Some(120), None).await;
+        insert_event(&pool, "y2026-episode", "2026-03-12T00:00:00.000Z", "watched", "series", Some(40), Some(9001)).await;
+        insert_event(&pool, "y2026-rewatch", "2026-05-01T00:00:00.000Z", "rewatched", "series", Some(40), Some(9002)).await;
+        insert_event(&pool, "y2026-unwatch", "2026-05-02T00:00:00.000Z", "unwatched", "series", Some(999), Some(9003)).await;
+
+        let yearly = list_yearly_activity_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(
+            yearly,
+            vec![
+                YearlyActivityBucket { year: 2025, movies_watched: 1, episodes_watched: 0, minutes_watched: 100 },
+                YearlyActivityBucket { year: 2026, movies_watched: 1, episodes_watched: 2, minutes_watched: 200 },
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn yearly_activity_is_scoped_to_the_active_profile() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('guest', 'Guest', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        insert_event(&pool, "default-movie", "2026-01-01T00:00:00.000Z", "watched", "movie", Some(100), None).await;
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, created_at)
+             VALUES ('guest-movie', 'guest', 1, 'movie', 'Test', 'watched', '2026-01-01T00:00:00.000Z', 50, '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let yearly = list_yearly_activity_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(yearly, vec![YearlyActivityBucket { year: 2026, movies_watched: 1, episodes_watched: 0, minutes_watched: 100 }]);
     }
 }

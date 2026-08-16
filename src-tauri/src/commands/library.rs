@@ -727,7 +727,7 @@ mod tests {
         let updated_patch = LibraryPatch { status: Some(LibraryStatus::Watching), ..Default::default() };
         upsert_impl(&pool, media(7), updated_patch, "default").await.unwrap();
 
-        let history = list_history_impl(&pool, 50).await.unwrap();
+        let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].action, HistoryAction::LibraryAdd);
     }
@@ -739,7 +739,7 @@ mod tests {
 
         remove_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
 
-        let history = list_history_impl(&pool, 50).await.unwrap();
+        let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 2);
         assert_eq!(history[0].action, HistoryAction::LibraryRemove);
     }
@@ -750,7 +750,7 @@ mod tests {
 
         remove_impl(&pool, "default", 404, MediaType::Movie).await.unwrap();
 
-        assert!(list_history_impl(&pool, 50).await.unwrap().is_empty());
+        assert!(list_history_impl(&pool, 50, None).await.unwrap().is_empty());
     }
 
     #[tokio::test]
@@ -762,7 +762,7 @@ mod tests {
 
         assert!(removed);
         assert!(get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
-        let history = list_history_impl(&pool, 50).await.unwrap();
+        let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history[0].action, HistoryAction::LibraryRemove);
     }
 
@@ -823,7 +823,7 @@ mod tests {
         assert_eq!(item.title, "Auto-synced Title");
         assert_eq!(item.completed_at.as_deref(), Some("2026-01-01T00:00:00.000Z"));
 
-        let history = list_history_impl(&pool, 50).await.unwrap();
+        let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].action, HistoryAction::LibraryAdd);
     }
@@ -881,7 +881,7 @@ mod tests {
         .unwrap();
         tx.commit().await.unwrap();
 
-        let history = list_history_impl(&pool, 50).await.unwrap();
+        let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 1);
     }
 }
