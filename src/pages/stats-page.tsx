@@ -160,7 +160,7 @@ export function StatsPage() {
       <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
         <h2 className="mb-3 font-semibold">{t("stats.records")}</h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Panel asChild>
+          <Panel asChild className="min-w-0">
             <article>
               <Trophy className="size-5 text-primary" />
               <p className="mt-4 text-sm text-muted-foreground">{t("stats.longestStreak")}</p>
@@ -169,7 +169,7 @@ export function StatsPage() {
               </p>
             </article>
           </Panel>
-          <Panel asChild>
+          <Panel asChild className="min-w-0">
             <article>
               <Repeat className="size-5 text-primary" />
               <p className="mt-4 text-sm text-muted-foreground">{t("stats.mostRewatched")}</p>
@@ -190,16 +190,19 @@ export function StatsPage() {
               )}
             </article>
           </Panel>
-          <Panel asChild>
+          <Panel asChild className="min-w-0">
             <article>
               <ThumbsUp className="size-5 text-primary" />
               <p className="mt-4 text-sm text-muted-foreground">{t("stats.favouriteGenreByRating")}</p>
-              <p className="mt-1 truncate font-display text-2xl font-bold">
+              <p
+                className="mt-1 truncate font-display text-2xl font-bold"
+                title={stats.data.favouriteGenreByRating ?? undefined}
+              >
                 {stats.data.favouriteGenreByRating ?? "—"}
               </p>
             </article>
           </Panel>
-          <Panel asChild>
+          <Panel asChild className="min-w-0">
             <article>
               <PieChart className="size-5 text-primary" />
               <p className="mt-4 text-sm text-muted-foreground">{t("stats.moviesVsSeries")}</p>
@@ -343,20 +346,22 @@ export function StatsPage() {
       </Panel>
 
       <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
-        <Panel asChild>
+        <Panel asChild className="min-w-0">
           <article>
             <h2 className="font-semibold">{t("stats.favouriteGenres")}</h2>
             <div className="mt-4 grid gap-2">
               {stats.data.favouriteGenres.map((genre) => (
-                <Tile key={genre.name} className="flex justify-between px-3 py-2 text-sm">
-                  <span>{genre.name}</span>
-                  <strong>{genre.count}</strong>
+                <Tile key={genre.name} className="flex justify-between gap-3 px-3 py-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate">{genre.name}</span>
+                  <strong className="shrink-0 text-muted-foreground">
+                    {t("stats.genreTitleCount", { count: genre.count })}
+                  </strong>
                 </Tile>
               ))}
             </div>
           </article>
         </Panel>
-        <Panel asChild tone="highlight">
+        <Panel asChild tone="highlight" className="min-w-0">
           <article>
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-widest text-primary">
@@ -405,8 +410,8 @@ export function StatsPage() {
                 {t("stats.favouriteGenre")} <strong>{wrapped.data.favouriteGenre ?? "—"}</strong>
               </p>
               {wrapped.data.topTitles.map((item, index) => (
-                <p key={item.title}>
-                  {index + 1}. {item.title} · {item.count}
+                <p key={item.title} className="min-w-0 truncate" title={item.title}>
+                  {index + 1}. {item.title} · {t("stats.watchCount", { count: item.count })}
                 </p>
               ))}
             </div>
