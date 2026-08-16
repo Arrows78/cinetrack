@@ -61,34 +61,56 @@ export function ViewingHeatmap({ data, className }: { data: ViewingHeatmapBucket
                 <div
                   key={hour}
                   title={t("stats.heatmap.cellTitle", { count })}
-                  className={cn("aspect-square rounded-sm", intensityClass(count, max))}
+                  className={cn(
+                    "aspect-square rounded-sm transition-shadow hover:ring-2 hover:ring-inset hover:ring-foreground/50",
+                    intensityClass(count, max)
+                  )}
                 />
               );
             })}
           </Fragment>
         ))}
       </div>
-      <table className="sr-only">
-        <caption>{t("stats.heatmap.title")}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t("stats.heatmap.day")}</th>
-            <th scope="col">{t("stats.heatmap.hour")}</th>
-            <th scope="col">{t("stats.watches")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {DAYS.flatMap((day) =>
-            HOURS.map((hour) => (
-              <tr key={`${day}-${hour}`}>
-                <td>{dayLabel(day)}</td>
-                <td>{hour}</td>
-                <td>{countFor(day, hour)}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+      <div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-muted-foreground" aria-hidden="true">
+        <span>{t("stats.heatmap.less")}</span>
+        <div className="flex gap-1">
+          <span className="size-3 rounded-sm bg-foreground/[0.04]" />
+          <span className="size-3 rounded-sm bg-primary/25" />
+          <span className="size-3 rounded-sm bg-primary/45" />
+          <span className="size-3 rounded-sm bg-primary/70" />
+          <span className="size-3 rounded-sm bg-primary" />
+        </div>
+        <span>{t("stats.heatmap.more")}</span>
+      </div>
+      {/* Wrapping div carries sr-only, not the table itself — a table with
+          the default auto layout ignores width:1px/height:1px and sizes to
+          its content regardless (169 rows here), which left this
+          "invisible" table's full rendered height counted in the page's
+          scrollable area. A div isn't subject to table auto-sizing, so it
+          actually clips down to nothing. */}
+      <div className="sr-only">
+        <table>
+          <caption>{t("stats.heatmap.title")}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t("stats.heatmap.day")}</th>
+              <th scope="col">{t("stats.heatmap.hour")}</th>
+              <th scope="col">{t("stats.watches")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DAYS.flatMap((day) =>
+              HOURS.map((hour) => (
+                <tr key={`${day}-${hour}`}>
+                  <td>{dayLabel(day)}</td>
+                  <td>{hour}</td>
+                  <td>{countFor(day, hour)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

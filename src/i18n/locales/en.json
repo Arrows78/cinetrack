@@ -312,7 +312,9 @@
       "day": "Day",
       "hour": "Hour",
       "cellTitle_one": "{{count}} watch",
-      "cellTitle_other": "{{count}} watches"
+      "cellTitle_other": "{{count}} watches",
+      "less": "Less",
+      "more": "More"
     }
   },
   "bootRecovery": {

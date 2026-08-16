@@ -290,23 +290,29 @@ export function StatsPage() {
           data={stats.data.monthlyActivity.map((month) => ({ label: month.month.slice(5), value: month.count }))}
           tooltipLabel={t("stats.watches")}
         />
-        <table className="sr-only">
-          <caption>{t("stats.activity12Months")}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{t("stats.month")}</th>
-              <th scope="col">{t("stats.watches")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.data.monthlyActivity.map((month) => (
-              <tr key={month.month}>
-                <td>{monthLabel(month.month)}</td>
-                <td>{month.count}</td>
+        {/* div carries sr-only, not the table — a table's default auto
+            layout ignores width:1px/height:1px and sizes to its content
+            regardless, so the "invisible" table's full rendered height was
+            still counted in the page's scrollable area. */}
+        <div className="sr-only">
+          <table>
+            <caption>{t("stats.activity12Months")}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{t("stats.month")}</th>
+                <th scope="col">{t("stats.watches")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {stats.data.monthlyActivity.map((month) => (
+                <tr key={month.month}>
+                  <td>{monthLabel(month.month)}</td>
+                  <td>{month.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Panel>
 
       {yearlyActivity.data && yearlyActivity.data.length ? (
@@ -319,23 +325,25 @@ export function StatsPage() {
             }))}
             tooltipLabel={t("stats.watches")}
           />
-          <table className="sr-only">
-            <caption>{t("stats.activityByYear")}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t("stats.year")}</th>
-                <th scope="col">{t("stats.watches")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {yearlyActivity.data.map((bucket) => (
-                <tr key={bucket.year}>
-                  <td>{bucket.year}</td>
-                  <td>{bucket.moviesWatched + bucket.episodesWatched}</td>
+          <div className="sr-only">
+            <table>
+              <caption>{t("stats.activityByYear")}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t("stats.year")}</th>
+                  <th scope="col">{t("stats.watches")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {yearlyActivity.data.map((bucket) => (
+                  <tr key={bucket.year}>
+                    <td>{bucket.year}</td>
+                    <td>{bucket.moviesWatched + bucket.episodesWatched}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Panel>
       ) : null}
 

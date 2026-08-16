@@ -312,7 +312,9 @@
       "day": "Jour",
       "hour": "Heure",
       "cellTitle_one": "{{count}} visionnage",
-      "cellTitle_other": "{{count}} visionnages"
+      "cellTitle_other": "{{count}} visionnages",
+      "less": "Moins",
+      "more": "Plus"
     }
   },
   "bootRecovery": {
