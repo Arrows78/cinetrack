@@ -183,10 +183,16 @@ where
     Ok(now)
 }
 
-/// Generates a fresh UUID for a new row's primary key, matching
-/// `crypto.randomUUID()` in src/shared/lib/id.ts.
+/// Generates a fresh UUID for a new row's primary key. UUIDv7 (not v4):
+/// its leading bits encode the creation timestamp, so `ORDER BY uuid DESC`
+/// — the tiebreaker `list_history_impl` uses when two rows share the exact
+/// same `timestamp` — resolves to insertion order instead of the coin-flip
+/// a random v4 would give (this is what made
+/// `remove_if_planned_removes_and_logs_when_status_is_still_planned` flaky
+/// on Windows CI, where two same-millisecond activity_log rows sorted in
+/// the wrong order often enough to fail the assertion).
 pub fn new_uuid() -> String {
-    uuid::Uuid::new_v4().to_string()
+    uuid::Uuid::now_v7().to_string()
 }
 
 #[cfg(test)]
