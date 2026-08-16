@@ -185,14 +185,17 @@ export function AuthScreen() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black text-auth-foreground">
-      <AuthBackdrop />
-      <div className="relative z-10 flex min-h-screen flex-col justify-end px-4 pb-4 pt-24 sm:items-center sm:justify-center sm:p-8">
+    <div className="relative flex min-h-screen flex-col bg-black text-auth-foreground lg:flex-row">
+      <div className="relative order-2 h-56 shrink-0 sm:h-72 lg:order-1 lg:h-auto lg:flex-1">
+        <AuthBackdrop />
+      </div>
+
+      <div className="relative z-10 order-1 flex flex-1 flex-col justify-center bg-auth-surface px-5 py-8 sm:px-8 lg:order-2 lg:w-[28rem] lg:flex-none lg:px-10">
         <div className="mb-7">
           <AuthBrandMark />
         </div>
 
-        <section className="w-full max-w-[35rem] rounded-shell border border-white/10 bg-auth-surface/95 p-6 shadow-2xl backdrop-blur-2xl sm:p-9">
+        <section>
           <div className="mb-7 grid grid-cols-2 rounded-2xl bg-black/30 p-1">
             {AUTH_MODES.map((option) => (
               <button

@@ -32,6 +32,14 @@ export const AUTH_BACKDROP_TILE_GRADIENTS: readonly string[] = [
 export const AUTH_BACKDROP_TILE_SHEEN = "radial-gradient(circle at 50% 20%, rgba(255,255,255,0.2), transparent 45%)";
 
 /**
+ * Film-sprocket perforation strip along a backdrop tile's top/bottom edge
+ * (see auth-backdrop.tsx) — a decorative nod to a 35mm filmstrip, not a
+ * real photograph, so it stays a plain repeating pattern rather than an
+ * image asset.
+ */
+export const FILM_SPROCKET_PATTERN = "repeating-linear-gradient(to right, rgba(0,0,0,0.85) 0 3px, transparent 3px 7px)";
+
+/**
  * Poster-image legibility scrim (see media-card.tsx) — darkens the bottom of
  * a poster so the title/meta text stays readable. Always black regardless of
  * theme: it composites over a photograph, not a themed app surface, the same
