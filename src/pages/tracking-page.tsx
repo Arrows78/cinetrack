@@ -11,6 +11,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { FilterBar } from "@/components/media/filter-bar";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { useAvailabilityAlerts } from "@/features/availability/use-availability-alerts";
 import { useTracking } from "@/features/tracking/use-tracking";
 import { PLATFORMS } from "@/shared/constants/discover";
@@ -92,15 +93,17 @@ function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove:
           </p>
         </div>
       </Link>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        aria-label={t("tracking.remove", { title: entry.title })}
-        onClick={onRemove}
-      >
-        <Trash2 className="size-4" />
-      </Button>
+      <IconTooltip label={t("tracking.remove", { title: entry.title })}>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={t("tracking.remove", { title: entry.title })}
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </IconTooltip>
     </Tile>
   );
 }

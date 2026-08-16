@@ -143,7 +143,7 @@ Every documented component should cover:
 - `ghost`: low-emphasis toolbar or inline action.
 - `destructive`: irreversible or high-risk action.
 
-Use `asChild` to preserve link semantics for navigation while reusing the visual recipe. Icon-only buttons require an accessible name.
+Use `asChild` to preserve link semantics for navigation while reusing the visual recipe. Every interactive control shows `cursor-pointer` on hover — baked into `buttonVariants`' base class, not repeated ad hoc — and reverts to the default cursor when disabled. Icon-only buttons require an accessible name (`aria-label`) **and** a visible-on-hover label: wrap them in `IconTooltip` (see Overlays) rather than relying on `aria-label` alone, which screen readers announce but sighted mouse users never see.
 
 ### Form controls
 
@@ -158,6 +158,8 @@ Do not use placeholder text as the only label. Error copy should explain the pro
 ### Overlays
 
 `Sheet` is a modal drawer built on Radix Dialog. It provides `SheetTitle` and `SheetDescription`; both should be present so assistive technology receives a useful name and description.
+
+`Tooltip` (Radix Tooltip) supplies a hover/focus label. `IconTooltip` wraps the Provider/Root/Trigger/Content wiring into one call — `<IconTooltip label={t("...")}>{iconOnlyButton}</IconTooltip>` — and is the default way to add a hover label to an icon-only control; reach for the raw primitives only for a genuinely custom tooltip. It carries its own `TooltipProvider`, so it also renders correctly in isolation (e.g. component tests) without the app-root provider.
 
 ## Product patterns
 
@@ -176,7 +178,7 @@ Patterns include content and behavior rules beyond a primitive API.
 - Normal text requires at least 4.5:1 contrast; large text and essential non-text UI require at least 3:1.
 - Default actions target a 44px height. Compact 36–40px controls are reserved for dense desktop contexts.
 - Do not encode meaning with color alone.
-- Icon-only controls need `aria-label` or visually hidden text.
+- Icon-only controls need `aria-label` (or visually hidden text) for assistive technology, and an `IconTooltip` (or a native `title`) so sighted mouse users also get a visible hover explanation — an accessible name alone isn't enough.
 - Loading, empty, error, success, and disabled are different states and should not share copy or behavior.
 - Test light and dark themes and every accent preset.
 - Preserve meaning and completion when motion is reduced.

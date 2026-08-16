@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { LoadingState } from "@/components/states/loading-state";
@@ -49,15 +50,17 @@ function ListItemRow({ listId }: { listId: string }) {
           <span>
             {item.title} <span className="text-muted-foreground">· {t(`media.${item.mediaType}`)}</span>
           </span>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            aria-label={t("library.lists.removeItem", { title: item.title })}
-            onClick={() => setPendingRemoval({ mediaId: item.mediaId, mediaType: item.mediaType, title: item.title })}
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          <IconTooltip label={t("library.lists.removeItem", { title: item.title })}>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={t("library.lists.removeItem", { title: item.title })}
+              onClick={() => setPendingRemoval({ mediaId: item.mediaId, mediaType: item.mediaType, title: item.title })}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </IconTooltip>
         </Tile>
       ))}
       {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}
@@ -156,15 +159,17 @@ function ListsAccordionContent({
                     <span className="ml-2 truncate text-muted-foreground">{list.description}</span>
                   ) : null}
                 </button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("library.lists.deleteList", { name: list.name })}
-                  onClick={() => setPendingDeleteList({ id: list.id, name: list.name })}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                <IconTooltip label={t("library.lists.deleteList", { name: list.name })}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t("library.lists.deleteList", { name: list.name })}
+                    onClick={() => setPendingDeleteList({ id: list.id, name: list.name })}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </IconTooltip>
               </div>
               {openedList === list.id ? (
                 <div className="mt-3">
@@ -346,28 +351,32 @@ export function LibraryExplorer({
             {t("library.favouritesOnly")}
           </Button>
           <div className="flex items-center gap-1 rounded-full border border-border p-1">
-            <Button
-              type="button"
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="icon"
-              aria-label={t("library.gridView")}
-              aria-pressed={viewMode === "grid"}
-              onClick={() => setViewMode("grid")}
-              className="size-8 rounded-full"
-            >
-              <LayoutGrid className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="icon"
-              aria-label={t("library.listView")}
-              aria-pressed={viewMode === "list"}
-              onClick={() => setViewMode("list")}
-              className="size-8 rounded-full"
-            >
-              <List className="size-4" />
-            </Button>
+            <IconTooltip label={t("library.gridView")}>
+              <Button
+                type="button"
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="icon"
+                aria-label={t("library.gridView")}
+                aria-pressed={viewMode === "grid"}
+                onClick={() => setViewMode("grid")}
+                className="size-8 rounded-full"
+              >
+                <LayoutGrid className="size-4" />
+              </Button>
+            </IconTooltip>
+            <IconTooltip label={t("library.listView")}>
+              <Button
+                type="button"
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="icon"
+                aria-label={t("library.listView")}
+                aria-pressed={viewMode === "list"}
+                onClick={() => setViewMode("list")}
+                className="size-8 rounded-full"
+              >
+                <List className="size-4" />
+              </Button>
+            </IconTooltip>
           </div>
           {(lists.data?.length ?? 0) > 0 ? (
             <Select

@@ -28,6 +28,7 @@ import { downloadWrappedCard, renderWrappedCard } from "@/features/stats/wrapped
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { ActivityBarChart } from "@/components/media/activity-bar-chart";
 import { ViewingHeatmap } from "@/components/media/viewing-heatmap";
@@ -395,36 +396,42 @@ export function StatsPage() {
                 {t("stats.wrapped", { year: wrapped.data.year })}
               </p>
               <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("stats.exportWrapped")}
-                  disabled={isExportingWrapped}
-                  onClick={() => void exportWrapped()}
-                >
-                  <Download className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("stats.previousYear")}
-                  disabled={!canGoToPreviousYear}
-                  onClick={() => setSelectedYear((year) => year - 1)}
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("stats.nextYear")}
-                  disabled={!canGoToNextYear}
-                  onClick={() => setSelectedYear((year) => year + 1)}
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
+                <IconTooltip label={t("stats.exportWrapped")}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("stats.exportWrapped")}
+                    disabled={isExportingWrapped}
+                    onClick={() => void exportWrapped()}
+                  >
+                    <Download className="size-4" />
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={t("stats.previousYear")}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("stats.previousYear")}
+                    disabled={!canGoToPreviousYear}
+                    onClick={() => setSelectedYear((year) => year - 1)}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={t("stats.nextYear")}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("stats.nextYear")}
+                    disabled={!canGoToNextYear}
+                    onClick={() => setSelectedYear((year) => year + 1)}
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </IconTooltip>
               </div>
             </div>
             <p className="mt-3 font-display text-4xl font-bold">{hours(wrapped.data.minutes)}</p>

@@ -128,6 +128,7 @@ const config: Config = {
         overlay: "50", // matches Sheet/Dialog's existing z-50
         modal: "50",
         toast: "60",
+        tooltip: "70", // above toast — a hover hint should never hide behind one
         "command-palette": "100", // matches command-palette.tsx's existing z-[100]
       },
       animation: {

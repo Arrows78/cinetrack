@@ -5,6 +5,7 @@ import { AppRouter } from "@/app/router";
 import { BrowserPreviewBanner } from "@/components/desktop/browser-preview-banner";
 import { TokenGate } from "@/components/desktop/token-gate";
 import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
 import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate";
@@ -88,7 +89,7 @@ export function App() {
   }, []);
 
   return (
-    <>
+    <TooltipProvider delayDuration={300}>
       <ThemeController />
 
       <MotionPreferenceGate>
@@ -102,6 +103,6 @@ export function App() {
       <Toaster />
 
       {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /> : null}
-    </>
+    </TooltipProvider>
   );
 }

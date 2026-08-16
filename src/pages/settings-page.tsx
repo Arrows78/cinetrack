@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SettingToggle } from "@/components/ui/setting-toggle";
 import { Tile } from "@/components/ui/tile";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { authConfig } from "@/features/auth/auth-client";
@@ -123,16 +124,18 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                     ) : null}
                   </button>
                   {profile.id !== "default" ? (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={t("settings.profiles.delete", { name: label })}
-                      disabled={switchingProfileId !== null}
-                      onClick={() => setPendingDeleteProfile(profile)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <IconTooltip label={t("settings.profiles.delete", { name: label })}>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={t("settings.profiles.delete", { name: label })}
+                        disabled={switchingProfileId !== null}
+                        onClick={() => setPendingDeleteProfile(profile)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </IconTooltip>
                   ) : null}
                 </Tile>
               );

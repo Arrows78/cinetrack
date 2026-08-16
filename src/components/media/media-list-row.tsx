@@ -4,6 +4,7 @@ import { Check, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { Tile } from "@/components/ui/tile";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
@@ -19,26 +20,29 @@ import type { MediaCardProgress } from "./media-card";
 function SeenToggle({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const seenQuery = useMovieSeen(media.id);
+  const label = seenQuery.data ? t("media.markUnseen") : t("media.markSeen");
 
   return (
-    <button
-      type="button"
-      aria-label={seenQuery.data ? t("media.markUnseen") : t("media.markSeen")}
-      aria-pressed={Boolean(seenQuery.data)}
-      disabled={seenQuery.isSaving}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
-      }}
-      className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors",
-        "hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50",
-        seenQuery.data && "border-success bg-success/15 text-success hover:border-success hover:text-success"
-      )}
-    >
-      <Check className="size-4" />
-    </button>
+    <IconTooltip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={Boolean(seenQuery.data)}
+        disabled={seenQuery.isSaving}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
+        }}
+        className={cn(
+          "flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-muted-foreground transition-colors",
+          "hover:border-primary hover:text-primary disabled:pointer-events-none disabled:cursor-default disabled:opacity-50",
+          seenQuery.data && "border-success bg-success/15 text-success hover:border-success hover:text-success"
+        )}
+      >
+        <Check className="size-4" />
+      </button>
+    </IconTooltip>
   );
 }
 

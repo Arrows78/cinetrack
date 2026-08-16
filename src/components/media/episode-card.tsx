@@ -1,6 +1,7 @@
 import { Calendar, Check, Clock4, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
@@ -81,18 +82,20 @@ export function EpisodeCard({
           ) : null}
         </div>
       </div>
-      <button
-        type="button"
-        aria-label={watched ? t("media.markUnseen") : t("media.markSeen")}
-        disabled={disabled}
-        onClick={onToggleSeen}
-        className={cn(
-          "flex size-11 shrink-0 items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          watched ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"
-        )}
-      >
-        {watched ? <Check className="size-5" /> : null}
-      </button>
+      <IconTooltip label={watched ? t("media.markUnseen") : t("media.markSeen")}>
+        <button
+          type="button"
+          aria-label={watched ? t("media.markUnseen") : t("media.markSeen")}
+          disabled={disabled}
+          onClick={onToggleSeen}
+          className={cn(
+            "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
+            watched ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"
+          )}
+        >
+          {watched ? <Check className="size-5" /> : null}
+        </button>
+      </IconTooltip>
     </div>
   );
 }

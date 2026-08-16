@@ -273,6 +273,20 @@
     @apply border-border;
   }
 
+  /* Browsers default <button> to cursor: default, not pointer — every
+     native/custom button in the app (FilterBar chips, accordion triggers,
+     the theme toggle, tab bars, …) inherited that unless it happened to
+     set cursor-pointer itself. One base rule covers all of them, enabled
+     or not, native <button disabled> or a component's own disabled prop
+     (which sets the real disabled attribute) — Tailwind utility classes
+     applied directly on an element (e.g. buttonVariants' own
+     cursor-pointer/disabled:cursor-default) still take precedence over
+     this base-layer default where present. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
   html,
   body,
   #root {
@@ -505,4 +519,30 @@
 }
 .animate-toast-out {
   animation: toast-out var(--duration-fast) ease-in forwards;
+}
+
+/* Tooltip */
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes tooltip-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.animate-tooltip-in {
+  animation: tooltip-in var(--duration-fast) var(--ease-out-expo) forwards;
+}
+.animate-tooltip-out {
+  animation: tooltip-out var(--duration-fast) ease-in forwards;
 }

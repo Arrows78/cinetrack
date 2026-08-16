@@ -1039,6 +1039,14 @@ export const componentInventory = [
     "Mounted once at the app root; renders every toast(...) call as a stacked notification."
   ),
   component(
+    "Tooltip",
+    "components/ui/tooltip.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Radix-backed hover label; IconTooltip covers the common icon-only-button case in one call."
+  ),
+  component(
     "Textarea",
     "components/ui/textarea.tsx",
     "UI primitives",

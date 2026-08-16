@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Bookmark, BookmarkCheck, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { cn } from "@/shared/lib/cn";
@@ -30,28 +31,31 @@ function stopCardNavigation(event: MouseEvent): void {
 }
 
 const quickActionButtonClassName =
-  "flex size-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-transform duration-base hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  "flex size-8 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-transform duration-base hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-default disabled:opacity-50";
 
 function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const { isInLibrary, toggle, isMutating, confirmingForceRemove, setConfirmingForceRemove, confirmForceRemove } =
     useAddToLibraryToggle(media);
+  const label = isInLibrary ? t("media.inLibrary") : t("media.addToLibrary");
 
   return (
     <>
-      <button
-        type="button"
-        aria-label={isInLibrary ? t("media.inLibrary") : t("media.addToLibrary")}
-        aria-pressed={isInLibrary}
-        disabled={isMutating}
-        onClick={(event) => {
-          stopCardNavigation(event);
-          void toggle();
-        }}
-        className={quickActionButtonClassName}
-      >
-        {isInLibrary ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
-      </button>
+      <IconTooltip label={label}>
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={isInLibrary}
+          disabled={isMutating}
+          onClick={(event) => {
+            stopCardNavigation(event);
+            void toggle();
+          }}
+          className={quickActionButtonClassName}
+        >
+          {isInLibrary ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+        </button>
+      </IconTooltip>
       <ConfirmDialog
         open={confirmingForceRemove}
         onOpenChange={setConfirmingForceRemove}
@@ -68,21 +72,24 @@ function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
 function SeenQuickAction({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const seenQuery = useMovieSeen(media.id);
+  const label = seenQuery.data ? t("media.markUnseen") : t("media.markSeen");
 
   return (
-    <button
-      type="button"
-      aria-label={seenQuery.data ? t("media.markUnseen") : t("media.markSeen")}
-      aria-pressed={Boolean(seenQuery.data)}
-      disabled={seenQuery.isSaving}
-      onClick={(event) => {
-        stopCardNavigation(event);
-        void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
-      }}
-      className={cn(quickActionButtonClassName, seenQuery.data && "bg-success text-success-foreground")}
-    >
-      <Check className="size-4" />
-    </button>
+    <IconTooltip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={Boolean(seenQuery.data)}
+        disabled={seenQuery.isSaving}
+        onClick={(event) => {
+          stopCardNavigation(event);
+          void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
+        }}
+        className={cn(quickActionButtonClassName, seenQuery.data && "bg-success text-success-foreground")}
+      >
+        <Check className="size-4" />
+      </button>
+    </IconTooltip>
   );
 }
 

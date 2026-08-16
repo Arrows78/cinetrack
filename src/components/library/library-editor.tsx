@@ -11,6 +11,7 @@ import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { toast } from "@/components/ui/use-toast";
 import { useLibraryItem } from "@/features/library/use-library";
@@ -121,15 +122,17 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
           <p className="font-semibold">{t("library.myLibrary")}</p>
           <p className="text-sm text-muted-foreground">{t("library.description")}</p>
         </div>
-        <Button
-          type="button"
-          variant={favourite ? "default" : "outline"}
-          size="icon"
-          aria-label={t("library.favourite")}
-          onClick={() => setFavourite((value) => !value)}
-        >
-          <Heart className={favourite ? "size-4 fill-current" : "size-4"} />
-        </Button>
+        <IconTooltip label={t("library.favourite")}>
+          <Button
+            type="button"
+            variant={favourite ? "default" : "outline"}
+            size="icon"
+            aria-label={t("library.favourite")}
+            onClick={() => setFavourite((value) => !value)}
+          >
+            <Heart className={favourite ? "size-4 fill-current" : "size-4"} />
+          </Button>
+        </IconTooltip>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
