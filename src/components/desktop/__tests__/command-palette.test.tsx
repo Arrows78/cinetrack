@@ -9,12 +9,9 @@ import { CommandPalette } from "../command-palette";
 import type { MediaSummary, Movie, Series } from "@/types/media";
 
 const navigateMock = vi.fn();
-vi.mock("@/app/router-config", () => ({
-  router: { navigate: (options: unknown) => navigateMock(options) },
-}));
-
 const routerState = { pathname: "/" };
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({ navigate: (options: unknown) => navigateMock(options) }),
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) =>
     select({ location: { pathname: routerState.pathname } }),
 }));

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouterState } from "@tanstack/react-router";
+import { useRouter, useRouterState } from "@tanstack/react-router";
 import { Bell, BellOff, Eye, EyeOff, Film, Moon, Search, Sun, Tv } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { router } from "@/app/router-config";
 import { useNavigationItems } from "@/shared/constants/navigation";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useSearch } from "@/features/media/use-search";
@@ -74,6 +73,7 @@ const TITLE_SEARCH_MIN_LENGTH = 2;
 
 export function CommandPalette() {
   const { t } = useTranslation();
+  const router = useRouter();
   const navigationItems = useNavigationItems();
   const preferences = usePreferences();
   const [open, setOpen] = useState(false);
@@ -88,13 +88,16 @@ export function CommandPalette() {
   const debouncedQuery = useDebouncedValue(query, 250);
   const titleSearch = useSearch(open ? debouncedQuery : "", "all");
 
-  const navigate = (to: string) => {
-    setOpen(false);
-    // Cast mirrors desktop-service.ts's own navigate() helper — the palette
-    // (and title search results) build paths as plain strings rather than
-    // picking from TanStack Router's literal route union.
-    void router.navigate({ to: to as never });
-  };
+  const navigate = useCallback(
+    (to: string) => {
+      setOpen(false);
+      // Cast mirrors desktop-service.ts's own navigate() helper — the palette
+      // (and title search results) build paths as plain strings rather than
+      // picking from TanStack Router's literal route union.
+      void router.navigate({ to: to as never });
+    },
+    [router]
+  );
 
   const theme = preferences.data?.theme ?? "dark";
   const nextTheme = theme === "dark" ? "light" : "dark";
@@ -170,7 +173,7 @@ export function CommandPalette() {
       },
     ];
     return [...actions, ...contextualItems, ...pages];
-  }, [navigationItems, nextTheme, t, updatePreference, contextualItems]);
+  }, [navigationItems, nextTheme, t, updatePreference, contextualItems, navigate]);
 
   const filteredCommands = useMemo(
     () => commands.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())),
@@ -187,7 +190,7 @@ export function CommandPalette() {
       section: "title",
       run: () => navigate(media.mediaType === "movie" ? `/movies/${media.id}` : `/series/${media.id}`),
     }));
-  }, [titleSearch.items, debouncedQuery]);
+  }, [titleSearch.items, debouncedQuery, navigate]);
 
   const results = useMemo(() => [...filteredCommands, ...titleResults], [filteredCommands, titleResults]);
   const isSearchingTitles =

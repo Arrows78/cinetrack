@@ -3,7 +3,6 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import { AppRouter } from "@/app/router";
 import { BrowserPreviewBanner } from "@/components/desktop/browser-preview-banner";
-import { CommandPalette } from "@/components/desktop/command-palette";
 import { TokenGate } from "@/components/desktop/token-gate";
 import { Toaster } from "@/components/ui/toaster";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
@@ -95,7 +94,6 @@ export function App() {
       <MotionPreferenceGate>
         <TokenGate>
           <AppRouter />
-          <CommandPalette />
           <OfflineIndicator />
         </TokenGate>
       </MotionPreferenceGate>
