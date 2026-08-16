@@ -25,11 +25,11 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
 
   return (
     <div className="relative flex min-h-screen flex-col bg-black text-auth-foreground lg:flex-row">
-      <div className="relative order-2 h-56 shrink-0 sm:h-72 lg:order-1 lg:h-auto lg:flex-1">
+      <div className="relative order-1 min-h-56 flex-1 sm:min-h-72 lg:h-auto">
         <AuthBackdrop />
       </div>
 
-      <div className="relative z-10 order-1 flex flex-1 flex-col justify-center bg-auth-surface px-5 py-8 sm:px-8 lg:order-2 lg:w-[28rem] lg:flex-none lg:px-10">
+      <div className="relative z-10 order-2 flex shrink-0 flex-col justify-start bg-auth-surface px-5 py-8 sm:px-8 lg:w-[28rem] lg:flex-none lg:justify-center lg:px-10">
         <div className="mb-7">
           <AuthBrandMark />
         </div>

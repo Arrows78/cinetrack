@@ -51,9 +51,15 @@ function BulbColumn({ side, className }: { side: "left" | "right"; className?: s
   );
 }
 
-function BulbRow({ className }: { className?: string }) {
+function BulbRow({ side, className }: { side: "top" | "bottom"; className?: string }) {
   return (
-    <div className={cn("absolute inset-x-3 top-2 z-10 flex items-center justify-between", className)}>
+    <div
+      className={cn(
+        "absolute inset-x-3 z-10 flex items-center justify-between",
+        side === "top" ? "top-2" : "bottom-2",
+        className
+      )}
+    >
       {Array.from({ length: BULB_COUNT }, (_, index) => (
         <Bulb key={index} lit={index % 3 === 0} />
       ))}
@@ -65,12 +71,18 @@ export function AuthBackdrop() {
   const { t } = useTranslation();
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black" aria-hidden="true">
-      <BulbRow className="lg:hidden" />
+    // `absolute inset-0` (against the stage wrapper's `relative`), not
+    // `h-full w-full` — the wrapper's height comes from flex-grow (`flex-1`)
+    // with no explicit height set, which isn't always a "definite" size for
+    // percentage-height children to resolve against. Absolute positioning
+    // sidesteps that entirely.
+    <div className="absolute inset-0 overflow-hidden bg-black" aria-hidden="true">
+      <BulbRow side="top" className="lg:hidden" />
+      <BulbRow side="bottom" className="lg:hidden" />
       <BulbColumn side="left" className="hidden lg:flex" />
       <BulbColumn side="right" className="hidden lg:flex" />
 
-      <div className="grid h-full grid-cols-3 grid-rows-3 gap-1 px-3 pb-2 pt-7 lg:px-9 lg:py-3">
+      <div className="grid h-full grid-cols-3 grid-rows-3 gap-1 px-3 py-7 lg:px-9 lg:py-3">
         {BACKDROP_TILES.map((tile, index) => {
           const Icon = TILE_ICONS[index % TILE_ICONS.length] ?? Clapperboard;
           return (
