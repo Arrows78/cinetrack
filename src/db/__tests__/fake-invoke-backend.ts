@@ -469,13 +469,14 @@ function applyEpisodes(
 
   sqlite
     .prepare(
-      `INSERT INTO tracked_series (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at)
-       VALUES ($uuid,$profileId,$seriesId,$title,$posterPath,$backdropPath,$totalEpisodes,$watchedAt,$watchedAt)
+      `INSERT INTO tracked_series (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,status,created_at,updated_at)
+       VALUES ($uuid,$profileId,$seriesId,$title,$posterPath,$backdropPath,$totalEpisodes,$status,$watchedAt,$watchedAt)
        ON CONFLICT (profile_id, series_id) DO UPDATE SET
          title = excluded.title,
          poster_path = excluded.poster_path,
          backdrop_path = excluded.backdrop_path,
          total_episodes = excluded.total_episodes,
+         status = COALESCE(excluded.status, tracked_series.status),
          updated_at = excluded.updated_at`
     )
     .run({
@@ -486,6 +487,7 @@ function applyEpisodes(
       $posterPath: series.posterPath ?? null,
       $backdropPath: series.backdropPath ?? null,
       $totalEpisodes: series.numberOfEpisodes ?? Number(counts[0]?.count ?? 0),
+      $status: series.status ?? null,
       $watchedAt: watchedAt,
     } as Record<string, SQLInputValue>);
 
@@ -510,11 +512,11 @@ function applyEpisodes(
 function listTrackedSeries(sqlite: DatabaseSync, profileId: string): TrackedSeriesItem[] {
   const rows = sqlite
     .prepare(
-      `SELECT ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.created_at,ts.updated_at,COUNT(ep.episode_id) watched_episodes
+      `SELECT ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.status,ts.created_at,ts.updated_at,COUNT(ep.episode_id) watched_episodes
        FROM tracked_series ts
        LEFT JOIN episode_progress ep ON ep.profile_id=ts.profile_id AND ep.series_id=ts.series_id AND ep.watched=1
        WHERE ts.profile_id=$profileId
-       GROUP BY ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.created_at,ts.updated_at
+       GROUP BY ts.uuid,ts.series_id,ts.title,ts.poster_path,ts.backdrop_path,ts.total_episodes,ts.status,ts.created_at,ts.updated_at
        ORDER BY ts.updated_at DESC`
     )
     .all({ $profileId: profileId }) as Array<Record<string, unknown>>;
@@ -527,9 +529,21 @@ function listTrackedSeries(sqlite: DatabaseSync, profileId: string): TrackedSeri
     backdropPath: row.backdrop_path ? String(row.backdrop_path) : null,
     totalEpisodes: Number(row.total_episodes),
     watchedEpisodes: Number(row.watched_episodes),
+    status: row.status ? String(row.status) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   }));
+}
+
+function syncTrackedSeriesStatus(
+  sqlite: DatabaseSync,
+  profileId: string,
+  seriesId: number,
+  status: string | null | undefined
+): void {
+  sqlite
+    .prepare("UPDATE tracked_series SET status = $status WHERE profile_id = $profileId AND series_id = $seriesId")
+    .run({ $status: status ?? null, $profileId: profileId, $seriesId: seriesId } as Record<string, SQLInputValue>);
 }
 
 function listViewingEvents(sqlite: DatabaseSync, profileId: string): ViewingEvent[] {
@@ -1085,6 +1099,13 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         );
       case "list_tracked_series":
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "sync_tracked_series_status":
+        return syncTrackedSeriesStatus(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.seriesId as number,
+          args.status as string | null | undefined
+        );
       case "list_recent_viewing_events":
         return listRecentViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId, args.since as string);
       case "list_viewing_events_for_year":

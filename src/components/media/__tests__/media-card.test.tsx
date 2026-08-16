@@ -115,4 +115,16 @@ describe("MediaCard", () => {
     await screen.findByRole("button", { name: "Add to library" });
     expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
   });
+
+  it("shows a finished bar for an already-seen movie, and no redundant Seen badge", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const Wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    render(<MediaCard media={makeMedia({ id: 9, mediaType: "movie" })} alreadySeen />, { wrapper: Wrapper });
+
+    const bar = await screen.findByRole("progressbar", { name: "Seen" });
+    expect(bar).toHaveAttribute("aria-valuenow", "100");
+    expect(screen.queryByText("Seen")).not.toBeInTheDocument();
+  });
 });

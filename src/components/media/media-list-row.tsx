@@ -111,13 +111,6 @@ export function MediaListRow({
         ) : (
           <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
         )}
-
-        {alreadySeen ? (
-          <Badge variant="success" className="ml-1 gap-1 px-2 py-0 text-overline font-semibold uppercase">
-            <Check className="size-3" aria-hidden="true" />
-            {t("media.alreadySeen")}
-          </Badge>
-        ) : null}
       </Link>
     </Tile>
   );

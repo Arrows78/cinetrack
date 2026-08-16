@@ -154,7 +154,9 @@ function MediaCardInner({
 
         <MediaCardQuickActions media={media} />
 
-        {/* Type chip + already-seen badge */}
+        {/* Type chip — no separate "Seen" badge: the finished bottom bar
+            (bg-success, full width) already says that, and showing both
+            was a redundant, duplicated signal for the exact same state. */}
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           <Badge
             variant={media.mediaType === "movie" ? "movie" : "series"}
@@ -162,15 +164,6 @@ function MediaCardInner({
           >
             {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
           </Badge>
-          {alreadySeen ? (
-            <Badge
-              variant="success"
-              className="gap-1 px-2.5 py-0.5 text-overline font-semibold uppercase backdrop-blur-sm transition-all duration-base"
-            >
-              <Check className="size-3" aria-hidden="true" />
-              {t("media.alreadySeen")}
-            </Badge>
-          ) : null}
         </div>
 
         {/* Bottom: title + year + genre */}
@@ -218,7 +211,14 @@ function MediaCardInner({
             />
           </div>
         ) : showFinishedBar ? (
-          <div className="absolute inset-x-0 bottom-0 h-2 bg-success shadow-sm" />
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={100}
+            aria-label={t("media.alreadySeen")}
+            className="absolute inset-x-0 bottom-0 h-2 bg-success shadow-sm"
+          />
         ) : null}
       </div>
     </div>

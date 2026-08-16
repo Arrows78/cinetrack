@@ -23,8 +23,8 @@ use commands::{
     refresh_preferences, remove_availability_alert,
     remove_custom_list, remove_custom_list_item, remove_library_item, remove_planned_library_item, remove_profile,
     resolve_profile_for_supabase_user, save_availability_snapshot, save_library_item,
-    set_active_profile, tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
-    update_preference, updater_is_configured, PreferencesCache,
+    set_active_profile, sync_tracked_series_status, tmdb_request, toggle_availability_alert, toggle_episodes_watched,
+    toggle_movie_seen, update_preference, updater_is_configured, PreferencesCache,
 };
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
@@ -96,6 +96,7 @@ pub fn run() {
             get_episode_progress,
             toggle_episodes_watched,
             list_tracked_series,
+            sync_tracked_series_status,
             list_recent_viewing_events,
             list_viewing_events_for_year,
             list_yearly_activity,
