@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
 import type { Season } from "@/types/media";
 import { AvailabilityAlertButton } from "@/components/media/availability-alert-button";
 import { ProviderAvailability } from "@/components/media/provider-availability";
@@ -19,6 +20,7 @@ import { AddToLibraryButton } from "@/components/media/add-to-library-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { EmptyState } from "@/components/states/empty-state";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
 import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
@@ -36,11 +38,24 @@ export function SeriesDetailPage() {
     [seriesQuery.data?.seasons]
   );
   const seasonQueries = useSeriesSeasons(id, seasonNumbers);
-  if (seriesQuery.isLoading) return <HeroSkeleton />;
+  // A malformed/non-numeric :seriesId never becomes a valid query (see
+  // useSeriesDetails' `enabled: Number.isFinite(seriesId)`) — that used to
+  // fall through every check below to a bare `return null`, a permanently
+  // blank page with no loading indicator and no error message. Catching it
+  // explicitly, before ever touching the query's pending state, means this
+  // page is never blank: it's the skeleton, a real error, or the content.
+  if (!Number.isFinite(id)) {
+    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+  }
+  // isPending (not isLoading): in TanStack Query v5, isLoading is
+  // `isPending && isFetching`, which is false for a query that's pending
+  // but not actively fetching — briefly true while routing settles on a
+  // fast series-to-series navigation. isPending alone covers "no data yet"
+  // unconditionally, so this never falls through to the same blank-page gap.
+  if (seriesQuery.isPending) return <HeroSkeleton />;
   if (seriesQuery.isError) {
     return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
   }
-  if (!seriesQuery.data) return null;
   const series = seriesQuery.data;
   const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));
   const failedSeasonQueries = seasonQueries.filter((query) => query.isError);

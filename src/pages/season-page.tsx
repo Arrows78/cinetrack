@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
 import { EpisodeCard } from "@/components/media/episode-card";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { SectionHeader } from "@/components/media/section-header";
 import { AddToLibraryButton } from "@/components/media/add-to-library-button";
+import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Card } from "@/components/ui/card";
@@ -20,7 +22,13 @@ export function SeasonPage() {
   const seasonQuery = useSeasonDetails(parsedSeriesId, parsedSeasonNumber);
   const progressQuery = useEpisodeProgress(parsedSeriesId);
 
-  if (seriesQuery.isLoading || seasonQuery.isLoading) return <HeroSkeleton />;
+  // See series-detail-page.tsx's equivalent guard for why: a non-numeric id
+  // and isPending-vs-isLoading both used to fall through to a bare `return
+  // null` — a permanently blank page instead of a skeleton or an error.
+  if (!Number.isFinite(parsedSeriesId) || !Number.isFinite(parsedSeasonNumber)) {
+    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+  }
+  if (seriesQuery.isPending || seasonQuery.isPending) return <HeroSkeleton />;
   if (seriesQuery.isError || seasonQuery.isError) {
     return (
       <RemoteErrorState
@@ -32,7 +40,6 @@ export function SeasonPage() {
       />
     );
   }
-  if (!seriesQuery.data || !seasonQuery.data) return null;
 
   const series = seriesQuery.data;
   const season = seasonQuery.data;

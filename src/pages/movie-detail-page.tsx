@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
 import { AvailabilityAlertButton } from "@/components/media/availability-alert-button";
 import { ProviderAvailability } from "@/components/media/provider-availability";
 import { RecommendationsPanel } from "@/components/media/recommendations-panel";
@@ -11,6 +12,7 @@ import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
 import { Panel } from "@/components/ui/panel";
 import { AddToLibraryButton } from "@/components/media/add-to-library-button";
+import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -25,11 +27,16 @@ export function MovieDetailPage() {
   const movieQuery = useMovieDetails(id);
   const seenQuery = useMovieSeen(id);
   useImageCache([movieQuery.data?.posterPath, movieQuery.data?.backdropPath]);
-  if (movieQuery.isLoading) return <HeroSkeleton />;
+  // See series-detail-page.tsx's equivalent guard for why: a non-numeric id
+  // and isPending-vs-isLoading both used to fall through to a bare `return
+  // null` — a permanently blank page instead of a skeleton or an error.
+  if (!Number.isFinite(id)) {
+    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+  }
+  if (movieQuery.isPending) return <HeroSkeleton />;
   if (movieQuery.isError) {
     return <RemoteErrorState error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
   }
-  if (!movieQuery.data) return null;
   const movie = movieQuery.data;
 
   return (
