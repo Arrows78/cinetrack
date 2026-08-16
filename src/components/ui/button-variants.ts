@@ -13,7 +13,8 @@ export const buttonVariants = cva(
         // Always-dark auth screens (sign-in/OTP/create-profile) — a bolder
         // pill-shaped primary action matching that flow's cinematic look,
         // distinct from the app's own rounded-2xl buttons.
-        authPrimary: "rounded-full bg-primary text-primary-foreground font-black uppercase tracking-[0.08em] hover:opacity-90",
+        authPrimary:
+          "rounded-full bg-primary text-primary-foreground font-black uppercase tracking-[0.08em] hover:opacity-90",
       },
       size: {
         default: "h-11 px-4 py-2",
