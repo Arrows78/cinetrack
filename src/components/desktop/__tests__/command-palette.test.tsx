@@ -1,19 +1,32 @@
 import { act } from "react";
+import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
+import { queryKeys } from "@/shared/constants/query-keys";
 import { CommandPalette } from "../command-palette";
-import type { MediaSummary } from "@/types/media";
+import type { MediaSummary, Movie, Series } from "@/types/media";
 
 const navigateMock = vi.fn();
 vi.mock("@/app/router-config", () => ({
   router: { navigate: (options: unknown) => navigateMock(options) },
 }));
 
+const routerState = { pathname: "/" };
+vi.mock("@tanstack/react-router", () => ({
+  useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) =>
+    select({ location: { pathname: routerState.pathname } }),
+}));
+
 const updatePreferenceMock = vi.fn();
 let theme: "dark" | "light" = "dark";
 vi.mock("@/features/preferences/use-preferences", () => ({
-  usePreferences: () => ({ data: { theme }, updatePreference: updatePreferenceMock }),
+  usePreferences: () => ({
+    data: { theme, region: "US", preferredProviderIds: [] },
+    updatePreference: updatePreferenceMock,
+  }),
+  useActiveProfileId: () => "default",
 }));
 
 let searchItems: MediaSummary[] = [];
@@ -30,6 +43,31 @@ vi.mock("@/hooks/use-debounced-value", () => ({
   // No debounce delay in tests — the palette's own logic (query length,
   // section grouping) is what's under test, not the debounce timing.
   useDebouncedValue: <T,>(value: T) => value,
+}));
+
+const isMovieSeenMock = vi.fn<(id: number) => Promise<boolean>>(async () => false);
+const toggleMovieSeenMock = vi.fn<(movie: MediaSummary, watched: boolean) => Promise<undefined>>(async () => undefined);
+vi.mock("@/features/progress/progress-repository", () => ({
+  progressRepository: {
+    isMovieSeen: (id: number) => isMovieSeenMock(id),
+    toggleMovieSeen: (movie: MediaSummary, watched: boolean) => toggleMovieSeenMock(movie, watched),
+  },
+}));
+
+const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<{ id: string } | null>>(async () => null);
+const toggleAlertMock = vi.fn<(media: MediaSummary, region: string, providerIds: number[]) => Promise<{ id: string }>>(
+  async () => ({ id: "alert-1" })
+);
+vi.mock("@/features/availability/availability-repository", () => ({
+  availabilityRepository: {
+    getAlert: (mediaId: number, mediaType: string) => getAlertMock(mediaId, mediaType),
+    toggle: (media: MediaSummary, region: string, providerIds: number[]) => toggleAlertMock(media, region, providerIds),
+  },
+}));
+
+const requestPermissionMock = vi.fn(async () => true);
+vi.mock("@/features/desktop/notification-service", () => ({
+  notificationService: { requestPermission: () => requestPermissionMock() },
 }));
 
 const movie = (overrides: Partial<MediaSummary> = {}): MediaSummary => ({
@@ -62,19 +100,35 @@ function openPalette() {
   });
 }
 
+function renderPalette(seedCache?: (client: QueryClient) => void) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  seedCache?.(client);
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return render(<CommandPalette />, { wrapper: Wrapper });
+}
+
 describe("CommandPalette", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("en");
     navigateMock.mockClear();
     updatePreferenceMock.mockClear();
     useSearchMock.mockClear();
+    isMovieSeenMock.mockClear();
+    toggleMovieSeenMock.mockClear();
+    getAlertMock.mockClear();
+    toggleAlertMock.mockClear();
+    requestPermissionMock.mockClear();
+    requestPermissionMock.mockResolvedValue(true);
     theme = "dark";
     searchItems = [];
     searchIsLoading = false;
+    routerState.pathname = "/";
   });
 
   it("renders nothing until opened, then lists every page plus a theme action", () => {
-    const { container } = render(<CommandPalette />);
+    const { container } = renderPalette();
     expect(container).toBeEmptyDOMElement();
 
     openPalette();
@@ -86,14 +140,14 @@ describe("CommandPalette", () => {
 
   it("offers the opposite theme depending on the current one", () => {
     theme = "light";
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     expect(screen.getByRole("button", { name: /switch to dark theme/i })).toBeInTheDocument();
   });
 
   it("running the theme action closes the palette and flips the preference", () => {
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     fireEvent.click(screen.getByRole("button", { name: /switch to light theme/i }));
@@ -103,7 +157,7 @@ describe("CommandPalette", () => {
   });
 
   it("filters pages by the typed query", () => {
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     typeQuery("stat");
@@ -117,7 +171,7 @@ describe("CommandPalette", () => {
       movie({ id: 42, title: "Dune", year: 2021 }),
       movie({ id: 43, mediaType: "series", title: "Dune: Prophecy", year: undefined }),
     ];
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     typeQuery("du");
@@ -128,7 +182,7 @@ describe("CommandPalette", () => {
   });
 
   it("does not search titles for a single-character query", () => {
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     typeQuery("d");
@@ -138,7 +192,7 @@ describe("CommandPalette", () => {
 
   it("navigates to a movie result's own route, not a page route", async () => {
     searchItems = [movie({ id: 42, mediaType: "movie" })];
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     typeQuery("du");
@@ -150,7 +204,7 @@ describe("CommandPalette", () => {
 
   it("navigates to a series result's own route", async () => {
     searchItems = [movie({ id: 43, mediaType: "series", title: "Dune: Prophecy", year: undefined })];
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     typeQuery("du");
@@ -161,7 +215,7 @@ describe("CommandPalette", () => {
   });
 
   it("closes on Escape", () => {
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
     expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
 
@@ -171,11 +225,114 @@ describe("CommandPalette", () => {
   });
 
   it("shows a no-results message when nothing matches and no title search is pending", async () => {
-    render(<CommandPalette />);
+    renderPalette();
     openPalette();
 
     typeQuery("zzz");
 
     await waitFor(() => expect(screen.getByText(/no results found/i)).toBeInTheDocument());
+  });
+
+  describe("contextual actions on a detail page", () => {
+    const cachedMovie: Movie = {
+      id: 7,
+      mediaType: "movie",
+      title: "Arrival",
+      overview: "",
+      genres: [],
+      cast: [],
+    };
+    const cachedSeries: Series = {
+      id: 9,
+      mediaType: "series",
+      title: "Severance",
+      overview: "",
+      genres: [],
+      cast: [],
+      numberOfSeasons: 1,
+      seasons: [],
+    };
+
+    it("offers no contextual actions off a detail page", () => {
+      renderPalette();
+      openPalette();
+
+      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Availability alert" })).not.toBeInTheDocument();
+    });
+
+    it("offers mark-watched and availability-alert on a cached movie page", async () => {
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Mark watched" })).toBeInTheDocument());
+      expect(screen.getByRole("button", { name: "Availability alert" })).toBeInTheDocument();
+    });
+
+    it("offers only the availability alert on a cached series page, not mark-watched", async () => {
+      routerState.pathname = "/series/9";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.seriesDetails(9), cachedSeries));
+      openPalette();
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Availability alert" })).toBeInTheDocument());
+      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Mark unwatched" })).not.toBeInTheDocument();
+    });
+
+    it("offers nothing contextual when the page's own query hasn't populated the cache yet", () => {
+      routerState.pathname = "/movies/7";
+      renderPalette();
+      openPalette();
+
+      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
+    });
+
+    it("marking watched runs the real toggle mutation with the cached movie", async () => {
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => screen.getByRole("button", { name: "Mark watched" }));
+      fireEvent.click(screen.getByRole("button", { name: "Mark watched" }));
+
+      await waitFor(() => expect(toggleMovieSeenMock).toHaveBeenCalledWith(cachedMovie, true));
+      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
+    });
+
+    it("shows mark-unwatched once the movie is already seen", async () => {
+      isMovieSeenMock.mockResolvedValue(true);
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Mark unwatched" })).toBeInTheDocument());
+    });
+
+    it("requests notification permission before enabling a new alert", async () => {
+      requestPermissionMock.mockResolvedValue(false);
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => screen.getByRole("button", { name: "Availability alert" }));
+      fireEvent.click(screen.getByRole("button", { name: "Availability alert" }));
+
+      await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
+      expect(toggleAlertMock).not.toHaveBeenCalled();
+    });
+
+    it("offers to disable an alert that already exists, skipping the permission prompt", async () => {
+      getAlertMock.mockResolvedValue({ id: "alert-1" });
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Disable alert" })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole("button", { name: "Disable alert" }));
+
+      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", []));
+      expect(requestPermissionMock).not.toHaveBeenCalled();
+    });
   });
 });

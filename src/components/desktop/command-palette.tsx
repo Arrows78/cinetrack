@@ -1,13 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Film, Moon, Search, Sun, Tv } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouterState } from "@tanstack/react-router";
+import { Bell, BellOff, Eye, EyeOff, Film, Moon, Search, Sun, Tv } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { router } from "@/app/router-config";
 import { useNavigationItems } from "@/shared/constants/navigation";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useSearch } from "@/features/media/use-search";
+import { useMovieSeen } from "@/features/progress/use-progress";
+import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
+import { notificationService } from "@/features/desktop/notification-service";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Input } from "@/components/ui/input";
+import { queryKeys } from "@/shared/constants/query-keys";
+import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
+import type { MediaSummary, Movie, Series } from "@/types/media";
 
 interface PaletteItem {
   key: string;
@@ -17,6 +26,48 @@ interface PaletteItem {
   section: "command" | "title";
   run: () => void;
 }
+
+type CurrentDetailMedia =
+  { mediaType: "movie"; id: number; media: Movie } | { mediaType: "series"; id: number; media: Series };
+
+const MOVIE_DETAIL_PATH = /^\/movies\/(\d+)$/;
+const SERIES_DETAIL_PATH = /^\/series\/(\d+)$/;
+
+// The palette is mounted once, globally — it has no natural access to
+// "which title is this page showing". Rather than refetch it (the detail
+// page already did, seconds ago), this reads straight out of the same
+// react-query cache that page populated, keyed exactly like
+// useMovieDetails/useSeriesDetails already do. Returns null off a detail
+// page, or if that page's own fetch hasn't resolved yet.
+function useCurrentDetailMedia(): CurrentDetailMedia | null {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const queryClient = useQueryClient();
+
+  const movieMatch = MOVIE_DETAIL_PATH.exec(pathname);
+  if (movieMatch) {
+    const id = Number(movieMatch[1]);
+    const media = queryClient.getQueryData<Movie>(queryKeys.remote.movieDetails(id));
+    return media ? { mediaType: "movie", id, media } : null;
+  }
+
+  const seriesMatch = SERIES_DETAIL_PATH.exec(pathname);
+  if (seriesMatch) {
+    const id = Number(seriesMatch[1]);
+    const media = queryClient.getQueryData<Series>(queryKeys.remote.seriesDetails(id));
+    return media ? { mediaType: "series", id, media } : null;
+  }
+
+  return null;
+}
+
+const EMPTY_PLACEHOLDER_MEDIA: MediaSummary = {
+  id: Number.NaN,
+  mediaType: "movie",
+  title: "",
+  overview: "",
+  genres: [],
+  cast: [],
+};
 
 const TITLE_RESULTS_CAP = 5;
 const TITLE_SEARCH_MIN_LENGTH = 2;
@@ -49,6 +100,55 @@ export function CommandPalette() {
   const nextTheme = theme === "dark" ? "light" : "dark";
   const updatePreference = preferences.updatePreference;
 
+  // Contextual actions — only meaningful on a movie/series detail page, so
+  // both hooks below stay disabled (no IPC call at all) everywhere else:
+  // useMovieSeen's own `enabled` gate gets NaN off a movie page, and
+  // useAvailabilityAlert takes an explicit `enabled` for the same reason.
+  const currentDetail = useCurrentDetailMedia();
+  const region = preferences.data?.region ?? DEFAULT_TMDB_REGION;
+  const providerIds = preferences.data?.preferredProviderIds ?? [];
+  const alertMedia = currentDetail?.media ?? EMPTY_PLACEHOLDER_MEDIA;
+  const alertQuery = useAvailabilityAlert(alertMedia, region, providerIds, { enabled: Boolean(currentDetail) });
+  const movieSeenQuery = useMovieSeen(currentDetail?.mediaType === "movie" ? currentDetail.id : Number.NaN);
+
+  const contextualItems = useMemo<PaletteItem[]>(() => {
+    if (!currentDetail) return [];
+    const items: PaletteItem[] = [];
+
+    if (currentDetail.mediaType === "movie") {
+      const seen = Boolean(movieSeenQuery.data);
+      const movie = currentDetail.media;
+      items.push({
+        key: "context-toggle-seen",
+        label: t(seen ? "media.markUnseen" : "media.markSeen"),
+        icon: seen ? EyeOff : Eye,
+        section: "command",
+        run: () => {
+          setOpen(false);
+          void movieSeenQuery.toggleMovieSeen({ movie, watched: !seen });
+        },
+      });
+    }
+
+    const hasAlert = Boolean(alertQuery.data);
+    items.push({
+      key: "context-toggle-alert",
+      label: t(hasAlert ? "media.disableAlert" : "media.availabilityAlert"),
+      icon: hasAlert ? BellOff : Bell,
+      section: "command",
+      run: () => {
+        setOpen(false);
+        void (async () => {
+          if (!hasAlert && !(await notificationService.requestPermission())) return;
+          await alertQuery.toggle();
+        })();
+      },
+    });
+
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- movieSeenQuery/alertQuery carry their own reactive .data already listed
+  }, [currentDetail, movieSeenQuery.data, alertQuery.data, t]);
+
   const commands = useMemo<PaletteItem[]>(() => {
     const pages: PaletteItem[] = navigationItems.map((item) => ({
       key: `page-${item.to}`,
@@ -69,8 +169,8 @@ export function CommandPalette() {
         },
       },
     ];
-    return [...actions, ...pages];
-  }, [navigationItems, nextTheme, t, updatePreference]);
+    return [...actions, ...contextualItems, ...pages];
+  }, [navigationItems, nextTheme, t, updatePreference, contextualItems]);
 
   const filteredCommands = useMemo(
     () => commands.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())),
@@ -169,16 +269,19 @@ export function CommandPalette() {
         className="mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center gap-3 border-b border-border px-4">
-          <Search className="size-4 text-muted-foreground" />
-          <input
+        <div className="relative flex items-center border-b border-border">
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
             autoFocus
-            className="h-14 flex-1 rounded-lg bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("commandPalette.searchPlaceholder")}
+            aria-label={t("commandPalette.searchPlaceholder")}
+            className="h-14 rounded-none border-none bg-transparent pl-11 pr-16 ring-offset-0 focus-visible:ring-0"
           />
-          <kbd className="rounded border px-2 py-1 text-xs text-muted-foreground">Esc</kbd>
+          <kbd className="absolute right-4 top-1/2 -translate-y-1/2 rounded border px-2 py-1 text-xs text-muted-foreground">
+            Esc
+          </kbd>
         </div>
         <div className="max-h-96 overflow-y-auto p-2 pb-3">
           {commandResults.map((item) => {

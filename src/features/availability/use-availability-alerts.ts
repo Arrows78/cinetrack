@@ -18,12 +18,18 @@ export function useAvailabilityAlerts() {
   return { ...query, remove: removeMutation.mutateAsync };
 }
 
-export function useAvailabilityAlert(media: MediaSummary, region: string, providerIds: number[]) {
+export function useAvailabilityAlert(
+  media: MediaSummary,
+  region: string,
+  providerIds: number[],
+  options?: { enabled?: boolean }
+) {
   const profileId = useActiveProfileId();
   const client = useQueryClient();
   const query = useQuery({
     queryKey: [...queryKeys.local.availabilityAlerts(profileId), media.mediaType, media.id],
     queryFn: () => availabilityRepository.getAlert(media.id, media.mediaType),
+    enabled: options?.enabled ?? true,
   });
   const mutation = useMutation({
     mutationFn: () => availabilityRepository.toggle(media, region, providerIds),
