@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -85,11 +86,13 @@ export function DesktopSettings() {
     }
   };
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="font-semibold">{t("desktop.tmdbVault")}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">{t("desktop.vaultDesc")}</p>
-        <div className="mt-3 grid gap-2">
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("desktop.tmdbVault")}</CardTitle>
+          <CardDescription>{t("desktop.vaultDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2">
           <FormField label={t("desktop.vaultPassword")} help={t("desktop.vaultPasswordHint")}>
             {(describedBy) => (
               <Input
@@ -133,72 +136,100 @@ export function DesktopSettings() {
               {t("desktop.lock")}
             </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+
       {isTauriApp() ? (
-        <div>
-          <h3 className="font-semibold">{t("desktop.systemIntegration")}</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              variant={autoStart ? "secondary" : "outline"}
-              aria-pressed={autoStart}
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  if (autoStart) await disable();
-                  else await enable();
-                  setAutoStart(!autoStart);
-                  return !autoStart ? t("desktop.autostartEnabled") : t("desktop.autostartDisabled");
-                })
-              }
-            >
-              {autoStart ? t("desktop.autostartOff") : t("desktop.autostartOn")}
-            </Button>
-            <Button variant="outline" disabled={busy} onClick={() => void run(() => updateService.checkAndInstall())}>
-              {t("desktop.checkUpdate")}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  const check = await maintenanceService.checkDataIntegrity();
-                  return check.healthy
-                    ? `${t("desktop.databaseHealthy")} ${check.detail}`
-                    : `${t("desktop.databaseDamaged")} ${check.detail}`;
-                })
-              }
-            >
-              {t("desktop.checkDatabase")}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await maintenanceService.createAutomaticBackup(true);
-                  return t("desktop.backupUpdated");
-                }).then(refreshBackupStatus)
-              }
-            >
-              {t("desktop.emergencyBackup")}
-            </Button>
-            <Button variant="outline" disabled={busy} onClick={() => void startRestore()}>
-              {t("desktop.restoreBackup")}
-            </Button>
-          </div>
-          {backupStatus ? (
-            <p className={`mt-2 text-xs ${backupStatus.failed ? "text-destructive" : "text-muted-foreground"}`}>
-              {backupStatus.failed
-                ? t("desktop.lastBackupFailed")
-                : backupStatus.exportedAt
-                  ? t("desktop.lastBackupSuccess", { date: formatRelativeDate(backupStatus.exportedAt) })
-                  : t("desktop.noBackupYet")}
-            </p>
-          ) : null}
-          <details className="mt-4 text-xs text-muted-foreground">
-            <summary className="cursor-pointer font-medium text-foreground">{t("desktop.diagnostics")}</summary>
-            <div className="mt-2 space-y-2">
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("desktop.systemIntegration")}</CardTitle>
+              <CardDescription>{t("desktop.systemIntegrationDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={autoStart ? "secondary" : "outline"}
+                  aria-pressed={autoStart}
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      if (autoStart) await disable();
+                      else await enable();
+                      setAutoStart(!autoStart);
+                      return !autoStart ? t("desktop.autostartEnabled") : t("desktop.autostartDisabled");
+                    })
+                  }
+                >
+                  {autoStart ? t("desktop.autostartOff") : t("desktop.autostartOn")}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void run(() => updateService.checkAndInstall())}
+                >
+                  {t("desktop.checkUpdate")}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      const check = await maintenanceService.checkDataIntegrity();
+                      return check.healthy
+                        ? `${t("desktop.databaseHealthy")} ${check.detail}`
+                        : `${t("desktop.databaseDamaged")} ${check.detail}`;
+                    })
+                  }
+                >
+                  {t("desktop.checkDatabase")}
+                </Button>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">{t("desktop.shortcuts")}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("desktop.automaticBackupTitle")}</CardTitle>
+              <CardDescription>{t("desktop.automaticBackupDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      await maintenanceService.createAutomaticBackup(true);
+                      return t("desktop.backupUpdated");
+                    }).then(refreshBackupStatus)
+                  }
+                >
+                  {t("desktop.emergencyBackup")}
+                </Button>
+                <Button variant="outline" disabled={busy} onClick={() => void startRestore()}>
+                  {t("desktop.restoreBackup")}
+                </Button>
+              </div>
+              {backupStatus ? (
+                <p className={`mt-2 text-xs ${backupStatus.failed ? "text-destructive" : "text-muted-foreground"}`}>
+                  {backupStatus.failed
+                    ? t("desktop.lastBackupFailed")
+                    : backupStatus.exportedAt
+                      ? t("desktop.lastBackupSuccess", { date: formatRelativeDate(backupStatus.exportedAt) })
+                      : t("desktop.noBackupYet")}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>{t("desktop.diagnostics")}</CardTitle>
+              <CardDescription>{t("desktop.diagnosticsDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={refreshLogs}>
                   {t("desktop.diagnosticsRefresh")}
@@ -231,17 +262,17 @@ export function DesktopSettings() {
                 </Button>
               </div>
               {logLines?.length ? (
-                <pre className="max-h-48 overflow-auto rounded-xl border border-border bg-card p-3 font-mono text-xs whitespace-pre-wrap">
+                <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-border bg-card p-3 font-mono text-xs whitespace-pre-wrap">
                   {logLines.join("\n")}
                 </pre>
               ) : (
-                <p>{t("desktop.diagnosticsEmpty")}</p>
+                <p className="mt-3 text-xs text-muted-foreground">{t("desktop.diagnosticsEmpty")}</p>
               )}
-            </div>
-          </details>
-        </div>
+            </CardContent>
+          </Card>
+        </>
       ) : null}
-      <p className="text-xs text-muted-foreground">{t("desktop.shortcuts")}</p>
+
       <ConfirmDialog
         open={pendingRestore !== null}
         onOpenChange={(open) => !open && !isRestoring && setPendingRestore(null)}

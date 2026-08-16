@@ -10,6 +10,18 @@ export interface ZipCsvEntry {
 // before decompressing skips wasting time/memory on everything else.
 const CSV_EXTENSION = /\.csv$/i;
 
+// A .zip built on macOS (Finder "Compress", or `zip`/`ditto` without -X)
+// carries a "._name" AppleDouble shadow entry next to nearly every real
+// file, holding resource-fork/Finder metadata — binary junk that happens
+// to keep the original's .csv extension. Left in, this doubled the
+// "unrecognized file" count for every real GDPR export and blew out the
+// pre-import summary. `__MACOSX/` is the sibling top-level folder some
+// tools also add to hold them instead of interleaving.
+const isMacosArtifact = (name: string): boolean => {
+  const base = name.split("/").pop() ?? name;
+  return base.startsWith("._") || name.startsWith("__MACOSX/");
+};
+
 // Caps the *decompressed* size, independent of the .zip file's own byte cap
 // (MAX_TVTIME_FILE_BYTES in tvtime-import-service.ts, checked before this
 // runs) — a small archive can still decompress to something huge (a zip
@@ -27,7 +39,9 @@ export class ZipTooLargeError extends Error {
 /** Extracts every .csv entry from a .zip File, decoded as UTF-8 text. */
 export async function extractCsvEntries(file: File): Promise<ZipCsvEntry[]> {
   const buffer = new Uint8Array(await file.arrayBuffer());
-  const entries = unzipSync(buffer, { filter: (entry) => CSV_EXTENSION.test(entry.name) });
+  const entries = unzipSync(buffer, {
+    filter: (entry) => CSV_EXTENSION.test(entry.name) && !isMacosArtifact(entry.name),
+  });
 
   const decoder = new TextDecoder("utf-8");
   const results: ZipCsvEntry[] = [];

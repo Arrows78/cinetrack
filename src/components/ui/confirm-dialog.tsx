@@ -37,14 +37,21 @@ export function ConfirmDialog({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-modal w-[90%] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-shell border border-border bg-background/95 p-5 shadow-2xl focus:outline-none">
-          <DialogPrimitive.Title className="font-display text-lg font-bold">{title}</DialogPrimitive.Title>
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-modal flex max-h-[85vh] w-[90%] max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col rounded-shell border border-border bg-background/95 p-5 shadow-2xl focus:outline-none">
+          <DialogPrimitive.Title className="shrink-0 font-display text-lg font-bold">{title}</DialogPrimitive.Title>
           {description ? (
-            <DialogPrimitive.Description className="mt-2 text-sm leading-6 text-muted-foreground">
+            // min-h-0 lets this shrink below its content's intrinsic height
+            // (the flexbox default is min-height:auto, which would otherwise
+            // ignore max-h-[85vh] on the parent and keep growing) — without
+            // it, an unexpectedly long description (e.g. a generated list of
+            // names) grew the dialog past the viewport, and with a fixed
+            // top-1/2/-translate-y-1/2 position that pushed the title and
+            // buttons off-screen entirely instead of just looking cramped.
+            <DialogPrimitive.Description className="mt-2 min-h-0 overflow-y-auto text-sm leading-6 text-muted-foreground">
               {description}
             </DialogPrimitive.Description>
           ) : null}
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="mt-5 flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isConfirming}>
               {cancelLabel}
             </Button>

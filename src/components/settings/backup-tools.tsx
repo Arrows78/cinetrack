@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Panel } from "@/components/ui/panel";
 import { toast } from "@/components/ui/use-toast";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { maintenanceService } from "@/features/backup/maintenance-service";
@@ -73,10 +73,12 @@ export function BackupTools() {
   };
 
   return (
-    <Panel>
-      <p className="font-semibold">{t("backup.title")}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{t("backup.description")}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("backup.title")}</CardTitle>
+        <CardDescription>{t("backup.description")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={isExporting} onClick={() => void exportBackup()}>
           <Download className="mr-2 size-4" />
           {t("backup.export")}
@@ -100,7 +102,7 @@ export function BackupTools() {
             if (file) setPendingImportFile(file);
           }}
         />
-      </div>
+      </CardContent>
       <ConfirmDialog
         open={pendingImportFile !== null}
         onOpenChange={(open) => !open && !isImporting && setPendingImportFile(null)}
@@ -123,6 +125,6 @@ export function BackupTools() {
         isConfirming={isUndoing}
         onConfirm={() => void undoLastImport()}
       />
-    </Panel>
+    </Card>
   );
 }

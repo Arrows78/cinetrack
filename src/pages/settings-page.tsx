@@ -199,15 +199,13 @@ export function SettingsPage() {
     await updatePreference({ key: "notificationsEnabled", value: enabled });
   };
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <SectionHeader title={t("nav.settings")} subtitle={t("settings.subtitleDesktop")} />
-      <div className="grid gap-6 xl:grid-cols-2">
+
+      <section>
+        <SectionHeader size="sub" title={t("settings.uiPreferences")} subtitle={t("settings.customizeDisplay")} />
         <Card>
-          <CardHeader>
-            <CardTitle>{t("settings.uiPreferences")}</CardTitle>
-            <CardDescription>{t("settings.customizeDisplay")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="mt-0 space-y-6">
             <div>
               <p className="mb-3 text-sm font-medium">{t("settings.accentColor")}</p>
               <div className="flex flex-wrap gap-3">
@@ -306,21 +304,29 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("settings.desktopSecurity")}</CardTitle>
-            <CardDescription>{t("settings.desktopSecurityDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DesktopSettings />
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      </section>
+
+      <section>
+        <SectionHeader
+          size="sub"
+          title={t("settings.sections.account")}
+          subtitle={t("settings.sections.accountDesc")}
+        />
         <ProfilesCard activeProfileId={preferences?.activeProfileId} />
-        <BackupTools />
-        <TvTimeImportCard />
-      </div>
+      </section>
+
+      <section>
+        <SectionHeader size="sub" title={t("settings.sections.data")} subtitle={t("settings.sections.dataDesc")} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BackupTools />
+          <TvTimeImportCard />
+        </div>
+      </section>
+
+      <section>
+        <SectionHeader size="sub" title={t("settings.desktopSecurity")} subtitle={t("settings.desktopSecurityDesc")} />
+        <DesktopSettings />
+      </section>
     </div>
   );
 }

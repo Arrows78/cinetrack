@@ -28,6 +28,18 @@ describe("extractCsvEntries", () => {
     await expect(extractCsvEntries(file)).resolves.toEqual([]);
   });
 
+  it("drops macOS AppleDouble shadow entries and __MACOSX/ instead of reporting them as real files", async () => {
+    const file = zipFile({
+      "gdpr-data/tracking-prod-records-v2.csv": "a,b\n1,2\n",
+      "gdpr-data/._tracking-prod-records-v2.csv": "resource-fork-junk",
+      "__MACOSX/gdpr-data/._followed_tv_show.csv": "resource-fork-junk",
+    });
+
+    const entries = await extractCsvEntries(file);
+
+    expect(entries.map((entry) => entry.name)).toEqual(["tracking-prod-records-v2.csv"]);
+  });
+
   it("rejects an entry whose decompressed size exceeds the cap", async () => {
     const huge = "x".repeat(MAX_TVTIME_ZIP_ENTRY_BYTES + 1);
     const file = zipFile({ "big.csv": huge });

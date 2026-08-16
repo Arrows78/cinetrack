@@ -221,6 +221,12 @@
       "deleteConfirmTitle": "Delete the profile \"{{name}}\"?",
       "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone.",
       "deleteFailed": "Couldn't delete the profile. Please try again."
+    },
+    "sections": {
+      "account": "Account",
+      "accountDesc": "Manage who's using CineTrack on this device.",
+      "data": "Backup & import",
+      "dataDesc": "Move your data in and out of CineTrack."
     }
   },
   "movies": {
@@ -524,7 +530,11 @@
     "diagnosticsCopy": "Copy",
     "diagnosticsClear": "Clear",
     "diagnosticsEmpty": "No log entries yet.",
-    "shortcuts": "Palette: Ctrl/Cmd+K in window, Ctrl/Cmd+Shift+K system-wide. Links: cinetrack://movie/123, cinetrack://series/123 and cinetrack://tonight."
+    "shortcuts": "Palette: Ctrl/Cmd+K in window, Ctrl/Cmd+Shift+K system-wide. Links: cinetrack://movie/123, cinetrack://series/123 and cinetrack://tonight.",
+    "systemIntegrationDesc": "Startup behavior, native updates and a database integrity check.",
+    "automaticBackupTitle": "Automatic backup",
+    "automaticBackupDesc": "A local safety-net snapshot, separate from the manual export above.",
+    "diagnosticsDesc": "Recent local log entries, for troubleshooting a problem."
   },
   "sidebar": {
     "brand": {
@@ -670,7 +680,8 @@
       "unrecognized_other": "{{count}} selected files weren't recognized and will be skipped: {{names}}.",
       "skippedRows_one": "1 row had no watch date and will be skipped.",
       "skippedRows_other": "{{count}} rows had no watch date and will be skipped.",
-      "confirm": "Import"
+      "confirm": "Import",
+      "namesTruncated": "{{names}} and {{extra}} more"
     }
   }
 }

@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tv, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Panel } from "@/components/ui/panel";
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/features/diagnostics/logger";
 import { parseTvTimeFiles, type TvTimeExport, type TvTimeFile } from "@/features/tvtime/parse-export";
@@ -23,6 +23,9 @@ interface PendingImport {
 }
 
 const isZipFile = (file: File): boolean => file.name.toLowerCase().endsWith(".zip");
+
+// See preflightDescription below for why this is capped.
+const MAX_LISTED_UNRECOGNIZED_FILES = 4;
 
 export function TvTimeImportCard() {
   const { t } = useTranslation();
@@ -152,12 +155,16 @@ export function TvTimeImportCard() {
       }),
     ];
     if (unrecognizedFiles.length) {
-      parts.push(
-        t("tvtimeImport.preflight.unrecognized", {
-          count: unrecognizedFiles.length,
-          names: unrecognizedFiles.join(", "),
-        })
-      );
+      // A full GDPR export routinely has 15-20+ files this feature has no
+      // use for (account settings, quiz answers, friends, ...) — naming
+      // every single one turned this into an unreadable wall of text.
+      // Showing a handful of examples is enough to reassure a curious user
+      // without doing that again.
+      const shown = unrecognizedFiles.slice(0, MAX_LISTED_UNRECOGNIZED_FILES);
+      const extra = unrecognizedFiles.length - shown.length;
+      const names =
+        extra > 0 ? t("tvtimeImport.preflight.namesTruncated", { names: shown.join(", "), extra }) : shown.join(", ");
+      parts.push(t("tvtimeImport.preflight.unrecognized", { count: unrecognizedFiles.length, names }));
     }
     const skippedRows = data.skippedRows.episodes + data.skippedRows.movies;
     if (skippedRows > 0) {
@@ -167,41 +174,45 @@ export function TvTimeImportCard() {
   })();
 
   return (
-    <Panel>
-      <div className="flex items-center gap-2">
-        <Tv className="size-5 text-primary" />
-        <p className="font-semibold">{t("tvtimeImport.title")}</p>
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">{t("tvtimeImport.description")}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.rewatchNotice")}</p>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Tv className="size-5 text-primary" aria-hidden="true" />
+          {t("tvtimeImport.title")}
+        </CardTitle>
+        <CardDescription>{t("tvtimeImport.description")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.rewatchNotice")}</p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          isLoading={running || isPreparing}
-          aria-busy={running || isPreparing}
-          onClick={() => inputRef.current?.click()}
-        >
-          {!running && !isPreparing && <Upload className="size-4" />}
-          {t("tvtimeImport.selectFiles")}
-        </Button>
-        <input
-          ref={inputRef}
-          className="hidden"
-          type="file"
-          accept=".csv,.zip,text/csv,application/zip"
-          multiple
-          onChange={(event) => void prepareImport(event.target.files)}
-        />
-        {progress && progress.total > 0 ? (
-          <p role="status" aria-live="polite" className="text-sm tabular-nums text-muted-foreground">
-            {t(`tvtimeImport.phase.${progress.phase}`)} · {progress.done}/{progress.total}
-            {progress.label ? ` · ${progress.label}` : ""}
-          </p>
-        ) : null}
-      </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            isLoading={running || isPreparing}
+            aria-busy={running || isPreparing}
+            onClick={() => inputRef.current?.click()}
+          >
+            {!running && !isPreparing && <Upload className="size-4" />}
+            {t("tvtimeImport.selectFiles")}
+          </Button>
+          <input
+            ref={inputRef}
+            className="hidden"
+            type="file"
+            accept=".csv,.zip,text/csv,application/zip"
+            multiple
+            onChange={(event) => void prepareImport(event.target.files)}
+          />
+          {progress && progress.total > 0 ? (
+            <p role="status" aria-live="polite" className="text-sm tabular-nums text-muted-foreground">
+              {t(`tvtimeImport.phase.${progress.phase}`)} · {progress.done}/{progress.total}
+              {progress.label ? ` · ${progress.label}` : ""}
+            </p>
+          ) : null}
+        </div>
+      </CardContent>
 
       <ConfirmDialog
         open={pending !== null}
@@ -213,6 +224,6 @@ export function TvTimeImportCard() {
         confirmVariant="default"
         onConfirm={() => void confirmImport()}
       />
-    </Panel>
+    </Card>
   );
 }

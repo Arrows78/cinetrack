@@ -103,6 +103,33 @@ describe("TvTimeImportCard", () => {
     expect(await screen.findByText(/account_info\.csv/)).toBeInTheDocument();
   });
 
+  it("caps how many unrecognized names it lists instead of dumping the whole list in the dialog", async () => {
+    const { input } = renderCard();
+    const unrelated = Array.from({ length: 6 }, (_, index) => csvFile(`unrelated_${index}.csv`, "a,b\n1,2\n"));
+
+    fireEvent.change(input, {
+      target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2), ...unrelated] },
+    });
+
+    expect(await screen.findByText(/unrelated_0\.csv/)).toBeInTheDocument();
+    expect(screen.getByText(/unrelated_3\.csv/)).toBeInTheDocument();
+    expect(screen.queryByText(/unrelated_4\.csv/)).not.toBeInTheDocument();
+    expect(screen.getByText(/and 2 more/)).toBeInTheDocument();
+  });
+
+  it("does not flag a .zip's macOS AppleDouble shadow files as unrecognized", async () => {
+    const { input } = renderCard();
+    const zip = zipFile({
+      "gdpr-data/tracking-prod-records-v2.csv": RECORDS_V2,
+      "gdpr-data/._tracking-prod-records-v2.csv": "resource-fork-junk",
+    });
+
+    fireEvent.change(input, { target: { files: [zip] } });
+
+    expect(await screen.findByText(/1 episodes across 1 series/)).toBeInTheDocument();
+    expect(screen.queryByText(/wasn't recognized/)).not.toBeInTheDocument();
+  });
+
   it("shows an error and never opens the confirm dialog when nothing selected is recognizable", async () => {
     const { input } = renderCard();
 
