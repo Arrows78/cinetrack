@@ -38,6 +38,7 @@ const preferencesData = {
   reduceMotion: false,
   compactMode: false,
   sidebarCollapsed: false,
+  libraryViewMode: "grid",
   spoilerProtection: true,
   notificationsEnabled: false,
   notifyHoursBefore: 24,

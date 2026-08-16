@@ -18,6 +18,22 @@ vi.mock("@/components/media/media-grid", () => ({
   ),
 }));
 
+vi.mock("@/components/media/media-list", () => ({
+  MediaList: ({ items }: { items: Array<{ id: number; mediaType: string; title: string }> }) => (
+    <div data-testid="list">
+      {items.map((item) => (
+        <div key={`${item.mediaType}-${item.id}`}>{item.title}</div>
+      ))}
+    </div>
+  ),
+}));
+
+const updatePreferenceMock = vi.fn();
+const preferencesDataMock = vi.fn(() => ({ libraryViewMode: "grid" as "grid" | "list" }));
+vi.mock("@/features/preferences/use-preferences", () => ({
+  usePreferences: () => ({ data: preferencesDataMock(), updatePreference: updatePreferenceMock, isSaving: false }),
+}));
+
 const libraryQueryMock = vi.fn();
 vi.mock("@/features/library/use-library", () => ({
   useLibrary: () => libraryQueryMock(),
@@ -142,6 +158,26 @@ describe("LibraryPage — lists", () => {
     customListsState.create.mockReset().mockResolvedValue(undefined);
     customListsState.remove.mockReset().mockResolvedValue(undefined);
     customListItemsMock.mockClear();
+    updatePreferenceMock.mockReset();
+    preferencesDataMock.mockReset().mockReturnValue({ libraryViewMode: "grid" });
+  });
+
+  it("persists the grid/list choice as a preference instead of resetting on remount", async () => {
+    const { unmount } = renderPage();
+    await screen.findByText("Dune");
+
+    screen.getByRole("button", { name: "List view" }).click();
+
+    expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "libraryViewMode", value: "list" });
+
+    // Simulate the preference having been saved, then remount — the choice
+    // should come from preferences, not reset to a fresh component's default.
+    preferencesDataMock.mockReturnValue({ libraryViewMode: "list" });
+    unmount();
+    renderPage();
+
+    expect(await screen.findByTestId("list")).toBeInTheDocument();
+    expect(screen.queryByTestId("grid")).not.toBeInTheDocument();
   });
 
   it("shows every library item when no list is selected", async () => {

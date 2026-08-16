@@ -18,6 +18,7 @@ import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useCustomListItems, useCustomLists } from "@/features/library/use-custom-lists";
 import { useLibrary } from "@/features/library/use-library";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import type { LibraryStatus } from "@/types/media";
 
@@ -207,11 +208,17 @@ export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie"
   const { data: items } = libraryQuery;
   const { data: trackedSeries } = useTrackedSeries();
   const lists = useCustomLists();
+  const preferences = usePreferences();
   const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">(lockedMediaType ?? "all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  // Persisted (not local state) — a user's grid/list choice should survive
+  // navigating away and back, and hold across /library, /movies and /series
+  // since they all render this same explorer.
+  const viewMode = preferences.data?.libraryViewMode ?? "grid";
+  const setViewMode = (mode: "grid" | "list") =>
+    void preferences.updatePreference({ key: "libraryViewMode", value: mode });
   const [listFilter, setListFilter] = useState("all");
   const listItems = useCustomListItems(listFilter === "all" ? "" : listFilter);
 

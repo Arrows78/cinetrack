@@ -15,6 +15,7 @@ export const preferencesSchema = z.object({
   reduceMotion: z.boolean().default(false),
   compactMode: z.boolean().default(false),
   sidebarCollapsed: z.boolean().default(false),
+  libraryViewMode: z.enum(["grid", "list"]).default("grid"),
   spoilerProtection: z.boolean().default(true),
   notificationsEnabled: z.boolean().default(false),
   notifyHoursBefore: z.number().int().min(0).max(168).default(24),

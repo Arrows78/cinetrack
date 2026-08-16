@@ -13,6 +13,7 @@ const defaultPreferences: UserPreferences = {
   reduceMotion: false,
   compactMode: false,
   sidebarCollapsed: false,
+  libraryViewMode: "grid",
   spoilerProtection: true,
   notificationsEnabled: false,
   notifyHoursBefore: 24,

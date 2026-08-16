@@ -184,6 +184,7 @@ export interface UserPreferences {
   reduceMotion: boolean;
   compactMode: boolean;
   sidebarCollapsed: boolean;
+  libraryViewMode: "grid" | "list";
   spoilerProtection: boolean;
   notificationsEnabled: boolean;
   notifyHoursBefore: number;
