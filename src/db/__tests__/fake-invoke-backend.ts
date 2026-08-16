@@ -195,7 +195,7 @@ function upsertLibraryItem(sqlite: DatabaseSync, media: MediaSummary, patch: Lib
     userRating: patch.userRating !== undefined ? patch.userRating : (current?.userRating ?? null),
     notes: patch.notes !== undefined ? patch.notes : (current?.notes ?? null),
     tags: patch.tags ?? current?.tags ?? [],
-    startedAt: current?.startedAt ?? (status === "watching" || status === "rewatching" ? now : null),
+    startedAt: current?.startedAt ?? (status === "watching" ? now : null),
     completedAt: status === "completed" ? (current?.completedAt ?? now) : null,
     rewatchCount: patch.rewatchCount ?? current?.rewatchCount ?? 0,
     createdAt: current?.createdAt ?? now,

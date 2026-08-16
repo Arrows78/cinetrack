@@ -94,14 +94,9 @@ describe("pickBestSeed", () => {
     });
   });
 
-  describe("tier 4 — watching or rewatching (last resort)", () => {
+  describe("tier 4 — watching (last resort)", () => {
     it("picks a title the user is currently watching when nothing stronger exists", () => {
       const item = libraryItem({ status: "watching", userRating: null });
-      expect(pickBestSeed([item])?.id).toBe(item.id);
-    });
-
-    it("picks a title the user is rewatching", () => {
-      const item = libraryItem({ status: "rewatching", userRating: null });
       expect(pickBestSeed([item])?.id).toBe(item.id);
     });
   });

@@ -444,8 +444,7 @@
       "watching": "Watching",
       "paused": "Paused",
       "completed": "Completed",
-      "dropped": "Dropped",
-      "rewatching": "Rewatching"
+      "dropped": "Dropped"
     },
     "myRating": "My rating / 10",
     "rewatches": "Rewatches",

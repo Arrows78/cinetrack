@@ -444,8 +444,7 @@
       "watching": "En cours",
       "paused": "En pause",
       "completed": "Terminé",
-      "dropped": "Abandonné",
-      "rewatching": "Revisionnage"
+      "dropped": "Abandonné"
     },
     "myRating": "Ma note / 10",
     "rewatches": "Revisionnages",

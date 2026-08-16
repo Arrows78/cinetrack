@@ -1,6 +1,6 @@
 export type MediaType = "movie" | "series";
 export type SearchScope = "all" | MediaType;
-export type LibraryStatus = "planned" | "watching" | "paused" | "completed" | "dropped" | "rewatching";
+export type LibraryStatus = "planned" | "watching" | "paused" | "completed" | "dropped";
 export type HistoryAction =
   | "movie:watched"
   | "movie:unwatched"

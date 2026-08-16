@@ -17,7 +17,6 @@ pub enum LibraryStatus {
     Paused,
     Completed,
     Dropped,
-    Rewatching,
 }
 
 impl LibraryStatus {
@@ -28,7 +27,6 @@ impl LibraryStatus {
             LibraryStatus::Paused => "paused",
             LibraryStatus::Completed => "completed",
             LibraryStatus::Dropped => "dropped",
-            LibraryStatus::Rewatching => "rewatching",
         }
     }
 
@@ -212,7 +210,7 @@ async fn upsert_impl(
     let now = now_iso(pool).await?;
     let status = patch.status.unwrap_or_else(|| current.as_ref().map_or(LibraryStatus::Planned, |c| c.status));
 
-    let is_currently_watching = matches!(status, LibraryStatus::Watching | LibraryStatus::Rewatching);
+    let is_currently_watching = status == LibraryStatus::Watching;
     let started_at = current
         .as_ref()
         .and_then(|c| c.started_at.clone())
@@ -332,13 +330,13 @@ async fn upsert_impl(
 /// Rank used only to decide whether an automatic status sync (see
 /// `auto_sync_status_impl`) is allowed to move a library item forward.
 /// Watching/paused/dropped all count as "started" — none of them should be
-/// clobbered by a stray episode toggle — while completed/rewatching both
-/// count as "finished".
+/// clobbered by a stray episode toggle — while completed counts as
+/// "finished".
 fn auto_sync_rank(status: LibraryStatus) -> u8 {
     match status {
         LibraryStatus::Planned => 0,
         LibraryStatus::Watching | LibraryStatus::Paused | LibraryStatus::Dropped => 1,
-        LibraryStatus::Completed | LibraryStatus::Rewatching => 2,
+        LibraryStatus::Completed => 2,
     }
 }
 
@@ -390,7 +388,7 @@ pub(crate) async fn auto_sync_status_impl(
     .map_err(ApiError::from)?;
 
     let Some(row) = current else {
-        let is_currently_watching = matches!(target, LibraryStatus::Watching | LibraryStatus::Rewatching);
+        let is_currently_watching = target == LibraryStatus::Watching;
         let started_at = is_currently_watching.then(|| now.to_string());
         let completed_at = (target == LibraryStatus::Completed).then(|| now.to_string());
         let uuid = new_uuid();

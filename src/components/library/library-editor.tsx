@@ -112,7 +112,6 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     { value: "paused", label: t("library.statuses.paused") },
     { value: "completed", label: t("library.statuses.completed") },
     { value: "dropped", label: t("library.statuses.dropped") },
-    { value: "rewatching", label: t("library.statuses.rewatching") },
   ];
 
   return (

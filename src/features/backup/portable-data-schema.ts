@@ -6,7 +6,14 @@ import { z } from "zod";
 // (e.g. a hand-edited or corrupted backup file) gets rejected.
 
 const mediaType = z.enum(["movie", "series"]);
-const libraryStatus = z.enum(["planned", "watching", "paused", "completed", "dropped", "rewatching"]);
+// A backup exported before the "rewatching" status was removed can still
+// contain it — remap it to "watching" on import (matching the migration
+// that already did the same for existing local rows) rather than reject
+// the whole item as malformed.
+const libraryStatus = z.preprocess(
+  (value) => (value === "rewatching" ? "watching" : value),
+  z.enum(["planned", "watching", "paused", "completed", "dropped"])
+);
 const historyAction = z.enum([
   "movie:watched",
   "movie:unwatched",

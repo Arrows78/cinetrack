@@ -41,7 +41,7 @@ export function pickBestSeed(library: LibraryItem[]): LibraryItem | null {
   }
 
   // 4. Actively engaged with right now.
-  const inProgress = library.filter((item) => item.status === "watching" || item.status === "rewatching");
+  const inProgress = library.filter((item) => item.status === "watching");
   if (inProgress.length > 0) return [...inProgress].sort(byMostRecent)[0]!;
 
   return null;

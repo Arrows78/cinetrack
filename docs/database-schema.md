@@ -44,7 +44,7 @@ The functional core of the app. Three ideas deliberately coexist: a current _sta
 
 ### `library_items`
 
-The full record of a movie or show in a profile's library: its **status** (`planned`, `watching`, `paused`, `completed`, `dropped`, `rewatching`), the personal rating, free-form notes, tags, start/end dates, and the rewatch count.
+The full record of a movie or show in a profile's library: its **status** (`planned`, `watching`, `paused`, `completed`, `dropped`), the personal rating, free-form notes, tags, start/end dates, and the rewatch count.
 
 | Column                                        | Type      | Notes                                                                   |
 | --------------------------------------------- | --------- | ----------------------------------------------------------------------- |

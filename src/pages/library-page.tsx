@@ -25,7 +25,7 @@ import type { LibraryStatus } from "@/types/media";
 
 type StatusFilter = LibraryStatus | "all";
 
-const statusOptions: StatusFilter[] = ["all", "planned", "watching", "paused", "completed", "dropped", "rewatching"];
+const statusOptions: StatusFilter[] = ["all", "planned", "watching", "paused", "completed", "dropped"];
 
 function ListItemRow({ listId }: { listId: string }) {
   const { t } = useTranslation();
