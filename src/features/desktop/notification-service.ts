@@ -55,7 +55,7 @@ export const notificationService = {
           ? i18n.t("notifications.episodeBody", {
               season: entry.seasonNumber,
               episode: entry.episodeNumber,
-              title: entry.episodeTitle ?? i18n.t("calendar.newEpisode"),
+              title: entry.episodeTitle ?? i18n.t("tracking.newEpisodeFallback"),
             })
           : i18n.t("notifications.theatricalReleaseBody");
       await this.send(entry.title, body);

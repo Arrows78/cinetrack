@@ -24,6 +24,7 @@ export function usePreferences() {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["remote"] }),
           queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(previousProfileId ?? "default") }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(previousProfileId ?? "default") }),
         ]);
       }
     },

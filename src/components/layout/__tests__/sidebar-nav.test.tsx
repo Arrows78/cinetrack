@@ -83,10 +83,9 @@ describe("SidebarNav", () => {
       "people",
       "watchTonight",
       "library",
-      "calendar",
+      "tracking",
       "stats",
       "history",
-      "alerts",
       "settings",
     ]) {
       expect(screen.getByRole("link", { name: i18n.t(`nav.${key}`) })).toBeInTheDocument();

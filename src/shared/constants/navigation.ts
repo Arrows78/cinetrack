@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  BellRing,
   CalendarDays,
   Dices,
   Film,
@@ -35,10 +34,9 @@ export const navigationConfig: NavigationItem[] = [
   { label: "People", to: "/people", icon: Users, category: "discover", translationKey: "people" },
   { label: "Tonight", to: "/watch-tonight", icon: Dices, category: "discover", translationKey: "watchTonight" },
   { label: "Library", to: "/library", icon: LibraryBig, category: "library", translationKey: "library" },
-  { label: "Calendar", to: "/calendar", icon: CalendarDays, category: "library", translationKey: "calendar" },
+  { label: "Tracking", to: "/tracking", icon: CalendarDays, category: "library", translationKey: "tracking" },
   { label: "Stats", to: "/stats", icon: BarChart3, category: "insights", translationKey: "stats" },
   { label: "Activity", to: "/history", icon: History, category: "insights", translationKey: "history" },
-  { label: "Alerts", to: "/alerts", icon: BellRing, category: "account", translationKey: "alerts" },
   { label: "Settings", to: "/settings", icon: Settings, category: "account", translationKey: "settings" },
 ];
 

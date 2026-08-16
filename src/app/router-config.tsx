@@ -4,7 +4,7 @@ import { NotFoundPage } from "@/pages/not-found-page";
 import { ErrorComponent, PendingComponent, RootLayout } from "./router-components";
 
 // Every other page is code-split via lazyRouteComponent: eagerly importing
-// all 16 pages here put every page's code (and its transitive imports) in
+// all 14 pages here put every page's code (and its transitive imports) in
 // the initial bundle regardless of which route the user opened first.
 // HomePage stays eager since it's needed immediately on a first launch
 // anyway; `defaultPreload: "intent"` below still prefetches lazy routes on
@@ -55,10 +55,10 @@ const historyRoute = createRoute({
   path: "/history",
   component: lazyRouteComponent(() => import("@/pages/history-page"), "HistoryPage"),
 });
-const calendarRoute = createRoute({
+const trackingRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/calendar",
-  component: lazyRouteComponent(() => import("@/pages/calendar-page"), "CalendarPage"),
+  path: "/tracking",
+  component: lazyRouteComponent(() => import("@/pages/tracking-page"), "TrackingPage"),
 });
 const peopleRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -85,11 +85,6 @@ const settingsRoute = createRoute({
   path: "/settings",
   component: lazyRouteComponent(() => import("@/pages/settings-page"), "SettingsPage"),
 });
-const alertsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/alerts",
-  component: lazyRouteComponent(() => import("@/pages/alerts-page"), "AlertsPage"),
-});
 // Dev-only token/component catalog — import.meta.env.DEV is statically
 // replaced at build time, so Rollup drops both this route and its dynamic
 // import (and everything it pulls in) from the production bundle entirely.
@@ -111,13 +106,12 @@ const routeTree = rootRoute.addChildren([
   searchRoute,
   libraryRoute,
   historyRoute,
-  calendarRoute,
+  trackingRoute,
   peopleRoute,
   personDetailRoute,
   watchTonightRoute,
   statsRoute,
   settingsRoute,
-  alertsRoute,
   ...(designSystemRoute ? [designSystemRoute] : []),
 ]);
 export const router = createRouter({

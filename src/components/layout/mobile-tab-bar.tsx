@@ -9,8 +9,8 @@ import { useUiStore } from "@/store/ui-store";
 
 // The app's daily loop — check the personalized feed, decide what to watch
 // tonight, search for something new, or check tracked progress. Everything
-// else (Series/Movies/People/Calendar/Stats/Activity/Alerts/Settings)
-// lives behind "More" instead, exactly like the sidebar already orders it.
+// else (Series/Movies/People/Tracking/Stats/Activity/Settings) lives behind
+// "More" instead, exactly like the sidebar already orders it.
 const PRIMARY_TAB_PATHS = ["/", "/search", "/watch-tonight", "/library"];
 
 function isItemActive(item: NavigationItem, pathname: string): boolean {

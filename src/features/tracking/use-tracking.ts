@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { calendarService } from "@/features/calendar/calendar-service";
+import { trackingService } from "@/features/tracking/tracking-service";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
-export function useCalendar() {
+
+export function useTracking() {
   const profileId = useActiveProfileId();
   return useQuery({
-    queryKey: queryKeys.local.calendar(profileId),
-    queryFn: () => calendarService.build(),
+    queryKey: queryKeys.local.tracking(profileId),
+    queryFn: () => trackingService.build(),
     staleTime: 1000 * 60 * 30,
   });
 }

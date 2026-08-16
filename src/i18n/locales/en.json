@@ -9,9 +9,8 @@
     "settings": "Settings",
     "people": "People",
     "watchTonight": "Watch Tonight",
-    "calendar": "Calendar",
-    "stats": "Stats",
-    "alerts": "Alerts"
+    "tracking": "Tracking",
+    "stats": "Stats"
   },
   "media": {
     "overview": "Overview",
@@ -295,23 +294,26 @@
     "createError": "Couldn't create the profile. Please try again.",
     "signOut": "Sign out"
   },
-  "alerts": {
-    "title": "Availability alerts",
-    "subtitle": "Everything you're watching for on a streaming service.",
+  "tracking": {
+    "title": "Tracking",
+    "description": "Release dates, upcoming episodes, and availability alerts for what you're following.",
+    "loading": "Loading tracking…",
+    "filterScope": "Scope",
+    "scopeMine": "My titles",
+    "filterType": "Type",
+    "typeRelease": "Releases",
+    "typeEpisode": "Episodes",
+    "typeAvailability": "Availability",
+    "discoveryBadge": "Discovery",
+    "newEpisodeFallback": "New episode",
+    "theatricalRelease": "Theatrical release",
+    "availableNow": "Available now",
+    "awaitingAvailability": "Waiting for availability",
     "region": "Region: {{region}}",
     "remove": "Remove the alert for {{title}}",
     "removeConfirmTitle": "Remove the alert for \"{{title}}\"?",
-    "emptyTitle": "No active alerts",
-    "emptyDesc": "Turn on an availability alert from a movie or series page to get notified when it shows up on a streaming service."
-  },
-  "calendar": {
-    "title": "Calendar",
-    "description": "Movie releases and upcoming episodes from followed series.",
-    "loading": "Loading calendar…",
-    "newEpisode": "New episode",
-    "theatricalRelease": "Theatrical release",
-    "noUpcomingTitle": "Nothing on the horizon",
-    "noUpcoming": "No releases detected in the next 60 days."
+    "noResultsTitle": "Nothing to show",
+    "noResults": "Nothing matches these filters yet — try widening them, or follow a title from its page."
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
@@ -454,10 +456,9 @@
       "search": "Search",
       "watchTonight": "What to watch tonight?",
       "library": "Library",
-      "calendar": "Calendar",
+      "tracking": "Tracking",
       "stats": "Stats",
       "history": "Activity",
-      "alerts": "Alerts",
       "people": "People",
       "settings": "Settings"
     }

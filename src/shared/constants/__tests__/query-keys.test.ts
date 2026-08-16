@@ -24,6 +24,7 @@ describe("queryKeys.local — profile isolation", () => {
     expect(queryKeys.local.customList(a, "list-1")).not.toEqual(queryKeys.local.customList(b, "list-1"));
     expect(queryKeys.local.calendar(a)).not.toEqual(queryKeys.local.calendar(b));
     expect(queryKeys.local.availabilityAlerts(a)).not.toEqual(queryKeys.local.availabilityAlerts(b));
+    expect(queryKeys.local.tracking(a)).not.toEqual(queryKeys.local.tracking(b));
     expect(queryKeys.local.watchTonight(a)).not.toEqual(queryKeys.local.watchTonight(b));
     expect(queryKeys.local.watchNextEpisode(a, 1)).not.toEqual(queryKeys.local.watchNextEpisode(b, 1));
   });

@@ -292,6 +292,37 @@ export interface AvailabilityAlert {
   createdAt: string;
 }
 
+// The Calendar and Alerts pages merged into one "Suivi"/"Tracking" feed
+// (see src/features/tracking/tracking-service.ts): a release date and a
+// provider-availability change are both just conditions on a title the user
+// is watching for. "scope" separates a title the user actually tracks
+// (library entry, tracked series, or an alert they created) from
+// "discovery" — a global upcoming-movie result the user never opted into
+// and that must never trigger a notification on its own.
+export type TrackingEntryType = "release" | "episode" | "availability";
+export type TrackingScope = "mine" | "discovery";
+
+export interface TrackingEntry {
+  id: string;
+  mediaId: number;
+  mediaType: MediaType;
+  title: string;
+  type: TrackingEntryType;
+  scope: TrackingScope;
+  posterPath?: string | null;
+  // ISO date for "release"/"episode" entries; null for "availability"
+  // entries, which fire on a state change rather than a fixed date.
+  date: string | null;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  episodeTitle?: string;
+  // "availability" entries only.
+  available?: boolean;
+  providerIds?: number[];
+  region?: string;
+  alertId?: string;
+}
+
 export interface LibraryStats {
   moviesWatched: number;
   episodesWatched: number;

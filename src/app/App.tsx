@@ -10,11 +10,11 @@ import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
 import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate";
 import { availabilityMonitor } from "@/features/availability/availability-monitor";
-import { calendarService } from "@/features/calendar/calendar-service";
 import { desktopService } from "@/features/desktop/desktop-service";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { logger } from "@/features/diagnostics/logger";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { trackingService } from "@/features/tracking/tracking-service";
 import { notificationService } from "@/features/desktop/notification-service";
 import { isTauriApp } from "@/shared/lib/platform";
 
@@ -50,7 +50,9 @@ export function App() {
       const preferences = await preferencesRepository.getPreferences();
       await availabilityMonitor.checkAll({ notificationsEnabled: preferences.notificationsEnabled });
       if (!preferences.notificationsEnabled) return;
-      const entries = await calendarService.build();
+      // Only entries the user actually tracks (library movies, tracked-series
+      // episodes) can reach a notification — see buildNotifiableCalendarEntries.
+      const entries = await trackingService.buildNotifiableCalendarEntries();
       await notificationService.notifyDue(entries, preferences);
     };
 

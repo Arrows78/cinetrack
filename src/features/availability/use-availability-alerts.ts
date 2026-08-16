@@ -13,7 +13,7 @@ export function useAvailabilityAlerts() {
   });
   const removeMutation = useInvalidatingMutation(
     (id: string) => availabilityRepository.remove(id),
-    [queryKeys.local.availabilityAlerts(profileId)]
+    [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
   );
   return { ...query, remove: removeMutation.mutateAsync };
 }
@@ -30,6 +30,7 @@ export function useAvailabilityAlert(media: MediaSummary, region: string, provid
     onSuccess: (data) => {
       client.setQueryData([...queryKeys.local.availabilityAlerts(profileId), media.mediaType, media.id], data);
       void client.invalidateQueries({ queryKey: queryKeys.local.availabilityAlerts(profileId) });
+      void client.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) });
     },
   });
   return { ...query, toggle: mutation.mutateAsync, isSaving: mutation.isPending };

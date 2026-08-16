@@ -9,9 +9,8 @@
     "settings": "Paramètres",
     "people": "Personnes",
     "watchTonight": "Ce soir",
-    "calendar": "Calendrier",
-    "stats": "Statistiques",
-    "alerts": "Alertes"
+    "tracking": "Suivi",
+    "stats": "Statistiques"
   },
   "media": {
     "overview": "Synopsis",
@@ -295,23 +294,26 @@
     "createError": "Impossible de créer le profil. Réessayez.",
     "signOut": "Se déconnecter"
   },
-  "alerts": {
-    "title": "Alertes de disponibilité",
-    "subtitle": "Tout ce que vous surveillez sur les plateformes de streaming.",
+  "tracking": {
+    "title": "Suivi",
+    "description": "Sorties, prochains épisodes et alertes de disponibilité pour ce que vous suivez.",
+    "loading": "Chargement du suivi…",
+    "filterScope": "Portée",
+    "scopeMine": "Mes titres",
+    "filterType": "Type",
+    "typeRelease": "Sorties",
+    "typeEpisode": "Épisodes",
+    "typeAvailability": "Disponibilité",
+    "discoveryBadge": "Découverte",
+    "newEpisodeFallback": "Nouvel épisode",
+    "theatricalRelease": "Sortie cinéma",
+    "availableNow": "Disponible maintenant",
+    "awaitingAvailability": "En attente de disponibilité",
     "region": "Région : {{region}}",
     "remove": "Supprimer l'alerte pour {{title}}",
     "removeConfirmTitle": "Supprimer l'alerte pour « {{title}} » ?",
-    "emptyTitle": "Aucune alerte active",
-    "emptyDesc": "Activez une alerte de disponibilité depuis la fiche d'un film ou d'une série pour être prévenu dès qu'il arrive sur une plateforme de streaming."
-  },
-  "calendar": {
-    "title": "Calendrier",
-    "description": "Sorties de films et prochains épisodes des séries suivies.",
-    "loading": "Chargement du calendrier…",
-    "newEpisode": "Nouvel épisode",
-    "theatricalRelease": "Sortie cinéma",
-    "noUpcomingTitle": "Rien à l'horizon",
-    "noUpcoming": "Aucune sortie détectée dans les 60 prochains jours."
+    "noResultsTitle": "Rien à afficher",
+    "noResults": "Rien ne correspond à ces filtres pour l'instant — élargissez-les, ou suivez un titre depuis sa fiche."
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
@@ -454,10 +456,9 @@
       "search": "Recherche",
       "watchTonight": "Que regarder ce soir ?",
       "library": "Bibliothèque",
-      "calendar": "Calendrier",
+      "tracking": "Suivi",
       "stats": "Statistiques",
       "history": "Activité",
-      "alerts": "Alertes",
       "people": "Personnes",
       "settings": "Paramètres"
     }

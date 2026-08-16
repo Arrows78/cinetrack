@@ -25,6 +25,9 @@ export function useLibraryItem(media: MediaSummary) {
         queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
+        // Adding a movie to the library can flip its calendar entry from
+        // "discovery" to "mine" on the tracking feed (see tracking-service.ts).
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
       ]);
     },
   });
@@ -36,6 +39,7 @@ export function useLibraryItem(media: MediaSummary) {
         queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
       ]);
     },
   });
@@ -60,6 +64,7 @@ export function useLibraryQuickToggle() {
     queryKeys.local.history(profileId),
     queryKeys.local.stats(profileId),
     queryKeys.local.watchTonight(profileId),
+    queryKeys.local.tracking(profileId),
   ];
 
   const addPlanned = useInvalidatingMutation(
