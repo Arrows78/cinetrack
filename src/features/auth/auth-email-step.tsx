@@ -1,9 +1,11 @@
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Check, LoaderCircle, Mail } from "lucide-react";
+import { Check, Mail } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
 import { authConfig } from "@/features/auth/auth-client";
+import { AuthBackLink } from "@/features/auth/auth-back-link";
+import { AuthSubmitButton } from "@/features/auth/auth-submit-button";
+import { AuthTextField } from "@/features/auth/auth-text-field";
 import { cn } from "@/shared/lib/cn";
 
 interface AuthEmailStepProps {
@@ -31,13 +33,7 @@ export function AuthEmailStep({
 
   return (
     <form onSubmit={onSubmit}>
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-7 inline-flex items-center gap-2 text-sm text-auth-foreground/60 hover:text-auth-foreground"
-      >
-        <ArrowLeft className="h-5 w-5" /> {t("auth.email.back")}
-      </button>
+      <AuthBackLink onClick={onBack}>{t("auth.email.back")}</AuthBackLink>
 
       <h1 className="text-3xl font-black">
         {mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}
@@ -46,20 +42,18 @@ export function AuthEmailStep({
         {t("auth.email.sendCodeDescription", { length: authConfig.otpLength })}
       </p>
 
-      <div className="mt-7 flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
-        <Mail className="h-6 w-6 text-auth-foreground/75" />
-        <Input
-          autoFocus
-          required
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(event) => onEmailChange(event.target.value)}
-          placeholder={t("auth.email.placeholder")}
-          aria-label={t("auth.email.emailLabel")}
-          className="w-auto flex-1 min-w-0 h-auto border-0 bg-transparent px-0 py-0 text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35 focus-visible:ring-0"
-        />
-      </div>
+      <AuthTextField
+        rowClassName="mt-7"
+        icon={Mail}
+        autoFocus
+        required
+        type="email"
+        autoComplete="email"
+        value={email}
+        onChange={(event) => onEmailChange(event.target.value)}
+        placeholder={t("auth.email.placeholder")}
+        aria-label={t("auth.email.emailLabel")}
+      />
 
       {mode === "signup" ? (
         <label className="mt-7 flex cursor-pointer items-start gap-3 text-sm text-auth-foreground/75">
@@ -79,13 +73,9 @@ export function AuthEmailStep({
         </label>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pendingAction !== null}
-        className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-black uppercase tracking-[0.08em] text-primary-foreground transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
-      >
-        {pendingAction === "email" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : t("auth.email.sendCode")}
-      </button>
+      <AuthSubmitButton className="mt-10" disabled={pendingAction !== null} loading={pendingAction === "email"}>
+        {t("auth.email.sendCode")}
+      </AuthSubmitButton>
     </form>
   );
 }

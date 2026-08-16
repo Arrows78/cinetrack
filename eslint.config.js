@@ -50,6 +50,7 @@ export default tseslint.config(
               "className",
               "listClassName",
               "itemClassName",
+              "rowClassName",
               "styleName",
               "style",
               "type",

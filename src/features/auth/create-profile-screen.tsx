@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { LoaderCircle, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 import { AuthBackdrop } from "@/features/auth/auth-backdrop";
 import { AuthBrandMark } from "@/features/auth/auth-brand-mark";
+import { AuthStepIcon } from "@/features/auth/auth-step-icon";
+import { AuthSubmitButton } from "@/features/auth/auth-submit-button";
+import { AuthTextField } from "@/features/auth/auth-text-field";
 import { useAuth } from "@/features/auth/auth-context";
 import { useCreateProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 
@@ -34,36 +37,27 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
           <AuthBrandMark />
         </div>
 
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <UserPlus className="h-6 w-6" />
-        </div>
+        <AuthStepIcon icon={UserPlus} />
         <h1 className="mt-5 text-2xl font-black">{t("profileGate.createTitle")}</h1>
         <p className="mt-3 text-sm leading-6 text-auth-foreground/55">
           {t("profileGate.createDescription", { email: user?.email ?? "" })}
         </p>
 
         <form className="mt-7" onSubmit={handleSubmit}>
-          <div className="flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary">
-            <UserPlus className="h-5 w-5 shrink-0 text-auth-foreground/75" aria-hidden="true" />
-            <input
-              autoFocus
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t("profileGate.namePlaceholder")}
-              aria-label={t("profileGate.nameLabel")}
-              maxLength={60}
-              className="h-auto w-full min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-xl text-auth-foreground outline-none placeholder:text-auth-foreground/35"
-            />
-          </div>
+          <AuthTextField
+            icon={UserPlus}
+            autoFocus
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t("profileGate.namePlaceholder")}
+            aria-label={t("profileGate.nameLabel")}
+            maxLength={60}
+          />
 
-          <button
-            type="submit"
-            disabled={!name.trim() || isSaving}
-            className="mt-7 flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-black uppercase tracking-[0.08em] text-primary-foreground transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
-          >
-            {isSaving ? <LoaderCircle className="h-6 w-6 animate-spin" /> : t("profileGate.createSubmit")}
-          </button>
+          <AuthSubmitButton className="mt-7" disabled={!name.trim() || isSaving} loading={isSaving}>
+            {t("profileGate.createSubmit")}
+          </AuthSubmitButton>
         </form>
 
         {error ? (
