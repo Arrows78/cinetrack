@@ -13,6 +13,17 @@ export interface WatchNextEntry {
   remaining: number;
 }
 
+// One per input series, always — unlike WatchNextEntry (only the resolved
+// ones), this is what lets a list render a row for every series it was
+// given instead of ones with a resolved episode silently vanishing.
+export interface NextEpisodeResult {
+  series: TrackedSeriesItem;
+  nextEpisode: Episode | null;
+  remaining: number;
+  isLoading: boolean;
+  isError: boolean;
+}
+
 /**
  * Resolves the next unwatched, already-aired episode of a series with at
  * most two season fetches: local progress tells us where the viewer
@@ -62,19 +73,19 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     })),
   });
 
-  const entries: WatchNextEntry[] = [];
-  seriesList.forEach((series, index) => {
-    const nextEpisode = queries[index]?.data;
-    if (nextEpisode) {
-      entries.push({
-        series,
-        nextEpisode,
-        remaining: Math.max(0, series.totalEpisodes - series.watchedEpisodes),
-      });
-    }
-  });
+  const results: NextEpisodeResult[] = seriesList.map((series, index) => ({
+    series,
+    nextEpisode: queries[index]?.data ?? null,
+    remaining: Math.max(0, series.totalEpisodes - series.watchedEpisodes),
+    isLoading: queries[index]?.isLoading ?? false,
+    isError: queries[index]?.isError ?? false,
+  }));
 
-  return { entries, isLoading: queries.some((query) => query.isLoading) };
+  const entries: WatchNextEntry[] = results
+    .filter((result) => result.nextEpisode !== null)
+    .map(({ series, nextEpisode, remaining }) => ({ series, nextEpisode: nextEpisode!, remaining }));
+
+  return { entries, results, isLoading: queries.some((query) => query.isLoading) };
 }
 
 export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {

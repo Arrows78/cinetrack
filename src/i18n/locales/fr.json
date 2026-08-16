@@ -486,7 +486,8 @@
       "watchNext": "À suivre",
       "watchNextDescSeries": "Reprenez là où vous vous êtes arrêtés",
       "haventStarted": "Pas commencé",
-      "haventStartedDesc": "Prêtes quand vous voulez"
+      "haventStartedDesc": "Prêtes quand vous voulez",
+      "episodeLoadError": "Impossible de charger les infos de l'épisode"
     }
   },
   "browserPreview": {

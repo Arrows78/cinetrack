@@ -486,7 +486,8 @@
       "watchNext": "Watch next",
       "watchNextDescSeries": "Continue watching where you left off",
       "haventStarted": "Haven't started",
-      "haventStartedDesc": "Ready whenever you are"
+      "haventStartedDesc": "Ready whenever you are",
+      "episodeLoadError": "Couldn't load episode info"
     }
   },
   "browserPreview": {
