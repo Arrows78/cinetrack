@@ -7,7 +7,13 @@
 // to the whole file since environment is a per-file pragma, but the first
 // describe block's plain data assertions don't depend on jsdom either way.
 import { describe, expect, it, vi } from "vitest";
-import { currentStreak, libraryExtras, monthOverMonthComparison } from "../stats-repository";
+import {
+  currentStreak,
+  libraryExtras,
+  longestStreak,
+  monthOverMonthComparison,
+  viewingHeatmap,
+} from "../stats-repository";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeMedia } from "@/shared/test-utils";
 import type { LibraryItem, ViewingEvent } from "@/types/media";
@@ -102,6 +108,74 @@ describe("currentStreak / libraryExtras", () => {
 
   it("ignores unwatched events in the streak", () => {
     expect(currentStreak([event({ eventType: "unwatched" })])).toBe(0);
+  });
+
+  it("picks the genre with the highest average rating, ignoring unrated items", () => {
+    const library = [
+      libraryItem({ mediaId: 1, genres: ["Drama"], userRating: 9 }),
+      libraryItem({ mediaId: 2, genres: ["Drama"], userRating: 7 }),
+      libraryItem({ mediaId: 3, genres: ["Comedy"], userRating: 8.5 }),
+      libraryItem({ mediaId: 4, genres: ["Horror"], userRating: null }),
+    ];
+
+    // Drama averages 8, Comedy averages 8.5 — Comedy should win despite
+    // Drama having more rated entries.
+    expect(libraryExtras(library).favouriteGenreByRating).toBe("Comedy");
+    expect(libraryExtras([]).favouriteGenreByRating).toBeNull();
+  });
+
+  it("finds the most rewatched library item", () => {
+    const library = [
+      libraryItem({ mediaId: 1, title: "Once", rewatchCount: 0 }),
+      libraryItem({ mediaId: 2, title: "Thrice", rewatchCount: 3 }),
+      libraryItem({ mediaId: 3, title: "Twice", rewatchCount: 2 }),
+    ];
+
+    expect(libraryExtras(library).mostRewatchedTitle).toEqual({ title: "Thrice", count: 3 });
+    expect(libraryExtras([libraryItem({ rewatchCount: 0 })]).mostRewatchedTitle).toBeNull();
+  });
+});
+
+describe("longestStreak", () => {
+  it("finds the longest run of consecutive days, not just the trailing one", () => {
+    const events = [
+      event({ watchedAt: isoDaysAgo(10) }),
+      event({ watchedAt: isoDaysAgo(9) }),
+      event({ watchedAt: isoDaysAgo(8) }),
+      event({ watchedAt: isoDaysAgo(7) }),
+      // Gap here — a shorter, more recent streak follows.
+      event({ watchedAt: isoDaysAgo(1) }),
+      event({ watchedAt: isoDaysAgo(0) }),
+    ];
+
+    expect(longestStreak(events)).toBe(4);
+    expect(longestStreak([])).toBe(0);
+  });
+
+  it("ignores unwatched events", () => {
+    expect(longestStreak([event({ eventType: "unwatched" })])).toBe(0);
+  });
+});
+
+describe("viewingHeatmap", () => {
+  it("buckets watches by day-of-week and hour, zero-filling the rest", () => {
+    const fixed = new Date("2026-06-15T20:30:00.000Z"); // a Monday, 20:00 UTC
+    const buckets = viewingHeatmap([
+      event({ watchedAt: fixed.toISOString() }),
+      event({ watchedAt: fixed.toISOString() }),
+    ]);
+
+    expect(buckets).toHaveLength(7 * 24);
+    const populated = buckets.filter((bucket) => bucket.count > 0);
+    expect(populated).toHaveLength(1);
+    expect(populated[0]!.count).toBe(2);
+    expect(populated[0]!.day).toBe(fixed.getDay());
+    expect(populated[0]!.hour).toBe(fixed.getHours());
+  });
+
+  it("ignores unwatched events", () => {
+    const buckets = viewingHeatmap([event({ eventType: "unwatched" })]);
+    expect(buckets.every((bucket) => bucket.count === 0)).toBe(true);
   });
 });
 

@@ -45,6 +45,8 @@ interface StatsOverviewDto {
     moviesWatched: number;
     episodesWatched: number;
     minutesWatched: number;
+    movieMinutesWatched: number;
+    episodeMinutesWatched: number;
     completedSeries: number;
     libraryCompletionPercent: number;
   };
@@ -69,6 +71,55 @@ export function currentStreak(events: ViewingEvent[]): number {
 }
 
 /**
+ * The longest run of consecutive watch-days within the same bounded window
+ * `events` was fetched over (see RECENT_EVENTS_WINDOW_DAYS) — a streak
+ * longer than that window can't be observed without an unbounded events
+ * fetch, which the "record" isn't worth the extra query for.
+ * Exported for tests only — not part of the statsRepository public surface.
+ */
+export function longestStreak(events: ViewingEvent[]): number {
+  const days = [
+    ...new Set(events.filter((event) => event.eventType !== "unwatched").map((event) => localDay(event.watchedAt))),
+  ].sort();
+  let longest = 0;
+  let current = 0;
+  let previous: Date | null = null;
+  for (const day of days) {
+    const date = parseISO(day);
+    current = previous && addDays(previous, 1).getTime() === date.getTime() ? current + 1 : 1;
+    longest = Math.max(longest, current);
+    previous = date;
+  }
+  return longest;
+}
+
+const HEATMAP_HOURS = 24;
+const HEATMAP_DAYS = 7;
+
+/**
+ * One bucket per (day-of-week, hour) pair with at least one watch, over the
+ * same bounded window as currentStreak/longestStreak. `day` is JS's
+ * Sunday-first 0-6. Exported for tests only — not part of the
+ * statsRepository public surface.
+ */
+export function viewingHeatmap(events: ViewingEvent[]): Array<{ day: number; hour: number; count: number }> {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    if (event.eventType === "unwatched") continue;
+    const date = parseISO(event.watchedAt);
+    const key = `${date.getDay()}-${date.getHours()}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const buckets: Array<{ day: number; hour: number; count: number }> = [];
+  for (let day = 0; day < HEATMAP_DAYS; day += 1) {
+    for (let hour = 0; hour < HEATMAP_HOURS; hour += 1) {
+      buckets.push({ day, hour, count: counts.get(`${day}-${hour}`) ?? 0 });
+    }
+  }
+  return buckets;
+}
+
+/**
  * The two figures only the (much smaller, slower-growing) library table can
  * answer. Exported for tests only — not part of the statsRepository public
  * surface.
@@ -76,18 +127,42 @@ export function currentStreak(events: ViewingEvent[]): number {
 export function libraryExtras(library: LibraryItem[]): {
   favouriteGenres: Array<{ name: string; count: number }>;
   averageUserRating: number | null;
+  favouriteGenreByRating: string | null;
+  mostRewatchedTitle: { title: string; count: number } | null;
 } {
   const genres = new Map<string, number>();
   for (const item of library) for (const genre of item.genres) genres.set(genre, (genres.get(genre) ?? 0) + 1);
   const ratings = library
     .map((item) => item.userRating)
     .filter((rating): rating is number => rating !== null && rating !== undefined);
+
+  // Sum + count per genre from rated items only, so an unrated item can't
+  // silently drag a genre's average down to a misleading number.
+  const genreRatingSums = new Map<string, { sum: number; count: number }>();
+  for (const item of library) {
+    if (item.userRating === null || item.userRating === undefined) continue;
+    for (const genre of item.genres) {
+      const entry = genreRatingSums.get(genre) ?? { sum: 0, count: 0 };
+      entry.sum += item.userRating;
+      entry.count += 1;
+      genreRatingSums.set(genre, entry);
+    }
+  }
+  const favouriteGenreByRating =
+    [...genreRatingSums.entries()].sort((a, b) => b[1].sum / b[1].count - a[1].sum / a[1].count)[0]?.[0] ?? null;
+
+  const mostRewatched = library
+    .filter((item) => item.rewatchCount > 0)
+    .sort((a, b) => b.rewatchCount - a.rewatchCount)[0];
+
   return {
     favouriteGenres: [...genres.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([name, count]) => ({ name, count })),
     averageUserRating: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
+    favouriteGenreByRating,
+    mostRewatchedTitle: mostRewatched ? { title: mostRewatched.title, count: mostRewatched.rewatchCount } : null,
   };
 }
 
@@ -187,12 +262,18 @@ export const statsRepository = {
       moviesWatched: overview.totals.moviesWatched,
       episodesWatched: overview.totals.episodesWatched,
       minutesWatched: overview.totals.minutesWatched,
+      movieMinutesWatched: overview.totals.movieMinutesWatched,
+      episodeMinutesWatched: overview.totals.episodeMinutesWatched,
       completedSeries: overview.totals.completedSeries,
       averageUserRating: extras.averageUserRating,
       favouriteGenres: extras.favouriteGenres,
+      favouriteGenreByRating: extras.favouriteGenreByRating,
+      mostRewatchedTitle: extras.mostRewatchedTitle,
       monthlyActivity: overview.monthlyActivity,
       currentStreakDays: currentStreak(recentEvents),
+      longestStreakDays: longestStreak(recentEvents),
       libraryCompletionPercent: overview.totals.libraryCompletionPercent,
+      heatmap: viewingHeatmap(recentEvents),
     };
   },
   async getYearSummary(year = new Date().getFullYear()): Promise<YearSummary> {

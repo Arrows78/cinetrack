@@ -148,6 +148,11 @@ pub struct StatsTotals {
     pub movies_watched: i64,
     pub episodes_watched: i64,
     pub minutes_watched: i64,
+    /// Minutes from movie-typed events only — the movies/series split card
+    /// on the Stats page reads this alongside `episode_minutes_watched`
+    /// instead of re-deriving it from a second, unbounded events fetch.
+    pub movie_minutes_watched: i64,
+    pub episode_minutes_watched: i64,
     pub completed_series: i64,
     pub library_completion_percent: i64,
 }
@@ -172,6 +177,8 @@ struct EventTotalsRow {
     movies_watched: i64,
     episodes_watched: i64,
     minutes_watched: Option<i64>,
+    movie_minutes_watched: Option<i64>,
+    episode_minutes_watched: Option<i64>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -202,7 +209,9 @@ async fn get_stats_overview_impl(
         "SELECT
            COUNT(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
            COUNT(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
-           SUM(CASE WHEN event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched
+           SUM(CASE WHEN event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched,
+           SUM(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN duration_minutes ELSE 0 END) AS movie_minutes_watched,
+           SUM(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN duration_minutes ELSE 0 END) AS episode_minutes_watched
          FROM viewing_events WHERE profile_id = $1",
     )
     .bind(profile_id)
@@ -256,6 +265,8 @@ async fn get_stats_overview_impl(
             movies_watched: event_totals.movies_watched,
             episodes_watched: event_totals.episodes_watched,
             minutes_watched: event_totals.minutes_watched.unwrap_or(0),
+            movie_minutes_watched: event_totals.movie_minutes_watched.unwrap_or(0),
+            episode_minutes_watched: event_totals.episode_minutes_watched.unwrap_or(0),
             completed_series: library_totals.completed_series,
             library_completion_percent,
         },
@@ -456,6 +467,8 @@ mod tests {
         assert_eq!(overview.totals.movies_watched, 1);
         assert_eq!(overview.totals.episodes_watched, 2);
         assert_eq!(overview.totals.minutes_watched, 180);
+        assert_eq!(overview.totals.movie_minutes_watched, 100);
+        assert_eq!(overview.totals.episode_minutes_watched, 80);
         assert_eq!(overview.totals.completed_series, 1);
         // 2 completed out of 4 library items.
         assert_eq!(overview.totals.library_completion_percent, 50);

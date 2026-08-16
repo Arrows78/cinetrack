@@ -290,7 +290,25 @@
     "activityByYear": "Activité par année",
     "year": "Année",
     "previousYear": "Année précédente",
-    "nextYear": "Année suivante"
+    "nextYear": "Année suivante",
+    "records": "Records",
+    "longestStreak": "Plus longue série",
+    "mostRewatched": "Le plus revu",
+    "rewatchCount_one": "Revu {{count}} fois",
+    "rewatchCount_other": "Revu {{count}} fois",
+    "favouriteGenreByRating": "Genre le mieux noté",
+    "moviesVsSeries": "Films vs séries",
+    "exportWrapped": "Exporter en image",
+    "exportSuccess": "Image Wrapped enregistrée",
+    "exportFailed": "Échec de l'export de l'image Wrapped",
+    "heatmap": {
+      "title": "Quand vous regardez",
+      "description": "Visionnages par jour de la semaine et par heure, sur environ la dernière année.",
+      "day": "Jour",
+      "hour": "Heure",
+      "cellTitle_one": "{{count}} visionnage",
+      "cellTitle_other": "{{count}} visionnages"
+    }
   },
   "bootRecovery": {
     "checking": "Vérification de vos données locales…",

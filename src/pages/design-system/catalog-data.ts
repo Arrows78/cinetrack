@@ -687,6 +687,14 @@ export const componentInventory = [
     "Displays compact media metadata or categorical labels."
   ),
   component(
+    "ActivityBarChart",
+    "components/media/activity-bar-chart.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Interactive bar chart with hover tooltips for the Stats page's monthly/yearly activity panels."
+  ),
+  component(
     "ProgressBar",
     "components/media/progress-bar.tsx",
     "Media",
@@ -757,6 +765,14 @@ export const componentInventory = [
     "feature",
     "reference",
     "Surfaces playable trailers and fallback messaging."
+  ),
+  component(
+    "ViewingHeatmap",
+    "components/media/viewing-heatmap.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Day-of-week × hour grid of watch activity, horizontally scrollable on narrow windows."
   ),
   component(
     "WatchNextSection",

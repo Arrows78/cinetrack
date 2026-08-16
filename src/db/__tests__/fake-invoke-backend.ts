@@ -585,6 +585,8 @@ function getStatsOverview(
     moviesWatched: number;
     episodesWatched: number;
     minutesWatched: number;
+    movieMinutesWatched: number;
+    episodeMinutesWatched: number;
     completedSeries: number;
     libraryCompletionPercent: number;
   };
@@ -610,6 +612,12 @@ function getStatsOverview(
       moviesWatched: watched.filter((event) => event.mediaType === "movie").length,
       episodesWatched: watched.filter((event) => event.episodeId !== null && event.episodeId !== undefined).length,
       minutesWatched: watched.reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
+      movieMinutesWatched: watched
+        .filter((event) => event.mediaType === "movie")
+        .reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
+      episodeMinutesWatched: watched
+        .filter((event) => event.episodeId !== null && event.episodeId !== undefined)
+        .reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
       completedSeries: library.filter((item) => item.mediaType === "series" && item.status === "completed").length,
       libraryCompletionPercent: library.length ? Math.round((completed.length / library.length) * 100) : 0,
     },

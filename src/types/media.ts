@@ -327,12 +327,18 @@ export interface LibraryStats {
   moviesWatched: number;
   episodesWatched: number;
   minutesWatched: number;
+  movieMinutesWatched: number;
+  episodeMinutesWatched: number;
   completedSeries: number;
   averageUserRating: number | null;
   favouriteGenres: Array<{ name: string; count: number }>;
+  favouriteGenreByRating: string | null;
+  mostRewatchedTitle: { title: string; count: number } | null;
   monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
   currentStreakDays: number;
+  longestStreakDays: number;
   libraryCompletionPercent: number;
+  heatmap: Array<{ day: number; hour: number; count: number }>;
 }
 
 export interface HomeFeed {

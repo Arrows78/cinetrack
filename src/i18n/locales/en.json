@@ -290,7 +290,25 @@
     "activityByYear": "Activity by year",
     "year": "Year",
     "previousYear": "Previous year",
-    "nextYear": "Next year"
+    "nextYear": "Next year",
+    "records": "Records",
+    "longestStreak": "Longest streak",
+    "mostRewatched": "Most rewatched",
+    "rewatchCount_one": "Watched again {{count}} time",
+    "rewatchCount_other": "Watched again {{count}} times",
+    "favouriteGenreByRating": "Highest-rated genre",
+    "moviesVsSeries": "Movies vs. series",
+    "exportWrapped": "Export as image",
+    "exportSuccess": "Wrapped image saved",
+    "exportFailed": "Couldn't export the Wrapped image",
+    "heatmap": {
+      "title": "When you watch",
+      "description": "Watches by day of week and hour, over roughly the last year.",
+      "day": "Day",
+      "hour": "Hour",
+      "cellTitle_one": "{{count}} watch",
+      "cellTitle_other": "{{count}} watches"
+    }
   },
   "bootRecovery": {
     "checking": "Checking your local data…",

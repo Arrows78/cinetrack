@@ -6,23 +6,34 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Download,
   Film,
   Flame,
   Gauge,
   Hourglass,
   Minus,
+  PieChart,
+  Repeat,
   Star,
+  ThumbsUp,
   TrendingDown,
   TrendingUp,
+  Trophy,
   Tv,
 } from "lucide-react";
 import { monthOverMonthComparison } from "@/features/stats/stats-repository";
 import { useStats, useWatchForecast, useWrapped, useYearlyActivity } from "@/features/stats/use-stats";
+import { downloadWrappedCard, renderWrappedCard } from "@/features/stats/wrapped-export";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { toast } from "@/components/ui/use-toast";
+import { ActivityBarChart } from "@/components/media/activity-bar-chart";
+import { ViewingHeatmap } from "@/components/media/viewing-heatmap";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { StatsSkeleton } from "@/components/states/loading-skeletons";
+import { logger } from "@/features/diagnostics/logger";
+import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
@@ -53,10 +64,41 @@ export function StatsPage() {
     t("stats.durationHoursMinutes", { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [isExportingWrapped, setIsExportingWrapped] = useState(false);
   const stats = useStats();
   const wrapped = useWrapped(selectedYear);
   const forecast = useWatchForecast();
   const yearlyActivity = useYearlyActivity();
+
+  const exportWrapped = async () => {
+    if (!wrapped.data) return;
+    setIsExportingWrapped(true);
+    try {
+      const blob = await renderWrappedCard(
+        {
+          year: wrapped.data.year,
+          hoursWatchedLabel: hours(wrapped.data.minutes),
+          moviesEpisodesLabel: `${wrapped.data.movies} ${t("stats.films")} · ${wrapped.data.episodes} ${t("stats.episodes")}`,
+          favouriteGenre: wrapped.data.favouriteGenre,
+          activeDaysLabel: t("stats.activeDays", { count: wrapped.data.activeDays }),
+          topTitles: wrapped.data.topTitles,
+        },
+        {
+          brand: t("sidebar.brand.name"),
+          tagline: t("sidebar.brand.tagline"),
+          wrappedTitle: t("stats.wrapped", { year: wrapped.data.year }),
+          favouriteGenreLabel: t("stats.favouriteGenre"),
+        }
+      );
+      downloadWrappedCard(blob, wrapped.data.year);
+      toast({ description: t("stats.exportSuccess"), variant: "success" });
+    } catch (error) {
+      logger.warn(`Wrapped export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast({ description: displayMessage(error, t("stats.exportFailed")), variant: "error" });
+    } finally {
+      setIsExportingWrapped(false);
+    }
+  };
 
   if (stats.isError || wrapped.isError) {
     return (
@@ -83,17 +125,16 @@ export function StatsPage() {
     { label: t("stats.averageRating"), value: stats.data.averageUserRating?.toFixed(1) ?? "—", icon: Star },
     { label: t("stats.libraryCompleted"), value: `${stats.data.libraryCompletionPercent}%`, icon: BarChart3 },
   ];
-  const maxMonth = Math.max(1, ...stats.data.monthlyActivity.map((month) => month.count));
   const comparison = monthOverMonthComparison(stats.data.monthlyActivity);
+  const watchedMinutesByType = stats.data.movieMinutesWatched + stats.data.episodeMinutesWatched;
+  const moviesPercent = watchedMinutesByType
+    ? Math.round((stats.data.movieMinutesWatched / watchedMinutesByType) * 100)
+    : 0;
 
   const availableYears = yearlyActivity.data?.map((bucket) => bucket.year) ?? [];
   const minYear = availableYears.length ? Math.min(...availableYears, currentYear) : currentYear;
   const canGoToPreviousYear = selectedYear > minYear;
   const canGoToNextYear = selectedYear < currentYear;
-  const maxYearTotal = Math.max(
-    1,
-    ...(yearlyActivity.data ?? []).map((bucket) => bucket.moviesWatched + bucket.episodesWatched)
-  );
 
   return (
     <div className="space-y-8">
@@ -116,8 +157,74 @@ export function StatsPage() {
         ))}
       </section>
 
+      <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
+        <h2 className="mb-3 font-semibold">{t("stats.records")}</h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Panel asChild>
+            <article>
+              <Trophy className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.longestStreak")}</p>
+              <p className="mt-1 font-display text-3xl font-bold">
+                {t("stats.streakDays", { count: stats.data.longestStreakDays })}
+              </p>
+            </article>
+          </Panel>
+          <Panel asChild>
+            <article>
+              <Repeat className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.mostRewatched")}</p>
+              {stats.data.mostRewatchedTitle ? (
+                <>
+                  <p
+                    className="mt-1 truncate font-display text-xl font-bold"
+                    title={stats.data.mostRewatchedTitle.title}
+                  >
+                    {stats.data.mostRewatchedTitle.title}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("stats.rewatchCount", { count: stats.data.mostRewatchedTitle.count })}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 font-display text-3xl font-bold">—</p>
+              )}
+            </article>
+          </Panel>
+          <Panel asChild>
+            <article>
+              <ThumbsUp className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.favouriteGenreByRating")}</p>
+              <p className="mt-1 truncate font-display text-2xl font-bold">
+                {stats.data.favouriteGenreByRating ?? "—"}
+              </p>
+            </article>
+          </Panel>
+          <Panel asChild>
+            <article>
+              <PieChart className="size-5 text-primary" />
+              <p className="mt-4 text-sm text-muted-foreground">{t("stats.moviesVsSeries")}</p>
+              <div
+                className="mt-4 flex h-2 w-full overflow-hidden rounded-full bg-foreground/[0.08]"
+                aria-hidden="true"
+              >
+                <div className="h-full bg-primary" style={{ width: `${moviesPercent}%` }} />
+                <div className="h-full bg-accent" style={{ width: `${100 - moviesPercent}%` }} />
+              </div>
+              <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                <span>
+                  {t("stats.films")} {moviesPercent}%
+                </span>
+                <span>
+                  {t("stats.episodes")} {100 - moviesPercent}%
+                </span>
+              </div>
+            </article>
+          </Panel>
+        </div>
+      </section>
+
       {comparison ? (
-        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
+        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
           <h2 className="mb-3 font-semibold">{t("stats.thisMonth")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Panel asChild>
@@ -139,7 +246,7 @@ export function StatsPage() {
       ) : null}
 
       {forecast.data && forecast.data.backlogEpisodes > 0 ? (
-        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
+        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
           <h2 className="mb-3 font-semibold">{t("stats.forecast")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <Panel asChild>
@@ -174,22 +281,12 @@ export function StatsPage() {
         </section>
       ) : null}
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(5)}ms` }}>
         <h2 className="font-semibold">{t("stats.activity12Months")}</h2>
-        {/* Decorative — the sr-only table below is the accessible equivalent,
-            so screen reader users get exact values instead of unlabeled bars. */}
-        <div className="mt-5 flex h-44 items-end gap-2" aria-hidden="true">
-          {stats.data.monthlyActivity.map((month) => (
-            <div key={month.month} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-              <div
-                className="w-full rounded-t-lg bg-primary/80"
-                style={{ height: `${Math.max(4, (month.count / maxMonth) * 140)}px` }}
-                title={`${month.count} ${t("stats.watches")}`}
-              />
-              <span className="text-caption text-muted-foreground">{month.month.slice(5)}</span>
-            </div>
-          ))}
-        </div>
+        <ActivityBarChart
+          data={stats.data.monthlyActivity.map((month) => ({ label: month.month.slice(5), value: month.count }))}
+          tooltipLabel={t("stats.watches")}
+        />
         <table className="sr-only">
           <caption>{t("stats.activity12Months")}</caption>
           <thead>
@@ -210,23 +307,15 @@ export function StatsPage() {
       </Panel>
 
       {yearlyActivity.data && yearlyActivity.data.length ? (
-        <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(5)}ms` }}>
+        <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(6)}ms` }}>
           <h2 className="font-semibold">{t("stats.activityByYear")}</h2>
-          <div className="mt-5 flex h-44 items-end gap-3" aria-hidden="true">
-            {yearlyActivity.data.map((bucket) => {
-              const total = bucket.moviesWatched + bucket.episodesWatched;
-              return (
-                <div key={bucket.year} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                  <div
-                    className="w-full rounded-t-lg bg-primary/80"
-                    style={{ height: `${Math.max(4, (total / maxYearTotal) * 140)}px` }}
-                    title={`${total} ${t("stats.watches")}`}
-                  />
-                  <span className="text-caption text-muted-foreground">{bucket.year}</span>
-                </div>
-              );
-            })}
-          </div>
+          <ActivityBarChart
+            data={yearlyActivity.data.map((bucket) => ({
+              label: String(bucket.year),
+              value: bucket.moviesWatched + bucket.episodesWatched,
+            }))}
+            tooltipLabel={t("stats.watches")}
+          />
           <table className="sr-only">
             <caption>{t("stats.activityByYear")}</caption>
             <thead>
@@ -247,7 +336,13 @@ export function StatsPage() {
         </Panel>
       ) : null}
 
-      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(6)}ms` }}>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(7)}ms` }}>
+        <h2 className="font-semibold">{t("stats.heatmap.title")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("stats.heatmap.description")}</p>
+        <ViewingHeatmap data={stats.data.heatmap} />
+      </Panel>
+
+      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
         <Panel asChild>
           <article>
             <h2 className="font-semibold">{t("stats.favouriteGenres")}</h2>
@@ -268,6 +363,16 @@ export function StatsPage() {
                 {t("stats.wrapped", { year: wrapped.data.year })}
               </p>
               <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("stats.exportWrapped")}
+                  disabled={isExportingWrapped}
+                  onClick={() => void exportWrapped()}
+                >
+                  <Download className="size-4" />
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
