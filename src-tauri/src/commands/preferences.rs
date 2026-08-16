@@ -43,6 +43,13 @@ pub enum SearchScope {
     Series,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum LibraryViewMode {
+    Grid,
+    List,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserProfile {
@@ -73,6 +80,7 @@ pub struct UserPreferences {
     pub reduce_motion: bool,
     pub compact_mode: bool,
     pub sidebar_collapsed: bool,
+    pub library_view_mode: LibraryViewMode,
     pub spoiler_protection: bool,
     pub notifications_enabled: bool,
     pub notify_hours_before: u32,
@@ -92,6 +100,7 @@ impl Default for UserPreferences {
             reduce_motion: false,
             compact_mode: false,
             sidebar_collapsed: false,
+            library_view_mode: LibraryViewMode::Grid,
             spoiler_protection: true,
             notifications_enabled: false,
             notify_hours_before: 24,
@@ -370,6 +379,26 @@ mod tests {
 
         let prefs = load_preferences(&pool).await.unwrap();
         assert!(matches!(prefs.theme, Theme::Dark));
+    }
+
+    #[tokio::test]
+    async fn write_preference_round_trips_library_view_mode() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        let updated = write_preference("libraryViewMode".to_string(), Value::String("list".to_string()), &pool, &cache)
+            .await
+            .unwrap();
+        assert!(matches!(updated.library_view_mode, LibraryViewMode::List));
+
+        // A fresh cache (simulating the next get_preferences call after a
+        // restart) must still see it — regression test for the bug where
+        // this field was only ever readable from the merge, never actually
+        // declared on UserPreferences, so it silently vanished on every
+        // read and update_preference("libraryViewMode", ...) errored with
+        // "Unknown preference key".
+        let reloaded = load_preferences(&pool).await.unwrap();
+        assert!(matches!(reloaded.library_view_mode, LibraryViewMode::List));
     }
 
     #[tokio::test]
