@@ -261,17 +261,18 @@ Concrete, non-social improvements identified from a screen-by-screen review of T
 - [ ] A "Sync with system" theme option alongside the existing manual light/dark switch.
 - [ ] A configurable lead time for release/episode notifications (on air / 1 hour before / the day before), instead of a single on/off toggle.
 - [ ] Show an episode's air date next to its watched date, to make tracking gaps visible.
-- [ ] A "biggest binge session" record on the Stats page (most episodes watched in a single day).
+- [x] A "biggest binge session" record on the Stats page (most episodes watched in a single day).
 - [ ] Show the app version/build number and a "clear image cache" action in Settings.
+- [x] Split /movies and /series into My list / Upcoming / Discover tabs, instead of a single "browse what's popular" grid indistinguishable from Search.
 
 ### Inspired by TV Time — visual/UX polish
 
 Layout and presentation changes only — no new data model, reusing what the app already tracks:
 
 - [ ] Group the library into labelled sections shown together (e.g. Watching / Up next / Haven't started) instead of one status filter at a time.
-- [ ] A grid/list density toggle on the library, for a compact row view alongside the poster grid.
+- [x] A grid/list density toggle on the library, for a compact row view alongside the poster grid.
 - [ ] "In N days" countdown chips on the calendar/upcoming view, alongside the release date.
-- [ ] A consistent "current period highlighted, history muted" convention across every Stats chart.
+- [x] A consistent "current period highlighted, history muted" convention across every Stats chart.
 - [ ] Removable active-filter chips above filtered lists (library, search), not just a dropdown.
 
 ### Inspired by TV Time — deferred
