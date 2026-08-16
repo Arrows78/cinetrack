@@ -40,10 +40,14 @@ describe("extractCsvEntries", () => {
     expect(entries.map((entry) => entry.name)).toEqual(["tracking-prod-records-v2.csv"]);
   });
 
+  // Compressing/decompressing a genuine 50MB+ payload (needed to exercise the
+  // real cap, not a stand-in smaller one) reliably takes longer than
+  // vitest's 5000ms default on a loaded CI runner — bumped, not slimmed,
+  // since a smaller payload wouldn't actually exercise MAX_TVTIME_ZIP_ENTRY_BYTES.
   it("rejects an entry whose decompressed size exceeds the cap", async () => {
     const huge = "x".repeat(MAX_TVTIME_ZIP_ENTRY_BYTES + 1);
     const file = zipFile({ "big.csv": huge });
 
     await expect(extractCsvEntries(file)).rejects.toBeInstanceOf(ZipTooLargeError);
-  });
+  }, 20000);
 });
