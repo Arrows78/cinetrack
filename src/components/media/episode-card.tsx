@@ -24,7 +24,7 @@ export function EpisodeCard({
     <div
       className={cn(
         "group flex items-center gap-3 rounded-2xl p-3 transition",
-        watched ? "bg-success/[0.06]" : "hover:bg-foreground/[0.04]"
+        watched ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.04]"
       )}
     >
       <div className="relative aspect-video h-[3.875rem] w-[6.875rem] shrink-0 overflow-hidden rounded-xl bg-muted">
@@ -40,7 +40,7 @@ export function EpisodeCard({
           />
         )}
         {watched ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-success/25">
+          <div className="absolute inset-0 flex items-center justify-center bg-primary/25">
             <Check className="size-4 text-white" />
           </div>
         ) : null}
@@ -50,7 +50,7 @@ export function EpisodeCard({
           <span className="text-overline font-bold uppercase text-muted-foreground">
             {formatEpisodeNumber(episode.episodeNumber, { padded: true })}
           </span>
-          {watched ? <span className="text-overline font-semibold text-success">{t("media.seen")}</span> : null}
+          {watched ? <span className="text-overline font-semibold text-primary">{t("media.seen")}</span> : null}
           {!watched && isLastUnwatched ? (
             <Badge variant="outline" className="text-overline text-accent">
               {t("media.lastUnwatchedEpisode")}
@@ -88,7 +88,7 @@ export function EpisodeCard({
         onClick={onToggleSeen}
         className={cn(
           "flex size-11 shrink-0 items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          watched ? "border-success bg-success text-success-foreground" : "border-border hover:border-success/50"
+          watched ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"
         )}
       >
         {watched ? <Check className="size-5" /> : null}

@@ -86,14 +86,6 @@ export const progressRepository = {
     return invokeCommand<TrackedSeriesItem[]>("list_tracked_series");
   },
 
-  // Silent backfill, not a user action — no history/cache invalidation.
-  // See sync_tracked_series_status_impl's doc comment for why this exists
-  // as its own narrow command instead of going through the full toggle
-  // upsert.
-  async syncTrackedSeriesStatus(seriesId: number, status: string | null | undefined): Promise<void> {
-    await invokeCommand<void>("sync_tracked_series_status", { seriesId, status: status ?? null });
-  },
-
   getNextEpisode(seasons: Season[], watched: EpisodeProgress[]): Episode | null {
     const watchedIds = new Set(watched.filter((item) => item.watched).map((item) => item.episodeId));
     return (

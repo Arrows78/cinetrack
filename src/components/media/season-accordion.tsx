@@ -12,11 +12,9 @@ import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
 import { progressRepository } from "@/features/progress/progress-repository";
 
 /* Episode filmstrip — each episode is a sprocket-hole perforation; watched
-   ones are "lit up" in success green (same "this is watched" color as
-   EpisodeCard's checkmark and the library's finished progress bars), like
-   exposed frames. Shows watch progress at a glance, the way a strip of
-   actual film would give. Exported for the design-system catalog's
-   Signature section. */
+   ones are "lit up" in the accent color, like exposed frames. Shows watch
+   progress at a glance, the way a strip of actual film would give. Exported
+   for the design-system catalog's Signature section. */
 export function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episodes"]; watchedSet: Set<number> }) {
   const max = 40;
   const shown = episodes.slice(0, max);
@@ -28,7 +26,7 @@ export function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episod
           layout
           className={cn(
             "h-2 w-1 rounded-[0.0625rem] transition-colors duration-base",
-            watchedSet.has(ep.id) ? "bg-success" : "bg-foreground/20"
+            watchedSet.has(ep.id) ? "bg-primary" : "bg-foreground/20"
           )}
         />
       ))}
@@ -88,12 +86,12 @@ export function SeasonAccordion({
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="flex h-5 w-5 items-center justify-center rounded-full bg-success"
+                          className="flex h-5 w-5 items-center justify-center rounded-full bg-primary"
                         >
-                          <CheckCheck className="h-3 w-3 text-success-foreground" />
+                          <CheckCheck className="h-3 w-3 text-primary-foreground" />
                         </motion.div>
                       )}
-                      <p className={cn("font-semibold", isComplete && "text-success")}>
+                      <p className={cn("font-semibold", isComplete && "text-primary")}>
                         {season.name || `${t("media.season")} ${season.seasonNumber}`}
                       </p>
                     </div>
@@ -105,10 +103,8 @@ export function SeasonAccordion({
                   {/* Dots strip */}
                   <EpisodeDots episodes={season.episodes} watchedSet={watchedSet} />
 
-                  {/* Progress bar — a season is simply done or not (no
-                      "caught up but could return" nuance the way a whole
-                      series has), so finished/inProgress directly. */}
-                  <ProgressBar value={pct} size="sm" tone={isComplete ? "finished" : "inProgress"} />
+                  {/* Progress bar */}
+                  <ProgressBar value={pct} size="sm" />
                 </div>
               </AccordionTrigger>
 

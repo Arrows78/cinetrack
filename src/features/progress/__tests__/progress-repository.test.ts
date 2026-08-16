@@ -75,25 +75,6 @@ describe("progressRepository", () => {
     expect(tracked.find((item) => item.seriesId === 9)?.watchedEpisodes).toBe(1);
   });
 
-  it("syncTrackedSeriesStatus backfills status on an already-tracked series", async () => {
-    const { progressRepository } = await import("../progress-repository");
-    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" });
-    await progressRepository.toggleEpisodeSeen(series, episode(), true);
-
-    await progressRepository.syncTrackedSeriesStatus(9, "Ended");
-
-    const tracked = await progressRepository.listTrackedSeries();
-    expect(tracked.find((item) => item.seriesId === 9)?.status).toBe("Ended");
-  });
-
-  it("syncTrackedSeriesStatus is a no-op for a series that isn't tracked, and accepts a missing status", async () => {
-    const { progressRepository } = await import("../progress-repository");
-    await progressRepository.syncTrackedSeriesStatus(404, undefined);
-
-    const tracked = await progressRepository.listTrackedSeries();
-    expect(tracked.find((item) => item.seriesId === 404)).toBeUndefined();
-  });
-
   it("does not re-apply an already-applied episode (toggleEpisodesWatched returns 0 changes)", async () => {
     const { progressRepository } = await import("../progress-repository");
     const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" });

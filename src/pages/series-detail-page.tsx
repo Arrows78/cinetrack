@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import type { Season } from "@/types/media";
@@ -23,7 +23,6 @@ import { useImageCache } from "@/features/media/use-image-cache";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
 import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
 import { progressRepository } from "@/features/progress/progress-repository";
-import { progressBarTone } from "@/shared/utils/series-status";
 
 export function SeriesDetailPage() {
   const { t } = useTranslation();
@@ -37,16 +36,6 @@ export function SeriesDetailPage() {
     [seriesQuery.data?.seasons]
   );
   const seasonQueries = useSeriesSeasons(id, seasonNumbers);
-  // Silent backfill: a no-op if this series isn't tracked yet, and cheap
-  // either way (a single UPDATE matching zero rows) — see
-  // sync_tracked_series_status_impl's doc comment. This page always has
-  // the freshest TMDB status, so visiting it is what keeps an
-  // already-tracked show's progress-bar color correct even if nobody
-  // toggles an episode again after it airs its last one.
-  useEffect(() => {
-    if (!seriesQuery.data) return;
-    void progressRepository.syncTrackedSeriesStatus(seriesQuery.data.id, seriesQuery.data.status);
-  }, [seriesQuery.data]);
   if (seriesQuery.isLoading) return <HeroSkeleton />;
   if (seriesQuery.isError) {
     return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
@@ -110,10 +99,7 @@ export function SeriesDetailPage() {
               </p>
             </div>
             <div className="mt-4">
-              <ProgressBar
-                value={progress.progressPercent}
-                tone={progressBarTone(progress.watchedEpisodes, progress.totalEpisodes, series.status)}
-              />
+              <ProgressBar value={progress.progressPercent} />
             </div>
           </Panel>
           <Panel tone="subtle">

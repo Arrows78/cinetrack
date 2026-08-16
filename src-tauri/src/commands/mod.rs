@@ -33,10 +33,7 @@ pub use profiles::{
     create_profile, find_profile_by_supabase_user_id, link_profile_to_supabase_user, list_profiles, remove_profile,
     resolve_profile_for_supabase_user,
 };
-pub use progress::{
-    get_episode_progress, is_movie_seen, list_tracked_series, sync_tracked_series_status, toggle_episodes_watched,
-    toggle_movie_seen,
-};
+pub use progress::{get_episode_progress, is_movie_seen, list_tracked_series, toggle_episodes_watched, toggle_movie_seen};
 pub use stats::{get_stats_overview, list_recent_viewing_events, list_viewing_events_for_year, list_yearly_activity};
 pub use tmdb::tmdb_request;
 pub use tvtime::{import_movie_seen, import_series_progress};

@@ -542,34 +542,6 @@ profile_scoped_command! {
     pub async fn list_tracked_series() -> Vec<TrackedSeriesItem> => list_tracked_series_impl
 }
 
-/// Narrow status-only backfill for a series already in tracked_series — a
-/// no-op if it isn't tracked (WHERE clause matches zero rows). Doesn't
-/// touch total_episodes/updated_at like the full apply_episodes_and_log_impl
-/// upsert does: this exists specifically so a series-detail-page visit
-/// (which always has the freshest TMDB status, no extra fetch needed) can
-/// silently refresh a row that predates this column, or one nobody has
-/// toggled progress on since it aired its last episode — without those
-/// unrelated side effects.
-async fn sync_tracked_series_status_impl(
-    pool: &SqlitePool,
-    profile_id: &str,
-    series_id: i64,
-    status: Option<String>,
-) -> Result<(), ApiError> {
-    sqlx::query("UPDATE tracked_series SET status = $1 WHERE profile_id = $2 AND series_id = $3")
-        .bind(status)
-        .bind(profile_id)
-        .bind(series_id)
-        .execute(pool)
-        .await
-        .map_err(ApiError::from)?;
-    Ok(())
-}
-
-profile_scoped_command! {
-    pub async fn sync_tracked_series_status(series_id: i64, status: Option<String>) -> () => sync_tracked_series_status_impl
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -853,29 +825,6 @@ mod tests {
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
         assert_eq!(entry.watched_episodes, 1);
-    }
-
-    #[tokio::test]
-    async fn sync_tracked_series_status_backfills_status_on_an_already_tracked_series() {
-        let pool = migrated_pool().await;
-        let s = series(9, None);
-        apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
-
-        sync_tracked_series_status_impl(&pool, "default", 9, Some("Ended".to_string())).await.unwrap();
-
-        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
-        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
-        assert_eq!(entry.status.as_deref(), Some("Ended"));
-    }
-
-    #[tokio::test]
-    async fn sync_tracked_series_status_is_a_no_op_for_a_series_that_is_not_tracked() {
-        let pool = migrated_pool().await;
-
-        sync_tracked_series_status_impl(&pool, "default", 404, Some("Ended".to_string())).await.unwrap();
-
-        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
-        assert!(tracked.iter().all(|item| item.series_id != 404));
     }
 
     #[tokio::test]
