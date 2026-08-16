@@ -58,6 +58,13 @@ pub struct SeriesInput {
     pub rating: Option<f64>,
     #[serde(default)]
     pub genres: Vec<String>,
+    /// TMDB's own production status ("Returning Series", "Ended",
+    /// "Canceled", ...) — denormalized onto tracked_series so the library
+    /// grid can tell "caught up, more coming" from "actually finished"
+    /// without a per-card TMDB fetch. Absent for callers that don't have it
+    /// (the TV Time importer), which is fine — see the migration 11 comment.
+    #[serde(default)]
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,6 +106,7 @@ pub struct TrackedSeriesItem {
     pub backdrop_path: Option<String>,
     pub total_episodes: i64,
     pub watched_episodes: i64,
+    pub status: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -111,6 +119,7 @@ struct TrackedSeriesRow {
     poster_path: Option<String>,
     backdrop_path: Option<String>,
     total_episodes: i64,
+    status: Option<String>,
     created_at: String,
     updated_at: String,
     watched_episodes: i64,
@@ -375,13 +384,14 @@ pub(crate) async fn apply_episodes_and_log_impl(
     let total_episodes = series.number_of_episodes.unwrap_or(watched_episodes);
 
     sqlx::query(
-        "INSERT INTO tracked_series (uuid, profile_id, series_id, title, poster_path, backdrop_path, total_episodes, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8)
+        "INSERT INTO tracked_series (uuid, profile_id, series_id, title, poster_path, backdrop_path, total_episodes, status, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)
          ON CONFLICT (profile_id, series_id) DO UPDATE SET
            title = excluded.title,
            poster_path = excluded.poster_path,
            backdrop_path = excluded.backdrop_path,
            total_episodes = excluded.total_episodes,
+           status = COALESCE(excluded.status, tracked_series.status),
            updated_at = excluded.updated_at",
     )
     .bind(new_uuid())
@@ -391,6 +401,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
     .bind(&series.poster_path)
     .bind(&series.backdrop_path)
     .bind(total_episodes)
+    .bind(&series.status)
     .bind(watched_at)
     .execute(&mut *tx)
     .await
@@ -464,12 +475,12 @@ pub(crate) async fn apply_episodes_impl(
 
 async fn list_tracked_series_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<TrackedSeriesItem>, ApiError> {
     let rows: Vec<TrackedSeriesRow> = sqlx::query_as(
-        "SELECT ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.created_at, ts.updated_at,
+        "SELECT ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at,
                 COUNT(ep.episode_id) as watched_episodes
          FROM tracked_series ts
          LEFT JOIN episode_progress ep ON ep.profile_id = ts.profile_id AND ep.series_id = ts.series_id AND ep.watched = 1
          WHERE ts.profile_id = $1
-         GROUP BY ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.created_at, ts.updated_at
+         GROUP BY ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at
          ORDER BY ts.updated_at DESC",
     )
     .bind(profile_id)
@@ -488,6 +499,7 @@ async fn list_tracked_series_impl(pool: &SqlitePool, profile_id: &str) -> Result
             backdrop_path: row.backdrop_path,
             total_episodes: row.total_episodes,
             watched_episodes: row.watched_episodes,
+            status: row.status,
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
@@ -565,6 +577,7 @@ mod tests {
             year: Some(2019),
             rating: Some(8.0),
             genres: vec!["Drama".to_string()],
+            status: None,
         }
     }
 

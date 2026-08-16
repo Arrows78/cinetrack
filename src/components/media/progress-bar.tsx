@@ -1,5 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/cn";
+import type { ProgressBarTone } from "@/shared/utils/series-status";
+
+const TONE_FILL: Record<ProgressBarTone, string> = {
+  inProgress: "hsl(var(--primary))",
+  caughtUp: "hsl(var(--warning))",
+  finished: "hsl(var(--success))",
+};
 
 export function ProgressBar({
   value,
@@ -8,6 +15,7 @@ export function ProgressBar({
   showPercent = false,
   size = "default",
   className,
+  tone,
 }: {
   value: number;
   label?: string;
@@ -16,6 +24,8 @@ export function ProgressBar({
   showPercent?: boolean;
   size?: "sm" | "default";
   className?: string;
+  /** Solid semantic color instead of the default primary→accent-on-complete gradient — see progressBarTone(). Omit to keep the default look. */
+  tone?: ProgressBarTone;
 }) {
   const { t } = useTranslation();
   const clampedValue = Math.min(100, Math.max(0, value));
@@ -48,9 +58,11 @@ export function ProgressBar({
           className="h-full rounded-full transition-all duration-slower ease-out"
           style={{
             width: `${clampedValue}%`,
-            background: isComplete
-              ? "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))"
-              : "linear-gradient(90deg, hsl(var(--primary)/0.9), hsl(var(--primary)))",
+            background: tone
+              ? TONE_FILL[tone]
+              : isComplete
+                ? "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)))"
+                : "linear-gradient(90deg, hsl(var(--primary)/0.9), hsl(var(--primary)))",
           }}
         />
       </div>

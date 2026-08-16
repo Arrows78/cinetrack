@@ -274,6 +274,17 @@ pub const MIGRATIONS: &[Migration] = &[Migration {
         )"#,
         "DROP TABLE watchlist_items",
     ],
+}, Migration {
+    // Denormalizes the show's own TMDB production status (e.g. "Returning
+    // Series", "Ended", "Canceled") alongside total_episodes, the same way
+    // title/poster_path already are — lets the library grid tell "caught up,
+    // more episodes coming" apart from "the show itself is actually over"
+    // without an extra TMDB fetch per card. Null for rows written before
+    // this column existed, and for TV Time imports (no TMDB status in a
+    // GDPR export) — both read as "unknown", never as "ended".
+    version: 11,
+    name: "add status to tracked_series",
+    statements: &["ALTER TABLE tracked_series ADD COLUMN status TEXT"],
 }];
 
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
@@ -397,7 +408,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 10);
+        assert_eq!(version.0, 11);
 
         let mut tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -439,7 +450,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 10);
+        assert_eq!(version.0, 11);
     }
 
     #[tokio::test]
@@ -458,7 +469,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let version: (i64,) = sqlx::query_as("PRAGMA user_version").fetch_one(&pool).await.unwrap();
-        assert_eq!(version.0, 10);
+        assert_eq!(version.0, 11);
     }
 
     #[tokio::test]

@@ -158,6 +158,7 @@ mod tests {
             year: Some(2019),
             rating: Some(8.0),
             genres: vec!["Drama".to_string()],
+            status: None,
         }
     }
 

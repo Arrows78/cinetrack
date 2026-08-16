@@ -4,9 +4,9 @@ The database is local SQLite, embedded in the app via Tauri — no server, every
 
 Every table's primary key is a `uuid TEXT PRIMARY KEY`, generated app-side with `crypto.randomUUID()` (see [`src/shared/lib/id.ts`](../src/shared/lib/id.ts)) — there is no separate internal integer id. Two tables deliberately don't follow this: `preferences` (`key` is already a stable natural primary key) and `availability_snapshots` (a pure cache keyed by `(media_id, media_type, region)`, with no row ever referenced individually).
 
-**13 active tables · 2 migrations · 1 database file per machine.**
+**13 active tables · 4 migrations · 1 database file per machine.**
 
-The full DDL lives in [`src/db/migrations/001-initial-schema.ts`](../src/db/migrations/001-initial-schema.ts) plus a follow-up [`002-availability-alerts-unique.ts`](../src/db/migrations/002-availability-alerts-unique.ts) (ported verbatim to Rust in [`src-tauri/src/database/migrations.rs`](../src-tauri/src/database/migrations.rs), which is what the desktop app actually runs against — the TypeScript copies back the test harness). This document is a readable companion to that file, not a replacement for it.
+The full DDL lives in [`src/db/migrations/001-initial-schema.ts`](../src/db/migrations/001-initial-schema.ts) plus three follow-ups — [`002-availability-alerts-unique.ts`](../src/db/migrations/002-availability-alerts-unique.ts), [`003-merge-watchlist-into-library.ts`](../src/db/migrations/003-merge-watchlist-into-library.ts), [`004-add-status-to-tracked-series.ts`](../src/db/migrations/004-add-status-to-tracked-series.ts) — (ported verbatim to Rust in [`src-tauri/src/database/migrations.rs`](../src-tauri/src/database/migrations.rs), which is what the desktop app actually runs against — the TypeScript copies back the test harness). This document is a readable companion to that file, not a replacement for it.
 
 ## Profiles & preferences
 
@@ -119,13 +119,14 @@ Relations: a profile has `0..n` episodes marked as watched.
 
 One row per show a profile actively tracks. The number of watched episodes is **not** stored here: it's computed via a join with `episode_progress` on every read, so a counter can never drift out of sync. Used to be called `profile_tracked_series` before the single schema.
 
-| Column                                  | Type | Notes                                     |
-| --------------------------------------- | ---- | ----------------------------------------- |
-| `uuid` **PK**                           | TEXT | public identifier of the row              |
-| `profile_id`, `series_id` `FK` **UK**   | …    | → `profiles.uuid` ; natural composite key |
-| `title`, `poster_path`, `backdrop_path` | TEXT | TMDB copy taken when added                |
-| `total_episodes`                        | INT  | total known from TMDB, defaults to 0      |
-| `created_at`, `updated_at`              | TEXT | ISO dates                                 |
+| Column                                  | Type | Notes                                                                                                                                            |
+| --------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `uuid` **PK**                           | TEXT | public identifier of the row                                                                                                                     |
+| `profile_id`, `series_id` `FK` **UK**   | …    | → `profiles.uuid` ; natural composite key                                                                                                        |
+| `title`, `poster_path`, `backdrop_path` | TEXT | TMDB copy taken when added                                                                                                                       |
+| `total_episodes`                        | INT  | total known from TMDB, defaults to 0                                                                                                             |
+| `status`                                | TEXT | TMDB production status ("Returning Series", "Ended", …), nullable — unknown for rows written before this column existed or imported from TV Time |
+| `created_at`, `updated_at`              | TEXT | ISO dates                                                                                                                                        |
 
 Indexes: `(profile_id, updated_at DESC)`, `(series_id)`.
 

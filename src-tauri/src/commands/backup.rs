@@ -99,6 +99,7 @@ struct TrackedSeriesRow {
     poster_path: Option<String>,
     backdrop_path: Option<String>,
     total_episodes: i64,
+    status: Option<String>,
     created_at: String,
     updated_at: String,
 }
@@ -254,6 +255,7 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
                 // placeholder back, and normal reads (list_tracked_series)
                 // always recompute it live from a real JOIN anyway.
                 watched_episodes: 0,
+                status: row.status,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
             })
@@ -490,7 +492,7 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
         tx,
         data.tracked_series,
         "INSERT INTO tracked_series
-              (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at) ",
+              (uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,status,created_at,updated_at) ",
         |b, item| {
             b.push_bind(new_uuid())
                 .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
@@ -499,6 +501,7 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(&item.poster_path)
                 .push_bind(&item.backdrop_path)
                 .push_bind(item.total_episodes)
+                .push_bind(&item.status)
                 .push_bind(&item.updated_at)
                 .push_bind(&item.updated_at);
         }
@@ -776,6 +779,7 @@ mod tests {
                     "poster_path",
                     "backdrop_path",
                     "total_episodes",
+                    "status",
                     "created_at",
                     "updated_at",
                 ]),

@@ -7,6 +7,7 @@ import { Tile } from "@/components/ui/tile";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
+import { progressBarTone } from "@/shared/utils/series-status";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 import type { MediaCardProgress } from "./media-card";
@@ -54,6 +55,8 @@ export function MediaListRow({
   const image = buildTmdbImageUrl(media.posterPath, "w92") ?? fallbackPoster;
   const showProgress = progress !== undefined && progress.total > 0;
   const percent = showProgress ? Math.min(100, Math.round((progress.watched / progress.total) * 100)) : 0;
+  const tone = showProgress ? progressBarTone(progress.watched, progress.total, progress.seriesStatus) : null;
+  const showFinishedBar = !showProgress && alreadySeen;
 
   return (
     <Tile asChild className="mb-2 flex items-center gap-3 p-2.5 transition-colors hover:bg-foreground/[0.03] sm:p-3">
@@ -85,10 +88,20 @@ export function MediaListRow({
           </div>
           {showProgress ? (
             <div className="mt-2 flex items-center gap-2">
-              <ProgressBar value={percent} size="sm" className="flex-1" ariaLabel={t("media.episodes")} />
+              <ProgressBar
+                value={percent}
+                size="sm"
+                className="flex-1"
+                ariaLabel={t("media.episodes")}
+                tone={tone ?? undefined}
+              />
               <span className="shrink-0 text-caption tabular-nums text-muted-foreground">
                 {progress.watched}/{progress.total}
               </span>
+            </div>
+          ) : showFinishedBar ? (
+            <div className="mt-2">
+              <ProgressBar value={100} size="sm" ariaLabel={t("media.alreadySeen")} tone="finished" />
             </div>
           ) : null}
         </div>

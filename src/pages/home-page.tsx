@@ -76,7 +76,7 @@ export function HomePage() {
       rating: null,
       genres: [],
       cast: [],
-      progress: { watched: item.watchedEpisodes, total: item.totalEpisodes },
+      progress: { watched: item.watchedEpisodes, total: item.totalEpisodes, seriesStatus: item.status },
     }));
 
   const hasForYouContent =

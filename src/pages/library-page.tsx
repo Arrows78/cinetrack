@@ -219,7 +219,7 @@ export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie"
     const progressBySeries = new Map(
       (trackedSeries ?? []).map((series) => [
         series.seriesId,
-        { watched: series.watchedEpisodes, total: series.totalEpisodes },
+        { watched: series.watchedEpisodes, total: series.totalEpisodes, seriesStatus: series.status },
       ])
     );
     const libraryByKey = new Map((items ?? []).map((item) => [`${item.mediaType}-${item.mediaId}`, item]));
@@ -245,6 +245,7 @@ export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie"
           genres: item.genres,
           cast: [],
           progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
+          alreadySeen: item.mediaType === "movie" && item.status === "completed",
         } as MediaGridItem,
       }));
 

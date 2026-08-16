@@ -201,6 +201,8 @@ export interface TrackedSeriesItem {
   backdropPath?: string | null;
   totalEpisodes: number;
   watchedEpisodes: number;
+  /** TMDB's own production status ("Returning Series", "Ended", …) — null/undefined means unknown (rows from before this existed, or a TV Time import), never treated as "ended". */
+  status?: string | null;
   createdAt: string;
   updatedAt: string;
 }

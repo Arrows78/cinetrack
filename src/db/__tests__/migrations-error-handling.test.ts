@@ -14,8 +14,9 @@ let fakeMigration: Migration;
 // All real migration modules are replaced by the same controllable fake —
 // runMigrations' version gate then skips (or runs) every entry exactly like
 // the first, since they share a version, so adding a real migration in
-// 002-availability-alerts-unique.ts / 003-merge-watchlist-into-library.ts
-// doesn't leak its own SQL into these error-recovery assertions.
+// 002-availability-alerts-unique.ts / 003-merge-watchlist-into-library.ts /
+// 004-add-status-to-tracked-series.ts doesn't leak its own SQL into these
+// error-recovery assertions.
 vi.mock("../migrations/001-initial-schema", () => ({
   get migration() {
     return fakeMigration;
@@ -27,6 +28,11 @@ vi.mock("../migrations/002-availability-alerts-unique", () => ({
   },
 }));
 vi.mock("../migrations/003-merge-watchlist-into-library", () => ({
+  get migration() {
+    return fakeMigration;
+  },
+}));
+vi.mock("../migrations/004-add-status-to-tracked-series", () => ({
   get migration() {
     return fakeMigration;
   },

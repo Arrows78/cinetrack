@@ -10,12 +10,15 @@ import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-tog
 import { cn } from "@/shared/lib/cn";
 import { MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating } from "@/shared/utils/format";
+import { progressBarTone } from "@/shared/utils/series-status";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
 export interface MediaCardProgress {
   watched: number;
   total: number;
+  /** The series' own TMDB production status — see progressBarTone(). Movies never set this. */
+  seriesStatus?: string | null;
 }
 
 // Stop the click from also activating the card's wrapping <Link> — these
@@ -109,7 +112,12 @@ function MediaCardInner({
   const image = buildTmdbImageUrl(media.posterPath, "w500") ?? fallbackPoster;
   const srcSet = buildTmdbPosterSrcSet(media.posterPath);
   const showProgress = progress !== undefined && progress.total > 0;
-  const complete = showProgress && progress.watched >= progress.total;
+  const tone = showProgress ? progressBarTone(progress.watched, progress.total, progress.seriesStatus) : null;
+  const barPercent = showProgress ? Math.min(100, Math.round((progress.watched / progress.total) * 100)) : 0;
+  // A movie has no fractional progress to show (see MediaCardQuickActions'
+  // comment: watched/unwatched is its whole state) — alreadySeen alone
+  // gets it the same finished bar a fully-ended series would.
+  const showFinishedBar = !showProgress && alreadySeen;
 
   return (
     <div className="relative overflow-hidden rounded-card">
@@ -189,7 +197,9 @@ function MediaCardInner({
           </div>
         </div>
 
-        {/* TV Time-style progress bar */}
+        {/* TV Time-style progress bar — inProgress (primary): still catching
+            up. caughtUp (warning): every aired episode watched, but the show
+            could still return. finished (success): the show itself is over. */}
         {showProgress ? (
           <div
             role="progressbar"
@@ -197,13 +207,18 @@ function MediaCardInner({
             aria-valuemax={progress.total}
             aria-valuenow={progress.watched}
             aria-label={t("media.episodes")}
-            className="absolute inset-x-0 bottom-0 h-1 bg-white/15"
+            className="absolute inset-x-0 bottom-0 h-2 bg-black/40"
           >
             <div
-              className={cn("h-full transition-all duration-medium", complete ? "bg-success" : "bg-primary")}
-              style={{ width: `${Math.min(100, Math.round((progress.watched / progress.total) * 100))}%` }}
+              className={cn(
+                "h-full shadow-sm transition-all duration-medium",
+                tone === "finished" ? "bg-success" : tone === "caughtUp" ? "bg-warning" : "bg-primary"
+              )}
+              style={{ width: `${barPercent}%` }}
             />
           </div>
+        ) : showFinishedBar ? (
+          <div className="absolute inset-x-0 bottom-0 h-2 bg-success shadow-sm" />
         ) : null}
       </div>
     </div>
