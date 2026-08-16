@@ -83,7 +83,6 @@ describe("SidebarNav", () => {
       "people",
       "watchTonight",
       "library",
-      "collections",
       "calendar",
       "stats",
       "history",

@@ -18,7 +18,6 @@ export function CommandPalette() {
         [t("commandPalette.commands.watchTonight"), "/watch-tonight"],
         [t("commandPalette.commands.library"), "/library"],
         [t("commandPalette.commands.calendar"), "/calendar"],
-        [t("commandPalette.commands.collections"), "/collections"],
         [t("commandPalette.commands.stats"), "/stats"],
         [t("commandPalette.commands.history"), "/history"],
         [t("commandPalette.commands.alerts"), "/alerts"],

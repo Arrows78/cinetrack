@@ -55,11 +55,6 @@ const historyRoute = createRoute({
   path: "/history",
   component: lazyRouteComponent(() => import("@/pages/history-page"), "HistoryPage"),
 });
-const collectionsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/collections",
-  component: lazyRouteComponent(() => import("@/pages/collections-page"), "CollectionsPage"),
-});
 const calendarRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/calendar",
@@ -116,7 +111,6 @@ const routeTree = rootRoute.addChildren([
   searchRoute,
   libraryRoute,
   historyRoute,
-  collectionsRoute,
   calendarRoute,
   peopleRoute,
   personDetailRoute,

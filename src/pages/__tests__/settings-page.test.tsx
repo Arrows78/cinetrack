@@ -2,10 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
-import { CollectionsPage } from "../collections-page";
+import { SettingsPage } from "../settings-page";
 
 vi.mock("@/components/settings/backup-tools", () => ({ BackupTools: () => <div /> }));
 vi.mock("@/components/settings/tvtime-import-card", () => ({ TvTimeImportCard: () => <div /> }));
+vi.mock("@/components/settings/desktop-settings", () => ({ DesktopSettings: () => <div /> }));
 
 vi.mock("@/features/auth/auth-context", () => ({ useAuth: () => ({ user: null }) }));
 
@@ -19,17 +20,12 @@ vi.mock("@/features/auth/auth-client", () => ({
 const listProfilesMock = vi.fn();
 const createProfileMock = vi.fn();
 const removeProfileMock = vi.fn();
-vi.mock("@/features/collections/profile-repository", () => ({
+vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
     list: (...args: unknown[]) => listProfilesMock(...args),
     create: (...args: unknown[]) => createProfileMock(...args),
     remove: (...args: unknown[]) => removeProfileMock(...args),
   },
-}));
-
-const listCustomListsMock = vi.fn();
-vi.mock("@/features/collections/custom-list-repository", () => ({
-  customListRepository: { list: (...args: unknown[]) => listCustomListsMock(...args) },
 }));
 
 const setActiveProfileMock = vi.fn();
@@ -58,12 +54,12 @@ vi.mock("@/features/preferences/preferences-repository", () => ({
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<CollectionsPage />, {
+  return render(<SettingsPage />, {
     wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
   });
 }
 
-describe("CollectionsPage — local profile management", () => {
+describe("SettingsPage — local profile management", () => {
   beforeAll(async () => {
     await i18n.changeLanguage("en");
   });
@@ -77,7 +73,6 @@ describe("CollectionsPage — local profile management", () => {
     createProfileMock.mockReset();
     removeProfileMock.mockReset().mockResolvedValue(undefined);
     setActiveProfileMock.mockReset().mockResolvedValue(preferencesData);
-    listCustomListsMock.mockReset().mockResolvedValue([]);
   });
 
   it("offline mode: lists every local profile with the active one marked, and can switch", async () => {

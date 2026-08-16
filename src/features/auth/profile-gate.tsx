@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authConfig } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/auth-context";
 import { CreateProfileScreen } from "@/features/auth/create-profile-screen";
-import { useProfileForSupabaseUser } from "@/features/collections/use-collections";
+import { useProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { LoadingScreen } from "@/components/states/loading-screen";

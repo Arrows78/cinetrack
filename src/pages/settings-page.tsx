@@ -1,17 +1,187 @@
-import { Check } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, Trash2, UserPlus } from "lucide-react";
+import { BackupTools } from "@/components/settings/backup-tools";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
+import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { FilterBar } from "@/components/media/filter-bar";
 import { SectionHeader } from "@/components/media/section-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SettingToggle } from "@/components/ui/setting-toggle";
+import { Tile } from "@/components/ui/tile";
+import { toast } from "@/components/ui/use-toast";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
-import { usePreferences } from "@/features/preferences/use-preferences";
+import { authConfig } from "@/features/auth/auth-client";
+import { useAuth } from "@/features/auth/auth-context";
 import { notificationService } from "@/features/desktop/notification-service";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { usePreferences } from "@/features/preferences/use-preferences";
+import { useProfiles } from "@/features/profiles/use-profiles";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
 import { DEFAULT_LANGUAGE, DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
+import type { UserProfile } from "@/types/media";
+
+function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined }) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const profiles = useProfiles();
+  const [newProfileName, setNewProfileName] = useState("");
+  const [pendingDeleteProfile, setPendingDeleteProfile] = useState<UserProfile | null>(null);
+  const [switchingProfileId, setSwitchingProfileId] = useState<string | null>(null);
+
+  const currentProfile = profiles.data?.find((profile) => profile.id === activeProfileId);
+
+  // Only ever offered when auth isn't required (see the comment on the
+  // read-only branch below for why a free switcher is otherwise a security
+  // hole) — and set_active_profile itself refuses to switch into a profile
+  // linked to a Supabase account without proof of that account, so this
+  // can't be used to hop into somebody else's claimed profile even if auth
+  // gets turned on later without this UI being hidden in time.
+  const switchToProfile = async (profileId: string) => {
+    setSwitchingProfileId(profileId);
+    try {
+      await preferencesRepository.setActiveProfile(profileId);
+      queryClient.removeQueries({ queryKey: ["local"] });
+    } catch {
+      toast({ description: t("settings.profiles.switchFailed"), variant: "error" });
+    } finally {
+      setSwitchingProfileId(null);
+    }
+  };
+
+  const createProfile = async () => {
+    const name = newProfileName.trim();
+    if (!name) return;
+    try {
+      await profiles.create(name);
+      setNewProfileName("");
+    } catch {
+      toast({ description: t("settings.profiles.createFailed"), variant: "error" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.profiles.title")}</CardTitle>
+        <CardDescription>{t("settings.profiles.description")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {profiles.isError ? (
+          <RemoteErrorState error={profiles.error} onRetry={() => void profiles.refetch()} />
+        ) : authConfig.required ? (
+          // Access to a profile is derived from who is signed in (see
+          // ProfileGate) — this used to be a free switcher letting anyone
+          // click into any local profile, which would have let a signed-in
+          // account read another account's data. Only the current profile
+          // is shown here now, read-only, whenever sign-in is required.
+          currentProfile ? (
+            <Tile className="px-3 py-3">
+              <p className="font-medium">
+                {currentProfile.id === "default" ? t("settings.profiles.defaultName") : currentProfile.name}
+              </p>
+              {user?.email ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t("settings.profiles.linkedTo", { email: user.email })}
+                </p>
+              ) : null}
+            </Tile>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("settings.profiles.none")}</p>
+          )
+        ) : (
+          // No Supabase account is in play at all offline — set_active_profile
+          // (src-tauri/src/commands/preferences.rs) only ever rejects a switch
+          // into a profile that's linked to one, so free switching between
+          // these local-only profiles is safe.
+          <div className="space-y-3">
+            {(profiles.data ?? []).map((profile) => {
+              const isActive = profile.id === activeProfileId;
+              const label = profile.id === "default" ? t("settings.profiles.defaultName") : profile.name;
+              return (
+                <Tile key={profile.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium disabled:cursor-default"
+                    disabled={isActive || switchingProfileId !== null}
+                    onClick={() => void switchToProfile(profile.id)}
+                  >
+                    <span className="truncate">{label}</span>
+                    {isActive ? (
+                      <Badge variant="success" className="gap-1">
+                        <Check className="size-3" aria-hidden="true" />
+                        {t("settings.profiles.active")}
+                      </Badge>
+                    ) : null}
+                  </button>
+                  {profile.id !== "default" ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t("settings.profiles.delete", { name: label })}
+                      disabled={switchingProfileId !== null}
+                      onClick={() => setPendingDeleteProfile(profile)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  ) : null}
+                </Tile>
+              );
+            })}
+            <div className="flex gap-2">
+              <Input
+                size="sm"
+                value={newProfileName}
+                onChange={(event) => setNewProfileName(event.target.value)}
+                placeholder={t("settings.profiles.newNamePlaceholder")}
+                aria-label={t("settings.profiles.newNameLabel")}
+                maxLength={60}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!newProfileName.trim() || profiles.isSaving}
+                onClick={() => void createProfile()}
+              >
+                <UserPlus className="mr-2 size-4" />
+                {t("settings.profiles.create")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+
+      <ConfirmDialog
+        open={pendingDeleteProfile !== null}
+        onOpenChange={(open) => !open && setPendingDeleteProfile(null)}
+        title={t("settings.profiles.deleteConfirmTitle", {
+          name:
+            pendingDeleteProfile?.id === "default" ? t("settings.profiles.defaultName") : pendingDeleteProfile?.name,
+        })}
+        description={t("settings.profiles.deleteConfirmDescription")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => {
+          if (!pendingDeleteProfile) return;
+          const target = pendingDeleteProfile;
+          setPendingDeleteProfile(null);
+          void profiles.remove(target.id).catch(() => {
+            toast({ description: t("settings.profiles.deleteFailed"), variant: "error" });
+          });
+        }}
+      />
+    </Card>
+  );
+}
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -145,6 +315,11 @@ export function SettingsPage() {
             <DesktopSettings />
           </CardContent>
         </Card>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ProfilesCard activeProfileId={preferences?.activeProfileId} />
+        <BackupTools />
+        <TvTimeImportCard />
       </div>
     </div>
   );

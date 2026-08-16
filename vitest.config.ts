@@ -84,7 +84,7 @@ export default defineConfig({
         // the one bit of client-side orchestration this repository keeps
         // (resetting activeProfileId on profile removal), per its own header
         // comment. See profile-repository.test.ts.
-        "src/features/collections/profile-repository.ts": { statements: 80, branches: 70, functions: 95, lines: 80 },
+        "src/features/profiles/profile-repository.ts": { statements: 80, branches: 70, functions: 95, lines: 80 },
         // Excludes the real Stronghold vault's native binding surface —
         // mocked in tests, so only the module's own branching is measured.
         "src/features/desktop/token-vault.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },

@@ -480,8 +480,8 @@ function component(
 export const componentInventory = [
   component(
     "AddToListButton",
-    "components/collections/add-to-list-button.tsx",
-    "Collections",
+    "components/library/add-to-list-button.tsx",
+    "Library",
     "feature",
     "reference",
     "Adds or removes media from a user-defined collection."

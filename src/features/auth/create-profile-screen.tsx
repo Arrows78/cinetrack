@@ -5,7 +5,7 @@ import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-context";
-import { useCreateProfileForSupabaseUser } from "@/features/collections/use-collections";
+import { useCreateProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 
 export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string }) {
   const { t } = useTranslation();

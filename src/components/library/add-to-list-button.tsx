@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListPlus } from "lucide-react";
 import type { MediaSummary } from "@/types/media";
-import { useAddToCustomList, useCustomLists } from "@/features/collections/use-collections";
+import { useAddToCustomList, useCustomLists } from "@/features/library/use-custom-lists";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 
@@ -18,12 +18,12 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
     <div className="flex flex-col items-start gap-1.5">
       <div className="flex items-center gap-2">
         <select
-          aria-label={t("collections.customList")}
+          aria-label={t("library.lists.customList")}
           className="h-10 max-w-52 rounded-xl border border-border bg-background px-3 text-sm"
           value={selected}
           onChange={(event) => setSelected(event.target.value)}
         >
-          <option value="">{t("collections.addToAList")}</option>
+          <option value="">{t("library.lists.addToAList")}</option>
           {lists.data.map((list) => (
             <option key={list.id} value={list.id}>
               {list.name}
@@ -35,8 +35,8 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
           size="icon"
           variant="outline"
           disabled={!selected || add.isSaving}
-          title={t("collections.addToList")}
-          aria-label={t("collections.addToList")}
+          title={t("library.lists.addToList")}
+          aria-label={t("library.lists.addToList")}
           onClick={() => {
             void add
               .add({ listId: selected, media })
