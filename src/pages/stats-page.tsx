@@ -215,10 +215,10 @@ export function StatsPage() {
               </div>
               <div className="mt-2 flex justify-between text-xs text-muted-foreground">
                 <span>
-                  {t("stats.films")} {moviesPercent}%
+                  {t("stats.moviesShare")} {moviesPercent}%
                 </span>
                 <span>
-                  {t("stats.episodes")} {100 - moviesPercent}%
+                  {t("stats.episodesShare")} {100 - moviesPercent}%
                 </span>
               </div>
             </article>

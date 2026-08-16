@@ -301,6 +301,8 @@
     "rewatchCount_other": "Revu {{count}} fois",
     "favouriteGenreByRating": "Genre le mieux noté",
     "moviesVsSeries": "Films vs séries",
+    "moviesShare": "Films :",
+    "episodesShare": "Épisodes :",
     "exportWrapped": "Exporter en image",
     "exportSuccess": "Image Wrapped enregistrée",
     "exportFailed": "Échec de l'export de l'image Wrapped",
