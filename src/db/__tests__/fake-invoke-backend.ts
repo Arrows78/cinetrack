@@ -509,6 +509,21 @@ function applyEpisodes(
   return changedEpisodes.length;
 }
 
+function refreshTrackedSeriesStatus(
+  sqlite: DatabaseSync,
+  profileId: string,
+  seriesId: number,
+  status: string | null
+): void {
+  const current = sqlite
+    .prepare("SELECT status FROM tracked_series WHERE profile_id = $profileId AND series_id = $seriesId")
+    .get({ $profileId: profileId, $seriesId: seriesId }) as { status: string | null } | undefined;
+  if (!current || current.status === status) return;
+  sqlite
+    .prepare("UPDATE tracked_series SET status = $status WHERE profile_id = $profileId AND series_id = $seriesId")
+    .run({ $status: status, $profileId: profileId, $seriesId: seriesId } as Record<string, SQLInputValue>);
+}
+
 function listTrackedSeries(sqlite: DatabaseSync, profileId: string): TrackedSeriesItem[] {
   const rows = sqlite
     .prepare(
@@ -1088,6 +1103,14 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
         );
       case "list_tracked_series":
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
+      case "refresh_tracked_series_status":
+        refreshTrackedSeriesStatus(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.seriesId as number,
+          args.status as string | null
+        );
+        return undefined;
       case "list_recent_viewing_events":
         return listRecentViewingEvents(sqlite, loadPreferences(sqlite).activeProfileId, args.since as string);
       case "list_viewing_events_for_year":

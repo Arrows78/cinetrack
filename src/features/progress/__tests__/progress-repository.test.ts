@@ -75,6 +75,25 @@ describe("progressRepository", () => {
     expect(tracked.find((item) => item.seriesId === 9)?.watchedEpisodes).toBe(1);
   });
 
+  it("refreshTrackedSeriesStatus writes back a fresh TMDB status for a tracked series", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show", status: "Returning Series" } as never);
+    await progressRepository.toggleEpisodeSeen(series, episode(), true);
+
+    await progressRepository.refreshTrackedSeriesStatus(9, "Ended");
+
+    const tracked = await progressRepository.listTrackedSeries();
+    expect(tracked.find((item) => item.seriesId === 9)?.status).toBe("Ended");
+  });
+
+  it("refreshTrackedSeriesStatus is a no-op for a series that isn't tracked", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    await progressRepository.refreshTrackedSeriesStatus(404, "Ended");
+
+    const tracked = await progressRepository.listTrackedSeries();
+    expect(tracked.find((item) => item.seriesId === 404)).toBeUndefined();
+  });
+
   it("does not re-apply an already-applied episode (toggleEpisodesWatched returns 0 changes)", async () => {
     const { progressRepository } = await import("../progress-repository");
     const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" });

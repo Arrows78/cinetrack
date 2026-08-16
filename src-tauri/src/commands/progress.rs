@@ -542,6 +542,54 @@ profile_scoped_command! {
     pub async fn list_tracked_series() -> Vec<TrackedSeriesItem> => list_tracked_series_impl
 }
 
+// tracked_series.status is a cache of TMDB's own production status,
+// written only as a side effect of toggling an episode (see
+// apply_episodes_and_log_impl's COALESCE upsert above) — a show nobody
+// re-toggles after it airs its finale keeps whatever status it had months
+// or years ago, which is why the progress-bar color can look "wrong" for a
+// show that's visibly "Ended" on its own detail page. That page always has
+// TMDB's current status in hand (a fresh fetch, not cached locally), so it
+// opportunistically writes it back here — a no-op if the series isn't
+// tracked yet, or if the status hasn't actually changed.
+async fn refresh_tracked_series_status_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    series_id: i64,
+    status: Option<String>,
+) -> Result<(), ApiError> {
+    let current: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT status FROM tracked_series WHERE profile_id = $1 AND series_id = $2")
+            .bind(profile_id)
+            .bind(series_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
+
+    let Some((current_status,)) = current else { return Ok(()) };
+    if current_status == status {
+        return Ok(());
+    }
+
+    sqlx::query("UPDATE tracked_series SET status = $1 WHERE profile_id = $2 AND series_id = $3")
+        .bind(&status)
+        .bind(profile_id)
+        .bind(series_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn refresh_tracked_series_status(
+    series_id: i64,
+    status: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    refresh_tracked_series_status_impl(&pool, &profile_id, series_id, status).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -961,5 +1009,29 @@ mod tests {
 
         let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
         assert_eq!(history_count.0, 0);
+    }
+
+    #[tokio::test]
+    async fn refresh_tracked_series_status_writes_back_a_fresh_tmdb_status() {
+        let pool = migrated_pool().await;
+        let mut s = series(9, None);
+        s.status = Some("Returning Series".to_string());
+        apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+
+        refresh_tracked_series_status_impl(&pool, "default", 9, Some("Ended".to_string())).await.unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.status.as_deref(), Some("Ended"));
+    }
+
+    #[tokio::test]
+    async fn refresh_tracked_series_status_is_a_no_op_for_an_untracked_series() {
+        let pool = migrated_pool().await;
+        // No tracked_series row exists for series 404 — must not create one.
+        refresh_tracked_series_status_impl(&pool, "default", 404, Some("Ended".to_string())).await.unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        assert!(tracked.iter().all(|item| item.series_id != 404));
     }
 }

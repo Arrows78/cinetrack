@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
@@ -22,7 +22,7 @@ import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { EmptyState } from "@/components/states/empty-state";
 import { useImageCache } from "@/features/media/use-image-cache";
-import { useEpisodeProgress } from "@/features/progress/use-progress";
+import { useEpisodeProgress, useRefreshTrackedSeriesStatus, useTrackedSeries } from "@/features/progress/use-progress";
 import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
 import { progressRepository } from "@/features/progress/progress-repository";
 
@@ -38,6 +38,21 @@ export function SeriesDetailPage() {
     [seriesQuery.data?.seasons]
   );
   const seasonQueries = useSeriesSeasons(id, seasonNumbers);
+  // The card/row progress-bar color reads tracked_series.status, a local
+  // cache that's only ever written as a side effect of toggling an episode
+  // — a show nobody re-toggles after it airs its finale keeps a stale
+  // status forever otherwise. This page always has TMDB's current status
+  // in hand (a fresh fetch, never cached locally), so it's the natural
+  // place to opportunistically write it back; refreshTrackedSeriesStatus is
+  // a no-op in Rust when the status hasn't actually changed.
+  const trackedSeriesQuery = useTrackedSeries();
+  const refreshTrackedSeriesStatus = useRefreshTrackedSeriesStatus();
+  useEffect(() => {
+    const freshStatus = seriesQuery.data?.status;
+    const tracked = trackedSeriesQuery.data?.find((item) => item.seriesId === id);
+    if (!freshStatus || !tracked || tracked.status === freshStatus) return;
+    void refreshTrackedSeriesStatus({ seriesId: id, status: freshStatus });
+  }, [seriesQuery.data?.status, trackedSeriesQuery.data, id, refreshTrackedSeriesStatus]);
   // A malformed/non-numeric :seriesId never becomes a valid query (see
   // useSeriesDetails' `enabled: Number.isFinite(seriesId)`) — that used to
   // fall through every check below to a bare `return null`, a permanently

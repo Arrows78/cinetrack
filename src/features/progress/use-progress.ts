@@ -111,3 +111,13 @@ export function useTrackedSeries() {
     queryFn: () => progressRepository.listTrackedSeries(),
   });
 }
+
+export function useRefreshTrackedSeriesStatus() {
+  const profileId = useActiveProfileId();
+  const mutation = useInvalidatingMutation(
+    ({ seriesId, status }: { seriesId: number; status: string | null }) =>
+      progressRepository.refreshTrackedSeriesStatus(seriesId, status),
+    () => [queryKeys.local.trackedSeries(profileId)]
+  );
+  return mutation.mutateAsync;
+}

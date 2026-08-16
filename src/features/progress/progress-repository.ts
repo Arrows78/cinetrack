@@ -86,6 +86,12 @@ export const progressRepository = {
     return invokeCommand<TrackedSeriesItem[]>("list_tracked_series");
   },
 
+  // A no-op in Rust if the series isn't tracked yet or the status hasn't
+  // actually changed — see refresh_tracked_series_status_impl.
+  async refreshTrackedSeriesStatus(seriesId: number, status: string | null): Promise<void> {
+    await invokeCommand<void>("refresh_tracked_series_status", { seriesId, status });
+  },
+
   getNextEpisode(seasons: Season[], watched: EpisodeProgress[]): Episode | null {
     const watchedIds = new Set(watched.filter((item) => item.watched).map((item) => item.episodeId));
     return (
