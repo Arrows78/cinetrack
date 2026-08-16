@@ -641,9 +641,9 @@
   "tvtimeImport": {
     "title": "Import from TV Time",
     "description": "Bring your TV Time history into CineTrack: watched episodes and movies with their original dates, plus your to-watch list.",
-    "hint": "Select the CSV files from your TV Time GDPR export (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
+    "hint": "Select the CSV files from your TV Time GDPR export, or the export .zip directly (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
     "rewatchNotice": "If a title was watched more than once in your TV Time history, only the earliest watch date is imported — rewatches from before this import aren't preserved.",
-    "selectFiles": "Select CSV files",
+    "selectFiles": "Select files or a .zip",
     "tooManyFiles": "Select at most {{max}} files.",
     "fileTooLarge": "\"{{name}}\" is too large to import.",
     "totalTooLarge": "These files add up to more than {{max}} MB combined — select fewer or smaller files.",
@@ -657,6 +657,20 @@
       "series": "Series",
       "movies": "Movies",
       "watchlist": "To watch"
+    },
+    "nothingFound": "None of the selected files could be read as TV Time export data.",
+    "zipTooLarge": "\"{{name}}\" is too large once unzipped.",
+    "zipReadFailed": "Couldn't read that file as a .zip archive.",
+    "ambiguous_one": "{{count}} match was ambiguous (picked the most likely title) — worth a check.",
+    "ambiguous_other": "{{count}} matches were ambiguous (picked the most likely title each time) — worth a check.",
+    "preflight": {
+      "title": "Import this data?",
+      "counts": "{{episodes}} episodes across {{series}} series, {{movies}} movies and {{planned}} titles to watch were found.",
+      "unrecognized_one": "{{count}} selected file wasn't recognized and will be skipped: {{names}}.",
+      "unrecognized_other": "{{count}} selected files weren't recognized and will be skipped: {{names}}.",
+      "skippedRows_one": "1 row had no watch date and will be skipped.",
+      "skippedRows_other": "{{count}} rows had no watch date and will be skipped.",
+      "confirm": "Import"
     }
   }
 }

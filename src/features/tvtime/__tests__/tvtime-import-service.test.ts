@@ -71,7 +71,7 @@ function season(episodeId: number, seasonNumber: number, episodeNumber: number, 
 }
 
 function emptyExportData(): TvTimeExport {
-  return { episodes: [], movies: [], watchlist: [], tvdbIdsByName: new Map() };
+  return { episodes: [], movies: [], watchlist: [], tvdbIdsByName: new Map(), skippedRows: { episodes: 0, movies: 0 } };
 }
 
 describe("importTvTimeExport", () => {
@@ -390,6 +390,97 @@ describe("importTvTimeExport", () => {
 
       expect(summary.moviesImported).toBe(0);
     });
+
+    it("matches past a diacritic/punctuation difference between the export and TMDB's title", async () => {
+      exportData = {
+        ...emptyExportData(),
+        movies: [{ title: "Cafe Society", year: 2016, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+      };
+      searchMock.mockResolvedValue({
+        page: 1,
+        totalPages: 1,
+        totalResults: 1,
+        results: [media({ id: 5, mediaType: "movie", title: "Café Society", year: 2016 })],
+      });
+      importMovieSeenMock.mockResolvedValue(true);
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(importMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ movieId: 5 }));
+      expect(summary.unmatched).toEqual([]);
+    });
+
+    it("retries with a simplified title when the exact one returns nothing", async () => {
+      exportData = {
+        ...emptyExportData(),
+        movies: [
+          {
+            title: "Movie Name: The Subtitle",
+            year: null,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+      };
+      searchMock.mockResolvedValueOnce({ page: 1, totalPages: 1, totalResults: 0, results: [] }).mockResolvedValueOnce({
+        page: 1,
+        totalPages: 1,
+        totalResults: 1,
+        results: [media({ id: 7, mediaType: "movie", title: "Movie Name" })],
+      });
+      importMovieSeenMock.mockResolvedValue(true);
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(searchMock).toHaveBeenNthCalledWith(1, "Movie Name: The Subtitle", "movie");
+      expect(searchMock).toHaveBeenNthCalledWith(2, "Movie Name", "movie");
+      expect(importMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ movieId: 7 }));
+      expect(summary.unmatched).toEqual([]);
+    });
+
+    it("flags an ambiguous pick when several same-titled results have no year to disambiguate", async () => {
+      exportData = {
+        ...emptyExportData(),
+        movies: [{ title: "Alone", year: null, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+      };
+      searchMock.mockResolvedValue({
+        page: 1,
+        totalPages: 1,
+        totalResults: 2,
+        results: [
+          media({ id: 1, mediaType: "movie", title: "Alone", year: 2020 }),
+          media({ id: 2, mediaType: "movie", title: "Alone", year: 2015 }),
+        ],
+      });
+      importMovieSeenMock.mockResolvedValue(true);
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(importMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ movieId: 1 }));
+      expect(summary.ambiguous).toEqual(["Alone"]);
+    });
+
+    it("does not flag ambiguity when the year picks out a single confident match", async () => {
+      exportData = {
+        ...emptyExportData(),
+        movies: [{ title: "Alone", year: 2015, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+      };
+      searchMock.mockResolvedValue({
+        page: 1,
+        totalPages: 1,
+        totalResults: 2,
+        results: [
+          media({ id: 1, mediaType: "movie", title: "Alone", year: 2020 }),
+          media({ id: 2, mediaType: "movie", title: "Alone", year: 2015 }),
+        ],
+      });
+      importMovieSeenMock.mockResolvedValue(true);
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(importMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ movieId: 2 }));
+      expect(summary.ambiguous).toEqual([]);
+    });
   });
 
   describe("planned (TV Time watchlist) import", () => {
@@ -454,6 +545,7 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [{ title: "Dune", mediaType: "movie", year: 2021 }],
         tvdbIdsByName: new Map([["breaking bad", 81189]]),
+        skippedRows: { episodes: 0, movies: 0 },
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
       getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
@@ -491,6 +583,7 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [],
         tvdbIdsByName: new Map(),
+        skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValueOnce(new TmdbRequestError("rate limited", 429)).mockResolvedValueOnce({
         page: 1,
@@ -517,6 +610,7 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [],
         tvdbIdsByName: new Map(),
+        skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValue(new TmdbRequestError("rate limited", 429));
 
@@ -534,6 +628,7 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [],
         tvdbIdsByName: new Map(),
+        skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValue(new Error("network down"));
 

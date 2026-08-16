@@ -4,7 +4,16 @@ import { mediaRepository } from "@/features/media/media-repository";
 import { libraryRepository } from "@/features/library/library-repository";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import type { MediaSummary, Series } from "@/types/media";
-import { emptyExport, normalizeExport, parseTvTimeFile, type TvTimeEpisode, type TvTimeExport } from "./parse-export";
+import {
+  emptyExport,
+  normalizeExport,
+  parseTvTimeFile,
+  parseTvTimeFiles,
+  type ParsedTvTimeFiles,
+  type TvTimeEpisode,
+  type TvTimeExport,
+  type TvTimeFile,
+} from "./parse-export";
 import { tvTimeImportRepository, type ImportableEpisode } from "./tvtime-import-repository";
 
 const RATE_LIMIT_MAX_ATTEMPTS = 3;
@@ -46,15 +55,22 @@ export interface TvTimeImportSummary {
   moviesImported: number;
   plannedImported: number;
   unmatched: string[];
+  /**
+   * Matched, but only by picking the most likely of several same-titled
+   * TMDB results with no year in the export to confirm the pick — worth a
+   * second look, unlike a confident single/year-exact match.
+   */
+  ambiguous: string[];
 }
 
 const CONCURRENCY = 3;
 
-// A TV Time GDPR export is 4 files at most (see tvtimeImport.hint). These
+// A TV Time GDPR export is 4 CSVs at most (see tvtimeImport.hint). These
 // ceilings are well above that — generous enough for legitimate re-exports —
 // but still catch an accidental folder-drop or a huge unrelated file before
 // any file.text() call, which is where an unbounded selection would freeze
-// the UI or spike memory.
+// the UI or spike memory. Applies per selected file, .zip or .csv alike —
+// a .zip's own decompressed-content caps live in zip.ts.
 export const MAX_TVTIME_FILES = 10;
 export const MAX_TVTIME_FILE_BYTES = 50 * 1024 * 1024;
 // The per-file cap alone still allows up to 10 × 50MB = 500MB read into
@@ -69,35 +85,89 @@ const splitTitleYear = (name: string): { title: string; year: number | null } =>
   return { title: match[1]!.trim(), year: Number(match[2]) };
 };
 
+// Loosens title comparison past exact-string equality — TV Time and TMDB
+// don't always agree on punctuation/diacritics/a leading article for the
+// same title ("Marvel's Daredevil" vs "Daredevil", "Cafe" vs "Café") — so a
+// search result that's really the same title wasn't being recognized as
+// one, and fell through to "unmatched" instead.
+const normalizeTitle = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/^(the|an?)\s+/, "");
+
+// "Show Name: Subtitle" → "Show Name" — retried only when the exact title
+// returns zero TMDB results, never as the first attempt, so a title that
+// already matches fine is never weakened into a broader, riskier query.
+const simplifyTitle = (value: string): string | null => {
+  const match = /^(.+?)\s*[:\-–—]\s+.+$/.exec(value.trim());
+  const simplified = match?.[1]?.trim();
+  return simplified && simplified !== value.trim() ? simplified : null;
+};
+
+interface MatchResult {
+  match: MediaSummary | null;
+  /** True when the pick came from several same-titled results with no year to confirm it. */
+  ambiguous: boolean;
+}
+
+const NO_MATCH: MatchResult = { match: null, ambiguous: false };
+
 // Only ever returns a result whose title actually matches — never the
 // first search hit just because nothing better was found. Falling back to
 // an unrelated top result would silently attach the wrong movie/series to
 // the imported history instead of surfacing it as unmatched for review.
-const pickBestMatch = (results: MediaSummary[], title: string, year: number | null): MediaSummary | null => {
-  if (!results.length) return null;
-  const lowered = title.toLowerCase();
-  const titled = results.filter((result) => result.title.toLowerCase() === lowered);
+const pickBestMatch = (results: MediaSummary[], title: string, year: number | null): MatchResult => {
+  if (!results.length) return NO_MATCH;
+  const normalized = normalizeTitle(title);
+  const titled = results.filter((result) => normalizeTitle(result.title) === normalized);
+  if (!titled.length) return NO_MATCH;
   if (year !== null) {
     const exact = titled.find((result) => result.year === year);
-    if (exact) return exact;
+    if (exact) return { match: exact, ambiguous: false };
   }
-  return titled[0] ?? null;
+  return { match: titled[0]!, ambiguous: titled.length > 1 };
 };
 
-async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): Promise<Series | null> {
+// Runs the exact-title search, and — only if that comes back empty — one
+// retry against a simplified title (see simplifyTitle). Centralizes that
+// fallback so series/movie/watchlist matching all get it identically.
+async function searchWithFallback(
+  title: string,
+  scope: "movie" | "series"
+): Promise<{ results: MediaSummary[]; queriedTitle: string }> {
+  const page = await withRateLimitRetry(() => mediaRepository.search(title, scope));
+  if (page.results.length > 0) return { results: page.results, queriedTitle: title };
+
+  const simplified = simplifyTitle(title);
+  if (!simplified) return { results: [], queriedTitle: title };
+  const retried = await withRateLimitRetry(() => mediaRepository.search(simplified, scope));
+  return { results: retried.results, queriedTitle: simplified };
+}
+
+interface MatchSeriesResult {
+  series: Series | null;
+  ambiguous: boolean;
+}
+
+async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): Promise<MatchSeriesResult> {
   const tvdbId = tvdbIdsByName.get(name.toLowerCase());
   if (tvdbId !== undefined) {
     try {
       const found = await withRateLimitRetry(() => mediaRepository.findSeriesByTvdbId(tvdbId));
-      if (found) return found;
+      if (found) return { series: found, ambiguous: false };
     } catch {
       // Fall through to name search.
     }
   }
   const { title, year } = splitTitleYear(name);
-  const page = await withRateLimitRetry(() => mediaRepository.search(title, "series"));
-  const match = pickBestMatch(page.results, title, year);
-  return match ? withRateLimitRetry(() => mediaRepository.getSeriesDetails(match.id)) : null;
+  const { results, queriedTitle } = await searchWithFallback(title, "series");
+  const { match, ambiguous } = pickBestMatch(results, queriedTitle, year);
+  if (!match) return { series: null, ambiguous: false };
+  return { series: await withRateLimitRetry(() => mediaRepository.getSeriesDetails(match.id)), ambiguous };
 }
 
 async function importOneSeries(
@@ -106,11 +176,13 @@ async function importOneSeries(
   data: TvTimeExport,
   summary: TvTimeImportSummary
 ): Promise<void> {
-  const series = await resolveSeries(seriesName, data.tvdbIdsByName);
-  if (!series) {
+  const resolved = await resolveSeries(seriesName, data.tvdbIdsByName);
+  if (!resolved.series) {
     summary.unmatched.push(seriesName);
     return;
   }
+  if (resolved.ambiguous) summary.ambiguous.push(seriesName);
+  const series = resolved.series;
 
   const seasonNumbers = [...new Set(episodes.map((episode) => episode.seasonNumber))];
   const episodeIdByCode = new Map<string, { id: number; runtime: number | null }>();
@@ -131,17 +203,17 @@ async function importOneSeries(
   const importable: ImportableEpisode[] = [];
   let unresolved = 0;
   for (const episode of episodes) {
-    const resolved = episodeIdByCode.get(`${episode.seasonNumber}|${episode.episodeNumber}`);
-    if (!resolved) {
+    const resolvedEpisode = episodeIdByCode.get(`${episode.seasonNumber}|${episode.episodeNumber}`);
+    if (!resolvedEpisode) {
       unresolved += 1;
       continue;
     }
     importable.push({
-      episodeId: resolved.id,
+      episodeId: resolvedEpisode.id,
       seasonNumber: episode.seasonNumber,
       episodeNumber: episode.episodeNumber,
       watchedAt: episode.watchedAt,
-      runtimeMinutes: episode.runtimeMinutes ?? resolved.runtime,
+      runtimeMinutes: episode.runtimeMinutes ?? resolvedEpisode.runtime,
     });
   }
   if (unresolved > 0) {
@@ -155,20 +227,24 @@ async function importOneSeries(
   }
 }
 
-export async function importTvTimeExport(
-  fileContents: string[],
+/**
+ * Runs TMDB matching and writes the already-parsed export (see
+ * parseTvTimeFiles) — the network-bound, potentially-slow half of an
+ * import. Split from parsing so the UI can show a fast, local pre-import
+ * summary (counts, unrecognized files) and let the user confirm before any
+ * of this runs.
+ */
+export async function applyTvTimeImport(
+  data: TvTimeExport,
   onProgress?: (progress: TvTimeImportProgress) => void
 ): Promise<TvTimeImportSummary> {
-  const accumulator = emptyExport();
-  for (const content of fileContents) parseTvTimeFile(content, accumulator);
-  const data = normalizeExport(accumulator);
-
   const summary: TvTimeImportSummary = {
     seriesImported: 0,
     episodesImported: 0,
     moviesImported: 0,
     plannedImported: 0,
     unmatched: [],
+    ambiguous: [],
   };
 
   const episodesBySeries = new Map<string, TvTimeEpisode[]>();
@@ -201,11 +277,12 @@ export async function importTvTimeExport(
     async (movie) => {
       onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
       try {
-        const page = await withRateLimitRetry(() => mediaRepository.search(movie.title, "movie"));
-        const match = pickBestMatch(page.results, movie.title, movie.year);
+        const { results, queriedTitle } = await searchWithFallback(movie.title, "movie");
+        const { match, ambiguous } = pickBestMatch(results, queriedTitle, movie.year);
         if (!match) {
           summary.unmatched.push(movie.title);
         } else {
+          if (ambiguous) summary.ambiguous.push(movie.title);
           const inserted = await tvTimeImportRepository.importMovieSeen({
             movieId: match.id,
             title: match.title,
@@ -234,13 +311,15 @@ export async function importTvTimeExport(
     async (entry) => {
       onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
       try {
-        const page = await withRateLimitRetry(() =>
-          mediaRepository.search(entry.title, entry.mediaType === "movie" ? "movie" : "series")
+        const { results, queriedTitle } = await searchWithFallback(
+          entry.title,
+          entry.mediaType === "movie" ? "movie" : "series"
         );
-        const match = pickBestMatch(page.results, entry.title, entry.year);
+        const { match, ambiguous } = pickBestMatch(results, queriedTitle, entry.year);
         if (!match) {
           summary.unmatched.push(entry.title);
         } else {
+          if (ambiguous) summary.ambiguous.push(entry.title);
           await libraryRepository.save(match, { status: "planned" });
           summary.plannedImported += 1;
         }
@@ -254,4 +333,18 @@ export async function importTvTimeExport(
   );
 
   return summary;
+}
+
+export { parseTvTimeFiles };
+export type { ParsedTvTimeFiles, TvTimeFile };
+
+/** Back-compat convenience: parses raw file contents, then applies them. */
+export async function importTvTimeExport(
+  fileContents: string[],
+  onProgress?: (progress: TvTimeImportProgress) => void
+): Promise<TvTimeImportSummary> {
+  const accumulator = emptyExport();
+  for (const content of fileContents) parseTvTimeFile(content, accumulator);
+  const data = normalizeExport(accumulator);
+  return applyTvTimeImport(data, onProgress);
 }

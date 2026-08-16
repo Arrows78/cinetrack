@@ -3,26 +3,51 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tv, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Panel } from "@/components/ui/panel";
 import { toast } from "@/components/ui/use-toast";
+import { logger } from "@/features/diagnostics/logger";
+import { parseTvTimeFiles, type TvTimeExport, type TvTimeFile } from "@/features/tvtime/parse-export";
 import {
-  importTvTimeExport,
+  applyTvTimeImport,
   MAX_TVTIME_FILE_BYTES,
   MAX_TVTIME_FILES,
   MAX_TVTIME_TOTAL_BYTES,
   type TvTimeImportProgress,
 } from "@/features/tvtime/tvtime-import-service";
+import { extractCsvEntries, ZipTooLargeError } from "@/features/tvtime/zip";
+
+interface PendingImport {
+  data: TvTimeExport;
+  unrecognizedFiles: string[];
+}
+
+const isZipFile = (file: File): boolean => file.name.toLowerCase().endsWith(".zip");
 
 export function TvTimeImportCard() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [pending, setPending] = useState<PendingImport | null>(null);
   const [progress, setProgress] = useState<TvTimeImportProgress | null>(null);
 
   const running = progress !== null;
 
-  const handleFiles = async (fileList: FileList | null) => {
-    if (!fileList?.length || running) return;
+  const expandFiles = async (files: File[]): Promise<TvTimeFile[]> => {
+    const expanded: TvTimeFile[] = [];
+    for (const file of files) {
+      if (isZipFile(file)) {
+        expanded.push(...(await extractCsvEntries(file)));
+      } else {
+        expanded.push({ name: file.name, text: await file.text() });
+      }
+    }
+    return expanded;
+  };
+
+  const prepareImport = async (fileList: FileList | null) => {
+    if (!fileList?.length || running || isPreparing) return;
 
     const files = [...fileList];
     if (files.length > MAX_TVTIME_FILES) {
@@ -46,11 +71,37 @@ export function TvTimeImportCard() {
       return;
     }
 
+    setIsPreparing(true);
+    try {
+      const expanded = await expandFiles(files);
+      const { data, unrecognizedFiles } = parseTvTimeFiles(expanded);
+      const foundNothing = !data.episodes.length && !data.movies.length && !data.watchlist.length;
+      if (foundNothing) {
+        toast({ description: t("tvtimeImport.nothingFound"), variant: "error" });
+        return;
+      }
+      setPending({ data, unrecognizedFiles });
+    } catch (error) {
+      if (error instanceof ZipTooLargeError) {
+        toast({ description: t("tvtimeImport.zipTooLarge", { name: error.entryName }), variant: "error" });
+      } else {
+        logger.warn(`TV Time zip extraction failed: ${error instanceof Error ? error.message : String(error)}`);
+        toast({ description: t("tvtimeImport.zipReadFailed"), variant: "error" });
+      }
+    } finally {
+      setIsPreparing(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!pending) return;
+    const { data } = pending;
+    setPending(null);
     setProgress({ phase: "series", done: 0, total: 0, label: "" });
 
     try {
-      const contents = await Promise.all(files.map((file) => file.text()));
-      const result = await importTvTimeExport(contents, setProgress);
+      const result = await applyTvTimeImport(data, setProgress);
       await queryClient.invalidateQueries({ queryKey: ["local"] });
       toast({
         description: (
@@ -63,6 +114,11 @@ export function TvTimeImportCard() {
                 planned: result.plannedImported,
               })}
             </p>
+            {result.ambiguous.length ? (
+              <p className="mt-1 text-xs opacity-90">
+                {t("tvtimeImport.ambiguous", { count: result.ambiguous.length })}
+              </p>
+            ) : null}
             {result.unmatched.length ? (
               <details className="mt-2 text-xs opacity-90">
                 <summary className="cursor-pointer">
@@ -76,15 +132,39 @@ export function TvTimeImportCard() {
         variant: "success",
       });
     } catch (importError) {
-      toast({
-        description: importError instanceof Error ? importError.message : t("tvtimeImport.failed"),
-        variant: "error",
-      });
+      logger.warn(`TV Time import failed: ${importError instanceof Error ? importError.message : String(importError)}`);
+      toast({ description: t("tvtimeImport.failed"), variant: "error" });
     } finally {
       setProgress(null);
-      if (inputRef.current) inputRef.current.value = "";
     }
   };
+
+  const preflightDescription = (() => {
+    if (!pending) return "";
+    const { data, unrecognizedFiles } = pending;
+    const seriesCount = new Set(data.episodes.map((episode) => episode.seriesName)).size;
+    const parts = [
+      t("tvtimeImport.preflight.counts", {
+        episodes: data.episodes.length,
+        series: seriesCount,
+        movies: data.movies.length,
+        planned: data.watchlist.length,
+      }),
+    ];
+    if (unrecognizedFiles.length) {
+      parts.push(
+        t("tvtimeImport.preflight.unrecognized", {
+          count: unrecognizedFiles.length,
+          names: unrecognizedFiles.join(", "),
+        })
+      );
+    }
+    const skippedRows = data.skippedRows.episodes + data.skippedRows.movies;
+    if (skippedRows > 0) {
+      parts.push(t("tvtimeImport.preflight.skippedRows", { count: skippedRows }));
+    }
+    return parts.join(" ");
+  })();
 
   return (
     <Panel>
@@ -100,20 +180,20 @@ export function TvTimeImportCard() {
         <Button
           type="button"
           variant="outline"
-          isLoading={running}
-          aria-busy={running}
+          isLoading={running || isPreparing}
+          aria-busy={running || isPreparing}
           onClick={() => inputRef.current?.click()}
         >
-          {!running && <Upload className="size-4" />}
+          {!running && !isPreparing && <Upload className="size-4" />}
           {t("tvtimeImport.selectFiles")}
         </Button>
         <input
           ref={inputRef}
           className="hidden"
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.zip,text/csv,application/zip"
           multiple
-          onChange={(event) => void handleFiles(event.target.files)}
+          onChange={(event) => void prepareImport(event.target.files)}
         />
         {progress && progress.total > 0 ? (
           <p role="status" aria-live="polite" className="text-sm tabular-nums text-muted-foreground">
@@ -122,6 +202,17 @@ export function TvTimeImportCard() {
           </p>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={pending !== null}
+        onOpenChange={(open) => !open && setPending(null)}
+        title={t("tvtimeImport.preflight.title")}
+        description={preflightDescription}
+        confirmLabel={t("tvtimeImport.preflight.confirm")}
+        cancelLabel={t("common.cancel")}
+        confirmVariant="default"
+        onConfirm={() => void confirmImport()}
+      />
     </Panel>
   );
 }

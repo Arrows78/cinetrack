@@ -641,9 +641,9 @@
   "tvtimeImport": {
     "title": "Importer depuis TV Time",
     "description": "Rapatriez votre historique TV Time dans CineTrack : épisodes et films vus avec leurs dates d'origine, plus votre liste à voir.",
-    "hint": "Sélectionnez les fichiers CSV de votre export RGPD TV Time (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
+    "hint": "Sélectionnez les fichiers CSV de votre export GDPR TV Time, ou directement le .zip de l'export (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
     "rewatchNotice": "Si un titre a été visionné plusieurs fois dans votre historique TV Time, seule la date de visionnage la plus ancienne est importée — les revisionnages antérieurs à cet import ne sont pas conservés.",
-    "selectFiles": "Sélectionner les CSV",
+    "selectFiles": "Sélectionner des fichiers ou un .zip",
     "tooManyFiles": "Sélectionnez au maximum {{max}} fichiers.",
     "fileTooLarge": "« {{name}} » est trop volumineux pour être importé.",
     "totalTooLarge": "Ces fichiers représentent plus de {{max}} Mo au total — sélectionnez-en moins ou de plus petits.",
@@ -657,6 +657,20 @@
       "series": "Séries",
       "movies": "Films",
       "watchlist": "À voir"
+    },
+    "nothingFound": "Aucun des fichiers sélectionnés n'a pu être lu comme donnée d'export TV Time.",
+    "zipTooLarge": "« {{name}} » est trop volumineux une fois décompressé.",
+    "zipReadFailed": "Impossible de lire ce fichier comme une archive .zip.",
+    "ambiguous_one": "{{count}} correspondance était ambiguë (le titre le plus probable a été retenu) — à vérifier.",
+    "ambiguous_other": "{{count}} correspondances étaient ambiguës (le titre le plus probable a été retenu à chaque fois) — à vérifier.",
+    "preflight": {
+      "title": "Importer ces données ?",
+      "counts": "{{episodes}} épisodes sur {{series}} séries, {{movies}} films et {{planned}} titres à voir ont été trouvés.",
+      "unrecognized_one": "{{count}} fichier sélectionné n'a pas été reconnu et sera ignoré : {{names}}.",
+      "unrecognized_other": "{{count}} fichiers sélectionnés n'ont pas été reconnus et seront ignorés : {{names}}.",
+      "skippedRows_one": "1 ligne n'avait pas de date de visionnage et sera ignorée.",
+      "skippedRows_other": "{{count}} lignes n'avaient pas de date de visionnage et seront ignorées.",
+      "confirm": "Importer"
     }
   }
 }

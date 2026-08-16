@@ -27,6 +27,14 @@ export interface TvTimeExport {
   watchlist: TvTimeWatchlistEntry[];
   /** TheTVDB ids keyed by lowercase series name (from followed_tv_show.csv). */
   tvdbIdsByName: Map<string, number>;
+  /**
+   * Otherwise-well-formed watch rows dropped because `created_at` was
+   * missing or unparseable. Never backfilled with today's date — a fake
+   * watch date would silently corrupt anything date-bucketed (monthly
+   * activity, streaks, wrapped) — so these are just excluded and counted
+   * here for the pre-import summary to surface instead.
+   */
+  skippedRows: { episodes: number; movies: number };
 }
 
 // TV Time timestamps are "YYYY-MM-DD HH:mm:ss" in UTC.
@@ -59,7 +67,7 @@ export function detectFileKind(text: string): TvTimeFileKind {
 }
 
 export function emptyExport(): TvTimeExport {
-  return { episodes: [], movies: [], watchlist: [], tvdbIdsByName: new Map() };
+  return { episodes: [], movies: [], watchlist: [], tvdbIdsByName: new Map(), skippedRows: { episodes: 0, movies: 0 } };
 }
 
 /**
@@ -79,8 +87,12 @@ export function parseTvTimeFile(text: string, into: TvTimeExport): TvTimeFileKin
       const seriesName = row.series_name?.trim();
       const seasonNumber = Number.parseInt(row.s_no ?? "", 10);
       const episodeNumber = Number.parseInt(row.ep_no ?? "", 10);
+      if (!seriesName || !Number.isFinite(seasonNumber) || !Number.isFinite(episodeNumber)) continue;
       const watchedAt = toIso(row.created_at ?? "");
-      if (!seriesName || !Number.isFinite(seasonNumber) || !Number.isFinite(episodeNumber) || !watchedAt) continue;
+      if (!watchedAt) {
+        into.skippedRows.episodes += 1;
+        continue;
+      }
       into.episodes.push({
         seriesName,
         seasonNumber,
@@ -98,7 +110,10 @@ export function parseTvTimeFile(text: string, into: TvTimeExport): TvTimeFileKin
       if (!isMovie || !title) continue;
       if (row.type === "watch") {
         const watchedAt = toIso(row.created_at ?? "");
-        if (!watchedAt) continue;
+        if (!watchedAt) {
+          into.skippedRows.movies += 1;
+          continue;
+        }
         into.movies.push({
           title,
           year: toYear(row.release_date ?? ""),
@@ -157,5 +172,34 @@ export function normalizeExport(data: TvTimeExport): TvTimeExport {
     movies: [...movieMap.values()],
     watchlist: [...watchlistMap.values()],
     tvdbIdsByName: data.tvdbIdsByName,
+    skippedRows: data.skippedRows,
   };
+}
+
+export interface TvTimeFile {
+  name: string;
+  text: string;
+}
+
+export interface ParsedTvTimeFiles {
+  data: TvTimeExport;
+  /** Selected files whose header didn't match any known export CSV. */
+  unrecognizedFiles: string[];
+}
+
+/**
+ * Parses every selected/extracted file (in any order, any subset) into one
+ * normalized export, tracking which ones weren't recognized at all — a
+ * GDPR export .zip has far more files in it than the 4 this feature reads,
+ * and silently ignoring an unrecognized selection left users with no way to
+ * tell why nothing happened for a given file.
+ */
+export function parseTvTimeFiles(files: TvTimeFile[]): ParsedTvTimeFiles {
+  const accumulator = emptyExport();
+  const unrecognizedFiles: string[] = [];
+  for (const file of files) {
+    const kind = parseTvTimeFile(file.text, accumulator);
+    if (kind === "unknown") unrecognizedFiles.push(file.name);
+  }
+  return { data: normalizeExport(accumulator), unrecognizedFiles };
 }

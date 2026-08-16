@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseCsv } from "../csv";
-import { detectFileKind, emptyExport, normalizeExport, parseTvTimeFile } from "../parse-export";
+import { detectFileKind, emptyExport, normalizeExport, parseTvTimeFile, parseTvTimeFiles } from "../parse-export";
 
 const RECORDS_V2 = `s_id,runtime,series_name,episode_number,user_id,gsi,created_at,key,season_number,s_no,ep_no,ep_id,episode_id,updated_at,ep_watch_count,movie_watch_count,total_movies_runtime,total_series_runtime,series_follow_count,is_archived,is_for_later,is_followed,uuid,followed_at,most_recent_ep_watched,is_unitary,bulk_type,is_special,rewatch_count
 349310,3660,Bodyguard (2018),6,1,watch-episode-1,2023-11-04 15:30:38,watch-episode-aaa,1,1,6,6733513,6733513,2023-11-04 15:30:38,,,,,,,,,,,,true,,,
@@ -76,5 +76,42 @@ describe("parseTvTimeFile + normalizeExport", () => {
 
     expect(data.tvdbIdsByName.get("my wife and kids")).toBe(70329);
     expect(data.watchlist).toEqual([{ title: "Parks and Recreation", mediaType: "series", year: null }]);
+  });
+
+  it("counts (rather than silently drops or backdates) rows missing a watch date", () => {
+    const recordsV2WithBlankDate = RECORDS_V2.replace(
+      "349310,3660,Bodyguard (2018),6,1,watch-episode-1,2023-11-04 15:30:38,watch-episode-aaa,1,1,6,6733513,6733513,2023-11-04 15:30:38,,,,,,,,,,,,true,,,",
+      "349310,3660,Bodyguard (2018),6,1,watch-episode-1,,watch-episode-aaa,1,1,6,6733513,6733513,2023-11-04 15:30:38,,,,,,,,,,,,true,,,"
+    );
+    const recordsV1WithBlankDate = RECORDS_V1.replace(
+      "1,,,aaa,2019-09-08 17:24:29,2019-09-08 17:24:29,watch-aaa-0,watch,,,,movie,0,Fury,2014-10-15 00:00:00,8040,,,,,,,,,,,,,GB,",
+      "1,,,aaa,2019-09-08 17:24:29,,watch-aaa-0,watch,,,,movie,0,Fury,2014-10-15 00:00:00,8040,,,,,,,,,,,,,GB,"
+    );
+    const data = emptyExport();
+    parseTvTimeFile(recordsV2WithBlankDate, data);
+    parseTvTimeFile(recordsV1WithBlankDate, data);
+
+    // The undated Bodyguard row is dropped (its dated duplicate still
+    // imports); Fury has no dated row left at all.
+    expect(data.skippedRows).toEqual({ episodes: 1, movies: 1 });
+    const normalized = normalizeExport(data);
+    expect(normalized.episodes.find((episode) => episode.seriesName === "Bodyguard (2018)")).toMatchObject({
+      watchedAt: "2023-12-01T10:00:00.000Z",
+    });
+    expect(normalized.movies).toEqual([]);
+  });
+});
+
+describe("parseTvTimeFiles", () => {
+  it("parses every recognized file and lists the ones it couldn't identify", () => {
+    const { data, unrecognizedFiles } = parseTvTimeFiles([
+      { name: "tracking-prod-records-v2.csv", text: RECORDS_V2 },
+      { name: "followed_tv_show.csv", text: FOLLOWED },
+      { name: "account_info.csv", text: "email,created_at\nme@example.com,2020-01-01" },
+    ]);
+
+    expect(data.episodes.length).toBeGreaterThan(0);
+    expect(data.tvdbIdsByName.get("my wife and kids")).toBe(70329);
+    expect(unrecognizedFiles).toEqual(["account_info.csv"]);
   });
 });
