@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Heart, Save, Trash2 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AddToListButton } from "@/components/library/add-to-list-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -196,10 +197,14 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         ) : null}
       </div>
 
-      <div className="mt-6 border-t border-border pt-4">
-        <p className="mb-2 text-sm font-medium">{t("library.lists.addToAListLabel")}</p>
-        <AddToListButton media={media} />
-      </div>
+      <Accordion type="single" collapsible className="mt-6">
+        <AccordionItem value="add-to-list">
+          <AccordionTrigger>{t("library.lists.addToAListLabel")}</AccordionTrigger>
+          <AccordionContent>
+            <AddToListButton media={media} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <ConfirmDialog
         open={confirmingRemove}

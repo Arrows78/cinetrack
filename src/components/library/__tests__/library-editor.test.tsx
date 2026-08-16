@@ -157,4 +157,24 @@ describe("LibraryEditor", () => {
     expect(panel).toHaveTextContent("Add to a list");
     expect(panel).toHaveTextContent("Save");
   });
+
+  it("keeps the add-to-list section collapsed until the user opens it", async () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+
+    expect(screen.queryByText(/don't have any lists yet/i)).not.toBeInTheDocument();
+
+    screen.getByRole("button", { name: "Add to a list" }).click();
+
+    expect(await screen.findByText(/don't have any lists yet/i)).toBeInTheDocument();
+  });
 });
