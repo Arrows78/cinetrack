@@ -35,6 +35,7 @@ const toastVariants = cva(
         // in the dark theme, light-on-light in the light theme). Matches
         // the same bg-X/N + text-X pairing partial-error-state.tsx uses.
         success: "border-success/30 bg-success/10 text-success",
+        warning: "border-warning/30 bg-warning/10 text-warning",
         error: "border-destructive/30 bg-destructive/10 text-destructive",
       },
     },

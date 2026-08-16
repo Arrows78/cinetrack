@@ -490,7 +490,8 @@
     "switchToDark": "Passer au thème sombre",
     "titles": "Titres",
     "searchingTitles": "Recherche de titres…",
-    "onThisPage": "Sur cette fiche"
+    "onThisPage": "Sur cette fiche",
+    "removeFromLibrary": "Retirer de la bibliothèque"
   },
   "backup": {
     "title": "Sauvegarde portable",

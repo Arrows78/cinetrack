@@ -123,7 +123,7 @@ export function CommandPalette() {
 
     items.push({
       key: "context-toggle-library",
-      label: t(libraryToggle.isInLibrary ? "media.inLibrary" : "media.addToLibrary"),
+      label: t(libraryToggle.isInLibrary ? "commandPalette.removeFromLibrary" : "media.addToLibrary"),
       icon: libraryToggle.isInLibrary ? BookmarkCheck : Bookmark,
       section: "contextual",
       run: () => {

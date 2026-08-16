@@ -326,8 +326,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "In library" }));
-      fireEvent.click(screen.getByRole("button", { name: "In library" }));
+      await waitFor(() => screen.getByRole("button", { name: "Remove from library" }));
+      fireEvent.click(screen.getByRole("button", { name: "Remove from library" }));
 
       await waitFor(() => expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
       expect(libraryRemoveMock).not.toHaveBeenCalled();
@@ -341,8 +341,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "In library" }));
-      fireEvent.click(screen.getByRole("button", { name: "In library" }));
+      await waitFor(() => screen.getByRole("button", { name: "Remove from library" }));
+      fireEvent.click(screen.getByRole("button", { name: "Remove from library" }));
 
       await waitFor(() => expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
       expect(await screen.findByText("Remove this title from your library?")).toBeInTheDocument();

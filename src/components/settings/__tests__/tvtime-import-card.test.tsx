@@ -81,6 +81,25 @@ describe("TvTimeImportCard", () => {
     await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" })));
   });
 
+  it("shows a warning toast instead of success once the import reports unmatched titles", async () => {
+    applyTvTimeImportMock.mockResolvedValueOnce({
+      seriesImported: 1,
+      episodesImported: 1,
+      moviesImported: 0,
+      plannedImported: 0,
+      unmatched: ["Some Unmatched Show"],
+      ambiguous: [],
+      retryable: [],
+    });
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+    (await screen.findByRole("button", { name: "Import" })).click();
+
+    await waitFor(() => expect(applyTvTimeImportMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "warning" })));
+  });
+
   it("truncates a long current-title instead of letting it grow the card", async () => {
     let resolveImport!: (summary: unknown) => void;
     applyTvTimeImportMock.mockImplementationOnce(

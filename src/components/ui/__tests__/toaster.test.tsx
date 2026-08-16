@@ -36,7 +36,7 @@ describe("Toaster", () => {
     expect(screen.getByText("Saved.")).toBeInTheDocument();
   });
 
-  it("adds a status icon for success/error toasts but not the default variant", async () => {
+  it("adds a status icon for success/warning/error toasts but not the default variant", async () => {
     const { Toaster: ToasterPlain, toast: toastPlain } = await importFresh();
     const { container: plainContainer } = render(<ToasterPlain />);
     act(() => {
@@ -51,6 +51,13 @@ describe("Toaster", () => {
       toastSuccess({ description: "Done", variant: "success" });
     });
     expect(successContainer.querySelectorAll("svg")).toHaveLength(2);
+
+    const { Toaster: ToasterWarning, toast: toastWarning } = await importFresh();
+    const { container: warningContainer } = render(<ToasterWarning />);
+    act(() => {
+      toastWarning({ description: "Partial", variant: "warning" });
+    });
+    expect(warningContainer.querySelectorAll("svg")).toHaveLength(2);
 
     const { Toaster: ToasterError, toast: toastError } = await importFresh();
     const { container: errorContainer } = render(<ToasterError />);

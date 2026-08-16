@@ -490,7 +490,8 @@
     "switchToDark": "Switch to dark theme",
     "titles": "Titles",
     "searchingTitles": "Searching titles…",
-    "onThisPage": "On this page"
+    "onThisPage": "On this page",
+    "removeFromLibrary": "Remove from library"
   },
   "backup": {
     "title": "Portable backup",

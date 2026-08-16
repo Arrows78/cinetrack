@@ -142,7 +142,7 @@ export function TvTimeImportCard() {
             ) : null}
           </div>
         ),
-        variant: "success",
+        variant: result.ambiguous.length || result.retryable.length || result.unmatched.length ? "warning" : "success",
       });
     } catch (importError) {
       logger.warn(`TV Time import failed: ${importError instanceof Error ? importError.message : String(importError)}`);

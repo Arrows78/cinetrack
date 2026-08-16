@@ -1,14 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
 
-// Only the variants actually used anywhere in the app today (grep `toast({`)
-// — "default" has no current caller, so it stays icon-less rather than
+// "default" has no current caller, so it stays icon-less rather than
 // inventing a glyph nothing renders yet.
 const ICON_BY_VARIANT: Partial<Record<string, LucideIcon>> = {
   success: CheckCircle2,
+  warning: AlertTriangle,
   error: XCircle,
 };
 
