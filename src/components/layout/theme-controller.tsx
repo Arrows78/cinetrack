@@ -20,9 +20,17 @@ function applyAccentVars(primaryHsl: string, primaryFg: string) {
     style.id = STYLE_ID;
     document.head.appendChild(style);
   }
-  // Use :root.dark and :root.light (specificity 0,2,0) to outrank the
-  // .light { --primary } class rule (specificity 0,1,0) in the main stylesheet.
-  style.textContent = `:root.dark,:root.light{--primary:${primaryHsl};--primary-foreground:${primaryFg};--ring:${primaryHsl}}`;
+  // :root.light/:root.dark (specificity 0,2,0) outrank the plain
+  // .light { --primary } class rule (0,1,0) in the main stylesheet — but
+  // only on <html>. ThemeController toggles "light"/"dark" on <body> too
+  // (index.css's `body.light` background-gradient rule needs it there), and
+  // a bare `.light{}` selector matches <body> directly regardless of what
+  // <html> resolves to — a direct match wins over inheriting from a parent.
+  // Dark mode never hit this (the base stylesheet's dark values live on the
+  // unconditional `:root{}`, which never matches <body>), so this only
+  // broke the accent-color override in light mode. Covering body.dark/
+  // body.light explicitly closes that gap.
+  style.textContent = `:root.dark,:root.light,body.dark,body.light{--primary:${primaryHsl};--primary-foreground:${primaryFg};--ring:${primaryHsl}}`;
 }
 
 export function ThemeController() {
