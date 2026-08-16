@@ -62,7 +62,7 @@ export function AppShell() {
             this header is just the back button (when there's somewhere to
             go back to) and the brand.
           */}
-          <header className="surface sticky top-4 z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
+          <header className="surface sticky top-[calc(1rem+env(safe-area-inset-top))] z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
               {canGoBack && (
                 <Button

@@ -2,6 +2,13 @@ mod commands;
 mod database;
 mod error;
 mod models;
+// tray::build uses tauri::tray/tauri::menu, which only exist on desktop —
+// the module itself must be gated, not just its (already-gated) call site:
+// Rust compiles every `mod`-included file regardless of whether anything
+// inside it is called, so an ungated `mod tray;` still fails to compile
+// on iOS/Android even though tray::build() is only ever invoked inside a
+// `#[cfg(desktop)]` block in run().
+#[cfg(desktop)]
 mod tray;
 
 use tauri::{Emitter, Manager};

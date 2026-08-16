@@ -11,11 +11,6 @@
     "opener:default",
     "stronghold:default",
     "process:default",
-    "updater:default",
-    "autostart:default",
-    "global-shortcut:allow-is-registered",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
     {
       "identifier": "fs:allow-exists",
       "allow": [{ "path": "$APPDATA/backups/**" }, { "path": "$APPDATA/logs/**" }]

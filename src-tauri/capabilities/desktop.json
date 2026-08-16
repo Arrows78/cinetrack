@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "Permissions for plugins that only exist on desktop (updater, autostart, global shortcuts) — see Cargo.toml's matching target-specific dependency gate. Split out from default.json because the mobile build fails otherwise: the permission build script can't resolve these identifiers when their plugin crates aren't even linked in for iOS/Android.",
+  "platforms": ["macOS", "windows", "linux"],
+  "windows": ["main"],
+  "permissions": [
+    "updater:default",
+    "autostart:default",
+    "global-shortcut:allow-is-registered",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
+  ]
+}
