@@ -479,6 +479,16 @@
       "addToAListLabel": "Add to a list",
       "noneYetPrefix": "You don't have any lists yet.",
       "noneYetLink": "Create one from your library."
+    },
+    "sections": {
+      "watchNext": "Watch next",
+      "watchNextDescSeries": "Continue watching where you left off",
+      "watchNextDescMovies": "Added to your library, not watched yet",
+      "haventStarted": "Haven't started",
+      "haventStartedDesc": "Ready whenever you are",
+      "finished": "Finished",
+      "finishedDescSeries": "Every aired episode watched",
+      "finishedDescMovies": "Already watched"
     }
   },
   "browserPreview": {

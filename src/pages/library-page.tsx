@@ -6,6 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid, type MediaGridItem } from "@/components/media/media-grid";
 import { MediaList } from "@/components/media/media-list";
+import { MovieLibrarySections, SeriesLibrarySections } from "@/components/media/library-sections";
 import { SectionHeader } from "@/components/media/section-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -400,7 +401,11 @@ export function LibraryExplorer({ lockedMediaType }: { lockedMediaType?: "movie"
       ) : isFilteredToList && listItems.isError ? (
         <RemoteErrorState error={listItems.error} onRetry={() => void listItems.refetch()} />
       ) : filtered.length ? (
-        viewMode === "grid" ? (
+        lockedMediaType === "series" ? (
+          <SeriesLibrarySections items={filtered} trackedSeries={trackedSeries ?? []} viewMode={viewMode} />
+        ) : lockedMediaType === "movie" ? (
+          <MovieLibrarySections items={filtered} viewMode={viewMode} />
+        ) : viewMode === "grid" ? (
           <MediaGrid items={filtered} />
         ) : (
           <MediaList items={filtered} />

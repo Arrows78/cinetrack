@@ -45,14 +45,17 @@ async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
   return progressRepository.getNextEpisode(seasons, progress);
 }
 
-export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
+/**
+ * Resolves the next episode for an arbitrary list of series — shared by
+ * useWatchNext (home page, capped to a handful of in-progress shows) and the
+ * library page's Series view (uncapped, and also used for shows that
+ * haven't been started at all: resolveNextEpisode already handles a series
+ * with zero watched episodes by resolving its first one).
+ */
+export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
   const profileId = useActiveProfileId();
-  const inProgress = trackedSeries
-    .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
-    .slice(0, limit);
-
   const queries = useQueries({
-    queries: inProgress.map((series) => ({
+    queries: seriesList.map((series) => ({
       queryKey: queryKeys.local.watchNextEpisode(profileId, series.seriesId),
       queryFn: () => resolveNextEpisode(series.seriesId),
       staleTime: 1000 * 60 * 30,
@@ -60,7 +63,7 @@ export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
   });
 
   const entries: WatchNextEntry[] = [];
-  inProgress.forEach((series, index) => {
+  seriesList.forEach((series, index) => {
     const nextEpisode = queries[index]?.data;
     if (nextEpisode) {
       entries.push({
@@ -72,6 +75,13 @@ export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
   });
 
   return { entries, isLoading: queries.some((query) => query.isLoading) };
+}
+
+export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
+  const inProgress = trackedSeries
+    .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
+    .slice(0, limit);
+  return useNextEpisodes(inProgress);
 }
 
 export function useMarkWatchNext() {

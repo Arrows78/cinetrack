@@ -8,7 +8,7 @@ import { buildTmdbImageUrl, formatEpisodeCode } from "@/shared/utils/format";
 import { cn } from "@/shared/lib/cn";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
-function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
+export function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
   const { t } = useTranslation();
   const { markWatched, isSaving } = useMarkWatchNext();
   const [justChecked, setJustChecked] = useState(false);

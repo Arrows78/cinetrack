@@ -647,6 +647,14 @@ export const componentInventory = [
     "Combines media-type filters with count-aware selection controls."
   ),
   component(
+    "LibrarySections",
+    "components/media/library-sections.tsx",
+    "Media",
+    "feature",
+    "live",
+    "Splits the /series and /movies list views into Watch next, Haven't started and Finished sections."
+  ),
+  component(
     "LoadMoreButton",
     "components/media/load-more-button.tsx",
     "Media",
