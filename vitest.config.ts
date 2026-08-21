@@ -97,6 +97,26 @@ export default defineConfig({
         // already-passing test).
         "src/features/auth/auth-provider.tsx": { statements: 80, branches: 70, functions: 90, lines: 80 },
         "src/features/auth/provider-availability.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "src/features/auth/auth-screen.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "src/components/desktop/token-gate.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // The one uncovered branch is the `logLines ?? []` fallback inside the
+        // Diagnostics "copy" button's onClick — that button is disabled
+        // exactly when logLines is null/undefined/empty, so the fallback is
+        // unreachable through any real interaction (confirmed: jsdom never
+        // fires onClick on a disabled button).
+        "src/components/settings/desktop-settings.tsx": { statements: 100, branches: 95, functions: 100, lines: 100 },
+        // The one uncovered branch is confirmImport's `if (!file) return;`
+        // guard — pendingImportFile is read synchronously (no intervening
+        // await) and the confirm button is only reachable while the
+        // ConfirmDialog is open, which itself requires pendingImportFile to
+        // already be non-null, so the guard can't actually be hit through the
+        // UI without calling the internal handler directly.
+        "src/components/settings/backup-tools.tsx": { statements: 95, branches: 90, functions: 100, lines: 100 },
+        "src/components/media/library-sections.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "src/components/media/next-episode-card.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "src/features/desktop/desktop-service.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "src/features/desktop/notification-service.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "src/features/desktop/update-service.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         // Mocks invoke() rather than a real SQLite engine (the SQL side is
         // covered in profiles.rs) — this only tests the invoke() mapping and
         // the one bit of client-side orchestration this repository keeps
