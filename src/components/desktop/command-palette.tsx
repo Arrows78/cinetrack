@@ -72,6 +72,7 @@ const EMPTY_PLACEHOLDER_MEDIA: MediaSummary = {
 };
 
 const TITLE_RESULTS_CAP = 5;
+const COMMAND_PALETTE_ROW_ID_PREFIX = "command-palette-row";
 
 export function CommandPalette() {
   const { t } = useTranslation();
@@ -295,13 +296,14 @@ export function CommandPalette() {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t("commandPalette.searchPlaceholder")}
                 aria-label={t("commandPalette.searchPlaceholder")}
+                aria-activedescendant={results.length ? `${COMMAND_PALETTE_ROW_ID_PREFIX}-${selectedIndex}` : undefined}
                 className="h-14 rounded-none border-none bg-transparent pl-11 pr-16 ring-offset-0 focus-visible:ring-0"
               />
               <kbd className="absolute right-4 top-1/2 -translate-y-1/2 rounded border px-2 py-1 text-xs text-muted-foreground">
                 Esc
               </kbd>
             </div>
-            <div className="max-h-96 overflow-y-auto p-2 pb-3">
+            <div role="listbox" className="max-h-96 overflow-y-auto p-2 pb-3">
               {contextualResults.length ? (
                 <p className="px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {t("commandPalette.onThisPage")}
@@ -396,6 +398,7 @@ function PaletteRow({
   return (
     <button
       ref={(node) => onRegisterRef(index, node)}
+      id={`${COMMAND_PALETTE_ROW_ID_PREFIX}-${index}`}
       type="button"
       className={cn(
         "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
