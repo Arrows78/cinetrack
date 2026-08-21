@@ -2,6 +2,7 @@ import i18n from "@/i18n";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { mediaRepository } from "@/features/media/media-repository";
 import { notificationService } from "@/features/desktop/notification-service";
+import { logger } from "@/features/diagnostics/logger";
 
 export const availabilityMonitor = {
   async checkAll({ notificationsEnabled = true }: { notificationsEnabled?: boolean } = {}) {
@@ -35,7 +36,7 @@ export const availabilityMonitor = {
         });
       } catch (error) {
         // Continue checking the remaining alerts when one provider request fails.
-        console.warn(`[availability] Check failed for ${alert.mediaType} ${alert.mediaId}`, error);
+        logger.warn(`[availability] Check failed for ${alert.mediaType} ${alert.mediaId}: ${error}`);
       }
     }
 
