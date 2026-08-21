@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { STALE_1_HOUR, STALE_24_HOURS } from "@/shared/constants/query";
-import type { MediaType, PageResult } from "@/types/media";
+import { STALE_1_HOUR } from "@/shared/constants/query";
+import type { PageResult } from "@/types/media";
 
 export const nextPage = <T>(lastPage: PageResult<T>) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined);
 
@@ -31,14 +31,6 @@ export function useSeries() {
     getNextPageParam: nextPage,
   });
   return { ...query, items: query.data?.pages.flatMap((page) => page.results) ?? [] };
-}
-
-export function useWatchProviders(mediaType: MediaType, region: string) {
-  return useQuery({
-    queryKey: queryKeys.remote.providers(mediaType, region),
-    queryFn: () => mediaRepository.getWatchProviders(mediaType, region),
-    staleTime: STALE_24_HOURS,
-  });
 }
 
 export function useMovieDetails(movieId: number) {

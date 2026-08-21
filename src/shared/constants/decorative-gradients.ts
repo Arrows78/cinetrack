@@ -28,9 +28,6 @@ export const AUTH_BACKDROP_TILE_GRADIENTS: readonly string[] = [
   "linear-gradient(145deg, #17131d, #4d3b60)",
 ];
 
-/** Glossy highlight overlaid on each backdrop tile above. */
-export const AUTH_BACKDROP_TILE_SHEEN = "radial-gradient(circle at 50% 20%, rgba(255,255,255,0.2), transparent 45%)";
-
 /**
  * Film-sprocket perforation strip along a backdrop tile's top/bottom edge
  * (see auth-backdrop.tsx) — a decorative nod to a 35mm filmstrip, not a

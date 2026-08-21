@@ -100,16 +100,6 @@ describe("useSeries", () => {
   });
 });
 
-describe("useWatchProviders", () => {
-  it("fetches providers for the given media type and region", async () => {
-    const { useWatchProviders } = await import("../use-media");
-    const { result } = renderHook(() => useWatchProviders("movie", "FR"), { wrapper: createWrapper() });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(getWatchProvidersMock).toHaveBeenCalledWith("movie", "FR");
-  });
-});
-
 describe("useMovieDetails / useSeriesDetails / useSeasonDetails", () => {
   it("is disabled for a non-finite id", async () => {
     const { useMovieDetails } = await import("../use-media");

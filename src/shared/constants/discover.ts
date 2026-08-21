@@ -66,6 +66,3 @@ export const PLATFORMS = [
   { id: 15, label: "Hulu", color: PLATFORM_BRAND_COLORS[15], initial: "H" },
   { id: 350, label: "Apple TV+", color: PLATFORM_BRAND_COLORS[350], initial: "A" },
 ] as const;
-
-export const GENRE_IDS_MOVIES = GENRES.movies.map((g) => g.id);
-export const PLATFORM_IDS = PLATFORMS.map((p) => p.id);

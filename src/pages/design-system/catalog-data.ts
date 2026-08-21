@@ -583,14 +583,6 @@ export const componentInventory = [
     "Applies persisted theme and accent preferences to the document."
   ),
   component(
-    "ThemeToggle",
-    "components/layout/theme-toggle.tsx",
-    "Layout",
-    "pattern",
-    "reference",
-    "Switches between light and dark appearance modes."
-  ),
-  component(
     "LibraryEditor",
     "components/library/library-editor.tsx",
     "Library",
