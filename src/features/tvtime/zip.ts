@@ -39,17 +39,32 @@ export class ZipTooLargeError extends Error {
 /** Extracts every .csv entry from a .zip File, decoded as UTF-8 text. */
 export async function extractCsvEntries(file: File): Promise<ZipCsvEntry[]> {
   const buffer = new Uint8Array(await file.arrayBuffer());
+
+  // Rejecting on `entry.originalSize` — the decompressed size declared in
+  // the zip's central directory — inside the filter itself means an
+  // oversized entry is refused before fflate ever inflates its bytes into
+  // memory. Checking `bytes.byteLength` only after unzipSync returns (the
+  // previous approach) checked the size of something already fully
+  // decompressed: a small, highly-compressible .csv (a zip bomb) would
+  // already have blown up memory/the UI thread by the time that check ran.
+  // The filter is consulted once per entry, before that entry is
+  // decompressed, so this also lets `runningTotal` reject once the
+  // *declared* cumulative size would exceed the cap, without needing to
+  // have decompressed anything to know that.
+  let runningTotal = 0;
   const entries = unzipSync(buffer, {
-    filter: (entry) => CSV_EXTENSION.test(entry.name) && !isMacosArtifact(entry.name),
+    filter: (entry) => {
+      if (!CSV_EXTENSION.test(entry.name) || isMacosArtifact(entry.name)) return false;
+      if (entry.originalSize > MAX_TVTIME_ZIP_ENTRY_BYTES) throw new ZipTooLargeError(entry.name);
+      runningTotal += entry.originalSize;
+      if (runningTotal > MAX_TVTIME_ZIP_TOTAL_BYTES) throw new ZipTooLargeError(entry.name);
+      return true;
+    },
   });
 
   const decoder = new TextDecoder("utf-8");
   const results: ZipCsvEntry[] = [];
-  let totalBytes = 0;
   for (const [path, bytes] of Object.entries(entries)) {
-    if (bytes.byteLength > MAX_TVTIME_ZIP_ENTRY_BYTES) throw new ZipTooLargeError(path);
-    totalBytes += bytes.byteLength;
-    if (totalBytes > MAX_TVTIME_ZIP_TOTAL_BYTES) throw new ZipTooLargeError(path);
     // Zip entries carry their full in-archive path (e.g.
     // "gdpr-data/tracking-prod-records-v2.csv") — only the filename is
     // meaningful for detectFileKind()/user-facing reporting.

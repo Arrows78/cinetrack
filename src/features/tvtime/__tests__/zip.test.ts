@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
-import { extractCsvEntries, MAX_TVTIME_ZIP_ENTRY_BYTES, ZipTooLargeError } from "../zip";
+import { extractCsvEntries, MAX_TVTIME_ZIP_ENTRY_BYTES, MAX_TVTIME_ZIP_TOTAL_BYTES, ZipTooLargeError } from "../zip";
 
 function zipFile(entries: Record<string, string>): File {
   const bytes = zipSync(Object.fromEntries(Object.entries(entries).map(([name, content]) => [name, strToU8(content)])));
@@ -47,6 +47,18 @@ describe("extractCsvEntries", () => {
   it("rejects an entry whose decompressed size exceeds the cap", async () => {
     const huge = "x".repeat(MAX_TVTIME_ZIP_ENTRY_BYTES + 1);
     const file = zipFile({ "big.csv": huge });
+
+    await expect(extractCsvEntries(file)).rejects.toBeInstanceOf(ZipTooLargeError);
+  }, 20000);
+
+  // Also proves the real fix, just via total rather than per-entry size:
+  // rejecting on each entry's declared `originalSize` (from the zip's
+  // central directory) as the filter sees it — not on the decompressed
+  // byte length measured after the fact — means none of these ever
+  // actually gets inflated once the running total would exceed the cap.
+  it("rejects once the combined declared size of several under-the-per-entry-cap entries exceeds the total cap", async () => {
+    const halfOfTotal = "x".repeat(Math.floor(MAX_TVTIME_ZIP_TOTAL_BYTES / 2) + 1);
+    const file = zipFile({ "a.csv": halfOfTotal, "b.csv": halfOfTotal, "c.csv": halfOfTotal });
 
     await expect(extractCsvEntries(file)).rejects.toBeInstanceOf(ZipTooLargeError);
   }, 20000);
