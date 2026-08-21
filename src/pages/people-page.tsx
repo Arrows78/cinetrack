@@ -9,7 +9,7 @@ import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePeopleSearch } from "@/features/media/use-discovery";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
-import { buildTmdbImageUrl } from "@/shared/utils/format";
+import { buildTmdbImageUrl, placeholderUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
 // Matches MediaGrid's entrance cascade (see media-grid.tsx) so cards feel
@@ -61,7 +61,7 @@ export function PeoplePage() {
                     className="aspect-[2/3] w-full rounded-2xl object-cover"
                     src={
                       buildTmdbImageUrl(person.profilePath, "w500") ??
-                      "https://placehold.co/500x750/111827/374151?text=Portrait"
+                      placeholderUrl(500, 750, "Portrait")
                     }
                     alt={person.name}
                   />

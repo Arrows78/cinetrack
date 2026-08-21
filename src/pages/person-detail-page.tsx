@@ -4,7 +4,7 @@ import { MediaGrid } from "@/components/media/media-grid";
 import { Panel } from "@/components/ui/panel";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePerson } from "@/features/media/use-discovery";
-import { buildTmdbImageUrl } from "@/shared/utils/format";
+import { buildTmdbImageUrl, placeholderUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 export function PersonDetailPage() {
   const { t } = useTranslation();
@@ -19,7 +19,7 @@ export function PersonDetailPage() {
           className="h-48 w-32 rounded-2xl object-cover"
           src={
             buildTmdbImageUrl(query.data.profilePath, "w500") ??
-            "https://placehold.co/500x750/111827/374151?text=Portrait"
+            placeholderUrl(500, 750, "Portrait")
           }
           alt={query.data.name}
         />

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating, formatRuntime } from "@/shared/utils/format";
+import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating, formatRuntime, placeholderUrl } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 
 export function MediaDetailsHero({
@@ -38,7 +38,7 @@ export function MediaDetailsHero({
         {/* Poster */}
         <div className="hidden lg:block">
           <img
-            src={poster ?? "https://placehold.co/500x750/111827/374151?text=Poster"}
+            src={poster ?? placeholderUrl(500, 750, "Poster")}
             srcSet={buildTmdbPosterSrcSet(media.posterPath)}
             sizes="220px"
             alt=""

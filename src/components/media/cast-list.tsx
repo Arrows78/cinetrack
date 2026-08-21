@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { buildTmdbImageUrl } from "@/shared/utils/format";
+import { buildTmdbImageUrl, placeholderUrl } from "@/shared/utils/format";
 import type { CastMember } from "@/types/media";
 
 export function CastList({ cast }: { cast: CastMember[] }) {
@@ -12,7 +12,7 @@ export function CastList({ cast }: { cast: CastMember[] }) {
         <Card key={member.id} className="flex items-center gap-3 rounded-3xl p-3">
           <img
             src={
-              buildTmdbImageUrl(member.profilePath, "w185") ?? "https://placehold.co/200x300/111827/e5e7eb?text=Cast"
+              buildTmdbImageUrl(member.profilePath, "w185") ?? placeholderUrl(200, 300, "Cast")
             }
             alt={member.name}
             className="h-16 w-16 rounded-2xl object-cover"

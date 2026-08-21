@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { cn } from "@/shared/lib/cn";
-import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
+import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime, placeholderUrl } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 export function EpisodeCard({
   episode,
@@ -35,7 +35,7 @@ export function EpisodeCard({
           </div>
         ) : (
           <img
-            src={buildTmdbImageUrl(episode.stillPath, "w342") ?? "https://placehold.co/320x180/111827/374151?text=."}
+            src={buildTmdbImageUrl(episode.stillPath, "w342") ?? placeholderUrl(320, 180)}
             alt=""
             className="h-full w-full object-cover"
           />

@@ -84,3 +84,12 @@ export const yearFromDate = (value?: string | null) => {
 export const percent = (value: number, total: number) => (total === 0 ? 0 : Math.round((value / total) * 100));
 
 export const pluralize = (value: number, one: string, many: string) => (value > 1 ? many : one);
+
+/**
+ * Placeholder image URL via placehold.co. Centralizes the background/foreground
+ * colors so every fallback image shares the same brand-aligned palette.
+ */
+const PLACEHOLDER_BG = "111827";
+const PLACEHOLDER_FG = "374151";
+export const placeholderUrl = (width: number, height: number, text = "") =>
+  `https://placehold.co/${width}x${height}/${PLACEHOLDER_BG}/${PLACEHOLDER_FG}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
