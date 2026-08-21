@@ -102,6 +102,75 @@ describe("useWatchNext", () => {
   });
 });
 
+describe("useNextEpisodes season-window selection", () => {
+  it("narrows to at most two seasons starting from the last-watched one when progress exists", async () => {
+    getSeriesDetailsMock.mockResolvedValueOnce({
+      seasons: [{ seasonNumber: 1 }, { seasonNumber: 2 }, { seasonNumber: 3 }, { seasonNumber: 4 }],
+    } as never);
+    getEpisodeProgressMock.mockResolvedValueOnce([
+      { seasonNumber: 1, episodeNumber: 1, watched: true },
+      { seasonNumber: 2, episodeNumber: 5, watched: true },
+    ] as never);
+
+    const { useNextEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useNextEpisodes([inProgressSeries]), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getSeasonDetailsMock).toHaveBeenCalledTimes(2);
+    expect(getSeasonDetailsMock).toHaveBeenCalledWith(1, 2);
+    expect(getSeasonDetailsMock).toHaveBeenCalledWith(1, 3);
+    expect(getSeasonDetailsMock).not.toHaveBeenCalledWith(1, 1);
+    expect(getSeasonDetailsMock).not.toHaveBeenCalledWith(1, 4);
+  });
+
+  it("falls back to just the first season when there is no prior watched progress", async () => {
+    getSeriesDetailsMock.mockResolvedValueOnce({
+      seasons: [{ seasonNumber: 1 }, { seasonNumber: 2 }, { seasonNumber: 3 }],
+    } as never);
+    getEpisodeProgressMock.mockResolvedValueOnce([] as never);
+
+    const { useNextEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useNextEpisodes([inProgressSeries]), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getSeasonDetailsMock).toHaveBeenCalledTimes(1);
+    expect(getSeasonDetailsMock).toHaveBeenCalledWith(1, 1);
+  });
+
+  it("short-circuits to a null next episode without fetching any season when there are no candidate seasons", async () => {
+    getSeriesDetailsMock.mockResolvedValueOnce({ seasons: [] } as never);
+    getEpisodeProgressMock.mockResolvedValueOnce([] as never);
+
+    const { useNextEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useNextEpisodes([inProgressSeries]), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getSeasonDetailsMock).not.toHaveBeenCalled();
+    expect(result.current.entries).toEqual([]);
+    expect(result.current.results).toEqual([
+      { series: inProgressSeries, nextEpisode: null, remaining: 7, isLoading: false, isError: false },
+    ]);
+  });
+});
+
+describe("useWatchNext inProgress filter", () => {
+  it("excludes series that haven't started or are already finished, keeping only in-progress ones", async () => {
+    const { useWatchNext } = await import("../use-watch-next");
+    const { result } = renderHook(() => useWatchNext([notStartedSeries, inProgressSeries, finishedSeries]), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(1);
+    expect(getSeriesDetailsMock).toHaveBeenCalledWith(1);
+    expect(result.current.entries).toEqual([{ series: inProgressSeries, nextEpisode, remaining: 7 }]);
+  });
+});
+
 describe("useMarkWatchNext", () => {
   it("marks the episode watched via progressRepository.toggleEpisodeSeen", async () => {
     const { useMarkWatchNext } = await import("../use-watch-next");

@@ -79,4 +79,93 @@ describe("useToast / toast", () => {
     expect(result.current.toasts).toHaveLength(0);
     vi.useRealTimers();
   });
+
+  it("dismissing early clears the pending auto-removal timeout instead of leaving it scheduled", async () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+    const { useToast, toast } = await importFresh();
+    const { result } = renderHook(() => useToast());
+
+    let id = "";
+    act(() => {
+      id = toast({ description: "goes away early" }).id;
+    });
+    expect(clearTimeoutSpy).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.dismiss(id);
+    });
+    // The dismiss() call found a pending timeout for this id (the `if
+    // (timeout)` branch in dismiss()) and cleared it via clearTimeout.
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.toasts).toHaveLength(0);
+
+    // Advancing time past TOAST_REMOVE_DELAY must not trigger a second
+    // clearTimeout call or otherwise resurrect/corrupt state — the timer
+    // was already cleared, so there is nothing left to fire.
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.toasts).toHaveLength(0);
+
+    vi.useRealTimers();
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it("dismissing an id twice is a no-op the second time (missing-timeout branch)", async () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+    const { useToast, toast } = await importFresh();
+    const { result } = renderHook(() => useToast());
+
+    let id = "";
+    act(() => {
+      id = toast({ description: "goes away" }).id;
+    });
+
+    act(() => {
+      result.current.dismiss(id);
+    });
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+
+    // Second dismiss() for the same id: no pending timeout left in the map,
+    // so it must not throw and must not call clearTimeout again.
+    expect(() => {
+      act(() => {
+        result.current.dismiss(id);
+      });
+    }).not.toThrow();
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.toasts).toHaveLength(0);
+
+    vi.useRealTimers();
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it("unmounting a subscriber stops it from receiving further updates, and a later toast() call does not throw", async () => {
+    const { useToast, toast } = await importFresh();
+    const first = renderHook(() => useToast());
+    const second = renderHook(() => useToast());
+
+    act(() => {
+      toast({ description: "before unmount" });
+    });
+    expect(first.result.current.toasts).toHaveLength(1);
+    expect(second.result.current.toasts).toHaveLength(1);
+
+    first.unmount();
+
+    expect(() => {
+      act(() => {
+        toast({ description: "after unmount" });
+      });
+    }).not.toThrow();
+
+    // The still-mounted subscriber keeps receiving updates...
+    expect(second.result.current.toasts).toHaveLength(2);
+    // ...while the unmounted one was removed from the listener set on
+    // cleanup and no longer reflects new state.
+    expect(first.result.current.toasts).toHaveLength(1);
+  });
 });

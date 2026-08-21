@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
+import { queryKeys } from "@/shared/constants/query-keys";
 import type { UserPreferences } from "@/types/media";
 
 const defaultPreferences: UserPreferences = {
@@ -50,6 +51,18 @@ function createWrapper() {
   };
 }
 
+// Same as createWrapper but also hands back the QueryClient instance, so
+// tests below can spy on invalidateQueries.
+function createWrapperWithClient() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return {
+    client,
+    Wrapper: function Wrapper({ children }: PropsWithChildren) {
+      return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    },
+  };
+}
+
 describe("usePreferences", () => {
   beforeEach(() => {
     stored = { ...defaultPreferences, userProfile: { ...defaultPreferences.userProfile } };
@@ -78,6 +91,63 @@ describe("usePreferences", () => {
 
     await waitFor(() => expect(result.current.data?.theme).toBe("light"));
     expect(invokeMock).toHaveBeenCalledWith("update_preference", { key: "theme", value: "light" });
+  });
+});
+
+describe("usePreferences mutation side effects", () => {
+  beforeEach(() => {
+    stored = { ...defaultPreferences, userProfile: { ...defaultPreferences.userProfile } };
+    invokeMock.mockClear();
+  });
+
+  it("invalidates remote, calendar and tracking queries when the changed key is 'language'", async () => {
+    const { usePreferences } = await import("../use-preferences");
+    const { client, Wrapper } = createWrapperWithClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => usePreferences(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.updatePreference({ key: "language", value: "fr" });
+    });
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+    expect(invalidatedKeys).toContainEqual(["remote"]);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+    expect(invalidateSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it("invalidates remote, calendar and tracking queries when the changed key is 'region'", async () => {
+    const { usePreferences } = await import("../use-preferences");
+    const { client, Wrapper } = createWrapperWithClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => usePreferences(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.updatePreference({ key: "region", value: "US" });
+    });
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+    expect(invalidatedKeys).toContainEqual(["remote"]);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+    expect(invalidateSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not invalidate remote/calendar/tracking queries for an unrelated key like 'theme'", async () => {
+    const { usePreferences } = await import("../use-preferences");
+    const { client, Wrapper } = createWrapperWithClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => usePreferences(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.updatePreference({ key: "theme", value: "light" });
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });
 

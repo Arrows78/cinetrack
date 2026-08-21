@@ -2,17 +2,34 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { strToU8, zipSync } from "fflate";
+import type { ReactElement } from "react";
 import i18n from "@/i18n";
 import type * as TvTimeImportServiceModule from "@/features/tvtime/tvtime-import-service";
+import type * as ZipModule from "@/features/tvtime/zip";
+import { ZipTooLargeError } from "@/features/tvtime/zip";
+import type { RetryableUnmatched } from "@/features/tvtime/tvtime-import-service";
 import { TvTimeImportCard } from "../tvtime-import-card";
 
 const toastMock = vi.fn();
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
+const loggerWarnMock = vi.fn();
+vi.mock("@/features/diagnostics/logger", () => ({ logger: { warn: (...args: unknown[]) => loggerWarnMock(...args) } }));
+
 const applyTvTimeImportMock = vi.fn();
 vi.mock("@/features/tvtime/tvtime-import-service", async (importOriginal) => {
   const actual = await importOriginal<typeof TvTimeImportServiceModule>();
   return { ...actual, applyTvTimeImport: (...args: unknown[]) => applyTvTimeImportMock(...args) };
+});
+
+// Defaults to the real zip-extraction implementation; individual tests
+// override it with mockImplementationOnce to exercise the ZipTooLargeError
+// and generic-failure catch branches in prepareImport without needing to
+// build an actual 50MB fixture.
+const extractCsvEntriesMock = vi.fn();
+vi.mock("@/features/tvtime/zip", async (importOriginal) => {
+  const actual = await importOriginal<typeof ZipModule>();
+  return { ...actual, extractCsvEntries: (...args: [File]) => extractCsvEntriesMock(...args) };
 });
 
 const RECORDS_V2 = `s_id,runtime,series_name,episode_number,user_id,gsi,created_at,key,season_number,s_no,ep_no,ep_id,episode_id,updated_at,ep_watch_count,movie_watch_count,total_movies_runtime,total_series_runtime,series_follow_count,is_archived,is_for_later,is_followed,uuid,followed_at,most_recent_ep_watched,is_unitary,bulk_type,is_special,rewatch_count
@@ -44,8 +61,9 @@ describe("TvTimeImportCard", () => {
     await i18n.changeLanguage("en");
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     toastMock.mockReset();
+    loggerWarnMock.mockReset();
     applyTvTimeImportMock.mockReset().mockResolvedValue({
       seriesImported: 1,
       episodesImported: 1,
@@ -55,6 +73,8 @@ describe("TvTimeImportCard", () => {
       ambiguous: [],
       retryable: [],
     });
+    const actualZip = await vi.importActual<typeof ZipModule>("@/features/tvtime/zip");
+    extractCsvEntriesMock.mockReset().mockImplementation((file: File) => actualZip.extractCsvEntries(file));
   });
 
   it("shows a pre-flight summary before running the import, and cancelling runs nothing", async () => {
@@ -196,5 +216,175 @@ describe("TvTimeImportCard", () => {
       )
     );
     expect(screen.queryByText("Import this data?")).not.toBeInTheDocument();
+  });
+
+  it("rejects a selection with more files than the max, without reading any of them", async () => {
+    const { input } = renderCard();
+    const files = Array.from({ length: 11 }, (_, index) => csvFile(`records_${index}.csv`, RECORDS_V2));
+
+    fireEvent.change(input, { target: { files } });
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Select at most 10 files.", variant: "error" })
+      )
+    );
+    expect(screen.queryByText("Import this data?")).not.toBeInTheDocument();
+  });
+
+  it("rejects a single file over the per-file size cap", async () => {
+    const { input } = renderCard();
+    const file = csvFile("huge.csv", RECORDS_V2);
+    Object.defineProperty(file, "size", { value: 50 * 1024 * 1024 + 1 });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ description: '"huge.csv" is too large to import.', variant: "error" })
+      )
+    );
+    expect(screen.queryByText("Import this data?")).not.toBeInTheDocument();
+  });
+
+  it("rejects a selection whose combined size exceeds the total cap even if no single file does", async () => {
+    const { input } = renderCard();
+    // Each file stays under the per-file cap (50 MB) on its own; only their
+    // sum crosses the 150 MB total cap, so this exercises that check
+    // specifically rather than the single-file one above it.
+    const files = Array.from({ length: 4 }, (_, index) => csvFile(`part-${index}.csv`, RECORDS_V2));
+    for (const file of files) Object.defineProperty(file, "size", { value: 40 * 1024 * 1024 });
+
+    fireEvent.change(input, { target: { files } });
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: expect.stringContaining("more than 150 MB combined"),
+          variant: "error",
+        })
+      )
+    );
+    expect(screen.queryByText("Import this data?")).not.toBeInTheDocument();
+  });
+
+  it("shows a dedicated toast when a .zip's decompressed content exceeds the size cap", async () => {
+    extractCsvEntriesMock.mockRejectedValueOnce(new ZipTooLargeError("gdpr-data/huge.csv"));
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [zipFile({ "gdpr-data/huge.csv": RECORDS_V2 })] } });
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: '"gdpr-data/huge.csv" is too large once unzipped.',
+          variant: "error",
+        })
+      )
+    );
+    expect(screen.queryByText("Import this data?")).not.toBeInTheDocument();
+  });
+
+  it("logs and shows a generic read-failure toast when .zip extraction fails for any other reason", async () => {
+    extractCsvEntriesMock.mockRejectedValueOnce(new Error("not a valid zip"));
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [zipFile({ "gdpr-data/records.csv": RECORDS_V2 })] } });
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Couldn't read that file as a .zip archive.", variant: "error" })
+      )
+    );
+    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("not a valid zip"));
+    expect(screen.queryByText("Import this data?")).not.toBeInTheDocument();
+  });
+
+  it("does nothing when the file input is cleared (no files selected)", async () => {
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [] } });
+
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("Import this data?")).not.toBeInTheDocument();
+  });
+
+  it("mentions rows skipped for a missing watch date in the pre-flight summary", async () => {
+    const withSkippedRow = `${RECORDS_V2}
+349311,3660,Bodyguard,7,1,watch-episode-2,,watch-episode-bbb,1,1,7,6733514,6733514,,,,,,,,,,,,,true,,,`;
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", withSkippedRow)] } });
+
+    expect(await screen.findByText(/1 row had no watch date and will be skipped\./)).toBeInTheDocument();
+  });
+
+  it("shows the failure toast and logs the error when confirming the import throws", async () => {
+    applyTvTimeImportMock.mockRejectedValueOnce(new Error("db write failed"));
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+    (await screen.findByRole("button", { name: "Import" })).click();
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ description: "Import failed", variant: "error" }))
+    );
+    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("db write failed"));
+  });
+
+  it("warns instead of celebrating when the import reports ambiguous matches, and mentions the count", async () => {
+    applyTvTimeImportMock.mockResolvedValueOnce({
+      seriesImported: 1,
+      episodesImported: 1,
+      moviesImported: 0,
+      plannedImported: 0,
+      unmatched: [],
+      ambiguous: ["Guessed Title"],
+      retryable: [],
+    });
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+    (await screen.findByRole("button", { name: "Import" })).click();
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "warning" })));
+    // toast() is mocked to a plain vi.fn(), so its `description` (a React
+    // element built by confirmImport) never reaches the document on its
+    // own — render the captured element to assert on the ambiguous wording.
+    const toastArg = toastMock.mock.calls[0]![0] as { description: ReactElement };
+    render(toastArg.description);
+    expect(screen.getByText(/1 match was ambiguous/)).toBeInTheDocument();
+  });
+
+  it("surfaces retryable items in the manual-resolution panel below the card", async () => {
+    const retryable: RetryableUnmatched[] = [
+      {
+        kind: "movie",
+        label: "Some Unresolved Movie",
+        searchTitle: "Some Unresolved Movie",
+        searchYear: null,
+        movie: { title: "Some Unresolved Movie", year: null, watchedAt: new Date().toISOString(), runtimeMinutes: null },
+      },
+    ];
+    applyTvTimeImportMock.mockResolvedValueOnce({
+      seriesImported: 0,
+      episodesImported: 0,
+      moviesImported: 0,
+      plannedImported: 0,
+      unmatched: [],
+      ambiguous: [],
+      retryable,
+    });
+    const { input } = renderCard();
+
+    fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+    (await screen.findByRole("button", { name: "Import" })).click();
+
+    // "1 title needs your input" is TvTimeUnmatchedResolver's own card
+    // title (tvtimeImport.retry.title) — distinct from the similarly-worded
+    // "needs your input below" pointer line inside the (mocked, unrendered)
+    // completion toast.
+    expect(await screen.findByText("1 title needs your input")).toBeInTheDocument();
+    expect(screen.getByText("Some Unresolved Movie")).toBeInTheDocument();
   });
 });

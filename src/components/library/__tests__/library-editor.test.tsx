@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -13,6 +13,9 @@ const useLibraryItemMock = vi.fn();
 vi.mock("@/features/library/use-library", () => ({
   useLibraryItem: () => useLibraryItemMock(),
 }));
+
+const toastMock = vi.fn();
+vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
 // LibraryEditor now renders AddToListButton inline (see the "within the
 // library panel" fix) — stub the lists it reads so this suite stays focused
@@ -71,6 +74,7 @@ describe("LibraryEditor", () => {
     save.mockReset();
     refetch.mockReset();
     useLibraryItemMock.mockReset();
+    toastMock.mockReset();
   });
 
   it("does not render a Save button while the initial fetch is still in flight", () => {
@@ -176,5 +180,214 @@ describe("LibraryEditor", () => {
     screen.getByRole("button", { name: "Add to a list" }).click();
 
     expect(await screen.findByText(/don't have any lists yet/i)).toBeInTheDocument();
+  });
+
+  it("shows a success toast once the save resolves", async () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    screen.getByRole("button", { name: /save/i }).click();
+
+    await vi.waitFor(() => expect(toastMock).toHaveBeenCalledWith({ description: "Saved.", variant: "success" }));
+  });
+
+  it("shows an error toast, never the raw error message, when saving fails", async () => {
+    save.mockReset().mockRejectedValueOnce(new Error("sql.execute not allowed"));
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    screen.getByRole("button", { name: /save/i }).click();
+
+    await vi.waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith({ description: "Couldn't save. Please try again.", variant: "error" })
+    );
+  });
+
+  it("toggles favourite and sends the new value on save", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem, // favourite: true
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    fireEvent.click(screen.getByRole("button", { name: "Favourite" }));
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ favourite: false }));
+  });
+
+  it("changes the status and sends the new value on save", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem, // status: "watching"
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "completed" } });
+    screen.getByRole("button", { name: /save/i }).click();
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+  });
+
+  it("clamps an out-of-range rating into 0..10 on save", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    fireEvent.change(screen.getByLabelText("My rating / 10"), { target: { value: "42" } });
+    screen.getByRole("button", { name: /save/i }).click();
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ userRating: 10 }));
+  });
+
+  it("floors a negative rewatch count to 0 on save", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    fireEvent.change(screen.getByLabelText("Rewatches"), { target: { value: "-3" } });
+    screen.getByRole("button", { name: /save/i }).click();
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ rewatchCount: 0 }));
+  });
+
+  it("trims and splits the tags field, and edits private notes, sending both on save", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    fireEvent.change(screen.getByPlaceholderText("family, sci-fi, sunday"), {
+      target: { value: " comfort watch ,  rewatch , " },
+    });
+    fireEvent.change(screen.getByLabelText("Private notes"), { target: { value: "   " } });
+    screen.getByRole("button", { name: /save/i }).click();
+
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ tags: ["comfort watch", "rewatch"], notes: null })
+    );
+  });
+
+  it("renders the form with no Remove button for a title that isn't in the library yet", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+
+    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /remove/i })).not.toBeInTheDocument();
+  });
+
+  it("sends a null rating and null notes when the loaded entry has neither and they're left untouched", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: { ...libraryItem, userRating: null, notes: null },
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    screen.getByRole("button", { name: /save/i }).click();
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ userRating: null, notes: null }));
+  });
+
+  it("removes the entry from the library once removal is confirmed", async () => {
+    const remove = vi.fn();
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove,
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    screen.getByRole("button", { name: /remove/i }).click();
+
+    const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });
+    expect(remove).not.toHaveBeenCalled();
+    dialogConfirm.click();
+
+    expect(remove).toHaveBeenCalled();
+  });
+
+  it("keeps the entry when removal is canceled", async () => {
+    const remove = vi.fn();
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove,
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    screen.getByRole("button", { name: /remove/i }).click();
+
+    const dialogCancel = await screen.findByRole("button", { name: "Cancel" });
+    dialogCancel.click();
+
+    expect(remove).not.toHaveBeenCalled();
   });
 });
