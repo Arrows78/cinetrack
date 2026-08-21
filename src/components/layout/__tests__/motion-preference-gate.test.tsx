@@ -35,7 +35,7 @@ describe("MotionPreferenceGate", () => {
     expect(screen.getByText("child content")).toBeInTheDocument();
   });
 
-  it('passes reducedMotion="never" to MotionConfig when the preference is off', () => {
+  it('passes reducedMotion="user" (not "never") when the preference is off, so the OS setting is still respected', () => {
     preferences = { reduceMotion: false };
     render(
       <MotionPreferenceGate>
@@ -43,10 +43,10 @@ describe("MotionPreferenceGate", () => {
       </MotionPreferenceGate>
     );
 
-    expect(screen.getByTestId("motion-config")).toHaveAttribute("data-reduced-motion", "never");
+    expect(screen.getByTestId("motion-config")).toHaveAttribute("data-reduced-motion", "user");
   });
 
-  it('passes reducedMotion="never" when preferences data is undefined', () => {
+  it('passes reducedMotion="user" when preferences data is undefined', () => {
     preferences = undefined;
     render(
       <MotionPreferenceGate>
@@ -54,6 +54,6 @@ describe("MotionPreferenceGate", () => {
       </MotionPreferenceGate>
     );
 
-    expect(screen.getByTestId("motion-config")).toHaveAttribute("data-reduced-motion", "never");
+    expect(screen.getByTestId("motion-config")).toHaveAttribute("data-reduced-motion", "user");
   });
 });

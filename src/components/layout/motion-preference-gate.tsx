@@ -13,5 +13,9 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 export function MotionPreferenceGate({ children }: PropsWithChildren) {
   const { data: preferences } = usePreferences();
 
-  return <MotionConfig reducedMotion={preferences?.reduceMotion ? "always" : "never"}>{children}</MotionConfig>;
+  // "user" (not "never") when CineTrack's own preference isn't explicitly
+  // on: it makes Framer Motion check prefers-reduced-motion itself, so the
+  // OS-level setting is still respected even when the user never touched
+  // this app's own toggle. "never" actively overrode that OS preference.
+  return <MotionConfig reducedMotion={preferences?.reduceMotion ? "always" : "user"}>{children}</MotionConfig>;
 }
