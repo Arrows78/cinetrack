@@ -3,7 +3,9 @@ use serde_json::Value;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 use tauri::State;
 
-use crate::commands::availability::{AlertRow, AvailabilityAlert, AvailabilitySnapshot, SnapshotRow};
+use crate::commands::availability::{
+    AlertRow, AvailabilityAlert, AvailabilitySnapshot, SnapshotRow,
+};
 use crate::commands::custom_lists::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
 use crate::commands::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
 use crate::commands::library::{LibraryItem, LibraryRow, LibraryStatus};
@@ -52,7 +54,10 @@ fn parse_number_array(raw: &str) -> Vec<i64> {
     let Ok(Value::Array(values)) = serde_json::from_str::<Value>(raw) else {
         return Vec::new();
     };
-    values.into_iter().filter_map(|value| value.as_i64()).collect()
+    values
+        .into_iter()
+        .filter_map(|value| value.as_i64())
+        .collect()
 }
 
 fn parse_metadata(raw: Option<String>) -> Option<Value> {
@@ -177,7 +182,10 @@ macro_rules! import_table {
         for chunk in $items.chunks(IMPORT_BATCH_SIZE) {
             let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new($sql);
             qb.push_values(chunk, |mut $b, $item| $bind);
-            qb.build().execute(&mut *$tx).await.map_err(ApiError::from)?;
+            qb.build()
+                .execute(&mut *$tx)
+                .await
+                .map_err(ApiError::from)?;
         }
     };
 }
@@ -263,8 +271,13 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
         history: history
             .into_iter()
             .map(|row| -> Result<ViewingHistoryItem, ApiError> {
-                let action: HistoryAction = serde_json::from_value(Value::String(row.action.clone()))
-                    .map_err(|_| ApiError::internal(format!("Unknown history action in database: {}", row.action)))?;
+                let action: HistoryAction =
+                    serde_json::from_value(Value::String(row.action.clone())).map_err(|_| {
+                        ApiError::internal(format!(
+                            "Unknown history action in database: {}",
+                            row.action
+                        ))
+                    })?;
                 Ok(ViewingHistoryItem {
                     id: row.uuid,
                     media_id: row.media_id,
@@ -283,8 +296,13 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
         library: library
             .into_iter()
             .map(|row| -> Result<LibraryItem, ApiError> {
-                let status: LibraryStatus = serde_json::from_value(Value::String(row.status.clone()))
-                    .map_err(|_| ApiError::internal(format!("Unknown library status in database: {}", row.status)))?;
+                let status: LibraryStatus =
+                    serde_json::from_value(Value::String(row.status.clone())).map_err(|_| {
+                        ApiError::internal(format!(
+                            "Unknown library status in database: {}",
+                            row.status
+                        ))
+                    })?;
                 Ok(LibraryItem {
                     id: row.uuid,
                     profile_id: row.profile_id,
@@ -295,12 +313,14 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
                     backdrop_path: row.backdrop_path,
                     year: row.year,
                     rating: row.rating,
-                    genres: serde_json::from_str(&row.genres).map_err(|e| ApiError::internal(e.to_string()))?,
+                    genres: serde_json::from_str(&row.genres)
+                        .map_err(|e| ApiError::internal(e.to_string()))?,
                     status,
                     favourite: row.favourite,
                     user_rating: row.user_rating,
                     notes: row.notes,
-                    tags: serde_json::from_str(&row.tags).map_err(|e| ApiError::internal(e.to_string()))?,
+                    tags: serde_json::from_str(&row.tags)
+                        .map_err(|e| ApiError::internal(e.to_string()))?,
                     started_at: row.started_at,
                     completed_at: row.completed_at,
                     rewatch_count: row.rewatch_count,
@@ -312,8 +332,15 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
         viewing_events: viewing_events
             .into_iter()
             .map(|row| -> Result<ViewingEvent, ApiError> {
-                let event_type: ViewingEventType = serde_json::from_value(Value::String(row.event_type.clone()))
-                    .map_err(|_| ApiError::internal(format!("Unknown viewing event type in database: {}", row.event_type)))?;
+                let event_type: ViewingEventType = serde_json::from_value(Value::String(
+                    row.event_type.clone(),
+                ))
+                .map_err(|_| {
+                    ApiError::internal(format!(
+                        "Unknown viewing event type in database: {}",
+                        row.event_type
+                    ))
+                })?;
                 Ok(ViewingEvent {
                     id: row.uuid,
                     profile_id: row.profile_id,
@@ -457,7 +484,11 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
         "INSERT INTO seen_movies (uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at) ",
         |b, item| {
             b.push_bind(new_uuid())
-                .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
+                .push_bind(
+                    item.profile_id
+                        .clone()
+                        .unwrap_or_else(|| "default".to_string()),
+                )
                 .push_bind(item.movie_id)
                 .push_bind(&item.title)
                 .push_bind(&item.poster_path)
@@ -657,9 +688,20 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
 }
 
 async fn quick_check_impl(pool: &SqlitePool) -> Result<(bool, String), ApiError> {
-    let rows: Vec<(String,)> = sqlx::query_as("PRAGMA quick_check").fetch_all(pool).await.map_err(ApiError::from)?;
-    let detail = rows.into_iter().map(|(value,)| value).collect::<Vec<_>>().join(", ");
-    let detail = if detail.is_empty() { "unknown".to_string() } else { detail };
+    let rows: Vec<(String,)> = sqlx::query_as("PRAGMA quick_check")
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)?;
+    let detail = rows
+        .into_iter()
+        .map(|(value,)| value)
+        .collect::<Vec<_>>()
+        .join(", ");
+    let detail = if detail.is_empty() {
+        "unknown".to_string()
+    } else {
+        detail
+    };
     let healthy = detail == "ok";
     Ok((healthy, detail))
 }
@@ -677,12 +719,17 @@ pub async fn export_backup_data(pool: State<'_, SqlitePool>) -> Result<PortableD
 }
 
 #[tauri::command]
-pub async fn import_backup_data(data: PortableData, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
+pub async fn import_backup_data(
+    data: PortableData,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
     import_impl(&pool, data).await
 }
 
 #[tauri::command]
-pub async fn check_data_integrity(pool: State<'_, SqlitePool>) -> Result<DataIntegrityCheck, ApiError> {
+pub async fn check_data_integrity(
+    pool: State<'_, SqlitePool>,
+) -> Result<DataIntegrityCheck, ApiError> {
     let (healthy, detail) = quick_check_impl(&pool).await?;
     Ok(DataIntegrityCheck { healthy, detail })
 }
@@ -693,8 +740,14 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new().max_connections(2).connect("sqlite::memory:").await.unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -728,7 +781,17 @@ mod tests {
 
         // Full match: these Row structs mirror every column of their table.
         for (table, expected) in [
-            ("profiles", sorted(vec!["uuid", "name", "avatar", "supabase_user_id", "created_at", "updated_at"])),
+            (
+                "profiles",
+                sorted(vec![
+                    "uuid",
+                    "name",
+                    "avatar",
+                    "supabase_user_id",
+                    "created_at",
+                    "updated_at",
+                ]),
+            ),
             (
                 "library_items",
                 sorted(vec![
@@ -784,7 +847,17 @@ mod tests {
                     "updated_at",
                 ]),
             ),
-            ("custom_lists", sorted(vec!["uuid", "profile_id", "name", "description", "created_at", "updated_at"])),
+            (
+                "custom_lists",
+                sorted(vec![
+                    "uuid",
+                    "profile_id",
+                    "name",
+                    "description",
+                    "created_at",
+                    "updated_at",
+                ]),
+            ),
             (
                 "custom_list_items",
                 sorted(vec![
@@ -799,9 +872,22 @@ mod tests {
                     "updated_at",
                 ]),
             ),
-            ("availability_snapshots", sorted(vec!["media_id", "media_type", "region", "provider_ids", "checked_at"])),
+            (
+                "availability_snapshots",
+                sorted(vec![
+                    "media_id",
+                    "media_type",
+                    "region",
+                    "provider_ids",
+                    "checked_at",
+                ]),
+            ),
         ] {
-            assert_eq!(table_columns(&pool, table).await, expected, "{table} gained/lost a column vs its Row struct");
+            assert_eq!(
+                table_columns(&pool, table).await,
+                expected,
+                "{table} gained/lost a column vs its Row struct"
+            );
         }
 
         // Documented gaps below: the table legitimately has more columns
@@ -816,7 +902,17 @@ mod tests {
         // updated_at aren't modeled because they always mirror watched_at.
         assert_eq!(
             table_columns(&pool, "seen_movies").await,
-            sorted(vec!["uuid", "profile_id", "movie_id", "title", "poster_path", "backdrop_path", "watched_at", "created_at", "updated_at"]),
+            sorted(vec![
+                "uuid",
+                "profile_id",
+                "movie_id",
+                "title",
+                "poster_path",
+                "backdrop_path",
+                "watched_at",
+                "created_at",
+                "updated_at"
+            ]),
         );
         // viewing_events: created_at isn't modeled because it always mirrors
         // watched_at (this table is append-only, per the migration header).
@@ -877,7 +973,10 @@ mod tests {
         );
         // preferences: updated_at isn't modeled — PortableData.preferences is
         // a plain key/value map with no room for per-key metadata.
-        assert_eq!(table_columns(&pool, "preferences").await, sorted(vec!["key", "value", "updated_at"]));
+        assert_eq!(
+            table_columns(&pool, "preferences").await,
+            sorted(vec!["key", "value", "updated_at"])
+        );
     }
 
     #[tokio::test]
@@ -904,23 +1003,35 @@ mod tests {
 
         import_impl(&pool, exported).await.unwrap();
 
-        let library_status: (String,) = sqlx::query_as("SELECT status FROM library_items").fetch_one(&pool).await.unwrap();
+        let library_status: (String,) = sqlx::query_as("SELECT status FROM library_items")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(library_status.0, "watching");
     }
 
     #[tokio::test]
     async fn export_and_reimport_preserves_the_profiles_supabase_link() {
         let pool = migrated_pool().await;
-        sqlx::query("UPDATE profiles SET supabase_user_id = 'user-1' WHERE uuid = 'default'").execute(&pool).await.unwrap();
+        sqlx::query("UPDATE profiles SET supabase_user_id = 'user-1' WHERE uuid = 'default'")
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let exported = export_impl(&pool).await.unwrap();
         assert_eq!(exported.profiles.len(), 1);
-        assert_eq!(exported.profiles[0].supabase_user_id.as_deref(), Some("user-1"));
+        assert_eq!(
+            exported.profiles[0].supabase_user_id.as_deref(),
+            Some("user-1")
+        );
 
         import_impl(&pool, exported).await.unwrap();
 
         let supabase_user_id: (Option<String>,) =
-            sqlx::query_as("SELECT supabase_user_id FROM profiles WHERE uuid = 'default'").fetch_one(&pool).await.unwrap();
+            sqlx::query_as("SELECT supabase_user_id FROM profiles WHERE uuid = 'default'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(supabase_user_id.0.as_deref(), Some("user-1"));
     }
 
@@ -956,7 +1067,8 @@ mod tests {
         // profile — no need to add another one (that would violate the
         // profiles.uuid UNIQUE constraint on import).
         let mut data = export_impl(&pool).await.unwrap();
-        data.library.push(library_item("original-library-id", 1, "Test"));
+        data.library
+            .push(library_item("original-library-id", 1, "Test"));
         data.history.push(ViewingHistoryItem {
             id: "original-history-id".to_string(),
             media_id: 1,
@@ -972,10 +1084,16 @@ mod tests {
 
         import_impl(&pool, data).await.unwrap();
 
-        let library_uuid: (String,) = sqlx::query_as("SELECT uuid FROM library_items").fetch_one(&pool).await.unwrap();
+        let library_uuid: (String,) = sqlx::query_as("SELECT uuid FROM library_items")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_ne!(library_uuid.0, "original-library-id");
 
-        let history_uuid: (String,) = sqlx::query_as("SELECT uuid FROM activity_log").fetch_one(&pool).await.unwrap();
+        let history_uuid: (String,) = sqlx::query_as("SELECT uuid FROM activity_log")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(history_uuid.0, "original-history-id");
     }
 
@@ -985,12 +1103,19 @@ mod tests {
         let mut data = export_impl(&pool).await.unwrap();
         let row_count = IMPORT_BATCH_SIZE * 2 + 1;
         for index in 0..row_count {
-            data.library.push(library_item(&format!("l{index}"), index as i64, &format!("Title {index}")));
+            data.library.push(library_item(
+                &format!("l{index}"),
+                index as i64,
+                &format!("Title {index}"),
+            ));
         }
 
         import_impl(&pool, data).await.unwrap();
 
-        let library_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM library_items").fetch_one(&pool).await.unwrap();
+        let library_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM library_items")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(library_count.0, row_count as i64);
     }
 }

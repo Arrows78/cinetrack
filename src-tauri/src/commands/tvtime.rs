@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use sqlx::SqlitePool;
 
-use crate::commands::library::{auto_sync_status_impl, AutoSyncMedia, LibraryStatus};
+use crate::commands::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
 use crate::commands::macros::profile_scoped_command;
-use crate::commands::progress::{apply_episodes_impl, EpisodeInput, SeriesInput};
+use crate::commands::progress::{EpisodeInput, SeriesInput, apply_episodes_impl};
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -54,7 +54,11 @@ async fn import_series_progress_impl(
     if episodes.is_empty() {
         return Ok(0);
     }
-    let latest_watched_at = episodes.iter().map(|episode| episode.watched_at.clone()).max().unwrap();
+    let latest_watched_at = episodes
+        .iter()
+        .map(|episode| episode.watched_at.clone())
+        .max()
+        .unwrap();
 
     let episode_inputs: Vec<EpisodeInput> = episodes
         .into_iter()
@@ -67,16 +71,29 @@ async fn import_series_progress_impl(
         })
         .collect();
 
-    apply_episodes_impl(pool, profile_id, &series, &episode_inputs, true, &latest_watched_at).await
+    apply_episodes_impl(
+        pool,
+        profile_id,
+        &series,
+        &episode_inputs,
+        true,
+        &latest_watched_at,
+    )
+    .await
 }
 
-async fn import_movie_seen_impl(pool: &SqlitePool, profile_id: &str, movie: ImportableMovie) -> Result<bool, ApiError> {
-    let already_seen: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
-        .bind(profile_id)
-        .bind(movie.movie_id)
-        .fetch_one(pool)
-        .await
-        .map_err(ApiError::from)?;
+async fn import_movie_seen_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    movie: ImportableMovie,
+) -> Result<bool, ApiError> {
+    let already_seen: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
+            .bind(profile_id)
+            .bind(movie.movie_id)
+            .fetch_one(pool)
+            .await
+            .map_err(ApiError::from)?;
     if already_seen.0 > 0 {
         return Ok(false);
     }
@@ -122,7 +139,15 @@ async fn import_movie_seen_impl(pool: &SqlitePool, profile_id: &str, movie: Impo
         rating: movie.rating,
         genres: movie.genres.clone(),
     };
-    auto_sync_status_impl(&mut tx, pool, profile_id, LibraryStatus::Completed, &movie.watched_at, &media).await?;
+    auto_sync_status_impl(
+        &mut tx,
+        pool,
+        profile_id,
+        LibraryStatus::Completed,
+        &movie.watched_at,
+        &media,
+    )
+    .await?;
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(true)
@@ -142,8 +167,14 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new().max_connections(2).connect("sqlite::memory:").await.unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -180,14 +211,17 @@ mod tests {
             episode(2, 2, "2020-06-01T00:00:00.000Z"),
         ];
 
-        let inserted = import_series_progress_impl(&pool, "default", series(9), episodes).await.unwrap();
+        let inserted = import_series_progress_impl(&pool, "default", series(9), episodes)
+            .await
+            .unwrap();
         assert_eq!(inserted, 2);
 
-        let watched_at: (String,) =
-            sqlx::query_as("SELECT watched_at FROM episode_progress WHERE series_id = 9 AND episode_id = 1")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let watched_at: (String,) = sqlx::query_as(
+            "SELECT watched_at FROM episode_progress WHERE series_id = 9 AND episode_id = 1",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(watched_at.0, "2020-01-01T00:00:00.000Z");
     }
 
@@ -196,8 +230,12 @@ mod tests {
         let pool = migrated_pool().await;
         let episodes = vec![episode(1, 1, "2020-01-01T00:00:00.000Z")];
 
-        import_series_progress_impl(&pool, "default", series(9), episodes.clone()).await.unwrap();
-        let second = import_series_progress_impl(&pool, "default", series(9), episodes).await.unwrap();
+        import_series_progress_impl(&pool, "default", series(9), episodes.clone())
+            .await
+            .unwrap();
+        let second = import_series_progress_impl(&pool, "default", series(9), episodes)
+            .await
+            .unwrap();
         assert_eq!(second, 0);
     }
 
@@ -213,11 +251,19 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-        import_series_progress_impl(&pool, "default", series(9), vec![episode(1, 1, "2020-01-01T00:00:00.000Z")])
+        import_series_progress_impl(
+            &pool,
+            "default",
+            series(9),
+            vec![episode(1, 1, "2020-01-01T00:00:00.000Z")],
+        )
+        .await
+        .unwrap();
+
+        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log")
+            .fetch_one(&pool)
             .await
             .unwrap();
-
-        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
         assert_eq!(history_count.0, 0);
     }
 
@@ -228,10 +274,15 @@ mod tests {
             episode(1, 1, "2020-01-01T00:00:00.000Z"),
             episode(2, 2, "2020-06-01T00:00:00.000Z"),
         ];
-        import_series_progress_impl(&pool, "default", series(9), episodes).await.unwrap();
+        import_series_progress_impl(&pool, "default", series(9), episodes)
+            .await
+            .unwrap();
 
         let updated_at: (String,) =
-            sqlx::query_as("SELECT updated_at FROM tracked_series WHERE series_id = 9").fetch_one(&pool).await.unwrap();
+            sqlx::query_as("SELECT updated_at FROM tracked_series WHERE series_id = 9")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(updated_at.0, "2020-06-01T00:00:00.000Z");
     }
 
@@ -253,13 +304,20 @@ mod tests {
     async fn imports_a_movie_once_and_skips_it_on_reimport() {
         let pool = migrated_pool().await;
 
-        let first = import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
+        let first = import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
         assert!(first);
 
-        let second = import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
+        let second = import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
         assert!(!second);
 
-        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 1").fetch_one(&pool).await.unwrap();
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(count.0, 1);
     }
 
@@ -275,9 +333,14 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-        import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
+        import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
 
-        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
+        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(history_count.0, 0);
     }
 
@@ -285,13 +348,16 @@ mod tests {
     async fn importing_a_watched_movie_creates_a_library_entry_when_none_exists() {
         let pool = migrated_pool().await;
 
-        import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
+        import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
 
-        let status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM library_items WHERE media_id = 1 AND media_type = 'movie'")
-                .fetch_optional(&pool)
-                .await
-                .unwrap();
+        let status: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM library_items WHERE media_id = 1 AND media_type = 'movie'",
+        )
+        .fetch_optional(&pool)
+        .await
+        .unwrap();
         assert_eq!(status, Some("completed".to_string()));
     }
 
@@ -306,13 +372,16 @@ mod tests {
         .await
         .unwrap();
 
-        import_movie_seen_impl(&pool, "default", movie(1)).await.unwrap();
+        import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
 
-        let status: Option<String> =
-            sqlx::query_scalar("SELECT status FROM library_items WHERE media_id = 1 AND media_type = 'movie'")
-                .fetch_optional(&pool)
-                .await
-                .unwrap();
+        let status: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM library_items WHERE media_id = 1 AND media_type = 'movie'",
+        )
+        .fetch_optional(&pool)
+        .await
+        .unwrap();
         assert_eq!(status, Some("completed".to_string()));
     }
 }

@@ -5,8 +5,8 @@ use serde_json::json;
 use sqlx::SqlitePool;
 use tauri::State;
 
-use super::history::{add_history_item_impl, HistoryAction, ViewingHistoryItem};
-use super::library::{auto_sync_status_impl, AutoSyncMedia, LibraryStatus};
+use super::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
+use super::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
 use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid};
 use crate::error::ApiError;
@@ -125,13 +125,18 @@ struct TrackedSeriesRow {
     watched_episodes: i64,
 }
 
-async fn is_movie_seen_impl(pool: &SqlitePool, profile_id: &str, movie_id: i64) -> Result<bool, ApiError> {
-    let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
-        .bind(profile_id)
-        .bind(movie_id)
-        .fetch_one(pool)
-        .await
-        .map_err(ApiError::from)?;
+async fn is_movie_seen_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    movie_id: i64,
+) -> Result<bool, ApiError> {
+    let row: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
+            .bind(profile_id)
+            .bind(movie_id)
+            .fetch_one(pool)
+            .await
+            .map_err(ApiError::from)?;
     Ok(row.0 > 0)
 }
 
@@ -207,7 +212,11 @@ pub(crate) async fn toggle_movie_seen_impl(
         media_id: movie.id,
         media_type: MediaType::Movie,
         title: movie.title.clone(),
-        action: if watched { HistoryAction::MovieWatched } else { HistoryAction::MovieUnwatched },
+        action: if watched {
+            HistoryAction::MovieWatched
+        } else {
+            HistoryAction::MovieUnwatched
+        },
         timestamp: watched_at.to_string(),
         season_number: None,
         episode_number: None,
@@ -227,7 +236,15 @@ pub(crate) async fn toggle_movie_seen_impl(
             rating: movie.rating,
             genres: movie.genres.clone(),
         };
-        auto_sync_status_impl(&mut tx, pool, profile_id, LibraryStatus::Completed, watched_at, &media).await?;
+        auto_sync_status_impl(
+            &mut tx,
+            pool,
+            profile_id,
+            LibraryStatus::Completed,
+            watched_at,
+            &media,
+        )
+        .await?;
     }
 
     tx.commit().await.map_err(ApiError::from)?;
@@ -451,7 +468,9 @@ pub(crate) async fn apply_episodes_and_log_impl(
             season_number: history.season_number,
             episode_number: history.episode_number,
             episode_title: history.episode_title,
-            metadata: Some(json!({ "profileId": profile_id, "episodeCount": changed_episodes.len() })),
+            metadata: Some(
+                json!({ "profileId": profile_id, "episodeCount": changed_episodes.len() }),
+            ),
         };
         add_history_item_impl(&mut *tx, pool, item).await?;
     }
@@ -470,10 +489,16 @@ pub(crate) async fn apply_episodes_impl(
     watched: bool,
     watched_at: &str,
 ) -> Result<i64, ApiError> {
-    apply_episodes_and_log_impl(pool, profile_id, series, episodes, watched, watched_at, None).await
+    apply_episodes_and_log_impl(
+        pool, profile_id, series, episodes, watched, watched_at, None,
+    )
+    .await
 }
 
-async fn list_tracked_series_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<TrackedSeriesItem>, ApiError> {
+async fn list_tracked_series_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<Vec<TrackedSeriesItem>, ApiError> {
     let rows: Vec<TrackedSeriesRow> = sqlx::query_as(
         "SELECT ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at,
                 COUNT(ep.episode_id) as watched_episodes
@@ -535,7 +560,16 @@ pub async fn toggle_episodes_watched(
     pool: State<'_, SqlitePool>,
 ) -> Result<i64, ApiError> {
     let profile_id = current_profile_id(&pool).await?;
-    apply_episodes_and_log_impl(&pool, &profile_id, &series, &episodes, watched, &watched_at, history).await
+    apply_episodes_and_log_impl(
+        &pool,
+        &profile_id,
+        &series,
+        &episodes,
+        watched,
+        &watched_at,
+        history,
+    )
+    .await
 }
 
 profile_scoped_command! {
@@ -557,15 +591,18 @@ async fn refresh_tracked_series_status_impl(
     series_id: i64,
     status: Option<String>,
 ) -> Result<(), ApiError> {
-    let current: Option<(Option<String>,)> =
-        sqlx::query_as("SELECT status FROM tracked_series WHERE profile_id = $1 AND series_id = $2")
-            .bind(profile_id)
-            .bind(series_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(ApiError::from)?;
+    let current: Option<(Option<String>,)> = sqlx::query_as(
+        "SELECT status FROM tracked_series WHERE profile_id = $1 AND series_id = $2",
+    )
+    .bind(profile_id)
+    .bind(series_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(ApiError::from)?;
 
-    let Some((current_status,)) = current else { return Ok(()) };
+    let Some((current_status,)) = current else {
+        return Ok(());
+    };
     if current_status == status {
         return Ok(());
     }
@@ -596,8 +633,14 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new().max_connections(4).connect("sqlite::memory:").await.unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(4)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -630,7 +673,13 @@ mod tests {
     }
 
     fn episode(id: i64, episode_number: i64) -> EpisodeInput {
-        EpisodeInput { id, season_number: 1, episode_number, runtime: None, watched_at: None }
+        EpisodeInput {
+            id,
+            season_number: 1,
+            episode_number,
+            runtime: None,
+            watched_at: None,
+        }
     }
 
     // Seeded directly with SQL rather than through library::upsert_impl
@@ -651,12 +700,14 @@ mod tests {
     }
 
     async fn library_status(pool: &SqlitePool, media_id: i64, media_type: &str) -> Option<String> {
-        sqlx::query_scalar("SELECT status FROM library_items WHERE media_id = $1 AND media_type = $2")
-            .bind(media_id)
-            .bind(media_type)
-            .fetch_optional(pool)
-            .await
-            .unwrap()
+        sqlx::query_scalar(
+            "SELECT status FROM library_items WHERE media_id = $1 AND media_type = $2",
+        )
+        .bind(media_id)
+        .bind(media_type)
+        .fetch_optional(pool)
+        .await
+        .unwrap()
     }
 
     #[tokio::test]
@@ -664,9 +715,20 @@ mod tests {
         let pool = migrated_pool().await;
         seed_library_status(&pool, 55, "movie", "planned").await;
 
-        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 55, "movie").await, Some("completed".to_string()));
+        assert_eq!(
+            library_status(&pool, 55, "movie").await,
+            Some("completed".to_string())
+        );
     }
 
     #[tokio::test]
@@ -674,18 +736,40 @@ mod tests {
         let pool = migrated_pool().await;
         seed_library_status(&pool, 55, "movie", "completed").await;
 
-        toggle_movie_seen_impl(&pool, "default", movie(55), false, "2026-01-01T00:00:00.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            false,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 55, "movie").await, Some("completed".to_string()));
+        assert_eq!(
+            library_status(&pool, 55, "movie").await,
+            Some("completed".to_string())
+        );
     }
 
     #[tokio::test]
     async fn marking_a_movie_seen_creates_a_library_entry_if_none_exists() {
         let pool = migrated_pool().await;
 
-        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 55, "movie").await, Some("completed".to_string()));
+        assert_eq!(
+            library_status(&pool, 55, "movie").await,
+            Some("completed".to_string())
+        );
     }
 
     #[tokio::test]
@@ -694,9 +778,21 @@ mod tests {
         seed_library_status(&pool, 9, "series", "planned").await;
         let s = series(9, Some(3));
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 9, "series").await, Some("watching".to_string()));
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
     }
 
     #[tokio::test]
@@ -705,11 +801,21 @@ mod tests {
         seed_library_status(&pool, 9, "series", "watching").await;
         let s = series(9, Some(2));
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2)], true, "2026-01-01T00:00:00.000Z")
-            .await
-            .unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 9, "series").await, Some("completed".to_string()));
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
     }
 
     #[tokio::test]
@@ -718,9 +824,21 @@ mod tests {
         seed_library_status(&pool, 9, "series", "completed").await;
         let s = series(9, Some(3));
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 9, "series").await, Some("completed".to_string()));
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
     }
 
     #[tokio::test]
@@ -728,9 +846,21 @@ mod tests {
         let pool = migrated_pool().await;
         let s = series(9, Some(3));
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 9, "series").await, Some("watching".to_string()));
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
     }
 
     #[tokio::test]
@@ -743,11 +873,21 @@ mod tests {
         // episodes get marked watched.
         let s = series(9, None);
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2), episode(3, 3)], true, "2026-01-01T00:00:00.000Z")
-            .await
-            .unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2), episode(3, 3)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 9, "series").await, Some("watching".to_string()));
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
     }
 
     #[tokio::test]
@@ -774,9 +914,21 @@ mod tests {
         // unconditional auto-sync this recomputed target=Watching (rank 1 >
         // Planned's rank 0) and silently advanced the status from an
         // unwatch action. It must now stay untouched.
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], false, "2026-01-01T00:00:01.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            false,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 9, "series").await, Some("planned".to_string()));
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("planned".to_string())
+        );
     }
 
     #[tokio::test]
@@ -785,75 +937,170 @@ mod tests {
         let s = series(9, Some(2));
         // Watching both episodes auto-creates the library entry as
         // "completed" (2/2 watched) — no separate seeding needed.
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2)], true, "2026-01-01T00:00:00.000Z")
-            .await
-            .unwrap();
-        assert_eq!(library_status(&pool, 9, "series").await, Some("completed".to_string()));
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], false, "2026-01-01T00:00:01.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            false,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(library_status(&pool, 9, "series").await, Some("completed".to_string()));
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
     }
 
     #[tokio::test]
     async fn toggles_a_movie_seen_through_a_real_insert_delete_round_trip() {
         let pool = migrated_pool().await;
 
-        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
         assert!(is_movie_seen_impl(&pool, "default", 55).await.unwrap());
 
-        let rows: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 55").fetch_one(&pool).await.unwrap();
+        let rows: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 55")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(rows.0, 1);
 
-        toggle_movie_seen_impl(&pool, "default", movie(55), false, "2026-01-01T00:00:01.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            false,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
         assert!(!is_movie_seen_impl(&pool, "default", 55).await.unwrap());
-        let rows: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 55").fetch_one(&pool).await.unwrap();
+        let rows: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 55")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(rows.0, 0);
     }
 
     #[tokio::test]
     async fn records_a_viewing_event_and_history_entry_alongside_the_seen_toggle() {
         let pool = migrated_pool().await;
-        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        let event: (String, Option<i64>) =
-            sqlx::query_as("SELECT event_type, duration_minutes FROM viewing_events WHERE media_id = 55")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let event: (String, Option<i64>) = sqlx::query_as(
+            "SELECT event_type, duration_minutes FROM viewing_events WHERE media_id = 55",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(event.0, "watched");
         assert_eq!(event.1, Some(118));
 
         let history_count: (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'").fetch_one(&pool).await.unwrap();
+            sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(history_count.0, 1);
     }
 
     #[tokio::test]
     async fn does_not_reapply_an_already_applied_movie_toggle() {
         let pool = migrated_pool().await;
-        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
         // Repeating the same "watched" call (retry, double invoke) must be a
         // no-op — not a second viewing_events/activity_log row.
-        toggle_movie_seen_impl(&pool, "default", movie(55), true, "2026-01-01T00:00:01.000Z").await.unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
 
         let event_count: (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM viewing_events WHERE media_id = 55").fetch_one(&pool).await.unwrap();
-        assert_eq!(event_count.0, 1);
-
-        let history_count: (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'").fetch_one(&pool).await.unwrap();
-        assert_eq!(history_count.0, 1);
-
-        // Repeating "unwatched" while already unwatched is likewise a no-op.
-        toggle_movie_seen_impl(&pool, "default", movie(55), false, "2026-01-01T00:00:02.000Z").await.unwrap();
-        toggle_movie_seen_impl(&pool, "default", movie(55), false, "2026-01-01T00:00:03.000Z").await.unwrap();
-
-        let unwatched_count: (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM viewing_events WHERE media_id = 55 AND event_type = 'unwatched'")
+            sqlx::query_as("SELECT COUNT(*) FROM viewing_events WHERE media_id = 55")
                 .fetch_one(&pool)
                 .await
                 .unwrap();
+        assert_eq!(event_count.0, 1);
+
+        let history_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(history_count.0, 1);
+
+        // Repeating "unwatched" while already unwatched is likewise a no-op.
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            false,
+            "2026-01-01T00:00:02.000Z",
+        )
+        .await
+        .unwrap();
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            false,
+            "2026-01-01T00:00:03.000Z",
+        )
+        .await
+        .unwrap();
+
+        let unwatched_count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM viewing_events WHERE media_id = 55 AND event_type = 'unwatched'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(unwatched_count.0, 1);
     }
 
@@ -862,11 +1109,21 @@ mod tests {
         let pool = migrated_pool().await;
         let s = series(9, None);
 
-        let changed =
-            apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        let changed = apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
         assert_eq!(changed, 1);
 
-        let progress = get_episode_progress_impl(&pool, "default", 9).await.unwrap();
+        let progress = get_episode_progress_impl(&pool, "default", 9)
+            .await
+            .unwrap();
         assert_eq!(progress.len(), 1);
         assert_eq!(progress[0].episode_id, 100);
 
@@ -879,10 +1136,27 @@ mod tests {
     async fn does_not_reapply_an_already_applied_episode() {
         let pool = migrated_pool().await;
         let s = series(9, None);
-        apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        let changed =
-            apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:01.000Z").await.unwrap();
+        let changed = apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
         assert_eq!(changed, 0);
     }
 
@@ -891,15 +1165,42 @@ mod tests {
         let pool = migrated_pool().await;
         let s = series(9, Some(3));
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
-        apply_episodes_impl(&pool, "default", &s, &[episode(2, 2)], true, "2026-01-01T00:00:01.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(2, 2)],
+            true,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
 
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
         assert_eq!(entry.total_episodes, 3);
         assert_eq!(entry.watched_episodes, 2);
 
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], false, "2026-01-01T00:00:02.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            false,
+            "2026-01-01T00:00:02.000Z",
+        )
+        .await
+        .unwrap();
         let updated = list_tracked_series_impl(&pool, "default").await.unwrap();
         let entry = updated.iter().find(|item| item.series_id == 9).unwrap();
         assert_eq!(entry.watched_episodes, 1);
@@ -910,17 +1211,35 @@ mod tests {
         let pool = migrated_pool().await;
         let s = series(9, None);
 
-        let first = apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2)], true, "2026-01-01T00:00:00.000Z")
-            .await
-            .unwrap();
+        let first = apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
         assert_eq!(first, 2);
 
-        let second = apply_episodes_impl(&pool, "default", &s, &[episode(1, 1), episode(2, 2)], true, "2026-01-01T00:00:01.000Z")
-            .await
-            .unwrap();
+        let second = apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
         assert_eq!(second, 0);
 
-        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM episode_progress WHERE series_id = 9").fetch_one(&pool).await.unwrap();
+        let count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM episode_progress WHERE series_id = 9")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(count.0, 2);
     }
 
@@ -930,9 +1249,20 @@ mod tests {
         let s = series(9, None);
         let season_episodes = vec![episode(1, 1), episode(2, 2), episode(3, 3)];
 
-        apply_episodes_impl(&pool, "default", &s, &season_episodes, true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &season_episodes,
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        let progress = get_episode_progress_impl(&pool, "default", 9).await.unwrap();
+        let progress = get_episode_progress_impl(&pool, "default", 9)
+            .await
+            .unwrap();
         assert_eq!(progress.len(), 3);
     }
 
@@ -944,9 +1274,21 @@ mod tests {
         // unrelated to what this test checks).
         seed_library_status(&pool, 9, "series", "planned").await;
         let s = series(9, None);
-        apply_episodes_impl(&pool, "default", &s, &[episode(1, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
+        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(history_count.0, 0);
     }
 
@@ -964,17 +1306,25 @@ mod tests {
             episode_title: Some("Pilot".to_string()),
         };
 
-        let changed =
-            apply_episodes_and_log_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z", Some(history))
-                .await
-                .unwrap();
+        let changed = apply_episodes_and_log_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+            Some(history),
+        )
+        .await
+        .unwrap();
         assert_eq!(changed, 1);
 
-        let row: (String, Option<String>, Option<String>) =
-            sqlx::query_as("SELECT action, episode_title, metadata FROM activity_log WHERE media_id = 9")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String, Option<String>, Option<String>) = sqlx::query_as(
+            "SELECT action, episode_title, metadata FROM activity_log WHERE media_id = 9",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(row.0, "episode:watched");
         assert_eq!(row.1.as_deref(), Some("Pilot"));
         let metadata: serde_json::Value = serde_json::from_str(&row.2.unwrap()).unwrap();
@@ -986,7 +1336,16 @@ mod tests {
         let pool = migrated_pool().await;
         seed_library_status(&pool, 9, "series", "planned").await;
         let s = series(9, None);
-        apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
         let history = EpisodeHistoryInput {
             action: HistoryAction::EpisodeWatched,
@@ -1007,7 +1366,10 @@ mod tests {
         .unwrap();
         assert_eq!(changed, 0);
 
-        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log").fetch_one(&pool).await.unwrap();
+        let history_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(history_count.0, 0);
     }
 
@@ -1016,9 +1378,20 @@ mod tests {
         let pool = migrated_pool().await;
         let mut s = series(9, None);
         s.status = Some("Returning Series".to_string());
-        apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], true, "2026-01-01T00:00:00.000Z").await.unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
-        refresh_tracked_series_status_impl(&pool, "default", 9, Some("Ended".to_string())).await.unwrap();
+        refresh_tracked_series_status_impl(&pool, "default", 9, Some("Ended".to_string()))
+            .await
+            .unwrap();
 
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
@@ -1029,7 +1402,9 @@ mod tests {
     async fn refresh_tracked_series_status_is_a_no_op_for_an_untracked_series() {
         let pool = migrated_pool().await;
         // No tracked_series row exists for series 404 — must not create one.
-        refresh_tracked_series_status_impl(&pool, "default", 404, Some("Ended".to_string())).await.unwrap();
+        refresh_tracked_series_status_impl(&pool, "default", 404, Some("Ended".to_string()))
+            .await
+            .unwrap();
 
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         assert!(tracked.iter().all(|item| item.series_id != 404));

@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use sqlx::SqlitePool;
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::error::ApiError;
@@ -57,7 +57,10 @@ async fn open_pool(db_path: &Path) -> Result<SqlitePool, ApiError> {
         .journal_mode(SqliteJournalMode::Wal)
         .synchronous(SqliteSynchronous::Normal);
 
-    SqlitePoolOptions::new().connect_with(options).await.map_err(ApiError::from)
+    SqlitePoolOptions::new()
+        .connect_with(options)
+        .await
+        .map_err(ApiError::from)
 }
 
 /// Renames the broken database file (and its WAL/SHM sidecars, if present)
@@ -67,19 +70,31 @@ async fn open_pool(db_path: &Path) -> Result<SqlitePool, ApiError> {
 /// must already be closed before this runs: on Windows a rename fails while
 /// any connection still holds the file open.
 fn quarantine_broken_database(db_path: &Path) -> Result<String, ApiError> {
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     let quarantined: PathBuf = db_path.with_extension(format!("db.corrupt-{timestamp}"));
 
-    std::fs::rename(db_path, &quarantined)
-        .map_err(|error| ApiError::internal(format!("Couldn't quarantine the broken database file: {error}")))?;
+    std::fs::rename(db_path, &quarantined).map_err(|error| {
+        ApiError::internal(format!(
+            "Couldn't quarantine the broken database file: {error}"
+        ))
+    })?;
 
     for suffix in ["-wal", "-shm"] {
         let sidecar = db_path.with_file_name(format!("{DB_FILE_NAME}{suffix}"));
         if sidecar.exists() {
-            let _ = std::fs::rename(&sidecar, quarantined.with_file_name(format!(
-                "{}{suffix}",
-                quarantined.file_name().and_then(|n| n.to_str()).unwrap_or(DB_FILE_NAME)
-            )));
+            let _ = std::fs::rename(
+                &sidecar,
+                quarantined.with_file_name(format!(
+                    "{}{suffix}",
+                    quarantined
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(DB_FILE_NAME)
+                )),
+            );
         }
     }
 
@@ -104,7 +119,9 @@ fn quarantine_broken_database(db_path: &Path) -> Result<String, ApiError> {
 /// *that* also fails (disk full, permissions — something no database-level
 /// recovery can route around) does this still propagate an error, exactly
 /// like before.
-pub async fn init_pool<R: Runtime>(app: &AppHandle<R>) -> Result<(SqlitePool, BootRecovery), ApiError> {
+pub async fn init_pool<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<(SqlitePool, BootRecovery), ApiError> {
     let app_config_dir = app
         .path()
         .app_config_dir()
@@ -130,12 +147,14 @@ async fn init_pool_at(db_path: &Path) -> Result<(SqlitePool, BootRecovery), ApiE
             let quarantined_path = quarantine_broken_database(db_path)?;
 
             let fresh_pool = open_pool(db_path).await?;
-            migrations::run_migrations(&fresh_pool).await.map_err(|fresh_error| {
-                ApiError::internal(format!(
-                    "Recovery failed too, after quarantining {quarantined_path}: {fresh_error} \
+            migrations::run_migrations(&fresh_pool)
+                .await
+                .map_err(|fresh_error| {
+                    ApiError::internal(format!(
+                        "Recovery failed too, after quarantining {quarantined_path}: {fresh_error} \
                      (original error: {migration_error})"
-                ))
-            })?;
+                    ))
+                })?;
 
             Ok((
                 fresh_pool,
@@ -154,10 +173,11 @@ async fn init_pool_at(db_path: &Path) -> Result<(SqlitePool, BootRecovery), ApiE
 /// `activeProfileId` key from `preferences` (stored JSON-encoded), default to
 /// `"default"` when absent or malformed.
 pub async fn current_profile_id(pool: &SqlitePool) -> Result<String, ApiError> {
-    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM preferences WHERE key = 'activeProfileId'")
-        .fetch_optional(pool)
-        .await
-        .map_err(ApiError::from)?;
+    let row: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM preferences WHERE key = 'activeProfileId'")
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
 
     Ok(row
         .and_then(|(value,)| serde_json::from_str::<String>(&value).ok())
@@ -207,7 +227,10 @@ mod tests {
     /// cleanup handles it eventually, and each test gets its own path so
     /// leftovers never collide with a later run.
     fn temp_db_path(label: &str) -> PathBuf {
-        let unique = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
         std::env::temp_dir().join(format!("cinetrack-test-{label}-{unique}.db"))
     }
 
@@ -231,7 +254,10 @@ mod tests {
     async fn now_iso_returns_an_iso8601_utc_timestamp() {
         let pool = in_memory_pool().await;
         let value = now_iso(&pool).await.unwrap();
-        assert!(value.ends_with('Z'), "expected an ISO-8601 UTC timestamp, got {value}");
+        assert!(
+            value.ends_with('Z'),
+            "expected an ISO-8601 UTC timestamp, got {value}"
+        );
         assert_eq!(value.len(), "2026-01-01T00:00:00.000Z".len());
     }
 
@@ -271,15 +297,27 @@ mod tests {
         // Simulates exactly the corruption verify_critical_tables exists to
         // catch (see migrations.rs): a pragma claiming every migration
         // already ran, but none of the tables actually exist.
-        let broken = SqlitePoolOptions::new().connect(&format!("sqlite://{}?mode=rwc", path.display())).await.unwrap();
-        sqlx::query("PRAGMA user_version = 9").execute(&broken).await.unwrap();
+        let broken = SqlitePoolOptions::new()
+            .connect(&format!("sqlite://{}?mode=rwc", path.display()))
+            .await
+            .unwrap();
+        sqlx::query("PRAGMA user_version = 9")
+            .execute(&broken)
+            .await
+            .unwrap();
         broken.close().await;
 
         let (pool, boot_recovery) = init_pool_at(&path).await.unwrap();
 
         assert!(boot_recovery.recovered);
-        let quarantined_path = boot_recovery.quarantined_path.clone().expect("a quarantined path");
-        assert!(std::path::Path::new(&quarantined_path).exists(), "the broken file should still exist, just moved");
+        let quarantined_path = boot_recovery
+            .quarantined_path
+            .clone()
+            .expect("a quarantined path");
+        assert!(
+            std::path::Path::new(&quarantined_path).exists(),
+            "the broken file should still exist, just moved"
+        );
         assert!(boot_recovery.original_error.is_some());
 
         // The fresh database is fully usable.

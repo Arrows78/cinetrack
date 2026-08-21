@@ -14,17 +14,19 @@ mod tray;
 use tauri::{Emitter, Manager};
 
 use commands::{
-    add_custom_list_item, check_data_integrity, create_custom_list, create_profile,
-    export_backup_data, find_profile_by_supabase_user_id, get_availability_alert, get_availability_snapshot,
-    get_boot_recovery, get_episode_progress, get_library_item, get_preferences, get_stats_overview, has_library_item,
-    import_backup_data, import_movie_seen, import_series_progress, is_movie_seen, link_profile_to_supabase_user,
-    list_availability_alerts, list_custom_list_items, list_custom_lists, list_history, list_library,
-    list_profiles, list_recent_viewing_events, list_tracked_series, list_viewing_events_for_year, list_yearly_activity,
-    refresh_preferences, refresh_tracked_series_status, remove_availability_alert,
-    remove_custom_list, remove_custom_list_item, remove_library_item, remove_planned_library_item, remove_profile,
-    resolve_profile_for_supabase_user, save_availability_snapshot, save_library_item,
-    set_active_profile, tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
-    update_preference, updater_is_configured, PreferencesCache,
+    PreferencesCache, add_custom_list_item, check_data_integrity, create_custom_list,
+    create_profile, export_backup_data, find_profile_by_supabase_user_id, get_availability_alert,
+    get_availability_snapshot, get_boot_recovery, get_episode_progress, get_library_item,
+    get_preferences, get_stats_overview, has_library_item, import_backup_data, import_movie_seen,
+    import_series_progress, is_movie_seen, link_profile_to_supabase_user, list_availability_alerts,
+    list_custom_list_items, list_custom_lists, list_history, list_library, list_profiles,
+    list_recent_viewing_events, list_tracked_series, list_viewing_events_for_year,
+    list_yearly_activity, refresh_preferences, refresh_tracked_series_status,
+    remove_availability_alert, remove_custom_list, remove_custom_list_item, remove_library_item,
+    remove_planned_library_item, remove_profile, resolve_profile_for_supabase_user,
+    save_availability_snapshot, save_library_item, set_active_profile, tmdb_request,
+    toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen, update_preference,
+    updater_is_configured,
 };
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
@@ -130,8 +132,9 @@ pub fn run() {
             // (resolved against the app config dir) — both drivers must
             // agree on the file while domains are migrated one at a time.
             let handle = app.handle().clone();
-            let (pool, boot_recovery) = tauri::async_runtime::block_on(async move { database::init_pool(&handle).await })
-                .map_err(|error| Box::new(error) as Box<dyn std::error::Error>)?;
+            let (pool, boot_recovery) =
+                tauri::async_runtime::block_on(async move { database::init_pool(&handle).await })
+                    .map_err(|error| Box::new(error) as Box<dyn std::error::Error>)?;
             app.manage(pool);
             app.manage(boot_recovery);
             app.manage(PreferencesCache::default());

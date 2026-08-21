@@ -1,9 +1,9 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::SqlitePool;
 use tauri::State;
 
-use super::history::{add_history_item_impl, HistoryAction, ViewingHistoryItem};
+use super::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
 use crate::commands::macros::profile_scoped_command;
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
@@ -145,7 +145,8 @@ impl TryFrom<LibraryRow> for LibraryItem {
             backdrop_path: row.backdrop_path,
             year: row.year,
             rating: row.rating,
-            genres: serde_json::from_str(&row.genres).map_err(|e| ApiError::internal(e.to_string()))?,
+            genres: serde_json::from_str(&row.genres)
+                .map_err(|e| ApiError::internal(e.to_string()))?,
             status: LibraryStatus::from_db_str(&row.status)?,
             favourite: row.favourite,
             user_rating: row.user_rating,
@@ -208,7 +209,11 @@ async fn upsert_impl(
     let current = get_impl(pool, profile_id, media.id, media.media_type).await?;
     let is_new = current.is_none();
     let now = now_iso(pool).await?;
-    let status = patch.status.unwrap_or_else(|| current.as_ref().map_or(LibraryStatus::Planned, |c| c.status));
+    let status = patch.status.unwrap_or_else(|| {
+        current
+            .as_ref()
+            .map_or(LibraryStatus::Planned, |c| c.status)
+    });
 
     let is_currently_watching = status == LibraryStatus::Watching;
     let started_at = current
@@ -216,7 +221,12 @@ async fn upsert_impl(
         .and_then(|c| c.started_at.clone())
         .or_else(|| is_currently_watching.then(|| now.clone()));
     let completed_at = if status == LibraryStatus::Completed {
-        Some(current.as_ref().and_then(|c| c.completed_at.clone()).unwrap_or_else(|| now.clone()))
+        Some(
+            current
+                .as_ref()
+                .and_then(|c| c.completed_at.clone())
+                .unwrap_or_else(|| now.clone()),
+        )
     } else {
         None
     };
@@ -238,7 +248,9 @@ async fn upsert_impl(
         rating: media.rating,
         genres: media.genres,
         status,
-        favourite: patch.favourite.unwrap_or_else(|| current.as_ref().is_some_and(|c| c.favourite)),
+        favourite: patch
+            .favourite
+            .unwrap_or_else(|| current.as_ref().is_some_and(|c| c.favourite)),
         user_rating: match patch.user_rating {
             Some(explicit) => explicit,
             None => current.as_ref().and_then(|c| c.user_rating),
@@ -247,11 +259,17 @@ async fn upsert_impl(
             Some(explicit) => explicit,
             None => current.as_ref().and_then(|c| c.notes.clone()),
         },
-        tags: patch.tags.unwrap_or_else(|| current.as_ref().map_or_else(Vec::new, |c| c.tags.clone())),
+        tags: patch
+            .tags
+            .unwrap_or_else(|| current.as_ref().map_or_else(Vec::new, |c| c.tags.clone())),
         started_at,
         completed_at,
-        rewatch_count: patch.rewatch_count.unwrap_or_else(|| current.as_ref().map_or(0, |c| c.rewatch_count)),
-        created_at: current.as_ref().map_or_else(|| now.clone(), |c| c.created_at.clone()),
+        rewatch_count: patch
+            .rewatch_count
+            .unwrap_or_else(|| current.as_ref().map_or(0, |c| c.rewatch_count)),
+        created_at: current
+            .as_ref()
+            .map_or_else(|| now.clone(), |c| c.created_at.clone()),
         updated_at: now,
     };
 
@@ -439,19 +457,30 @@ pub(crate) async fn auto_sync_status_impl(
         return Ok(());
     }
 
-    let completed_at = if target == LibraryStatus::Completed { Some(now.to_string()) } else { row.completed_at };
-    sqlx::query("UPDATE library_items SET status = $1, completed_at = $2, updated_at = $3 WHERE uuid = $4")
-        .bind(target.as_db_str())
-        .bind(&completed_at)
-        .bind(now)
-        .bind(&row.uuid)
-        .execute(&mut **tx)
-        .await
-        .map_err(ApiError::from)?;
+    let completed_at = if target == LibraryStatus::Completed {
+        Some(now.to_string())
+    } else {
+        row.completed_at
+    };
+    sqlx::query(
+        "UPDATE library_items SET status = $1, completed_at = $2, updated_at = $3 WHERE uuid = $4",
+    )
+    .bind(target.as_db_str())
+    .bind(&completed_at)
+    .bind(now)
+    .bind(&row.uuid)
+    .execute(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
     Ok(())
 }
 
-async fn has_impl(pool: &SqlitePool, profile_id: &str, media_id: i64, media_type: MediaType) -> Result<bool, ApiError> {
+async fn has_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    media_id: i64,
+    media_type: MediaType,
+) -> Result<bool, ApiError> {
     let row: (i64,) = sqlx::query_as(
         "SELECT COUNT(*) FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
     )
@@ -464,18 +493,25 @@ async fn has_impl(pool: &SqlitePool, profile_id: &str, media_id: i64, media_type
     Ok(row.0 > 0)
 }
 
-async fn remove_impl(pool: &SqlitePool, profile_id: &str, media_id: i64, media_type: MediaType) -> Result<(), ApiError> {
+async fn remove_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    media_id: i64,
+    media_type: MediaType,
+) -> Result<(), ApiError> {
     let existing = get_impl(pool, profile_id, media_id, media_type).await?;
 
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
-    sqlx::query("DELETE FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3")
-        .bind(profile_id)
-        .bind(media_id)
-        .bind(media_type.as_db_str())
-        .execute(&mut *tx)
-        .await
-        .map_err(ApiError::from)?;
+    sqlx::query(
+        "DELETE FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
+    )
+    .bind(profile_id)
+    .bind(media_id)
+    .bind(media_type.as_db_str())
+    .execute(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
 
     if let Some(item) = existing {
         let timestamp = now_iso(&mut *tx).await?;
@@ -588,8 +624,14 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new().max_connections(4).connect("sqlite::memory:").await.unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(4)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -610,11 +652,15 @@ mod tests {
     async fn creates_a_new_entry_defaulting_to_the_planned_status() {
         let pool = migrated_pool().await;
 
-        let item = upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+        let item = upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
         assert_eq!(item.status, LibraryStatus::Planned);
         assert!(!item.favourite);
 
-        let fetched = get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+        let fetched = get_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap();
         assert_eq!(fetched.unwrap().media_id, 7);
     }
 
@@ -622,21 +668,30 @@ mod tests {
     async fn a_freshly_created_items_returned_id_matches_the_persisted_row() {
         let pool = migrated_pool().await;
 
-        let item = upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
-        let fetched = get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().unwrap();
+        let item = upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        let fetched = get_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(item.id, fetched.id);
     }
 
     #[tokio::test]
     async fn sets_completed_at_when_the_status_transitions_to_completed() {
         let pool = migrated_pool().await;
-        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
 
         let patch = LibraryPatch {
             status: Some(LibraryStatus::Completed),
             ..Default::default()
         };
-        let updated = upsert_impl(&pool, media(7), patch, "default").await.unwrap();
+        let updated = upsert_impl(&pool, media(7), patch, "default")
+            .await
+            .unwrap();
 
         assert_eq!(updated.status, LibraryStatus::Completed);
         assert!(updated.completed_at.is_some());
@@ -648,7 +703,10 @@ mod tests {
         upsert_impl(
             &pool,
             media(7),
-            LibraryPatch { status: Some(LibraryStatus::Completed), ..Default::default() },
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
             "default",
         )
         .await
@@ -657,7 +715,10 @@ mod tests {
         let updated = upsert_impl(
             &pool,
             media(7),
-            LibraryPatch { status: Some(LibraryStatus::Watching), ..Default::default() },
+            LibraryPatch {
+                status: Some(LibraryStatus::Watching),
+                ..Default::default()
+            },
             "default",
         )
         .await
@@ -674,10 +735,17 @@ mod tests {
             tags: Some(vec!["favourite-director".to_string()]),
             ..Default::default()
         };
-        upsert_impl(&pool, media(7), first_patch, "default").await.unwrap();
+        upsert_impl(&pool, media(7), first_patch, "default")
+            .await
+            .unwrap();
 
-        let second_patch = LibraryPatch { status: Some(LibraryStatus::Watching), ..Default::default() };
-        let updated = upsert_impl(&pool, media(7), second_patch, "default").await.unwrap();
+        let second_patch = LibraryPatch {
+            status: Some(LibraryStatus::Watching),
+            ..Default::default()
+        };
+        let updated = upsert_impl(&pool, media(7), second_patch, "default")
+            .await
+            .unwrap();
 
         assert_eq!(updated.user_rating, Some(8.0));
         assert_eq!(updated.tags, vec!["favourite-director".to_string()]);
@@ -686,12 +754,23 @@ mod tests {
     #[tokio::test]
     async fn an_explicit_null_clears_user_rating_and_notes() {
         let pool = migrated_pool().await;
-        let first_patch =
-            LibraryPatch { user_rating: Some(Some(8.0)), notes: Some(Some("Great".to_string())), ..Default::default() };
-        upsert_impl(&pool, media(7), first_patch, "default").await.unwrap();
+        let first_patch = LibraryPatch {
+            user_rating: Some(Some(8.0)),
+            notes: Some(Some("Great".to_string())),
+            ..Default::default()
+        };
+        upsert_impl(&pool, media(7), first_patch, "default")
+            .await
+            .unwrap();
 
-        let clearing_patch = LibraryPatch { user_rating: Some(None), notes: Some(None), ..Default::default() };
-        let updated = upsert_impl(&pool, media(7), clearing_patch, "default").await.unwrap();
+        let clearing_patch = LibraryPatch {
+            user_rating: Some(None),
+            notes: Some(None),
+            ..Default::default()
+        };
+        let updated = upsert_impl(&pool, media(7), clearing_patch, "default")
+            .await
+            .unwrap();
 
         assert_eq!(updated.user_rating, None);
         assert_eq!(updated.notes, None);
@@ -700,30 +779,56 @@ mod tests {
     #[tokio::test]
     async fn removes_an_entry() {
         let pool = migrated_pool().await;
-        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
 
-        remove_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+        remove_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap();
 
-        assert!(get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
+        assert!(
+            get_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[tokio::test]
     async fn has_impl_reports_presence() {
         let pool = migrated_pool().await;
-        assert!(!has_impl(&pool, "default", 7, MediaType::Movie).await.unwrap());
+        assert!(
+            !has_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+        );
 
-        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
 
-        assert!(has_impl(&pool, "default", 7, MediaType::Movie).await.unwrap());
+        assert!(
+            has_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+        );
     }
 
     #[tokio::test]
     async fn records_a_history_entry_only_the_first_time_an_item_is_created() {
         let pool = migrated_pool().await;
 
-        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
-        let updated_patch = LibraryPatch { status: Some(LibraryStatus::Watching), ..Default::default() };
-        upsert_impl(&pool, media(7), updated_patch, "default").await.unwrap();
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        let updated_patch = LibraryPatch {
+            status: Some(LibraryStatus::Watching),
+            ..Default::default()
+        };
+        upsert_impl(&pool, media(7), updated_patch, "default")
+            .await
+            .unwrap();
 
         let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 1);
@@ -733,9 +838,13 @@ mod tests {
     #[tokio::test]
     async fn removes_an_item_and_records_a_removal_history_entry() {
         let pool = migrated_pool().await;
-        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
 
-        remove_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+        remove_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap();
 
         let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 2);
@@ -746,7 +855,9 @@ mod tests {
     async fn does_not_record_a_removal_history_entry_when_the_item_was_never_present() {
         let pool = migrated_pool().await;
 
-        remove_impl(&pool, "default", 404, MediaType::Movie).await.unwrap();
+        remove_impl(&pool, "default", 404, MediaType::Movie)
+            .await
+            .unwrap();
 
         assert!(list_history_impl(&pool, 50, None).await.unwrap().is_empty());
     }
@@ -754,12 +865,21 @@ mod tests {
     #[tokio::test]
     async fn remove_if_planned_removes_and_logs_when_status_is_still_planned() {
         let pool = migrated_pool().await;
-        upsert_impl(&pool, media(7), LibraryPatch::default(), "default").await.unwrap();
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
 
-        let removed = remove_if_planned_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+        let removed = remove_if_planned_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap();
 
         assert!(removed);
-        assert!(get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
+        assert!(
+            get_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
         let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history[0].action, HistoryAction::LibraryRemove);
     }
@@ -767,13 +887,23 @@ mod tests {
     #[tokio::test]
     async fn remove_if_planned_is_a_no_op_once_the_item_has_real_progress() {
         let pool = migrated_pool().await;
-        let patch = LibraryPatch { status: Some(LibraryStatus::Watching), ..Default::default() };
-        upsert_impl(&pool, media(7), patch, "default").await.unwrap();
+        let patch = LibraryPatch {
+            status: Some(LibraryStatus::Watching),
+            ..Default::default()
+        };
+        upsert_impl(&pool, media(7), patch, "default")
+            .await
+            .unwrap();
 
-        let removed = remove_if_planned_impl(&pool, "default", 7, MediaType::Movie).await.unwrap();
+        let removed = remove_if_planned_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap();
 
         assert!(!removed);
-        let still_there = get_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().unwrap();
+        let still_there = get_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(still_there.status, LibraryStatus::Watching);
     }
 
@@ -781,7 +911,9 @@ mod tests {
     async fn remove_if_planned_is_a_no_op_when_the_item_does_not_exist() {
         let pool = migrated_pool().await;
 
-        let removed = remove_if_planned_impl(&pool, "default", 404, MediaType::Movie).await.unwrap();
+        let removed = remove_if_planned_impl(&pool, "default", 404, MediaType::Movie)
+            .await
+            .unwrap();
 
         assert!(!removed);
     }
@@ -816,10 +948,16 @@ mod tests {
         .unwrap();
         tx.commit().await.unwrap();
 
-        let item = get_impl(&pool, "default", 42, MediaType::Movie).await.unwrap().unwrap();
+        let item = get_impl(&pool, "default", 42, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(item.status, LibraryStatus::Completed);
         assert_eq!(item.title, "Auto-synced Title");
-        assert_eq!(item.completed_at.as_deref(), Some("2026-01-01T00:00:00.000Z"));
+        assert_eq!(
+            item.completed_at.as_deref(),
+            Some("2026-01-01T00:00:00.000Z")
+        );
 
         let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 1);
@@ -843,7 +981,10 @@ mod tests {
         .unwrap();
         tx.commit().await.unwrap();
 
-        let item = get_impl(&pool, "default", 43, MediaType::Series).await.unwrap().unwrap();
+        let item = get_impl(&pool, "default", 43, MediaType::Series)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(item.status, LibraryStatus::Watching);
         assert_eq!(item.started_at.as_deref(), Some("2026-01-01T00:00:00.000Z"));
         assert_eq!(item.completed_at, None);

@@ -70,7 +70,10 @@ fn parse_provider_ids(raw: &str) -> Vec<i64> {
     let Ok(Value::Array(values)) = serde_json::from_str::<Value>(raw) else {
         return Vec::new();
     };
-    values.into_iter().filter_map(|value| value.as_i64()).collect()
+    values
+        .into_iter()
+        .filter_map(|value| value.as_i64())
+        .collect()
 }
 
 impl From<AlertRow> for AvailabilityAlert {
@@ -101,13 +104,17 @@ impl From<SnapshotRow> for AvailabilitySnapshot {
     }
 }
 
-async fn list_alerts_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<AvailabilityAlert>, ApiError> {
-    let rows: Vec<AlertRow> =
-        sqlx::query_as("SELECT * FROM availability_alerts WHERE profile_id = $1 ORDER BY created_at DESC")
-            .bind(profile_id)
-            .fetch_all(pool)
-            .await
-            .map_err(ApiError::from)?;
+async fn list_alerts_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<Vec<AvailabilityAlert>, ApiError> {
+    let rows: Vec<AlertRow> = sqlx::query_as(
+        "SELECT * FROM availability_alerts WHERE profile_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(profile_id)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
@@ -231,7 +238,10 @@ async fn get_snapshot_impl(
     Ok(row.map(Into::into))
 }
 
-async fn save_snapshot_impl(pool: &SqlitePool, snapshot: AvailabilitySnapshot) -> Result<(), ApiError> {
+async fn save_snapshot_impl(
+    pool: &SqlitePool,
+    snapshot: AvailabilitySnapshot,
+) -> Result<(), ApiError> {
     sqlx::query(
         "INSERT OR REPLACE INTO availability_snapshots (media_id,media_type,region,provider_ids,checked_at)
          VALUES ($1,$2,$3,$4,$5)",
@@ -264,7 +274,10 @@ profile_scoped_command! {
 }
 
 #[tauri::command]
-pub async fn remove_availability_alert(id: String, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
+pub async fn remove_availability_alert(
+    id: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
     let profile_id = crate::database::current_profile_id(&pool).await?;
     remove_impl(&pool, &profile_id, &id).await
 }
@@ -293,8 +306,14 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new().max_connections(2).connect("sqlite::memory:").await.unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         sqlx::query(
             "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('other', 'Other', '2026-01-01', '2026-01-01')",
         )
@@ -305,7 +324,11 @@ mod tests {
     }
 
     fn media(id: i64, media_type: MediaType, title: &str) -> MediaSummaryInput {
-        MediaSummaryInput { id, media_type, title: title.to_string() }
+        MediaSummaryInput {
+            id,
+            media_type,
+            title: title.to_string(),
+        }
     }
 
     #[tokio::test]
@@ -313,29 +336,66 @@ mod tests {
         let pool = migrated_pool().await;
         let m = media(7, MediaType::Movie, "Alerte");
 
-        let created = toggle_impl(&pool, "default", m.clone(), "FR".to_string(), vec![8]).await.unwrap();
+        let created = toggle_impl(&pool, "default", m.clone(), "FR".to_string(), vec![8])
+            .await
+            .unwrap();
         assert!(created.is_some());
         assert!(created.unwrap().enabled);
-        assert!(get_alert_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_some());
+        assert!(
+            get_alert_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_some()
+        );
 
-        let removed = toggle_impl(&pool, "default", m, "FR".to_string(), vec![8]).await.unwrap();
+        let removed = toggle_impl(&pool, "default", m, "FR".to_string(), vec![8])
+            .await
+            .unwrap();
         assert!(removed.is_none());
-        assert!(get_alert_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
+        assert!(
+            get_alert_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[tokio::test]
     async fn distinguishes_alerts_by_media_type() {
         let pool = migrated_pool().await;
-        toggle_impl(&pool, "default", media(7, MediaType::Movie, "Movie"), "FR".to_string(), vec![8]).await.unwrap();
+        toggle_impl(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Movie"),
+            "FR".to_string(),
+            vec![8],
+        )
+        .await
+        .unwrap();
 
-        assert!(get_alert_impl(&pool, "default", 7, MediaType::Series).await.unwrap().is_none());
-        assert!(get_alert_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_some());
+        assert!(
+            get_alert_impl(&pool, "default", 7, MediaType::Series)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            get_alert_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[tokio::test]
     async fn round_trips_a_snapshot_and_replaces_it_on_the_same_media_region_key() {
         let pool = migrated_pool().await;
-        assert!(get_snapshot_impl(&pool, 1, MediaType::Movie, "FR").await.unwrap().is_none());
+        assert!(
+            get_snapshot_impl(&pool, 1, MediaType::Movie, "FR")
+                .await
+                .unwrap()
+                .is_none()
+        );
 
         save_snapshot_impl(
             &pool,
@@ -349,7 +409,10 @@ mod tests {
         )
         .await
         .unwrap();
-        let snapshot = get_snapshot_impl(&pool, 1, MediaType::Movie, "FR").await.unwrap().unwrap();
+        let snapshot = get_snapshot_impl(&pool, 1, MediaType::Movie, "FR")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(snapshot.provider_ids, vec![8, 119]);
 
         save_snapshot_impl(
@@ -364,7 +427,10 @@ mod tests {
         )
         .await
         .unwrap();
-        let replaced = get_snapshot_impl(&pool, 1, MediaType::Movie, "FR").await.unwrap().unwrap();
+        let replaced = get_snapshot_impl(&pool, 1, MediaType::Movie, "FR")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(replaced.provider_ids, vec![337]);
         assert_eq!(replaced.checked_at, "2026-02-01T00:00:00.000Z");
     }
@@ -397,8 +463,22 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(get_snapshot_impl(&pool, 1, MediaType::Movie, "FR").await.unwrap().unwrap().provider_ids, vec![8]);
-        assert_eq!(get_snapshot_impl(&pool, 1, MediaType::Movie, "US").await.unwrap().unwrap().provider_ids, vec![9]);
+        assert_eq!(
+            get_snapshot_impl(&pool, 1, MediaType::Movie, "FR")
+                .await
+                .unwrap()
+                .unwrap()
+                .provider_ids,
+            vec![8]
+        );
+        assert_eq!(
+            get_snapshot_impl(&pool, 1, MediaType::Movie, "US")
+                .await
+                .unwrap()
+                .unwrap()
+                .provider_ids,
+            vec![9]
+        );
     }
 
     #[tokio::test]
@@ -410,22 +490,46 @@ mod tests {
     #[tokio::test]
     async fn a_profile_cannot_remove_another_profiles_alert() {
         let pool = migrated_pool().await;
-        let alert = toggle_impl(&pool, "default", media(7, MediaType::Movie, "Alerte"), "FR".to_string(), vec![8])
-            .await
-            .unwrap()
-            .unwrap();
+        let alert = toggle_impl(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Alerte"),
+            "FR".to_string(),
+            vec![8],
+        )
+        .await
+        .unwrap()
+        .unwrap();
 
         assert!(remove_impl(&pool, "other", &alert.id).await.is_err());
-        assert!(get_alert_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_some());
+        assert!(
+            get_alert_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_some()
+        );
 
         remove_impl(&pool, "default", &alert.id).await.unwrap();
-        assert!(get_alert_impl(&pool, "default", 7, MediaType::Movie).await.unwrap().is_none());
+        assert!(
+            get_alert_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[tokio::test]
     async fn the_unique_index_rejects_a_duplicate_alert_bypassing_toggle_impl() {
         let pool = migrated_pool().await;
-        toggle_impl(&pool, "default", media(7, MediaType::Movie, "Alerte"), "FR".to_string(), vec![8]).await.unwrap();
+        toggle_impl(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Alerte"),
+            "FR".to_string(),
+            vec![8],
+        )
+        .await
+        .unwrap();
 
         let duplicate = sqlx::query(
             "INSERT INTO availability_alerts (uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at)
@@ -434,6 +538,9 @@ mod tests {
         .execute(&pool)
         .await;
 
-        assert!(duplicate.is_err(), "the UNIQUE index on (profile_id, media_id, media_type) should reject this insert");
+        assert!(
+            duplicate.is_err(),
+            "the UNIQUE index on (profile_id, media_id, media_type) should reject this insert"
+        );
     }
 }

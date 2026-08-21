@@ -60,7 +60,11 @@ impl ViewingEventRow {
             "watched" => ViewingEventType::Watched,
             "unwatched" => ViewingEventType::Unwatched,
             "rewatched" => ViewingEventType::Rewatched,
-            other => return Err(ApiError::internal(format!("Unknown viewing event type in database: {other}"))),
+            other => {
+                return Err(ApiError::internal(format!(
+                    "Unknown viewing event type in database: {other}"
+                )));
+            }
         };
 
         Ok(ViewingEvent {
@@ -94,7 +98,9 @@ async fn list_viewing_events_since_impl(
     .await
     .map_err(ApiError::from)?;
 
-    rows.into_iter().map(|row| row.into_event(profile_id)).collect()
+    rows.into_iter()
+        .map(|row| row.into_event(profile_id))
+        .collect()
 }
 
 /// Bounded fetch for computations that only need a recent window (current
@@ -126,7 +132,9 @@ async fn list_viewing_events_for_year_impl(
     .await
     .map_err(ApiError::from)?;
 
-    rows.into_iter().map(|row| row.into_event(profile_id)).collect()
+    rows.into_iter()
+        .map(|row| row.into_event(profile_id))
+        .collect()
 }
 
 /// Bounded fetch for the yearly "wrapped" summary — only ever needs one
@@ -243,14 +251,24 @@ async fn get_stats_overview_impl(
     .await
     .map_err(ApiError::from)?;
 
-    let monthly_by_label: std::collections::HashMap<String, &MonthlyActivityRow> =
-        monthly_rows.iter().map(|row| (row.month.clone(), row)).collect();
+    let monthly_by_label: std::collections::HashMap<String, &MonthlyActivityRow> = monthly_rows
+        .iter()
+        .map(|row| (row.month.clone(), row))
+        .collect();
 
     let monthly_activity = month_labels
         .iter()
         .map(|label| match monthly_by_label.get(label) {
-            Some(row) => MonthlyActivityBucket { month: label.clone(), count: row.count, minutes: row.minutes.unwrap_or(0) },
-            None => MonthlyActivityBucket { month: label.clone(), count: 0, minutes: 0 },
+            Some(row) => MonthlyActivityBucket {
+                month: label.clone(),
+                count: row.count,
+                minutes: row.minutes.unwrap_or(0),
+            },
+            None => MonthlyActivityBucket {
+                month: label.clone(),
+                count: 0,
+                minutes: 0,
+            },
         })
         .collect();
 
@@ -321,7 +339,10 @@ impl From<YearlyActivityRow> for YearlyActivityBucket {
 /// the Stats page's year-over-year chart and bounding its year switcher
 /// (rather than probing `list_viewing_events_for_year` one year at a time,
 /// or guessing how far back to look).
-async fn list_yearly_activity_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+async fn list_yearly_activity_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<Vec<YearlyActivityBucket>, ApiError> {
     let rows: Vec<YearlyActivityRow> = sqlx::query_as(
         "SELECT
            CAST(strftime('%Y', watched_at) AS INTEGER) AS year,
@@ -342,7 +363,9 @@ async fn list_yearly_activity_impl(pool: &SqlitePool, profile_id: &str) -> Resul
 }
 
 #[tauri::command]
-pub async fn list_yearly_activity(pool: State<'_, SqlitePool>) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+pub async fn list_yearly_activity(
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<YearlyActivityBucket>, ApiError> {
     let profile_id = current_profile_id(&pool).await?;
     list_yearly_activity_impl(&pool, &profile_id).await
 }
@@ -353,8 +376,14 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new().max_connections(2).connect("sqlite::memory:").await.unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -382,7 +411,9 @@ mod tests {
         .await
         .unwrap();
 
-        let events = list_viewing_events_since_impl(&pool, "default", "2025-01-01T00:00:00.000Z").await.unwrap();
+        let events = list_viewing_events_since_impl(&pool, "default", "2025-01-01T00:00:00.000Z")
+            .await
+            .unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].title, "Test");
         assert_eq!(events[0].event_type, ViewingEventType::Watched);
@@ -415,10 +446,30 @@ mod tests {
     #[tokio::test]
     async fn list_recent_only_returns_events_on_or_after_the_cutoff() {
         let pool = migrated_pool().await;
-        insert_event(&pool, "old", "2025-01-01T00:00:00.000Z", "watched", "movie", None, None).await;
-        insert_event(&pool, "recent", "2026-06-01T00:00:00.000Z", "watched", "movie", None, None).await;
+        insert_event(
+            &pool,
+            "old",
+            "2025-01-01T00:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "recent",
+            "2026-06-01T00:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
 
-        let events = list_viewing_events_since_impl(&pool, "default", "2026-01-01T00:00:00.000Z").await.unwrap();
+        let events = list_viewing_events_since_impl(&pool, "default", "2026-01-01T00:00:00.000Z")
+            .await
+            .unwrap();
 
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].id, "recent");
@@ -427,14 +478,45 @@ mod tests {
     #[tokio::test]
     async fn list_for_year_excludes_events_outside_the_range() {
         let pool = migrated_pool().await;
-        insert_event(&pool, "before", "2025-12-31T23:59:59.000Z", "watched", "movie", None, None).await;
-        insert_event(&pool, "inside", "2026-06-15T00:00:00.000Z", "watched", "movie", None, None).await;
-        insert_event(&pool, "after", "2027-01-01T00:00:00.000Z", "watched", "movie", None, None).await;
+        insert_event(
+            &pool,
+            "before",
+            "2025-12-31T23:59:59.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "inside",
+            "2026-06-15T00:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "after",
+            "2027-01-01T00:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
 
-        let events =
-            list_viewing_events_for_year_impl(&pool, "default", "2026-01-01T00:00:00.000Z", "2027-01-01T00:00:00.000Z")
-                .await
-                .unwrap();
+        let events = list_viewing_events_for_year_impl(
+            &pool,
+            "default",
+            "2026-01-01T00:00:00.000Z",
+            "2027-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
 
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].id, "inside");
@@ -443,11 +525,47 @@ mod tests {
     #[tokio::test]
     async fn stats_overview_aggregates_totals_and_zero_fills_empty_months() {
         let pool = migrated_pool().await;
-        insert_event(&pool, "movie-1", "2026-03-10T00:00:00.000Z", "watched", "movie", Some(100), None).await;
-        insert_event(&pool, "episode-1", "2026-03-12T00:00:00.000Z", "watched", "series", Some(40), Some(9001)).await;
-        insert_event(&pool, "episode-2", "2026-03-15T00:00:00.000Z", "rewatched", "series", Some(40), Some(9002)).await;
+        insert_event(
+            &pool,
+            "movie-1",
+            "2026-03-10T00:00:00.000Z",
+            "watched",
+            "movie",
+            Some(100),
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "episode-1",
+            "2026-03-12T00:00:00.000Z",
+            "watched",
+            "series",
+            Some(40),
+            Some(9001),
+        )
+        .await;
+        insert_event(
+            &pool,
+            "episode-2",
+            "2026-03-15T00:00:00.000Z",
+            "rewatched",
+            "series",
+            Some(40),
+            Some(9002),
+        )
+        .await;
         // An "unwatched" toggle must not count toward totals or minutes.
-        insert_event(&pool, "unwatch-1", "2026-03-20T00:00:00.000Z", "unwatched", "series", Some(999), Some(9003)).await;
+        insert_event(
+            &pool,
+            "unwatch-1",
+            "2026-03-20T00:00:00.000Z",
+            "unwatched",
+            "series",
+            Some(999),
+            Some(9003),
+        )
+        .await;
 
         sqlx::query(
             "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
@@ -460,9 +578,15 @@ mod tests {
         .await
         .unwrap();
 
-        let month_labels = vec!["2026-02".to_string(), "2026-03".to_string(), "2026-04".to_string()];
+        let month_labels = vec![
+            "2026-02".to_string(),
+            "2026-03".to_string(),
+            "2026-04".to_string(),
+        ];
         let overview =
-            get_stats_overview_impl(&pool, "default", "2026-02-01T00:00:00.000Z", &month_labels).await.unwrap();
+            get_stats_overview_impl(&pool, "default", "2026-02-01T00:00:00.000Z", &month_labels)
+                .await
+                .unwrap();
 
         assert_eq!(overview.totals.movies_watched, 1);
         assert_eq!(overview.totals.episodes_watched, 2);
@@ -474,27 +598,103 @@ mod tests {
         assert_eq!(overview.totals.library_completion_percent, 50);
 
         assert_eq!(overview.monthly_activity.len(), 3);
-        assert_eq!(overview.monthly_activity[0], MonthlyActivityBucket { month: "2026-02".into(), count: 0, minutes: 0 });
-        assert_eq!(overview.monthly_activity[1], MonthlyActivityBucket { month: "2026-03".into(), count: 3, minutes: 180 });
-        assert_eq!(overview.monthly_activity[2], MonthlyActivityBucket { month: "2026-04".into(), count: 0, minutes: 0 });
+        assert_eq!(
+            overview.monthly_activity[0],
+            MonthlyActivityBucket {
+                month: "2026-02".into(),
+                count: 0,
+                minutes: 0
+            }
+        );
+        assert_eq!(
+            overview.monthly_activity[1],
+            MonthlyActivityBucket {
+                month: "2026-03".into(),
+                count: 3,
+                minutes: 180
+            }
+        );
+        assert_eq!(
+            overview.monthly_activity[2],
+            MonthlyActivityBucket {
+                month: "2026-04".into(),
+                count: 0,
+                minutes: 0
+            }
+        );
     }
 
     #[tokio::test]
     async fn yearly_activity_groups_by_year_and_ignores_unwatched_toggles() {
         let pool = migrated_pool().await;
-        insert_event(&pool, "y2025-movie", "2025-06-01T00:00:00.000Z", "watched", "movie", Some(100), None).await;
-        insert_event(&pool, "y2026-movie", "2026-01-10T00:00:00.000Z", "watched", "movie", Some(120), None).await;
-        insert_event(&pool, "y2026-episode", "2026-03-12T00:00:00.000Z", "watched", "series", Some(40), Some(9001)).await;
-        insert_event(&pool, "y2026-rewatch", "2026-05-01T00:00:00.000Z", "rewatched", "series", Some(40), Some(9002)).await;
-        insert_event(&pool, "y2026-unwatch", "2026-05-02T00:00:00.000Z", "unwatched", "series", Some(999), Some(9003)).await;
+        insert_event(
+            &pool,
+            "y2025-movie",
+            "2025-06-01T00:00:00.000Z",
+            "watched",
+            "movie",
+            Some(100),
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "y2026-movie",
+            "2026-01-10T00:00:00.000Z",
+            "watched",
+            "movie",
+            Some(120),
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "y2026-episode",
+            "2026-03-12T00:00:00.000Z",
+            "watched",
+            "series",
+            Some(40),
+            Some(9001),
+        )
+        .await;
+        insert_event(
+            &pool,
+            "y2026-rewatch",
+            "2026-05-01T00:00:00.000Z",
+            "rewatched",
+            "series",
+            Some(40),
+            Some(9002),
+        )
+        .await;
+        insert_event(
+            &pool,
+            "y2026-unwatch",
+            "2026-05-02T00:00:00.000Z",
+            "unwatched",
+            "series",
+            Some(999),
+            Some(9003),
+        )
+        .await;
 
         let yearly = list_yearly_activity_impl(&pool, "default").await.unwrap();
 
         assert_eq!(
             yearly,
             vec![
-                YearlyActivityBucket { year: 2025, movies_watched: 1, episodes_watched: 0, minutes_watched: 100 },
-                YearlyActivityBucket { year: 2026, movies_watched: 1, episodes_watched: 2, minutes_watched: 200 },
+                YearlyActivityBucket {
+                    year: 2025,
+                    movies_watched: 1,
+                    episodes_watched: 0,
+                    minutes_watched: 100
+                },
+                YearlyActivityBucket {
+                    year: 2026,
+                    movies_watched: 1,
+                    episodes_watched: 2,
+                    minutes_watched: 200
+                },
             ]
         );
     }
@@ -508,7 +708,16 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-        insert_event(&pool, "default-movie", "2026-01-01T00:00:00.000Z", "watched", "movie", Some(100), None).await;
+        insert_event(
+            &pool,
+            "default-movie",
+            "2026-01-01T00:00:00.000Z",
+            "watched",
+            "movie",
+            Some(100),
+            None,
+        )
+        .await;
         sqlx::query(
             "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, created_at)
              VALUES ('guest-movie', 'guest', 1, 'movie', 'Test', 'watched', '2026-01-01T00:00:00.000Z', 50, '2026-01-01T00:00:00.000Z')",
@@ -519,6 +728,14 @@ mod tests {
 
         let yearly = list_yearly_activity_impl(&pool, "default").await.unwrap();
 
-        assert_eq!(yearly, vec![YearlyActivityBucket { year: 2026, movies_watched: 1, episodes_watched: 0, minutes_watched: 100 }]);
+        assert_eq!(
+            yearly,
+            vec![YearlyActivityBucket {
+                year: 2026,
+                movies_watched: 1,
+                episodes_watched: 0,
+                minutes_watched: 100
+            }]
+        );
     }
 }

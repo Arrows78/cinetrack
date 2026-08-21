@@ -104,7 +104,12 @@ impl TryFrom<HistoryRow> for ViewingHistoryItem {
 
     fn try_from(row: HistoryRow) -> Result<Self, Self::Error> {
         let action: HistoryAction = serde_json::from_value(Value::String(row.action.clone()))
-            .map_err(|_| ApiError::internal(format!("Unknown history action in database: {}", row.action)))?;
+            .map_err(|_| {
+                ApiError::internal(format!(
+                    "Unknown history action in database: {}",
+                    row.action
+                ))
+            })?;
 
         Ok(Self {
             id: row.uuid,
@@ -184,12 +189,19 @@ pub(crate) async fn add_history_item_impl<'e, E>(
 where
     E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
 {
-    let profile_id = match item.metadata.as_ref().and_then(|m| m.get("profileId")).and_then(Value::as_str) {
+    let profile_id = match item
+        .metadata
+        .as_ref()
+        .and_then(|m| m.get("profileId"))
+        .and_then(Value::as_str)
+    {
         Some(id) => id.to_string(),
         None => current_profile_id(pool).await?,
     };
 
-    let mut metadata = item.metadata.unwrap_or_else(|| Value::Object(Default::default()));
+    let mut metadata = item
+        .metadata
+        .unwrap_or_else(|| Value::Object(Default::default()));
     if let Value::Object(map) = &mut metadata {
         map.insert("profileId".to_string(), Value::String(profile_id.clone()));
     }
@@ -251,7 +263,9 @@ mod tests {
             .connect("sqlite::memory:")
             .await
             .unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -274,9 +288,27 @@ mod tests {
     async fn returns_entries_newest_first() {
         let pool = migrated_pool().await;
 
-        add_history_item_impl(&pool, &pool, entry("1", "2026-01-02T00:00:00.000Z", "Milieu")).await.unwrap();
-        add_history_item_impl(&pool, &pool, entry("2", "2026-01-01T00:00:00.000Z", "Ancien")).await.unwrap();
-        add_history_item_impl(&pool, &pool, entry("3", "2026-01-03T00:00:00.000Z", "Recent")).await.unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("1", "2026-01-02T00:00:00.000Z", "Milieu"),
+        )
+        .await
+        .unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("2", "2026-01-01T00:00:00.000Z", "Ancien"),
+        )
+        .await
+        .unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("3", "2026-01-03T00:00:00.000Z", "Recent"),
+        )
+        .await
+        .unwrap();
 
         let list = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(
@@ -289,9 +321,17 @@ mod tests {
     async fn respects_the_limit_parameter() {
         let pool = migrated_pool().await;
         for index in 0..5 {
-            add_history_item_impl(&pool, &pool, entry(&index.to_string(), &format!("2026-01-0{}T00:00:00.000Z", index + 1), "Title"))
-                .await
-                .unwrap();
+            add_history_item_impl(
+                &pool,
+                &pool,
+                entry(
+                    &index.to_string(),
+                    &format!("2026-01-0{}T00:00:00.000Z", index + 1),
+                    "Title",
+                ),
+            )
+            .await
+            .unwrap();
         }
 
         assert_eq!(list_history_impl(&pool, 2, None).await.unwrap().len(), 2);
@@ -304,18 +344,36 @@ mod tests {
             add_history_item_impl(
                 &pool,
                 &pool,
-                entry(&index.to_string(), &format!("2026-01-0{}T00:00:00.000Z", index + 1), &format!("Title {index}")),
+                entry(
+                    &index.to_string(),
+                    &format!("2026-01-0{}T00:00:00.000Z", index + 1),
+                    &format!("Title {index}"),
+                ),
             )
             .await
             .unwrap();
         }
 
         let first_page = list_history_impl(&pool, 2, None).await.unwrap();
-        assert_eq!(first_page.iter().map(|item| &item.title).collect::<Vec<_>>(), vec!["Title 4", "Title 3"]);
+        assert_eq!(
+            first_page
+                .iter()
+                .map(|item| &item.title)
+                .collect::<Vec<_>>(),
+            vec!["Title 4", "Title 3"]
+        );
 
         let last = first_page.last().unwrap();
-        let second_page = list_history_impl(&pool, 2, Some((&last.timestamp, &last.id))).await.unwrap();
-        assert_eq!(second_page.iter().map(|item| &item.title).collect::<Vec<_>>(), vec!["Title 2", "Title 1"]);
+        let second_page = list_history_impl(&pool, 2, Some((&last.timestamp, &last.id)))
+            .await
+            .unwrap();
+        assert_eq!(
+            second_page
+                .iter()
+                .map(|item| &item.title)
+                .collect::<Vec<_>>(),
+            vec!["Title 2", "Title 1"]
+        );
     }
 
     #[tokio::test]
@@ -324,18 +382,29 @@ mod tests {
         // Same instant, e.g. two entries written by one transaction — only the
         // uuid tiebreaker can tell them apart, since ORDER BY timestamp alone
         // wouldn't guarantee "c" comes back before "b" or "a" is never lost.
-        add_history_item_impl(&pool, &pool, entry("a", "2026-01-01T00:00:00.000Z", "A")).await.unwrap();
-        add_history_item_impl(&pool, &pool, entry("b", "2026-01-01T00:00:00.000Z", "B")).await.unwrap();
-        add_history_item_impl(&pool, &pool, entry("c", "2026-01-01T00:00:00.000Z", "C")).await.unwrap();
+        add_history_item_impl(&pool, &pool, entry("a", "2026-01-01T00:00:00.000Z", "A"))
+            .await
+            .unwrap();
+        add_history_item_impl(&pool, &pool, entry("b", "2026-01-01T00:00:00.000Z", "B"))
+            .await
+            .unwrap();
+        add_history_item_impl(&pool, &pool, entry("c", "2026-01-01T00:00:00.000Z", "C"))
+            .await
+            .unwrap();
 
         let first_page = list_history_impl(&pool, 2, None).await.unwrap();
         assert_eq!(first_page.len(), 2);
 
         let last = first_page.last().unwrap();
-        let second_page = list_history_impl(&pool, 2, Some((&last.timestamp, &last.id))).await.unwrap();
+        let second_page = list_history_impl(&pool, 2, Some((&last.timestamp, &last.id)))
+            .await
+            .unwrap();
 
-        let mut all_ids: Vec<String> =
-            first_page.iter().chain(second_page.iter()).map(|item| item.id.clone()).collect();
+        let mut all_ids: Vec<String> = first_page
+            .iter()
+            .chain(second_page.iter())
+            .map(|item| item.id.clone())
+            .collect();
         all_ids.sort();
         assert_eq!(all_ids, vec!["a", "b", "c"]);
     }
@@ -350,9 +419,13 @@ mod tests {
         .await
         .unwrap();
 
-        add_history_item_impl(&pool, &pool, entry("1", "2026-01-01T00:00:00.000Z", "Default profile entry"))
-            .await
-            .unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("1", "2026-01-01T00:00:00.000Z", "Default profile entry"),
+        )
+        .await
+        .unwrap();
         assert_eq!(list_history_impl(&pool, 50, None).await.unwrap().len(), 1);
 
         sqlx::query(
@@ -363,11 +436,21 @@ mod tests {
         .unwrap();
         assert_eq!(list_history_impl(&pool, 50, None).await.unwrap().len(), 0);
 
-        add_history_item_impl(&pool, &pool, entry("2", "2026-01-01T00:00:00.000Z", "Guest entry")).await.unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("2", "2026-01-01T00:00:00.000Z", "Guest entry"),
+        )
+        .await
+        .unwrap();
         let guest_history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(guest_history.len(), 1);
         assert_eq!(
-            guest_history[0].metadata.as_ref().and_then(|m| m.get("profileId")).and_then(Value::as_str),
+            guest_history[0]
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("profileId"))
+                .and_then(Value::as_str),
             Some("guest")
         );
     }

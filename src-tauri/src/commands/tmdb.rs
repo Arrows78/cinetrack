@@ -27,7 +27,11 @@ const RETRY_BASE_DELAY: Duration = Duration::from_millis(250);
 /// cannot smuggle a traversal segment, an absolute URL, or a query/fragment
 /// that would break out of the `format!`-built URL.
 fn is_valid_tmdb_path(path: &str) -> bool {
-    path.starts_with('/') && !path.contains("..") && !path.contains("://") && !path.contains('?') && !path.contains('#')
+    path.starts_with('/')
+        && !path.contains("..")
+        && !path.contains("://")
+        && !path.contains('?')
+        && !path.contains('#')
 }
 
 #[tauri::command]
@@ -79,7 +83,8 @@ pub async fn tmdb_request(
         };
 
         if status.is_success() {
-            return serde_json::from_str(&body).map_err(|error| ApiError::internal(error.to_string()));
+            return serde_json::from_str(&body)
+                .map_err(|error| ApiError::internal(error.to_string()));
         }
 
         last_error = ApiError::with_status(body, status.as_u16());

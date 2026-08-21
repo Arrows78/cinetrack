@@ -118,13 +118,19 @@ fn validate(prefs: &UserPreferences) -> Result<(), ApiError> {
     let region_is_valid =
         prefs.region.len() == 2 && prefs.region.chars().all(|c| c.is_ascii_uppercase());
     if !region_is_valid {
-        return Err(ApiError::bad_request("region must be a 2-letter uppercase country code"));
+        return Err(ApiError::bad_request(
+            "region must be a 2-letter uppercase country code",
+        ));
     }
     if prefs.notify_hours_before > 168 {
-        return Err(ApiError::bad_request("notifyHoursBefore must be between 0 and 168"));
+        return Err(ApiError::bad_request(
+            "notifyHoursBefore must be between 0 and 168",
+        ));
     }
     if prefs.preferred_provider_ids.iter().any(|id| *id <= 0) {
-        return Err(ApiError::bad_request("preferredProviderIds must all be positive"));
+        return Err(ApiError::bad_request(
+            "preferredProviderIds must all be positive",
+        ));
     }
     Ok(())
 }
@@ -171,12 +177,20 @@ async fn get_preferences_cached(
     pool: &SqlitePool,
     cache: &PreferencesCache,
 ) -> Result<UserPreferences, ApiError> {
-    if let Some(prefs) = cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone() {
+    if let Some(prefs) = cache
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone()
+    {
         return Ok(prefs);
     }
 
     let prefs = load_preferences(pool).await?;
-    *cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(prefs.clone());
+    *cache
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(prefs.clone());
     Ok(prefs)
 }
 
@@ -251,7 +265,10 @@ async fn write_preference(
     .await
     .map_err(ApiError::from)?;
 
-    *cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(updated.clone());
+    *cache
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(updated.clone());
     Ok(updated)
 }
 
@@ -296,7 +313,9 @@ async fn set_active_profile_impl(
         && let Some(required) = linked_supabase_user_id
         && supabase_user_id != Some(required.as_str())
     {
-        return Err(ApiError::forbidden("This profile requires signing in with the account it's linked to."));
+        return Err(ApiError::forbidden(
+            "This profile requires signing in with the account it's linked to.",
+        ));
     }
 
     write_preference(
@@ -324,7 +343,10 @@ pub async fn set_active_profile(
 /// `update_preference`.
 #[tauri::command]
 pub fn refresh_preferences(cache: State<'_, PreferencesCache>) {
-    *cache.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
+    *cache
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
 }
 
 #[cfg(test)]
@@ -338,7 +360,9 @@ mod tests {
             .connect("sqlite::memory:")
             .await
             .unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -372,10 +396,12 @@ mod tests {
     #[tokio::test]
     async fn load_preferences_ignores_malformed_legacy_rows() {
         let pool = migrated_pool().await;
-        sqlx::query("INSERT INTO preferences (key, value, updated_at) VALUES ('theme', 'not-json', 'now')")
-            .execute(&pool)
-            .await
-            .unwrap();
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('theme', 'not-json', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         let prefs = load_preferences(&pool).await.unwrap();
         assert!(matches!(prefs.theme, Theme::Dark));
@@ -386,9 +412,14 @@ mod tests {
         let pool = migrated_pool().await;
         let cache = PreferencesCache::default();
 
-        let updated = write_preference("libraryViewMode".to_string(), Value::String("list".to_string()), &pool, &cache)
-            .await
-            .unwrap();
+        let updated = write_preference(
+            "libraryViewMode".to_string(),
+            Value::String("list".to_string()),
+            &pool,
+            &cache,
+        )
+        .await
+        .unwrap();
         assert!(matches!(updated.library_view_mode, LibraryViewMode::List));
 
         // A fresh cache (simulating the next get_preferences call after a
@@ -428,7 +459,9 @@ mod tests {
             .await
             .unwrap();
 
-        let updated = set_active_profile_impl(&pool, &cache, "alex", None).await.unwrap();
+        let updated = set_active_profile_impl(&pool, &cache, "alex", None)
+            .await
+            .unwrap();
         assert_eq!(updated.active_profile_id, "alex");
     }
 
@@ -437,7 +470,11 @@ mod tests {
         let pool = migrated_pool().await;
         let cache = PreferencesCache::default();
 
-        assert!(set_active_profile_impl(&pool, &cache, "ghost", None).await.is_err());
+        assert!(
+            set_active_profile_impl(&pool, &cache, "ghost", None)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -452,8 +489,16 @@ mod tests {
         .await
         .unwrap();
 
-        assert!(set_active_profile_impl(&pool, &cache, "alex", None).await.is_err());
-        assert!(set_active_profile_impl(&pool, &cache, "alex", Some("someone-else")).await.is_err());
+        assert!(
+            set_active_profile_impl(&pool, &cache, "alex", None)
+                .await
+                .is_err()
+        );
+        assert!(
+            set_active_profile_impl(&pool, &cache, "alex", Some("someone-else"))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -468,7 +513,9 @@ mod tests {
         .await
         .unwrap();
 
-        let updated = set_active_profile_impl(&pool, &cache, "alex", Some("user-1")).await.unwrap();
+        let updated = set_active_profile_impl(&pool, &cache, "alex", Some("user-1"))
+            .await
+            .unwrap();
         assert_eq!(updated.active_profile_id, "alex");
     }
 
@@ -481,7 +528,9 @@ mod tests {
             .await
             .unwrap();
 
-        let updated = set_active_profile_impl(&pool, &cache, "default", None).await.unwrap();
+        let updated = set_active_profile_impl(&pool, &cache, "default", None)
+            .await
+            .unwrap();
         assert_eq!(updated.active_profile_id, "default");
     }
 }

@@ -1,19 +1,13 @@
 use tauri::{
+    AppHandle, Emitter, Manager,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager,
 };
 
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Ouvrir CineTrack", true, None::<&str>)?;
 
-    let tonight = MenuItem::with_id(
-        app,
-        "tonight",
-        "Que regarder ce soir ?",
-        true,
-        None::<&str>,
-    )?;
+    let tonight = MenuItem::with_id(app, "tonight", "Que regarder ce soir ?", true, None::<&str>)?;
 
     let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
 

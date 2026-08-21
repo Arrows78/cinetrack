@@ -88,12 +88,16 @@ async fn create_impl(
     Ok(profile)
 }
 
-async fn find_by_supabase_user_id_impl(pool: &SqlitePool, supabase_user_id: &str) -> Result<Option<UserProfile>, ApiError> {
-    let row: Option<ProfileRow> = sqlx::query_as("SELECT * FROM profiles WHERE supabase_user_id = $1 LIMIT 1")
-        .bind(supabase_user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(ApiError::from)?;
+async fn find_by_supabase_user_id_impl(
+    pool: &SqlitePool,
+    supabase_user_id: &str,
+) -> Result<Option<UserProfile>, ApiError> {
+    let row: Option<ProfileRow> =
+        sqlx::query_as("SELECT * FROM profiles WHERE supabase_user_id = $1 LIMIT 1")
+            .bind(supabase_user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
     Ok(row.map(Into::into))
 }
 
@@ -116,7 +120,8 @@ async fn link_to_supabase_user_impl(
         .fetch_optional(pool)
         .await
         .map_err(ApiError::from)?;
-    row.map(Into::into).ok_or_else(|| ApiError::not_found("Profile not found."))
+    row.map(Into::into)
+        .ok_or_else(|| ApiError::not_found("Profile not found."))
 }
 
 /// Resolves which local profile a signed-in Supabase account should land on:
@@ -125,7 +130,10 @@ async fn link_to_supabase_user_impl(
 /// Supabase auth entirely, auto-claimed so pre-existing local data isn't
 /// orphaned by this feature. Returns None when neither applies, meaning the
 /// caller must offer to create a brand new profile.
-async fn resolve_for_supabase_user_impl(pool: &SqlitePool, supabase_user_id: &str) -> Result<Option<UserProfile>, ApiError> {
+async fn resolve_for_supabase_user_impl(
+    pool: &SqlitePool,
+    supabase_user_id: &str,
+) -> Result<Option<UserProfile>, ApiError> {
     if let Some(existing) = find_by_supabase_user_id_impl(pool, supabase_user_id).await? {
         return Ok(Some(existing));
     }
@@ -135,7 +143,9 @@ async fn resolve_for_supabase_user_impl(pool: &SqlitePool, supabase_user_id: &st
     if let Some(default_profile) = default_profile
         && default_profile.supabase_user_id.is_none()
     {
-        return Ok(Some(link_to_supabase_user_impl(pool, "default", supabase_user_id).await?));
+        return Ok(Some(
+            link_to_supabase_user_impl(pool, "default", supabase_user_id).await?,
+        ));
     }
 
     Ok(None)
@@ -143,7 +153,9 @@ async fn resolve_for_supabase_user_impl(pool: &SqlitePool, supabase_user_id: &st
 
 async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError> {
     if profile_id == "default" {
-        return Err(ApiError::bad_request("The default profile cannot be deleted."));
+        return Err(ApiError::bad_request(
+            "The default profile cannot be deleted.",
+        ));
     }
 
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
@@ -208,7 +220,10 @@ pub async fn resolve_profile_for_supabase_user(
 }
 
 #[tauri::command]
-pub async fn remove_profile(profile_id: String, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
+pub async fn remove_profile(
+    profile_id: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
     remove_impl(&pool, &profile_id).await
 }
 
@@ -218,8 +233,14 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new().max_connections(2).connect("sqlite::memory:").await.unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
@@ -235,7 +256,11 @@ mod tests {
         let pool = migrated_pool().await;
         let created = create_impl(&pool, "Alex", None, None).await.unwrap();
         let profiles = list_impl(&pool).await.unwrap();
-        assert!(profiles.iter().any(|p| p.id == created.id && p.name == "Alex"));
+        assert!(
+            profiles
+                .iter()
+                .any(|p| p.id == created.id && p.name == "Alex")
+        );
     }
 
     #[tokio::test]
@@ -328,26 +353,36 @@ mod tests {
         assert!(!profiles.iter().any(|p| p.id == created.id));
 
         for table in crate::database::PROFILE_SCOPED_TABLES {
-            let remaining: (i64,) =
-                sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table} WHERE profile_id = $1")))
-                    .bind(&created.id)
-                    .fetch_one(&pool)
-                    .await
-                    .unwrap();
-            assert_eq!(remaining.0, 0, "{table} should have cascaded on profile deletion");
+            let remaining: (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+                "SELECT COUNT(*) FROM {table} WHERE profile_id = $1"
+            )))
+            .bind(&created.id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            assert_eq!(
+                remaining.0, 0,
+                "{table} should have cascaded on profile deletion"
+            );
         }
 
         let remaining_list_items: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM custom_list_items")
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(remaining_list_items.0, 0, "custom_list_items should cascade transitively via custom_lists");
+        assert_eq!(
+            remaining_list_items.0, 0,
+            "custom_list_items should cascade transitively via custom_lists"
+        );
     }
 
     #[tokio::test]
     async fn auto_claims_the_unclaimed_default_profile_for_the_first_account() {
         let pool = migrated_pool().await;
-        let resolved = resolve_for_supabase_user_impl(&pool, "user-1").await.unwrap().unwrap();
+        let resolved = resolve_for_supabase_user_impl(&pool, "user-1")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(resolved.id, "default");
         assert_eq!(resolved.supabase_user_id.as_deref(), Some("user-1"));
     }
@@ -355,23 +390,39 @@ mod tests {
     #[tokio::test]
     async fn returns_the_already_linked_profile_on_subsequent_resolutions() {
         let pool = migrated_pool().await;
-        resolve_for_supabase_user_impl(&pool, "user-1").await.unwrap();
-        let second = resolve_for_supabase_user_impl(&pool, "user-1").await.unwrap().unwrap();
+        resolve_for_supabase_user_impl(&pool, "user-1")
+            .await
+            .unwrap();
+        let second = resolve_for_supabase_user_impl(&pool, "user-1")
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(second.id, "default");
     }
 
     #[tokio::test]
     async fn returns_none_for_a_second_account_once_default_is_claimed() {
         let pool = migrated_pool().await;
-        resolve_for_supabase_user_impl(&pool, "user-1").await.unwrap();
-        assert!(resolve_for_supabase_user_impl(&pool, "user-2").await.unwrap().is_none());
+        resolve_for_supabase_user_impl(&pool, "user-1")
+            .await
+            .unwrap();
+        assert!(
+            resolve_for_supabase_user_impl(&pool, "user-2")
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[tokio::test]
     async fn the_unique_index_rejects_linking_a_second_profile_to_an_already_claimed_account() {
         let pool = migrated_pool().await;
-        resolve_for_supabase_user_impl(&pool, "user-1").await.unwrap();
-        let second = create_impl(&pool, "Camille", None, Some("user-2".to_string())).await.unwrap();
+        resolve_for_supabase_user_impl(&pool, "user-1")
+            .await
+            .unwrap();
+        let second = create_impl(&pool, "Camille", None, Some("user-2".to_string()))
+            .await
+            .unwrap();
 
         let result = link_to_supabase_user_impl(&pool, &second.id, "user-1").await;
         assert!(result.is_err());
