@@ -11,6 +11,7 @@ import type {
   ViewingEvent,
   ViewingHistoryItem,
 } from "@/types/media";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 
 /** The full contents of a CineTrack backup — see portable-data.ts. */
 export interface PortableData {
@@ -83,7 +84,7 @@ export function foldLegacyWatchlistIntoLibrary(
   const seen = new Set(library.map((item) => `${item.profileId}-${item.mediaType}-${item.mediaId}`));
   const additions: LibraryItem[] = [];
   for (const entry of legacyWatchlist) {
-    const profileId = entry.profileId ?? "default";
+    const profileId = entry.profileId ?? DEFAULT_PROFILE_ID;
     const key = `${profileId}-${entry.mediaType}-${entry.mediaId}`;
     if (seen.has(key)) continue;
     seen.add(key);

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { makeMedia } from "@/shared/test-utils";
 import type { AvailabilityAlert, AvailabilitySnapshot } from "@/types/media";
 
@@ -9,7 +10,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 const alert = (overrides: Partial<AvailabilityAlert> = {}): AvailabilityAlert => ({
   id: "test-id",
-  profileId: "default",
+  profileId: DEFAULT_PROFILE_ID,
   mediaId: 7,
   mediaType: "movie",
   title: "Alerte",

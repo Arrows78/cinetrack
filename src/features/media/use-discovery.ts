@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { STALE_6_HOURS } from "@/shared/constants/query";
 import type { MediaType } from "@/types/media";
 
 export function useRecommendations(mediaType: MediaType, mediaId: number) {
@@ -22,7 +23,7 @@ export function useAvailability(mediaType: MediaType, mediaId: number, region: s
     queryKey: queryKeys.remote.availability(mediaType, mediaId, region),
     queryFn: () => mediaRepository.getWatchAvailability(mediaType, mediaId, region),
     enabled: Number.isFinite(mediaId) && Boolean(region),
-    staleTime: 1000 * 60 * 60 * 6,
+    staleTime: STALE_6_HOURS,
   });
 }
 export function usePeopleSearch(query: string) {

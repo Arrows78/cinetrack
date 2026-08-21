@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserPreferences } from "@/types/media";
 
 const defaultPreferences: UserPreferences = {
@@ -18,8 +19,8 @@ const defaultPreferences: UserPreferences = {
   notificationsEnabled: false,
   notifyHoursBefore: 24,
   preferredProviderIds: [],
-  activeProfileId: "default",
-  userProfile: { id: "default", name: null },
+  activeProfileId: DEFAULT_PROFILE_ID,
+  userProfile: { id: DEFAULT_PROFILE_ID, name: null },
 };
 
 let stored: UserPreferences;
@@ -94,10 +95,10 @@ describe("useActiveProfileId", () => {
     await waitFor(() => expect(result.current).toBe("alex"));
   });
 
-  it('falls back to "default" before preferences resolve', async () => {
+  it(`falls back to ${DEFAULT_PROFILE_ID} before preferences resolve`, async () => {
     const { useActiveProfileId } = await import("../use-preferences");
     const { result } = renderHook(() => useActiveProfileId(), { wrapper: createWrapper() });
 
-    expect(result.current).toBe("default");
+    expect(result.current).toBe(DEFAULT_PROFILE_ID);
   });
 });

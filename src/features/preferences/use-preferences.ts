@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserPreferences } from "@/types/media";
 
 export function usePreferences() {
@@ -23,8 +24,8 @@ export function usePreferences() {
       if (variables.key === "language" || variables.key === "region") {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["remote"] }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(previousProfileId ?? "default") }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(previousProfileId ?? "default") }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(previousProfileId ?? DEFAULT_PROFILE_ID) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(previousProfileId ?? DEFAULT_PROFILE_ID) }),
         ]);
       }
     },
@@ -52,5 +53,5 @@ export function useActiveProfileId(): string {
     queryKey: queryKeys.local.preferences,
     queryFn: () => preferencesRepository.getPreferences(),
   });
-  return data?.activeProfileId ?? "default";
+  return data?.activeProfileId ?? DEFAULT_PROFILE_ID;
 }

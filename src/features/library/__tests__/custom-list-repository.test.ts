@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { makeMedia } from "@/shared/test-utils";
 import type { CustomList, CustomListItem } from "@/types/media";
 
@@ -9,7 +10,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 const list = (overrides: Partial<CustomList> = {}): CustomList => ({
   id: "list-id",
-  profileId: "default",
+  profileId: DEFAULT_PROFILE_ID,
   name: "Ma liste",
   description: null,
   createdAt: "2026-01-01T00:00:00.000Z",

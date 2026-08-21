@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { computeForecast } from "../stats-repository";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { TrackedSeriesItem, ViewingEvent } from "@/types/media";
 
 const tracked = (watched: number, total: number): TrackedSeriesItem => ({
   id: crypto.randomUUID(),
-  profileId: "default",
+  profileId: DEFAULT_PROFILE_ID,
   seriesId: 1,
   title: "Test",
   posterPath: null,
@@ -17,7 +18,7 @@ const tracked = (watched: number, total: number): TrackedSeriesItem => ({
 
 const episodeEvent = (daysAgo: number, minutes = 50): ViewingEvent => ({
   id: crypto.randomUUID(),
-  profileId: "default",
+  profileId: DEFAULT_PROFILE_ID,
   mediaId: 1,
   mediaType: "series",
   title: "Test",

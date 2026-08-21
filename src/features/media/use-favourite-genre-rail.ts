@@ -1,15 +1,10 @@
 import { useMemo } from "react";
 import { useLibrary } from "@/features/library/use-library";
-import { buildLibraryKeySet, isInLibrary } from "@/features/library/library-set";
+import { EMPTY_LIBRARY, filterAvailableItems } from "@/features/library/library-set";
 import { useSearch } from "@/features/media/use-search";
 import { useMergedGenres, type MergedGenre } from "@/features/media/use-merged-genres";
 import { useStats } from "@/features/stats/use-stats";
-import type { LibraryItem, LibraryStats, MediaSummary } from "@/types/media";
-
-// Stable reference so `library` doesn't change identity on every render
-// while libraryQuery.data is still undefined (avoids re-triggering the
-// useMemo hook below on each render).
-const EMPTY_LIBRARY: LibraryItem[] = [];
+import type { LibraryStats, MediaSummary } from "@/types/media";
 
 // `favouriteGenres` is already sorted desc by count — just resolve the top
 // entry against the merged movie/series genre list. Exported for isolated
@@ -44,10 +39,7 @@ export function useFavouriteGenreRail() {
   // shouldn't render every paginated search result.
   const items = useMemo<MediaSummary[]>(() => {
     if (!genre || searchQuery.items.length === 0) return [];
-    const keySet = buildLibraryKeySet(library);
-    return searchQuery.items
-      .filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet))
-      .slice(0, 4);
+    return filterAvailableItems(searchQuery.items, library);
   }, [genre, searchQuery.items, library]);
 
   return { genre, items, isLoading: Boolean(genre) && searchQuery.isLoading };

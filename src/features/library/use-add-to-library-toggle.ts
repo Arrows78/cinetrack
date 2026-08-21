@@ -11,7 +11,7 @@ import type { MediaSummary } from "@/types/media";
 // confirmed removal right where the user already is instead.
 export function useAddToLibraryToggle(media: MediaSummary, options?: { enabled?: boolean }) {
   const { data: isInLibrary } = useIsInLibrary(media.id, media.mediaType, { enabled: options?.enabled ?? true });
-  const { addPlanned, removeIfPlanned, forceRemove, isMutating } = useLibraryQuickToggle();
+  const { addPlanned, removeIfPlanned, forceRemove, isSaving } = useLibraryQuickToggle();
   const [confirmingForceRemove, setConfirmingForceRemove] = useState(false);
 
   const toggle = async () => {
@@ -31,7 +31,7 @@ export function useAddToLibraryToggle(media: MediaSummary, options?: { enabled?:
   return {
     isInLibrary: Boolean(isInLibrary),
     toggle,
-    isMutating,
+    isSaving,
     confirmingForceRemove,
     setConfirmingForceRemove,
     confirmForceRemove,

@@ -1,9 +1,10 @@
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { STALE_1_HOUR, STALE_24_HOURS } from "@/shared/constants/query";
 import type { MediaType, PageResult } from "@/types/media";
 
-const nextPage = <T>(lastPage: PageResult<T>) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined);
+export const nextPage = <T>(lastPage: PageResult<T>) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined);
 
 export function useHomeFeed() {
   return useQuery({
@@ -36,7 +37,7 @@ export function useWatchProviders(mediaType: MediaType, region: string) {
   return useQuery({
     queryKey: queryKeys.remote.providers(mediaType, region),
     queryFn: () => mediaRepository.getWatchProviders(mediaType, region),
-    staleTime: 1000 * 60 * 60 * 24,
+    staleTime: STALE_24_HOURS,
   });
 }
 
@@ -70,7 +71,7 @@ export function useSeriesSeasons(seriesId: number, seasonNumbers: number[]) {
       queryKey: queryKeys.remote.seasonDetails(seriesId, seasonNumber),
       queryFn: () => mediaRepository.getSeasonDetails(seriesId, seasonNumber),
       enabled: Number.isFinite(seriesId),
-      staleTime: 1000 * 60 * 60,
+      staleTime: STALE_1_HOUR,
     })),
   });
 }

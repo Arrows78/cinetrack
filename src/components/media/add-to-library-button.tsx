@@ -7,12 +7,12 @@ import type { MediaSummary } from "@/types/media";
 
 export function AddToLibraryButton({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
-  const { isInLibrary, toggle, isMutating, confirmingForceRemove, setConfirmingForceRemove, confirmForceRemove } =
+  const { isInLibrary, toggle, isSaving, confirmingForceRemove, setConfirmingForceRemove, confirmForceRemove } =
     useAddToLibraryToggle(media);
 
   return (
     <>
-      <Button variant={isInLibrary ? "secondary" : "default"} onClick={() => void toggle()} disabled={isMutating}>
+      <Button variant={isInLibrary ? "secondary" : "default"} onClick={() => void toggle()} disabled={isSaving}>
         {isInLibrary ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
         {isInLibrary ? t("media.inLibrary") : t("media.addToLibrary")}
       </Button>

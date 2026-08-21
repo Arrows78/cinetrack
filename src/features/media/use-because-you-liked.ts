@@ -1,13 +1,8 @@
 import { useMemo } from "react";
 import { useLibrary } from "@/features/library/use-library";
-import { buildLibraryKeySet, isInLibrary } from "@/features/library/library-set";
+import { EMPTY_LIBRARY, filterAvailableItems } from "@/features/library/library-set";
 import { useRecommendations } from "@/features/media/use-discovery";
 import type { LibraryItem, MediaSummary } from "@/types/media";
-
-// Stable reference so `library` doesn't change identity on every render
-// while libraryQuery.data is still undefined (avoids re-triggering the
-// useMemo hooks below on each render).
-const EMPTY_LIBRARY: LibraryItem[] = [];
 
 const byMostRecent = (a: LibraryItem, b: LibraryItem) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "");
 
@@ -59,9 +54,7 @@ export function useBecauseYouLiked() {
   // TMDB's full ~20-result page.
   const items = useMemo<MediaSummary[]>(() => {
     const results = recommendationsQuery.data?.results ?? [];
-    if (results.length === 0) return [];
-    const keySet = buildLibraryKeySet(library);
-    return results.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet)).slice(0, 4);
+    return filterAvailableItems(results, library);
   }, [recommendationsQuery.data, library]);
 
   return { seedTitle: seed?.title ?? null, items, isLoading: Boolean(seed) && recommendationsQuery.isLoading };

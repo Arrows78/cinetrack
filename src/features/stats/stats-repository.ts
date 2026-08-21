@@ -23,6 +23,11 @@ const PACE_WINDOW_DAYS = 60;
 // long the app has been in use.
 const RECENT_EVENTS_WINDOW_DAYS = 400;
 
+/** Filter out "unwatched" rollbacks — only active watch events count. */
+function activeEvents(events: ViewingEvent[]): ViewingEvent[] {
+  return events.filter((event) => event.eventType !== "unwatched");
+}
+
 interface YearSummary {
   year: number;
   movies: number;
@@ -57,9 +62,7 @@ const localDay = (timestamp: string) => format(parseISO(timestamp), "yyyy-MM-dd"
 
 /** Exported for tests only — not part of the statsRepository public surface. */
 export function currentStreak(events: ViewingEvent[]): number {
-  const days = new Set(
-    events.filter((event) => event.eventType !== "unwatched").map((event) => localDay(event.watchedAt))
-  );
+  const days = new Set(activeEvents(events).map((event) => localDay(event.watchedAt)));
   const cursor = new Date();
   if (!days.has(format(cursor, "yyyy-MM-dd"))) cursor.setDate(cursor.getDate() - 1);
   let streak = 0;
@@ -78,9 +81,7 @@ export function currentStreak(events: ViewingEvent[]): number {
  * Exported for tests only — not part of the statsRepository public surface.
  */
 export function longestStreak(events: ViewingEvent[]): number {
-  const days = [
-    ...new Set(events.filter((event) => event.eventType !== "unwatched").map((event) => localDay(event.watchedAt))),
-  ].sort();
+  const days = [...new Set(activeEvents(events).map((event) => localDay(event.watchedAt)))].sort();
   let longest = 0;
   let current = 0;
   let previous: Date | null = null;
@@ -301,7 +302,7 @@ export const statsRepository = {
       invokeCommand<ViewingEvent[]>("list_viewing_events_for_year", {
         rangeStart: `${year}-01-01T00:00:00.000Z`,
         rangeEnd: `${year + 1}-01-01T00:00:00.000Z`,
-      }).then((events) => events.filter((event) => event.eventType !== "unwatched")),
+      }).then(activeEvents),
     ]);
     const titleCounts = new Map<string, number>();
     for (const event of selected) titleCounts.set(event.title, (titleCounts.get(event.title) ?? 0) + 1);

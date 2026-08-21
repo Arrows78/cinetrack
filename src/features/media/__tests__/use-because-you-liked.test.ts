@@ -1,24 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { pickBestSeed } from "../use-because-you-liked";
-import type { LibraryItem } from "@/types/media";
+import { makeLibraryItem } from "@/shared/test-utils";
 
-const libraryItem = (overrides: Partial<LibraryItem> = {}): LibraryItem => ({
-  id: "item-1",
-  profileId: "profile-1",
-  mediaId: 550,
-  mediaType: "movie",
-  title: "Fight Club",
-  year: 1999,
-  rating: 8.4,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-  genres: ["Drama"],
-  status: "completed",
-  favourite: false,
-  tags: [],
-  rewatchCount: 0,
-  ...overrides,
-});
+const libraryItem = makeLibraryItem;
 
 describe("pickBestSeed", () => {
   it("returns null when the library is empty", () => {

@@ -1,5 +1,6 @@
 import { invokeCommand } from "@/shared/lib/invoke";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserProfile } from "@/types/media";
 
 // The default-profile seed, supabase auto-claim logic and cascading delete
@@ -49,7 +50,7 @@ export const profileRepository = {
 
     const preferences = await preferencesRepository.getPreferences();
     if (preferences.activeProfileId === profileId) {
-      await preferencesRepository.setActiveProfile("default");
+      await preferencesRepository.setActiveProfile(DEFAULT_PROFILE_ID);
     }
   },
 };

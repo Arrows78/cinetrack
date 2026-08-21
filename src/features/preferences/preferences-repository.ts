@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserPreferences } from "@/types/media";
 
 export const preferencesSchema = z.object({
@@ -20,9 +21,9 @@ export const preferencesSchema = z.object({
   notificationsEnabled: z.boolean().default(false),
   notifyHoursBefore: z.number().int().min(0).max(168).default(24),
   preferredProviderIds: z.array(z.number().int().positive()).default([]),
-  activeProfileId: z.string().default("default"),
+  activeProfileId: z.string().default(DEFAULT_PROFILE_ID),
   userProfile: z.object({
-    id: z.string().default("default"),
+    id: z.string().default(DEFAULT_PROFILE_ID),
     name: z.string().nullable().default(null),
     avatar: z.string().nullable().optional(),
   }),

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { AvailabilityAlert, AvailabilitySnapshot, CalendarEntry, LibraryItem } from "@/types/media";
 
 const mocks = vi.hoisted(() => ({
@@ -34,7 +35,7 @@ const calendarEntry = (overrides: Partial<CalendarEntry> = {}): CalendarEntry =>
 
 const libraryItem = (mediaId: number): LibraryItem => ({
   id: `item-${mediaId}`,
-  profileId: "default",
+  profileId: DEFAULT_PROFILE_ID,
   mediaId,
   mediaType: "movie",
   title: "In library",
@@ -49,7 +50,7 @@ const libraryItem = (mediaId: number): LibraryItem => ({
 
 const alert = (overrides: Partial<AvailabilityAlert> = {}): AvailabilityAlert => ({
   id: "alert-1",
-  profileId: "default",
+  profileId: DEFAULT_PROFILE_ID,
   mediaId: 42,
   mediaType: "movie",
   title: "Arrival",

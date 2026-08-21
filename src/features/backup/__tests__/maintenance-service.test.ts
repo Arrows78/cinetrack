@@ -5,6 +5,7 @@
 // browser ("client") code and refuses to bundle a Node built-in into it.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { rename, writeTextFile } from "@tauri-apps/plugin-fs";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
@@ -140,7 +141,7 @@ const autoBackupContent = (mediaId: number) =>
     data: {
       library: [
         {
-          profileId: "default",
+          profileId: DEFAULT_PROFILE_ID,
           mediaId,
           mediaType: "movie",
           title: `Seed ${mediaId}`,

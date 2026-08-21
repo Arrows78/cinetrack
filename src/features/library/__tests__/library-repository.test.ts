@@ -1,35 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeMedia } from "@/shared/test-utils";
-import type { LibraryItem } from "@/types/media";
+import { makeLibraryItem, makeMedia } from "@/shared/test-utils";
 
 const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (command: string, args?: Record<string, unknown>) => invokeMock(command, args),
 }));
 
-const libraryItem = (overrides: Partial<LibraryItem> = {}): LibraryItem => ({
-  id: "test-id",
-  profileId: "default",
-  mediaId: 7,
-  mediaType: "movie",
-  title: "Test Movie",
-  posterPath: null,
-  backdropPath: null,
-  year: 2024,
-  rating: 7.5,
-  genres: ["Drama"],
-  status: "planned",
-  favourite: false,
-  userRating: null,
-  notes: null,
-  tags: [],
-  startedAt: null,
-  completedAt: null,
-  rewatchCount: 0,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-  ...overrides,
-});
+const libraryItem = makeLibraryItem;
 
 // The status/startedAt/completedAt business rules and the upsert
 // transaction now live in Rust and are exercised there (see

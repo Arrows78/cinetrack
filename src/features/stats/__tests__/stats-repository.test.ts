@@ -15,30 +15,17 @@ import {
   monthOverMonthComparison,
   viewingHeatmap,
 } from "../stats-repository";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
-import { makeMedia } from "@/shared/test-utils";
+import { makeLibraryItem, makeMedia } from "@/shared/test-utils";
 import type { LibraryItem, ViewingEvent } from "@/types/media";
 
-const libraryItem = (overrides: Partial<LibraryItem> = {}): LibraryItem =>
-  ({
-    profileId: "default",
-    mediaId: 1,
-    mediaType: "movie",
-    title: "Test",
-    genres: [],
-    status: "completed",
-    favourite: false,
-    tags: [],
-    rewatchCount: 0,
-    createdAt: "2026-01-01",
-    updatedAt: "2026-01-01",
-    ...overrides,
-  }) as LibraryItem;
+const libraryItem = makeLibraryItem;
 
 const event = (overrides: Partial<ViewingEvent> = {}): ViewingEvent =>
   ({
     id: crypto.randomUUID(),
-    profileId: "default",
+    profileId: DEFAULT_PROFILE_ID,
     mediaId: 1,
     mediaType: "movie",
     title: "Test",
@@ -63,7 +50,7 @@ describe("currentStreak / libraryExtras", () => {
   it("extracts favourite genres from the library", () => {
     const library = [
       {
-        profileId: "default",
+        profileId: DEFAULT_PROFILE_ID,
         mediaId: 1,
         mediaType: "movie",
         title: "Test",

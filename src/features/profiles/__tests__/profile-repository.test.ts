@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserPreferences, UserProfile } from "@/types/media";
 
 const invokeMock = vi.fn();
@@ -65,9 +66,9 @@ describe("profileRepository", () => {
     invokeMock.mockResolvedValueOnce(profile());
     const { profileRepository } = await import("../profile-repository");
 
-    await profileRepository.linkToSupabaseUser("default", "user-1");
+    await profileRepository.linkToSupabaseUser(DEFAULT_PROFILE_ID, "user-1");
     expect(invokeMock).toHaveBeenCalledWith("link_profile_to_supabase_user", {
-      profileId: "default",
+      profileId: DEFAULT_PROFILE_ID,
       supabaseUserId: "user-1",
     });
   });
@@ -96,12 +97,12 @@ describe("profileRepository", () => {
       notifyHoursBefore: 24,
       preferredProviderIds: [],
       activeProfileId: "removed-id",
-      userProfile: { id: "default", name: null },
+      userProfile: { id: DEFAULT_PROFILE_ID, name: null },
     };
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "remove_profile") return undefined;
       if (command === "get_preferences") return preferences;
-      if (command === "set_active_profile") return { ...preferences, activeProfileId: "default" };
+      if (command === "set_active_profile") return { ...preferences, activeProfileId: DEFAULT_PROFILE_ID };
       throw new Error(`Unhandled command: ${command}`);
     });
     const { profileRepository } = await import("../profile-repository");
@@ -109,7 +110,7 @@ describe("profileRepository", () => {
     await profileRepository.remove("removed-id");
 
     expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id" });
-    expect(invokeMock).toHaveBeenCalledWith("set_active_profile", { profileId: "default", supabaseUserId: null });
+    expect(invokeMock).toHaveBeenCalledWith("set_active_profile", { profileId: DEFAULT_PROFILE_ID, supabaseUserId: null });
   });
 
   it("remove() leaves activeProfileId untouched when the removed profile wasn't active", async () => {
@@ -127,8 +128,8 @@ describe("profileRepository", () => {
       notificationsEnabled: false,
       notifyHoursBefore: 24,
       preferredProviderIds: [],
-      activeProfileId: "default",
-      userProfile: { id: "default", name: null },
+      activeProfileId: DEFAULT_PROFILE_ID,
+      userProfile: { id: DEFAULT_PROFILE_ID, name: null },
     };
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "remove_profile") return undefined;

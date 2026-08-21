@@ -90,6 +90,6 @@ export function useLibraryQuickToggle() {
     addPlanned: addPlanned.mutateAsync,
     removeIfPlanned: removeIfPlanned.mutateAsync,
     forceRemove: forceRemove.mutateAsync,
-    isMutating: addPlanned.isPending || removeIfPlanned.isPending || forceRemove.isPending,
+    isSaving: addPlanned.isPending || removeIfPlanned.isPending || forceRemove.isPending,
   };
 }

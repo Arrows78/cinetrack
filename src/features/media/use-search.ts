@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { nextPage } from "@/features/media/use-media";
 import type { MediaSummary, PageResult, SearchScope } from "@/types/media";
 
 interface SearchOptions {
@@ -57,7 +58,7 @@ export function useSearch(query: string, scope: SearchScope, options?: SearchOpt
       }
       return mergePages(await Promise.all(requests));
     },
-    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined),
+    getNextPageParam: nextPage,
     enabled: hasFilters || query.trim().length >= 2,
   });
 

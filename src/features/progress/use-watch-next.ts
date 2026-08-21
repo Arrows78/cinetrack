@@ -4,6 +4,7 @@ import { episodeProgressKeys } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { STALE_30_MIN } from "@/shared/constants/query";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { Episode, MediaSummary, TrackedSeriesItem } from "@/types/media";
 
@@ -69,7 +70,7 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     queries: seriesList.map((series) => ({
       queryKey: queryKeys.local.watchNextEpisode(profileId, series.seriesId),
       queryFn: () => resolveNextEpisode(series.seriesId),
-      staleTime: 1000 * 60 * 30,
+      staleTime: STALE_30_MIN,
     })),
   });
 

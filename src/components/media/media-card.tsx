@@ -35,7 +35,7 @@ const quickActionButtonClassName =
 
 function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
-  const { isInLibrary, toggle, isMutating, confirmingForceRemove, setConfirmingForceRemove, confirmForceRemove } =
+  const { isInLibrary, toggle, isSaving, confirmingForceRemove, setConfirmingForceRemove, confirmForceRemove } =
     useAddToLibraryToggle(media);
   const label = isInLibrary ? t("media.inLibrary") : t("media.addToLibrary");
 
@@ -46,7 +46,7 @@ function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
           type="button"
           aria-label={label}
           aria-pressed={isInLibrary}
-          disabled={isMutating}
+          disabled={isSaving}
           onClick={(event) => {
             stopCardNavigation(event);
             void toggle();

@@ -4,6 +4,7 @@
 // built-in. Under the default jsdom environment, Vite treats this file as
 // browser ("client") code and refuses to bundle a Node built-in into it.
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeMedia } from "@/shared/test-utils";
 
@@ -40,7 +41,7 @@ describe("portableData", () => {
       data: {
         library: [
           {
-            profileId: "default",
+            profileId: DEFAULT_PROFILE_ID,
             mediaId: 1,
             mediaType: "movie",
             title: "Already tracked",

@@ -1,6 +1,7 @@
 import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { cineTrackBackupSchema } from "./backup-schema";
 import { emptyData, foldLegacyWatchlistIntoLibrary, type PortableData } from "./portable-data-common";
 
@@ -43,13 +44,13 @@ function parseBackup(value: unknown): CineTrackBackup {
   const data = { ...emptyData(), ...rest } as PortableData;
   data.library = foldLegacyWatchlistIntoLibrary(data.library, legacyWatchlist);
 
-  if (!data.profiles.some((profile) => profile.id === "default")) {
-    data.profiles.unshift({ id: "default", name: "Default", createdAt: new Date().toISOString() });
+  if (!data.profiles.some((profile) => profile.id === DEFAULT_PROFILE_ID)) {
+    data.profiles.unshift({ id: DEFAULT_PROFILE_ID, name: "Default", createdAt: new Date().toISOString() });
   }
   const activeProfileId =
-    typeof data.preferences.activeProfileId === "string" ? data.preferences.activeProfileId : "default";
+    typeof data.preferences.activeProfileId === "string" ? data.preferences.activeProfileId : DEFAULT_PROFILE_ID;
   if (!data.profiles.some((profile) => profile.id === activeProfileId)) {
-    data.preferences = { ...data.preferences, activeProfileId: "default" };
+    data.preferences = { ...data.preferences, activeProfileId: DEFAULT_PROFILE_ID };
   }
 
   return { format: "cinetrack-backup", version: 1, exportedAt: result.data.exportedAt, data };
