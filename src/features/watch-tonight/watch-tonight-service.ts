@@ -1,5 +1,6 @@
 import { libraryRepository } from "@/features/library/library-repository";
 import { mediaRepository } from "@/features/media/media-repository";
+import { logger } from "@/features/diagnostics/logger";
 import type { MediaSummary, MediaType, Movie, Series } from "@/types/media";
 
 export interface WatchTonightFilters {
@@ -32,7 +33,10 @@ function matchesGenre(item: MediaSummary, genre?: number): boolean {
 
 async function matchesProvider(mediaType: MediaType, mediaId: number, provider?: number): Promise<boolean> {
   if (provider === undefined) return true;
-  const availability = await mediaRepository.getWatchAvailability(mediaType, mediaId).catch(() => null);
+  const availability = await mediaRepository.getWatchAvailability(mediaType, mediaId).catch((error) => {
+    logger.warn(`Failed to fetch watch availability for ${mediaType}/${mediaId}: ${error}`);
+    return null;
+  });
   if (!availability) return false;
   return [...availability.flatrate, ...availability.free].some((item) => item.id === provider);
 }
@@ -61,7 +65,10 @@ async function pickMovies(filters: WatchTonightFilters): Promise<Movie[]> {
   const detailed = await Promise.all(
     planned
       .slice(0, PLANNED_CANDIDATE_CAP)
-      .map((item) => mediaRepository.getMovieDetails(item.mediaId).catch(() => null))
+      .map((item) => mediaRepository.getMovieDetails(item.mediaId).catch((error) => {
+        logger.warn(`Failed to fetch movie details for ${item.mediaId}: ${error}`);
+        return null;
+      }))
   );
   let candidates = detailed
     .filter((item): item is Movie => Boolean(item))
@@ -89,7 +96,10 @@ async function pickSeries(filters: WatchTonightFilters): Promise<Series[]> {
   const detailed = await Promise.all(
     planned
       .slice(0, PLANNED_CANDIDATE_CAP)
-      .map((item) => mediaRepository.getSeriesDetails(item.mediaId).catch(() => null))
+      .map((item) => mediaRepository.getSeriesDetails(item.mediaId).catch((error) => {
+        logger.warn(`Failed to fetch series details for ${item.mediaId}: ${error}`);
+        return null;
+      }))
   );
   let candidates = detailed
     .filter((item): item is Series => Boolean(item))

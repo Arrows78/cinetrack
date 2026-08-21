@@ -12,6 +12,7 @@ import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
+import { logger } from "@/features/diagnostics/logger";
 
 const BACKUP_DIR = "backups";
 const AUTO_BACKUP_PREFIX = "auto-";
@@ -54,7 +55,9 @@ async function listAutoBackups(): Promise<string[]> {
 async function pruneOldAutoBackups(): Promise<void> {
   const files = await listAutoBackups();
   const excess = files.slice(0, Math.max(0, files.length - AUTO_BACKUP_RETENTION));
-  await Promise.all(excess.map((file) => remove(file, { baseDir: BaseDirectory.AppData }).catch(() => undefined)));
+  await Promise.all(excess.map((file) => remove(file, { baseDir: BaseDirectory.AppData }).catch((error) => {
+    logger.warn(`Failed to remove old backup ${file}: ${error}`);
+  })));
 }
 
 // Written to a `.tmp` sibling first, then renamed into place — a rename on

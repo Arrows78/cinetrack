@@ -1,3 +1,5 @@
+import { logger } from "@/features/diagnostics/logger";
+
 const CACHE_NAME = "cinetrack-images-v1";
 const META_KEY = "cinetrack.image-cache.meta.v1";
 const LIMIT = 250;
@@ -7,7 +9,10 @@ export const imageCache = {
     const cache = await caches.open(CACHE_NAME);
     const meta = JSON.parse(localStorage.getItem(META_KEY) ?? "{}") as Record<string, number>;
     for (const url of [...new Set(urls.filter((url): url is string => Boolean(url)))]) {
-      if (!(await cache.match(url))) await cache.add(url).catch(() => undefined);
+      if (!(await cache.match(url)))
+        await cache.add(url).catch((error) => {
+          logger.warn(`Failed to cache image ${url}: ${error}`);
+        });
       meta[url] = Date.now();
     }
     const sorted = Object.entries(meta).sort((a, b) => b[1] - a[1]);

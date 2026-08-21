@@ -1,6 +1,7 @@
 import { addDays, endOfDay, isAfter, isBefore, parseISO, startOfDay } from "date-fns";
 import { mediaRepository } from "@/features/media/media-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
+import { logger } from "@/features/diagnostics/logger";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import type { CalendarEntry, Season } from "@/types/media";
 
@@ -64,7 +65,10 @@ export const calendarService = {
           const seasons = (
             await Promise.all(
               recentSeasonNumbers.map((number) =>
-                mediaRepository.getSeasonDetails(details.id, number).catch(() => null)
+                mediaRepository.getSeasonDetails(details.id, number).catch((error) => {
+                  logger.warn(`Failed to fetch season ${number} details for series ${details.id}: ${error}`);
+                  return null;
+                })
               )
             )
           ).filter((season): season is Season => Boolean(season));
