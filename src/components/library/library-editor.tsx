@@ -189,7 +189,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" onClick={() => void save()} disabled={library.isSaving}>
+        <Button type="button" onClick={() => void save()} isLoading={library.isSaving} disabled={library.isSaving}>
           <Save className="mr-2 size-4" /> {t("library.save")}
         </Button>
         {library.data ? (

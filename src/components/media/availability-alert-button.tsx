@@ -23,6 +23,7 @@ export function AvailabilityAlertButton({ media }: { media: MediaSummary }) {
     <Button
       type="button"
       variant={alert.data ? "secondary" : "outline"}
+      isLoading={alert.isSaving}
       disabled={alert.isSaving}
       onClick={() => void toggle()}
     >
