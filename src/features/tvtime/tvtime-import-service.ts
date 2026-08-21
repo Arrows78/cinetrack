@@ -173,6 +173,19 @@ const NO_MATCH: MatchResult = { match: null, ambiguous: false };
 // first search hit just because nothing better was found. Falling back to
 // an unrelated top result would silently attach the wrong movie/series to
 // the imported history instead of surfacing it as unmatched for review.
+//
+// A single title-matching candidate is auto-accepted even without a year to
+// confirm it (there's nothing to be ambiguous *between*). Several
+// same-titled candidates with no year in the export to pick among them
+// (e.g. a remake, a regional franchise reuse of the same title) used to
+// fall back to `titled[0]` — TMDB's own popularity-sorted order, not an
+// actual match confidence signal — and get auto-imported anyway, flagged
+// `ambiguous` only for a post-import summary line nobody had to act on.
+// That's exactly the "confident-looking but not actually confirmed" import
+// this function's own contract says not to produce. Returning `match: null`
+// here instead routes it through the same unmatched/retryable path a
+// title TMDB has nothing for already goes through — no new UI needed, see
+// tvtime-unmatched-resolver.tsx.
 const pickBestMatch = (results: MediaSummary[], title: string, year: number | null): MatchResult => {
   if (!results.length) return NO_MATCH;
   const normalized = normalizeTitle(title);
@@ -182,7 +195,8 @@ const pickBestMatch = (results: MediaSummary[], title: string, year: number | nu
     const exact = titled.find((result) => result.year === year);
     if (exact) return { match: exact, ambiguous: false };
   }
-  return { match: titled[0]!, ambiguous: titled.length > 1 };
+  if (titled.length > 1) return { match: null, ambiguous: true };
+  return { match: titled[0]!, ambiguous: false };
 };
 
 // Runs the exact-title search, and — only if that comes back empty — one
@@ -219,7 +233,7 @@ async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): 
   const { title, year } = splitTitleYear(name);
   const { results, queriedTitle } = await searchWithFallback(title, "series");
   const { match, ambiguous } = pickBestMatch(results, queriedTitle, year);
-  if (!match) return { series: null, ambiguous: false };
+  if (!match) return { series: null, ambiguous };
   return { series: await withRateLimitRetry(() => mediaRepository.getSeriesDetails(match.id)), ambiguous };
 }
 
@@ -274,12 +288,12 @@ async function importOneSeries(
   summary: TvTimeImportSummary
 ): Promise<void> {
   const resolved = await resolveSeries(seriesName, data.tvdbIdsByName);
+  if (resolved.ambiguous) summary.ambiguous.push(seriesName);
   if (!resolved.series) {
     summary.unmatched.push(seriesName);
     summary.retryable.push(retryableSeriesFrom(seriesName, episodes));
     return;
   }
-  if (resolved.ambiguous) summary.ambiguous.push(seriesName);
 
   const { episodesImported, unresolvedCount } = await attachEpisodesToSeries(resolved.series, episodes);
   if (unresolvedCount > 0) {
@@ -380,11 +394,11 @@ export async function applyTvTimeImport(
       try {
         const { results, queriedTitle } = await searchWithFallback(movie.title, "movie");
         const { match, ambiguous } = pickBestMatch(results, queriedTitle, movie.year);
+        if (ambiguous) summary.ambiguous.push(movie.title);
         if (!match) {
           summary.unmatched.push(movie.title);
           summary.retryable.push(retryableMovieFrom(movie));
         } else {
-          if (ambiguous) summary.ambiguous.push(movie.title);
           const inserted = await importMatchedMovie(movie, match);
           if (inserted) summary.moviesImported += 1;
         }
@@ -409,11 +423,11 @@ export async function applyTvTimeImport(
           entry.mediaType === "movie" ? "movie" : "series"
         );
         const { match, ambiguous } = pickBestMatch(results, queriedTitle, entry.year);
+        if (ambiguous) summary.ambiguous.push(entry.title);
         if (!match) {
           summary.unmatched.push(entry.title);
           summary.retryable.push(retryableWatchlistFrom(entry));
         } else {
-          if (ambiguous) summary.ambiguous.push(entry.title);
           await libraryRepository.save(match, { status: "planned" });
           summary.plannedImported += 1;
         }

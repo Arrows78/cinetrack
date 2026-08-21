@@ -310,6 +310,39 @@ describe("importTvTimeExport", () => {
 
       expect(summary.unmatched).toEqual(["Breaking Bad"]);
     });
+
+    it("does not auto-import an ambiguous series pick — routes it to unmatched/retryable instead", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Alone",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+      };
+      // Two same-titled series, no year in the export to pick between them —
+      // neither should be auto-attached, since a wrong guess here would
+      // silently contaminate the imported episode history.
+      searchMock.mockResolvedValue({
+        page: 1,
+        totalPages: 1,
+        totalResults: 2,
+        results: [media({ id: 1, title: "Alone", year: 2015 }), media({ id: 2, title: "Alone", year: 2020 })],
+      });
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(getSeriesDetailsMock).not.toHaveBeenCalled();
+      expect(importSeriesProgressMock).not.toHaveBeenCalled();
+      expect(summary.seriesImported).toBe(0);
+      expect(summary.ambiguous).toEqual(["Alone"]);
+      expect(summary.unmatched).toEqual(["Alone"]);
+      expect(summary.retryable).toEqual([expect.objectContaining({ kind: "series", label: "Alone" })]);
+    });
   });
 
   describe("movie import", () => {
@@ -439,7 +472,7 @@ describe("importTvTimeExport", () => {
       expect(summary.unmatched).toEqual([]);
     });
 
-    it("flags an ambiguous pick when several same-titled results have no year to disambiguate", async () => {
+    it("does not auto-import an ambiguous pick — routes it to unmatched/retryable instead, still flagged in ambiguous", async () => {
       exportData = {
         ...emptyExportData(),
         movies: [{ title: "Alone", year: null, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
@@ -457,8 +490,14 @@ describe("importTvTimeExport", () => {
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
-      expect(importMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ movieId: 1 }));
+      // Neither of the two same-titled candidates gets auto-imported —
+      // picking either one without a year to confirm it would be a guess,
+      // not a match.
+      expect(importMovieSeenMock).not.toHaveBeenCalled();
+      expect(summary.moviesImported).toBe(0);
       expect(summary.ambiguous).toEqual(["Alone"]);
+      expect(summary.unmatched).toEqual(["Alone"]);
+      expect(summary.retryable).toEqual([expect.objectContaining({ kind: "movie", label: "Alone" })]);
     });
 
     it("does not flag ambiguity when the year picks out a single confident match", async () => {
