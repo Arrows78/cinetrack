@@ -24,8 +24,12 @@ export function usePreferences() {
       if (variables.key === "language" || variables.key === "region") {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["remote"] }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(previousProfileId ?? DEFAULT_PROFILE_ID) }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(previousProfileId ?? DEFAULT_PROFILE_ID) }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.local.calendar(previousProfileId ?? DEFAULT_PROFILE_ID),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.local.tracking(previousProfileId ?? DEFAULT_PROFILE_ID),
+          }),
         ]);
       }
     },

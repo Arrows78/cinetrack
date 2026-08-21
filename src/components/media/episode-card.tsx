@@ -4,7 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { cn } from "@/shared/lib/cn";
-import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime, placeholderUrl } from "@/shared/utils/format";
+import {
+  buildTmdbImageUrl,
+  formatDate,
+  formatEpisodeNumber,
+  formatRating,
+  formatRuntime,
+  placeholderUrl,
+} from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 export function EpisodeCard({
   episode,

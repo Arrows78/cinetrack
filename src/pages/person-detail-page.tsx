@@ -17,10 +17,7 @@ export function PersonDetailPage() {
       <Panel className="flex items-end gap-5 animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <img
           className="h-48 w-32 rounded-2xl object-cover"
-          src={
-            buildTmdbImageUrl(query.data.profilePath, "w500") ??
-            placeholderUrl(500, 750, "Portrait")
-          }
+          src={buildTmdbImageUrl(query.data.profilePath, "w500") ?? placeholderUrl(500, 750, "Portrait")}
           alt={query.data.name}
         />
         <div>

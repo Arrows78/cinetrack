@@ -63,12 +63,12 @@ async function pickMovies(filters: WatchTonightFilters): Promise<Movie[]> {
     (item) => item.mediaType === "movie" && item.status === "planned"
   );
   const detailed = await Promise.all(
-    planned
-      .slice(0, PLANNED_CANDIDATE_CAP)
-      .map((item) => mediaRepository.getMovieDetails(item.mediaId).catch((error) => {
+    planned.slice(0, PLANNED_CANDIDATE_CAP).map((item) =>
+      mediaRepository.getMovieDetails(item.mediaId).catch((error) => {
         logger.warn(`Failed to fetch movie details for ${item.mediaId}: ${error}`);
         return null;
-      }))
+      })
+    )
   );
   let candidates = detailed
     .filter((item): item is Movie => Boolean(item))
@@ -94,12 +94,12 @@ async function pickSeries(filters: WatchTonightFilters): Promise<Series[]> {
     (item) => item.mediaType === "series" && item.status === "planned"
   );
   const detailed = await Promise.all(
-    planned
-      .slice(0, PLANNED_CANDIDATE_CAP)
-      .map((item) => mediaRepository.getSeriesDetails(item.mediaId).catch((error) => {
+    planned.slice(0, PLANNED_CANDIDATE_CAP).map((item) =>
+      mediaRepository.getSeriesDetails(item.mediaId).catch((error) => {
         logger.warn(`Failed to fetch series details for ${item.mediaId}: ${error}`);
         return null;
-      }))
+      })
+    )
   );
   let candidates = detailed
     .filter((item): item is Series => Boolean(item))

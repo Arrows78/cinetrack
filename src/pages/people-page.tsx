@@ -59,10 +59,7 @@ export function PeoplePage() {
                 <Link to="/people/$personId" params={{ personId: String(person.id) }}>
                   <img
                     className="aspect-[2/3] w-full rounded-2xl object-cover"
-                    src={
-                      buildTmdbImageUrl(person.profilePath, "w500") ??
-                      placeholderUrl(500, 750, "Portrait")
-                    }
+                    src={buildTmdbImageUrl(person.profilePath, "w500") ?? placeholderUrl(500, 750, "Portrait")}
                     alt={person.name}
                   />
                   <h2 className="mt-3 font-semibold">{person.name}</h2>

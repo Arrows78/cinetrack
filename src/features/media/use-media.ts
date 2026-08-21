@@ -4,7 +4,8 @@ import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_1_HOUR } from "@/shared/constants/query";
 import type { PageResult } from "@/types/media";
 
-export const nextPage = <T>(lastPage: PageResult<T>) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined);
+export const nextPage = <T>(lastPage: PageResult<T>) =>
+  lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined;
 
 export function useHomeFeed() {
   return useQuery({

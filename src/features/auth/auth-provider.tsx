@@ -3,12 +3,7 @@ import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import i18next from "i18next";
 
-import {
-  authConfig,
-  getAuthClient,
-  getAuthRedirectUrl,
-  type SocialAuthProvider,
-} from "@/features/auth/auth-client";
+import { authConfig, getAuthClient, getAuthRedirectUrl, type SocialAuthProvider } from "@/features/auth/auth-client";
 import { isTauriApp } from "@/shared/lib/platform";
 import {
   AuthContext,

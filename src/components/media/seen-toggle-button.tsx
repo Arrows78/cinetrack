@@ -31,12 +31,7 @@ const iconSizeClasses = {
  * watch-next rows, and list rows. Consolidates the three near-identical
  * inline button implementations that previously lived in separate files.
  */
-export function SeenToggleButton({
-  isSaving,
-  onToggle,
-  seen = false,
-  size = "md",
-}: SeenToggleButtonProps) {
+export function SeenToggleButton({ isSaving, onToggle, seen = false, size = "md" }: SeenToggleButtonProps) {
   const { t } = useTranslation();
   const [justChecked, setJustChecked] = useState(false);
 

@@ -34,7 +34,13 @@ export function NextEpisodeCard({
         </div>
         <Play className="size-6 text-primary" />
       </div>
-      <Button className="mt-4" type="button" isLoading={isSaving} disabled={isSaving} onClick={() => onWatched(episode)}>
+      <Button
+        className="mt-4"
+        type="button"
+        isLoading={isSaving}
+        disabled={isSaving}
+        onClick={() => onWatched(episode)}
+      >
         <CheckCircle2 className="mr-2 size-4" />
         {t("media.markAsSeen")}
       </Button>

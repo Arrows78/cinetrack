@@ -72,14 +72,11 @@ export function App() {
       }
     })();
 
-    const interval = window.setInterval(
-      () => {
-        void checkBackgroundNotifications().catch((error: unknown) => {
-          logger.warn(`Background notification check failed: ${errorMessage(error)}`);
-        });
-      },
-      STALE_6_HOURS
-    );
+    const interval = window.setInterval(() => {
+      void checkBackgroundNotifications().catch((error: unknown) => {
+        logger.warn(`Background notification check failed: ${errorMessage(error)}`);
+      });
+    }, STALE_6_HOURS);
 
     return () => {
       disposed = true;

@@ -1,7 +1,13 @@
 import { useTranslation } from "react-i18next";
 import type * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating, formatRuntime, placeholderUrl } from "@/shared/utils/format";
+import {
+  buildTmdbImageUrl,
+  buildTmdbPosterSrcSet,
+  formatRating,
+  formatRuntime,
+  placeholderUrl,
+} from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 
 export function MediaDetailsHero({

@@ -110,7 +110,10 @@ describe("profileRepository", () => {
     await profileRepository.remove("removed-id");
 
     expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id" });
-    expect(invokeMock).toHaveBeenCalledWith("set_active_profile", { profileId: DEFAULT_PROFILE_ID, supabaseUserId: null });
+    expect(invokeMock).toHaveBeenCalledWith("set_active_profile", {
+      profileId: DEFAULT_PROFILE_ID,
+      supabaseUserId: null,
+    });
   });
 
   it("remove() leaves activeProfileId untouched when the removed profile wasn't active", async () => {

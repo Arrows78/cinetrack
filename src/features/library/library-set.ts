@@ -16,14 +16,8 @@ export function isInLibrary(item: { mediaId: number; mediaType: MediaType }, key
 }
 
 /** Filter out items already in the user's library and cap the result set. */
-export function filterAvailableItems(
-  results: MediaSummary[],
-  library: LibraryItem[],
-  cap = 4,
-): MediaSummary[] {
+export function filterAvailableItems(results: MediaSummary[], library: LibraryItem[], cap = 4): MediaSummary[] {
   if (results.length === 0) return [];
   const keySet = buildLibraryKeySet(library);
-  return results
-    .filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet))
-    .slice(0, cap);
+  return results.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet)).slice(0, cap);
 }
