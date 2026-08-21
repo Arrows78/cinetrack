@@ -62,25 +62,8 @@ export function HomePage() {
   }
 
   const hero = homeQuery.data?.trendingMovies[0];
-  const continueWatching = (trackedSeriesQuery.data ?? [])
-    .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
-    .slice(0, 5)
-    .map((item) => ({
-      id: item.seriesId,
-      mediaType: "series" as const,
-      title: item.title,
-      posterPath: item.posterPath,
-      backdropPath: item.backdropPath,
-      overview: "",
-      year: null,
-      rating: null,
-      genres: [],
-      cast: [],
-      progress: { watched: item.watchedEpisodes, total: item.totalEpisodes, seriesStatus: item.status },
-    }));
 
   const hasForYouContent =
-    continueWatching.length > 0 ||
     watchNext.entries.length > 0 ||
     (Boolean(becauseYouLiked.seedTitle) && becauseYouLiked.items.length > 0) ||
     (Boolean(favouriteGenreRail.genre) && favouriteGenreRail.items.length > 0);
@@ -178,17 +161,6 @@ export function HomePage() {
         <section>
           <SectionHeader title={t("home.forYou")} subtitle={t("home.forYouSubtitle")} index={++sectionIndex} />
           <Panel tone="highlight" className="space-y-8">
-            {continueWatching.length > 0 ? (
-              <div>
-                <SectionHeader
-                  title={t("home.continueWatching")}
-                  subtitle={t("home.continueWatchingDesc")}
-                  size="sub"
-                />
-                <MediaGrid items={continueWatching} />
-              </div>
-            ) : null}
-
             {watchNext.entries.length > 0 ? (
               <WatchNextSection entries={watchNext.entries} index={0} size="sub" />
             ) : null}

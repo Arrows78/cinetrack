@@ -47,7 +47,7 @@ export function useFavouriteGenreRail() {
     const keySet = buildLibraryKeySet(library);
     return searchQuery.items
       .filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet))
-      .slice(0, 8);
+      .slice(0, 4);
   }, [genre, searchQuery.items, library]);
 
   return { genre, items, isLoading: Boolean(genre) && searchQuery.isLoading };

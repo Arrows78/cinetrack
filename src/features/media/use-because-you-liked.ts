@@ -61,7 +61,7 @@ export function useBecauseYouLiked() {
     const results = recommendationsQuery.data?.results ?? [];
     if (results.length === 0) return [];
     const keySet = buildLibraryKeySet(library);
-    return results.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet)).slice(0, 8);
+    return results.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet)).slice(0, 4);
   }, [recommendationsQuery.data, library]);
 
   return { seedTitle: seed?.title ?? null, items, isLoading: Boolean(seed) && recommendationsQuery.isLoading };
