@@ -12,6 +12,7 @@ import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
+import { STALE_24_HOURS } from "@/shared/constants/query";
 import { logger } from "@/features/diagnostics/logger";
 
 const BACKUP_DIR = "backups";
@@ -100,7 +101,7 @@ export const maintenanceService = {
 
   async createAutomaticBackup(force = false): Promise<void> {
     const last = Number(window.localStorage.getItem(LAST_BACKUP_KEY) ?? 0);
-    if (!force && Date.now() - last < 24 * 60 * 60 * 1000) return;
+    if (!force && Date.now() - last < STALE_24_HOURS) return;
     try {
       const backup = await portableData.export();
       await writeNamedBackup(autoBackupFileName(backup.exportedAt), JSON.stringify(backup, null, 2));
