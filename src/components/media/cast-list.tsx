@@ -14,7 +14,7 @@ export function CastList({ cast }: { cast: CastMember[] }) {
             src={
               buildTmdbImageUrl(member.profilePath, "w185") ?? "https://placehold.co/200x300/111827/e5e7eb?text=Cast"
             }
-            alt=""
+            alt={member.name}
             className="h-16 w-16 rounded-2xl object-cover"
           />
           <div className="min-w-0">

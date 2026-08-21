@@ -32,6 +32,7 @@ function NavLink({ item, collapsed, isActive, onNavigate }: NavLinkProps) {
     <Link
       to={item.to}
       onClick={onNavigate}
+      aria-current={isActive ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
       title={collapsed ? item.label : undefined}
       className={cn(

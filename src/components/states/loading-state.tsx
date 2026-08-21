@@ -9,5 +9,9 @@ interface LoadingStateProps {
 /** Inline "this section is loading" text — for a full-page loading screen, use LoadingScreen instead. */
 export function LoadingState({ label, className }: LoadingStateProps) {
   const { t } = useTranslation();
-  return <p className={cn("text-sm text-muted-foreground", className)}>{label ?? t("common.loading")}</p>;
+  return (
+    <p role="status" aria-live="polite" className={cn("text-sm text-muted-foreground", className)}>
+      {label ?? t("common.loading")}
+    </p>
+  );
 }

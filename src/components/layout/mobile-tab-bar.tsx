@@ -22,6 +22,7 @@ function TabLink({ item, isActive }: { item: NavigationItem; isActive: boolean }
   return (
     <Link
       to={item.to}
+      aria-current={isActive ? "page" : undefined}
       className={cn(
         "flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[0.6875rem] font-medium transition-colors",
         isActive ? "text-primary" : "text-muted-foreground"
@@ -62,6 +63,8 @@ export function MobileTabBar() {
         <SheetTrigger asChild>
           <button
             type="button"
+            aria-haspopup="true"
+            aria-expanded={moreSheetOpen}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[0.6875rem] font-medium transition-colors",
               moreActive ? "text-primary" : "text-muted-foreground"

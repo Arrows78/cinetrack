@@ -86,6 +86,7 @@ export function AppShell() {
           {/* Desktop back button */}
           {canGoBack && (
             <button
+              type="button"
               onClick={handleGoBack}
               className="group mb-4 hidden items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-card hover:text-foreground lg:flex"
             >
