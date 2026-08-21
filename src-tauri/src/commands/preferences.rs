@@ -451,6 +451,50 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn rejects_a_non_positive_preferred_provider_id() {
+        let prefs = UserPreferences {
+            preferred_provider_ids: vec![0],
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_err());
+    }
+
+    #[tokio::test]
+    async fn accepts_positive_preferred_provider_ids() {
+        let prefs = UserPreferences {
+            preferred_provider_ids: vec![8, 337],
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_ok());
+    }
+
+    #[tokio::test]
+    async fn get_preferences_cached_returns_the_cached_value_without_reloading_from_the_database() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        let first = get_preferences_cached(&pool, &cache).await.unwrap();
+        assert!(matches!(first.theme, Theme::Dark));
+
+        // Write directly to the DB, bypassing the cache entirely. If
+        // get_preferences_cached reloaded from disk on this second call, it
+        // would observe this new value; asserting it still sees the old one
+        // proves the cache-hit early-return branch fired instead.
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('theme', '\"light\"', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let second = get_preferences_cached(&pool, &cache).await.unwrap();
+        assert!(
+            matches!(second.theme, Theme::Dark),
+            "expected the stale cached value, proving the cache-hit branch returned early"
+        );
+    }
+
+    #[tokio::test]
     async fn set_active_profile_switches_freely_to_an_unclaimed_profile() {
         let pool = migrated_pool().await;
         let cache = PreferencesCache::default();

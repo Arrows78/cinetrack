@@ -1519,6 +1519,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn refresh_tracked_series_status_is_a_no_op_when_the_status_is_unchanged() {
+        let pool = migrated_pool().await;
+        let mut s = series(9, None);
+        s.status = Some("Returning Series".to_string());
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        // Same status passed again — should hit the early `current_status ==
+        // status` return rather than issuing a write.
+        refresh_tracked_series_status_impl(
+            &pool,
+            "default",
+            9,
+            Some("Returning Series".to_string()),
+        )
+        .await
+        .unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.status.as_deref(), Some("Returning Series"));
+    }
+
+    #[tokio::test]
     async fn refresh_tracked_series_status_is_a_no_op_for_an_untracked_series() {
         let pool = migrated_pool().await;
         // No tracked_series row exists for series 404 — must not create one.

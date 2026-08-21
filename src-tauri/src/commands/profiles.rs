@@ -270,6 +270,12 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn rejects_a_whitespace_only_profile_name() {
+        let pool = migrated_pool().await;
+        assert!(create_impl(&pool, "   ", None, None).await.is_err());
+    }
+
+    #[tokio::test]
     async fn removing_a_profile_clears_its_scoped_data() {
         let pool = migrated_pool().await;
         let created = create_impl(&pool, "Alex", None, None).await.unwrap();

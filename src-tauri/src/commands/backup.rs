@@ -1118,4 +1118,296 @@ mod tests {
             .unwrap();
         assert_eq!(library_count.0, row_count as i64);
     }
+
+    #[test]
+    fn parse_number_array_parses_a_valid_json_array_of_numbers() {
+        assert_eq!(parse_number_array("[1,2,3]"), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn parse_number_array_returns_empty_for_non_array_json() {
+        assert_eq!(parse_number_array("\"not-an-array\""), Vec::<i64>::new());
+        assert_eq!(parse_number_array("not even json"), Vec::<i64>::new());
+    }
+
+    #[test]
+    fn parse_number_array_filters_out_non_numeric_elements() {
+        // Mirrors `tolerates_corrupt_provider_ids_json` in availability.rs:
+        // non-number elements are silently dropped rather than failing the
+        // whole parse.
+        assert_eq!(parse_number_array("[1,\"two\",3,null,4.5]"), vec![1, 3]);
+    }
+
+    #[test]
+    fn parse_metadata_parses_a_valid_json_string() {
+        let parsed = parse_metadata(Some("{\"profileId\":\"default\"}".to_string()));
+        assert_eq!(parsed, Some(serde_json::json!({ "profileId": "default" })));
+    }
+
+    #[test]
+    fn parse_metadata_returns_none_for_invalid_json() {
+        assert_eq!(parse_metadata(Some("not json".to_string())), None);
+    }
+
+    #[test]
+    fn parse_metadata_returns_none_for_none_input() {
+        assert_eq!(parse_metadata(None), None);
+    }
+
+    /// Inserts one representative row into every one of the 12 exported
+    /// tables, exports, spot-checks every `PortableData` field is populated
+    /// from its mapping closure (closing the gap where only `library_items`
+    /// and `profiles` had non-empty coverage), then feeds the export back
+    /// through `import_impl` and confirms each table's row count survives
+    /// the round trip (closing the matching `import_table!` macro gap).
+    #[tokio::test]
+    async fn exports_and_reimports_every_table_with_representative_rows() {
+        let pool = migrated_pool().await;
+
+        sqlx::query(
+            "INSERT INTO seen_movies (uuid, profile_id, movie_id, title, poster_path, backdrop_path, watched_at, created_at, updated_at)
+             VALUES ('sm1', 'default', 10, 'Seen Movie', '/poster.jpg', '/backdrop.jpg', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at)
+             VALUES ('ep1', 'default', 20, 200, 1, 2, 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO tracked_series (uuid, profile_id, series_id, title, poster_path, backdrop_path, total_episodes, created_at, updated_at, status)
+             VALUES ('ts1', 'default', 20, 'Tracked Series', '/poster.jpg', '/backdrop.jpg', 10, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', 'Returning Series')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO activity_log (uuid, profile_id, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp, created_at, updated_at)
+             VALUES ('hist1', 'default', 30, 'movie', 'History Movie', 'movie:watched', NULL, NULL, NULL, '{\"profileId\":\"default\"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('theme', '\"dark\"', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres, status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at)
+             VALUES ('lib1', 'default', 40, 'movie', 'Library Movie', '/poster.jpg', '/backdrop.jpg', 2020, 7.5, '[\"Action\"]', 'watching', 1, 8.0, 'notes', '[\"tag1\"]', '2026-01-01T00:00:00.000Z', NULL, 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
+             VALUES ('ve1', 'default', 50, 'movie', 'Viewing Event Movie', 'watched', '2026-01-01T00:00:00.000Z', 120, NULL, NULL, NULL, '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO custom_lists (uuid, profile_id, name, description, created_at, updated_at)
+             VALUES ('cl1', 'default', 'My List', 'A list', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO custom_list_items (uuid, list_id, media_id, media_type, title, poster_path, position, added_at, updated_at)
+             VALUES ('cli1', 'cl1', 60, 'movie', 'List Item Movie', '/poster.jpg', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO availability_snapshots (media_id, media_type, region, provider_ids, checked_at)
+             VALUES (70, 'movie', 'US', '[8,9]', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO availability_alerts (uuid, profile_id, media_id, media_type, title, region, provider_ids, enabled, created_at, updated_at)
+             VALUES ('aa1', 'default', 80, 'movie', 'Alert Movie', 'US', '[8]', 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let exported = export_impl(&pool).await.unwrap();
+
+        assert_eq!(exported.seen_movies.len(), 1);
+        assert_eq!(exported.seen_movies[0].movie_id, 10);
+        assert_eq!(
+            exported.seen_movies[0].profile_id.as_deref(),
+            Some("default")
+        );
+
+        assert_eq!(exported.episode_progress.len(), 1);
+        assert_eq!(exported.episode_progress[0].episode_id, 200);
+        assert!(exported.episode_progress[0].watched);
+
+        assert_eq!(exported.tracked_series.len(), 1);
+        assert_eq!(exported.tracked_series[0].total_episodes, 10);
+        assert_eq!(
+            exported.tracked_series[0].status.as_deref(),
+            Some("Returning Series")
+        );
+
+        assert_eq!(exported.history.len(), 1);
+        assert_eq!(exported.history[0].action, HistoryAction::MovieWatched);
+        assert_eq!(
+            exported.history[0]
+                .metadata
+                .as_ref()
+                .and_then(|value| value.get("profileId"))
+                .and_then(Value::as_str),
+            Some("default")
+        );
+
+        assert_eq!(
+            exported.preferences.get("theme"),
+            Some(&serde_json::json!("dark"))
+        );
+
+        assert_eq!(exported.library.len(), 1);
+        assert_eq!(exported.library[0].status, LibraryStatus::Watching);
+        assert_eq!(exported.library[0].genres, vec!["Action".to_string()]);
+
+        assert_eq!(exported.viewing_events.len(), 1);
+        assert_eq!(
+            exported.viewing_events[0].event_type,
+            ViewingEventType::Watched
+        );
+        assert_eq!(exported.viewing_events[0].duration_minutes, Some(120));
+
+        assert_eq!(exported.custom_lists.len(), 1);
+        assert_eq!(exported.custom_lists[0].name, "My List");
+
+        assert_eq!(exported.custom_list_items.len(), 1);
+        assert_eq!(exported.custom_list_items[0].list_id, "cl1");
+
+        assert_eq!(exported.availability_snapshots.len(), 1);
+        assert_eq!(exported.availability_snapshots[0].provider_ids, vec![8, 9]);
+
+        assert_eq!(exported.availability_alerts.len(), 1);
+        assert_eq!(exported.availability_alerts[0].provider_ids, vec![8]);
+
+        import_impl(&pool, exported).await.unwrap();
+
+        for (table, expected_count) in [
+            ("seen_movies", 1),
+            ("episode_progress", 1),
+            ("tracked_series", 1),
+            ("activity_log", 1),
+            ("preferences", 1),
+            ("library_items", 1),
+            ("viewing_events", 1),
+            ("custom_lists", 1),
+            ("custom_list_items", 1),
+            ("availability_snapshots", 1),
+            ("availability_alerts", 1),
+        ] {
+            let count: (i64,) =
+                sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(count.0, expected_count, "{table} row count after re-import");
+        }
+
+        let preference_value: (String,) =
+            sqlx::query_as("SELECT value FROM preferences WHERE key = 'theme'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(preference_value.0, "\"dark\"");
+    }
+
+    /// The `action` column has a schema `CHECK` constraint (see
+    /// migrations.rs) restricting it to known history-action strings, so a
+    /// plain `INSERT` can never produce the "unknown action" branch in
+    /// `export_impl`'s history mapping — only manual DB corruption or an
+    /// older schema could. `PRAGMA ignore_check_constraints` bypasses that
+    /// constraint for exactly this one connection/insert so the branch can
+    /// be exercised directly, then restores it.
+    #[tokio::test]
+    async fn export_surfaces_an_error_for_an_unknown_history_action_in_the_database() {
+        let pool = migrated_pool().await;
+        let mut conn = pool.acquire().await.unwrap();
+
+        sqlx::query("PRAGMA ignore_check_constraints = 1")
+            .execute(&mut *conn)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO activity_log (uuid, profile_id, media_id, media_type, title, action, timestamp, created_at, updated_at)
+             VALUES ('bad-hist', 'default', 1, 'movie', 'Bad', 'not:a:real:action', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&mut *conn)
+        .await
+        .unwrap();
+        sqlx::query("PRAGMA ignore_check_constraints = 0")
+            .execute(&mut *conn)
+            .await
+            .unwrap();
+        drop(conn);
+
+        let err = export_impl(&pool).await.unwrap_err();
+        assert!(
+            err.message.contains("Unknown history action in database"),
+            "unexpected error message: {}",
+            err.message
+        );
+    }
+
+    /// Same rationale as the history-action test above, for the
+    /// `event_type` `CHECK` constraint on `viewing_events`.
+    #[tokio::test]
+    async fn export_surfaces_an_error_for_an_unknown_viewing_event_type_in_the_database() {
+        let pool = migrated_pool().await;
+        let mut conn = pool.acquire().await.unwrap();
+
+        sqlx::query("PRAGMA ignore_check_constraints = 1")
+            .execute(&mut *conn)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+             VALUES ('bad-ve', 'default', 1, 'movie', 'Bad', 'not-a-real-event-type', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&mut *conn)
+        .await
+        .unwrap();
+        sqlx::query("PRAGMA ignore_check_constraints = 0")
+            .execute(&mut *conn)
+            .await
+            .unwrap();
+        drop(conn);
+
+        let err = export_impl(&pool).await.unwrap_err();
+        assert!(
+            err.message
+                .contains("Unknown viewing event type in database"),
+            "unexpected error message: {}",
+            err.message
+        );
+    }
 }

@@ -378,6 +378,63 @@ mod tests {
         let _ = std::fs::remove_file(&quarantined_path);
     }
 
+    #[test]
+    fn quarantine_broken_database_fails_when_the_source_file_does_not_exist() {
+        let path = temp_db_path("quarantine-missing-source");
+        // Never created on disk: std::fs::rename on a nonexistent source
+        // fails deterministically (ENOENT) regardless of OS, so this
+        // exercises quarantine_broken_database's rename error-mapping
+        // closure without relying on any real corruption/permission setup.
+        let result = quarantine_broken_database(&path);
+        assert!(
+            result.is_err(),
+            "quarantining a file that was never created should fail"
+        );
+    }
+
+    #[test]
+    fn quarantine_broken_database_also_renames_wal_and_shm_sidecars() {
+        let path = temp_db_path("quarantine-sidecars");
+        std::fs::write(&path, b"").unwrap();
+
+        // quarantine_broken_database's sidecar loop looks for sidecars named
+        // after the DB_FILE_NAME constant ("app.db-wal"/"app.db-shm"), not
+        // after db_path's own file name — see the function's suffix loop.
+        // temp_db_path names files "cinetrack-test-<label>-<unique>.db", so
+        // to make the `sidecar.exists()` check true we have to create files
+        // under the literal "app.db-wal"/"app.db-shm" names, in the same
+        // directory, rather than mirroring `path`'s own name.
+        let wal_sidecar = path.with_file_name(format!("{DB_FILE_NAME}-wal"));
+        let shm_sidecar = path.with_file_name(format!("{DB_FILE_NAME}-shm"));
+        std::fs::write(&wal_sidecar, b"").unwrap();
+        std::fs::write(&shm_sidecar, b"").unwrap();
+
+        let quarantined = quarantine_broken_database(&path).unwrap();
+        let quarantined_path = PathBuf::from(&quarantined);
+        let quarantined_name = quarantined_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap()
+            .to_string();
+        let quarantined_wal = quarantined_path.with_file_name(format!("{quarantined_name}-wal"));
+        let quarantined_shm = quarantined_path.with_file_name(format!("{quarantined_name}-shm"));
+
+        assert!(
+            quarantined_wal.exists(),
+            "the -wal sidecar should have been renamed alongside the db file"
+        );
+        assert!(
+            quarantined_shm.exists(),
+            "the -shm sidecar should have been renamed alongside the db file"
+        );
+        assert!(!wal_sidecar.exists());
+        assert!(!shm_sidecar.exists());
+
+        let _ = std::fs::remove_file(&quarantined_path);
+        let _ = std::fs::remove_file(&quarantined_wal);
+        let _ = std::fs::remove_file(&quarantined_shm);
+    }
+
     #[tokio::test]
     async fn init_pool_at_blocks_without_touching_the_file_when_a_migration_statement_fails() {
         let path = temp_db_path("migration-failure");

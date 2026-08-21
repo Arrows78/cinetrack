@@ -284,6 +284,49 @@ mod tests {
         }
     }
 
+    #[test]
+    fn history_action_as_db_str_matches_every_wire_string() {
+        let cases: &[(HistoryAction, &str)] = &[
+            (HistoryAction::MovieWatched, "movie:watched"),
+            (HistoryAction::MovieUnwatched, "movie:unwatched"),
+            (HistoryAction::EpisodeWatched, "episode:watched"),
+            (HistoryAction::EpisodeUnwatched, "episode:unwatched"),
+            (HistoryAction::SeasonWatched, "season:watched"),
+            (HistoryAction::SeasonUnwatched, "season:unwatched"),
+            (HistoryAction::SeriesWatched, "series:watched"),
+            (HistoryAction::SeriesUnwatched, "series:unwatched"),
+            (HistoryAction::LibraryAdd, "watchlist:add"),
+            (HistoryAction::LibraryRemove, "watchlist:remove"),
+            (HistoryAction::LibraryUpdate, "library:update"),
+            (HistoryAction::ListAdd, "list:add"),
+            (HistoryAction::ListRemove, "list:remove"),
+        ];
+
+        for (action, expected) in cases {
+            assert_eq!(action.as_db_str(), *expected);
+        }
+    }
+
+    #[test]
+    fn try_from_rejects_an_unrecognized_history_action() {
+        let row = HistoryRow {
+            uuid: "bogus-row".to_string(),
+            media_id: 1,
+            media_type: "movie".to_string(),
+            title: "Test".to_string(),
+            action: "bogus".to_string(),
+            season_number: None,
+            episode_number: None,
+            episode_title: None,
+            metadata: None,
+            timestamp: "2026-01-01T00:00:00.000Z".to_string(),
+        };
+
+        let result = ViewingHistoryItem::try_from(row);
+
+        assert!(result.is_err());
+    }
+
     #[tokio::test]
     async fn returns_entries_newest_first() {
         let pool = migrated_pool().await;

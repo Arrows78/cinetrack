@@ -648,6 +648,70 @@ mod tests {
         }
     }
 
+    #[test]
+    fn as_db_str_maps_every_status_variant_to_its_db_string() {
+        assert_eq!(LibraryStatus::Planned.as_db_str(), "planned");
+        assert_eq!(LibraryStatus::Watching.as_db_str(), "watching");
+        assert_eq!(LibraryStatus::Paused.as_db_str(), "paused");
+        assert_eq!(LibraryStatus::Completed.as_db_str(), "completed");
+        assert_eq!(LibraryStatus::Dropped.as_db_str(), "dropped");
+    }
+
+    // Exercises deserialize_double_option through real serde deserialization
+    // (every other test in this file builds LibraryPatch as a struct literal,
+    // bypassing serde entirely) to confirm it preserves the distinction the
+    // struct's doc comment promises: an absent key stays None, while an
+    // explicit `null` becomes Some(None) rather than being collapsed into
+    // the absent case.
+    #[test]
+    fn library_patch_deserialization_distinguishes_absent_null_and_present_for_double_option_fields()
+     {
+        let absent: LibraryPatch = serde_json::from_str("{}").unwrap();
+        assert_eq!(absent.user_rating, None);
+        assert_eq!(absent.notes, None);
+
+        let explicit_null: LibraryPatch =
+            serde_json::from_str(r#"{"userRating": null, "notes": null}"#).unwrap();
+        assert_eq!(explicit_null.user_rating, Some(None));
+        assert_eq!(explicit_null.notes, Some(None));
+
+        let explicit_value: LibraryPatch =
+            serde_json::from_str(r#"{"userRating": 8.5, "notes": "Great movie"}"#).unwrap();
+        assert_eq!(explicit_value.user_rating, Some(Some(8.5)));
+        assert_eq!(explicit_value.notes, Some(Some("Great movie".to_string())));
+    }
+
+    #[tokio::test]
+    async fn list_impl_returns_only_the_requested_profiles_items_newest_first() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(3), LibraryPatch::default(), "other")
+            .await
+            .unwrap();
+
+        let items = list_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(items.len(), 2);
+        assert!(items.iter().all(|item| item.profile_id == "default"));
+        // Item 2 was upserted (and therefore updated_at-stamped) after item
+        // 1, so ORDER BY updated_at DESC should surface it first.
+        assert_eq!(items[0].media_id, 2);
+        assert_eq!(items[1].media_id, 1);
+    }
+
     #[tokio::test]
     async fn creates_a_new_entry_defaulting_to_the_planned_status() {
         let pool = migrated_pool().await;

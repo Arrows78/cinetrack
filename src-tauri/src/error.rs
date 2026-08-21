@@ -62,3 +62,20 @@ impl From<sqlx::Error> for ApiError {
         Self::internal(error.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn displays_the_message() {
+        let error = ApiError::bad_request("some message");
+        assert_eq!(error.to_string(), "some message");
+    }
+
+    #[test]
+    fn non_database_sqlx_errors_fall_back_to_an_internal_error() {
+        let error = ApiError::from(sqlx::Error::RowNotFound);
+        assert_eq!(error.status, Some(500));
+    }
+}

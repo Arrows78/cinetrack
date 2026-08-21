@@ -226,6 +226,22 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn importing_an_empty_episode_list_is_a_no_op() {
+        let pool = migrated_pool().await;
+
+        let inserted = import_series_progress_impl(&pool, "default", series(9), vec![])
+            .await
+            .unwrap();
+        assert_eq!(inserted, 0);
+
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM episode_progress")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count.0, 0);
+    }
+
+    #[tokio::test]
     async fn a_reimport_is_idempotent() {
         let pool = migrated_pool().await;
         let episodes = vec![episode(1, 1, "2020-01-01T00:00:00.000Z")];

@@ -387,6 +387,33 @@ mod tests {
         pool
     }
 
+    #[test]
+    fn viewing_event_type_as_db_str_matches_the_wire_format() {
+        assert_eq!(ViewingEventType::Watched.as_db_str(), "watched");
+        assert_eq!(ViewingEventType::Unwatched.as_db_str(), "unwatched");
+        assert_eq!(ViewingEventType::Rewatched.as_db_str(), "rewatched");
+    }
+
+    #[test]
+    fn into_event_rejects_an_unrecognized_event_type() {
+        let row = ViewingEventRow {
+            uuid: "bogus-row".to_string(),
+            media_id: 1,
+            media_type: "movie".to_string(),
+            title: "Test".to_string(),
+            event_type: "bogus".to_string(),
+            watched_at: "2026-01-01T00:00:00.000Z".to_string(),
+            duration_minutes: None,
+            episode_id: None,
+            season_number: None,
+            episode_number: None,
+        };
+
+        let result = row.into_event("default");
+
+        assert!(result.is_err());
+    }
+
     #[tokio::test]
     async fn lists_recent_viewing_events_scoped_to_the_profile() {
         let pool = migrated_pool().await;
@@ -622,6 +649,19 @@ mod tests {
                 minutes: 0
             }
         );
+    }
+
+    #[tokio::test]
+    async fn stats_overview_zero_fills_completion_percent_when_library_is_empty() {
+        let pool = migrated_pool().await;
+        let month_labels = vec!["2026-03".to_string()];
+
+        let overview =
+            get_stats_overview_impl(&pool, "default", "2026-03-01T00:00:00.000Z", &month_labels)
+                .await
+                .unwrap();
+
+        assert_eq!(overview.totals.library_completion_percent, 0);
     }
 
     #[tokio::test]

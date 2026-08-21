@@ -388,6 +388,55 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn lists_only_the_requesting_profiles_alerts() {
+        let pool = migrated_pool().await;
+
+        toggle_impl(
+            &pool,
+            "default",
+            media(1, MediaType::Movie, "First"),
+            "FR".to_string(),
+            vec![8],
+        )
+        .await
+        .unwrap();
+        toggle_impl(
+            &pool,
+            "default",
+            media(2, MediaType::Series, "Second"),
+            "FR".to_string(),
+            vec![9],
+        )
+        .await
+        .unwrap();
+        toggle_impl(
+            &pool,
+            "other",
+            media(3, MediaType::Movie, "Not mine"),
+            "FR".to_string(),
+            vec![10],
+        )
+        .await
+        .unwrap();
+
+        let alerts = list_alerts_impl(&pool, "default").await.unwrap();
+
+        // Not asserting exact DESC order here: created_at has only millisecond
+        // precision (see now_iso), so two alerts created back-to-back in a
+        // test can tie — the scoping behaviour below is what this test is
+        // actually exercising.
+        assert_eq!(alerts.len(), 2);
+        assert!(alerts.iter().all(|alert| alert.profile_id == "default"));
+        assert!(alerts.iter().any(|alert| alert.media_id == 1));
+        assert!(alerts.iter().any(|alert| alert.media_id == 2));
+        assert!(alerts.iter().all(|alert| alert.media_id != 3));
+
+        let other_alerts = list_alerts_impl(&pool, "other").await.unwrap();
+        assert_eq!(other_alerts.len(), 1);
+        assert_eq!(other_alerts[0].media_id, 3);
+    }
+
+    #[tokio::test]
     async fn round_trips_a_snapshot_and_replaces_it_on_the_same_media_region_key() {
         let pool = migrated_pool().await;
         assert!(
