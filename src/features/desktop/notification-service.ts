@@ -4,6 +4,8 @@ import { isTauriApp } from "@/shared/lib/platform";
 import type { CalendarEntry, UserPreferences } from "@/types/media";
 
 const SENT_KEY = "cinetrack.sent-notifications.v1";
+/** Maximum number of sent notification IDs retained to prevent re-notifying. */
+const MAX_SENT_NOTIFICATIONS = 500;
 
 function readSentNotifications(): Set<string> {
   try {
@@ -62,7 +64,7 @@ export const notificationService = {
       sent.add(entry.id);
       count += 1;
     }
-    localStorage.setItem(SENT_KEY, JSON.stringify([...sent].slice(-500)));
+    localStorage.setItem(SENT_KEY, JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS)));
     return count;
   },
 };
