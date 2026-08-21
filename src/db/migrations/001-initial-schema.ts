@@ -1,8 +1,9 @@
 import type { Migration } from "./types";
 
 // Every data table uses UUID as PRIMARY KEY (stable public identifier,
-// generated with crypto.randomUUID() at insert time — see src/shared/lib/id.ts).
-// No separate INTEGER id; UUID is the sole identity.
+// generated app-side in Rust at insert time — see new_uuid() in
+// src-tauri/src/database/mod.rs, a UUIDv7). No separate INTEGER id; UUID is
+// the sole identity.
 //
 // `created_at`/`updated_at` are ISO-8601 strings supplied by the app
 // (nowIso()), matching the only date format already used everywhere.

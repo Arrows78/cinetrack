@@ -24,7 +24,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 
 ### Organise
 
-- Add films and TV series to your library (planned/watching/completed/dropped/rewatching) or custom lists.
+- Add films and TV series to your library (planned/watching/paused/completed/dropped) or custom lists.
 - Filter and sort your library by media type, status, date, title, or rating.
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
@@ -160,25 +160,26 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 
 ## 🛠️ Scripts
 
-| Command              | Description                                                        |
-| -------------------- | ------------------------------------------------------------------ |
-| `pnpm dev`           | Starts the Vite development server.                                |
-| `pnpm build`         | Checks TypeScript types and creates the frontend production build. |
-| `pnpm preview`       | Serves the Vite production build locally.                          |
-| `pnpm lint`          | Analyses the project with ESLint.                                  |
-| `pnpm lint:fix`      | Analyses the project with ESLint and applies automatic fixes.      |
-| `pnpm format`        | Formats files with Prettier.                                       |
-| `pnpm format:check`  | Checks formatting without writing changes (what CI runs).          |
-| `pnpm test`          | Runs the Vitest test suite.                                        |
-| `pnpm test:watch`    | Runs the Vitest test suite in watch mode.                          |
-| `pnpm test:coverage` | Runs the test suite with a coverage report.                        |
-| `pnpm typecheck`     | Checks TypeScript types without emitting output.                   |
-| `pnpm validate`      | Runs the full chain above plus the Rust checks — see below.        |
-| `pnpm cargo:check`   | Runs `cargo check` on the Rust side.                               |
-| `pnpm cargo:clippy`  | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side. |
-| `pnpm cargo:test`    | Runs `cargo test` on the Rust side.                                |
-| `pnpm tauri dev`     | Starts the desktop application in development mode.                |
-| `pnpm tauri build`   | Creates desktop bundles for the current platform.                  |
+| Command               | Description                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`            | Starts the Vite development server.                                                                                       |
+| `pnpm build`          | Checks TypeScript types and creates the frontend production build.                                                        |
+| `pnpm preview`        | Serves the Vite production build locally.                                                                                 |
+| `pnpm lint`           | Analyses the project with ESLint.                                                                                         |
+| `pnpm lint:fix`       | Analyses the project with ESLint and applies automatic fixes.                                                             |
+| `pnpm format`         | Formats files with Prettier.                                                                                              |
+| `pnpm format:check`   | Checks formatting without writing changes (what CI runs).                                                                 |
+| `pnpm test`           | Runs the Vitest test suite.                                                                                               |
+| `pnpm test:watch`     | Runs the Vitest test suite in watch mode.                                                                                 |
+| `pnpm test:coverage`  | Runs the test suite with a coverage report.                                                                               |
+| `pnpm typecheck`      | Checks TypeScript types without emitting output.                                                                          |
+| `pnpm validate`       | Runs the full chain above plus the Rust checks — see below.                                                               |
+| `pnpm cargo:check`    | Runs `cargo check` on the Rust side.                                                                                      |
+| `pnpm cargo:clippy`   | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side.                                                        |
+| `pnpm cargo:test`     | Runs `cargo test` on the Rust side.                                                                                       |
+| `pnpm cargo:coverage` | Runs `cargo llvm-cov --branch` for per-file Rust coverage (needs a `nightly` toolchain — see `CLAUDE.md`; not run in CI). |
+| `pnpm tauri dev`      | Starts the desktop application in development mode.                                                                       |
+| `pnpm tauri build`    | Creates desktop bundles for the current platform.                                                                         |
 
 For the Rust side, use `pnpm cargo:check`, `pnpm cargo:clippy`, and `pnpm cargo:test` (all three also run in CI).
 
@@ -244,7 +245,7 @@ The SQLite schema (a single migration, see `src/db/migrations/001-initial-schema
 - `availability_alerts`, `availability_snapshots`;
 - `activity_log`.
 
-Every table (other than `preferences`, keyed by `key`, and the pure-cache `availability_snapshots`, keyed by `(media_id, media_type, region)`) uses a single `uuid TEXT PRIMARY KEY` — generated app-side with `crypto.randomUUID()`, no separate internal integer id — plus `created_at`/`updated_at` timestamps. See [`docs/database-schema.md`](docs/database-schema.md) for the full table-by-table reference and ERD.
+Every table (other than `preferences`, keyed by `key`, and the pure-cache `availability_snapshots`, keyed by `(media_id, media_type, region)`) uses a single `uuid TEXT PRIMARY KEY` — generated app-side in Rust (`new_uuid()`, a UUIDv7), no separate internal integer id — plus `created_at`/`updated_at` timestamps. See [`docs/database-schema.md`](docs/database-schema.md) for the full table-by-table reference and ERD.
 
 Catalogue data, posters, and metadata are loaded from TMDB, so they require an internet connection and a valid API token.
 
