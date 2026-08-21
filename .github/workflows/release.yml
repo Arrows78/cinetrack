@@ -20,6 +20,15 @@ name: Release build
 # Add the matching secrets under Settings -> Secrets and variables -> Actions
 # (see docs/release-signing.md) and these same steps start signing/notarizing
 # automatically, no workflow changes required.
+#
+# `build` needs `validate` to pass first: a `v*` tag push doesn't otherwise
+# guarantee the tagged commit ever ran CI (tags aren't in ci.yml's own
+# triggers) — nothing stopped a tag on a broken commit from producing and
+# drafting installers before this. `validate` re-runs the same checks
+# `pnpm validate` runs locally, once, on the exact commit being tagged.
+# This is deliberately a self-contained job here (not a call into ci.yml)
+# rather than a cross-workflow permissions dance for cargo-audit/osv-scan,
+# which don't need to gate a release the way lint/typecheck/tests/build do.
 
 on:
   workflow_dispatch:
@@ -30,7 +39,52 @@ permissions:
   contents: write
 
 jobs:
+  validate:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Tauri system dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            build-essential \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            patchelf
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate (frontend + backend)
+        run: pnpm validate
+
   build:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
