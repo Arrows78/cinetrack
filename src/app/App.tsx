@@ -18,7 +18,7 @@ import { trackingService } from "@/features/tracking/tracking-service";
 import { notificationService } from "@/features/desktop/notification-service";
 import { errorMessage } from "@/shared/lib/errors";
 import { isTauriApp } from "@/shared/lib/platform";
-import { STALE_6_HOURS } from "@/shared/constants/query";
+import { STALE_6_HOURS, TOOLTIP_DELAY_MS } from "@/shared/constants/query";
 
 export function App() {
   useEffect(() => {
@@ -89,7 +89,7 @@ export function App() {
   }, []);
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delayDuration={TOOLTIP_DELAY_MS}>
       <ThemeController />
 
       <MotionPreferenceGate>

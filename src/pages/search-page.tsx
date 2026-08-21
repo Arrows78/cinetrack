@@ -17,7 +17,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSearch as useSearchHook } from "@/features/media/use-search";
 import { useHomeFeed } from "@/features/media/use-media";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
-import { DEBOUNCE_MS } from "@/shared/constants/query";
+import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import type { MediaSummary, SearchScope } from "@/types/media";
 
 const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
@@ -88,7 +88,7 @@ export function SearchPage() {
   });
 
   const hasFilters = Boolean(genreMovie || genreSeries || provider);
-  const showResults = hasFilters || debouncedQuery.trim().length >= 2;
+  const showResults = hasFilters || debouncedQuery.trim().length >= MIN_SEARCH_QUERY_LENGTH;
   // No query typed yet and no filter applied: browse the same catalogue
   // sections as the home dashboard instead of an empty "start typing" state.
   // Same query key as useHomeFeed on the home page, so this is a cache hit

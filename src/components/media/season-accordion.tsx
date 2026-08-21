@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/media/progress-bar";
 import { EpisodeCard } from "@/components/media/episode-card";
 import { useConfetti } from "@/hooks/use-confetti";
+import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
 import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
 import { progressRepository } from "@/features/progress/progress-repository";
@@ -62,7 +63,7 @@ export function SeasonAccordion({
     if (watched) {
       const seasonWatched = season.episodes.filter((ep) => watchedSet.has(ep.id)).length;
       const willComplete = seasonWatched + 1 === season.episodes.length;
-      if (willComplete) setTimeout(celebrate, 400);
+      if (willComplete) setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
     }
     await onToggleEpisode(episode, watched);
   };
@@ -117,7 +118,7 @@ export function SeasonAccordion({
                     onClick={() => {
                       const newWatched = pct !== 100;
                       void onToggleSeason(season, newWatched);
-                      if (newWatched && pct < 100) setTimeout(celebrate, 300);
+                      if (newWatched && pct < 100) setTimeout(celebrate, CONFETTI_DELAY_MS);
                     }}
                     disabled={isSaving}
                   >

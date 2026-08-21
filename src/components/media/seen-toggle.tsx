@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
+import { CONFETTI_DELAY_MS } from "@/shared/constants/query";
 import { useConfetti } from "@/hooks/use-confetti";
 
 export function SeenToggle({
@@ -28,7 +29,7 @@ export function SeenToggle({
     if (disabled) return;
     if (!seen && celebrateOnSeen) {
       burstFromRef(ref.current);
-      setTimeout(celebrate, 300);
+      setTimeout(celebrate, CONFETTI_DELAY_MS);
     }
     onToggle();
   };

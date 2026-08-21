@@ -22,3 +22,20 @@ export const DEBOUNCE_MS = 300;
  * app restarts without re-fetching, while still eventually cleaning up.
  */
 export const GC_7_DAYS = 1000 * 60 * 60 * 24 * 7;
+
+/**
+ * Confetti animation delays — staggered to feel natural after a seen-toggle
+ * or season-completion action.
+ */
+export const CONFETTI_DELAY_MS = 300;
+export const CONFETTI_SEASON_COMPLETE_DELAY_MS = 400;
+
+/**
+ * Minimum search query length before a search is triggered. Prevents firing
+ * API requests for single-character inputs that would return too many
+ * irrelevant results anyway.
+ */
+export const MIN_SEARCH_QUERY_LENGTH = 2;
+
+/** Delay before a tooltip appears on hover (ms). */
+export const TOOLTIP_DELAY_MS = 300;

@@ -15,7 +15,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { DEBOUNCE_MS } from "@/shared/constants/query";
+import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import type { MediaSummary, Movie, Series } from "@/types/media";
@@ -72,7 +72,6 @@ const EMPTY_PLACEHOLDER_MEDIA: MediaSummary = {
 };
 
 const TITLE_RESULTS_CAP = 5;
-const TITLE_SEARCH_MIN_LENGTH = 2;
 
 export function CommandPalette() {
   const { t } = useTranslation();
@@ -196,7 +195,7 @@ export function CommandPalette() {
   );
 
   const titleResults = useMemo<PaletteItem[]>(() => {
-    if (debouncedQuery.trim().length < TITLE_SEARCH_MIN_LENGTH) return [];
+    if (debouncedQuery.trim().length < MIN_SEARCH_QUERY_LENGTH) return [];
     return titleSearch.items.slice(0, TITLE_RESULTS_CAP).map((media) => ({
       key: `title-${media.mediaType}-${media.id}`,
       label: media.title,
@@ -209,7 +208,7 @@ export function CommandPalette() {
 
   const results = useMemo(() => [...filteredCommands, ...titleResults], [filteredCommands, titleResults]);
   const isSearchingTitles =
-    debouncedQuery.trim().length >= TITLE_SEARCH_MIN_LENGTH && query === debouncedQuery && titleSearch.isLoading;
+    debouncedQuery.trim().length >= MIN_SEARCH_QUERY_LENGTH && query === debouncedQuery && titleSearch.isLoading;
 
   // Reset the selection to the top result whenever the query changes or the
   // palette re-opens. Adjusted during render (React's documented pattern for
