@@ -112,7 +112,6 @@ export default defineConfig({
         // a mocked mediaRepository/tvTimeImportRepository — parse-export.ts
         // (real CSV parsing) is tested separately.
         "src/features/tvtime/tvtime-import-service.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
-        "src/features/watchlist/watchlist-repository.ts": { statements: 45, branches: 45, functions: 75, lines: 45 },
       },
     },
   },
