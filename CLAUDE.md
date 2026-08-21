@@ -19,6 +19,7 @@ pnpm build            # tsc --noEmit && vite build
 pnpm cargo:check      # cargo check (src-tauri)
 pnpm cargo:clippy     # cargo clippy --all-targets -- -D warnings
 pnpm cargo:test       # cargo test
+pnpm cargo:coverage   # cargo +nightly llvm-cov --branch (see the Testing section below)
 
 pnpm validate         # the full chain above — run before considering work done
 ```
@@ -69,6 +70,7 @@ These are recurring review findings in this repo's own history (see `git log --g
 - Repository tests exercise the Tauri `invoke()` wrapper against a fake backend (`src/db/__tests__/fake-invoke-backend.ts`) or a real SQLite engine (`sqlite-adapter.ts`, `sqlite-test-harness.ts`) for the migration/profile-cascade paths — prefer the real-SQLite path when a test is about SQL behavior (joins, cascades), the fake backend when it's about the invoke plumbing.
 - `vitest.config.ts` pins coverage thresholds per file, not globally (most of the UI has no tests yet — that's known, not a regression to silently fix). If you give a listed file real tests, its thresholds there should move with it.
 - Rust side: `cargo test` covers the command layer directly; keep new SQL transactions and cascades tested there rather than only through the TS repository.
+- `pnpm cargo:coverage` runs `cargo llvm-cov --branch` for a per-file statement/line/function/**branch** table on the Rust side, mirroring the TS side's `pnpm test:coverage`. Branch coverage is an unstable `cargo-llvm-cov` feature and only builds under the nightly toolchain, so the script pins `+nightly` itself — this needs `rustup toolchain install nightly` plus `rustup component add llvm-tools-preview --toolchain nightly` once, but doesn't change the machine's default toolchain (`cargo:check`/`clippy`/`test` still build under stable). Not part of `pnpm validate` — it's a heavier, on-demand check, not a gate.
 
 ## Commits
 

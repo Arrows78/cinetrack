@@ -40,6 +40,7 @@
     "cargo:check": "cargo check --manifest-path src-tauri/Cargo.toml",
     "cargo:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "cargo:test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "cargo:coverage": "cargo +nightly llvm-cov --manifest-path src-tauri/Cargo.toml --branch",
     "validate": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm cargo:check && pnpm cargo:clippy && pnpm cargo:test",
     "tauri": "tauri"
   },
