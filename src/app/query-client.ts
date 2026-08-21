@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { STALE_5_MIN } from "@/shared/constants/query";
+import { GC_7_DAYS, STALE_5_MIN } from "@/shared/constants/query";
 // `local.*` (SQLite-backed) queries used to also be persisted to
 // localStorage for up to 7 days as an instant-cold-start cache — removed
 // because it duplicated library/history/notes/preferences in a
@@ -11,7 +11,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: STALE_5_MIN,
-      gcTime: 1000 * 60 * 60 * 24 * 7,
+      gcTime: GC_7_DAYS,
       retry: 1,
       refetchOnWindowFocus: false,
       networkMode: "offlineFirst",

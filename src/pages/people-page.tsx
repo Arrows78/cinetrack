@@ -8,6 +8,7 @@ import { Panel } from "@/components/ui/panel";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePeopleSearch } from "@/features/media/use-discovery";
+import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
@@ -18,7 +19,7 @@ const MAX_STAGGER_DELAY_S = 0.44;
 export function PeoplePage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
-  const debounced = useDebouncedValue(query, 350);
+  const debounced = useDebouncedValue(query, DEBOUNCE_MS);
   const people = usePeopleSearch(debounced);
   return (
     <div className="space-y-6">

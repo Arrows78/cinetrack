@@ -15,6 +15,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import type { MediaSummary, Movie, Series } from "@/types/media";
@@ -87,7 +88,7 @@ export function CommandPalette() {
   // content — an empty/short query short-circuits inside useSearch itself
   // (its own `enabled` gate), so this never fires a network request while
   // the palette is closed or the box is still empty.
-  const debouncedQuery = useDebouncedValue(query, 250);
+  const debouncedQuery = useDebouncedValue(query, DEBOUNCE_MS);
   const titleSearch = useSearch(open ? debouncedQuery : "", "all");
 
   const navigate = useCallback(

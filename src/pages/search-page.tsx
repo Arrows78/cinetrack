@@ -17,6 +17,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSearch as useSearchHook } from "@/features/media/use-search";
 import { useHomeFeed } from "@/features/media/use-media";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
+import { DEBOUNCE_MS } from "@/shared/constants/query";
 import type { MediaSummary, SearchScope } from "@/types/media";
 
 const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
@@ -69,7 +70,7 @@ export function SearchPage() {
   }
 
   const scope = selectedScope ?? preferences?.defaultSearchType ?? "all";
-  const debouncedQuery = useDebouncedValue(localQuery, 350);
+  const debouncedQuery = useDebouncedValue(localQuery, DEBOUNCE_MS);
 
   useEffect(() => {
     const nextQuery = debouncedQuery || undefined;
