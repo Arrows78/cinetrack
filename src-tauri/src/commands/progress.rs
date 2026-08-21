@@ -125,16 +125,23 @@ struct TrackedSeriesRow {
     watched_episodes: i64,
 }
 
-async fn is_movie_seen_impl(
-    pool: &SqlitePool,
+// Generic over the executor (mirrors add_history_item_impl in history.rs)
+// so toggle_movie_seen_impl below can run this check on the same connection
+// as its BEGIN IMMEDIATE transaction, instead of a separate pre-transaction
+// query — see that function's comment for why this matters.
+async fn is_movie_seen_impl<'e, E>(
+    executor: E,
     profile_id: &str,
     movie_id: i64,
-) -> Result<bool, ApiError> {
+) -> Result<bool, ApiError>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
     let row: (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
             .bind(profile_id)
             .bind(movie_id)
-            .fetch_one(pool)
+            .fetch_one(executor)
             .await
             .map_err(ApiError::from)?;
     Ok(row.0 > 0)
@@ -152,15 +159,30 @@ pub(crate) async fn toggle_movie_seen_impl(
     watched: bool,
     watched_at: &str,
 ) -> Result<(), ApiError> {
+    // BEGIN IMMEDIATE (rather than plain pool.begin()'s deferred BEGIN)
+    // acquires SQLite's write lock up front, before the idempotency check
+    // below even runs — a concurrent second call blocks here (sqlx's
+    // default 5s busy_timeout) until the first call's transaction commits,
+    // instead of both reading "not yet watched" off their own snapshot and
+    // both proceeding to insert a viewing_events/activity_log row. Reading
+    // the current state *outside* a transaction (or inside a merely
+    // deferred one) doesn't protect against that: two concurrent callers
+    // can each get their own consistent read before either takes the write
+    // lock, so the check has to be inside the same IMMEDIATE transaction as
+    // the write it's guarding.
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
+
     // No-op if the movie is already in the requested state — mirrors the
-    // guard `apply_episodes_and_log_impl` already has for episodes, so a
-    // repeated call (retry, double invoke) can't insert a second
-    // viewing_events/activity_log row and inflate the stats that read them.
-    if is_movie_seen_impl(pool, profile_id, movie.id).await? == watched {
+    // guard `apply_episodes_and_log_impl` has for episodes, so a repeated
+    // call (retry, double invoke, or a genuine race now serialized by the
+    // IMMEDIATE lock above) can't insert a second viewing_events/
+    // activity_log row and inflate the stats that read them.
+    if is_movie_seen_impl(&mut *tx, profile_id, movie.id).await? == watched {
         return Ok(());
     }
-
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     if watched {
         sqlx::query(
@@ -314,11 +336,25 @@ pub(crate) async fn apply_episodes_and_log_impl(
     watched_at: &str,
     history: Option<EpisodeHistoryInput>,
 ) -> Result<i64, ApiError> {
+    // BEGIN IMMEDIATE up front, before reading which episodes are already
+    // watched, for the same reason toggle_movie_seen_impl does: a plain
+    // pool.begin() (deferred) or a read taken outside any transaction lets
+    // two concurrent calls each see their own "not yet watched" snapshot
+    // before either takes the write lock, so both would insert their own
+    // viewing_events/activity_log rows for what's really one logical
+    // transition. The IMMEDIATE lock serializes the check-then-write pair
+    // instead — a concurrent second call blocks here until the first
+    // commits, then correctly sees the already-applied state.
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
+
     let watched_rows: Vec<(i64,)> =
         sqlx::query_as("SELECT episode_id FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1")
             .bind(profile_id)
             .bind(series.id)
-            .fetch_all(pool)
+            .fetch_all(&mut *tx)
             .await
             .map_err(ApiError::from)?;
     let watched_ids: HashSet<i64> = watched_rows.into_iter().map(|(id,)| id).collect();
@@ -337,8 +373,6 @@ pub(crate) async fn apply_episodes_and_log_impl(
     if changed_episodes.is_empty() {
         return Ok(0);
     }
-
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     for episode in &changed_episodes {
         let episode_watched_at = episode.watched_at.as_deref().unwrap_or(watched_at);
@@ -1104,6 +1138,53 @@ mod tests {
         assert_eq!(unwatched_count.0, 1);
     }
 
+    // Unlike the sequential no-op test above (each call awaited to
+    // completion before the next starts), this fires both calls at once so
+    // their BEGIN IMMEDIATE transactions genuinely contend for SQLite's
+    // write lock — the scenario the sequential test can't exercise. Before
+    // moving the idempotency check inside a BEGIN IMMEDIATE transaction,
+    // both calls could read "not yet watched" off their own snapshot before
+    // either took the write lock, and both would insert their own
+    // viewing_events/activity_log row for what's really one logical
+    // transition.
+    #[tokio::test]
+    async fn two_concurrent_movie_toggles_produce_only_one_viewing_event() {
+        let pool = migrated_pool().await;
+
+        let (first, second) = tokio::join!(
+            toggle_movie_seen_impl(
+                &pool,
+                "default",
+                movie(77),
+                true,
+                "2026-01-01T00:00:00.000Z"
+            ),
+            toggle_movie_seen_impl(
+                &pool,
+                "default",
+                movie(77),
+                true,
+                "2026-01-01T00:00:00.001Z"
+            ),
+        );
+        first.unwrap();
+        second.unwrap();
+
+        let event_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM viewing_events WHERE media_id = 77")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(event_count.0, 1);
+
+        let history_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE action = 'movie:watched'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(history_count.0, 1);
+    }
+
     #[tokio::test]
     async fn marks_an_episode_watched_and_reflects_it_in_progress_and_tracked_series() {
         let pool = migrated_pool().await;
@@ -1158,6 +1239,45 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(changed, 0);
+    }
+
+    // Same scenario as two_concurrent_movie_toggles_produce_only_one_viewing_event
+    // above, for the episode/season/series-marking path (apply_episodes_impl
+    // is a thin wrapper over apply_episodes_and_log_impl, so this covers
+    // "mark whole season/series watched" too, not just a single episode).
+    #[tokio::test]
+    async fn two_concurrent_episode_applies_produce_only_one_viewing_event() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        let episodes = [episode(100, 1)];
+
+        let (first, second) = tokio::join!(
+            apply_episodes_impl(
+                &pool,
+                "default",
+                &s,
+                &episodes,
+                true,
+                "2026-01-01T00:00:00.000Z"
+            ),
+            apply_episodes_impl(
+                &pool,
+                "default",
+                &s,
+                &episodes,
+                true,
+                "2026-01-01T00:00:00.001Z"
+            ),
+        );
+        let changed = first.unwrap() + second.unwrap();
+        assert_eq!(changed, 1);
+
+        let event_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM viewing_events WHERE episode_id = 100")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(event_count.0, 1);
     }
 
     #[tokio::test]

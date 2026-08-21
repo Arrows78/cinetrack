@@ -22,7 +22,13 @@ macro_rules! profile_scoped_command {
             pool: tauri::State<'_, sqlx::SqlitePool>,
         ) -> Result<$ret, crate::error::ApiError> {
             let profile_id = crate::database::current_profile_id(&pool).await?;
-            $impl_fn(&pool, &profile_id, $($arg),*).await
+            // `&*pool` (not `&pool`) so this deref-coerces `State<SqlitePool>`
+            // to a concrete `&SqlitePool` before the call — required for
+            // `_impl` fns generic over `sqlx::Executor` (e.g.
+            // is_movie_seen_impl), since Rust doesn't apply deref coercion
+            // through generic type inference the way it does for a
+            // concretely-typed parameter.
+            $impl_fn(&*pool, &profile_id, $($arg),*).await
         }
     };
 }
