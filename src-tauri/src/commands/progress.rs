@@ -926,6 +926,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_series_reporting_zero_total_episodes_registers_as_watching_not_completed() {
+        let pool = migrated_pool().await;
+        // number_of_episodes: Some(0) — distinct from the `None` case above:
+        // here the TMDB count is known but degenerate. `total > 0` must
+        // still gate the Completed branch, or a single watched episode
+        // would read as "0/0 = already done".
+        let s = series(9, Some(0));
+
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
+    }
+
+    #[tokio::test]
     async fn unwatching_an_episode_never_auto_advances_an_existing_planned_status() {
         let pool = migrated_pool().await;
         let s = series(9, Some(3));
@@ -1641,5 +1667,73 @@ mod tests {
 
         let tracked = list_tracked_series(state).await.unwrap();
         assert!(tracked.iter().any(|item| item.series_id == 9));
+    }
+
+    /// Every `_impl` fn in this file takes `profile_id` as a plain parameter
+    /// with no further check of its own — the same pattern flagged in
+    /// custom_lists.rs's/availability.rs's own cross-profile tests. Unlike
+    /// those two files, nothing in this one previously proved that marking a
+    /// movie/episode watched for one profile is actually invisible to
+    /// another, despite `seen_movies`/`episode_progress`/`tracked_series`
+    /// all being scoped by a `profile_id` column read from the same
+    /// untrusted caller-supplied string as everywhere else.
+    #[tokio::test]
+    async fn marking_a_movie_and_episodes_watched_is_invisible_to_another_profile() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        toggle_movie_seen_impl(&pool, "default", movie(1), true, "2026-01-01T00:00:00.000Z")
+            .await
+            .unwrap();
+        let s = series(9, Some(3));
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert!(is_movie_seen_impl(&pool, "default", 1).await.unwrap());
+        assert!(!is_movie_seen_impl(&pool, "other", 1).await.unwrap());
+
+        assert_eq!(
+            get_episode_progress_impl(&pool, "default", 9)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            get_episode_progress_impl(&pool, "other", 9)
+                .await
+                .unwrap()
+                .len(),
+            0
+        );
+
+        assert!(
+            list_tracked_series_impl(&pool, "default")
+                .await
+                .unwrap()
+                .iter()
+                .any(|item| item.series_id == 9)
+        );
+        assert!(
+            !list_tracked_series_impl(&pool, "other")
+                .await
+                .unwrap()
+                .iter()
+                .any(|item| item.series_id == 9)
+        );
     }
 }

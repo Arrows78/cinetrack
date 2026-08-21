@@ -65,6 +65,9 @@ impl From<sqlx::Error> for ApiError {
 
 #[cfg(test)]
 mod tests {
+    use sqlx::SqlitePool;
+    use sqlx::sqlite::SqlitePoolOptions;
+
     use super::*;
 
     #[test]
@@ -77,5 +80,37 @@ mod tests {
     fn non_database_sqlx_errors_fall_back_to_an_internal_error() {
         let error = ApiError::from(sqlx::Error::RowNotFound);
         assert_eq!(error.status, Some(500));
+    }
+
+    async fn migrated_pool() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
+        pool
+    }
+
+    #[tokio::test]
+    async fn a_database_error_that_is_not_a_unique_violation_falls_back_to_an_internal_error() {
+        let pool = migrated_pool().await;
+
+        // A FOREIGN KEY violation (library_items.profile_id references a
+        // profile that doesn't exist) is a real sqlx::Error::Database, but
+        // not a unique-violation one — distinct from every other test that
+        // exercises this From impl, which all go through a UNIQUE index.
+        let result = sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+             VALUES ('x', 'nonexistent-profile', 1, 'movie', 'Test', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await;
+
+        let sqlx_error = result.expect_err("a missing profile_id should violate the FK constraint");
+        let api_error = ApiError::from(sqlx_error);
+        assert_eq!(api_error.status, Some(500));
     }
 }

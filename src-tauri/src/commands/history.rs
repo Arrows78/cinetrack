@@ -585,4 +585,20 @@ mod tests {
 
         assert_eq!(list.len(), 1);
     }
+
+    #[tokio::test]
+    async fn tolerates_non_object_metadata_without_injecting_a_profile_id() {
+        let pool = migrated_pool().await;
+        // A non-object JSON value (a bare string here) can't have a key
+        // inserted into it — `add_history_item_impl` must store it as-is
+        // rather than panicking on the `if let Value::Object` match.
+        let mut item = entry("1", "2026-01-01T00:00:00.000Z", "Weird metadata");
+        item.metadata = Some(serde_json::json!("not-an-object"));
+
+        add_history_item_impl(&pool, &pool, item).await.unwrap();
+
+        let list = list_history_impl(&pool, 50, None).await.unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].metadata, Some(serde_json::json!("not-an-object")));
+    }
 }

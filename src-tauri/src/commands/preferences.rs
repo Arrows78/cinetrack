@@ -443,6 +443,18 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn rejects_a_region_of_the_wrong_length() {
+        // Distinct from `rejects_an_invalid_region` above: "fr" is still 2
+        // characters (just lowercase), so it never exercises the length
+        // check itself — only the uppercase check. This does.
+        let prefs = UserPreferences {
+            region: "FRA".to_string(),
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_err());
+    }
+
+    #[tokio::test]
     async fn rejects_out_of_range_notify_hours() {
         let prefs = UserPreferences {
             notify_hours_before: 200,

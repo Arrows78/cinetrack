@@ -708,4 +708,39 @@ mod tests {
             .unwrap();
         assert_eq!(remaining.0, 0);
     }
+
+    #[tokio::test]
+    async fn tolerates_a_duplicate_column_error_left_by_the_old_ts_runner() {
+        let pool = in_memory_pool().await;
+        // Build up the schema through migration 10 for real, then apply
+        // migration 11's own statement (`ALTER TABLE tracked_series ADD
+        // COLUMN status TEXT`) directly, out of band — simulating a database
+        // the old TypeScript runner already migrated — without bumping
+        // `user_version` past 10. `apply_pending_migrations` will attempt
+        // migration 11 again, hit a real "duplicate column" error, and must
+        // tolerate it (see `is_tolerable_duplicate_column`) rather than
+        // treat it as a genuine failure.
+        for migration in MIGRATIONS.iter().filter(|m| m.version <= 10) {
+            for statement in migration.statements {
+                sqlx::query(*statement).execute(&pool).await.unwrap();
+            }
+        }
+        sqlx::query("ALTER TABLE tracked_series ADD COLUMN status TEXT")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("PRAGMA user_version = 10")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        run_migrations(&pool).await.unwrap();
+
+        let version: (i64,) = sqlx::query_as("PRAGMA user_version")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let latest_version = MIGRATIONS.iter().map(|m| m.version).max().unwrap();
+        assert_eq!(version.0, latest_version);
+    }
 }

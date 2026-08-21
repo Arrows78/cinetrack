@@ -1452,4 +1452,78 @@ mod tests {
         let check = check_data_integrity(state).await.unwrap();
         assert!(check.healthy);
     }
+
+    #[tokio::test]
+    async fn export_skips_a_preference_row_with_a_malformed_json_value() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('corrupted', 'not-json', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('theme', '\"light\"', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let exported = export_impl(&pool).await.unwrap();
+
+        assert!(!exported.preferences.contains_key("corrupted"));
+        assert_eq!(
+            exported.preferences.get("theme"),
+            Some(&serde_json::json!("light"))
+        );
+    }
+
+    /// `import_impl`'s doc comment describes it as an all-or-nothing replace
+    /// of the entire database content, purging every table child-first
+    /// before inserting the snapshot's rows — but every other test here only
+    /// ever imports data that's a superset of (or identical to) what's
+    /// already there, via an export/reimport round trip. None of them would
+    /// catch a purge-order bug that left stale rows behind. This imports a
+    /// snapshot that's strictly *emptier* than the seeded database and
+    /// confirms the old rows are actually gone, not just untouched.
+    #[tokio::test]
+    async fn import_purges_data_absent_from_the_imported_snapshot() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+             VALUES ('stale', 'default', 1, 'movie', 'Stale', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO custom_lists (uuid, profile_id, name, created_at, updated_at)
+             VALUES ('stale-list', 'default', 'Stale List', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let empty_pool = migrated_pool().await;
+        let empty_snapshot = export_impl(&empty_pool).await.unwrap();
+        assert!(empty_snapshot.library.is_empty());
+        assert!(empty_snapshot.custom_lists.is_empty());
+
+        import_impl(&pool, empty_snapshot).await.unwrap();
+
+        let library_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM library_items")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            library_count.0, 0,
+            "stale library item should have been purged"
+        );
+
+        let list_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM custom_lists")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(list_count.0, 0, "stale custom list should have been purged");
+    }
 }
