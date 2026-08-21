@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   biggestBingeDay,
+  computeForecast,
   currentStreak,
   libraryExtras,
   longestStreak,
@@ -18,7 +19,7 @@ import {
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
 import { makeLibraryItem, makeMedia } from "@/shared/test-utils";
-import type { LibraryItem, ViewingEvent } from "@/types/media";
+import type { LibraryItem, TrackedSeriesItem, ViewingEvent } from "@/types/media";
 
 const libraryItem = makeLibraryItem;
 
@@ -40,6 +41,22 @@ const isoDaysAgo = (days: number) => {
   date.setDate(date.getDate() - days);
   return date.toISOString();
 };
+
+const trackedSeries = (overrides: Partial<TrackedSeriesItem> = {}): TrackedSeriesItem => ({
+  id: crypto.randomUUID(),
+  profileId: DEFAULT_PROFILE_ID,
+  seriesId: 1,
+  title: "Test Series",
+  totalEpisodes: 10,
+  watchedEpisodes: 4,
+  createdAt: "2026-01-01",
+  updatedAt: "2026-01-01",
+  ...overrides,
+});
+
+let episodeIdCounter = 0;
+const episodeEvent = (overrides: Partial<ViewingEvent> = {}): ViewingEvent =>
+  event({ mediaType: "series", episodeId: (episodeIdCounter += 1), ...overrides });
 
 describe("currentStreak / libraryExtras", () => {
   // Totals (movies/episodes/minutes watched, completed series, library
@@ -209,6 +226,107 @@ describe("monthOverMonthComparison", () => {
   });
 });
 
+describe("computeForecast", () => {
+  const now = new Date("2026-06-15T00:00:00.000Z");
+
+  it("returns no backlog and a null catch-up date with nothing tracked", () => {
+    const forecast = computeForecast([], [], now);
+
+    expect(forecast).toEqual({
+      backlogEpisodes: 0,
+      backlogMinutes: 0,
+      episodesPerWeek: 0,
+      catchUpDate: null,
+    });
+  });
+
+  it("sums backlog across series, clamping a series with more watched than total to zero", () => {
+    const tracked = [
+      trackedSeries({ totalEpisodes: 10, watchedEpisodes: 4 }), // 6 left
+      trackedSeries({ totalEpisodes: 5, watchedEpisodes: 5 }), // 0 left
+      trackedSeries({ totalEpisodes: 3, watchedEpisodes: 8 }), // over-watched (import artifact) -> 0, not negative
+    ];
+
+    const forecast = computeForecast(tracked, [], now);
+
+    expect(forecast.backlogEpisodes).toBe(6);
+  });
+
+  it("falls back to the default episode runtime when no episode event carries a duration", () => {
+    const tracked = [trackedSeries({ totalEpisodes: 10, watchedEpisodes: 8 })]; // 2 left
+    const events = [episodeEvent({ watchedAt: now.toISOString(), durationMinutes: null })];
+
+    const forecast = computeForecast(tracked, events, now);
+
+    // FALLBACK_EPISODE_MINUTES = 40
+    expect(forecast.backlogMinutes).toBe(80);
+  });
+
+  it("averages the viewer's own recorded episode runtimes instead of the fallback", () => {
+    const tracked = [trackedSeries({ totalEpisodes: 10, watchedEpisodes: 8 })]; // 2 left
+    const events = [
+      episodeEvent({ watchedAt: now.toISOString(), durationMinutes: 20 }),
+      episodeEvent({ watchedAt: now.toISOString(), durationMinutes: 30 }),
+    ];
+
+    const forecast = computeForecast(tracked, events, now);
+
+    // average = 25 minutes/episode * 2 backlog episodes
+    expect(forecast.backlogMinutes).toBe(50);
+  });
+
+  it("ignores movie events, unwatched rollbacks, and durations that aren't positive numbers when averaging", () => {
+    const tracked = [trackedSeries({ totalEpisodes: 10, watchedEpisodes: 9 })]; // 1 left
+    const events = [
+      event({ mediaType: "movie", watchedAt: now.toISOString(), durationMinutes: 200 }), // not an episode
+      episodeEvent({ eventType: "unwatched", watchedAt: now.toISOString(), durationMinutes: 15 }),
+      episodeEvent({ watchedAt: now.toISOString(), durationMinutes: 0 }), // not a usable runtime
+      episodeEvent({ watchedAt: now.toISOString(), durationMinutes: 60 }),
+    ];
+
+    const forecast = computeForecast(tracked, events, now);
+
+    expect(forecast.backlogMinutes).toBe(60);
+  });
+
+  it("counts rewatched episodes toward pace, and computes episodes-per-week over the last 60 days", () => {
+    const tracked = [trackedSeries({ totalEpisodes: 100, watchedEpisodes: 30 })]; // 70 left
+    // 14 episodes across the last 60 days -> 14 / (60/7) = 1.633... -> rounds to 1.6/week
+    const events = Array.from({ length: 14 }, () =>
+      episodeEvent({ eventType: "rewatched", watchedAt: now.toISOString() })
+    );
+
+    const forecast = computeForecast(tracked, events, now);
+
+    expect(forecast.episodesPerWeek).toBe(1.6);
+  });
+
+  it("excludes episode events older than the 60-day pace window", () => {
+    const tracked = [trackedSeries({ totalEpisodes: 10, watchedEpisodes: 5 })];
+    const old = new Date(now);
+    old.setDate(old.getDate() - 61);
+    const events = [episodeEvent({ watchedAt: old.toISOString() })];
+
+    const forecast = computeForecast(tracked, events, now);
+
+    expect(forecast.episodesPerWeek).toBe(0);
+    // No pace to project from, even though there's a backlog.
+    expect(forecast.catchUpDate).toBeNull();
+  });
+
+  it("projects a catch-up date from backlog and recent pace, and omits it once there is no backlog", () => {
+    const tracked = [trackedSeries({ totalEpisodes: 10, watchedEpisodes: 8 })]; // 2 left
+    const events = [episodeEvent({ watchedAt: now.toISOString() })]; // 1 / (60/7) week pace
+
+    const withBacklog = computeForecast(tracked, events, now);
+    expect(withBacklog.catchUpDate).not.toBeNull();
+    expect(new Date(withBacklog.catchUpDate!).getTime()).toBeGreaterThan(now.getTime());
+
+    const caughtUp = computeForecast([trackedSeries({ totalEpisodes: 5, watchedEpisodes: 5 })], events, now);
+    expect(caughtUp.catchUpDate).toBeNull();
+  });
+});
+
 describe("statsRepository.getYearSummary (real SQLite path)", () => {
   vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
   vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
@@ -222,6 +340,10 @@ describe("statsRepository.getYearSummary (real SQLite path)", () => {
     const year = new Date().getFullYear();
 
     await libraryRepository.save(makeMedia({ id: 1, title: "Film A", genres: ["Drame"] }));
+    // A second in-year title/genre so topTitles and favouriteGenre each have
+    // more than one entry to rank — otherwise Array.sort never calls its
+    // comparator on a single-element input and the sort branch goes untested.
+    await libraryRepository.save(makeMedia({ id: 3, title: "Film B", genres: ["Comédie"] }));
 
     await progressRepository.toggleMovieSeen(
       makeMedia({ id: 1, title: "Film A", runtime: 100 }),
@@ -234,6 +356,11 @@ describe("statsRepository.getYearSummary (real SQLite path)", () => {
       `${year}-03-01T00:00:00.000Z`
     );
     await progressRepository.toggleMovieSeen(
+      makeMedia({ id: 3, title: "Film B", runtime: 20 }),
+      true,
+      `${year}-04-01T00:00:00.000Z`
+    );
+    await progressRepository.toggleMovieSeen(
       makeMedia({ id: 2, title: "Hors année" }),
       true,
       `${year - 1}-03-01T00:00:00.000Z`
@@ -241,10 +368,13 @@ describe("statsRepository.getYearSummary (real SQLite path)", () => {
 
     const summary = await repo.getYearSummary(year);
 
-    expect(summary.movies).toBe(2);
-    expect(summary.minutes).toBe(150);
-    expect(summary.activeDays).toBe(2);
+    expect(summary.movies).toBe(3);
+    expect(summary.minutes).toBe(170);
+    expect(summary.activeDays).toBe(3);
     expect(summary.topTitles[0]).toEqual({ title: "Film A", count: 2 });
-    expect(summary.favouriteGenre).toBe("Drame");
+    expect(summary.topTitles).toContainEqual({ title: "Film B", count: 1 });
+    // Both Drame and Comédie appear exactly once (one matching library item
+    // each) — favouriteGenre just needs to be one of the tied candidates.
+    expect(["Drame", "Comédie"]).toContain(summary.favouriteGenre);
   });
 });

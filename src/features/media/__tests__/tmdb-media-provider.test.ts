@@ -389,6 +389,91 @@ describe("TmdbMediaProvider", () => {
     });
   });
 
+  describe("getMovieDetails", () => {
+    it("fetches /movie/:id with credits appended and maps the result", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+      mocks.tmdbFetch.mockResolvedValue(movieDto({ id: 77, title: "Details Movie" }));
+
+      const result = await provider.getMovieDetails(77);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith(
+        "/movie/77",
+        expect.objectContaining({ language: "fr-FR", append_to_response: "credits" })
+      );
+      expect(result).toMatchObject({ id: 77, mediaType: "movie", title: "Details Movie" });
+    });
+  });
+
+  describe("getSeriesDetails", () => {
+    it("fetches /tv/:id with credits appended and maps the result", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "en" }));
+      mocks.tmdbFetch.mockResolvedValue(tvDto({ id: 88, name: "Details Series" }));
+
+      const result = await provider.getSeriesDetails(88);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith(
+        "/tv/88",
+        expect.objectContaining({ language: "en-US", append_to_response: "credits" })
+      );
+      expect(result).toMatchObject({ id: 88, mediaType: "series", title: "Details Series" });
+    });
+  });
+
+  describe("getSeasonDetails", () => {
+    it("fetches /tv/:seriesId/season/:seasonNumber (no append_to_response) and maps the result", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "en" }));
+      mocks.tmdbFetch.mockResolvedValue({
+        id: 501,
+        air_date: "2021-05-01",
+        season_number: 2,
+        name: "Season 2",
+        overview: "overview",
+        poster_path: null,
+        episodes: [
+          {
+            id: 9001,
+            air_date: "2021-05-01",
+            episode_number: 1,
+            name: "Episode 1",
+            overview: "ep overview",
+            runtime: 42,
+            season_number: 2,
+            still_path: null,
+            vote_average: 7.5,
+          },
+        ],
+      });
+
+      const result = await provider.getSeasonDetails(88, 2);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith("/tv/88/season/2", { language: "en-US" });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).not.toHaveProperty("append_to_response");
+      expect(result).toMatchObject({ id: 501, seasonNumber: 2, name: "Season 2", episodeCount: 1 });
+    });
+  });
+
+  describe("getPerson", () => {
+    it("fetches /person/:id with combined_credits appended and maps the result", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+      mocks.tmdbFetch.mockResolvedValue({
+        id: 12,
+        name: "Some Actor",
+        profile_path: null,
+        combined_credits: { cast: [{ ...movieDto({ id: 300 }), media_type: "movie" }] },
+      });
+
+      const result = await provider.getPerson(12);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith(
+        "/person/12",
+        expect.objectContaining({ language: "fr-FR", append_to_response: "combined_credits" })
+      );
+      expect(result).toMatchObject({ id: 12, name: "Some Actor" });
+      expect(result.knownFor).toHaveLength(1);
+      expect(result.knownFor[0]).toMatchObject({ id: 300, mediaType: "movie" });
+    });
+  });
+
   describe("searchPeople", () => {
     it("short-circuits on an empty query without calling tmdbFetch", async () => {
       const result = await provider.searchPeople("  ");

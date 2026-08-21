@@ -80,6 +80,11 @@ const customListsState = {
   isSaving: false,
 };
 const listItemsErrorRefetchMock = vi.fn();
+// Stable across renders (unlike an inline vi.fn() per call) so a test can
+// grab it once and assert on calls made to it after user interaction —
+// ListItemRow re-renders on every state change, and an inline vi.fn() would
+// be a fresh, uninspectable instance each time.
+const listItemRemoveMock = vi.fn();
 const customListItemsMock = vi.fn((listId: string) => {
   if (listId === "list-err") {
     return {
@@ -88,6 +93,17 @@ const customListItemsMock = vi.fn((listId: string) => {
       isError: true,
       error: new Error("list items failed"),
       refetch: listItemsErrorRefetchMock,
+      remove: vi.fn(),
+      isSaving: false,
+    };
+  }
+  if (listId === "list-loading") {
+    return {
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
       remove: vi.fn(),
       isSaving: false,
     };
@@ -122,7 +138,7 @@ const customListItemsMock = vi.fn((listId: string) => {
       isError: false,
       error: null,
       refetch: vi.fn(),
-      remove: vi.fn(),
+      remove: listItemRemoveMock,
       isSaving: false,
     };
   }
@@ -233,10 +249,13 @@ beforeEach(() => {
     customListsState.data = [];
     customListsState.isLoading = false;
     customListsState.isError = false;
+    customListsState.error = null;
+    customListsState.refetch = vi.fn();
     customListsState.create.mockReset().mockResolvedValue(undefined);
     customListsState.remove.mockReset().mockResolvedValue(undefined);
     customListItemsMock.mockClear();
     listItemsErrorRefetchMock.mockReset();
+    listItemRemoveMock.mockReset().mockResolvedValue(undefined);
     updatePreferenceMock.mockReset();
     preferencesDataMock.mockReset().mockReturnValue({ libraryViewMode: "grid" });
 });
@@ -258,6 +277,16 @@ describe("LibraryPage — lists", () => {
 
     expect(await screen.findByTestId("list")).toBeInTheDocument();
     expect(screen.queryByTestId("grid")).not.toBeInTheDocument();
+  });
+
+  it("switches back to grid view via the grid-view toggle button (never clicked elsewhere in this suite)", async () => {
+    preferencesDataMock.mockReturnValue({ libraryViewMode: "list" });
+    renderPage();
+    await screen.findByTestId("list");
+
+    fireEvent.click(screen.getByRole("button", { name: "Grid view" }));
+
+    expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "libraryViewMode", value: "grid" });
   });
 
   it("shows every library item when no list is selected", async () => {
@@ -305,6 +334,183 @@ describe("LibraryPage — lists", () => {
     dialogConfirm.click();
 
     await waitFor(() => expect(customListsState.remove).toHaveBeenCalledWith("list-1"));
+  });
+
+  it("shows a translated error and keeps the typed name/description when list creation rejects", async () => {
+    customListsState.create.mockReset().mockRejectedValueOnce(new Error("boom"));
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    fireEvent.change(await screen.findByLabelText("List name"), { target: { value: "Weekend" } });
+    fireEvent.change(screen.getByLabelText("List description"), { target: { value: "Movies to watch" } });
+
+    const createButton = screen.getByRole("button", { name: "Create" });
+    await waitFor(() => expect(createButton).toBeEnabled());
+    createButton.click();
+
+    expect(await screen.findByText("Operation failed.")).toBeInTheDocument();
+    // Unlike the success path, the inputs are not cleared on failure.
+    expect(screen.getByLabelText("List name")).toHaveValue("Weekend");
+    expect(screen.getByLabelText("List description")).toHaveValue("Movies to watch");
+  });
+
+  it("shows a translated error and leaves the list in place when list deletion rejects", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    customListsState.remove.mockReset().mockRejectedValueOnce(new Error("boom"));
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Delete list Weekend" })).click();
+    (await screen.findByRole("button", { name: "Confirm" })).click();
+
+    expect(await screen.findByText("Operation failed.")).toBeInTheDocument();
+    expect(customListsState.remove).toHaveBeenCalledWith("list-1");
+    expect(screen.getByRole("button", { name: "Weekend" })).toBeInTheDocument();
+  });
+
+  it("resets the active list filter back to All lists when the currently filtered-to list is deleted", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+
+    const select = await screen.findByLabelText<HTMLSelectElement>("Filter by list");
+    fireEvent.change(select, { target: { value: "list-1" } });
+    expect(select.value).toBe("list-1");
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Delete list Weekend" })).click();
+    (await screen.findByRole("button", { name: "Confirm" })).click();
+
+    await waitFor(() => expect(customListsState.remove).toHaveBeenCalledWith("list-1"));
+    await waitFor(() => expect(select.value).toBe("all"));
+  });
+
+  it("cancelling the delete-list ConfirmDialog closes it without calling remove", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Delete list Weekend" })).click();
+    const cancelButton = await screen.findByRole("button", { name: "Cancel" });
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument());
+    expect(customListsState.remove).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Weekend" })).toBeInTheDocument();
+  });
+
+  it("renders a RemoteErrorState with working retry when the custom-lists query itself errors", async () => {
+    customListsState.isError = true;
+    customListsState.error = new Error("lists down");
+    const refetch = vi.fn();
+    customListsState.refetch = refetch;
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    expect(await screen.findByText("Unable to load the catalogue")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists panel)", () => {
+  it("shows a loading state while a newly opened list's items are still loading", async () => {
+    customListsState.data = [{ id: "list-loading", name: "Loading List", description: null }];
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Loading List" })).click();
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Loading…");
+  });
+
+  it("shows its own RemoteErrorState with working retry when the opened list's own items query errors", async () => {
+    customListsState.data = [{ id: "list-err", name: "Broken List", description: null }];
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Broken List" })).click();
+
+    expect(await screen.findByText("Unable to load the catalogue")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(listItemsErrorRefetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the itemsEmpty message when the opened list has no items", async () => {
+    customListsState.data = [{ id: "list-2", name: "Empty List", description: null }];
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Empty List" })).click();
+
+    expect(await screen.findByText("This list is empty.")).toBeInTheDocument();
+  });
+
+  it("toggles a list open and closed when its name is clicked twice", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    const listButton = await screen.findByRole("button", { name: "Weekend" });
+
+    fireEvent.click(listButton);
+    expect(await screen.findByText("Only In List")).toBeInTheDocument();
+
+    fireEvent.click(listButton);
+    await waitFor(() => expect(screen.queryByText("Only In List")).not.toBeInTheDocument());
+  });
+
+  it("removes an item after confirming, calling remove with the right mediaId/mediaType", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Weekend" })).click();
+    await screen.findByText("Only In List");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
+
+    const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });
+    expect(screen.getByText('Remove Only In List from this list?')).toBeInTheDocument();
+    expect(listItemRemoveMock).not.toHaveBeenCalled();
+    dialogConfirm.click();
+
+    await waitFor(() =>
+      expect(listItemRemoveMock).toHaveBeenCalledWith({ mediaId: 10, mediaType: "movie" })
+    );
+  });
+
+  it("shows a translated error when confirming item removal rejects", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    listItemRemoveMock.mockRejectedValueOnce(new Error("boom"));
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Weekend" })).click();
+    await screen.findByText("Only In List");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
+    (await screen.findByRole("button", { name: "Confirm" })).click();
+
+    expect(await screen.findByText("Operation failed.")).toBeInTheDocument();
+  });
+
+  it("cancelling the item-removal ConfirmDialog closes it without calling remove", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Weekend" })).click();
+    await screen.findByText("Only In List");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
+    const cancelButton = await screen.findByRole("button", { name: "Cancel" });
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument());
+    expect(listItemRemoveMock).not.toHaveBeenCalled();
+    // The row itself is still there — only the dialog closed.
+    expect(screen.getByText("Only In List")).toBeInTheDocument();
   });
 });
 

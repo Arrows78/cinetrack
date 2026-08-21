@@ -109,6 +109,14 @@ describe("useMovieDetails / useSeriesDetails / useSeasonDetails", () => {
     expect(getMovieDetailsMock).not.toHaveBeenCalled();
   });
 
+  it("fetches details for a finite movie id", async () => {
+    const { useMovieDetails } = await import("../use-media");
+    const { result } = renderHook(() => useMovieDetails(42), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getMovieDetailsMock).toHaveBeenCalledWith(42);
+  });
+
   it("fetches details for a finite series id", async () => {
     const { useSeriesDetails } = await import("../use-media");
     const { result } = renderHook(() => useSeriesDetails(10), { wrapper: createWrapper() });
@@ -123,6 +131,14 @@ describe("useMovieDetails / useSeriesDetails / useSeasonDetails", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(getSeasonDetailsMock).not.toHaveBeenCalled();
+  });
+
+  it("fetches season details for finite series and season ids", async () => {
+    const { useSeasonDetails } = await import("../use-media");
+    const { result } = renderHook(() => useSeasonDetails(10, 1), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getSeasonDetailsMock).toHaveBeenCalledWith(10, 1);
   });
 });
 

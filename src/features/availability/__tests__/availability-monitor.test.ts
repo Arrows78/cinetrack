@@ -25,6 +25,11 @@ vi.mock("@/features/desktop/notification-service", () => ({
   notificationService: { send: mocks.send },
 }));
 
+const loggerWarn = vi.hoisted(() => vi.fn());
+vi.mock("@/features/diagnostics/logger", () => ({
+  logger: { warn: loggerWarn, error: vi.fn(), info: vi.fn(), debug: vi.fn() },
+}));
+
 import { availabilityMonitor } from "../availability-monitor";
 
 const alert = (overrides: Partial<AvailabilityAlert> = {}): AvailabilityAlert => ({
@@ -93,5 +98,26 @@ describe("availabilityMonitor.checkAll", () => {
 
     expect(mocks.send).not.toHaveBeenCalled();
     expect(changes).toBe(0);
+  });
+
+  it("logs a warning and keeps checking the remaining alerts when one provider request fails", async () => {
+    const failingAlert = alert({ id: "alert-failing", mediaId: 1, title: "Broken" });
+    const okAlert = alert({ id: "alert-ok", mediaId: 42, title: "Arrival" });
+    mocks.listAlerts.mockResolvedValue([failingAlert, okAlert]);
+    mocks.getWatchAvailability.mockImplementation(async (_mediaType: string, mediaId: number) => {
+      if (mediaId === 1) throw new Error("provider request failed");
+      return availability([8]);
+    });
+
+    const changes = await availabilityMonitor.checkAll({ notificationsEnabled: true });
+
+    // The failing alert never reaches saveSnapshot; the healthy one after it
+    // still gets fully processed.
+    expect(loggerWarn).toHaveBeenCalledTimes(1);
+    expect(loggerWarn.mock.calls[0]![0]).toContain("movie 1");
+    expect(mocks.saveSnapshot).toHaveBeenCalledTimes(1);
+    expect(mocks.saveSnapshot).toHaveBeenCalledWith(expect.objectContaining({ mediaId: 42, providerIds: [8] }));
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect(changes).toBe(1);
   });
 });

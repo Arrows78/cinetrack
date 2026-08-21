@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getWatchAvailability: vi.fn(),
   discoverMovies: vi.fn(),
   discoverSeries: vi.fn(),
+  loggerWarn: vi.fn(),
 }));
 
 vi.mock("@/features/library/library-repository", () => ({
@@ -22,6 +23,10 @@ vi.mock("@/features/media/media-repository", () => ({
     discoverMovies: mocks.discoverMovies,
     discoverSeries: mocks.discoverSeries,
   },
+}));
+
+vi.mock("@/features/diagnostics/logger", () => ({
+  logger: { warn: mocks.loggerWarn },
 }));
 
 import { watchTonightService } from "../watch-tonight-service";
@@ -135,5 +140,62 @@ describe("watchTonightService", () => {
     const result = await watchTonightService.pick({ genreSeries: 10765, maxRuntime: 45 });
 
     expect(result.series.map((item) => item.id)).toEqual([30]);
+  });
+
+  it("logs a warning and drops the candidate when getMovieDetails rejects for one planned movie, without failing the whole pick", async () => {
+    mocks.listLibrary.mockResolvedValue([
+      { mediaId: 40, mediaType: "movie", status: "planned" },
+      { mediaId: 41, mediaType: "movie", status: "planned" },
+    ]);
+    mocks.getMovieDetails.mockImplementation((id: number) =>
+      id === 40 ? Promise.reject(new Error("network down")) : Promise.resolve(movie(id))
+    );
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.movies.map((item) => item.id)).toEqual([41]);
+    expect(mocks.discoverMovies).not.toHaveBeenCalled();
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(expect.stringContaining("40"));
+  });
+
+  it("logs a warning and drops the candidate when getSeriesDetails rejects for one planned series, without failing the whole pick", async () => {
+    mocks.listLibrary.mockResolvedValue([
+      { mediaId: 50, mediaType: "series", status: "planned" },
+      { mediaId: 51, mediaType: "series", status: "planned" },
+    ]);
+    mocks.getSeriesDetails.mockImplementation((id: number) =>
+      id === 50 ? Promise.reject(new Error("network down")) : Promise.resolve(series(id))
+    );
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.series.map((item) => item.id)).toEqual([51]);
+    expect(mocks.discoverSeries).not.toHaveBeenCalled();
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(expect.stringContaining("50"));
+  });
+
+  it("caps picks at PICKS_PER_TYPE (4) when more planned candidates match than that, for both movies and series", async () => {
+    mocks.listLibrary.mockResolvedValue([
+      { mediaId: 60, mediaType: "movie", status: "planned" },
+      { mediaId: 61, mediaType: "movie", status: "planned" },
+      { mediaId: 62, mediaType: "movie", status: "planned" },
+      { mediaId: 63, mediaType: "movie", status: "planned" },
+      { mediaId: 64, mediaType: "movie", status: "planned" },
+      { mediaId: 65, mediaType: "movie", status: "planned" },
+      { mediaId: 70, mediaType: "series", status: "planned" },
+      { mediaId: 71, mediaType: "series", status: "planned" },
+      { mediaId: 72, mediaType: "series", status: "planned" },
+      { mediaId: 73, mediaType: "series", status: "planned" },
+      { mediaId: 74, mediaType: "series", status: "planned" },
+    ]);
+    mocks.getMovieDetails.mockImplementation((id: number) => Promise.resolve(movie(id)));
+    mocks.getSeriesDetails.mockImplementation((id: number) => Promise.resolve(series(id)));
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.movies).toHaveLength(4);
+    expect(result.series).toHaveLength(4);
+    expect(mocks.discoverMovies).not.toHaveBeenCalled();
+    expect(mocks.discoverSeries).not.toHaveBeenCalled();
   });
 });
