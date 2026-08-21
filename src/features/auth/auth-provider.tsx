@@ -7,9 +7,9 @@ import {
   authConfig,
   getAuthClient,
   getAuthRedirectUrl,
-  isTauriRuntime,
   type SocialAuthProvider,
 } from "@/features/auth/auth-client";
+import { isTauriApp } from "@/shared/lib/platform";
 import {
   AuthContext,
   type AuthContextValue,
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         code = readAuthCode(callbackUrl);
       } finally {
-        if (!isTauriRuntime() && typeof window !== "undefined") {
+        if (!isTauriApp() && typeof window !== "undefined") {
           window.history.replaceState(null, "", window.location.pathname);
         }
       }
@@ -165,7 +165,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     async function initialize() {
       try {
-        if (isTauriRuntime()) {
+        if (isTauriApp()) {
           const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
 
           unlistenDeepLinks = await onOpenUrl((urls: string[]) => {
@@ -222,7 +222,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setError(null);
 
     try {
-      const desktop = isTauriRuntime();
+      const desktop = isTauriApp();
       const { data, error: oauthError } = await client.auth.signInWithOAuth({
         provider,
         options: {

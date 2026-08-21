@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { isTauriApp } from "@/shared/lib/platform";
+
 export type SocialAuthProvider = "apple" | "facebook" | "google" | "x";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
@@ -24,12 +26,8 @@ export const authConfig = {
 
 let authClient: SupabaseClient | null = null;
 
-export function isTauriRuntime(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
-
 export function getAuthRedirectUrl(): string {
-  if (isTauriRuntime()) {
+  if (isTauriApp()) {
     return import.meta.env.VITE_AUTH_DESKTOP_REDIRECT_URL?.trim() || "cinetrack://auth/callback";
   }
 

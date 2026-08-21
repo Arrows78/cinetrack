@@ -27,19 +27,6 @@ describe("auth-client", () => {
     Reflect.deleteProperty(window, "__TAURI_INTERNALS__");
   });
 
-  describe("isTauriRuntime", () => {
-    it("is false outside a Tauri webview", async () => {
-      const { isTauriRuntime } = await importFresh();
-      expect(isTauriRuntime()).toBe(false);
-    });
-
-    it("is true once __TAURI_INTERNALS__ is present on window", async () => {
-      const { isTauriRuntime } = await importFresh();
-      (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
-      expect(isTauriRuntime()).toBe(true);
-    });
-  });
-
   describe("authConfig", () => {
     it("is not configured when Supabase env vars are missing", async () => {
       const { authConfig } = await importFresh();

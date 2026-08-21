@@ -38,13 +38,16 @@ const fakeClient = {
 };
 
 let mockClient: typeof fakeClient | null = fakeClient;
-let mockIsTauriRuntime = false;
+let mockIsTauriApp = false;
 
 vi.mock("@/features/auth/auth-client", () => ({
   authConfig: { configured: true, required: false },
   getAuthClient: () => mockClient,
   getAuthRedirectUrl: () => "https://cinetrack.app/auth/callback",
-  isTauriRuntime: () => mockIsTauriRuntime,
+}));
+
+vi.mock("@/shared/lib/platform", () => ({
+  isTauriApp: () => mockIsTauriApp,
 }));
 
 // Without this, `initialize()`'s Tauri branch (isTauriRuntime() === true)
@@ -73,7 +76,7 @@ describe("AuthProvider", () => {
     await i18next.changeLanguage("en");
     vi.clearAllMocks();
     mockClient = fakeClient;
-    mockIsTauriRuntime = false;
+    mockIsTauriApp = false;
     onAuthStateChangeMock.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
     getSessionMock.mockResolvedValue({ data: { session: null }, error: null });
   });
@@ -156,7 +159,7 @@ describe("AuthProvider", () => {
     });
 
     it("rejects a non-https authorization URL inside Tauri", async () => {
-      mockIsTauriRuntime = true;
+      mockIsTauriApp = true;
       signInWithOAuthMock.mockResolvedValue({ data: { url: "http://insecure.example" }, error: null });
       const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
       await waitFor(() => expect(result.current.status).toBe("ready"));
