@@ -82,7 +82,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
@@ -94,6 +94,9 @@ jobs:
 
       - name: Lint Rust application
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
       - name: Test Rust application
         run: cargo test --manifest-path src-tauri/Cargo.toml

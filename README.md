@@ -160,28 +160,33 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 
 ## 🛠️ Scripts
 
-| Command               | Description                                                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`            | Starts the Vite development server.                                                                                       |
-| `pnpm build`          | Checks TypeScript types and creates the frontend production build.                                                        |
-| `pnpm preview`        | Serves the Vite production build locally.                                                                                 |
-| `pnpm lint`           | Analyses the project with ESLint.                                                                                         |
-| `pnpm lint:fix`       | Analyses the project with ESLint and applies automatic fixes.                                                             |
-| `pnpm format`         | Formats files with Prettier.                                                                                              |
-| `pnpm format:check`   | Checks formatting without writing changes (what CI runs).                                                                 |
-| `pnpm test`           | Runs the Vitest test suite.                                                                                               |
-| `pnpm test:watch`     | Runs the Vitest test suite in watch mode.                                                                                 |
-| `pnpm test:coverage`  | Runs the test suite with a coverage report.                                                                               |
-| `pnpm typecheck`      | Checks TypeScript types without emitting output.                                                                          |
-| `pnpm validate`       | Runs the full chain above plus the Rust checks — see below.                                                               |
-| `pnpm cargo:check`    | Runs `cargo check` on the Rust side.                                                                                      |
-| `pnpm cargo:clippy`   | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side.                                                        |
-| `pnpm cargo:test`     | Runs `cargo test` on the Rust side.                                                                                       |
-| `pnpm cargo:coverage` | Runs `cargo llvm-cov --branch` for per-file Rust coverage (needs a `nightly` toolchain — see `CLAUDE.md`; not run in CI). |
-| `pnpm tauri dev`      | Starts the desktop application in development mode.                                                                       |
-| `pnpm tauri build`    | Creates desktop bundles for the current platform.                                                                         |
+| Command                   | Description                                                                                                               |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                | Starts the Vite development server.                                                                                       |
+| `pnpm build`              | Checks TypeScript types and creates the frontend production build.                                                        |
+| `pnpm preview`            | Serves the Vite production build locally.                                                                                 |
+| `pnpm lint`               | Analyses the project with ESLint.                                                                                         |
+| `pnpm lint:fix`           | Analyses the project with ESLint and applies automatic fixes.                                                             |
+| `pnpm format`             | Formats files with Prettier.                                                                                              |
+| `pnpm format:check`       | Checks formatting without writing changes (what CI runs).                                                                 |
+| `pnpm test`               | Runs the Vitest test suite.                                                                                               |
+| `pnpm test:watch`         | Runs the Vitest test suite in watch mode.                                                                                 |
+| `pnpm test:coverage`      | Runs the test suite with a coverage report.                                                                               |
+| `pnpm typecheck`          | Checks TypeScript types without emitting output.                                                                          |
+| `pnpm cargo:check`        | Runs `cargo check` on the Rust side.                                                                                      |
+| `pnpm cargo:clippy`       | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side.                                                        |
+| `pnpm cargo:clippy:fix`   | Runs `cargo clippy` on the Rust side and applies automatic fixes.                                                         |
+| `pnpm cargo:format`       | Formats the Rust side with `rustfmt`.                                                                                     |
+| `pnpm cargo:format:check` | Checks Rust formatting without writing changes (what CI runs).                                                            |
+| `pnpm cargo:test`         | Runs `cargo test` on the Rust side.                                                                                       |
+| `pnpm cargo:coverage`     | Runs `cargo llvm-cov --branch` for per-file Rust coverage (needs a `nightly` toolchain — see `CLAUDE.md`; not run in CI). |
+| `pnpm validate:frontend`  | Runs `lint`, `format:check`, `typecheck`, `test:coverage`, and `build`.                                                   |
+| `pnpm validate:backend`   | Runs `cargo:check`, `cargo:clippy`, `cargo:format:check`, and `cargo:test`.                                               |
+| `pnpm validate`           | Runs `validate:frontend` then `validate:backend` — the full chain, and the same checks CI runs.                           |
+| `pnpm tauri dev`          | Starts the desktop application in development mode.                                                                       |
+| `pnpm tauri build`        | Creates desktop bundles for the current platform.                                                                         |
 
-For the Rust side, use `pnpm cargo:check`, `pnpm cargo:clippy`, and `pnpm cargo:test` (all three also run in CI).
+For the Rust side, use `pnpm cargo:check`, `pnpm cargo:clippy`, `pnpm cargo:format:check`, and `pnpm cargo:test` (all four also run in CI).
 
 Generated Tauri bundles are written to `src-tauri/target/release/bundle/`.
 
@@ -297,7 +302,7 @@ Before submitting a change, run:
 pnpm validate
 ```
 
-This chains lint, format:check, typecheck, test, build, and the Rust `cargo check`/`clippy`/`test` — the same checks CI runs.
+This chains lint, format:check, typecheck, test, build, and the Rust `cargo check`/`clippy`/`fmt:check`/`test` — the same checks CI runs.
 
 ## 🎞️ TMDB attribution
 

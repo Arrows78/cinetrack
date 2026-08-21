@@ -14,15 +14,22 @@ pnpm typecheck        # tsc --noEmit
 pnpm test             # vitest run
 pnpm test:watch       # vitest
 pnpm test:coverage    # vitest run --coverage (see per-file thresholds in vitest.config.ts)
-pnpm build            # tsc --noEmit && vite build
+pnpm build            # pnpm typecheck && vite build
 
-pnpm cargo:check      # cargo check (src-tauri)
-pnpm cargo:clippy     # cargo clippy --all-targets -- -D warnings
-pnpm cargo:test       # cargo test
-pnpm cargo:coverage   # cargo +nightly llvm-cov --branch (see the Testing section below)
+pnpm cargo:check         # cargo check (src-tauri)
+pnpm cargo:clippy        # cargo clippy --all-targets -- -D warnings
+pnpm cargo:clippy:fix    # cargo clippy --all-targets --fix -- -D warnings
+pnpm cargo:format        # cargo fmt (rustfmt --write)
+pnpm cargo:format:check  # cargo fmt -- --check (what CI runs)
+pnpm cargo:test          # cargo test
+pnpm cargo:coverage      # cargo +nightly llvm-cov --branch (see the Testing section below)
 
-pnpm validate         # the full chain above — run before considering work done
+pnpm validate:frontend # lint, format:check, typecheck, test:coverage, build
+pnpm validate:backend  # cargo:check, cargo:clippy, cargo:format:check, cargo:test
+pnpm validate           # validate:frontend && validate:backend — run before considering work done
 ```
+
+Scope a check to just the side you touched (`validate:frontend`/`validate:backend`) while iterating — e.g. inside a subagent working on one file, or a parallel batch where each agent should stay scoped and not duplicate the other side's checks. Run the full `pnpm validate` once, centrally, before calling a batch of work done: a change confined to one side can still break something the other side depends on (e.g. a Rust source reformat breaking a TS test that parses that source as text), so the full chain is the only thing that actually proves nothing broke.
 
 Run a single test file: `pnpm vitest run path/to/file.test.ts` (or `pnpm vitest path/to/file.test.ts` in watch mode). Test files are colocated in `__tests__/` next to what they cover.
 
