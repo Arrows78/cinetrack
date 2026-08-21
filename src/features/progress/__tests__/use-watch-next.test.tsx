@@ -54,9 +54,12 @@ vi.mock("@/features/media/media-repository", () => ({
 vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
     getEpisodeProgress: getEpisodeProgressMock,
-    getNextEpisode: getNextEpisodeMock,
     toggleEpisodeSeen: toggleEpisodeSeenMock,
   },
+}));
+
+vi.mock("@/features/progress/progress-utils", () => ({
+  getNextEpisode: getNextEpisodeMock,
 }));
 
 function createWrapper() {

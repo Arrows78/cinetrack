@@ -18,8 +18,8 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 // The catalog's Media card pattern renders a real MediaCard, whose grid-card
 // quick actions (add-to-library/seen toggle) are wired to real data hooks —
 // stub just the two invoke()-backed methods those actions call, keeping
-// every other real export (calculateSeriesProgress, getNextEpisode, ...)
-// intact for whatever else in this 60+ component catalog might use them.
+// every other real export intact for whatever else in this 60+ component
+// catalog might use them.
 vi.mock("@/features/library/library-repository", async (importOriginal) => {
   const actual = await importOriginal<typeof LibraryRepositoryModule>();
   return {

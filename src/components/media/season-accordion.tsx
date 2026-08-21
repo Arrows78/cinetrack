@@ -11,7 +11,7 @@ import { useConfetti } from "@/hooks/use-confetti";
 import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
 import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
-import { progressRepository } from "@/features/progress/progress-repository";
+import { calculateSeriesProgress } from "@/features/progress/progress-utils";
 
 /* Episode filmstrip — each episode is a sprocket-hole perforation; watched
    ones are "lit up" in the accent color, like exposed frames. Shows watch
@@ -57,7 +57,7 @@ export function SeasonAccordion({
   const { t } = useTranslation();
   const { celebrate } = useConfetti();
   const watchedSet = useMemo(() => new Set(watchedEpisodes.map((item) => item.episodeId)), [watchedEpisodes]);
-  const progress = progressRepository.calculateSeriesProgress(series.id, seasons, watchedEpisodes);
+  const progress = calculateSeriesProgress(series.id, seasons, watchedEpisodes);
 
   /* Handler that detects season completion and fires confetti */
   const handleToggleEpisode = async (season: Season, episode: Season["episodes"][number], watched: boolean) => {

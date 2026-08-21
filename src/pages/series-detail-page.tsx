@@ -24,7 +24,7 @@ import { EmptyState } from "@/components/states/empty-state";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useEpisodeProgress, useRefreshTrackedSeriesStatus, useTrackedSeries } from "@/features/progress/use-progress";
 import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
-import { progressRepository } from "@/features/progress/progress-repository";
+import { calculateSeriesProgress, getNextEpisode } from "@/features/progress/progress-utils";
 
 export function SeriesDetailPage() {
   const { t } = useTranslation();
@@ -78,8 +78,8 @@ export function SeriesDetailPage() {
     seasonNumbers.length > 0 &&
     seasons.length === seasonNumbers.length &&
     seasonQueries.every((query) => !query.isPending && !query.isError);
-  const progress = progressRepository.calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
-  const nextEpisode = progressRepository.getNextEpisode(seasons, progressQuery.data ?? []);
+  const progress = calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
+  const nextEpisode = getNextEpisode(seasons, progressQuery.data ?? []);
 
   return (
     <div className="space-y-8">

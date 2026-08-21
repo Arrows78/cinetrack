@@ -2,6 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { episodeProgressKeys } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
+import { getNextEpisode } from "@/features/progress/progress-utils";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_30_MIN } from "@/shared/constants/query";
@@ -54,7 +55,7 @@ async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
   const seasons = await Promise.all(
     candidates.map((seasonNumber) => mediaRepository.getSeasonDetails(seriesId, seasonNumber))
   );
-  return progressRepository.getNextEpisode(seasons, progress);
+  return getNextEpisode(seasons, progress);
 }
 
 /**
