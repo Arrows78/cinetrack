@@ -50,7 +50,11 @@ function extractRustMigrations(source: string): ParsedMigration[] {
   // split below sees a consistent block shape for every migration,
   // including the first.
   const blockStart = source.lastIndexOf("Migration {", start);
-  const blocks = source.slice(blockStart, end).split("\n}, Migration {");
+  // Whitespace-tolerant on purpose: rustfmt controls the exact indentation
+  // of "}, Migration {" (e.g. 4 spaces once inside the `&[...]` array), and
+  // this split shouldn't silently stop matching every migration after the
+  // next `cargo fmt` run just because indentation shifted.
+  const blocks = source.slice(blockStart, end).split(/\n\s*\},\s*\n\s*Migration\s*\{/);
 
   return blocks.map((block) => {
     const versionMatch = /version:\s*(\d+)/.exec(block);
