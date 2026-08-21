@@ -256,6 +256,7 @@ pub async fn list_history(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -521,5 +522,67 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(list_history_impl(&pool, 50, None).await.unwrap().len(), 1);
+    }
+
+    // `list_history` (the `#[tauri::command]` wrapper) only adds the
+    // `Option` defaulting/zip on top of `list_history_impl`, already
+    // thoroughly exercised above — cover it through a real
+    // `tauri::test::mock_app()` state handle, see profiles.rs's
+    // `list_profiles_command_returns_the_default_profile` for the pattern.
+
+    #[tokio::test]
+    async fn list_history_wrapper_returns_seeded_entries_for_the_active_profile() {
+        let pool = migrated_pool().await;
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("1", "2026-01-01T00:00:00.000Z", "First"),
+        )
+        .await
+        .unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("2", "2026-01-02T00:00:00.000Z", "Second"),
+        )
+        .await
+        .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let list = list_history(None, None, None, state).await.unwrap();
+
+        assert_eq!(
+            list.into_iter().map(|item| item.title).collect::<Vec<_>>(),
+            vec!["Second", "First"]
+        );
+    }
+
+    #[tokio::test]
+    async fn list_history_wrapper_threads_the_limit_parameter_through() {
+        let pool = migrated_pool().await;
+        for index in 0..3 {
+            add_history_item_impl(
+                &pool,
+                &pool,
+                entry(
+                    &index.to_string(),
+                    &format!("2026-01-0{}T00:00:00.000Z", index + 1),
+                    "Title",
+                ),
+            )
+            .await
+            .unwrap();
+        }
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let list = list_history(Some(1), None, None, state).await.unwrap();
+
+        assert_eq!(list.len(), 1);
     }
 }

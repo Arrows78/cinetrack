@@ -622,6 +622,7 @@ mod tests {
     use super::*;
     use crate::commands::history::list_history_impl;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -1086,5 +1087,83 @@ mod tests {
 
         let history = list_history_impl(&pool, 50, None).await.unwrap();
         assert_eq!(history.len(), 1);
+    }
+
+    // --- tauri::command wrapper coverage -----------------------------
+    //
+    // These wrappers just resolve the active profile and delegate to an
+    // already-tested `_impl` function, so these are thin happy-path checks
+    // that the wrapper wiring itself (tauri::State extraction, profile
+    // resolution, `patch.unwrap_or_default()`) works — not a re-test of the
+    // underlying business logic.
+
+    #[tokio::test]
+    async fn save_library_item_command_with_some_patch_applies_it() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let patch = LibraryPatch {
+            status: Some(LibraryStatus::Watching),
+            ..Default::default()
+        };
+        let item = save_library_item(media(7), Some(patch), state)
+            .await
+            .unwrap();
+
+        assert_eq!(item.status, LibraryStatus::Watching);
+        assert!(item.started_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn save_library_item_command_with_no_patch_defaults_to_planned() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let item = save_library_item(media(7), None, state).await.unwrap();
+
+        assert_eq!(item.status, LibraryStatus::Planned);
+        assert!(!item.favourite);
+    }
+
+    #[tokio::test]
+    async fn list_library_command_returns_a_saved_item() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        save_library_item(media(7), None, state.clone())
+            .await
+            .unwrap();
+
+        let items = list_library(state).await.unwrap();
+        assert!(items.iter().any(|item| item.media_id == 7));
+    }
+
+    #[tokio::test]
+    async fn remove_library_item_command_deletes_the_item() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        save_library_item(media(7), None, state.clone())
+            .await
+            .unwrap();
+
+        remove_library_item(7, MediaType::Movie, state.clone())
+            .await
+            .unwrap();
+
+        assert!(
+            get_library_item(7, MediaType::Movie, state)
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 }

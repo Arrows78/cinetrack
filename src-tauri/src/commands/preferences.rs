@@ -353,6 +353,7 @@ pub fn refresh_preferences(cache: State<'_, PreferencesCache>) {
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -576,5 +577,97 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(updated.active_profile_id, "default");
+    }
+
+    #[tokio::test]
+    async fn get_preferences_command_returns_the_defaults() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        app.manage(PreferencesCache::default());
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache_state: State<'_, PreferencesCache> = app.state();
+
+        let prefs = get_preferences(pool_state, cache_state).await.unwrap();
+        assert_eq!(prefs.active_profile_id, "default");
+    }
+
+    #[tokio::test]
+    async fn update_preference_command_rejects_active_profile_id() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        app.manage(PreferencesCache::default());
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache_state: State<'_, PreferencesCache> = app.state();
+
+        let result = update_preference(
+            "activeProfileId".to_string(),
+            Value::String("alex".to_string()),
+            pool_state,
+            cache_state,
+        )
+        .await;
+
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("activeProfileId must be set via set_active_profile")
+        );
+    }
+
+    #[tokio::test]
+    async fn update_preference_command_writes_a_normal_key() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        app.manage(PreferencesCache::default());
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache_state: State<'_, PreferencesCache> = app.state();
+
+        let updated = update_preference(
+            "libraryViewMode".to_string(),
+            Value::String("list".to_string()),
+            pool_state,
+            cache_state,
+        )
+        .await
+        .unwrap();
+
+        assert!(matches!(updated.library_view_mode, LibraryViewMode::List));
+    }
+
+    #[tokio::test]
+    async fn set_active_profile_command_switches_the_active_profile() {
+        let pool = migrated_pool().await;
+        sqlx::query("INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('alex', 'Alex', 'now', 'now')")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        app.manage(PreferencesCache::default());
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache_state: State<'_, PreferencesCache> = app.state();
+
+        let updated = set_active_profile("alex".to_string(), None, pool_state, cache_state)
+            .await
+            .unwrap();
+        assert_eq!(updated.active_profile_id, "alex");
+    }
+
+    #[tokio::test]
+    async fn refresh_preferences_command_clears_the_cache() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+        get_preferences_cached(&pool, &cache).await.unwrap();
+        assert!(cache.0.lock().unwrap().is_some());
+
+        let app = tauri::test::mock_app();
+        app.manage(cache);
+        let cache_state: State<'_, PreferencesCache> = app.state();
+
+        refresh_preferences(cache_state);
+        assert!(app.state::<PreferencesCache>().0.lock().unwrap().is_none());
     }
 }

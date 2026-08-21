@@ -231,6 +231,7 @@ pub async fn remove_profile(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -242,6 +243,16 @@ mod tests {
             .await
             .unwrap();
         pool
+    }
+
+    #[tokio::test]
+    async fn list_profiles_command_returns_the_default_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let profiles = list_profiles(state).await.unwrap();
+        assert!(profiles.iter().any(|p| p.id == "default"));
     }
 
     #[tokio::test]
@@ -432,5 +443,64 @@ mod tests {
 
         let result = link_to_supabase_user_impl(&pool, &second.id, "user-1").await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn create_profile_command_creates_a_new_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let created = create_profile("Alex".to_string(), None, None, state)
+            .await
+            .unwrap();
+        assert_eq!(created.name, "Alex");
+    }
+
+    #[tokio::test]
+    async fn find_profile_by_supabase_user_id_command_returns_none_when_unclaimed() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let found = find_profile_by_supabase_user_id("user-1".to_string(), state)
+            .await
+            .unwrap();
+        assert!(found.is_none());
+    }
+
+    #[tokio::test]
+    async fn link_profile_to_supabase_user_command_links_the_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let linked =
+            link_profile_to_supabase_user("default".to_string(), "user-1".to_string(), state)
+                .await
+                .unwrap();
+        assert_eq!(linked.supabase_user_id.as_deref(), Some("user-1"));
+    }
+
+    #[tokio::test]
+    async fn resolve_profile_for_supabase_user_command_claims_the_default_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let resolved = resolve_profile_for_supabase_user("user-1".to_string(), state)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(resolved.id, "default");
+    }
+
+    #[tokio::test]
+    async fn remove_profile_command_refuses_to_remove_the_default_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        assert!(remove_profile("default".to_string(), state).await.is_err());
     }
 }

@@ -304,6 +304,7 @@ pub async fn save_availability_snapshot(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -591,5 +592,108 @@ mod tests {
             duplicate.is_err(),
             "the UNIQUE index on (profile_id, media_id, media_type) should reject this insert"
         );
+    }
+
+    #[tokio::test]
+    async fn remove_availability_alert_command_removes_the_callers_alert() {
+        let pool = migrated_pool().await;
+        let alert = toggle_impl(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Alerte"),
+            "FR".to_string(),
+            vec![8],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        remove_availability_alert(alert.id.clone(), state)
+            .await
+            .unwrap();
+
+        assert!(
+            get_alert_impl(&app.state::<SqlitePool>(), "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn get_availability_snapshot_command_returns_a_saved_snapshot() {
+        let pool = migrated_pool().await;
+        save_snapshot_impl(
+            &pool,
+            AvailabilitySnapshot {
+                media_id: 1,
+                media_type: MediaType::Movie,
+                region: "FR".to_string(),
+                provider_ids: vec![8],
+                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let snapshot = get_availability_snapshot(1, MediaType::Movie, "FR".to_string(), state)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(snapshot.provider_ids, vec![8]);
+    }
+
+    #[tokio::test]
+    async fn save_availability_snapshot_command_persists_the_snapshot() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        save_availability_snapshot(
+            AvailabilitySnapshot {
+                media_id: 1,
+                media_type: MediaType::Movie,
+                region: "FR".to_string(),
+                provider_ids: vec![119],
+                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
+            },
+            state,
+        )
+        .await
+        .unwrap();
+
+        let snapshot = get_snapshot_impl(&app.state::<SqlitePool>(), 1, MediaType::Movie, "FR")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(snapshot.provider_ids, vec![119]);
+    }
+
+    #[tokio::test]
+    async fn list_availability_alerts_command_returns_the_callers_alerts() {
+        let pool = migrated_pool().await;
+        toggle_impl(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Alerte"),
+            "FR".to_string(),
+            vec![8],
+        )
+        .await
+        .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let alerts = list_availability_alerts(state).await.unwrap();
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].media_id, 7);
     }
 }

@@ -738,6 +738,7 @@ pub async fn check_data_integrity(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -1409,5 +1410,46 @@ mod tests {
             "unexpected error message: {}",
             err.message
         );
+    }
+
+    // ------------------------------------------------------------------
+    // #[tauri::command] wrapper tests — these three are pure one-line
+    // delegations to already-tested `_impl` functions above, so each just
+    // needs a minimal happy-path call through a real `tauri::State` (built
+    // via `tauri::test::mock_app()`, see profiles.rs's
+    // `list_profiles_command_returns_the_default_profile` for the same
+    // shape) to close the wrapper-line coverage gap.
+    // ------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn export_backup_data_command_returns_portable_data() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let data = export_backup_data(state).await.unwrap();
+        assert!(!data.profiles.is_empty());
+    }
+
+    #[tokio::test]
+    async fn import_backup_data_command_reimports_an_exported_snapshot() {
+        let pool = migrated_pool().await;
+        let data = export_impl(&pool).await.unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let result = import_backup_data(data, state).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn check_data_integrity_command_reports_healthy_on_a_fresh_database() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let check = check_data_integrity(state).await.unwrap();
+        assert!(check.healthy);
     }
 }

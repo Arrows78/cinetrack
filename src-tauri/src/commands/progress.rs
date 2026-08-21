@@ -665,6 +665,7 @@ pub async fn refresh_tracked_series_status(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -1560,5 +1561,85 @@ mod tests {
 
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         assert!(tracked.iter().all(|item| item.series_id != 404));
+    }
+
+    // --- tauri::command wrapper coverage -----------------------------
+    //
+    // The wrappers above (toggle_movie_seen, toggle_episodes_watched) and a
+    // couple of the profile_scoped_command!-generated ones just resolve the
+    // active profile and delegate straight to an already-tested `_impl`
+    // function, so these are thin happy-path checks that the wrapper wiring
+    // itself (tauri::State extraction, profile resolution) works — not a
+    // re-test of the underlying business logic.
+
+    #[tokio::test]
+    async fn toggle_movie_seen_command_marks_a_movie_watched() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        toggle_movie_seen(
+            movie(1),
+            true,
+            "2026-01-01T00:00:00.000Z".to_string(),
+            state.clone(),
+        )
+        .await
+        .unwrap();
+
+        assert!(is_movie_seen(1, state).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn toggle_episodes_watched_command_marks_episodes_watched_and_logs_history() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let history = EpisodeHistoryInput {
+            action: HistoryAction::EpisodeWatched,
+            season_number: Some(1),
+            episode_number: Some(1),
+            episode_title: Some("Pilot".to_string()),
+        };
+
+        let changed = toggle_episodes_watched(
+            series(9, None),
+            vec![episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z".to_string(),
+            Some(history),
+            state.clone(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(changed, 1);
+        let progress = get_episode_progress(9, state).await.unwrap();
+        assert_eq!(progress.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn list_tracked_series_command_returns_a_series_tracked_via_the_toggle_command() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        toggle_episodes_watched(
+            series(9, None),
+            vec![episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z".to_string(),
+            None,
+            state.clone(),
+        )
+        .await
+        .unwrap();
+
+        let tracked = list_tracked_series(state).await.unwrap();
+        assert!(tracked.iter().any(|item| item.series_id == 9));
     }
 }

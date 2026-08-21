@@ -351,6 +351,7 @@ pub async fn remove_custom_list_item(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -540,5 +541,110 @@ mod tests {
             1
         );
         assert_eq!(list_impl(&pool, "default").await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn create_custom_list_command_creates_a_list_for_the_active_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let list = create_custom_list("Ma liste".to_string(), None, state)
+            .await
+            .unwrap();
+        assert_eq!(list.name, "Ma liste");
+        assert_eq!(list.profile_id, "default");
+    }
+
+    #[tokio::test]
+    async fn remove_custom_list_command_removes_the_callers_list() {
+        let pool = migrated_pool().await;
+        let list = create_impl(&pool, "default", "À supprimer", None)
+            .await
+            .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        remove_custom_list(list.id.clone(), state).await.unwrap();
+
+        assert_eq!(
+            list_impl(&app.state::<SqlitePool>(), "default")
+                .await
+                .unwrap()
+                .len(),
+            0
+        );
+    }
+
+    #[tokio::test]
+    async fn list_custom_list_items_command_returns_the_lists_items() {
+        let pool = migrated_pool().await;
+        let list = create_impl(&pool, "default", "Ma liste", None)
+            .await
+            .unwrap();
+        add_impl(&pool, "default", &list.id, media(1, "Un"))
+            .await
+            .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let items = list_custom_list_items(list.id.clone(), state)
+            .await
+            .unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].media_id, 1);
+    }
+
+    #[tokio::test]
+    async fn add_custom_list_item_command_adds_the_item_to_the_list() {
+        let pool = migrated_pool().await;
+        let list = create_impl(&pool, "default", "Ma liste", None)
+            .await
+            .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        add_custom_list_item(list.id.clone(), media(1, "Un"), state)
+            .await
+            .unwrap();
+
+        let items = items_impl(&app.state::<SqlitePool>(), "default", &list.id)
+            .await
+            .unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].media_id, 1);
+    }
+
+    #[tokio::test]
+    async fn remove_custom_list_item_command_removes_only_the_named_item() {
+        let pool = migrated_pool().await;
+        let list = create_impl(&pool, "default", "Ma liste", None)
+            .await
+            .unwrap();
+        add_impl(&pool, "default", &list.id, media(1, "Un"))
+            .await
+            .unwrap();
+        add_impl(&pool, "default", &list.id, media(2, "Deux"))
+            .await
+            .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        remove_custom_list_item(list.id.clone(), 1, MediaType::Movie, state)
+            .await
+            .unwrap();
+
+        let items = items_impl(&app.state::<SqlitePool>(), "default", &list.id)
+            .await
+            .unwrap();
+        assert_eq!(
+            items.iter().map(|i| i.media_id).collect::<Vec<_>>(),
+            vec![2]
+        );
     }
 }

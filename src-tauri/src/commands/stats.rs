@@ -374,6 +374,7 @@ pub async fn list_yearly_activity(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -777,5 +778,96 @@ mod tests {
                 minutes_watched: 100
             }]
         );
+    }
+
+    // The `#[tauri::command]` wrappers below only add profile resolution on
+    // top of the `_impl` functions already thoroughly exercised above, so a
+    // single happy-path call through a real `tauri::test::mock_app()` state
+    // handle is enough per wrapper — see profiles.rs's
+    // `list_profiles_command_returns_the_default_profile` for the pattern.
+
+    #[tokio::test]
+    async fn list_recent_viewing_events_wrapper_returns_events_for_the_active_profile() {
+        let pool = migrated_pool().await;
+        insert_event(
+            &pool,
+            "recent",
+            "2026-06-01T00:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let events = list_recent_viewing_events("2026-01-01T00:00:00.000Z".to_string(), state)
+            .await
+            .unwrap();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id, "recent");
+    }
+
+    #[tokio::test]
+    async fn list_viewing_events_for_year_wrapper_returns_an_empty_list_for_a_fresh_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let events = list_viewing_events_for_year(
+            "2026-01-01T00:00:00.000Z".to_string(),
+            "2027-01-01T00:00:00.000Z".to_string(),
+            state,
+        )
+        .await
+        .unwrap();
+
+        assert!(events.is_empty());
+    }
+
+    #[tokio::test]
+    async fn get_stats_overview_wrapper_returns_zeroed_totals_for_a_fresh_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let overview = get_stats_overview(
+            "2026-01-01T00:00:00.000Z".to_string(),
+            vec!["2026-01".to_string()],
+            state,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(overview.totals.movies_watched, 0);
+        assert_eq!(overview.totals.episodes_watched, 0);
+        assert_eq!(overview.totals.minutes_watched, 0);
+        assert_eq!(overview.totals.library_completion_percent, 0);
+        assert_eq!(
+            overview.monthly_activity,
+            vec![MonthlyActivityBucket {
+                month: "2026-01".into(),
+                count: 0,
+                minutes: 0
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn list_yearly_activity_wrapper_returns_an_empty_list_for_a_fresh_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let yearly = list_yearly_activity(state).await.unwrap();
+
+        assert!(yearly.is_empty());
     }
 }
