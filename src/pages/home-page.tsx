@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -26,7 +27,10 @@ export function HomePage() {
   const { t } = useTranslation();
   const homeQuery = useHomeFeed();
   const libraryQuery = useLibrary();
-  const plannedCount = (libraryQuery.data ?? []).filter((item) => item.status === "planned").length;
+  const plannedCount = useMemo(
+    () => (libraryQuery.data ?? []).filter((item) => item.status === "planned").length,
+    [libraryQuery.data]
+  );
   const trackedSeriesQuery = useTrackedSeries();
   const historyQuery = useHistory();
   const watchNext = useWatchNext(trackedSeriesQuery.data ?? []);
