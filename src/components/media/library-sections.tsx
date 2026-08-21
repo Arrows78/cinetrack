@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Check, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { SectionHeader } from "@/components/media/section-header";
+import { SeenToggleButton } from "@/components/media/seen-toggle-button";
 import { WatchNextRow } from "@/components/media/watch-next-section";
 import { MediaGrid, type MediaGridItem } from "@/components/media/media-grid";
 import { useSeasonDetails } from "@/features/media/use-media";
@@ -10,7 +11,6 @@ import { useNextEpisodes, type NextEpisodeResult } from "@/features/progress/use
 import { useEpisodeProgress, useMovieSeen } from "@/features/progress/use-progress";
 import { useHistory } from "@/features/history/use-history";
 import { buildTmdbImageUrl, formatEpisodeCode, formatRelativeDate } from "@/shared/utils/format";
-import { cn } from "@/shared/lib/cn";
 import type { HistoryAction, MediaSummary, MediaType, TrackedSeriesItem, ViewingHistoryItem } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
@@ -111,17 +111,7 @@ function EpisodeRowSection({
 function MovieWatchNextRow({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const seenQuery = useMovieSeen(media.id);
-  const [justChecked, setJustChecked] = useState(false);
   const poster = buildTmdbImageUrl(media.posterPath, "w185") ?? fallbackPoster;
-
-  const handleCheck = async () => {
-    setJustChecked(true);
-    try {
-      await seenQuery.toggleMovieSeen({ movie: media, watched: true });
-    } finally {
-      setJustChecked(false);
-    }
-  };
 
   return (
     <div className="surface flex items-center gap-4 overflow-hidden rounded-card p-3 pr-4">
@@ -140,21 +130,11 @@ function MovieWatchNextRow({ media }: { media: MediaSummary }) {
         </div>
       </Link>
 
-      <button
-        type="button"
-        disabled={seenQuery.isSaving}
-        onClick={() => void handleCheck()}
-        aria-label={t("media.markAsSeen")}
-        title={t("media.markAsSeen")}
-        className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          justChecked
-            ? "border-success bg-success text-success-foreground"
-            : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
-        )}
-      >
-        {seenQuery.isSaving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-      </button>
+      <SeenToggleButton
+        isSaving={seenQuery.isSaving}
+        onToggle={() => seenQuery.toggleMovieSeen({ movie: media, watched: true })}
+        seen={Boolean(seenQuery.data)}
+      />
     </div>
   );
 }

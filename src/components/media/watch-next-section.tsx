@@ -1,27 +1,14 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Check, LoaderCircle } from "lucide-react";
 import { SectionHeader } from "@/components/media/section-header";
+import { SeenToggleButton } from "@/components/media/seen-toggle-button";
 import { useMarkWatchNext, type WatchNextEntry } from "@/features/progress/use-watch-next";
 import { buildTmdbImageUrl, formatEpisodeCode } from "@/shared/utils/format";
-import { cn } from "@/shared/lib/cn";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
 
 export function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
-  const { t } = useTranslation();
   const { markWatched, isSaving } = useMarkWatchNext();
-  const [justChecked, setJustChecked] = useState(false);
   const poster = buildTmdbImageUrl(entry.series.posterPath, "w185") ?? fallbackPoster;
-
-  const handleCheck = async () => {
-    setJustChecked(true);
-    try {
-      await markWatched({ series: entry.series, episode: entry.nextEpisode });
-    } finally {
-      setJustChecked(false);
-    }
-  };
 
   return (
     <div className="surface flex items-center gap-4 overflow-hidden rounded-card p-3 pr-4">
@@ -48,21 +35,10 @@ export function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
         </div>
       </Link>
 
-      <button
-        type="button"
-        disabled={isSaving}
-        onClick={() => void handleCheck()}
-        aria-label={t("media.markAsSeen")}
-        title={t("media.markAsSeen")}
-        className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          justChecked
-            ? "border-success bg-success text-success-foreground"
-            : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
-        )}
-      >
-        {isSaving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-      </button>
+      <SeenToggleButton
+        isSaving={isSaving}
+        onToggle={() => markWatched({ series: entry.series, episode: entry.nextEpisode })}
+      />
     </div>
   );
 }

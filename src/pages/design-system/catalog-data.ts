@@ -783,6 +783,14 @@ export const componentInventory = [
     "Toggles watched state for a movie or episode."
   ),
   component(
+    "SeenToggleButton",
+    "components/media/seen-toggle-button.tsx",
+    "Media",
+    "feature",
+    "live",
+    "Circular 'mark as seen' toggle button for inline use in rows and cards."
+  ),
+  component(
     "StatCard",
     "components/media/stat-card.tsx",
     "Media",
