@@ -503,14 +503,6 @@ export const componentInventory = [
     "Provides keyboard-first navigation and global actions."
   ),
   component(
-    "TokenGate",
-    "components/desktop/token-gate.tsx",
-    "Desktop",
-    "infrastructure",
-    "internal",
-    "Blocks protected desktop flows until the local token is available."
-  ),
-  component(
     "BootRecoveryGate",
     "components/desktop/boot-recovery-gate.tsx",
     "Desktop",

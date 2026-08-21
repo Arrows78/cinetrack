@@ -329,7 +329,9 @@
     "description": "CineTrack couldn't open your existing data, so it started fresh to get you back up and running. Your previous file was kept, untouched, in case you need it — restore your last automatic backup now, or continue with a clean slate.",
     "restoreCta": "Restore last automatic backup",
     "continueCta": "Continue with a fresh start",
-    "restoreFailed": "Couldn't restore the automatic backup."
+    "restoreFailed": "Couldn't restore the automatic backup.",
+    "blockedTitle": "CineTrack can't safely open right now",
+    "blockedDescription": "A problem was found with your local database. Nothing has been deleted or changed — CineTrack stopped here on purpose rather than risk writing to a database that might not be in the state it expects. Restore your last automatic backup, or open diagnostics for details."
   },
   "profileGate": {
     "resolving": "Loading your profile…",
@@ -491,18 +493,6 @@
   },
   "browserPreview": {
     "message": "Browser preview — SQLite data isn't available outside the Tauri window."
-  },
-  "tokenGate": {
-    "title": "Connect CineTrack to TMDB",
-    "description": "On desktop, the token is encrypted in Stronghold. The vault password stays in memory only for this session.",
-    "noToken": "No token is registered in this vault yet.",
-    "openFailed": "Cannot open the vault.",
-    "passwordPlaceholder": "Vault password",
-    "passwordLabel": "Vault password",
-    "tokenPlaceholder": "TMDB Bearer token — leave empty to unlock an existing vault",
-    "tokenLabel": "TMDB Bearer token",
-    "saveAndOpen": "Save and open",
-    "unlock": "Unlock"
   },
   "commandPalette": {
     "searchPlaceholder": "Search for a page, an action, or a title…",

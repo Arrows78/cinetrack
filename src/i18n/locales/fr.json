@@ -329,7 +329,9 @@
     "description": "CineTrack n'a pas pu ouvrir vos données existantes, donc l'application a redémarré sur une base vierge pour vous permettre de continuer. Votre ancien fichier a été conservé, intact, au cas où vous en auriez besoin — restaurez votre dernière sauvegarde automatique maintenant, ou continuez avec une base vierge.",
     "restoreCta": "Restaurer la dernière sauvegarde automatique",
     "continueCta": "Continuer avec une base vierge",
-    "restoreFailed": "Impossible de restaurer la sauvegarde automatique."
+    "restoreFailed": "Impossible de restaurer la sauvegarde automatique.",
+    "blockedTitle": "CineTrack ne peut pas s'ouvrir en toute sécurité pour l'instant",
+    "blockedDescription": "Un problème a été détecté avec votre base de données locale. Rien n'a été supprimé ni modifié — CineTrack s'est arrêté ici volontairement plutôt que de risquer d'écrire dans une base qui pourrait ne pas être dans l'état attendu. Restaurez votre dernière sauvegarde automatique, ou ouvrez les diagnostics pour plus de détails."
   },
   "profileGate": {
     "resolving": "Chargement de votre profil…",
@@ -491,18 +493,6 @@
   },
   "browserPreview": {
     "message": "Aperçu navigateur — les données SQLite ne sont pas disponibles en dehors de la fenêtre Tauri."
-  },
-  "tokenGate": {
-    "title": "Connecter CineTrack à TMDB",
-    "description": "Sur desktop, le token est chiffré dans Stronghold. Le mot de passe du coffre reste uniquement en mémoire pour cette session.",
-    "noToken": "Aucun token n'est encore enregistré dans ce coffre.",
-    "openFailed": "Impossible d'ouvrir le coffre.",
-    "passwordPlaceholder": "Mot de passe du coffre",
-    "passwordLabel": "Mot de passe du coffre",
-    "tokenPlaceholder": "Token Bearer TMDB — laissez vide pour déverrouiller un coffre existant",
-    "tokenLabel": "Token Bearer TMDB",
-    "saveAndOpen": "Enregistrer et ouvrir",
-    "unlock": "Déverrouiller"
   },
   "commandPalette": {
     "searchPlaceholder": "Rechercher une page, une action, ou un titre…",

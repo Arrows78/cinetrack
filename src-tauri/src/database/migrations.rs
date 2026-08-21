@@ -373,7 +373,7 @@ fn expected_tables() -> Vec<&'static str> {
 /// skip every migration (version already at the latest) and the real
 /// problem would only surface much later, as a confusing "no such table"
 /// error from whichever command happens to run first.
-async fn verify_critical_tables(pool: &SqlitePool) -> Result<(), ApiError> {
+pub(crate) async fn verify_critical_tables(pool: &SqlitePool) -> Result<(), ApiError> {
     let existing: Vec<String> = sqlx::query_scalar(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
     )
@@ -401,7 +401,23 @@ async fn verify_critical_tables(pool: &SqlitePool) -> Result<(), ApiError> {
 /// already created (same `PRAGMA user_version` bookkeeping, same tolerance
 /// for `duplicate column` errors on `ALTER TABLE`). On an existing database
 /// already at the latest version this is a no-op.
+///
+/// Split into `apply_pending_migrations` + `verify_critical_tables` (this is
+/// just the two chained together) so `database::mod::init_pool_at` can react
+/// differently to each: a migration statement failing is almost always an
+/// app-code bug, and every migration before it already committed, so the
+/// file is left at a valid prior schema version, untouched by the failure —
+/// very different from `verify_critical_tables` failing, which means the
+/// file itself looks broken despite claiming to be fully migrated. Treating
+/// both the same (the old behavior) meant a bad migration statement could
+/// quarantine and replace a perfectly intact database, which looks like
+/// total data loss for what's really a fixable app problem.
 pub async fn run_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
+    apply_pending_migrations(pool).await?;
+    verify_critical_tables(pool).await
+}
+
+pub(crate) async fn apply_pending_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
     let row: (i64,) = sqlx::query_as("PRAGMA user_version")
         .fetch_one(pool)
         .await
@@ -441,7 +457,6 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
         current_version = migration.version;
     }
 
-    verify_critical_tables(pool).await?;
     Ok(())
 }
 

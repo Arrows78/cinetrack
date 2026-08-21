@@ -45,6 +45,13 @@ pub const PROFILE_SCOPED_TABLES: &[&str] = &[
 #[serde(rename_all = "camelCase")]
 pub struct BootRecovery {
     pub recovered: bool,
+    /// A migration statement failed (see `init_pool_at`'s own comment) —
+    /// the original database file was left untouched, at whatever schema
+    /// version last committed successfully, but the app's command layer
+    /// can't safely assume the latest schema is present. Unlike
+    /// `recovered`, there is no "continue anyway" for this: the frontend
+    /// gate must not render the rest of the app while this is true.
+    pub blocked: bool,
     pub quarantined_path: Option<String>,
     pub original_error: Option<String>,
 }
@@ -140,9 +147,38 @@ pub async fn init_pool<R: Runtime>(
 async fn init_pool_at(db_path: &Path) -> Result<(SqlitePool, BootRecovery), ApiError> {
     let pool = open_pool(db_path).await?;
 
-    match migrations::run_migrations(&pool).await {
+    if let Err(migration_error) = migrations::apply_pending_migrations(&pool).await {
+        // A specific migration's SQL statement failed — almost always an
+        // app-code bug (or a database created by a newer app version this
+        // build doesn't fully understand yet), not corruption: every
+        // migration before the failing one already committed in its own
+        // transaction, so the file is left exactly at that last valid
+        // schema version. Quarantining and replacing it here (the old,
+        // uniform behavior) would silently wipe a perfectly intact
+        // database over what's really a fixable app problem. Leave the
+        // file untouched and surface a blocking state instead — see
+        // `BootRecovery::blocked`'s doc comment for why the frontend must
+        // not offer a "continue anyway" for this one.
+        return Ok((
+            pool,
+            BootRecovery {
+                recovered: false,
+                blocked: true,
+                quarantined_path: None,
+                original_error: Some(migration_error.message),
+            },
+        ));
+    }
+
+    match migrations::verify_critical_tables(&pool).await {
         Ok(()) => Ok((pool, BootRecovery::default())),
-        Err(migration_error) => {
+        Err(integrity_error) => {
+            // Missing tables despite every migration reporting success is a
+            // different signal: the file itself looks broken (corruption,
+            // an incomplete manual restore) rather than an app bug, and
+            // there's no earlier valid state to fall back to within this
+            // file — quarantining and starting fresh is still the right
+            // call here.
             pool.close().await;
             let quarantined_path = quarantine_broken_database(db_path)?;
 
@@ -152,7 +188,7 @@ async fn init_pool_at(db_path: &Path) -> Result<(SqlitePool, BootRecovery), ApiE
                 .map_err(|fresh_error| {
                     ApiError::internal(format!(
                         "Recovery failed too, after quarantining {quarantined_path}: {fresh_error} \
-                     (original error: {migration_error})"
+                     (original error: {integrity_error})"
                     ))
                 })?;
 
@@ -160,8 +196,9 @@ async fn init_pool_at(db_path: &Path) -> Result<(SqlitePool, BootRecovery), ApiE
                 fresh_pool,
                 BootRecovery {
                     recovered: true,
+                    blocked: false,
                     quarantined_path: Some(quarantined_path),
-                    original_error: Some(migration_error.message),
+                    original_error: Some(integrity_error.message),
                 },
             ))
         }
@@ -296,15 +333,28 @@ mod tests {
 
         // Simulates exactly the corruption verify_critical_tables exists to
         // catch (see migrations.rs): a pragma claiming every migration
-        // already ran, but none of the tables actually exist.
+        // already ran, but none of the tables actually exist. Reading the
+        // real highest version (rather than hardcoding one) keeps this
+        // fixture from silently drifting stale as new migrations are added
+        // — a hardcoded version below the true latest would instead make
+        // apply_pending_migrations try (and fail) to run the newer
+        // migrations against a schema-less database, which exercises the
+        // blocked path this test isn't about.
+        let latest_version = crate::database::migrations::MIGRATIONS
+            .iter()
+            .map(|migration| migration.version)
+            .max()
+            .expect("MIGRATIONS is never empty");
         let broken = SqlitePoolOptions::new()
             .connect(&format!("sqlite://{}?mode=rwc", path.display()))
             .await
             .unwrap();
-        sqlx::query("PRAGMA user_version = 9")
-            .execute(&broken)
-            .await
-            .unwrap();
+        sqlx::query(sqlx::AssertSqlSafe(format!(
+            "PRAGMA user_version = {latest_version}"
+        )))
+        .execute(&broken)
+        .await
+        .unwrap();
         broken.close().await;
 
         let (pool, boot_recovery) = init_pool_at(&path).await.unwrap();
@@ -326,5 +376,53 @@ mod tests {
         pool.close().await;
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(&quarantined_path);
+    }
+
+    #[tokio::test]
+    async fn init_pool_at_blocks_without_touching_the_file_when_a_migration_statement_fails() {
+        let path = temp_db_path("migration-failure");
+
+        // A `user_version` claiming migration 1 already ran, on a database
+        // where none of migration 1's tables actually exist, makes
+        // apply_pending_migrations skip migration 1 (version <= current)
+        // and attempt migration 9 next — whose statements reference tables
+        // only migration 1 creates, so it fails with a real SQL error.
+        // This is the "app-code bug" scenario, distinct from
+        // verify_critical_tables's "claims fully migrated but tables
+        // missing" scenario covered above — see init_pool_at's own comment
+        // for why these two get different treatment.
+        let broken = SqlitePoolOptions::new()
+            .connect(&format!("sqlite://{}?mode=rwc", path.display()))
+            .await
+            .unwrap();
+        sqlx::query("PRAGMA user_version = 1")
+            .execute(&broken)
+            .await
+            .unwrap();
+        broken.close().await;
+
+        let (pool, boot_recovery) = init_pool_at(&path).await.unwrap();
+
+        assert!(boot_recovery.blocked);
+        assert!(!boot_recovery.recovered);
+        assert!(boot_recovery.quarantined_path.is_none());
+        assert!(boot_recovery.original_error.is_some());
+
+        // The file was left completely untouched: no quarantine sidecar
+        // appeared, and the original file is still exactly the one we
+        // opened (still just the `PRAGMA user_version` write, no tables).
+        let entries: Vec<String> = sqlx::query_scalar(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert!(
+            entries.is_empty(),
+            "no migration should have committed: {entries:?}"
+        );
+
+        pool.close().await;
+        let _ = std::fs::remove_file(&path);
     }
 }
