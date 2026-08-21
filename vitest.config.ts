@@ -30,12 +30,10 @@ export default defineConfig({
     // token-vault tests that never reproduced locally. A single fork
     // removes that source of flakiness; the suite is fast enough that
     // losing file-level parallelism isn't a real cost.
+    // (Vitest 4: poolOptions.forks.singleFork was replaced by the top-level
+    // maxWorkers — see https://vitest.dev/guide/migration#pool-rework.)
     pool: "forks",
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    maxWorkers: 1,
     coverage: {
       reporter: ["text", "html"],
       // Kept broad (rather than scoped to the tested files below) so
