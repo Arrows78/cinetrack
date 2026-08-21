@@ -7,12 +7,12 @@ import type { UserProfile } from "@/types/media";
 const profile: UserProfile = { id: "profile-1", name: "Alice" } as UserProfile;
 
 const listMock = vi.fn(async (): Promise<UserProfile[]> => [profile]);
-const createMock = vi.fn(async (_name: string): Promise<UserProfile> => profile);
-const removeMock = vi.fn(async (_id: string): Promise<void> => undefined);
-const resolveForSupabaseUserMock = vi.fn(async (_supabaseUserId: string): Promise<UserProfile | null> => profile);
-const createForSupabaseUserMock = vi.fn(
-  async (_name: string, _supabaseUserId: string, _avatar?: string | null): Promise<UserProfile> => profile
-);
+const createMock = vi.fn<(name: string) => Promise<UserProfile>>(async () => profile);
+const removeMock = vi.fn<(id: string) => Promise<void>>(async () => undefined);
+const resolveForSupabaseUserMock = vi.fn<(supabaseUserId: string) => Promise<UserProfile | null>>(async () => profile);
+const createForSupabaseUserMock = vi.fn<
+  (name: string, supabaseUserId: string, avatar?: string | null) => Promise<UserProfile>
+>(async () => profile);
 
 vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
@@ -123,5 +123,22 @@ describe("useProfiles", () => {
     });
 
     await waitFor(() => expect(result.current.isSaving).toBe(false));
+  });
+});
+
+describe("useCreateProfileForSupabaseUser", () => {
+  it("creates a profile for the given supabase user and reports saving/error state", async () => {
+    const { useCreateProfileForSupabaseUser } = await import("../use-profiles");
+    const { result } = renderHook(() => useCreateProfileForSupabaseUser(), { wrapper: createWrapper() });
+
+    expect(result.current.isSaving).toBe(false);
+    expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      await result.current.create({ name: "Alice", supabaseUserId: "supa-user-1", avatar: "avatar.png" });
+    });
+
+    expect(createForSupabaseUserMock).toHaveBeenCalledWith("Alice", "supa-user-1", "avatar.png");
+    expect(result.current.isSaving).toBe(false);
   });
 });

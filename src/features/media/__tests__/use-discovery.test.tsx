@@ -46,6 +46,14 @@ describe("useRecommendations / useVideos", () => {
     await waitFor(() => expect(videos.current.isLoading).toBe(false));
     expect(getVideosMock).toHaveBeenCalledWith("movie", 5);
   });
+
+  it("fetches recommendations for a finite media id", async () => {
+    const { useRecommendations } = await import("../use-discovery");
+    const { result } = renderHook(() => useRecommendations("series", 9), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getRecommendationsMock).toHaveBeenCalledWith("series", 9);
+  });
 });
 
 describe("useAvailability", () => {
@@ -77,5 +85,13 @@ describe("usePeopleSearch / usePerson", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(getPersonMock).toHaveBeenCalledWith(42);
+  });
+
+  it("searches people once the query reaches the minimum length", async () => {
+    const { usePeopleSearch } = await import("../use-discovery");
+    const { result } = renderHook(() => usePeopleSearch("ada"), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(searchPeopleMock).toHaveBeenCalledWith("ada");
   });
 });

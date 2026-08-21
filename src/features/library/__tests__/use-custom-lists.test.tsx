@@ -9,13 +9,13 @@ const list: CustomList = { id: "list-1", name: "Weekend", description: null } as
 const item: CustomListItem = { mediaId: 7, mediaType: "movie" } as CustomListItem;
 
 const listMock = vi.fn(async (): Promise<CustomList[]> => [list]);
-const createMock = vi.fn(async (_name: string, _description?: string): Promise<CustomList> => list);
-const removeMock = vi.fn(async (_id: string): Promise<void> => undefined);
-const itemsMock = vi.fn(async (_listId: string): Promise<CustomListItem[]> => [item]);
-const removeItemMock = vi.fn(
-  async (_listId: string, _mediaId: number, _mediaType: string): Promise<void> => undefined
+const createMock = vi.fn<(name: string, description?: string) => Promise<CustomList>>(async () => list);
+const removeMock = vi.fn<(id: string) => Promise<void>>(async () => undefined);
+const itemsMock = vi.fn<(listId: string) => Promise<CustomListItem[]>>(async () => [item]);
+const removeItemMock = vi.fn<(listId: string, mediaId: number, mediaType: string) => Promise<void>>(
+  async () => undefined
 );
-const addMock = vi.fn(async (_listId: string, _mediaArg: MediaSummary): Promise<void> => undefined);
+const addMock = vi.fn<(listId: string, mediaArg: MediaSummary) => Promise<void>>(async () => undefined);
 
 // useActiveProfileId() (see use-preferences.ts) resolves to this via
 // preferencesRepository.getPreferences() — fixed to "default" so every key

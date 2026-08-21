@@ -25,11 +25,13 @@ const alert: AvailabilityAlert = {
 } as AvailabilityAlert;
 
 const listAlertsMock = vi.fn(async (): Promise<AvailabilityAlert[]> => [alert]);
-const getAlertMock = vi.fn(async (_mediaId: number, _mediaType: string): Promise<AvailabilityAlert | null> => null);
-const toggleMock = vi.fn(
-  async (_media: MediaSummary, _region: string, _providerIds: number[]): Promise<AvailabilityAlert | null> => alert
+const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<AvailabilityAlert | null>>(
+  async () => null
 );
-const removeMock = vi.fn(async (_id: string): Promise<undefined> => undefined);
+const toggleMock = vi.fn<
+  (media: MediaSummary, region: string, providerIds: number[]) => Promise<AvailabilityAlert | null>
+>(async () => alert);
+const removeMock = vi.fn<(id: string) => Promise<undefined>>(async () => undefined);
 // useActiveProfileId() (see use-preferences.ts) resolves to this via
 // preferencesRepository.getPreferences() — fixed to "default" so every key
 // assertion below is deterministic regardless of when it resolves (it

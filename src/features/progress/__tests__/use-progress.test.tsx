@@ -56,6 +56,9 @@ const toggleEpisodeSeenMock = vi.fn(async () => undefined);
 const markSeasonMock = vi.fn(async () => undefined);
 const markSeriesMock = vi.fn(async () => undefined);
 const listTrackedSeriesMock = vi.fn(async () => [] as TrackedSeriesItem[]);
+const refreshTrackedSeriesStatusMock = vi.fn<(seriesId: number, status: string | null) => Promise<undefined>>(
+  async () => undefined
+);
 // useActiveProfileId() (see use-preferences.ts) resolves to this via
 // preferencesRepository.getPreferences() — fixed to "default" so every key
 // assertion below is deterministic regardless of when it resolves (it
@@ -71,6 +74,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
     markSeason: markSeasonMock,
     markSeries: markSeriesMock,
     listTrackedSeries: listTrackedSeriesMock,
+    refreshTrackedSeriesStatus: refreshTrackedSeriesStatusMock,
   },
 }));
 
@@ -96,6 +100,7 @@ beforeEach(() => {
   markSeasonMock.mockClear();
   markSeriesMock.mockClear();
   listTrackedSeriesMock.mockClear();
+  refreshTrackedSeriesStatusMock.mockClear();
   getPreferencesMock.mockClear();
 });
 
@@ -188,5 +193,22 @@ describe("useTrackedSeries", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(listTrackedSeriesMock).toHaveBeenCalled();
+  });
+});
+
+describe("useRefreshTrackedSeriesStatus", () => {
+  it("delegates to progressRepository.refreshTrackedSeriesStatus and invalidates tracked series", async () => {
+    const { useRefreshTrackedSeriesStatus } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useRefreshTrackedSeriesStatus(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current({ seriesId: 9, status: "Ended" });
+    });
+
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(9, "Ended");
+    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries(DEFAULT_PROFILE_ID));
   });
 });
