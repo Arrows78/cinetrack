@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -55,7 +56,7 @@ export function SeasonAccordion({
 }) {
   const { t } = useTranslation();
   const { celebrate } = useConfetti();
-  const watchedSet = new Set(watchedEpisodes.map((item) => item.episodeId));
+  const watchedSet = useMemo(() => new Set(watchedEpisodes.map((item) => item.episodeId)), [watchedEpisodes]);
   const progress = progressRepository.calculateSeriesProgress(series.id, seasons, watchedEpisodes);
 
   /* Handler that detects season completion and fires confetti */
