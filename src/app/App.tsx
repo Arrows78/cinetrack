@@ -16,9 +16,9 @@ import { logger } from "@/features/diagnostics/logger";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { trackingService } from "@/features/tracking/tracking-service";
 import { notificationService } from "@/features/desktop/notification-service";
+import { errorMessage } from "@/shared/lib/errors";
 import { isTauriApp } from "@/shared/lib/platform";
-
-const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+import { STALE_6_HOURS } from "@/shared/constants/query";
 
 export function App() {
   useEffect(() => {
@@ -78,7 +78,7 @@ export function App() {
           logger.warn(`Background notification check failed: ${errorMessage(error)}`);
         });
       },
-      1000 * 60 * 60 * 6
+      STALE_6_HOURS
     );
 
     return () => {

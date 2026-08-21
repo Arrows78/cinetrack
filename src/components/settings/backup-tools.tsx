@@ -8,9 +8,8 @@ import { toast } from "@/components/ui/use-toast";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { logger } from "@/features/diagnostics/logger";
+import { errorMessage } from "@/shared/lib/errors";
 import { displayMessage, UserFacingError } from "@/shared/lib/user-facing-error";
-
-const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 export function BackupTools() {
   const { t } = useTranslation();

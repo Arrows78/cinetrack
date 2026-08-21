@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import i18n from "@/i18n";
 import { env } from "@/shared/config/env";
 import { isTauriApp } from "@/shared/lib/platform";
+import { errorMessage } from "@/shared/lib/errors";
 import { tokenVault } from "@/features/desktop/token-vault";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -23,17 +24,6 @@ export class TmdbRequestError extends Error {
     this.name = "TmdbRequestError";
   }
 }
-
-const errorMessage = (error: unknown): string => {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-};
 
 // Shape of the Err(TmdbError) the Rust `tmdb_request` command serializes over
 // IPC (see src-tauri/src/commands/tmdb.rs) — invoke() rejects with this

@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { errorMessage } from "@/shared/lib/errors";
+
 // Shape of the Err(ApiError) every migrated Rust command serializes over IPC
 // (see src-tauri/src/error.rs) — invoke() rejects with this object directly,
 // no string parsing needed. `status` mirrors an HTTP status code so this
@@ -24,17 +26,6 @@ export class ApiCommandError extends Error {
     this.name = "ApiCommandError";
   }
 }
-
-const errorMessage = (error: unknown): string => {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-};
 
 const asApiCommandError = (error: unknown): ApiCommandError => {
   if (error instanceof ApiCommandError) return error;

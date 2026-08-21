@@ -14,9 +14,8 @@ import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
 import { isTauriApp } from "@/shared/lib/platform";
 import { displayMessage } from "@/shared/lib/user-facing-error";
+import { errorMessage } from "@/shared/lib/errors";
 import { formatRelativeDate } from "@/shared/utils/format";
-
-const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 export function DesktopSettings() {
   const { t } = useTranslation();

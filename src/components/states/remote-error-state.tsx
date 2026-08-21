@@ -5,17 +5,12 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
 import { logger } from "@/features/diagnostics/logger";
+import { errorMessage } from "@/shared/lib/errors";
 
 interface RemoteErrorStateProps {
   error: unknown;
   onRetry: () => void;
 }
-
-const errorMessage = (error: unknown): string => {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "";
-};
 
 export function RemoteErrorState({ error, onRetry }: RemoteErrorStateProps) {
   const { t } = useTranslation();
