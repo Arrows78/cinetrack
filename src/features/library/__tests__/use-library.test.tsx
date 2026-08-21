@@ -35,6 +35,7 @@ const removeMock = vi.fn(async (mediaId: number, mediaType: string) => {
   items = items.filter((i) => !(i.mediaId === mediaId && i.mediaType === mediaType));
 });
 const removeIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
+const hasMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => false);
 
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
@@ -43,6 +44,7 @@ vi.mock("@/features/library/library-repository", () => ({
     save: saveMock,
     remove: removeMock,
     removeIfPlanned: (mediaId: number, mediaType: string) => removeIfPlannedMock(mediaId, mediaType),
+    has: (mediaId: number, mediaType: string) => hasMock(mediaId, mediaType),
   },
 }));
 
@@ -66,6 +68,32 @@ describe("useLibrary", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data).toHaveLength(1);
+  });
+});
+
+describe("useIsInLibrary", () => {
+  beforeEach(() => {
+    hasMock.mockClear().mockResolvedValue(false);
+  });
+
+  it("queries presence by default when no enabled option is given", async () => {
+    hasMock.mockResolvedValueOnce(true);
+    const { useIsInLibrary } = await import("../use-library");
+    const { result } = renderHook(() => useIsInLibrary(7, "movie"), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(hasMock).toHaveBeenCalledWith(7, "movie");
+    expect(result.current.data).toBe(true);
+  });
+
+  it("stays disabled and never queries when enabled is explicitly false", async () => {
+    const { useIsInLibrary } = await import("../use-library");
+    const { result } = renderHook(() => useIsInLibrary(7, "movie", { enabled: false }), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(hasMock).not.toHaveBeenCalled();
   });
 });
 

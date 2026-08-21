@@ -115,4 +115,18 @@ describe("useFavouriteGenreRail", () => {
     expect(result.current.genre).not.toBeNull();
     expect(result.current.isLoading).toBe(true);
   });
+
+  it("falls back to safe defaults while stats and library data are still undefined (initial load)", () => {
+    statsDataMock.mockReturnValue(undefined);
+    libraryDataMock.mockReturnValue(undefined);
+    mergedGenresMock.mockReturnValue([genre]);
+    searchQueryMock.mockReturnValue({ items: [], isLoading: false });
+
+    const { result } = renderHook(() => useFavouriteGenreRail());
+
+    // statsQuery.data?.favouriteGenres ?? [] and libraryQuery.data ?? EMPTY_LIBRARY
+    // both take their fallback branch here, before either query has resolved.
+    expect(result.current.genre).toBeNull();
+    expect(result.current.items).toEqual([]);
+  });
 });

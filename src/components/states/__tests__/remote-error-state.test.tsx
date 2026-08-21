@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
+import { logger } from "@/features/diagnostics/logger";
 import { RemoteErrorState } from "../remote-error-state";
 
 describe("RemoteErrorState", () => {
@@ -32,5 +33,16 @@ describe("RemoteErrorState", () => {
 
     fireEvent.click(screen.getByRole("button"));
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the technical details section and skips logging when there is no message to extract", () => {
+    const logError = vi.spyOn(logger, "error").mockImplementation(() => undefined);
+
+    render(<RemoteErrorState error={undefined} onRetry={() => {}} />);
+
+    expect(screen.queryByText("Technical details")).not.toBeInTheDocument();
+    expect(logError).not.toHaveBeenCalled();
+
+    logError.mockRestore();
   });
 });

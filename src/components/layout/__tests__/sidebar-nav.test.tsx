@@ -1,7 +1,8 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren, ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 import i18n from "@/i18n";
 import { SidebarNav } from "../sidebar-nav";
 
@@ -17,6 +18,8 @@ vi.mock("@tanstack/react-router", () => ({
     select({ location: { pathname: routerState.pathname } }),
 }));
 
+let authUser: User | null = null;
+const signOutMock = vi.fn();
 vi.mock("@/features/auth/auth-context", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useAuth: () => ({
@@ -24,13 +27,22 @@ vi.mock("@/features/auth/auth-context", async (importOriginal) => ({
     required: false,
     status: "ready",
     session: null,
-    user: null,
+    user: authUser,
     error: null,
     clearError: vi.fn(),
     signInWithProvider: vi.fn(),
     requestEmailOtp: vi.fn(),
     verifyEmailOtp: vi.fn(),
-    signOut: vi.fn(),
+    signOut: signOutMock,
+  }),
+}));
+
+let preferencesTheme: "dark" | "light" = "dark";
+const updatePreferenceMock = vi.fn();
+vi.mock("@/features/preferences/use-preferences", () => ({
+  usePreferences: () => ({
+    data: { theme: preferencesTheme },
+    updatePreference: updatePreferenceMock,
   }),
 }));
 
@@ -45,6 +57,14 @@ function renderSidebar(props: Partial<Parameters<typeof SidebarNav>[0]> = {}): R
 describe("SidebarNav", () => {
   beforeAll(async () => {
     await i18n.changeLanguage("en");
+  });
+
+  beforeEach(() => {
+    routerState.pathname = "/";
+    authUser = null;
+    signOutMock.mockClear();
+    preferencesTheme = "dark";
+    updatePreferenceMock.mockClear();
   });
 
   // Section headers share a fixed class combination distinct from any other
@@ -99,5 +119,90 @@ describe("SidebarNav", () => {
     screen.getByRole("link", { name: i18n.t("nav.settings") }).click();
 
     expect(onNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  describe("theme switcher", () => {
+    it("marks the active theme pressed and switches preference on click when expanded", () => {
+      preferencesTheme = "light";
+      renderSidebar();
+
+      const lightButton = screen.getByRole("button", { name: i18n.t("sidebar.theme.light") });
+      const darkButton = screen.getByRole("button", { name: i18n.t("sidebar.theme.dark") });
+      expect(lightButton).toHaveAttribute("aria-pressed", "true");
+      expect(darkButton).toHaveAttribute("aria-pressed", "false");
+
+      darkButton.click();
+
+      expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "theme", value: "dark" });
+    });
+
+    it("marks the active theme pressed and switches preference on click when collapsed", () => {
+      preferencesTheme = "dark";
+      renderSidebar({ collapsed: true });
+
+      const lightButton = screen.getByRole("button", { name: i18n.t("sidebar.theme.light") });
+      const darkButton = screen.getByRole("button", { name: i18n.t("sidebar.theme.dark") });
+      expect(darkButton).toHaveAttribute("aria-pressed", "true");
+      expect(lightButton).toHaveAttribute("aria-pressed", "false");
+
+      lightButton.click();
+
+      expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "theme", value: "light" });
+    });
+  });
+
+  describe("account card", () => {
+    it("shows the default account label and 'U' initials when signed out", () => {
+      renderSidebar();
+
+      expect(screen.getByText(i18n.t("sidebar.defaultAccount"), { selector: "p.truncate" })).toBeInTheDocument();
+      expect(screen.getByText(i18n.t("sidebar.defaultMember"))).toBeInTheDocument();
+      expect(screen.getByText("U")).toBeInTheDocument();
+    });
+
+    it("shows the user's full name, role, and two-letter initials when expanded", () => {
+      authUser = {
+        user_metadata: { full_name: "Ada Lovelace", role: "Admin" },
+      } as unknown as User;
+      renderSidebar();
+
+      expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+      expect(screen.getByText("Admin")).toBeInTheDocument();
+      expect(screen.getByText("AL")).toBeInTheDocument();
+    });
+
+    it("falls back to the email and a single initial when no name is set", () => {
+      authUser = { email: "ada@example.com", user_metadata: {} } as User;
+      renderSidebar();
+
+      expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+      expect(screen.getByText("A")).toBeInTheDocument();
+    });
+
+    it("falls back to 'U' initials when the name is only whitespace", () => {
+      authUser = { user_metadata: { full_name: "   " } } as unknown as User;
+      renderSidebar();
+
+      expect(screen.getByText("U")).toBeInTheDocument();
+    });
+
+    it("shows the user's name and initials in the collapsed avatar-only card", () => {
+      authUser = { user_metadata: { full_name: "Ada Lovelace" } } as unknown as User;
+      renderSidebar({ collapsed: true });
+
+      expect(screen.getByText("AL")).toBeInTheDocument();
+      expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument();
+    });
+
+    it("signs out when the sign-out button is clicked, expanded and collapsed", () => {
+      const { unmount } = renderSidebar();
+      screen.getByRole("button", { name: i18n.t("sidebar.signOut") }).click();
+      expect(signOutMock).toHaveBeenCalledTimes(1);
+      unmount();
+
+      renderSidebar({ collapsed: true });
+      screen.getByRole("button", { name: i18n.t("sidebar.signOut") }).click();
+      expect(signOutMock).toHaveBeenCalledTimes(2);
+    });
   });
 });

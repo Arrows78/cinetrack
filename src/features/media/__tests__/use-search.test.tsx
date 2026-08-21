@@ -92,4 +92,46 @@ describe("useSearch", () => {
     expect(discoverSeriesMock).not.toHaveBeenCalled();
     expect(result.current.items).toEqual([]);
   });
+
+  it("returns an empty page when a movie filter has neither genre nor provider", async () => {
+    const { useSearch } = await import("../use-search");
+    // hasFilters is true (genreSeries set) but scope is "movie" with no genreMovie/provider.
+    const { result } = renderHook(() => useSearch("", "movie", { genreSeries: "18" }), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(discoverMoviesMock).not.toHaveBeenCalled();
+    expect(result.current.items).toEqual([]);
+  });
+
+  it("routes to discoverSeries when a series genre filter is set", async () => {
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("", "series", { genreSeries: "18" }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(discoverSeriesMock).toHaveBeenCalledWith(expect.objectContaining({ genre: 18, page: 1 }));
+    expect(discoverMoviesMock).not.toHaveBeenCalled();
+    expect(result.current.items).toEqual([summary(3, "Discovered Series")]);
+  });
+
+  it("issues only the movie discover request in 'all' scope when only a movie genre filter is set", async () => {
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("", "all", { genreMovie: "28" }), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(discoverMoviesMock).toHaveBeenCalledTimes(1);
+    expect(discoverSeriesMock).not.toHaveBeenCalled();
+    expect(result.current.items).toEqual([summary(2, "Discovered Movie")]);
+  });
+
+  it("issues only the series discover request in 'all' scope when only a series genre filter is set", async () => {
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("", "all", { genreSeries: "18" }), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(discoverSeriesMock).toHaveBeenCalledTimes(1);
+    expect(discoverMoviesMock).not.toHaveBeenCalled();
+    expect(result.current.items).toEqual([summary(3, "Discovered Series")]);
+  });
 });

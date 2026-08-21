@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { CommandPalette } from "../command-palette";
 import type { MediaSummary, Movie, Series } from "@/types/media";
 
@@ -18,9 +19,13 @@ vi.mock("@tanstack/react-router", () => ({
 
 const updatePreferenceMock = vi.fn();
 let theme: "dark" | "light" = "dark";
+// Lets a single test simulate the preferences query not having resolved yet,
+// so the palette's own `?? "dark"` / `?? DEFAULT_TMDB_REGION` / `?? []`
+// fallbacks actually run instead of always reading the seeded data below.
+let preferencesDataMissing = false;
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
-    data: { theme, region: "US", preferredProviderIds: [] },
+    data: preferencesDataMissing ? undefined : { theme, region: "US", preferredProviderIds: [] },
     updatePreference: updatePreferenceMock,
   }),
   useActiveProfileId: () => "default",
@@ -121,6 +126,10 @@ function renderPalette(seedCache?: (client: QueryClient) => void) {
 
 describe("CommandPalette", () => {
   beforeEach(async () => {
+    // jsdom has no scrollIntoView implementation; the palette calls it on
+    // every selection change (see the "scroll the selected row into view"
+    // effect), which only actually runs once a test moves the selection.
+    HTMLElement.prototype.scrollIntoView ??= vi.fn();
     await i18n.changeLanguage("en");
     navigateMock.mockClear();
     updatePreferenceMock.mockClear();
@@ -136,6 +145,7 @@ describe("CommandPalette", () => {
     libraryRemoveIfPlannedMock.mockClear().mockResolvedValue(true);
     libraryRemoveMock.mockClear();
     theme = "dark";
+    preferencesDataMissing = false;
     searchItems = [];
     searchIsLoading = false;
     routerState.pathname = "/";
@@ -228,6 +238,17 @@ describe("CommandPalette", () => {
     expect(navigateMock).toHaveBeenCalledWith({ to: "/series/43" });
   });
 
+  it("toggles open/closed with the Ctrl+K and Cmd+K shortcuts", () => {
+    renderPalette();
+    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+  });
+
   it("closes on Escape", () => {
     renderPalette();
     openPalette();
@@ -238,6 +259,38 @@ describe("CommandPalette", () => {
     expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
   });
 
+  it("ignores an unrelated key press while open", () => {
+    renderPalette();
+    openPalette();
+
+    fireEvent.keyDown(getSearchInput(), { key: "a" });
+
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores navigation/selection keys while closed", () => {
+    renderPalette();
+
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a 'searching' label while a title search is in flight", async () => {
+    searchIsLoading = true;
+    renderPalette();
+    openPalette();
+
+    typeQuery("du");
+
+    await waitFor(() => expect(screen.getByText("Searching titles…")).toBeInTheDocument());
+    expect(screen.queryByText("Titles")).not.toBeInTheDocument();
+  });
+
   it("shows a no-results message when nothing matches and no title search is pending", async () => {
     renderPalette();
     openPalette();
@@ -245,6 +298,73 @@ describe("CommandPalette", () => {
     typeQuery("zzz");
 
     await waitFor(() => expect(screen.getByText(/no results found/i)).toBeInTheDocument());
+  });
+
+  it("clamps arrow-key navigation at both ends and runs the selected item on Enter", () => {
+    renderPalette();
+    openPalette();
+
+    const rows = () => screen.getAllByRole("button");
+    // Selection starts at the top result (the theme action).
+    expect(rows()[0]).toHaveAttribute("aria-selected", "true");
+
+    // Pressing Up while already at the top is a clamp, not a wrap.
+    fireEvent.keyDown(getSearchInput(), { key: "ArrowUp" });
+    expect(rows()[0]).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.keyDown(getSearchInput(), { key: "ArrowDown" });
+    expect(rows()[1]).toHaveAttribute("aria-selected", "true");
+    expect(rows()[0]).toHaveAttribute("aria-selected", "false");
+
+    fireEvent.keyDown(getSearchInput(), { key: "ArrowUp" });
+    expect(rows()[0]).toHaveAttribute("aria-selected", "true");
+
+    // Pressing Down far past the last row is also a clamp, not a wrap.
+    const lastIndex = rows().length - 1;
+    for (let i = 0; i < rows().length + 2; i += 1) {
+      fireEvent.keyDown(getSearchInput(), { key: "ArrowDown" });
+    }
+    expect(rows()[lastIndex]).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.keyDown(getSearchInput(), { key: "Enter" });
+
+    // The last page in navigationConfig is Settings.
+    expect(navigateMock).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("pressing Enter with no results is a no-op", () => {
+    renderPalette();
+    openPalette();
+
+    typeQuery("zzz");
+    fireEvent.keyDown(getSearchInput(), { key: "Enter" });
+
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("hovering a row selects it without needing arrow keys", () => {
+    renderPalette();
+    openPalette();
+
+    const rows = screen.getAllByRole("button");
+    fireEvent.mouseEnter(rows[2]!);
+
+    expect(rows[2]).toHaveAttribute("aria-selected", "true");
+    expect(rows[0]).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("closes when clicking the backdrop, but not when clicking inside the panel", () => {
+    const { container } = renderPalette();
+    openPalette();
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+
+    const panel = screen.getByRole("listbox").parentElement as HTMLElement;
+    fireEvent.mouseDown(panel);
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+
+    const backdrop = container.querySelector(".fixed.inset-0") as HTMLElement;
+    fireEvent.mouseDown(backdrop);
+    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
   });
 
   describe("contextual actions on a detail page", () => {
@@ -370,6 +490,31 @@ describe("CommandPalette", () => {
       expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
     });
 
+    it("offers nothing contextual on a series page whose cache hasn't populated yet either", () => {
+      routerState.pathname = "/series/9";
+      renderPalette();
+      openPalette();
+
+      expect(screen.queryByRole("button", { name: "Availability alert" })).not.toBeInTheDocument();
+    });
+
+    it("falls back to the default theme, region, and provider list while preferences haven't loaded", async () => {
+      preferencesDataMissing = true;
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      // theme falls back to "dark", so the offered switch is to light.
+      expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
+
+      await waitFor(() => screen.getByRole("button", { name: "Availability alert" }));
+      fireEvent.click(screen.getByRole("button", { name: "Availability alert" }));
+
+      await waitFor(() =>
+        expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_TMDB_REGION, [])
+      );
+    });
+
     it("marking watched runs the real toggle mutation with the cached movie", async () => {
       routerState.pathname = "/movies/7";
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
@@ -402,6 +547,18 @@ describe("CommandPalette", () => {
 
       await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
       expect(toggleAlertMock).not.toHaveBeenCalled();
+    });
+
+    it("enables a new alert once notification permission is granted", async () => {
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => screen.getByRole("button", { name: "Availability alert" }));
+      fireEvent.click(screen.getByRole("button", { name: "Availability alert" }));
+
+      await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
+      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", []));
     });
 
     it("offers to disable an alert that already exists, skipping the permission prompt", async () => {

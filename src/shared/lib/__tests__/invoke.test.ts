@@ -28,4 +28,12 @@ describe("invokeCommand", () => {
 
     await expect(invokeCommand("some_command")).rejects.toMatchObject({ message: "boom", status: undefined });
   });
+
+  it("passes an already-constructed ApiCommandError rejection through unchanged", async () => {
+    const { invokeCommand, ApiCommandError } = await import("../invoke");
+    const original = new ApiCommandError("already wrapped", 500);
+    invokeMock.mockRejectedValueOnce(original);
+
+    await expect(invokeCommand("some_command")).rejects.toBe(original);
+  });
 });
