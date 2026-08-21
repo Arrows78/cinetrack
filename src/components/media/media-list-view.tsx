@@ -7,7 +7,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import type { MediaSummary } from "@/types/media";
 
-// Structural subset of the useMovies()/useSeries() return value, so the page
+// Structural subset of the useMovies()/useSeries() return value, so the view
 // stays decoupled from react-query's full result type.
 interface MediaListQuery {
   isLoading: boolean;
@@ -20,7 +20,7 @@ interface MediaListQuery {
   fetchNextPage: () => Promise<unknown>;
 }
 
-interface MediaListPageProps {
+interface MediaListViewProps {
   query: MediaListQuery;
   icon: LucideIcon;
   title: string;
@@ -29,7 +29,7 @@ interface MediaListPageProps {
   emptyDescription: string;
 }
 
-export function MediaListPage({ query, icon, title, subtitle, emptyTitle, emptyDescription }: MediaListPageProps) {
+export function MediaListView({ query, icon, title, subtitle, emptyTitle, emptyDescription }: MediaListViewProps) {
   if (query.isLoading) return <GridSkeleton />;
   if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
   if (!query.items.length) {

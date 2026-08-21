@@ -2,17 +2,16 @@ import { useState } from "react";
 import { Tv } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { FilterBar } from "@/components/media/filter-bar";
-import { LibraryExplorer } from "@/pages/library-page";
-import { MediaListPage } from "@/pages/media-list-page";
-import { TrackingList } from "@/pages/tracking-page";
+import { LibraryExplorer } from "@/components/media/library-explorer";
+import { MediaListView } from "@/components/media/media-list-view";
+import { TrackingList } from "@/components/media/tracking-list";
+import type { MediaTab } from "@/components/media/media-hub-tab";
 import { useSeries } from "@/features/media/use-media";
-
-type SeriesTab = "list" | "upcoming" | "discover";
 
 export function SeriesPage() {
   const { t } = useTranslation();
   const query = useSeries();
-  const [tab, setTab] = useState<SeriesTab>("list");
+  const [tab, setTab] = useState<MediaTab>("list");
 
   return (
     <div className="space-y-6">
@@ -47,7 +46,7 @@ export function SeriesPage() {
         />
       ) : null}
       {tab === "discover" ? (
-        <MediaListPage
+        <MediaListView
           query={query}
           icon={Tv}
           title={t("mediaHub.discover")}
