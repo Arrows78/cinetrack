@@ -1,1 +1,1 @@
-export type MediaTab = "list" | "upcoming" | "discover";
+export type MediaTab = "list" | "upcoming";

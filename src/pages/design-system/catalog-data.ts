@@ -831,14 +831,6 @@ export const componentInventory = [
     "Groups upcoming releases, episodes and availability alerts, shared by /tracking and the /movies and /series 'Upcoming' tab."
   ),
   component(
-    "MediaListView",
-    "components/media/media-list-view.tsx",
-    "Media",
-    "feature",
-    "live",
-    "Renders a paginated discover grid with its own loading/error/empty states."
-  ),
-  component(
     "BackupTools",
     "components/settings/backup-tools.tsx",
     "Settings",

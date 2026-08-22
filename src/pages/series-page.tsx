@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Tv } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 import { FilterBar } from "@/components/media/filter-bar";
 import { LibraryExplorer } from "@/components/media/library-explorer";
-import { MediaListView } from "@/components/media/media-list-view";
 import { TrackingList } from "@/components/media/tracking-list";
 import type { MediaTab } from "@/components/media/media-hub-tab";
-import { useSeries } from "@/features/media/use-media";
 
 export function SeriesPage() {
   const { t } = useTranslation();
-  const query = useSeries();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<MediaTab>("list");
+
+  const browseAllSeries = () => void navigate({ to: "/search", search: { scope: "series" } });
 
   return (
     <div className="space-y-6">
@@ -27,32 +28,21 @@ export function SeriesPage() {
         options={[
           { value: "list", label: t("mediaHub.myList") },
           { value: "upcoming", label: t("mediaHub.upcoming") },
-          { value: "discover", label: t("mediaHub.discover") },
         ]}
       />
 
       {tab === "list" ? (
         <LibraryExplorer
           lockedMediaType="series"
-          onBrowseAll={() => setTab("discover")}
+          onBrowseAll={browseAllSeries}
           browseAllLabel={t("mediaHub.browseAllSeries")}
         />
       ) : null}
       {tab === "upcoming" ? (
         <TrackingList
           lockedMediaType="series"
-          onBrowseAll={() => setTab("discover")}
+          onBrowseAll={browseAllSeries}
           browseAllLabel={t("mediaHub.browseAllSeries")}
-        />
-      ) : null}
-      {tab === "discover" ? (
-        <MediaListView
-          query={query}
-          icon={Tv}
-          title={t("mediaHub.discover")}
-          subtitle={t("series.subtitle")}
-          emptyTitle={t("series.noSeriesAvailable")}
-          emptyDescription={t("series.noSeriesAvailableDesc")}
         />
       ) : null}
     </div>
