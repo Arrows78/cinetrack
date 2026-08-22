@@ -163,7 +163,9 @@ describe("StatsPage", () => {
 
     expect(screen.getByText("42")).toBeInTheDocument(); // moviesWatched
     expect(screen.getByText("310")).toBeInTheDocument(); // episodesWatched
-    expect(screen.getByText("200h 0min")).toBeInTheDocument(); // 12000 minutes
+    // 12000 minutes: the "Time watched" card uses the richer breakdown (hours + days, no
+    // months yet since 8 days is well under the ~30-day threshold).
+    expect(screen.getByText("200h 0min — that's about 8 days")).toBeInTheDocument();
     expect(screen.getByText("3 days")).toBeInTheDocument(); // currentStreakDays
     expect(screen.getByText("—")).toBeInTheDocument(); // averageUserRating fallback (may match others too, checked below)
     expect(screen.getByText("67%")).toBeInTheDocument(); // libraryCompletionPercent
@@ -242,6 +244,8 @@ describe("StatsPage", () => {
     await screen.findByText("Stats");
     expect(wrappedMock).toHaveBeenCalledWith(CURRENT_YEAR);
 
+    fireEvent.click(screen.getByRole("button", { name: "This year" }));
+
     const nextButton = screen.getByRole("button", { name: "Next year" });
     const prevButton = screen.getByRole("button", { name: "Previous year" });
 
@@ -265,6 +269,7 @@ describe("StatsPage", () => {
   it("exports the wrapped card: renders, downloads, then shows a success toast", async () => {
     renderPage();
     await screen.findByText("Stats");
+    fireEvent.click(screen.getByRole("button", { name: "This year" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Export as image" }));
 
@@ -285,6 +290,7 @@ describe("StatsPage", () => {
     renderWrappedCardMock.mockReset().mockRejectedValue(new Error("canvas exploded"));
     renderPage();
     await screen.findByText("Stats");
+    fireEvent.click(screen.getByRole("button", { name: "This year" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Export as image" }));
 

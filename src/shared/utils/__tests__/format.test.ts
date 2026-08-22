@@ -8,6 +8,7 @@ import {
   formatRating,
   formatRelativeDate,
   formatRuntime,
+  formatWatchDurationBreakdown,
   percent,
   pluralize,
   yearFromDate,
@@ -118,6 +119,48 @@ describe("yearFromDate", () => {
     expect(yearFromDate(null)).toBeNull();
     expect(yearFromDate(undefined)).toBeNull();
     expect(yearFromDate("abcd-ef")).toBeNull();
+  });
+});
+
+describe("formatWatchDurationBreakdown", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("shows only the plain hours/minutes label under 24h — no day breakdown at all", () => {
+    expect(formatWatchDurationBreakdown(200)).toBe("3h 20min");
+  });
+
+  it("adds a day count once the total reaches a full day (24h boundary)", () => {
+    expect(formatWatchDurationBreakdown(1440)).toBe("24h 0min — that's about 1 day");
+  });
+
+  it("pluralizes the day count and stays in the days-only form under the month threshold", () => {
+    expect(formatWatchDurationBreakdown(14400)).toBe("240h 0min — that's about 10 days"); // 10 days
+  });
+
+  it("adds an approximate month count once the total reaches ~30 days", () => {
+    expect(formatWatchDurationBreakdown(43200)).toBe("720h 0min — that's about 30 days (~1 month)"); // exactly 30 days
+  });
+
+  it("matches the reference large-total example from the spec", () => {
+    // 7669h45m = 460185 minutes => floor(460185/1440) = 319 days, floor(319/30) = 10 months.
+    expect(formatWatchDurationBreakdown(460185)).toBe("7669h 45min — that's about 319 days (~10 months)");
+  });
+
+  it("floors rather than rounds, so it reads as a lower bound", () => {
+    // 59 days: just under the 60-day mark for 2 months.
+    expect(formatWatchDurationBreakdown(59 * 1440)).toBe("1416h 0min — that's about 59 days (~1 month)");
+  });
+
+  it("uses French day/month pluralization rules", async () => {
+    await i18n.changeLanguage("fr");
+
+    expect(formatWatchDurationBreakdown(1440)).toBe("24 h 0 min — soit environ 1 jour");
+    expect(formatWatchDurationBreakdown(2880)).toBe("48 h 0 min — soit environ 2 jours");
+    // "mois" is invariant in French — same word for 1 or several months.
+    expect(formatWatchDurationBreakdown(43200)).toBe("720 h 0 min — soit environ 30 jours (~1 mois)");
+    expect(formatWatchDurationBreakdown(86400)).toBe("1440 h 0 min — soit environ 60 jours (~2 mois)");
   });
 });
 

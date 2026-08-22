@@ -81,6 +81,45 @@ export const yearFromDate = (value?: string | null) => {
   return Number.isNaN(year) ? null : year;
 };
 
+const MINUTES_PER_DAY = 24 * 60;
+// A month figure only reads as meaningful once the total is at least a full
+// month's worth of days — below that, rounding a handful of days into
+// "~1 month" would be misleading rather than helpful.
+const DAYS_PER_MONTH = 30;
+
+/**
+ * Long-form breakdown of a watched-duration total in minutes, for the
+ * headline numbers where a bare hour count doesn't convey scale (the "Time
+ * watched" stat card, the Wrapped hero figure) — everywhere else keeps the
+ * plain `stats.durationHoursMinutes` hours/minutes label.
+ *
+ * - Under 24h: no day breakdown at all (a 3-hour total isn't "0 days" of
+ *   anything).
+ * - 24h up to just under a month (30 days): hours + a day count.
+ * - A month or more: hours + day count + an approximate month count.
+ *
+ * Days and months are floored, not rounded, so the figures read as "at
+ * least this much" rather than implying a precision the estimate doesn't
+ * have.
+ */
+export const formatWatchDurationBreakdown = (minutes: number): string => {
+  const hours = i18n.t("stats.durationHoursMinutes", {
+    hours: Math.floor(minutes / 60),
+    minutes: minutes % 60,
+  });
+  if (minutes < MINUTES_PER_DAY) return hours;
+
+  const days = Math.floor(minutes / MINUTES_PER_DAY);
+  const daysLabel = i18n.t("stats.watchDurationDays", { count: days });
+  if (days < DAYS_PER_MONTH) {
+    return i18n.t("stats.watchDurationWithDays", { hours, days: daysLabel });
+  }
+
+  const months = Math.floor(days / DAYS_PER_MONTH);
+  const monthsLabel = i18n.t("stats.watchDurationMonths", { count: months });
+  return i18n.t("stats.watchDurationWithMonths", { hours, days: daysLabel, months: monthsLabel });
+};
+
 export const percent = (value: number, total: number) => (total === 0 ? 0 : Math.round((value / total) * 100));
 
 export const pluralize = (value: number, one: string, many: string) => (value > 1 ? many : one);
