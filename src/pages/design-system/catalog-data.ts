@@ -951,6 +951,14 @@ export const componentInventory = [
     "Threshold-crossing achievements (episodes, hours, completed series) based on current watch state."
   ),
   component(
+    "AboutSettings",
+    "components/settings/about-settings.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Shows app/build version (copyable) and image-cache size with a confirmed clear action."
+  ),
+  component(
     "BackupTools",
     "components/settings/backup-tools.tsx",
     "Settings",

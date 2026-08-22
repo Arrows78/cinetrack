@@ -84,7 +84,11 @@
     "countdownTomorrow": "Tomorrow",
     "countdownInDays": "In {{count}} days",
     "countdownInWeeks_one": "In {{count}} week",
-    "countdownInWeeks_other": "In {{count}} weeks"
+    "countdownInWeeks_other": "In {{count}} weeks",
+    "sizeBytes": "{{count}} B",
+    "sizeKB": "{{value}} KB",
+    "sizeMB": "{{value}} MB",
+    "sizeGB": "{{value}} GB"
   },
   "theme": {
     "dark": "Dark",
@@ -290,13 +294,33 @@
       "title": "My streaming services",
       "description": "Pick the platforms you're subscribed to — used to filter availability alerts and Watch Tonight picks."
     },
+    "about": {
+      "versionTitle": "Version",
+      "versionDesc": "Useful to include in a bug report.",
+      "versionLine": "CineTrack {{version}} (Tauri {{tauriVersion}})",
+      "versionUnavailable": "Version information isn't available outside the desktop app.",
+      "copyVersion": "Copy",
+      "versionCopied": "Version copied to the clipboard.",
+      "versionCopyFailed": "Couldn't copy the version. Please try again.",
+      "cacheTitle": "Image cache",
+      "cacheDesc": "Posters and images downloaded from TMDB are cached locally for faster loading.",
+      "cacheMeasuring": "Measuring cache size…",
+      "cacheSize": "Current size: {{size}}",
+      "clearCache": "Clear image cache",
+      "clearCacheConfirmTitle": "Clear the image cache?",
+      "clearCacheConfirmDescription": "This will free approximately {{size}}. Images will be re-downloaded from TMDB the next time they're needed.",
+      "cacheCleared": "Image cache cleared.",
+      "cacheClearFailed": "Couldn't clear the image cache. Please try again."
+    },
     "sections": {
       "account": "Account",
       "accountDesc": "Manage who's using CineTrack on this device.",
       "data": "Backup & import",
       "dataDesc": "Move your data in and out of CineTrack.",
       "streaming": "Streaming services",
-      "streamingDesc": "Tell CineTrack which platforms you subscribe to."
+      "streamingDesc": "Tell CineTrack which platforms you subscribe to.",
+      "about": "About",
+      "aboutDesc": "Version information and local cache maintenance."
     }
   },
   "mediaHub": {

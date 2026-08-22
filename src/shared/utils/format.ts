@@ -162,6 +162,24 @@ export const percent = (value: number, total: number) => (total === 0 ? 0 : Math
 
 export const pluralize = (value: number, one: string, many: string) => (value > 1 ? many : one);
 
+const BYTES_PER_KB = 1024;
+const BYTES_PER_MB = BYTES_PER_KB * 1024;
+const BYTES_PER_GB = BYTES_PER_MB * 1024;
+
+/**
+ * Human-readable byte size ("42.3 MB") for the image-cache size shown in
+ * Settings. The unit suffix is localized rather than hardcoded to English —
+ * same reasoning as tvtimeImport.totalTooLarge, which already renders "MB"
+ * in English but "Mo" in French.
+ */
+export const formatBytes = (bytes: number): string => {
+  const value = Math.max(0, bytes);
+  if (value < BYTES_PER_KB) return i18n.t("common.sizeBytes", { count: Math.round(value) });
+  if (value < BYTES_PER_MB) return i18n.t("common.sizeKB", { value: (value / BYTES_PER_KB).toFixed(1) });
+  if (value < BYTES_PER_GB) return i18n.t("common.sizeMB", { value: (value / BYTES_PER_MB).toFixed(1) });
+  return i18n.t("common.sizeGB", { value: (value / BYTES_PER_GB).toFixed(1) });
+};
+
 /**
  * Placeholder image URL via placehold.co. Centralizes the background/foreground
  * colors so every fallback image shares the same brand-aligned palette.

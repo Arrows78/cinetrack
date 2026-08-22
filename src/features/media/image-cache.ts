@@ -26,4 +26,23 @@ export const imageCache = {
     if ("caches" in window) await caches.delete(CACHE_NAME);
     localStorage.removeItem(META_KEY);
   },
+  /**
+   * Aggregate size (in bytes) of everything currently in the cache — powers
+   * the "image cache" card in Settings. There's no cheaper way to get a
+   * total from the Cache API than opening every matched response and
+   * summing its `Blob.size`. Like `prefetch`/`clear`, this only reports
+   * what's actually cached right now and returns 0 when the Cache API isn't
+   * available (shouldn't happen in the real app, but mirrors their guard).
+   */
+  async size(): Promise<number> {
+    if (!("caches" in window)) return 0;
+    const cache = await caches.open(CACHE_NAME);
+    const keys = await cache.keys();
+    let total = 0;
+    for (const key of keys) {
+      const response = await cache.match(key);
+      if (response) total += (await response.blob()).size;
+    }
+    return total;
+  },
 };

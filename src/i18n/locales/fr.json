@@ -84,7 +84,11 @@
     "countdownTomorrow": "Demain",
     "countdownInDays": "Dans {{count}} jours",
     "countdownInWeeks_one": "Dans {{count}} semaine",
-    "countdownInWeeks_other": "Dans {{count}} semaines"
+    "countdownInWeeks_other": "Dans {{count}} semaines",
+    "sizeBytes": "{{count}} o",
+    "sizeKB": "{{value}} Ko",
+    "sizeMB": "{{value}} Mo",
+    "sizeGB": "{{value}} Go"
   },
   "theme": {
     "dark": "Sombre",
@@ -290,13 +294,33 @@
       "title": "Mes services de streaming",
       "description": "Choisissez les plateformes auxquelles vous êtes abonné·e — utilisé pour filtrer les alertes de disponibilité et les suggestions de « Ce soir »."
     },
+    "about": {
+      "versionTitle": "Version",
+      "versionDesc": "Utile à joindre à un rapport de bug.",
+      "versionLine": "CineTrack {{version}} (Tauri {{tauriVersion}})",
+      "versionUnavailable": "Les informations de version ne sont pas disponibles en dehors de l'application de bureau.",
+      "copyVersion": "Copier",
+      "versionCopied": "Version copiée dans le presse-papiers.",
+      "versionCopyFailed": "Impossible de copier la version. Réessayez.",
+      "cacheTitle": "Cache d'images",
+      "cacheDesc": "Les affiches et images téléchargées depuis TMDB sont mises en cache localement pour un chargement plus rapide.",
+      "cacheMeasuring": "Calcul de la taille du cache…",
+      "cacheSize": "Taille actuelle : {{size}}",
+      "clearCache": "Vider le cache d'images",
+      "clearCacheConfirmTitle": "Vider le cache d'images ?",
+      "clearCacheConfirmDescription": "Cela libérera environ {{size}}. Les images seront retéléchargées depuis TMDB lorsque nécessaire.",
+      "cacheCleared": "Cache d'images vidé.",
+      "cacheClearFailed": "Impossible de vider le cache d'images. Réessayez."
+    },
     "sections": {
       "account": "Compte",
       "accountDesc": "Gérez qui utilise CineTrack sur cet appareil.",
       "data": "Sauvegarde & import",
       "dataDesc": "Faites entrer et sortir vos données de CineTrack.",
       "streaming": "Services de streaming",
-      "streamingDesc": "Indiquez à CineTrack les plateformes auxquelles vous êtes abonné·e."
+      "streamingDesc": "Indiquez à CineTrack les plateformes auxquelles vous êtes abonné·e.",
+      "about": "À propos",
+      "aboutDesc": "Informations de version et entretien du cache local."
     }
   },
   "mediaHub": {

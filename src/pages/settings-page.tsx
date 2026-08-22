@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Trash2, UserPlus } from "lucide-react";
+import { AboutSettings } from "@/components/settings/about-settings";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
@@ -390,6 +391,11 @@ export function SettingsPage() {
       <section>
         <SectionHeader size="sub" title={t("settings.desktopSecurity")} subtitle={t("settings.desktopSecurityDesc")} />
         <DesktopSettings />
+      </section>
+
+      <section>
+        <SectionHeader size="sub" title={t("settings.sections.about")} subtitle={t("settings.sections.aboutDesc")} />
+        <AboutSettings />
       </section>
     </div>
   );
