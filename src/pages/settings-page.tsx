@@ -345,6 +345,13 @@ export function SettingsPage() {
                 pressed={preferences?.notificationsEnabled ?? false}
                 onPressedChange={() => void toggleNotifications()}
               />
+              <SettingToggle
+                label={t("settings.onThisDay")}
+                pressed={preferences?.onThisDayEnabled ?? false}
+                onPressedChange={() =>
+                  void updatePreference({ key: "onThisDayEnabled", value: !preferences?.onThisDayEnabled })
+                }
+              />
             </div>
           </CardContent>
         </Card>
