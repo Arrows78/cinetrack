@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -156,14 +156,47 @@ describe("HomePage", () => {
     favouriteGenreRailMock.mockReset().mockReturnValue({ genre: null, items: [] });
   });
 
-  it("renders the configure-TMDB empty state and gates every data hook's content when no token is configured", () => {
+  it("renders the no-token explainer with both actions and gates every data hook's content when no token is configured", () => {
     hasTmdbTokenValue = false;
     renderPage();
 
-    expect(screen.getByText(i18n.t("home.configureTmdb"))).toBeInTheDocument();
-    expect(screen.getByText(i18n.t("home.configureTmdbDesc"))).toBeInTheDocument();
-    const cta = screen.getByRole("link", { name: i18n.t("home.configureTmdbCta") });
-    expect(cta).toHaveAttribute("href", "/settings");
+    expect(screen.getByText(i18n.t("home.noTokenTitle"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("home.noTokenDesc"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("home.noTokenWorksTitle"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("home.noTokenUnlocksTitle"))).toBeInTheDocument();
+
+    const addCta = screen.getByRole("link", { name: i18n.t("home.noTokenAddCta") });
+    expect(addCta).toHaveAttribute("href", "/settings");
+    expect(screen.getByRole("button", { name: i18n.t("home.noTokenContinueCta") })).toBeInTheDocument();
+
+    expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dune Part Two")).not.toBeInTheDocument();
+  });
+
+  it("falls through to a local-data summary with quick links when 'continue without a token' is clicked", () => {
+    hasTmdbTokenValue = false;
+    trackedSeriesMock.mockReturnValue({ data: [{ id: "1" }, { id: "2" }] });
+    libraryMock.mockReturnValue({ data: [{ mediaId: 1, status: "planned" }] });
+    historyMock.mockReturnValue({ data: { pages: [[{ id: "h1" }]] } });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("home.noTokenContinueCta") }));
+
+    expect(screen.queryByText(i18n.t("home.noTokenTitle"))).not.toBeInTheDocument();
+    expect(screen.getByText(i18n.t("home.noTokenBannerTitle"))).toBeInTheDocument();
+    const bannerCta = screen.getByRole("link", { name: i18n.t("home.noTokenAddCta") });
+    expect(bannerCta).toHaveAttribute("href", "/settings");
+
+    expect(screen.getByText(i18n.t("home.offlineSummaryTitle"))).toBeInTheDocument();
+    const followedLabel = screen.getByText(i18n.t("home.followedSeries"));
+    expect(followedLabel.nextElementSibling).toHaveTextContent("2");
+
+    expect(screen.getByRole("link", { name: new RegExp(i18n.t("nav.library")) })).toHaveAttribute("href", "/library");
+    expect(screen.getByRole("link", { name: new RegExp(i18n.t("nav.tracking")) })).toHaveAttribute(
+      "href",
+      "/tracking"
+    );
+    expect(screen.getByRole("link", { name: new RegExp(i18n.t("nav.stats")) })).toHaveAttribute("href", "/stats");
 
     expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();
     expect(screen.queryByText("Dune Part Two")).not.toBeInTheDocument();
