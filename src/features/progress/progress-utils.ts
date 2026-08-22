@@ -33,12 +33,21 @@ export function calculateSeriesProgress(
   const watchedEpisodes = seasons
     .flatMap((season) => season.episodes)
     .filter((episode) => watchedSet.has(episode.id)).length;
+  const completed = totalEpisodes > 0 && watchedEpisodes === totalEpisodes;
+  // "Up to date" (caught up but still ongoing) is distinct from `completed`:
+  // completed requires every known episode watched, including future/
+  // unaired ones TMDB has already announced, which for an ongoing show
+  // basically never happens. Up to date only requires nothing currently
+  // aired and unwatched to be left — getNextEpisode returning null already
+  // means exactly that.
+  const isUpToDate = !completed && getNextEpisode(seasons, watched) === null;
   return {
     seriesId,
     totalEpisodes,
     watchedEpisodes,
     seasons: progressBySeason,
     progressPercent: percent(watchedEpisodes, totalEpisodes),
-    completed: totalEpisodes > 0 && watchedEpisodes === totalEpisodes,
+    completed,
+    isUpToDate,
   };
 }

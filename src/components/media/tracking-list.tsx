@@ -139,6 +139,16 @@ export function TrackingList({
       ),
     [tracking.data, scopeFilter, typeFilter, lockedMediaType]
   );
+  // Distinguishes "nothing tracked at all" (tracking.data itself is empty —
+  // no library items, tracked series, or alerts to build a feed from) from
+  // "filtered to nothing" (there's real data, the current scope/type/tab
+  // combination just excludes all of it) — each needs a different message
+  // and a different recovery action.
+  const hasAnyTrackingData = (tracking.data ?? []).length > 0;
+  const resetFilters = () => {
+    setScopeFilter("all");
+    setTypeFilter("all");
+  };
 
   const availableNow = filtered.filter((entry) => entry.type === "availability" && entry.available);
   const pending = filtered.filter((entry) => entry.type === "availability" && !entry.available);
@@ -215,7 +225,29 @@ export function TrackingList({
       ) : null}
 
       {!tracking.isLoading && !tracking.isError && !filtered.length ? (
-        <EmptyState icon={CalendarDays} title={t("tracking.noResultsTitle")} description={t("tracking.noResults")} />
+        hasAnyTrackingData ? (
+          <EmptyState
+            icon={CalendarDays}
+            title={t("tracking.noResultsTitle")}
+            description={t("tracking.noResults")}
+            action={
+              <Button type="button" variant="outline" onClick={resetFilters}>
+                {t("tracking.clearFilters")}
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={CalendarDays}
+            title={t("tracking.emptyTitle")}
+            description={t("tracking.emptyDesc")}
+            action={
+              <Button asChild>
+                <Link to="/search">{t("tracking.emptyCta")}</Link>
+              </Button>
+            }
+          />
+        )
       ) : null}
 
       {onBrowseAll && !tracking.isLoading && !tracking.isError && filtered.length ? (

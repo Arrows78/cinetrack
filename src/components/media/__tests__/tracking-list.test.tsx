@@ -279,11 +279,27 @@ describe("TrackingList", () => {
     expect(removeMock).not.toHaveBeenCalled();
   });
 
-  it("renders the empty state when no entries match the current filters", () => {
+  it("renders the genuinely-empty state, with a catalogue CTA, when there is no tracking data at all", () => {
     mockTracking({ data: [] });
     render(<TrackingList />);
 
+    expect(screen.getByText("Nothing tracked yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Discover movies & series" })).toHaveAttribute("href", "/search");
+    expect(screen.queryByText("Nothing to show")).not.toBeInTheDocument();
+  });
+
+  it("renders the filtered-to-empty state, with a filter-reset action, when data exists but the current filters exclude all of it", () => {
+    mockTracking({ data: [episodeDiscovery] });
+    render(<TrackingList />);
+
+    // Default scope is "mine"; episodeDiscovery is scope "discovery", so it's
+    // filtered out even though tracking.data is non-empty.
     expect(screen.getByText("Nothing to show")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing tracked yet")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(screen.getByText("Discovery Series")).toBeInTheDocument();
   });
 
   it("renders and wires up the browse-all button when results are present", () => {

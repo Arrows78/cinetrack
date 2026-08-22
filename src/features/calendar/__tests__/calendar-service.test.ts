@@ -21,6 +21,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: { listTrackedSeries: mocks.listTrackedSeries },
 }));
 
+import { queryClient } from "@/app/query-client";
 import { calendarService } from "../calendar-service";
 
 const day = (offset: number) =>
@@ -75,6 +76,10 @@ const season = (seasonNumber: number, episodes: Array<{ id: number; airDate: str
 describe("calendarService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // build() now routes series/season lookups through the shared
+    // queryClient (see calendar-service.ts) — clear it so a cache entry
+    // from one test never leaks into the next.
+    queryClient.clear();
     mocks.getUpcomingMovies.mockResolvedValue(emptyPage);
     mocks.listTrackedSeries.mockResolvedValue([]);
   });
@@ -176,5 +181,48 @@ describe("calendarService", () => {
 
     expect(mocks.getSeriesDetails).toHaveBeenCalledTimes(trackedCount);
     expect(entries).toHaveLength(trackedCount);
+  });
+
+  it("reuses cached series/season details on a second build() call within staleTime, instead of refetching", async () => {
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 10 }]);
+    mocks.getSeriesDetails.mockResolvedValue(series(10, [1]));
+    mocks.getSeasonDetails.mockResolvedValue(season(1, [{ id: 1, airDate: day(3) }]));
+
+    const first = await calendarService.build(60);
+    const second = await calendarService.build(60);
+
+    expect(mocks.getSeriesDetails).toHaveBeenCalledTimes(1);
+    expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(1);
+    expect(second).toEqual(first);
+  });
+
+  it("returns a series' details instantly from cache when its detail page already populated it", async () => {
+    // Simulates the exact scenario the perf fix targets: the user viewed a
+    // series' detail page (useSeriesDetails/useSeriesSeasons in
+    // use-media.ts) moments before opening Tracking, so this key is already
+    // warm — build() must not call the repository again for it.
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 42 }]);
+    queryClient.setQueryData(["remote", "series", 42], series(42, [1]));
+    queryClient.setQueryData(["remote", "series", 42, "season", 1], season(1, [{ id: 1, airDate: day(3) }]));
+
+    const entries = await calendarService.build(60);
+
+    expect(mocks.getSeriesDetails).not.toHaveBeenCalled();
+    expect(mocks.getSeasonDetails).not.toHaveBeenCalled();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ mediaId: 42, kind: "episode" });
+  });
+
+  it("still surfaces the rest of the calendar when a series lookup errors, even when routed through the query cache", async () => {
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 20 }, { seriesId: 21 }]);
+    mocks.getSeriesDetails.mockImplementation((seriesId: number) =>
+      seriesId === 20 ? Promise.reject(new Error("boom")) : Promise.resolve(series(21, [1]))
+    );
+    mocks.getSeasonDetails.mockResolvedValue(season(1, [{ id: 1, airDate: day(2) }]));
+
+    const entries = await calendarService.build(60);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.mediaId).toBe(21);
   });
 });

@@ -55,4 +55,58 @@ describe("progress-utils", () => {
     const next = getNextEpisode([s], []);
     expect(next?.id).toBe(2);
   });
+
+  it("marks a series up to date once every aired episode is watched but an unaired one is still ahead", () => {
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const aired = episode({ id: 1, episodeNumber: 1, airDate: new Date(Date.now() - 1000).toISOString() });
+    const unaired = episode({ id: 2, episodeNumber: 2, airDate: farFuture });
+    const s = season([aired, unaired]);
+    const now = new Date().toISOString();
+    const watchedAired: EpisodeProgress = {
+      id: "1",
+      seriesId: 9,
+      episodeId: 1,
+      seasonNumber: 1,
+      episodeNumber: 1,
+      watched: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const progress = calculateSeriesProgress(9, [s], [watchedAired]);
+
+    expect(progress.completed).toBe(false);
+    expect(progress.isUpToDate).toBe(true);
+  });
+
+  it("is neither up to date nor completed while an aired episode remains unwatched", () => {
+    const aired = episode({ id: 1, episodeNumber: 1, airDate: new Date(Date.now() - 1000).toISOString() });
+    const s = season([aired]);
+
+    const progress = calculateSeriesProgress(9, [s], []);
+
+    expect(progress.completed).toBe(false);
+    expect(progress.isUpToDate).toBe(false);
+  });
+
+  it("is not up to date once completed (every known episode, including future ones, watched)", () => {
+    const ep1 = episode({ id: 1, episodeNumber: 1 });
+    const s = season([ep1]);
+    const now = new Date().toISOString();
+    const watched: EpisodeProgress = {
+      id: "1",
+      seriesId: 9,
+      episodeId: 1,
+      seasonNumber: 1,
+      episodeNumber: 1,
+      watched: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const progress = calculateSeriesProgress(9, [s], [watched]);
+
+    expect(progress.completed).toBe(true);
+    expect(progress.isUpToDate).toBe(false);
+  });
 });
