@@ -50,6 +50,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@choochmeque/tauri-plugin-sharekit-api": "0.3.1",
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource/playfair-display": "^5.3.0",
     "@fontsource/syne": "^5.3.0",

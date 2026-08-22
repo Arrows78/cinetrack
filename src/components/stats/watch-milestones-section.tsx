@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Lock, Trophy } from "lucide-react";
 import { useWatchMilestones } from "@/features/stats/use-stats";
-import { downloadMilestoneCard, renderMilestoneCard } from "@/features/stats/wrapped-export";
+import { ShareCancelledError, downloadMilestoneCard, renderMilestoneCard } from "@/features/stats/wrapped-export";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
@@ -63,9 +63,10 @@ export function WatchMilestonesSection() {
           achievedLabel: t("stats.milestones.achievedCardLabel"),
         }
       );
-      downloadMilestoneCard(blob, milestone.id);
+      await downloadMilestoneCard(blob, milestone.id);
       toast({ description: t("stats.milestones.exportSuccess"), variant: "success" });
     } catch (error) {
+      if (error instanceof ShareCancelledError) return;
       logger.warn(`Milestone export failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ description: displayMessage(error, t("stats.milestones.exportFailed")), variant: "error" });
     } finally {

@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Permissions for plugins that only exist on mobile (native share sheet) — see Cargo.toml's matching target-specific dependency gate. Split out from default.json because the desktop build fails otherwise: the permission build script can't resolve these identifiers when the plugin crate isn't even linked in for macOS/Windows/Linux.",
+  "platforms": ["iOS", "android"],
+  "windows": ["main"],
+  "permissions": [
+    "sharekit:default",
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "$APPCACHE/shares" }]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$APPCACHE/shares/**" }]
+    }
+  ]
+}

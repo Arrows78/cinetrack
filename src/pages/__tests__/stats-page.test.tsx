@@ -57,6 +57,7 @@ const downloadWrappedCardMock = vi.fn();
 vi.mock("@/features/stats/wrapped-export", () => ({
   renderWrappedCard: (...args: unknown[]) => renderWrappedCardMock(...args),
   downloadWrappedCard: (...args: unknown[]) => downloadWrappedCardMock(...args),
+  ShareCancelledError: class ShareCancelledError extends Error {},
 }));
 
 const toastMock = vi.fn();

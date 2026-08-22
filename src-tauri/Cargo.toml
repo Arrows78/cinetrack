@@ -37,6 +37,15 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-updater = "2"
 
+# Native share-sheet integration (iOS UIActivityViewController / Android
+# Intent.ACTION_SEND) for exporting Wrapped/recap/milestone PNG cards on
+# mobile — see wrapped-export.ts. Cargo.toml's target tables can't see
+# Tauri's own `mobile`/`desktop` cfg aliases (those are only registered via
+# tauri-build's build.rs, after Cargo has already resolved dependencies),
+# so this uses the raw target_os list instead of `cfg(mobile)`.
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+tauri-plugin-sharekit = "0.3"
+
 # Native "sorry, something went wrong" dialog for the one failure mode that
 # happens before any window (or even the webview) exists: a second startup
 # migration failure after the quarantine-and-retry in database::init_pool_at

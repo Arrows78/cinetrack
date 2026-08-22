@@ -79,6 +79,11 @@ pub fn run() {
         }));
     }
 
+    #[cfg(mobile)]
+    {
+        builder = builder.plugin(tauri_plugin_sharekit::init());
+    }
+
     builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())

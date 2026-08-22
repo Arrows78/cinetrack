@@ -1,14 +1,33 @@
 // Renders shareable PNG cards for Wrapped, monthly recaps and watch
 // milestones — purely with the Canvas 2D API, no DOM-rasterization library
-// (html2canvas/dom-to-image) and no new Tauri capability. Saving reuses the
-// same browser-native `<a download>` blob flow BackupTools already uses for
-// its JSON export (see backup-tools.tsx's exportBackup), which the Tauri
+// (html2canvas/dom-to-image). On desktop, saving reuses the same
+// browser-native `<a download>` blob flow BackupTools already uses for its
+// JSON export (see backup-tools.tsx's exportBackup), which the Tauri
 // webview handles like a normal download — so this also works in plain
-// browser preview (pnpm dev), unlike an IPC-backed file write would.
+// browser preview (pnpm dev), unlike an IPC-backed file write would. On
+// mobile there is no Downloads folder for `<a download>` to land in, so the
+// PNG is staged in the app's cache dir and handed to the native share sheet
+// (tauri-plugin-sharekit) instead, letting the user save it to Photos or
+// send it directly from there.
 //
 // All three card types share one visual family (background gradient, panel,
 // brand header, divider, typography scale) via the helpers below, so they
 // read as one system rather than three unrelated designs.
+
+import { BaseDirectory, mkdir, writeFile } from "@tauri-apps/plugin-fs";
+import { appCacheDir, join } from "@tauri-apps/api/path";
+import { shareFile } from "@choochmeque/tauri-plugin-sharekit-api";
+import { isMobileApp } from "@/shared/lib/platform";
+
+const SHARE_CACHE_SUBDIR = "shares";
+
+/** Thrown when the user dismisses the native share sheet without picking an action — not a real failure, callers should skip the error toast for it. */
+export class ShareCancelledError extends Error {
+  constructor() {
+    super("Share cancelled");
+    this.name = "ShareCancelledError";
+  }
+}
 
 const CARD_WIDTH = 1080;
 const CARD_HEIGHT = 1350;
@@ -149,7 +168,7 @@ function resolveBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-/** Triggers a browser-native download of the blob — same mechanism as BackupTools' JSON export. */
+/** Triggers a browser-native download of the blob — same mechanism as BackupTools' JSON export. Desktop (and plain browser preview) only; mobile has no Downloads folder for this to land in. */
 function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -157,6 +176,26 @@ function triggerDownload(blob: Blob, filename: string): void {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+/** Stages the blob in the app's cache dir and opens the native share sheet on it — throws ShareCancelledError if the user dismisses the sheet without picking an action. */
+async function shareCard(blob: Blob, filename: string): Promise<void> {
+  await mkdir(SHARE_CACHE_SUBDIR, { baseDir: BaseDirectory.AppCache, recursive: true });
+  const relativePath = `${SHARE_CACHE_SUBDIR}/${filename}`;
+  await writeFile(relativePath, new Uint8Array(await blob.arrayBuffer()), { baseDir: BaseDirectory.AppCache });
+  const absolutePath = await join(await appCacheDir(), relativePath);
+  try {
+    await shareFile(`file://${absolutePath}`, { mimeType: "image/png", title: filename });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Share cancelled") throw new ShareCancelledError();
+    throw error;
+  }
+}
+
+/** Desktop: downloads the blob as a file. Mobile: opens the native share sheet on it instead — there's no Downloads folder for `<a download>` to land in. */
+async function saveOrShareCard(blob: Blob, filename: string): Promise<void> {
+  if (isMobileApp()) await shareCard(blob, filename);
+  else triggerDownload(blob, filename);
 }
 
 export interface WrappedExportData {
@@ -227,8 +266,8 @@ export async function renderWrappedCard(data: WrappedExportData, labels: Wrapped
   return resolveBlob(canvas);
 }
 
-export function downloadWrappedCard(blob: Blob, year: number): void {
-  triggerDownload(blob, `cinetrack-wrapped-${year}.png`);
+export async function downloadWrappedCard(blob: Blob, year: number): Promise<void> {
+  await saveOrShareCard(blob, `cinetrack-wrapped-${year}.png`);
 }
 
 export interface MonthlyRecapExportData {
@@ -295,8 +334,8 @@ export async function renderMonthlyRecapCard(
   return resolveBlob(canvas);
 }
 
-export function downloadMonthlyRecapCard(blob: Blob, month: string): void {
-  triggerDownload(blob, `cinetrack-recap-${month}.png`);
+export async function downloadMonthlyRecapCard(blob: Blob, month: string): Promise<void> {
+  await saveOrShareCard(blob, `cinetrack-recap-${month}.png`);
 }
 
 export interface MilestoneExportData {
@@ -339,6 +378,6 @@ export async function renderMilestoneCard(data: MilestoneExportData, labels: Mil
   return resolveBlob(canvas);
 }
 
-export function downloadMilestoneCard(blob: Blob, slug: string): void {
-  triggerDownload(blob, `cinetrack-milestone-${slug}.png`);
+export async function downloadMilestoneCard(blob: Blob, slug: string): Promise<void> {
+  await saveOrShareCard(blob, `cinetrack-milestone-${slug}.png`);
 }

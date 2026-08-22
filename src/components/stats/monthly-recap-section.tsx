@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight, Clapperboard, Download, Film, Tv } from "lucide-react";
 import { useMonthlyRecap } from "@/features/stats/use-stats";
-import { downloadMonthlyRecapCard, renderMonthlyRecapCard } from "@/features/stats/wrapped-export";
+import { ShareCancelledError, downloadMonthlyRecapCard, renderMonthlyRecapCard } from "@/features/stats/wrapped-export";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
@@ -76,9 +76,10 @@ export function MonthlyRecapSection() {
           biggestBingeLabel: t("stats.monthlyRecap.biggestBingeCardLabel"),
         }
       );
-      downloadMonthlyRecapCard(blob, month);
+      await downloadMonthlyRecapCard(blob, month);
       toast({ description: t("stats.monthlyRecap.exportSuccess"), variant: "success" });
     } catch (error) {
+      if (error instanceof ShareCancelledError) return;
       logger.warn(`Monthly recap export failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ description: displayMessage(error, t("stats.monthlyRecap.exportFailed")), variant: "error" });
     } finally {

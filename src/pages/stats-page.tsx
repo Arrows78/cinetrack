@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { monthOverMonthComparison } from "@/features/stats/stats-repository";
 import { useStats, useWatchForecast, useWrapped, useYearlyActivity } from "@/features/stats/use-stats";
-import { downloadWrappedCard, renderWrappedCard } from "@/features/stats/wrapped-export";
+import { ShareCancelledError, downloadWrappedCard, renderWrappedCard } from "@/features/stats/wrapped-export";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
@@ -96,9 +96,10 @@ export function StatsPage() {
           favouriteGenreLabel: t("stats.favouriteGenre"),
         }
       );
-      downloadWrappedCard(blob, wrapped.data.year);
+      await downloadWrappedCard(blob, wrapped.data.year);
       toast({ description: t("stats.exportSuccess"), variant: "success" });
     } catch (error) {
+      if (error instanceof ShareCancelledError) return;
       logger.warn(`Wrapped export failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ description: displayMessage(error, t("stats.exportFailed")), variant: "error" });
     } finally {
