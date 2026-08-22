@@ -318,14 +318,35 @@ async fn get_stats_overview_impl(
     window_start: &str,
     month_labels: &[String],
 ) -> Result<StatsOverview, ApiError> {
+    // Unlike monthly_activity/yearly activity below (legitimately historical
+    // time series — "what did I watch in March" doesn't change just because
+    // I later unwatch it), these headline totals need to reflect *current*
+    // state: a movie/episode toggled back to unwatched must stop counting
+    // toward "movies watched"/"time watched", exactly like it already
+    // disappears from seen_movies/episode_progress. viewing_events is
+    // append-only, so naively summing every historical 'watched'/'rewatched'
+    // row (the previous query here) double-counted forever — an unwatch
+    // never subtracted the earlier watch it reversed. `latest_events` picks
+    // only the most recent event per (media_id, media_type, episode_id) —
+    // i.e. per movie, or per individual episode — so a later 'unwatched'
+    // event correctly shadows an earlier 'watched'/'rewatched' one instead
+    // of both being counted.
     let event_totals: EventTotalsRow = sqlx::query_as(
-        "SELECT
-           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
-           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
-           SUM(CASE WHEN event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched,
-           SUM(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN duration_minutes ELSE 0 END) AS movie_minutes_watched,
-           SUM(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN duration_minutes ELSE 0 END) AS episode_minutes_watched
-         FROM viewing_events WHERE profile_id = $1",
+        "WITH latest_events AS (
+           SELECT media_type, episode_id, event_type, duration_minutes,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY media_id, media_type, episode_id
+                    ORDER BY watched_at DESC, created_at DESC
+                  ) AS rn
+           FROM viewing_events WHERE profile_id = $1
+         )
+         SELECT
+           COUNT(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
+           COUNT(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
+           SUM(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched,
+           SUM(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND media_type = 'movie' THEN duration_minutes ELSE 0 END) AS movie_minutes_watched,
+           SUM(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN duration_minutes ELSE 0 END) AS episode_minutes_watched
+         FROM latest_events",
     )
     .bind(profile_id)
     .fetch_one(pool)
@@ -815,6 +836,67 @@ mod tests {
                 minutes: 0
             }
         );
+    }
+
+    #[tokio::test]
+    async fn stats_overview_excludes_a_movie_and_episode_that_were_later_unwatched() {
+        // Regression test: viewing_events is append-only, so a movie/episode
+        // watched and then unwatched leaves BOTH rows in the table. The
+        // totals must reflect only the latest event per (media_id,
+        // media_type, episode_id), not every historical "watched" row ever
+        // logged — otherwise unwatching something never reduces the
+        // headline stats, which is the bug this test guards against.
+        let pool = migrated_pool().await;
+
+        // Movie 10: watched, then unwatched — must not count.
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, created_at)
+             VALUES ('m10-watch', 'default', 10, 'movie', 'Movie Ten', 'watched', '2026-03-01T00:00:00.000Z', 100, '2026-03-01T00:00:00.000Z'),
+                    ('m10-unwatch', 'default', 10, 'movie', 'Movie Ten', 'unwatched', '2026-03-02T00:00:00.000Z', 100, '2026-03-02T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Movie 20: watched and never unwatched — must still count.
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, created_at)
+             VALUES ('m20-watch', 'default', 20, 'movie', 'Movie Twenty', 'watched', '2026-03-01T00:00:00.000Z', 90, '2026-03-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Series 30, episode 300: watched, then unwatched — must not count.
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, created_at)
+             VALUES ('e300-watch', 'default', 30, 'series', 'Show', 'watched', '2026-03-01T00:00:00.000Z', 40, 300, '2026-03-01T00:00:00.000Z'),
+                    ('e300-unwatch', 'default', 30, 'series', 'Show', 'unwatched', '2026-03-02T00:00:00.000Z', 40, 300, '2026-03-02T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let month_labels = vec!["2026-03".to_string()];
+        let overview =
+            get_stats_overview_impl(&pool, "default", "2026-03-01T00:00:00.000Z", &month_labels)
+                .await
+                .unwrap();
+
+        assert_eq!(
+            overview.totals.movies_watched, 1,
+            "only movie 20 should still count"
+        );
+        assert_eq!(
+            overview.totals.episodes_watched, 0,
+            "the unwatched episode must not count"
+        );
+        assert_eq!(
+            overview.totals.minutes_watched, 90,
+            "only movie 20's runtime should count"
+        );
+        assert_eq!(overview.totals.movie_minutes_watched, 90);
+        assert_eq!(overview.totals.episode_minutes_watched, 0);
     }
 
     #[tokio::test]

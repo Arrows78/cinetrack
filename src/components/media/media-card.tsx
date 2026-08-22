@@ -167,7 +167,7 @@ function MediaCardInner({
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           <Badge
             variant={media.mediaType === "movie" ? "movie" : "series"}
-            className="px-2.5 py-0.5 text-overline font-semibold uppercase backdrop-blur-sm transition-all duration-base"
+            className="px-2.5 py-1 text-xs font-semibold uppercase backdrop-blur-sm transition-all duration-base"
           >
             {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
           </Badge>
