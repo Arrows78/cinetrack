@@ -21,6 +21,7 @@ const defaultPreferences: UserPreferences = {
   notifyHoursBefore: 24,
   preferredProviderIds: [],
   activeProfileId: DEFAULT_PROFILE_ID,
+  backupDirectory: null,
   userProfile: { id: DEFAULT_PROFILE_ID, name: null },
 };
 

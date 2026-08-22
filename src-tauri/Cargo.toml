@@ -23,6 +23,7 @@ sqlx = { version = "0.9", default-features = false, features = ["sqlite", "runti
 uuid = { version = "1", features = ["v4", "v7"] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-deep-link = "2"
+tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"

@@ -19,14 +19,15 @@ use commands::{
     get_availability_snapshot, get_boot_recovery, get_episode_progress, get_library_item,
     get_preferences, get_stats_overview, has_library_item, import_backup_data, import_movie_seen,
     import_series_progress, is_movie_seen, link_profile_to_supabase_user, list_availability_alerts,
-    list_custom_list_items, list_custom_lists, list_history, list_library, list_profiles,
-    list_recent_viewing_events, list_tracked_series, list_viewing_events_for_year,
-    list_yearly_activity, refresh_preferences, refresh_tracked_series_status,
-    remove_availability_alert, remove_custom_list, remove_custom_list_item, remove_library_item,
-    remove_planned_library_item, remove_profile, resolve_profile_for_supabase_user,
-    save_availability_snapshot, save_library_item, set_active_profile, tmdb_request,
-    toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen, update_preference,
-    updater_is_configured,
+    list_backup_directory, list_custom_list_items, list_custom_lists, list_history, list_library,
+    list_profiles, list_recent_viewing_events, list_tracked_series, list_viewing_events_for_media,
+    list_viewing_events_for_year, list_yearly_activity, read_backup_from_path, refresh_preferences,
+    refresh_tracked_series_status, remove_availability_alert, remove_backup_file,
+    remove_custom_list, remove_custom_list_item, remove_library_item, remove_planned_library_item,
+    remove_profile, resolve_profile_for_supabase_user, save_availability_snapshot,
+    save_library_item, set_active_profile, tmdb_request, toggle_availability_alert,
+    toggle_episodes_watched, toggle_movie_seen, update_preference, updater_is_configured,
+    write_backup_to_path,
 };
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
@@ -74,6 +75,7 @@ pub fn run() {
 
     builder
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
@@ -101,6 +103,7 @@ pub fn run() {
             refresh_tracked_series_status,
             list_recent_viewing_events,
             list_viewing_events_for_year,
+            list_viewing_events_for_media,
             list_yearly_activity,
             get_stats_overview,
             list_availability_alerts,
@@ -126,6 +129,10 @@ pub fn run() {
             export_backup_data,
             import_backup_data,
             check_data_integrity,
+            write_backup_to_path,
+            read_backup_from_path,
+            list_backup_directory,
+            remove_backup_file,
         ])
         .setup(|app| {
             // Same "sqlite:app.db" file tauri-plugin-sql already opens

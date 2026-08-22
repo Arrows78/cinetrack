@@ -53,6 +53,7 @@ const basePreferences: UserPreferences = {
   notifyHoursBefore: 24,
   preferredProviderIds: [],
   activeProfileId: "profile-1",
+  backupDirectory: null,
   userProfile: { id: "profile-1", name: "Profile" },
 };
 

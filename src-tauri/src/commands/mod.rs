@@ -17,7 +17,10 @@ pub use availability::{
     get_availability_alert, get_availability_snapshot, list_availability_alerts,
     remove_availability_alert, save_availability_snapshot, toggle_availability_alert,
 };
-pub use backup::{check_data_integrity, export_backup_data, import_backup_data};
+pub use backup::{
+    check_data_integrity, export_backup_data, import_backup_data, list_backup_directory,
+    read_backup_from_path, remove_backup_file, write_backup_to_path,
+};
 pub use boot::get_boot_recovery;
 pub use custom_lists::{
     add_custom_list_item, create_custom_list, list_custom_list_items, list_custom_lists,
@@ -40,8 +43,8 @@ pub use progress::{
     toggle_episodes_watched, toggle_movie_seen,
 };
 pub use stats::{
-    get_stats_overview, list_recent_viewing_events, list_viewing_events_for_year,
-    list_yearly_activity,
+    get_stats_overview, list_recent_viewing_events, list_viewing_events_for_media,
+    list_viewing_events_for_year, list_yearly_activity,
 };
 pub use tmdb::tmdb_request;
 pub use tvtime::{import_movie_seen, import_series_progress};

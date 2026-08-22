@@ -4,6 +4,7 @@
 // built-in. Under the default jsdom environment, Vite treats this file as
 // browser ("client") code and refuses to bundle a Node built-in into it.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { InvokeArgs } from "@tauri-apps/api/core";
 import { rename, writeTextFile } from "@tauri-apps/plugin-fs";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
@@ -235,5 +236,122 @@ describe("maintenanceService automatic backup rotation", () => {
     const status = await maintenanceService.getLastBackupStatus();
     expect(status.failed).toBe(false);
     expect(status.exportedAt).not.toBeNull();
+  });
+});
+
+// A custom backupDirectory routes every read/write through the
+// write_backup_to_path/read_backup_from_path/list_backup_directory/
+// remove_backup_file Rust commands (src-tauri/src/commands/backup.rs)
+// instead of the @tauri-apps/plugin-fs calls used above — that plugin can't
+// safely be pre-allow-listed for an arbitrary, user-chosen absolute path.
+// These commands are pure file I/O with no SQL behind them, so rather than
+// extend the shared SQL-backed fake-invoke-backend.ts, each test here layers
+// a small in-memory file map directly over the sqlite-backed fake invoke()
+// (falling back to it for every other command, e.g. get_preferences).
+describe("maintenanceService with a custom backup directory", () => {
+  useTestSqlite();
+
+  const CUSTOM_DIR = "/Users/alex/iCloud Drive/CineTrack Backups";
+
+  async function useCustomDirectoryFakeInvoke() {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const sqlBackedInvoke = vi.mocked(invoke).getMockImplementation()!;
+    const customFiles = new Map<string, string>();
+
+    vi.mocked(invoke).mockImplementation(async (command: string, rawArgs?: InvokeArgs) => {
+      const args = (rawArgs ?? {}) as Record<string, unknown>;
+      switch (command) {
+        case "write_backup_to_path":
+          customFiles.set(args.path as string, args.contents as string);
+          return undefined;
+        case "read_backup_from_path":
+          return customFiles.get(args.path as string) ?? null;
+        case "list_backup_directory": {
+          const prefix = `${args.directory as string}/`;
+          const names = new Set<string>();
+          for (const path of customFiles.keys()) {
+            if (path.startsWith(prefix) && !path.slice(prefix.length).includes("/")) {
+              names.add(path.slice(prefix.length));
+            }
+          }
+          return Array.from(names);
+        }
+        case "remove_backup_file":
+          customFiles.delete(args.path as string);
+          return undefined;
+        default:
+          return sqlBackedInvoke(command, args);
+      }
+    });
+
+    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
+    await preferencesRepository.updatePreference("backupDirectory", CUSTOM_DIR);
+
+    return customFiles;
+  }
+
+  it("writes automatic backups through the custom-path commands instead of plugin-fs, and can restore them back", async () => {
+    const customFiles = await useCustomDirectoryFakeInvoke();
+    const { maintenanceService } = await import("../maintenance-service");
+    const { libraryRepository } = await import("@/features/library/library-repository");
+    await libraryRepository.save(media(1), { status: "planned" });
+
+    // writeTextFile's call history isn't reset between tests (no clearMocks
+    // in vitest.config.ts) and earlier describe blocks in this file legitimately
+    // call it via the default $APPDATA branch — clear it here so the
+    // assertion below reflects only this test's own operation.
+    vi.mocked(writeTextFile).mockClear();
+    await maintenanceService.createAutomaticBackup(true);
+
+    expect(writeTextFile).not.toHaveBeenCalled();
+    expect(Array.from(customFiles.keys()).some((path) => path.startsWith(`${CUSTOM_DIR}/backups/auto-`))).toBe(true);
+
+    await libraryRepository.remove(1, "movie");
+    expect(await libraryRepository.list()).toHaveLength(0);
+
+    await maintenanceService.restoreAutomaticBackup();
+    expect((await libraryRepository.list())[0]?.mediaId).toBe(1);
+  });
+
+  it("prunes automatic backups beyond the retention limit inside the custom directory too", async () => {
+    const customFiles = await useCustomDirectoryFakeInvoke();
+    for (let day = 1; day <= 7; day++) {
+      customFiles.set(`${CUSTOM_DIR}/backups/auto-2026-01-0${day}T00-00-00-000Z.json`, autoBackupContent(day));
+    }
+
+    const { maintenanceService } = await import("../maintenance-service");
+    await maintenanceService.createAutomaticBackup(true);
+
+    const remaining = Array.from(customFiles.keys())
+      .filter((path) => path.includes("/backups/auto-"))
+      .sort();
+
+    expect(remaining).toHaveLength(5);
+    expect(remaining).not.toContain(`${CUSTOM_DIR}/backups/auto-2026-01-01T00-00-00-000Z.json`);
+    expect(remaining).toContain(`${CUSTOM_DIR}/backups/auto-2026-01-07T00-00-00-000Z.json`);
+  });
+
+  it("snapshots and undoes a restore against the custom directory", async () => {
+    await useCustomDirectoryFakeInvoke();
+    const { maintenanceService } = await import("../maintenance-service");
+    const { libraryRepository } = await import("@/features/library/library-repository");
+    await libraryRepository.save(media(1), { status: "planned" });
+
+    // Carries `preferences.backupDirectory` because a real backup (from
+    // `portableData.export()`) always does — restoring one that omitted it
+    // would wipe the just-set custom directory back to null on import,
+    // causing the very next call (undoLastRestore, which re-reads that
+    // preference) to look in the wrong place.
+    const replacement = {
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { library: [], preferences: { backupDirectory: CUSTOM_DIR } },
+    };
+    await maintenanceService.restoreFromBackup(replacement);
+    expect(await libraryRepository.list()).toHaveLength(0);
+
+    await maintenanceService.undoLastRestore();
+    expect((await libraryRepository.list())[0]?.mediaId).toBe(1);
   });
 });

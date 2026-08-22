@@ -97,6 +97,7 @@ describe("profileRepository", () => {
       notifyHoursBefore: 24,
       preferredProviderIds: [],
       activeProfileId: "removed-id",
+      backupDirectory: null,
       userProfile: { id: DEFAULT_PROFILE_ID, name: null },
     };
     invokeMock.mockImplementation(async (command: string) => {
@@ -132,6 +133,7 @@ describe("profileRepository", () => {
       notifyHoursBefore: 24,
       preferredProviderIds: [],
       activeProfileId: DEFAULT_PROFILE_ID,
+      backupDirectory: null,
       userProfile: { id: DEFAULT_PROFILE_ID, name: null },
     };
     invokeMock.mockImplementation(async (command: string) => {

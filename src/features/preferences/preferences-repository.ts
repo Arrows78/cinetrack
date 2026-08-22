@@ -22,6 +22,7 @@ export const preferencesSchema = z.object({
   notifyHoursBefore: z.number().int().min(0).max(168).default(24),
   preferredProviderIds: z.array(z.number().int().positive()).default([]),
   activeProfileId: z.string().default(DEFAULT_PROFILE_ID),
+  backupDirectory: z.string().nullable().default(null),
   userProfile: z.object({
     id: z.string().default(DEFAULT_PROFILE_ID),
     name: z.string().nullable().default(null),

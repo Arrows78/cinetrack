@@ -12,6 +12,7 @@ import i18n from "@/i18n";
 import { invokeCommand } from "@/shared/lib/invoke";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { STALE_24_HOURS } from "@/shared/constants/query";
 import { logger } from "@/features/diagnostics/logger";
 
@@ -40,7 +41,39 @@ const LAST_BACKUP_FAILED_KEY = "cinetrack.last-auto-backup-failed";
 const autoBackupFileName = (exportedAt: string) =>
   `${BACKUP_DIR}/${AUTO_BACKUP_PREFIX}${exportedAt.replace(/[:.]/g, "-")}.json`;
 
+// Every read/write below first checks the user's `backupDirectory`
+// preference (see backup-tools.tsx's "Choose backup folder") and, when set,
+// routes through the Rust `*_backup_*`/`write_backup_to_path` commands in
+// src-tauri/src/commands/backup.rs instead of the `@tauri-apps/plugin-fs`
+// calls used for the default `$APPDATA` location. That plugin's capability
+// scope (capabilities/default.json) is a static `$APPDATA/**`-shaped
+// allow-list and can't safely pre-allow-list an arbitrary, user-chosen
+// absolute path — a plain Rust command isn't subject to that scoping. When
+// unset (the default for everyone who never touches this setting), behavior
+// is unchanged from before this preference existed.
+async function customBackupDirectory(): Promise<string | null> {
+  const { backupDirectory } = await preferencesRepository.getPreferences();
+  return backupDirectory ?? null;
+}
+
+// `fileName` is always one of the relative, "backups/..."-prefixed
+// constants below (BACKUP_DIR/autoBackupFileName/PRE_RESTORE_FILE/
+// LEGACY_BACKUP_FILE) — joining it onto the custom directory with "/"
+// mirrors how those same relative paths are already used as-is against
+// BaseDirectory.AppData in the default branch.
+const joinCustomPath = (directory: string, fileName: string) => `${directory.replace(/[/\\]+$/, "")}/${fileName}`;
+
 async function listAutoBackups(): Promise<string[]> {
+  const customDirectory = await customBackupDirectory();
+  if (customDirectory) {
+    const names = await invokeCommand<string[]>("list_backup_directory", {
+      directory: joinCustomPath(customDirectory, BACKUP_DIR),
+    });
+    return names
+      .filter((name) => name.startsWith(AUTO_BACKUP_PREFIX) && name.endsWith(".json"))
+      .map((name) => `${BACKUP_DIR}/${name}`)
+      .sort();
+  }
   try {
     const entries = await readDir(BACKUP_DIR, { baseDir: BaseDirectory.AppData });
     return entries
@@ -56,9 +89,13 @@ async function listAutoBackups(): Promise<string[]> {
 async function pruneOldAutoBackups(): Promise<void> {
   const files = await listAutoBackups();
   const excess = files.slice(0, Math.max(0, files.length - AUTO_BACKUP_RETENTION));
+  const customDirectory = await customBackupDirectory();
   await Promise.all(
     excess.map((file) =>
-      remove(file, { baseDir: BaseDirectory.AppData }).catch((error) => {
+      (customDirectory
+        ? invokeCommand<void>("remove_backup_file", { path: joinCustomPath(customDirectory, file) })
+        : remove(file, { baseDir: BaseDirectory.AppData })
+      ).catch((error) => {
         logger.warn(`Failed to remove old backup ${file}: ${error}`);
       })
     )
@@ -70,8 +107,19 @@ async function pruneOldAutoBackups(): Promise<void> {
 // quit mid-write leaves the `.tmp` file corrupt but never touches the
 // previously-valid backup at `fileName`. Writing `fileName` directly would
 // mean the one and only automatic backup (or pre-restore snapshot) could be
-// left truncated with no way to recover.
+// left truncated with no way to recover. (The custom-path branch gets the
+// same atomicity from `write_backup_to_path` itself, which also creates any
+// missing parent directories — the explicit `mkdir` below only applies to
+// the default `$APPDATA` branch.)
 async function writeNamedBackup(fileName: string, content: string): Promise<void> {
+  const customDirectory = await customBackupDirectory();
+  if (customDirectory) {
+    await invokeCommand<void>("write_backup_to_path", {
+      path: joinCustomPath(customDirectory, fileName),
+      contents: content,
+    });
+    return;
+  }
   await mkdir(BACKUP_DIR, { baseDir: BaseDirectory.AppData, recursive: true });
   const tempFile = `${fileName}.tmp`;
   await writeTextFile(tempFile, content, { baseDir: BaseDirectory.AppData });
@@ -79,6 +127,12 @@ async function writeNamedBackup(fileName: string, content: string): Promise<void
 }
 
 async function readNamedBackup(fileName: string): Promise<string | null> {
+  const customDirectory = await customBackupDirectory();
+  if (customDirectory) {
+    return invokeCommand<string | null>("read_backup_from_path", {
+      path: joinCustomPath(customDirectory, fileName),
+    });
+  }
   if (!(await exists(fileName, { baseDir: BaseDirectory.AppData }))) return null;
   return readTextFile(fileName, { baseDir: BaseDirectory.AppData });
 }

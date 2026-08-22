@@ -87,6 +87,17 @@ pub struct UserPreferences {
     pub preferred_provider_ids: Vec<i64>,
     pub active_profile_id: String,
     pub user_profile: UserProfile,
+    /// Absolute path to a user-chosen folder where backup files are
+    /// written/read instead of the default app-data location — e.g. a
+    /// folder already synced by iCloud Drive/OneDrive/Dropbox. `None` means
+    /// "use the default app-data location". See
+    /// src-tauri/src/commands/backup.rs's `write_backup_to_path` /
+    /// `read_backup_from_path` for the plain-`std::fs` commands the
+    /// frontend routes through when this is set — this path is
+    /// user-supplied and arbitrary, so it can't go through the
+    /// `@tauri-apps/plugin-fs` JS API, whose capability scope is a static
+    /// `$APPDATA/**` allow-list.
+    pub backup_directory: Option<String>,
 }
 
 impl Default for UserPreferences {
@@ -107,6 +118,7 @@ impl Default for UserPreferences {
             preferred_provider_ids: Vec::new(),
             active_profile_id: "default".to_string(),
             user_profile: UserProfile::default(),
+            backup_directory: None,
         }
     }
 }
@@ -431,6 +443,56 @@ mod tests {
         // "Unknown preference key".
         let reloaded = load_preferences(&pool).await.unwrap();
         assert!(matches!(reloaded.library_view_mode, LibraryViewMode::List));
+    }
+
+    #[tokio::test]
+    async fn write_preference_round_trips_a_custom_backup_directory() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        let updated = write_preference(
+            "backupDirectory".to_string(),
+            Value::String("/Users/alex/iCloud Drive/CineTrack Backups".to_string()),
+            &pool,
+            &cache,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            updated.backup_directory.as_deref(),
+            Some("/Users/alex/iCloud Drive/CineTrack Backups")
+        );
+
+        // A fresh cache (simulating the next get_preferences call after a
+        // restart) must still see it.
+        let reloaded = load_preferences(&pool).await.unwrap();
+        assert_eq!(
+            reloaded.backup_directory.as_deref(),
+            Some("/Users/alex/iCloud Drive/CineTrack Backups")
+        );
+    }
+
+    #[tokio::test]
+    async fn backup_directory_defaults_to_none_and_can_be_reset() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        let defaults = get_preferences_cached(&pool, &cache).await.unwrap();
+        assert_eq!(defaults.backup_directory, None);
+
+        write_preference(
+            "backupDirectory".to_string(),
+            Value::String("/tmp/backups".to_string()),
+            &pool,
+            &cache,
+        )
+        .await
+        .unwrap();
+
+        let reset = write_preference("backupDirectory".to_string(), Value::Null, &pool, &cache)
+            .await
+            .unwrap();
+        assert_eq!(reset.backup_directory, None);
     }
 
     #[tokio::test]
