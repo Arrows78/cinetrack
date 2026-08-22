@@ -199,16 +199,20 @@ export function SearchPage() {
           index={1}
         />
         <div className="space-y-3">
-          <SearchBar value={localQuery} onChange={setLocalQuery} />
-          <FilterBar
-            value={scope}
-            onChange={(value) => setSelectedScope(value as SearchScope)}
-            options={[
-              { value: "all", label: t("settings.all") },
-              { value: "series", label: t("nav.series") },
-              { value: "movie", label: t("nav.movies") },
-            ]}
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="w-full sm:w-64">
+              <SearchBar value={localQuery} onChange={setLocalQuery} />
+            </div>
+            <FilterBar
+              value={scope}
+              onChange={(value) => setSelectedScope(value as SearchScope)}
+              options={[
+                { value: "all", label: t("settings.all") },
+                { value: "series", label: t("nav.series") },
+                { value: "movie", label: t("nav.movies") },
+              ]}
+            />
+          </div>
           <SavedFiltersBar page="search" currentFilters={currentFilters} onApply={applySavedFilters} />
         </div>
       </div>

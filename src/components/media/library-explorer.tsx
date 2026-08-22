@@ -424,12 +424,12 @@ export function LibraryExplorer({
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-5">
-        <div className="max-w-sm">
-          <SearchBar value={search} onChange={setSearch} placeholder={t("library.searchPlaceholder")} />
-        </div>
+    <div className="space-y-6">
+      <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="w-full sm:w-64">
+            <SearchBar value={search} onChange={setSearch} placeholder={t("library.searchPlaceholder")} />
+          </div>
           {lockedMediaType ? null : (
             <FilterBar
               value={typeFilter}
@@ -533,7 +533,7 @@ export function LibraryExplorer({
       <ActiveFilterChips chips={chips} />
 
       {lockedMediaType ? null : (
-        <Accordion type="single" collapsible>
+        <Accordion type="single" collapsible className="space-y-3">
           <AccordionItem value="lists">
             <AccordionTrigger>
               <span className="flex items-center gap-2">
