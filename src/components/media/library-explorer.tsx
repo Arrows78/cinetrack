@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { FolderHeart, Heart, LayoutGrid, LibraryBig, List, ListPlus, Trash2 } from "lucide-react";
+import { FolderHeart, Heart, LayoutGrid, LibraryBig, List, ListPlus, SearchX, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid, type MediaGridItem } from "@/components/media/media-grid";
 import { MediaList } from "@/components/media/media-list";
 import { MovieLibrarySections, SeriesLibrarySections } from "@/components/media/library-sections";
+import { SearchBar } from "@/components/media/search-bar";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -227,6 +228,7 @@ export function LibraryExplorer({
   const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">(lockedMediaType ?? "all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
   // Persisted (not local state) — a user's grid/list choice should survive
   // navigating away and back, and hold across /library, /movies and /series
@@ -247,12 +249,15 @@ export function LibraryExplorer({
     const libraryByKey = new Map((items ?? []).map((item) => [`${item.mediaType}-${item.mediaId}`, item]));
     const listMediaKeys =
       listFilter === "all" ? null : new Set((listItems.data ?? []).map((li) => `${li.mediaType}-${li.mediaId}`));
+    const normalizedSearch = search.trim().toLowerCase();
+    const matchesSearch = (title: string) => (normalizedSearch ? title.toLowerCase().includes(normalizedSearch) : true);
 
     const fromLibrary = (items ?? [])
       .filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter))
       .filter((item) => (statusFilter === "all" ? true : item.status === statusFilter))
       .filter((item) => (favouritesOnly ? item.favourite : true))
       .filter((item) => (listMediaKeys ? listMediaKeys.has(`${item.mediaType}-${item.mediaId}`) : true))
+      .filter((item) => matchesSearch(item.title))
       .map((item) => ({
         sortKey: item.updatedAt,
         media: {
@@ -282,6 +287,7 @@ export function LibraryExplorer({
             .filter((li) => !libraryByKey.has(`${li.mediaType}-${li.mediaId}`))
             .filter((li) => (typeFilter === "all" ? true : li.mediaType === typeFilter))
             .filter(() => statusFilter === "all" && !favouritesOnly)
+            .filter((li) => matchesSearch(li.title))
             .map((li) => ({
               sortKey: li.addedAt,
               media: {
@@ -302,14 +308,25 @@ export function LibraryExplorer({
         return b.sortKey.localeCompare(a.sortKey);
       })
       .map((entry) => entry.media);
-  }, [items, trackedSeries, typeFilter, statusFilter, favouritesOnly, sort, listFilter, listItems.data]);
+  }, [items, trackedSeries, typeFilter, statusFilter, favouritesOnly, search, sort, listFilter, listItems.data]);
 
   const isFilteredToList = listFilter !== "all";
   const resetListFilter = () => setListFilter("all");
+  const hasAnyLibraryItems = (items?.length ?? 0) > 0;
+  const clearFilters = () => {
+    setTypeFilter(lockedMediaType ?? "all");
+    setStatusFilter("all");
+    setFavouritesOnly(false);
+    setListFilter("all");
+    setSearch("");
+  };
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-5">
+        <div className="max-w-sm">
+          <SearchBar value={search} onChange={setSearch} placeholder={t("library.searchPlaceholder")} />
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           {lockedMediaType ? null : (
             <FilterBar
@@ -430,13 +447,7 @@ export function LibraryExplorer({
         ) : (
           <MediaList items={filtered} />
         )
-      ) : isFilteredToList ? (
-        <EmptyState
-          icon={FolderHeart}
-          title={t("library.lists.emptyListTitle")}
-          description={t("library.lists.emptyListDesc")}
-        />
-      ) : (
+      ) : !hasAnyLibraryItems ? (
         <EmptyState
           icon={LibraryBig}
           title={t("library.emptyTitle")}
@@ -444,6 +455,17 @@ export function LibraryExplorer({
           action={
             <Button asChild>
               <Link to="/search">{t("library.exploreCta")}</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <EmptyState
+          icon={SearchX}
+          title={t("library.noResultsTitle")}
+          description={t("library.noResultsDesc")}
+          action={
+            <Button type="button" variant="outline" onClick={clearFilters}>
+              {t("library.clearFilters")}
             </Button>
           }
         />

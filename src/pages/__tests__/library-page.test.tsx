@@ -717,16 +717,82 @@ describe("LibraryExplorer — empty states", () => {
     expect(screen.queryByText("This list is empty")).not.toBeInTheDocument();
   });
 
-  it("shows the list-specific empty state when filtered to a list with no matching items", async () => {
+  it("shows the no-results state (not the empty-library state) when filtered to a list with no matching items", async () => {
     customListsState.data = [{ id: "list-empty", name: "Weekend", description: null }];
     renderPage();
 
     const select = await screen.findByLabelText("Filter by list");
     fireEvent.change(select, { target: { value: "list-empty" } });
 
-    expect(await screen.findByText("This list is empty")).toBeInTheDocument();
+    expect(await screen.findByText("No matches")).toBeInTheDocument();
     expect(screen.queryByText("Your library is empty")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Discover movies & series" })).not.toBeInTheDocument();
+  });
+
+  it("shows the no-results state with a working Clear filters button when a status filter matches nothing", async () => {
+    renderPage();
+    await screen.findByText("Dune");
+
+    fireEvent.click(screen.getByRole("button", { name: "Watching" }));
+    await screen.findByText("Severance");
+    fireEvent.click(screen.getByRole("button", { name: "Paused" }));
+
+    expect(await screen.findByText("No matches")).toBeInTheDocument();
+    expect(screen.queryByText("Your library is empty")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(await screen.findByText("Dune")).toBeInTheDocument();
+    expect(screen.getByText("Severance")).toBeInTheDocument();
+  });
+
+  it("shows the no-results state when the text search matches nothing, and Clear filters resets it", async () => {
+    renderPage();
+    await screen.findByText("Dune");
+
+    fireEvent.change(screen.getByLabelText("Search your library by title…"), {
+      target: { value: "nonexistent title" },
+    });
+
+    expect(await screen.findByText("No matches")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(await screen.findByText("Dune")).toBeInTheDocument();
+    expect(screen.getByText("Severance")).toBeInTheDocument();
+  });
+});
+
+describe("LibraryExplorer — text search", () => {
+  it("filters items by case-insensitive title substring match", async () => {
+    renderPage();
+    await screen.findByText("Dune");
+
+    fireEvent.change(screen.getByLabelText("Search your library by title…"), { target: { value: "dun" } });
+
+    expect(screen.getByText("Dune")).toBeInTheDocument();
+    expect(screen.queryByText("Severance")).not.toBeInTheDocument();
+  });
+
+  it("combines the text search with other active filters using AND semantics", async () => {
+    libraryQueryMock.mockReturnValue({
+      data: [
+        makeLibraryItem({ mediaId: 1, title: "Dune", status: "planned" }),
+        makeLibraryItem({ mediaId: 2, title: "Dune Two", status: "watching" }),
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPage();
+    await screen.findByText("Dune");
+
+    fireEvent.change(screen.getByLabelText("Search your library by title…"), { target: { value: "dune" } });
+    fireEvent.click(screen.getByRole("button", { name: "Watching" }));
+
+    expect(screen.getByText("Dune Two")).toBeInTheDocument();
+    expect(screen.queryByText("Dune")).not.toBeInTheDocument();
   });
 });
 
