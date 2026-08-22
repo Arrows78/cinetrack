@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { LibraryExplorer } from "@/components/media/library-explorer";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { LibraryPage } from "../library-page";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -58,6 +59,28 @@ const updatePreferenceMock = vi.fn();
 const preferencesDataMock = vi.fn(() => ({ libraryViewMode: "grid" as "grid" | "list" }));
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({ data: preferencesDataMock(), updatePreference: updatePreferenceMock, isSaving: false }),
+  // LibraryExplorer's saved-filters bar (see saved-filters-bar.tsx) resolves
+  // the active profile via this hook — fixed to "default" so it isn't
+  // this suite's concern which profile is active.
+  useActiveProfileId: () => DEFAULT_PROFILE_ID,
+}));
+
+// Rendered for real below (its own behavior — save/apply/delete — is covered
+// by saved-filters-bar.test.tsx) but stubbed down to a fixed, empty list here
+// so this suite's own filtering/list-management assertions don't also need
+// to account for a real invoke() round-trip.
+const savedFiltersState = {
+  data: [] as Array<{ id: string; name: string }>,
+  isLoading: false,
+  isError: false,
+  error: null as unknown,
+  refetch: vi.fn(),
+  create: vi.fn(),
+  remove: vi.fn(),
+  isSaving: false,
+};
+vi.mock("@/features/saved-filters/use-saved-filters", () => ({
+  useSavedFilters: () => savedFiltersState,
 }));
 
 const libraryQueryMock = vi.fn();

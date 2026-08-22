@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { SearchX } from "lucide-react";
+import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/active-filter-chips";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { FilterBar } from "@/components/media/filter-bar";
 import { LoadMoreButton } from "@/components/media/load-more-button";
 import { MediaGrid } from "@/components/media/media-grid";
+import { SavedFiltersBar } from "@/components/media/saved-filters-bar";
 import { SearchBar } from "@/components/media/search-bar";
 import { SectionHeader } from "@/components/media/section-header";
 import { CatalogueSections, CATALOGUE_SECTIONS } from "@/components/media/catalogue-sections";
@@ -18,7 +20,7 @@ import { useSearch as useSearchHook } from "@/features/media/use-search";
 import { useHomeFeed } from "@/features/media/use-media";
 import { GENRES, PLATFORMS } from "@/shared/constants/discover";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
-import type { MediaSummary, SearchScope } from "@/types/media";
+import type { MediaSummary, SearchFilterState, SearchScope } from "@/types/media";
 
 const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
 const getGenreLabelKey = (id: string | undefined) =>
@@ -106,6 +108,78 @@ export function SearchPage() {
     const labelKey = getGenreLabelKey(id);
     return labelKey ? t(labelKey) : (id ?? null);
   };
+
+  // Exactly the state a saved filter captures/restores (see
+  // src/types/media.ts's SearchFilterState doc comment) — the free-text
+  // query is deliberately excluded, same as a smart list's rules: a saved
+  // filter is a reusable *view* ("favourite sci-fi", "on my services"), not
+  // a stored search term.
+  const currentFilters: SearchFilterState = { scope, genreMovie, genreSeries, provider };
+  const applySavedFilters = (filters: SearchFilterState) => {
+    lastPushedScopeRef.current = filters.scope;
+    setSelectedScope(filters.scope);
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        scope: filters.scope,
+        genreMovie: filters.genreMovie,
+        genreSeries: filters.genreSeries,
+        provider: filters.provider,
+      }),
+      replace: true,
+    });
+  };
+
+  const removeGenreMovie = () =>
+    void navigate({ search: (prev) => ({ ...prev, genreMovie: undefined }), replace: true });
+  const removeGenreSeries = () =>
+    void navigate({ search: (prev) => ({ ...prev, genreSeries: undefined }), replace: true });
+  const removeProvider = () => void navigate({ search: (prev) => ({ ...prev, provider: undefined }), replace: true });
+  const removeScope = () => {
+    lastPushedScopeRef.current = "all";
+    setSelectedScope("all");
+    void navigate({ search: (prev) => ({ ...prev, scope: "all" }), replace: true });
+  };
+
+  const chips: ActiveFilterChip[] = [
+    ...(scope !== "all"
+      ? [
+          {
+            key: "scope",
+            label: t("filters.chips.type", { value: scope === "movie" ? t("nav.movies") : t("nav.series") }),
+            onRemove: removeScope,
+          },
+        ]
+      : []),
+    ...(genreMovie
+      ? [
+          {
+            key: "genreMovie",
+            label: t("filters.chips.genre", { value: genreName(genreMovie) }),
+            onRemove: removeGenreMovie,
+          },
+        ]
+      : []),
+    ...(genreSeries
+      ? [
+          {
+            key: "genreSeries",
+            label: t("filters.chips.genre", { value: genreName(genreSeries) }),
+            onRemove: removeGenreSeries,
+          },
+        ]
+      : []),
+    ...(provider
+      ? [
+          {
+            key: "provider",
+            label: t("filters.chips.provider", { value: getPlatformName(provider) }),
+            onRemove: removeProvider,
+          },
+        ]
+      : []),
+  ];
+
   const filterTitle = hasFilters
     ? [
         genreMovie ? genreName(genreMovie) : null,
@@ -135,8 +209,11 @@ export function SearchPage() {
               { value: "movie", label: t("nav.movies") },
             ]}
           />
+          <SavedFiltersBar page="search" currentFilters={currentFilters} onApply={applySavedFilters} />
         </div>
       </div>
+
+      <ActiveFilterChips chips={chips} />
 
       {!showResults ? (
         <>

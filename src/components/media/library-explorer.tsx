@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { FolderHeart, Heart, LayoutGrid, LibraryBig, List, ListPlus, SearchX, Trash2 } from "lucide-react";
+import { FolderHeart, Heart, LayoutGrid, LibraryBig, List, ListPlus, SearchX, Sparkles, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/active-filter-chips";
 import { FilterBar } from "@/components/media/filter-bar";
 import { MediaGrid, type MediaGridItem } from "@/components/media/media-grid";
 import { MediaList } from "@/components/media/media-list";
 import { MovieLibrarySections, SeriesLibrarySections } from "@/components/media/library-sections";
+import { SavedFiltersBar } from "@/components/media/saved-filters-bar";
 import { SearchBar } from "@/components/media/search-bar";
+import { SmartListsAccordionContent } from "@/components/media/smart-lists-panel";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -20,9 +23,10 @@ import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useCustomListItems, useCustomLists } from "@/features/library/use-custom-lists";
 import { useLibrary } from "@/features/library/use-library";
+import { useSmartListMatches, useSmartLists } from "@/features/library/use-smart-lists";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
-import type { LibraryStatus } from "@/types/media";
+import type { LibraryFilterState, LibraryStatus } from "@/types/media";
 
 type StatusFilter = LibraryStatus | "all";
 
@@ -238,6 +242,15 @@ export function LibraryExplorer({
     void preferences.updatePreference({ key: "libraryViewMode", value: mode });
   const [listFilter, setListFilter] = useState("all");
   const listItems = useCustomListItems(listFilter === "all" ? "" : listFilter);
+  const smartLists = useSmartLists();
+  const [smartListFilter, setSmartListFilter] = useState("all");
+  const activeSmartList =
+    smartListFilter === "all" ? undefined : smartLists.data?.find((list) => list.id === smartListFilter);
+  // Evaluated live against the current library/tracked-series/preferences
+  // data every render — never a stored/cached set of matching ids (see
+  // smart-list-evaluation.ts) — then folded into `filtered` below the same
+  // way a selected custom list already restricts by media key.
+  const smartListMatches = useSmartListMatches(activeSmartList?.rules);
 
   const filtered = useMemo(() => {
     const progressBySeries = new Map(
@@ -249,6 +262,14 @@ export function LibraryExplorer({
     const libraryByKey = new Map((items ?? []).map((item) => [`${item.mediaType}-${item.mediaId}`, item]));
     const listMediaKeys =
       listFilter === "all" ? null : new Set((listItems.data ?? []).map((li) => `${li.mediaType}-${li.mediaId}`));
+    // Only ever restricts library items (a smart list's rules — status,
+    // rating, ... — can't be evaluated against a custom-list-only item that
+    // was never added to the library), so `listOnly` below is skipped
+    // entirely whenever a smart list is active.
+    const smartListMediaKeys =
+      smartListFilter === "all"
+        ? null
+        : new Set(smartListMatches.items.map((media) => `${media.mediaType}-${media.id}`));
     const normalizedSearch = search.trim().toLowerCase();
     const matchesSearch = (title: string) => (normalizedSearch ? title.toLowerCase().includes(normalizedSearch) : true);
 
@@ -257,6 +278,7 @@ export function LibraryExplorer({
       .filter((item) => (statusFilter === "all" ? true : item.status === statusFilter))
       .filter((item) => (favouritesOnly ? item.favourite : true))
       .filter((item) => (listMediaKeys ? listMediaKeys.has(`${item.mediaType}-${item.mediaId}`) : true))
+      .filter((item) => (smartListMediaKeys ? smartListMediaKeys.has(`${item.mediaType}-${item.mediaId}`) : true))
       .filter((item) => matchesSearch(item.title))
       .map((item) => ({
         sortKey: item.updatedAt,
@@ -281,7 +303,7 @@ export function LibraryExplorer({
     // added to the library, which still needs to render here, just without
     // any status/rating/progress.
     const listOnly =
-      listFilter === "all"
+      listFilter === "all" || smartListFilter !== "all"
         ? []
         : (listItems.data ?? [])
             .filter((li) => !libraryByKey.has(`${li.mediaType}-${li.mediaId}`))
@@ -308,7 +330,19 @@ export function LibraryExplorer({
         return b.sortKey.localeCompare(a.sortKey);
       })
       .map((entry) => entry.media);
-  }, [items, trackedSeries, typeFilter, statusFilter, favouritesOnly, search, sort, listFilter, listItems.data]);
+  }, [
+    items,
+    trackedSeries,
+    typeFilter,
+    statusFilter,
+    favouritesOnly,
+    search,
+    sort,
+    listFilter,
+    listItems.data,
+    smartListFilter,
+    smartListMatches.items,
+  ]);
 
   const isFilteredToList = listFilter !== "all";
   const resetListFilter = () => setListFilter("all");
@@ -318,8 +352,76 @@ export function LibraryExplorer({
     setStatusFilter("all");
     setFavouritesOnly(false);
     setListFilter("all");
+    setSmartListFilter("all");
     setSearch("");
   };
+
+  // Exactly the state a saved filter captures/restores (see
+  // src/types/media.ts's LibraryFilterState doc comment) — reused as-is
+  // rather than a parallel shape, so saving "the current filters" and
+  // reopening a saved one are both plain assignments, no translation layer.
+  const currentFilters: LibraryFilterState = { typeFilter, statusFilter, favouritesOnly, listFilter, sort, search };
+  const applySavedFilters = (saved: LibraryFilterState) => {
+    setTypeFilter(lockedMediaType ?? saved.typeFilter);
+    setStatusFilter(saved.statusFilter);
+    setFavouritesOnly(saved.favouritesOnly);
+    setListFilter(saved.listFilter);
+    setSort(saved.sort);
+    setSearch(saved.search);
+  };
+
+  // One removable chip per non-default filter condition currently applied —
+  // `lockedMediaType` pins typeFilter to a value the user never chose (the
+  // /movies and /series "My list" tabs), so that one dimension never shows
+  // as a removable chip there.
+  const chips: ActiveFilterChip[] = [
+    ...(!lockedMediaType && typeFilter !== "all"
+      ? [
+          {
+            key: "type",
+            label: t("filters.chips.type", { value: typeFilter === "movie" ? t("nav.movies") : t("nav.series") }),
+            onRemove: () => setTypeFilter("all"),
+          },
+        ]
+      : []),
+    ...(statusFilter !== "all"
+      ? [
+          {
+            key: "status",
+            label: t("filters.chips.status", { value: t(`library.statuses.${statusFilter}`) }),
+            onRemove: () => setStatusFilter("all"),
+          },
+        ]
+      : []),
+    ...(favouritesOnly
+      ? [{ key: "favourites", label: t("filters.chips.favourites"), onRemove: () => setFavouritesOnly(false) }]
+      : []),
+    ...(listFilter !== "all"
+      ? [
+          {
+            key: "list",
+            label: t("filters.chips.list", {
+              value: lists.data?.find((list) => list.id === listFilter)?.name ?? listFilter,
+            }),
+            onRemove: resetListFilter,
+          },
+        ]
+      : []),
+    ...(sort !== "recent"
+      ? [
+          {
+            key: "sort",
+            label: t("filters.chips.sort", {
+              value: sort === "title" ? t("library.title") : t("library.rating"),
+            }),
+            onRemove: () => setSort("recent"),
+          },
+        ]
+      : []),
+    ...(search.trim()
+      ? [{ key: "search", label: t("filters.chips.search", { value: search }), onRemove: () => setSearch("") }]
+      : []),
+  ];
 
   return (
     <div className="space-y-8">
@@ -409,8 +511,26 @@ export function LibraryExplorer({
               ))}
             </Select>
           ) : null}
+          {(smartLists.data?.length ?? 0) > 0 ? (
+            <Select
+              aria-label={t("library.smartLists.filterLabel")}
+              value={smartListFilter}
+              onChange={(event) => setSmartListFilter(event.target.value)}
+              className="max-w-48"
+            >
+              <option value="all">{t("library.smartLists.noFilter")}</option>
+              {smartLists.data?.map((list) => (
+                <option key={list.id} value={list.id}>
+                  {list.name}
+                </option>
+              ))}
+            </Select>
+          ) : null}
         </div>
+        <SavedFiltersBar page="library" currentFilters={currentFilters} onApply={applySavedFilters} />
       </div>
+
+      <ActiveFilterChips chips={chips} />
 
       {lockedMediaType ? null : (
         <Accordion type="single" collapsible>
@@ -428,15 +548,37 @@ export function LibraryExplorer({
               <ListsAccordionContent lists={lists} listFilter={listFilter} onListDeleted={resetListFilter} />
             </AccordionContent>
           </AccordionItem>
+          <AccordionItem value="smart-lists">
+            <AccordionTrigger>
+              <span className="flex items-center gap-2">
+                <Sparkles className="size-4 text-primary" aria-hidden="true" />
+                {t("library.smartLists.title")}
+                {smartLists.data?.length ? (
+                  <span className="font-normal text-muted-foreground">({smartLists.data.length})</span>
+                ) : null}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <SmartListsAccordionContent
+                smartLists={smartLists}
+                activeSmartListId={smartListFilter}
+                onSelectSmartList={setSmartListFilter}
+              />
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       )}
 
-      {libraryQuery.isLoading || (isFilteredToList && listItems.isLoading) ? (
+      {libraryQuery.isLoading ||
+      (isFilteredToList && listItems.isLoading) ||
+      (smartListFilter !== "all" && smartListMatches.isLoading) ? (
         <GridSkeleton />
       ) : libraryQuery.isError ? (
         <RemoteErrorState error={libraryQuery.error} onRetry={() => void libraryQuery.refetch()} />
       ) : isFilteredToList && listItems.isError ? (
         <RemoteErrorState error={listItems.error} onRetry={() => void listItems.refetch()} />
+      ) : smartListFilter !== "all" && smartListMatches.isError ? (
+        <RemoteErrorState error={smartListMatches.error} onRetry={smartListMatches.refetch} />
       ) : filtered.length ? (
         lockedMediaType === "series" ? (
           <SeriesLibrarySections items={filtered} trackedSeries={trackedSeries ?? []} viewMode={viewMode} />
