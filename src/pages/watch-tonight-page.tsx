@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Dices, Popcorn } from "lucide-react";
 import { AddToLibraryButton } from "@/components/media/add-to-library-button";
+import { HideWatchedToggle } from "@/components/media/hide-watched-toggle";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,7 @@ export function WatchTonightPage() {
   const preferredProviderIds = preferences.data?.preferredProviderIds ?? [];
   const resolvedProvider: number | number[] | undefined =
     provider === MY_SERVICES_VALUE ? preferredProviderIds : provider ? Number(provider) : undefined;
+  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
 
   const query = useQuery({
     queryKey: [
@@ -82,6 +84,7 @@ export function WatchTonightPage() {
       runtime,
       seed,
       preferredProviderIds.join(","),
+      hideWatched,
     ],
     queryFn: () =>
       watchTonightService.pick({
@@ -89,6 +92,7 @@ export function WatchTonightPage() {
         genreSeries: selectedGenre?.seriesId || undefined,
         provider: resolvedProvider,
         maxRuntime: runtime ? Number(runtime) : undefined,
+        hideWatched,
       }),
   });
 
@@ -142,6 +146,9 @@ export function WatchTonightPage() {
           {t("watchTonight.retry")}
         </Button>
       </Panel>
+      <div className="flex justify-end">
+        <HideWatchedToggle />
+      </div>
       {query.isLoading ? <GridSkeleton count={8} /> : null}
       {query.isError ? <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} /> : null}
       {!query.isLoading && !query.isError ? (

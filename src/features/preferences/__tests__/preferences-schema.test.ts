@@ -27,6 +27,8 @@ describe("preferencesSchema", () => {
       preferredProviderIds: [],
       activeProfileId: DEFAULT_PROFILE_ID,
       backupDirectory: null,
+      hideWatchedInDiscovery: false,
+      onThisDayEnabled: false,
       userProfile: {
         id: DEFAULT_PROFILE_ID,
         name: null,

@@ -74,6 +74,8 @@ const BASE_PREFERENCES: UserPreferences = {
   preferredProviderIds: [],
   activeProfileId: "default",
   backupDirectory: null,
+  hideWatchedInDiscovery: false,
+  onThisDayEnabled: false,
   userProfile: { id: "default", name: null },
 };
 

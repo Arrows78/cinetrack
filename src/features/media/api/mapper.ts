@@ -1,9 +1,12 @@
 import type {
   CastMember,
+  CollectionSummary,
+  CrewMember,
   Episode,
   MediaSummary,
   MediaType,
   Movie,
+  MovieCollection,
   PageResult,
   Season,
   Series,
@@ -15,6 +18,9 @@ import { yearFromDate } from "@/shared/utils/format";
 import { GENRES } from "@/shared/constants/discover";
 import type {
   TmdbCastDto,
+  TmdbCollectionDto,
+  TmdbCollectionSummaryDto,
+  TmdbCrewDto,
   TmdbEpisodeDto,
   TmdbListResponse,
   TmdbMovieDto,
@@ -50,6 +56,27 @@ const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
       order: member.order,
     }));
 
+// Only "Director" jobs — that's all the people-based discovery rail and
+// collection features need for v1 (see CrewMember's doc comment in
+// types/media.ts). A title can have more than one credited director
+// (co-directed films), so this keeps all of them rather than just the first.
+const mapCrew = (crew?: TmdbCrewDto[]): CrewMember[] =>
+  (crew ?? [])
+    .filter((member) => member.job === "Director")
+    .map((member) => ({
+      id: member.id,
+      name: member.name,
+      job: member.job,
+      profilePath: member.profile_path,
+    }));
+
+export const mapCollectionSummary = (dto: TmdbCollectionSummaryDto): CollectionSummary => ({
+  id: dto.id,
+  name: dto.name,
+  posterPath: dto.poster_path,
+  backdropPath: dto.backdrop_path,
+});
+
 export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   id: dto.id,
   mediaType: "movie",
@@ -69,6 +96,17 @@ export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   runtime: dto.runtime,
   duration: dto.runtime,
   cast: mapCast(dto.credits?.cast),
+  directors: mapCrew(dto.credits?.crew),
+  collection: dto.belongs_to_collection ? mapCollectionSummary(dto.belongs_to_collection) : null,
+});
+
+export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
+  id: dto.id,
+  name: dto.name,
+  overview: dto.overview,
+  posterPath: dto.poster_path,
+  backdropPath: dto.backdrop_path,
+  parts: dto.parts.map(mapMovieDto),
 });
 
 const mapSeasonPreviewDto = (dto: TmdbSeasonPreviewDto): Season => ({
@@ -100,6 +138,7 @@ export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
   status: dto.status,
   runtime: dto.episode_run_time?.[0] ?? null,
   cast: mapCast(dto.credits?.cast),
+  directors: mapCrew(dto.credits?.crew),
   numberOfSeasons: dto.number_of_seasons ?? dto.seasons?.length ?? 0,
   numberOfEpisodes: dto.number_of_episodes,
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],

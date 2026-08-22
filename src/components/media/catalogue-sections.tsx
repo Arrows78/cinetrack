@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
-import type { HomeFeed } from "@/types/media";
+import { filterHiddenIfWatched } from "@/features/library/library-set";
+import type { HomeFeed, LibraryItem, MediaSummary } from "@/types/media";
 
 export const CATALOGUE_SECTIONS = [
   { key: "trendingSeries", titleKey: "home.trendingSeries", subtitleKey: "home.trendingSeriesSubtitle" },
@@ -15,8 +16,20 @@ export const CATALOGUE_SECTIONS = [
 
 // Shared between the home dashboard and Search's default (no-query) browse
 // state so both stay in lockstep — see CLAUDE.md's rule against
-// hand-duplicated lists/markup.
-export function CatalogueSections({ feed, startIndex }: { feed: HomeFeed | undefined; startIndex: number }) {
+// hand-duplicated lists/markup. `hideWatched`/`library` are optional and
+// default to "no filtering" so Search's own usage (which doesn't wire the
+// "Hide watched" toggle) keeps behaving exactly as before.
+export function CatalogueSections({
+  feed,
+  startIndex,
+  hideWatched = false,
+  library = [],
+}: {
+  feed: HomeFeed | undefined;
+  startIndex: number;
+  hideWatched?: boolean;
+  library?: LibraryItem[];
+}) {
   const { t } = useTranslation();
 
   return (
@@ -24,7 +37,9 @@ export function CatalogueSections({ feed, startIndex }: { feed: HomeFeed | undef
       {CATALOGUE_SECTIONS.map((section, i) => (
         <section key={section.key}>
           <SectionHeader title={t(section.titleKey)} subtitle={t(section.subtitleKey)} index={startIndex + i} />
-          <MediaGrid items={feed?.[section.key] ?? []} />
+          <MediaGrid
+            items={filterHiddenIfWatched((feed?.[section.key] ?? []) as MediaSummary[], library, hideWatched)}
+          />
         </section>
       ))}
     </>

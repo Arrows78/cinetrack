@@ -1,7 +1,8 @@
 import { libraryRepository } from "@/features/library/library-repository";
+import { filterHiddenIfWatched } from "@/features/library/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { logger } from "@/features/diagnostics/logger";
-import type { MediaSummary, MediaType, Movie, Series } from "@/types/media";
+import type { LibraryItem, MediaSummary, MediaType, Movie, Series } from "@/types/media";
 
 export interface WatchTonightFilters {
   genreMovie?: number;
@@ -9,6 +10,8 @@ export interface WatchTonightFilters {
   /** A single provider id, or several (e.g. "my services") — matches if any one of them has the title. */
   provider?: number | number[];
   maxRuntime?: number;
+  /** The persistent "Hide watched" preference — drops any candidate already `completed` in the library, most relevant to the catalogue fallback below (planned-item candidates are never `completed` by definition). */
+  hideWatched?: boolean;
 }
 
 export interface WatchTonightPicks {
@@ -66,10 +69,8 @@ async function filterByProvider<T extends MediaSummary>(
   return candidates.filter((_item, index) => matches[index]);
 }
 
-async function pickMovies(filters: WatchTonightFilters): Promise<Movie[]> {
-  const planned = (await libraryRepository.list()).filter(
-    (item) => item.mediaType === "movie" && item.status === "planned"
-  );
+async function pickMovies(filters: WatchTonightFilters, library: LibraryItem[]): Promise<Movie[]> {
+  const planned = library.filter((item) => item.mediaType === "movie" && item.status === "planned");
   const detailed = await Promise.all(
     planned.slice(0, PLANNED_CANDIDATE_CAP).map((item) =>
       mediaRepository.getMovieDetails(item.mediaId).catch((error) => {
@@ -94,13 +95,17 @@ async function pickMovies(filters: WatchTonightFilters): Promise<Movie[]> {
     ).results;
   }
 
+  // Applied last, against the full library (not just the `planned` slice
+  // above) — the main place this actually removes anything is the
+  // catalogue fallback just above, since a `planned` item is never
+  // `completed` by definition.
+  candidates = filterHiddenIfWatched(candidates, library, Boolean(filters.hideWatched));
+
   return shuffle(candidates).slice(0, PICKS_PER_TYPE);
 }
 
-async function pickSeries(filters: WatchTonightFilters): Promise<Series[]> {
-  const planned = (await libraryRepository.list()).filter(
-    (item) => item.mediaType === "series" && item.status === "planned"
-  );
+async function pickSeries(filters: WatchTonightFilters, library: LibraryItem[]): Promise<Series[]> {
+  const planned = library.filter((item) => item.mediaType === "series" && item.status === "planned");
   const detailed = await Promise.all(
     planned.slice(0, PLANNED_CANDIDATE_CAP).map((item) =>
       mediaRepository.getSeriesDetails(item.mediaId).catch((error) => {
@@ -125,12 +130,15 @@ async function pickSeries(filters: WatchTonightFilters): Promise<Series[]> {
     ).results;
   }
 
+  candidates = filterHiddenIfWatched(candidates, library, Boolean(filters.hideWatched));
+
   return shuffle(candidates).slice(0, PICKS_PER_TYPE);
 }
 
 export const watchTonightService = {
   async pick(filters: WatchTonightFilters): Promise<WatchTonightPicks> {
-    const [movies, series] = await Promise.all([pickMovies(filters), pickSeries(filters)]);
+    const library = await libraryRepository.list();
+    const [movies, series] = await Promise.all([pickMovies(filters, library), pickSeries(filters, library)]);
     return { movies, series };
   },
 };

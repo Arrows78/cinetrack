@@ -98,6 +98,22 @@ pub struct UserPreferences {
     /// `@tauri-apps/plugin-fs` JS API, whose capability scope is a static
     /// `$APPDATA/**` allow-list.
     pub backup_directory: Option<String>,
+    /// Persistent "Hide watched" toggle for Discover-style surfaces (home
+    /// catalogue rails) and Watch Tonight — filters out titles already
+    /// marked `completed` in the library. Defaults to `false` (off), same
+    /// as every other opt-in filter here.
+    #[serde(default)]
+    pub hide_watched_in_discovery: bool,
+    /// Opt-in "On this day" Home card (see `list_on_this_day_events` in
+    /// stats.rs) — surfaces past-year viewing history matching today's
+    /// date. Defaults to `false`: unlike a plain UI filter, this feature
+    /// resurfaces *what the user watched, and when* unprompted on the
+    /// app's landing page, which can land as an unwelcome surprise (a title
+    /// tied to a specific person or moment) the first time it appears after
+    /// an upgrade — so it stays off until the user deliberately turns it on
+    /// in Settings, matching the literal "opt-in" ask.
+    #[serde(default)]
+    pub on_this_day_enabled: bool,
 }
 
 impl Default for UserPreferences {
@@ -119,6 +135,8 @@ impl Default for UserPreferences {
             active_profile_id: "default".to_string(),
             user_profile: UserProfile::default(),
             backup_directory: None,
+            hide_watched_in_discovery: false,
+            on_this_day_enabled: false,
         }
     }
 }

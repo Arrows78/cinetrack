@@ -222,6 +222,17 @@ describe("TmdbMediaProvider", () => {
       expect(params.with_watch_providers).toBeUndefined();
       expect(params.with_watch_monetization_types).toBeUndefined();
     });
+
+    it("passes withCast/withCrew through to with_cast/with_crew for the people-you-watch rails (movies only)", async () => {
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.discoverMovies({ withCast: 123 });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ with_cast: 123, with_crew: undefined });
+
+      mocks.tmdbFetch.mockClear();
+      await provider.discoverMovies({ withCrew: 456 });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ with_cast: undefined, with_crew: 456 });
+    });
   });
 
   describe("getWatchProviders", () => {
@@ -426,6 +437,26 @@ describe("TmdbMediaProvider", () => {
         expect.objectContaining({ language: "fr-FR", append_to_response: "credits" })
       );
       expect(result).toMatchObject({ id: 77, mediaType: "movie", title: "Details Movie" });
+    });
+  });
+
+  describe("getCollection", () => {
+    it("fetches /collection/:id (no credits append — TMDB's collection endpoint doesn't return them) and maps the result", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+      mocks.tmdbFetch.mockResolvedValue({
+        id: 10,
+        name: "Alien Collection",
+        overview: "A saga.",
+        poster_path: null,
+        backdrop_path: null,
+        parts: [movieDto({ id: 1, title: "Alien" })],
+      });
+
+      const result = await provider.getCollection(10);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith("/collection/10", { language: "fr-FR" });
+      expect(result).toMatchObject({ id: 10, name: "Alien Collection" });
+      expect(result.parts.map((part) => part.title)).toEqual(["Alien"]);
     });
   });
 

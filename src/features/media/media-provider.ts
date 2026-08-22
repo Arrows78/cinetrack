@@ -4,6 +4,7 @@ import type {
   MediaType,
   MediaVideo,
   Movie,
+  MovieCollection,
   PageResult,
   PersonSummary,
   SearchScope,
@@ -19,6 +20,10 @@ export interface DiscoverArgs {
   page?: number;
   region?: string;
   maxRuntime?: number;
+  /** TMDB person id — only titles with this person in the cast. Movie discover only (TMDB's /discover/tv doesn't support cast/crew filtering). */
+  withCast?: number;
+  /** TMDB person id — only titles with this person in the crew (e.g. as director). Movie discover only, same caveat as withCast. */
+  withCrew?: number;
 }
 export interface MediaProvider {
   getHomeFeed(): Promise<HomeFeed>;
@@ -34,6 +39,7 @@ export interface MediaProvider {
   getWatchProviders(mediaType: MediaType, region?: string): Promise<WatchProvider[]>;
   getWatchAvailability(mediaType: MediaType, mediaId: number, region?: string): Promise<WatchProviderAvailability>;
   getMovieDetails(movieId: number): Promise<Movie>;
+  getCollection(collectionId: number): Promise<MovieCollection>;
   getSeriesDetails(seriesId: number): Promise<Series>;
   getSeasonDetails(seriesId: number, seasonNumber: number): Promise<Season>;
   search(query: string, scope?: SearchScope, page?: number): Promise<PageResult<MediaSummary>>;

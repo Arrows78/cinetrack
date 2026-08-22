@@ -4,6 +4,7 @@ import { useParams } from "@tanstack/react-router";
 import { NotebookPen, TriangleAlert } from "lucide-react";
 import { AddWatchNoteDialog } from "@/components/media/add-watch-note-dialog";
 import { AvailabilityAlertButton } from "@/components/media/availability-alert-button";
+import { CollectionProgressPanel } from "@/components/media/collection-progress-panel";
 import { ProviderAvailability } from "@/components/media/provider-availability";
 import { RecommendationsPanel } from "@/components/media/recommendations-panel";
 import { TrailerPanel } from "@/components/media/trailer-panel";
@@ -122,6 +123,7 @@ export function MovieDetailPage() {
         </Panel>
       </section>
       <WatchHistoryPanel mediaId={movie.id} mediaType="movie" />
+      <CollectionProgressPanel movie={movie} />
       <RecommendationsPanel media={movie} />
       <section>
         <SectionHeader title={t("media.cast")} subtitle={t("movies.castSubtitle")} />

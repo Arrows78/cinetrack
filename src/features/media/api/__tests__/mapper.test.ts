@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { mapMovieDto, mapPage, mapPerson, mapSeasonDetailsDto, mapSeriesDto, mapWatchProvider } from "../mapper";
-import type { TmdbCastDto, TmdbEpisodeDto, TmdbMovieDto, TmdbPersonDto, TmdbTvDto } from "../types";
+import {
+  mapCollectionDto,
+  mapMovieDto,
+  mapPage,
+  mapPerson,
+  mapSeasonDetailsDto,
+  mapSeriesDto,
+  mapWatchProvider,
+} from "../mapper";
+import type {
+  TmdbCastDto,
+  TmdbCollectionDto,
+  TmdbCrewDto,
+  TmdbEpisodeDto,
+  TmdbMovieDto,
+  TmdbPersonDto,
+  TmdbTvDto,
+} from "../types";
 
 const movieDto = (overrides: Partial<TmdbMovieDto> = {}): TmdbMovieDto => ({
   id: 550,
@@ -85,6 +101,79 @@ describe("mapMovieDto", () => {
     ];
 
     expect(mapMovieDto(movieDto({ credits: { cast } })).cast.map((member) => member.id)).toEqual([2, 1]);
+  });
+
+  it("maps only 'Director' crew credits into directors, dropping every other job", () => {
+    const crew: TmdbCrewDto[] = [
+      { id: 1, name: "David Fincher", job: "Director" },
+      { id: 2, name: "Someone Else", job: "Producer" },
+    ];
+
+    const movie = mapMovieDto(movieDto({ credits: { cast: [], crew } }));
+
+    expect(movie.directors).toEqual([{ id: 1, name: "David Fincher", job: "Director", profilePath: undefined }]);
+  });
+
+  it("keeps every co-director when a title credits more than one", () => {
+    const crew: TmdbCrewDto[] = [
+      { id: 1, name: "Directrice Une", job: "Director" },
+      { id: 2, name: "Directeur Deux", job: "Director" },
+    ];
+
+    expect(mapMovieDto(movieDto({ credits: { cast: [], crew } })).directors?.map((d) => d.id)).toEqual([1, 2]);
+  });
+
+  it("defaults directors to [] when there's no crew data at all", () => {
+    expect(mapMovieDto(movieDto()).directors).toEqual([]);
+  });
+
+  it("maps belongs_to_collection into collection, and null/absent into null", () => {
+    const withCollection = mapMovieDto(
+      movieDto({
+        belongs_to_collection: { id: 10, name: "Alien Collection", poster_path: "/p.jpg", backdrop_path: "/b.jpg" },
+      })
+    );
+    expect(withCollection.collection).toEqual({
+      id: 10,
+      name: "Alien Collection",
+      posterPath: "/p.jpg",
+      backdropPath: "/b.jpg",
+    });
+
+    expect(mapMovieDto(movieDto({ belongs_to_collection: null })).collection).toBeNull();
+    expect(mapMovieDto(movieDto()).collection).toBeNull();
+  });
+});
+
+describe("mapCollectionDto", () => {
+  it("maps the collection's own fields and maps every part as a movie", () => {
+    const dto: TmdbCollectionDto = {
+      id: 10,
+      name: "Alien Collection",
+      overview: "A saga.",
+      poster_path: "/p.jpg",
+      backdrop_path: "/b.jpg",
+      parts: [movieDto({ id: 1, title: "Alien" }), movieDto({ id: 2, title: "Aliens" })],
+    };
+
+    const collection = mapCollectionDto(dto);
+
+    expect(collection).toMatchObject({ id: 10, name: "Alien Collection", overview: "A saga." });
+    expect(collection.parts.map((part) => part.title)).toEqual(["Alien", "Aliens"]);
+    expect(collection.parts.every((part) => part.mediaType === "movie")).toBe(true);
+  });
+
+  it("maps an empty parts list to an empty array, not an error", () => {
+    const dto: TmdbCollectionDto = {
+      id: 10,
+      name: "Empty Collection",
+      overview: "",
+      poster_path: null,
+      backdrop_path: null,
+      parts: [],
+    };
+
+    expect(mapCollectionDto(dto).parts).toEqual([]);
   });
 });
 

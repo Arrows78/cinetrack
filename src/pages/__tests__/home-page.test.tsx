@@ -60,6 +60,19 @@ vi.mock("@/features/media/use-favourite-genre-rail", () => ({
   useFavouriteGenreRail: () => favouriteGenreRailMock(),
 }));
 
+// Same reasoning as the rail hooks above: usePeopleYouWatch pulls in
+// mediaRepository (a TMDB-backed singleton) internally, well beyond what
+// this test is about.
+const peopleYouWatchMock = vi.fn();
+vi.mock("@/features/media/use-people-you-watch", () => ({
+  usePeopleYouWatch: () => peopleYouWatchMock(),
+}));
+
+const preferencesMock = vi.fn();
+vi.mock("@/features/preferences/use-preferences", () => ({
+  usePreferences: () => preferencesMock(),
+}));
+
 // Shallow-mocked presentational children, same pattern as
 // src/pages/__tests__/library-page.test.tsx — keeps assertions targeted at
 // HomePage's own composition/index-math logic rather than these components'.
@@ -83,6 +96,18 @@ vi.mock("@/components/media/watch-next-section", () => ({
   WatchNextSection: ({ entries }: { entries: unknown[] }) => (
     <div data-testid="watch-next-section" data-entries={entries.length} />
   ),
+}));
+
+// Shallow-mocked for the same reason as the other presentational children
+// above: both pull in mediaRepository (calendar-service.ts's own import,
+// for WeeklyAgendaSection) or other hook chains well beyond what this test
+// is about — not related to the "For You" rails/hideWatched logic under test.
+vi.mock("@/components/media/weekly-agenda-section", () => ({
+  WeeklyAgendaSection: () => <div data-testid="weekly-agenda-section" />,
+}));
+
+vi.mock("@/components/media/on-this-day-section", () => ({
+  OnThisDaySection: () => <div data-testid="on-this-day-section" />,
 }));
 
 vi.mock("@/components/media/media-grid", () => ({
@@ -154,6 +179,13 @@ describe("HomePage", () => {
     watchNextMock.mockReset().mockReturnValue({ entries: [] });
     becauseYouLikedMock.mockReset().mockReturnValue({ seedTitle: null, items: [] });
     favouriteGenreRailMock.mockReset().mockReturnValue({ genre: null, items: [] });
+    peopleYouWatchMock.mockReset().mockReturnValue({
+      topDirector: null,
+      directorItems: [],
+      topActor: null,
+      actorItems: [],
+    });
+    preferencesMock.mockReset().mockReturnValue({ data: undefined, updatePreference: vi.fn(), isSaving: false });
   });
 
   it("renders the no-token explainer with both actions and gates every data hook's content when no token is configured", () => {
@@ -320,5 +352,60 @@ describe("HomePage", () => {
 
     // No other rail has content either, so "For You" itself must stay hidden.
     expect(screen.queryByText(i18n.t("home.forYou"))).not.toBeInTheDocument();
+  });
+
+  it("shows the 'For You' section from peopleYouWatch's director rail alone", () => {
+    peopleYouWatchMock.mockReturnValue({
+      topDirector: { id: 42, name: "Denis Villeneuve", count: 3 },
+      directorItems: [{ id: 100, mediaType: "movie", title: "Dune: Part Two" }],
+      topActor: null,
+      actorItems: [],
+    });
+    renderPage();
+
+    expect(screen.getByText(i18n.t("home.forYou"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("home.becauseYouWatchDirector", { name: "Denis Villeneuve" }))).toBeInTheDocument();
+    expect(screen.getByText("Dune: Part Two")).toBeInTheDocument();
+  });
+
+  it("shows the 'For You' section from peopleYouWatch's actor rail alone", () => {
+    peopleYouWatchMock.mockReturnValue({
+      topDirector: null,
+      directorItems: [],
+      topActor: { id: 7, name: "Zendaya", count: 3 },
+      actorItems: [{ id: 200, mediaType: "movie", title: "Challengers" }],
+    });
+    renderPage();
+
+    expect(screen.getByText(i18n.t("home.forYou"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("home.becauseYouWatchActor", { name: "Zendaya" }))).toBeInTheDocument();
+    expect(screen.getByText("Challengers")).toBeInTheDocument();
+  });
+
+  it("does not render peopleYouWatch's director block when there's a top director but no items yet", () => {
+    peopleYouWatchMock.mockReturnValue({
+      topDirector: { id: 42, name: "Denis Villeneuve", count: 3 },
+      directorItems: [],
+      topActor: null,
+      actorItems: [],
+    });
+    renderPage();
+
+    // No other rail has content either, so "For You" itself must stay hidden.
+    expect(screen.queryByText(i18n.t("home.forYou"))).not.toBeInTheDocument();
+  });
+
+  it("reflects the persistent hideWatchedInDiscovery preference in the Hide watched toggle above the catalogue sections", () => {
+    preferencesMock.mockReturnValue({
+      data: { hideWatchedInDiscovery: true },
+      updatePreference: vi.fn(),
+      isSaving: false,
+    });
+    renderPage();
+
+    expect(screen.getByRole("button", { name: i18n.t("discovery.hideWatched") })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
   });
 });

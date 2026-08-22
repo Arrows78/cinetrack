@@ -117,6 +117,58 @@ describe("CatalogueSections", () => {
       expect(within(sectionEl as HTMLElement).getByTestId("grid")).toBeEmptyDOMElement();
     });
   });
+
+  it("keeps every title when hideWatched is left at its default (off)", () => {
+    const feed: HomeFeed = {
+      trendingSeries: [],
+      topRatedSeries: [],
+      onTheAirSeries: [],
+      trendingMovies: [makeMovie(2, "Dune")],
+      topRatedMovies: [],
+      nowPlayingMovies: [],
+      upcomingMovies: [],
+    };
+
+    const { container } = render(<CatalogueSections feed={feed} startIndex={0} />);
+    const sections = container.querySelectorAll("section");
+
+    expect(within(sections[3] as HTMLElement).getByTestId("grid")).toHaveTextContent("Dune");
+  });
+
+  it("drops a completed title from its section when hideWatched is on", () => {
+    const feed: HomeFeed = {
+      trendingSeries: [],
+      topRatedSeries: [],
+      onTheAirSeries: [],
+      trendingMovies: [makeMovie(2, "Dune"), makeMovie(3, "Arrival")],
+      topRatedMovies: [],
+      nowPlayingMovies: [],
+      upcomingMovies: [],
+    };
+    const library = [
+      {
+        id: "item-1",
+        profileId: "p1",
+        mediaId: 2,
+        mediaType: "movie" as const,
+        title: "Dune",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        genres: [],
+        status: "completed" as const,
+        favourite: false,
+        tags: [],
+        rewatchCount: 0,
+      },
+    ];
+
+    const { container } = render(<CatalogueSections feed={feed} startIndex={0} hideWatched library={library} />);
+    const sections = container.querySelectorAll("section");
+    const trendingMoviesGrid = within(sections[3] as HTMLElement).getByTestId("grid");
+
+    expect(trendingMoviesGrid).not.toHaveTextContent("Dune");
+    expect(trendingMoviesGrid).toHaveTextContent("Arrival");
+  });
 });
 
 describe("BrowseByGenre", () => {

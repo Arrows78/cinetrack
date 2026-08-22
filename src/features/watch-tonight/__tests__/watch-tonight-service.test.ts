@@ -206,6 +206,30 @@ describe("watchTonightService", () => {
     expect(mocks.discoverSeries).toHaveBeenCalledWith({ genre: undefined, provider: [8, 337], maxRuntime: undefined });
   });
 
+  it("drops a catalogue-fallback movie already completed in the library when hideWatched is on", async () => {
+    mocks.listLibrary.mockResolvedValue([{ mediaId: 2, mediaType: "movie", status: "completed" }]);
+
+    const result = await watchTonightService.pick({ hideWatched: true });
+
+    expect(result.movies.map((item) => item.id)).not.toContain(2);
+  });
+
+  it("drops a catalogue-fallback series already completed in the library when hideWatched is on", async () => {
+    mocks.listLibrary.mockResolvedValue([{ mediaId: 2, mediaType: "series", status: "completed" }]);
+
+    const result = await watchTonightService.pick({ hideWatched: true });
+
+    expect(result.series.map((item) => item.id)).not.toContain(2);
+  });
+
+  it("keeps an already-completed catalogue-fallback title when hideWatched is off (the default)", async () => {
+    mocks.listLibrary.mockResolvedValue([{ mediaId: 2, mediaType: "movie", status: "completed" }]);
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.movies.map((item) => item.id)).toContain(2);
+  });
+
   it("caps picks at PICKS_PER_TYPE (4) when more planned candidates match than that, for both movies and series", async () => {
     mocks.listLibrary.mockResolvedValue([
       { mediaId: 60, mediaType: "movie", status: "planned" },

@@ -3,6 +3,7 @@ import type {
   MediaSummary,
   MediaType,
   Movie,
+  MovieCollection,
   PageResult,
   SearchScope,
   Season,
@@ -15,6 +16,7 @@ import type {
 import type { DiscoverArgs, MediaProvider } from "./media-provider";
 import { tmdbFetch } from "@/features/media/api/client";
 import {
+  mapCollectionDto,
   mapMovieDto,
   mapPage,
   mapSearchResult,
@@ -25,6 +27,7 @@ import {
   mapPerson,
 } from "@/features/media/api/mapper";
 import type {
+  TmdbCollectionDto,
   TmdbListResponse,
   TmdbMovieDto,
   TmdbMultiSearchResultDto,
@@ -155,6 +158,8 @@ export class TmdbMediaProvider implements MediaProvider {
       with_watch_providers: provider,
       with_watch_monetization_types: provider ? "flatrate" : undefined,
       "with_runtime.lte": args.maxRuntime,
+      with_cast: args.withCast,
+      with_crew: args.withCrew,
     });
     return mapPage(response, mapMovieDto);
   }
@@ -196,6 +201,12 @@ export class TmdbMediaProvider implements MediaProvider {
     const { language } = await this.context();
     const response = await tmdbFetch<TmdbMovieDto>(`/movie/${movieId}`, { language, append_to_response: "credits" });
     return mapMovieDto(response);
+  }
+
+  async getCollection(collectionId: number): Promise<MovieCollection> {
+    const { language } = await this.context();
+    const response = await tmdbFetch<TmdbCollectionDto>(`/collection/${collectionId}`, { language });
+    return mapCollectionDto(response);
   }
 
   async getSeriesDetails(seriesId: number): Promise<Series> {

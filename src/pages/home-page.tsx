@@ -12,16 +12,22 @@ import { SectionHeader } from "@/components/media/section-header";
 import { StatCard } from "@/components/media/stat-card";
 import { CatalogueSections, CATALOGUE_SECTIONS } from "@/components/media/catalogue-sections";
 import { BrowseByGenre, BrowseByPlatform } from "@/components/media/catalogue-browse";
+import { HideWatchedToggle } from "@/components/media/hide-watched-toggle";
+import { PeopleYouWatchRails } from "@/components/media/people-you-watch-rails";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { hasTmdbToken } from "@/shared/config/env";
 import { useHistory } from "@/features/history/use-history";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useWatchNext } from "@/features/progress/use-watch-next";
 import { useLibrary } from "@/features/library/use-library";
 import { useHomeFeed } from "@/features/media/use-media";
 import { useBecauseYouLiked } from "@/features/media/use-because-you-liked";
 import { useFavouriteGenreRail } from "@/features/media/use-favourite-genre-rail";
+import { usePeopleYouWatch } from "@/features/media/use-people-you-watch";
 import { WatchNextSection } from "@/components/media/watch-next-section";
+import { WeeklyAgendaSection } from "@/components/media/weekly-agenda-section";
+import { OnThisDaySection } from "@/components/media/on-this-day-section";
 
 export function HomePage() {
   const { t } = useTranslation();
@@ -37,6 +43,10 @@ export function HomePage() {
   const watchNext = useWatchNext(trackedSeriesQuery.data ?? []);
   const becauseYouLiked = useBecauseYouLiked();
   const favouriteGenreRail = useFavouriteGenreRail();
+  const peopleYouWatch = usePeopleYouWatch();
+  const preferences = usePreferences();
+  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
+  const library = libraryQuery.data ?? [];
 
   if (!hasTmdbToken && !dismissedTokenPrompt) {
     return (
@@ -165,7 +175,9 @@ export function HomePage() {
   const hasForYouContent =
     watchNext.entries.length > 0 ||
     (Boolean(becauseYouLiked.seedTitle) && becauseYouLiked.items.length > 0) ||
-    (Boolean(favouriteGenreRail.genre) && favouriteGenreRail.items.length > 0);
+    (Boolean(favouriteGenreRail.genre) && favouriteGenreRail.items.length > 0) ||
+    (Boolean(peopleYouWatch.topDirector) && peopleYouWatch.directorItems.length > 0) ||
+    (Boolean(peopleYouWatch.topActor) && peopleYouWatch.actorItems.length > 0);
 
   let sectionIndex = 0;
 
@@ -252,6 +264,12 @@ export function HomePage() {
         </section>
       ) : null}
 
+      {/* Opt-in "On this day" delight card (see UserPreferences.onThisDayEnabled,
+          toggled in Settings) — not a numbered rail like the sections below,
+          same treatment as the hero above it. Self-contained: renders
+          nothing at all when disabled or when there's no match for today. */}
+      <OnThisDaySection />
+
       {/* "For You" zone — groups every personalized rail under one heading and
           a tinted panel, instead of four independent top-level sections, so
           personal content reads as one distinct block against the generic
@@ -285,12 +303,33 @@ export function HomePage() {
                 <MediaGrid items={favouriteGenreRail.items} />
               </div>
             ) : null}
+
+            <PeopleYouWatchRails
+              topDirector={peopleYouWatch.topDirector}
+              directorItems={peopleYouWatch.directorItems}
+              topActor={peopleYouWatch.topActor}
+              actorItems={peopleYouWatch.actorItems}
+            />
           </Panel>
         </section>
       ) : null}
 
+      {/* Compact "this week" personal agenda — releases, new episodes, and
+          availability changes for the active profile (see
+          src/features/calendar/use-weekly-agenda.ts). Renders nothing when
+          there's nothing to show, same as the rails above. */}
+      <WeeklyAgendaSection index={++sectionIndex} />
+
       {/* Series and movies catalogue sections */}
-      <CatalogueSections feed={homeQuery.data} startIndex={sectionIndex + 1} />
+      <div className="flex justify-end">
+        <HideWatchedToggle />
+      </div>
+      <CatalogueSections
+        feed={homeQuery.data}
+        startIndex={sectionIndex + 1}
+        hideWatched={hideWatched}
+        library={library}
+      />
 
       <BrowseByGenre startIndex={sectionIndex + 1 + CATALOGUE_SECTIONS.length} />
       <BrowseByPlatform startIndex={sectionIndex + 2 + CATALOGUE_SECTIONS.length} />

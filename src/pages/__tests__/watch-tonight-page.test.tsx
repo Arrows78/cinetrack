@@ -179,6 +179,7 @@ describe("WatchTonightPage", () => {
       genreSeries: undefined,
       provider: undefined,
       maxRuntime: 120,
+      hideWatched: false,
     });
 
     const genreSelect = screen.getByLabelText("Genre");
@@ -190,6 +191,7 @@ describe("WatchTonightPage", () => {
       genreSeries: 10759,
       provider: undefined,
       maxRuntime: 120,
+      hideWatched: false,
     });
   });
 
@@ -207,6 +209,7 @@ describe("WatchTonightPage", () => {
       genreSeries: undefined,
       provider: 8,
       maxRuntime: 120,
+      hideWatched: false,
     });
   });
 
@@ -233,6 +236,7 @@ describe("WatchTonightPage", () => {
       genreSeries: undefined,
       provider: [8, 337],
       maxRuntime: 120,
+      hideWatched: false,
     });
   });
 
@@ -250,7 +254,23 @@ describe("WatchTonightPage", () => {
       genreSeries: undefined,
       provider: undefined,
       maxRuntime: 45,
+      hideWatched: false,
     });
+  });
+
+  it("passes the persistent hideWatchedInDiscovery preference through to pick(), reflected in the toggle's pressed state", async () => {
+    preferencesData = { preferredProviderIds: [], hideWatchedInDiscovery: true };
+    renderPage();
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+    expect(pickMock).toHaveBeenLastCalledWith({
+      genreMovie: undefined,
+      genreSeries: undefined,
+      provider: undefined,
+      maxRuntime: 120,
+      hideWatched: true,
+    });
+    expect(screen.getByRole("button", { name: "Hide watched" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("re-invokes pick when the retry (dices) button is clicked, even with unchanged filters", async () => {

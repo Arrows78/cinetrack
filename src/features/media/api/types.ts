@@ -18,8 +18,36 @@ export interface TmdbCastDto {
   order?: number;
 }
 
+export interface TmdbCrewDto {
+  id: number;
+  name: string;
+  job?: string;
+  department?: string;
+  profile_path?: string | null;
+}
+
 export interface TmdbCreditsDto {
   cast: TmdbCastDto[];
+  crew?: TmdbCrewDto[];
+}
+
+// The `belongs_to_collection` field embedded in `/movie/{id}` — null when
+// the movie isn't part of a TMDB collection.
+export interface TmdbCollectionSummaryDto {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+}
+
+// The full `/collection/{id}` response.
+export interface TmdbCollectionDto {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  parts: TmdbMovieDto[];
 }
 
 export interface TmdbMovieDto {
@@ -38,6 +66,7 @@ export interface TmdbMovieDto {
   spoken_languages?: Array<{ english_name: string; name: string }>;
   production_countries?: Array<{ iso_3166_1: string; name: string }>;
   credits?: TmdbCreditsDto;
+  belongs_to_collection?: TmdbCollectionSummaryDto | null;
 }
 
 export interface TmdbSeasonPreviewDto {
