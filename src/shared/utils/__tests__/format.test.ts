@@ -127,40 +127,35 @@ describe("formatWatchDurationBreakdown", () => {
     await i18n.changeLanguage("en");
   });
 
-  it("shows only the plain hours/minutes label under 24h — no day breakdown at all", () => {
-    expect(formatWatchDurationBreakdown(200)).toBe("3h 20min");
+  it("shows only minutes under an hour", () => {
+    expect(formatWatchDurationBreakdown(45)).toBe("45min");
   });
 
-  it("adds a day count once the total reaches a full day (24h boundary)", () => {
-    expect(formatWatchDurationBreakdown(1440)).toBe("24h 0min — that's about 1 day");
+  it("shows hours and minutes under a day", () => {
+    expect(formatWatchDurationBreakdown(90)).toBe("1h 30min");
   });
 
-  it("pluralizes the day count and stays in the days-only form under the month threshold", () => {
-    expect(formatWatchDurationBreakdown(14400)).toBe("240h 0min — that's about 10 days"); // 10 days
+  it("drops a zero minutes unit rather than showing it", () => {
+    expect(formatWatchDurationBreakdown(60)).toBe("1h");
   });
 
-  it("adds an approximate month count once the total reaches ~30 days", () => {
-    expect(formatWatchDurationBreakdown(43200)).toBe("720h 0min — that's about 30 days (~1 month)"); // exactly 30 days
+  it("drops a zero days unit rather than showing '0 days'", () => {
+    // Exactly 30 days (a full month), no leftover days/hours/minutes.
+    expect(formatWatchDurationBreakdown(30 * 24 * 60)).toBe("1 month");
   });
 
-  it("matches the reference large-total example from the spec", () => {
-    // 7669h45m = 460185 minutes => floor(460185/1440) = 319 days, floor(319/30) = 10 months.
-    expect(formatWatchDurationBreakdown(460185)).toBe("7669h 45min — that's about 319 days (~10 months)");
+  it("drops a zero months unit rather than showing '0 months'", () => {
+    // 3 days, well under a month.
+    expect(formatWatchDurationBreakdown(3 * 24 * 60)).toBe("3 days");
   });
 
-  it("floors rather than rounds, so it reads as a lower bound", () => {
-    // 59 days: just under the 60-day mark for 2 months.
-    expect(formatWatchDurationBreakdown(59 * 1440)).toBe("1416h 0min — that's about 59 days (~1 month)");
+  it("breaks a large total into every non-zero unit, months first", () => {
+    // 7669h 45min total.
+    expect(formatWatchDurationBreakdown(7669 * 60 + 45)).toBe("10 months 19 days 13h 45min");
   });
 
-  it("uses French day/month pluralization rules", async () => {
-    await i18n.changeLanguage("fr");
-
-    expect(formatWatchDurationBreakdown(1440)).toBe("24 h 0 min — soit environ 1 jour");
-    expect(formatWatchDurationBreakdown(2880)).toBe("48 h 0 min — soit environ 2 jours");
-    // "mois" is invariant in French — same word for 1 or several months.
-    expect(formatWatchDurationBreakdown(43200)).toBe("720 h 0 min — soit environ 30 jours (~1 mois)");
-    expect(formatWatchDurationBreakdown(86400)).toBe("1440 h 0 min — soit environ 60 jours (~2 mois)");
+  it("falls back to '0min' for a zero total", () => {
+    expect(formatWatchDurationBreakdown(0)).toBe("0min");
   });
 });
 
