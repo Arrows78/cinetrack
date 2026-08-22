@@ -192,10 +192,7 @@ describe("HomePage", () => {
     expect(followedLabel.nextElementSibling).toHaveTextContent("2");
 
     expect(screen.getByRole("link", { name: new RegExp(i18n.t("nav.library")) })).toHaveAttribute("href", "/library");
-    expect(screen.getByRole("link", { name: new RegExp(i18n.t("nav.tracking")) })).toHaveAttribute(
-      "href",
-      "/tracking"
-    );
+    expect(screen.getByRole("link", { name: new RegExp(i18n.t("nav.tracking")) })).toHaveAttribute("href", "/tracking");
     expect(screen.getByRole("link", { name: new RegExp(i18n.t("nav.stats")) })).toHaveAttribute("href", "/stats");
 
     expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();

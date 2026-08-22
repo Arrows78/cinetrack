@@ -72,7 +72,13 @@ export default tseslint.config(
             ],
           },
           "object-properties": {
-            exclude: ["[A-Z_-]+", "scope"],
+            // "to" mirrors the same key already excluded above under
+            // jsx-attributes — a route path used to build an array of
+            // `{ to, icon, label, desc }` link descriptors (see
+            // home-page.tsx's offline-mode quick links) is data, not copy,
+            // whether it lands as a JSX attribute or as a plain object
+            // property along the way.
+            exclude: ["[A-Z_-]+", "scope", "to"],
           },
           words: {
             exclude: [

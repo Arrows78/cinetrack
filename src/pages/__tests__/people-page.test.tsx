@@ -112,7 +112,13 @@ describe("PeoplePage", () => {
   });
 
   it("shows the grid skeleton and no person cards while the popular list is loading", () => {
-    usePopularPeopleMock.mockReturnValue({ isLoading: true, isError: false, error: null, refetch: vi.fn(), data: undefined });
+    usePopularPeopleMock.mockReturnValue({
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: undefined,
+    });
 
     renderPage();
 
@@ -125,7 +131,13 @@ describe("PeoplePage", () => {
 
   it("shows the remote error state with a working retry action when the popular list fails", () => {
     const refetch = vi.fn();
-    usePopularPeopleMock.mockReturnValue({ isLoading: false, isError: true, error: new Error("boom"), refetch, data: undefined });
+    usePopularPeopleMock.mockReturnValue({
+      isLoading: false,
+      isError: true,
+      error: new Error("boom"),
+      refetch,
+      data: undefined,
+    });
 
     renderPage();
 
@@ -141,7 +153,13 @@ describe("PeoplePage", () => {
   });
 
   it("shows the grid skeleton and no result cards while a search is loading", async () => {
-    usePeopleSearchMock.mockReturnValue({ isLoading: true, isError: false, error: null, refetch: vi.fn(), data: undefined });
+    usePeopleSearchMock.mockReturnValue({
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: undefined,
+    });
     renderPage();
 
     await typeSearch("de");
@@ -152,7 +170,13 @@ describe("PeoplePage", () => {
 
   it("shows the remote error state with a working retry action for a failed search", async () => {
     const refetch = vi.fn();
-    usePeopleSearchMock.mockReturnValue({ isLoading: false, isError: true, error: new Error("boom"), refetch, data: undefined });
+    usePeopleSearchMock.mockReturnValue({
+      isLoading: false,
+      isError: true,
+      error: new Error("boom"),
+      refetch,
+      data: undefined,
+    });
     renderPage();
 
     await typeSearch("de");

@@ -42,7 +42,7 @@ const persister = createSyncStoragePersister({
   key: "cinetrack.remote-cache.v1",
 });
 
-persistQueryClient({
+void persistQueryClient({
   queryClient,
   persister,
   maxAge: STALE_24_HOURS,

@@ -51,14 +51,12 @@ export function HomePage() {
           <Panel tone="subtle" className="space-y-3">
             <p className="text-sm font-semibold">{t("home.noTokenWorksTitle")}</p>
             <ul className="space-y-2">
-              {[t("home.noTokenWorksItem1"), t("home.noTokenWorksItem2"), t("home.noTokenWorksItem3")].map(
-                (item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                    {item}
-                  </li>
-                )
-              )}
+              {[t("home.noTokenWorksItem1"), t("home.noTokenWorksItem2"), t("home.noTokenWorksItem3")].map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                  {item}
+                </li>
+              ))}
             </ul>
           </Panel>
           <Panel tone="highlight" className="space-y-3">

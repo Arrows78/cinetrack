@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { MoviesPage } from "../movies-page";
+import type * as TanstackRouterModule from "@tanstack/react-router";
 
 // LibraryExplorer/TrackingList already have their own coverage (via
 // LibraryPage/TrackingPage/etc.) — shallow-stub them so assertions here
@@ -48,7 +49,7 @@ vi.mock("@/components/media/tracking-list", () => ({
 
 const navigateMock = vi.fn();
 vi.mock("@tanstack/react-router", async () => {
-  const actual = await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
+  const actual = await vi.importActual<typeof TanstackRouterModule>("@tanstack/react-router");
   return {
     ...actual,
     useNavigate: () => navigateMock,
