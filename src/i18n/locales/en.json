@@ -437,7 +437,13 @@
     "monthlyRecap": {
       "title": "Monthly recap",
       "topRatedTitle": "Top-rated title",
-      "favouriteGenre": "Favourite genre"
+      "favouriteGenre": "Favourite genre",
+      "export": "Export as image",
+      "exportSuccess": "Recap image saved",
+      "exportFailed": "Couldn't export the recap image",
+      "topRatedTitleCardLabel": "Top-rated title:",
+      "favouriteGenreCardLabel": "Favourite genre:",
+      "biggestBingeCardLabel": "Biggest binge:"
     },
     "rewatch": {
       "title": "Rewatch analytics",
@@ -461,7 +467,12 @@
       "hoursThreshold": "{{count}} hours tracked",
       "seriesThreshold": "{{count}} completed series",
       "achieved": "Achieved",
-      "progress": "{{current}} / {{target}}"
+      "progress": "{{current}} / {{target}}",
+      "export": "Export as image",
+      "exportSuccess": "Milestone image saved",
+      "exportFailed": "Couldn't export the milestone image",
+      "cardTitle": "Milestone unlocked",
+      "achievedCardLabel": "Achieved:"
     }
   },
   "bootRecovery": {

@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
-import { ChevronLeft, ChevronRight, Clapperboard, Film, Tv } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clapperboard, Download, Film, Tv } from "lucide-react";
 import { useMonthlyRecap } from "@/features/stats/use-stats";
+import { downloadMonthlyRecapCard, renderMonthlyRecapCard } from "@/features/stats/wrapped-export";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/features/diagnostics/logger";
+import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
 
 function currentMonthLabel(): string {
@@ -29,6 +32,7 @@ function shiftMonth(month: string, delta: number): string {
 export function MonthlyRecapSection() {
   const { t, i18n } = useTranslation();
   const [month, setMonth] = useState(currentMonthLabel);
+  const [isExporting, setIsExporting] = useState(false);
   const recap = useMonthlyRecap(month);
 
   useEffect(() => {
@@ -47,6 +51,41 @@ export function MonthlyRecapSection() {
   );
   const isCurrentMonth = month === currentMonthLabel();
 
+  const exportRecap = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await renderMonthlyRecapCard(
+        {
+          monthLabel,
+          timeWatchedLabel: formatWatchDurationBreakdown(data.minutesWatched),
+          moviesEpisodesLabel: `${data.moviesWatched} ${t("stats.films")} · ${data.episodesWatched} ${t("stats.episodes")}`,
+          topRatedTitle: data.topRatedTitle
+            ? `${data.topRatedTitle.title} · ${data.topRatedTitle.rating.toFixed(1)}`
+            : null,
+          favouriteGenre: data.favouriteGenre,
+          biggestBinge: data.biggestBingeDay
+            ? `${t("stats.watchCount", { count: data.biggestBingeDay.count })} · ${formatDate(data.biggestBingeDay.day)}`
+            : null,
+        },
+        {
+          brand: t("sidebar.brand.name"),
+          tagline: t("sidebar.brand.tagline"),
+          recapTitle: t("stats.monthlyRecap.title"),
+          topRatedTitleLabel: t("stats.monthlyRecap.topRatedTitleCardLabel"),
+          favouriteGenreLabel: t("stats.monthlyRecap.favouriteGenreCardLabel"),
+          biggestBingeLabel: t("stats.monthlyRecap.biggestBingeCardLabel"),
+        }
+      );
+      downloadMonthlyRecapCard(blob, month);
+      toast({ description: t("stats.monthlyRecap.exportSuccess"), variant: "success" });
+    } catch (error) {
+      logger.warn(`Monthly recap export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast({ description: displayMessage(error, t("stats.monthlyRecap.exportFailed")), variant: "error" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const tiles = [
     { label: t("stats.moviesWatched"), value: String(data.moviesWatched), icon: Film },
     { label: t("stats.episodesWatched"), value: String(data.episodesWatched), icon: Tv },
@@ -61,6 +100,18 @@ export function MonthlyRecapSection() {
           <p className="mt-1 text-sm text-muted-foreground">{monthLabel}</p>
         </div>
         <div className="flex items-center gap-1">
+          <IconTooltip label={t("stats.monthlyRecap.export")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("stats.monthlyRecap.export")}
+              disabled={isExporting}
+              onClick={() => void exportRecap()}
+            >
+              <Download className="size-4" />
+            </Button>
+          </IconTooltip>
           <IconTooltip label={t("stats.previousMonth")}>
             <Button
               type="button"

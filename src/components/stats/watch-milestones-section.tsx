@@ -1,14 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Lock, Trophy } from "lucide-react";
+import { Download, Lock, Trophy } from "lucide-react";
 import { useWatchMilestones } from "@/features/stats/use-stats";
+import { downloadMilestoneCard, renderMilestoneCard } from "@/features/stats/wrapped-export";
+import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { Badge } from "@/components/ui/badge";
+import { IconTooltip } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/features/diagnostics/logger";
+import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate } from "@/shared/utils/format";
 import { cn } from "@/shared/lib/cn";
-import type { MilestoneCategory } from "@/types/media";
+import type { MilestoneCategory, WatchMilestone } from "@/types/media";
 
 const THRESHOLD_KEY: Record<MilestoneCategory, string> = {
   episodes: "stats.milestones.episodesThreshold",
@@ -28,6 +33,7 @@ const THRESHOLD_KEY: Record<MilestoneCategory, string> = {
 export function WatchMilestonesSection() {
   const { t } = useTranslation();
   const milestones = useWatchMilestones();
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (milestones.isError) {
@@ -40,6 +46,32 @@ export function WatchMilestonesSection() {
   }, [milestones.isError, milestones.error]);
 
   if (milestones.isError || !milestones.data) return null;
+
+  const exportMilestone = async (milestone: WatchMilestone) => {
+    setExportingId(milestone.id);
+    try {
+      const milestoneLabel = t(THRESHOLD_KEY[milestone.category], { count: milestone.threshold });
+      const blob = await renderMilestoneCard(
+        {
+          milestoneLabel,
+          achievedDateLabel: milestone.achievedAt ? formatDate(milestone.achievedAt) : null,
+        },
+        {
+          brand: t("sidebar.brand.name"),
+          tagline: t("sidebar.brand.tagline"),
+          milestoneTitle: t("stats.milestones.cardTitle"),
+          achievedLabel: t("stats.milestones.achievedCardLabel"),
+        }
+      );
+      downloadMilestoneCard(blob, milestone.id);
+      toast({ description: t("stats.milestones.exportSuccess"), variant: "success" });
+    } catch (error) {
+      logger.warn(`Milestone export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast({ description: displayMessage(error, t("stats.milestones.exportFailed")), variant: "error" });
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   return (
     <Panel>
@@ -56,7 +88,7 @@ export function WatchMilestonesSection() {
             ) : (
               <Lock className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             )}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">
                 {t(THRESHOLD_KEY[milestone.category], { count: milestone.threshold })}
               </p>
@@ -70,6 +102,21 @@ export function WatchMilestonesSection() {
                 </p>
               )}
             </div>
+            {milestone.achieved ? (
+              <IconTooltip label={t("stats.milestones.export")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  aria-label={t("stats.milestones.export")}
+                  disabled={exportingId === milestone.id}
+                  onClick={() => void exportMilestone(milestone)}
+                >
+                  <Download className="size-4" />
+                </Button>
+              </IconTooltip>
+            ) : null}
           </Tile>
         ))}
       </div>

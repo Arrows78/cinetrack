@@ -437,7 +437,13 @@
     "monthlyRecap": {
       "title": "Récap du mois",
       "topRatedTitle": "Titre le mieux noté",
-      "favouriteGenre": "Genre favori"
+      "favouriteGenre": "Genre favori",
+      "export": "Exporter en image",
+      "exportSuccess": "Image du récap enregistrée",
+      "exportFailed": "Échec de l'export de l'image du récap",
+      "topRatedTitleCardLabel": "Titre le mieux noté :",
+      "favouriteGenreCardLabel": "Genre favori :",
+      "biggestBingeCardLabel": "Plus grosse séance :"
     },
     "rewatch": {
       "title": "Analyse des revisionnages",
@@ -461,7 +467,12 @@
       "hoursThreshold": "{{count}} heures suivies",
       "seriesThreshold": "{{count}} séries terminées",
       "achieved": "Débloqué",
-      "progress": "{{current}} / {{target}}"
+      "progress": "{{current}} / {{target}}",
+      "export": "Exporter en image",
+      "exportSuccess": "Image du jalon enregistrée",
+      "exportFailed": "Échec de l'export de l'image du jalon",
+      "cardTitle": "Jalon débloqué",
+      "achievedCardLabel": "Débloqué le :"
     }
   },
   "bootRecovery": {
