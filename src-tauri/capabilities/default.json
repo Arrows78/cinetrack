@@ -10,6 +10,7 @@
     "dialog:allow-open",
     "notification:default",
     "opener:default",
+    "os:default",
     "stronghold:default",
     "process:default",
     {

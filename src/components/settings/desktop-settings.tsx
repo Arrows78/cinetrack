@@ -12,7 +12,7 @@ import { maintenanceService } from "@/features/backup/maintenance-service";
 import { logger } from "@/features/diagnostics/logger";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
-import { isTauriApp } from "@/shared/lib/platform";
+import { isDesktopApp, isTauriApp } from "@/shared/lib/platform";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { errorMessage } from "@/shared/lib/errors";
 import { formatRelativeDate } from "@/shared/utils/format";
@@ -42,7 +42,7 @@ export function DesktopSettings() {
         .catch((error: unknown) => logger.warn(`Failed to refresh diagnostic logs: ${errorMessage(error)}`));
   };
   useEffect(() => {
-    if (isTauriApp())
+    if (isDesktopApp())
       void isEnabled()
         .then(setAutoStart)
         .catch((error: unknown) => logger.warn(`Failed to read autostart state: ${errorMessage(error)}`));
@@ -147,28 +147,32 @@ export function DesktopSettings() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={autoStart ? "secondary" : "outline"}
-                  aria-pressed={autoStart}
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      if (autoStart) await disable();
-                      else await enable();
-                      setAutoStart(!autoStart);
-                      return !autoStart ? t("desktop.autostartEnabled") : t("desktop.autostartDisabled");
-                    })
-                  }
-                >
-                  {autoStart ? t("desktop.autostartOff") : t("desktop.autostartOn")}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void run(() => updateService.checkAndInstall())}
-                >
-                  {t("desktop.checkUpdate")}
-                </Button>
+                {isDesktopApp() ? (
+                  <>
+                    <Button
+                      variant={autoStart ? "secondary" : "outline"}
+                      aria-pressed={autoStart}
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          if (autoStart) await disable();
+                          else await enable();
+                          setAutoStart(!autoStart);
+                          return !autoStart ? t("desktop.autostartEnabled") : t("desktop.autostartDisabled");
+                        })
+                      }
+                    >
+                      {autoStart ? t("desktop.autostartOff") : t("desktop.autostartOn")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void run(() => updateService.checkAndInstall())}
+                    >
+                      {t("desktop.checkUpdate")}
+                    </Button>
+                  </>
+                ) : null}
                 <Button
                   variant="outline"
                   disabled={busy}
@@ -184,7 +188,7 @@ export function DesktopSettings() {
                   {t("desktop.checkDatabase")}
                 </Button>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">{t("desktop.shortcuts")}</p>
+              {isDesktopApp() ? <p className="mt-3 text-xs text-muted-foreground">{t("desktop.shortcuts")}</p> : null}
             </CardContent>
           </Card>
 

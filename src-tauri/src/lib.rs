@@ -42,7 +42,7 @@ use commands::{
 // webview exists, so there is nothing on screen to show an error in. A
 // native OS dialog is the only way the user ever sees this instead of the
 // app just silently failing to open. Desktop only: rfd has no mobile
-// backend, and this app ships desktop-only anyway (no mobile config).
+// backend (mobile keeps the old panic on this specific failure path).
 #[cfg(desktop)]
 fn show_startup_error_dialog(error: &tauri::Error) {
     rfd::MessageDialog::new()
@@ -85,6 +85,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             tmdb_request,

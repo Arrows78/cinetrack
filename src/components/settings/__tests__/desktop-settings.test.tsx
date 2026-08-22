@@ -62,7 +62,11 @@ vi.mock("@tauri-apps/plugin-autostart", () => ({
 }));
 
 const isTauriAppMock = vi.fn(() => true);
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => isTauriAppMock() }));
+const isDesktopAppMock = vi.fn(() => true);
+vi.mock("@/shared/lib/platform", () => ({
+  isTauriApp: () => isTauriAppMock(),
+  isDesktopApp: () => isDesktopAppMock(),
+}));
 
 const formatRelativeDateMock = vi.fn<(iso: string) => string>(() => "3 days ago");
 vi.mock("@/shared/utils/format", async (importOriginal) => {
@@ -99,6 +103,7 @@ describe("DesktopSettings", () => {
     isEnabledMock.mockReset().mockResolvedValue(false);
 
     isTauriAppMock.mockReset().mockReturnValue(true);
+    isDesktopAppMock.mockReset().mockReturnValue(true);
     formatRelativeDateMock.mockReset().mockReturnValue("3 days ago");
 
     // jsdom doesn't implement the Clipboard API.
@@ -115,6 +120,7 @@ describe("DesktopSettings", () => {
   describe("outside Tauri", () => {
     it("renders only the TMDB vault card and skips every backend call on mount", async () => {
       isTauriAppMock.mockReturnValue(false);
+      isDesktopAppMock.mockReturnValue(false);
       render(<DesktopSettings />);
 
       expect(screen.getByText("TMDB Vault")).toBeInTheDocument();
@@ -242,6 +248,23 @@ describe("DesktopSettings", () => {
 
       expect(lockMock).toHaveBeenCalledTimes(1);
       expect(toastMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("inside Tauri on mobile (isDesktopApp false)", () => {
+    it("hides autostart and check-for-updates but keeps check database, backup and diagnostics", async () => {
+      isDesktopAppMock.mockReturnValue(false);
+      render(<DesktopSettings />);
+
+      await waitFor(() => expect(getLastBackupStatusMock).toHaveBeenCalledTimes(1));
+      expect(screen.queryByRole("button", { name: "Launch at startup" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Check for updates" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Check database" })).toBeInTheDocument();
+      expect(screen.getByText("Automatic backup")).toBeInTheDocument();
+      expect(screen.getByText("Diagnostics (local log)")).toBeInTheDocument();
+
+      await Promise.resolve();
+      expect(isEnabledMock).not.toHaveBeenCalled();
     });
   });
 
