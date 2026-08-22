@@ -197,6 +197,31 @@ describe("TmdbMediaProvider", () => {
       expect(params.with_watch_providers).toBeUndefined();
       expect(params.with_watch_monetization_types).toBeUndefined();
     });
+
+    it("joins several provider ids with a pipe for an OR filter (movies)", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ region: "GB" }));
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.discoverMovies({ provider: [8, 337] });
+
+      const [, params] = mocks.tmdbFetch.mock.calls[0]!;
+      expect(params).toMatchObject({
+        watch_region: "GB",
+        with_watch_providers: "8|337",
+        with_watch_monetization_types: "flatrate",
+      });
+    });
+
+    it("treats an empty provider array the same as no provider (series)", async () => {
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.discoverSeries({ provider: [] });
+
+      const [, params] = mocks.tmdbFetch.mock.calls[0]!;
+      expect(params.watch_region).toBeUndefined();
+      expect(params.with_watch_providers).toBeUndefined();
+      expect(params.with_watch_monetization_types).toBeUndefined();
+    });
   });
 
   describe("getWatchProviders", () => {
@@ -491,6 +516,32 @@ describe("TmdbMediaProvider", () => {
       await provider.searchPeople("someone");
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith("/search/person", expect.objectContaining({ query: "someone" }));
+    });
+  });
+
+  describe("getPopularPeople", () => {
+    it("fetches /person/popular with the resolved language and page, mapping the results", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+      mocks.tmdbFetch.mockResolvedValue({
+        ...emptyListResponse,
+        results: [{ id: 7, name: "A Star", profile_path: null }],
+      });
+
+      const result = await provider.getPopularPeople(2);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith(
+        "/person/popular",
+        expect.objectContaining({ language: "fr-FR", page: 2 })
+      );
+      expect(result.results[0]).toMatchObject({ id: 7, name: "A Star" });
+    });
+
+    it("defaults to page 1 when no page is given", async () => {
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.getPopularPeople();
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith("/person/popular", expect.objectContaining({ page: 1 }));
     });
   });
 });

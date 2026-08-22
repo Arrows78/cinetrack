@@ -39,6 +39,15 @@ import { preferencesRepository } from "@/features/preferences/preferences-reposi
 
 const languageTag = (language: "en" | "fr") => (language === "fr" ? "fr-FR" : "en-US");
 
+// TMDB's discover `with_watch_providers` param already accepts a
+// pipe-separated list of ids for an OR filter — a single id is passed
+// through unchanged (exactly as before this param supported an array at
+// all), only a multi-id array gets joined into that pipe-separated string.
+function watchProviderParam(provider?: number | number[]): number | string | undefined {
+  if (provider === undefined || !Array.isArray(provider)) return provider;
+  return provider.length ? provider.join("|") : undefined;
+}
+
 interface Context {
   language: string;
   region: string;
@@ -136,14 +145,15 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async discoverMovies(args: DiscoverArgs = {}): Promise<PageResult<Movie>> {
     const { language, region } = await this.context(args.region);
+    const provider = watchProviderParam(args.provider);
     const response = await tmdbFetch<TmdbListResponse<TmdbMovieDto>>("/discover/movie", {
       language,
       page: args.page ?? 1,
       sort_by: "popularity.desc",
       with_genres: args.genre,
-      watch_region: args.provider ? region : undefined,
-      with_watch_providers: args.provider,
-      with_watch_monetization_types: args.provider ? "flatrate" : undefined,
+      watch_region: provider ? region : undefined,
+      with_watch_providers: provider,
+      with_watch_monetization_types: provider ? "flatrate" : undefined,
       "with_runtime.lte": args.maxRuntime,
     });
     return mapPage(response, mapMovieDto);
@@ -151,14 +161,15 @@ export class TmdbMediaProvider implements MediaProvider {
 
   async discoverSeries(args: DiscoverArgs = {}): Promise<PageResult<Series>> {
     const { language, region } = await this.context(args.region);
+    const provider = watchProviderParam(args.provider);
     const response = await tmdbFetch<TmdbListResponse<TmdbTvDto>>("/discover/tv", {
       language,
       page: args.page ?? 1,
       sort_by: "popularity.desc",
       with_genres: args.genre,
-      watch_region: args.provider ? region : undefined,
-      with_watch_providers: args.provider,
-      with_watch_monetization_types: args.provider ? "flatrate" : undefined,
+      watch_region: provider ? region : undefined,
+      with_watch_providers: provider,
+      with_watch_monetization_types: provider ? "flatrate" : undefined,
     });
     return mapPage(response, mapSeriesDto);
   }
@@ -287,6 +298,12 @@ export class TmdbMediaProvider implements MediaProvider {
     if (!query.trim()) return { page, totalPages: 0, totalResults: 0, results: [] };
     const { language } = await this.context();
     const response = await tmdbFetch<TmdbListResponse<TmdbPersonDto>>("/search/person", { language, query, page });
+    return mapPage(response, mapPerson);
+  }
+
+  async getPopularPeople(page = 1): Promise<PageResult<PersonSummary>> {
+    const { language } = await this.context();
+    const response = await tmdbFetch<TmdbListResponse<TmdbPersonDto>>("/person/popular", { language, page });
     return mapPage(response, mapPerson);
   }
 

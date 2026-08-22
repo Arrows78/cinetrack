@@ -174,6 +174,38 @@ describe("watchTonightService", () => {
     expect(mocks.loggerWarn).toHaveBeenCalledWith(expect.stringContaining("50"));
   });
 
+  it("keeps a planned candidate available on any of several preferred providers (OR match)", async () => {
+    mocks.listLibrary.mockResolvedValue([
+      { mediaId: 10, mediaType: "movie", status: "planned" },
+      { mediaId: 11, mediaType: "movie", status: "planned" },
+      { mediaId: 12, mediaType: "movie", status: "planned" },
+    ]);
+    mocks.getMovieDetails.mockImplementation((id: number) => Promise.resolve(movie(id)));
+    mocks.getWatchAvailability.mockImplementation((_type: string, id: number) =>
+      Promise.resolve({
+        link: null,
+        flatrate: id === 10 ? [{ id: 8, name: "Netflix" }] : id === 11 ? [{ id: 337, name: "Disney+" }] : [],
+        free: [],
+        rent: [],
+        buy: [],
+      })
+    );
+
+    const result = await watchTonightService.pick({ provider: [8, 337] });
+
+    expect(result.movies.map((item) => item.id).sort()).toEqual([10, 11]);
+    expect(mocks.discoverMovies).not.toHaveBeenCalled();
+  });
+
+  it("joins multiple provider ids with a pipe when falling back to catalogue discovery", async () => {
+    mocks.listLibrary.mockResolvedValue([]);
+
+    await watchTonightService.pick({ provider: [8, 337] });
+
+    expect(mocks.discoverMovies).toHaveBeenCalledWith({ genre: undefined, provider: [8, 337], maxRuntime: undefined });
+    expect(mocks.discoverSeries).toHaveBeenCalledWith({ genre: undefined, provider: [8, 337], maxRuntime: undefined });
+  });
+
   it("caps picks at PICKS_PER_TYPE (4) when more planned candidates match than that, for both movies and series", async () => {
     mocks.listLibrary.mockResolvedValue([
       { mediaId: 60, mediaType: "movie", status: "planned" },

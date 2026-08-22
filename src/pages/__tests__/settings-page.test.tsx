@@ -352,4 +352,25 @@ describe("SettingsPage — preferences", () => {
     await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
     expect(updatePreferenceMock).not.toHaveBeenCalledWith(expect.objectContaining({ key: "notificationsEnabled" }));
   });
+
+  it("adds a streaming platform to preferredProviderIds when its chip is toggled on", async () => {
+    renderPage();
+    await screen.findByText("Default profile");
+
+    screen.getByRole("button", { name: "Netflix" }).click();
+
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("preferredProviderIds", [8]));
+  });
+
+  it("removes an already-selected streaming platform when its chip is toggled off", async () => {
+    getPreferencesMock.mockReset().mockResolvedValue({ ...preferencesData, preferredProviderIds: [8, 337] });
+    renderPage();
+    await screen.findByText("Default profile");
+
+    const netflixChip = await screen.findByRole("button", { name: "Netflix" });
+    expect(netflixChip).toHaveAttribute("aria-pressed", "true");
+    netflixChip.click();
+
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("preferredProviderIds", [337]));
+  });
 });

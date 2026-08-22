@@ -25,9 +25,9 @@ import { preferencesRepository } from "@/features/preferences/preferences-reposi
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useProfiles } from "@/features/profiles/use-profiles";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
-import { DEFAULT_LANGUAGE, DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_LANGUAGE, DEFAULT_TMDB_REGION, PLATFORMS } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
-import type { UserProfile } from "@/types/media";
+import type { UserPreferences, UserProfile } from "@/types/media";
 
 function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined }) {
   const { t } = useTranslation();
@@ -186,6 +186,40 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
   );
 }
 
+// Platform brand names (PLATFORMS' `label`) are proper nouns rendered as-is
+// elsewhere in the app (see the platform <Select> on WatchTonightPage) — not
+// run through t(), same as accentColor's own preset names are.
+function StreamingServicesCard({
+  providerIds,
+  onToggle,
+  isSaving,
+}: {
+  providerIds: number[];
+  onToggle: (providerId: number) => void;
+  isSaving: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.streaming.title")}</CardTitle>
+        <CardDescription>{t("settings.streaming.description")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        {PLATFORMS.map((platform) => (
+          <SettingToggle
+            key={platform.id}
+            label={platform.label}
+            pressed={providerIds.includes(platform.id)}
+            disabled={isSaving}
+            onPressedChange={() => onToggle(platform.id)}
+          />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { data: preferences, updatePreference, isSaving, isError, error, refetch } = usePreferences();
@@ -200,6 +234,13 @@ export function SettingsPage() {
     const enabled = !preferences?.notificationsEnabled;
     if (enabled && !(await notificationService.requestPermission())) return;
     await updatePreference({ key: "notificationsEnabled", value: enabled });
+  };
+  const toggleStreamingProvider = async (providerId: number) => {
+    const current = preferences?.preferredProviderIds ?? [];
+    const next: UserPreferences["preferredProviderIds"] = current.includes(providerId)
+      ? current.filter((id) => id !== providerId)
+      : [...current, providerId];
+    await updatePreference({ key: "preferredProviderIds", value: next });
   };
   return (
     <div className="space-y-10">
@@ -307,6 +348,19 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      <section>
+        <SectionHeader
+          size="sub"
+          title={t("settings.sections.streaming")}
+          subtitle={t("settings.sections.streamingDesc")}
+        />
+        <StreamingServicesCard
+          providerIds={preferences?.preferredProviderIds ?? []}
+          onToggle={(providerId) => void toggleStreamingProvider(providerId)}
+          isSaving={isSaving}
+        />
       </section>
 
       <section>

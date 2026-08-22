@@ -14,7 +14,8 @@ import type {
 } from "@/types/media";
 export interface DiscoverArgs {
   genre?: number;
-  provider?: number;
+  /** A single TMDB watch-provider id, or several to OR together (see with_watch_providers' pipe syntax). */
+  provider?: number | number[];
   page?: number;
   region?: string;
   maxRuntime?: number;
@@ -41,5 +42,6 @@ export interface MediaProvider {
   getRecommendations(mediaType: MediaType, mediaId: number, page?: number): Promise<PageResult<MediaSummary>>;
   getVideos(mediaType: MediaType, mediaId: number): Promise<MediaVideo[]>;
   searchPeople(query: string, page?: number): Promise<PageResult<PersonSummary>>;
+  getPopularPeople(page?: number): Promise<PageResult<PersonSummary>>;
   getPerson(personId: number): Promise<PersonSummary>;
 }

@@ -6,7 +6,8 @@ import type { MediaSummary, MediaType, Movie, Series } from "@/types/media";
 export interface WatchTonightFilters {
   genreMovie?: number;
   genreSeries?: number;
-  provider?: number;
+  /** A single provider id, or several (e.g. "my services") — matches if any one of them has the title. */
+  provider?: number | number[];
   maxRuntime?: number;
 }
 
@@ -31,14 +32,21 @@ function matchesGenre(item: MediaSummary, genre?: number): boolean {
   return genre === undefined || Boolean(item.genreIds?.includes(genre));
 }
 
-async function matchesProvider(mediaType: MediaType, mediaId: number, provider?: number): Promise<boolean> {
-  if (provider === undefined) return true;
+function normalizeProviderIds(provider?: number | number[]): number[] | undefined {
+  if (provider === undefined) return undefined;
+  const ids = Array.isArray(provider) ? provider : [provider];
+  return ids.length ? ids : undefined;
+}
+
+async function matchesProvider(mediaType: MediaType, mediaId: number, provider?: number | number[]): Promise<boolean> {
+  const providerIds = normalizeProviderIds(provider);
+  if (!providerIds) return true;
   const availability = await mediaRepository.getWatchAvailability(mediaType, mediaId).catch((error) => {
     logger.warn(`Failed to fetch watch availability for ${mediaType}/${mediaId}: ${error}`);
     return null;
   });
   if (!availability) return false;
-  return [...availability.flatrate, ...availability.free].some((item) => item.id === provider);
+  return [...availability.flatrate, ...availability.free].some((item) => providerIds.includes(item.id));
 }
 
 function shuffle<T>(items: T[]): T[] {
@@ -51,9 +59,9 @@ function shuffle<T>(items: T[]): T[] {
 async function filterByProvider<T extends MediaSummary>(
   candidates: T[],
   mediaType: MediaType,
-  provider?: number
+  provider?: number | number[]
 ): Promise<T[]> {
-  if (provider === undefined || !candidates.length) return candidates;
+  if (!normalizeProviderIds(provider) || !candidates.length) return candidates;
   const matches = await Promise.all(candidates.map((item) => matchesProvider(mediaType, item.id, provider)));
   return candidates.filter((_item, index) => matches[index]);
 }
