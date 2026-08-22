@@ -1,0 +1,120 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { addMonths, format, parseISO, subMonths } from "date-fns";
+import { ChevronLeft, ChevronRight, Clapperboard, Film, Tv } from "lucide-react";
+import { useMonthlyRecap } from "@/features/stats/use-stats";
+import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
+import { Tile } from "@/components/ui/tile";
+import { IconTooltip } from "@/components/ui/tooltip";
+import { logger } from "@/features/diagnostics/logger";
+import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
+
+function currentMonthLabel(): string {
+  return format(new Date(), "yyyy-MM");
+}
+
+function shiftMonth(month: string, delta: number): string {
+  const monthDate = parseISO(`${month}-01`);
+  return format(delta > 0 ? addMonths(monthDate, delta) : subMonths(monthDate, -delta), "yyyy-MM");
+}
+
+/**
+ * Monthly recap panel for the Stats page — like Wrapped, this is a
+ * historical breakdown ("what did I watch this month") rather than a
+ * current-state total, so it counts every watched/rewatched event that fell
+ * in the selected month, not a dedupe-to-latest-event total the way the
+ * headline stats cards above it are.
+ */
+export function MonthlyRecapSection() {
+  const { t, i18n } = useTranslation();
+  const [month, setMonth] = useState(currentMonthLabel);
+  const recap = useMonthlyRecap(month);
+
+  useEffect(() => {
+    if (recap.isError) {
+      logger.warn(
+        `Monthly recap failed to load: ${recap.error instanceof Error ? recap.error.message : String(recap.error)}`
+      );
+    }
+  }, [recap.isError, recap.error]);
+
+  if (recap.isError || !recap.data) return null;
+
+  const data = recap.data;
+  const monthLabel = new Intl.DateTimeFormat(i18n.language, { month: "long", year: "numeric" }).format(
+    parseISO(`${month}-01`)
+  );
+  const isCurrentMonth = month === currentMonthLabel();
+
+  const tiles = [
+    { label: t("stats.moviesWatched"), value: String(data.moviesWatched), icon: Film },
+    { label: t("stats.episodesWatched"), value: String(data.episodesWatched), icon: Tv },
+    { label: t("stats.timeWatched"), value: formatWatchDurationBreakdown(data.minutesWatched), icon: Clapperboard },
+  ];
+
+  return (
+    <Panel>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="font-semibold">{t("stats.monthlyRecap.title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{monthLabel}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <IconTooltip label={t("stats.previousMonth")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("stats.previousMonth")}
+              onClick={() => setMonth((current) => shiftMonth(current, -1))}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+          </IconTooltip>
+          <IconTooltip label={t("stats.nextMonth")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("stats.nextMonth")}
+              disabled={isCurrentMonth}
+              onClick={() => setMonth((current) => shiftMonth(current, 1))}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </IconTooltip>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {tiles.map(({ label, value, icon: Icon }) => (
+          <Tile key={label} className="p-3">
+            <Icon className="size-4 text-primary" aria-hidden="true" />
+            <p className="mt-2 text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 truncate font-display text-xl font-bold">{value}</p>
+          </Tile>
+        ))}
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Tile className="min-w-0 p-3">
+          <p className="text-xs text-muted-foreground">{t("stats.monthlyRecap.topRatedTitle")}</p>
+          <p className="mt-1 truncate font-medium" title={data.topRatedTitle?.title}>
+            {data.topRatedTitle ? `${data.topRatedTitle.title} · ${data.topRatedTitle.rating.toFixed(1)}` : "—"}
+          </p>
+        </Tile>
+        <Tile className="min-w-0 p-3">
+          <p className="text-xs text-muted-foreground">{t("stats.monthlyRecap.favouriteGenre")}</p>
+          <p className="mt-1 truncate font-medium">{data.favouriteGenre ?? "—"}</p>
+        </Tile>
+        <Tile className="min-w-0 p-3">
+          <p className="text-xs text-muted-foreground">{t("stats.biggestBinge")}</p>
+          <p className="mt-1 truncate font-medium">
+            {data.biggestBingeDay
+              ? `${t("stats.watchCount", { count: data.biggestBingeDay.count })} · ${formatDate(data.biggestBingeDay.day)}`
+              : "—"}
+          </p>
+        </Tile>
+      </div>
+    </Panel>
+  );
+}

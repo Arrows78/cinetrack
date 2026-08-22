@@ -34,12 +34,22 @@ const forecastState = {
 const yearlyActivityState = {
   data: undefined as YearlyActivityBucket[] | undefined,
 };
+// The four insights sections below (monthly recap, rewatch analytics,
+// rating distribution, milestones) each render null while their own query
+// has no data, so a bare "no data yet" stub keeps this page-level test suite
+// focused on the page's own logic — see each section's own component test
+// (src/components/stats/__tests__/) for its actual rendering behaviour.
+const noDataYet = { data: undefined, isError: false, error: null as unknown };
 
 vi.mock("@/features/stats/use-stats", () => ({
   useStats: () => statsState,
   useWrapped: (year: number) => wrappedMock(year),
   useWatchForecast: () => forecastState,
   useYearlyActivity: () => yearlyActivityState,
+  useMonthlyRecap: () => noDataYet,
+  useRewatchStats: () => noDataYet,
+  useRatingDistribution: () => noDataYet,
+  useWatchMilestones: () => noDataYet,
 }));
 
 const renderWrappedCardMock = vi.fn();

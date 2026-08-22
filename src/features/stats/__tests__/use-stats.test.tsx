@@ -9,6 +9,11 @@ const getForecastMock = vi.fn(async () => ({ backlogEpisodes: 3 }) as never);
 const getYearlyActivityMock = vi.fn(async () => [
   { year: 2026, moviesWatched: 5, episodesWatched: 2, minutesWatched: 300 },
 ]);
+const getOnThisDayEventsMock = vi.fn(async () => [{ id: "evt-1" }] as never);
+const getMonthlyRecapMock = vi.fn(async (month: string) => ({ month }) as never);
+const getRewatchStatsMock = vi.fn(async () => ({ totalRewatches: 4 }) as never);
+const getRatingDistributionMock = vi.fn(async () => ({ distribution: [] }) as never);
+const getWatchMilestonesMock = vi.fn(async () => [{ id: "episodes-100" }] as never);
 
 vi.mock("@/features/stats/stats-repository", () => ({
   statsRepository: {
@@ -16,6 +21,11 @@ vi.mock("@/features/stats/stats-repository", () => ({
     getYearSummary: getYearSummaryMock,
     getForecast: getForecastMock,
     getYearlyActivity: getYearlyActivityMock,
+    getOnThisDayEvents: getOnThisDayEventsMock,
+    getMonthlyRecap: getMonthlyRecapMock,
+    getRewatchStats: getRewatchStatsMock,
+    getRatingDistribution: getRatingDistributionMock,
+    getWatchMilestones: getWatchMilestonesMock,
   },
 }));
 
@@ -59,5 +69,54 @@ describe("stats hooks", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data).toEqual([{ year: 2026, moviesWatched: 5, episodesWatched: 2, minutesWatched: 300 }]);
+  });
+
+  it("useOnThisDay does not fetch at all while disabled", async () => {
+    getOnThisDayEventsMock.mockClear();
+    const { useOnThisDay } = await import("../use-stats");
+    const { result } = renderHook(() => useOnThisDay(false), { wrapper: createWrapper() });
+
+    // A disabled query never transitions into a loading/fetching state.
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(result.current.data).toBeUndefined();
+    expect(getOnThisDayEventsMock).not.toHaveBeenCalled();
+  });
+
+  it("useOnThisDay fetches the day's events once enabled", async () => {
+    getOnThisDayEventsMock.mockClear();
+    const { useOnThisDay } = await import("../use-stats");
+    const { result } = renderHook(() => useOnThisDay(true), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.data).toEqual([{ id: "evt-1" }]));
+    expect(getOnThisDayEventsMock).toHaveBeenCalled();
+  });
+
+  it("useMonthlyRecap forwards the selected month to the repository", async () => {
+    const { useMonthlyRecap } = await import("../use-stats");
+    const { result } = renderHook(() => useMonthlyRecap("2026-03"), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.data).toEqual({ month: "2026-03" }));
+    expect(getMonthlyRecapMock).toHaveBeenCalledWith("2026-03");
+  });
+
+  it("useRewatchStats loads rewatch analytics", async () => {
+    const { useRewatchStats } = await import("../use-stats");
+    const { result } = renderHook(() => useRewatchStats(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.data).toEqual({ totalRewatches: 4 }));
+  });
+
+  it("useRatingDistribution loads the rating distribution", async () => {
+    const { useRatingDistribution } = await import("../use-stats");
+    const { result } = renderHook(() => useRatingDistribution(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.data).toEqual({ distribution: [] }));
+  });
+
+  it("useWatchMilestones loads the milestone list", async () => {
+    const { useWatchMilestones } = await import("../use-stats");
+    const { result } = renderHook(() => useWatchMilestones(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.data).toEqual([{ id: "episodes-100" }]));
   });
 });

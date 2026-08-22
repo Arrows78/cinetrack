@@ -2,7 +2,16 @@ import { addDays, eachMonthOfInterval, endOfMonth, format, parseISO, startOfMont
 import { invokeCommand } from "@/shared/lib/invoke";
 import { libraryRepository } from "@/features/library/library-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
-import type { LibraryItem, LibraryStats, TrackedSeriesItem, ViewingEvent } from "@/types/media";
+import type {
+  LibraryItem,
+  LibraryStats,
+  MonthlyRecap,
+  RatingDistribution,
+  RewatchStats,
+  TrackedSeriesItem,
+  ViewingEvent,
+  WatchMilestone,
+} from "@/types/media";
 
 export interface WatchForecast {
   /** Unwatched episodes across all tracked series. */
@@ -258,6 +267,21 @@ async function loadRecentEvents(): Promise<ViewingEvent[]> {
   return invokeCommand<ViewingEvent[]>("list_recent_viewing_events", { since: recentEventsSince() });
 }
 
+/**
+ * The trailing-12-months window `get_stats_overview` already scopes its own
+ * `monthlyActivity` to — reused as-is by the rewatch-analytics and
+ * rating-evolution commands below so they zero-fill the exact same 12 months
+ * the "Activity over 12 months" chart does. Exported for tests only — not
+ * part of the statsRepository public surface.
+ */
+export function trailing12MonthsWindow(now = new Date()): { windowStart: Date; monthLabels: string[] } {
+  const windowStart = startOfMonth(subMonths(now, 11));
+  const monthLabels = eachMonthOfInterval({ start: windowStart, end: endOfMonth(now) }).map((date) =>
+    format(date, "yyyy-MM")
+  );
+  return { windowStart, monthLabels };
+}
+
 export const statsRepository = {
   async getStats(): Promise<LibraryStats> {
     const now = new Date();
@@ -332,5 +356,46 @@ export const statsRepository = {
   // instead of probing getYearSummary one year at a time.
   async getYearlyActivity(): Promise<YearlyActivityBucket[]> {
     return invokeCommand<YearlyActivityBucket[]>("list_yearly_activity");
+  },
+  // Powers the opt-in "On this day" Home card — every past-year watch whose
+  // watched_at falls on today's month-day, most recent year first. `today`
+  // is passed explicitly (defaulting to right now) rather than letting the
+  // Rust side read its own clock, mirroring getYearSummary's rangeStart/
+  // rangeEnd above, so a fixed reference date stays trivial to test.
+  async getOnThisDayEvents(today = new Date().toISOString()): Promise<ViewingEvent[]> {
+    return invokeCommand<ViewingEvent[]>("list_on_this_day_events", { today });
+  },
+  // `month` is a "YYYY-MM" label; rangeStart/rangeEnd are built as literal
+  // UTC-midnight boundaries — like getYearSummary's rangeStart/rangeEnd
+  // above, deliberately NOT routed through a local `Date`/`toISOString()`
+  // round trip, which would shift the boundary by the caller's UTC offset
+  // and no longer line up with the UTC month buckets `watched_at` is stored
+  // and grouped in on the Rust side.
+  async getMonthlyRecap(month: string): Promise<MonthlyRecap> {
+    const year = Number(month.slice(0, 4));
+    const monthNumber = Number(month.slice(5, 7));
+    const nextMonth = monthNumber === 12 ? 1 : monthNumber + 1;
+    const nextYear = monthNumber === 12 ? year + 1 : year;
+    return invokeCommand<MonthlyRecap>("get_monthly_recap", {
+      month,
+      rangeStart: `${month}-01T00:00:00.000Z`,
+      rangeEnd: `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00.000Z`,
+    });
+  },
+  async getRewatchStats(): Promise<RewatchStats> {
+    const { windowStart, monthLabels } = trailing12MonthsWindow();
+    return invokeCommand<RewatchStats>("get_rewatch_stats", {
+      windowStart: windowStart.toISOString(),
+      monthLabels,
+    });
+  },
+  async getRatingDistribution(): Promise<RatingDistribution> {
+    const { windowStart } = trailing12MonthsWindow();
+    return invokeCommand<RatingDistribution>("get_rating_distribution", {
+      windowStart: windowStart.toISOString(),
+    });
+  },
+  async getWatchMilestones(): Promise<WatchMilestone[]> {
+    return invokeCommand<WatchMilestone[]>("get_watch_milestones");
   },
 };

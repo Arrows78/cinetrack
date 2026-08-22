@@ -115,6 +115,28 @@ export default defineConfig({
         "src/components/settings/backup-tools.tsx": { statements: 95, branches: 90, functions: 100, lines: 100 },
         "src/components/media/library-sections.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "src/components/media/next-episode-card.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // New Stats-page insights sections (monthly recap, rewatch
+        // analytics, rating distribution, watch milestones), each with its
+        // own test file under src/components/stats/__tests__/.
+        "src/components/stats/monthly-recap-section.tsx": { statements: 90, branches: 85, functions: 75, lines: 90 },
+        "src/components/stats/rewatch-analytics-section.tsx": {
+          statements: 100,
+          branches: 90,
+          functions: 100,
+          lines: 100,
+        },
+        "src/components/stats/rating-distribution-section.tsx": {
+          statements: 100,
+          branches: 85,
+          functions: 100,
+          lines: 100,
+        },
+        "src/components/stats/watch-milestones-section.tsx": {
+          statements: 100,
+          branches: 90,
+          functions: 100,
+          lines: 100,
+        },
         "src/features/desktop/desktop-service.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "src/features/desktop/notification-service.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
         "src/features/desktop/update-service.ts": { statements: 100, branches: 100, functions: 100, lines: 100 },
@@ -140,7 +162,10 @@ export default defineConfig({
         // wrapper plus the progress-calculation helpers unit-tested
         // directly (calculateSeriesProgress, getNextEpisode, ...).
         "src/features/progress/progress-repository.ts": { statements: 85, branches: 90, functions: 90, lines: 85 },
-        "src/features/stats/stats-repository.ts": { statements: 35, branches: 65, functions: 45, lines: 35 },
+        // Raised alongside the monthly-recap/rewatch/rating-distribution/
+        // milestones repository methods added for the Insights work — each
+        // is now covered by src/features/stats/__tests__/insights-repository.test.ts.
+        "src/features/stats/stats-repository.ts": { statements: 85, branches: 90, functions: 80, lines: 85 },
         "src/features/tvtime/tvtime-import-repository.ts": {
           statements: 100,
           branches: 100,

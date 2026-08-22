@@ -32,6 +32,10 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { ActivityBarChart } from "@/components/media/activity-bar-chart";
 import { ViewingHeatmap } from "@/components/media/viewing-heatmap";
+import { MonthlyRecapSection } from "@/components/stats/monthly-recap-section";
+import { RewatchAnalyticsSection } from "@/components/stats/rewatch-analytics-section";
+import { RatingDistributionSection } from "@/components/stats/rating-distribution-section";
+import { WatchMilestonesSection } from "@/components/stats/watch-milestones-section";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { StatsSkeleton } from "@/components/states/loading-skeletons";
 import { logger } from "@/features/diagnostics/logger";
@@ -244,6 +248,11 @@ export function StatsPage() {
         </div>
       </section>
 
+      <div className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(9)}ms` }}>
+        <MonthlyRecapSection />
+        <RewatchAnalyticsSection />
+      </div>
+
       {comparison ? (
         <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
           <h2 className="mb-3 font-semibold">{t("stats.thisMonth")}</h2>
@@ -372,6 +381,14 @@ export function StatsPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t("stats.heatmap.description")}</p>
         <ViewingHeatmap data={stats.data.heatmap} />
       </Panel>
+
+      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(10)}ms` }}>
+        <RatingDistributionSection />
+      </div>
+
+      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(11)}ms` }}>
+        <WatchMilestonesSection />
+      </div>
 
       <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
         <Panel asChild className="min-w-0">
