@@ -129,6 +129,7 @@ export const viewingEventSchema = z.object({
   episodeId: z.number().nullable().optional(),
   seasonNumber: z.number().nullable().optional(),
   episodeNumber: z.number().nullable().optional(),
+  note: z.string().nullable().optional(),
 });
 
 export const userProfileSchema = z.object({

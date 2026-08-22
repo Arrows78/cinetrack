@@ -1,5 +1,7 @@
-import { Calendar, Check, Clock4, EyeOff } from "lucide-react";
+import { useState } from "react";
+import { Calendar, Check, Clock4, EyeOff, NotebookPen } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { AddWatchNoteDialog } from "@/components/media/add-watch-note-dialog";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -20,12 +22,13 @@ export function EpisodeCard({
   isLastUnwatched,
 }: {
   episode: Episode;
-  onToggleSeen: () => void;
+  onToggleSeen: (note?: string) => void;
   disabled?: boolean;
   isLastUnwatched?: boolean;
 }) {
   const { t } = useTranslation();
   const preferences = usePreferences();
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const watched = Boolean(episode.watched);
   const hidden = Boolean(preferences.data?.spoilerProtection && !watched);
   return (
@@ -89,20 +92,43 @@ export function EpisodeCard({
           ) : null}
         </div>
       </div>
-      <IconTooltip label={watched ? t("media.markUnseen") : t("media.markSeen")}>
-        <button
-          type="button"
-          aria-label={watched ? t("media.markUnseen") : t("media.markSeen")}
-          disabled={disabled}
-          onClick={onToggleSeen}
-          className={cn(
-            "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
-            watched ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"
-          )}
-        >
-          {watched ? <Check className="size-5" /> : null}
-        </button>
-      </IconTooltip>
+      <div className="flex shrink-0 items-center gap-1">
+        {!watched ? (
+          <IconTooltip label={t("media.addWatchNoteAction")}>
+            <button
+              type="button"
+              aria-label={t("media.addWatchNoteAction")}
+              disabled={disabled}
+              onClick={() => setNoteDialogOpen(true)}
+              className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+            >
+              <NotebookPen className="size-4" />
+            </button>
+          </IconTooltip>
+        ) : null}
+        <IconTooltip label={watched ? t("media.markUnseen") : t("media.markSeen")}>
+          <button
+            type="button"
+            aria-label={watched ? t("media.markUnseen") : t("media.markSeen")}
+            disabled={disabled}
+            onClick={() => onToggleSeen()}
+            className={cn(
+              "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
+              watched ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"
+            )}
+          >
+            {watched ? <Check className="size-5" /> : null}
+          </button>
+        </IconTooltip>
+      </div>
+      <AddWatchNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        onConfirm={(note) => {
+          setNoteDialogOpen(false);
+          onToggleSeen(note || undefined);
+        }}
+      />
     </div>
   );
 }

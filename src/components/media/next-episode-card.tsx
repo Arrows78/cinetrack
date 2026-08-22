@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Play } from "lucide-react";
+import { CheckCircle2, NotebookPen, Play } from "lucide-react";
+import { AddWatchNoteDialog } from "@/components/media/add-watch-note-dialog";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { formatEpisodeCode } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 
@@ -12,9 +15,10 @@ export function NextEpisodeCard({
 }: {
   episode: Episode | null;
   isSaving: boolean;
-  onWatched: (episode: Episode) => void;
+  onWatched: (episode: Episode, note?: string) => void;
 }) {
   const { t } = useTranslation();
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   if (!episode)
     return (
       <Panel>
@@ -34,16 +38,32 @@ export function NextEpisodeCard({
         </div>
         <Play className="size-6 text-primary" />
       </div>
-      <Button
-        className="mt-4"
-        type="button"
-        isLoading={isSaving}
-        disabled={isSaving}
-        onClick={() => onWatched(episode)}
-      >
-        <CheckCircle2 className="mr-2 size-4" />
-        {t("media.markAsSeen")}
-      </Button>
+      <div className="mt-4 flex items-center gap-2">
+        <Button type="button" isLoading={isSaving} disabled={isSaving} onClick={() => onWatched(episode)}>
+          <CheckCircle2 className="mr-2 size-4" />
+          {t("media.markAsSeen")}
+        </Button>
+        <IconTooltip label={t("media.addWatchNoteAction")}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={t("media.addWatchNoteAction")}
+            disabled={isSaving}
+            onClick={() => setNoteDialogOpen(true)}
+          >
+            <NotebookPen className="size-4" />
+          </Button>
+        </IconTooltip>
+      </div>
+      <AddWatchNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        onConfirm={(note) => {
+          setNoteDialogOpen(false);
+          onWatched(episode, note || undefined);
+        }}
+      />
     </Panel>
   );
 }

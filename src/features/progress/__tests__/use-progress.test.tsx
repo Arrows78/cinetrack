@@ -56,6 +56,7 @@ const toggleEpisodeSeenMock = vi.fn(async () => undefined);
 const markSeasonMock = vi.fn(async () => undefined);
 const markSeriesMock = vi.fn(async () => undefined);
 const listTrackedSeriesMock = vi.fn(async () => [] as TrackedSeriesItem[]);
+const listViewingEventsForMediaMock = vi.fn(async () => [] as never);
 const refreshTrackedSeriesStatusMock = vi.fn<(seriesId: number, status: string | null) => Promise<undefined>>(
   async () => undefined
 );
@@ -75,6 +76,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
     markSeries: markSeriesMock,
     listTrackedSeries: listTrackedSeriesMock,
     refreshTrackedSeriesStatus: refreshTrackedSeriesStatusMock,
+    listViewingEventsForMedia: listViewingEventsForMediaMock,
   },
 }));
 
@@ -102,6 +104,7 @@ beforeEach(() => {
   listTrackedSeriesMock.mockClear();
   refreshTrackedSeriesStatusMock.mockClear();
   getPreferencesMock.mockClear();
+  listViewingEventsForMediaMock.mockClear();
 });
 
 describe("useMovieSeen", () => {
@@ -117,7 +120,7 @@ describe("useMovieSeen", () => {
     expect(result.current.data).toBe(false);
   });
 
-  it("toggling invalidates movieSeen, history and stats", async () => {
+  it("toggling invalidates movieSeen, history, stats and this movie's viewing-event notes", async () => {
     const { useMovieSeen } = await import("../use-progress");
     const { client, Wrapper } = createWrapper();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
@@ -128,17 +131,31 @@ describe("useMovieSeen", () => {
       await result.current.toggleMovieSeen({ movie, watched: true });
     });
 
-    expect(toggleMovieSeenMock).toHaveBeenCalledWith(movie, true);
+    expect(toggleMovieSeenMock).toHaveBeenCalledWith(movie, true, undefined, undefined);
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.movieSeen(DEFAULT_PROFILE_ID, 7));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.history(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.stats(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.library(DEFAULT_PROFILE_ID));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.viewingEventsForMedia(DEFAULT_PROFILE_ID, "movie", 7));
+  });
+
+  it("passes an optional note through to progressRepository.toggleMovieSeen", async () => {
+    const { useMovieSeen } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useMovieSeen(7), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.toggleMovieSeen({ movie, watched: true, note: "Loved it" });
+    });
+
+    expect(toggleMovieSeenMock).toHaveBeenCalledWith(movie, true, undefined, "Loved it");
   });
 });
 
 describe("useEpisodeProgress", () => {
-  it("toggling an episode invalidates the full episode-progress fanout", async () => {
+  it("toggling an episode invalidates the full episode-progress fanout, including this series' viewing-event notes", async () => {
     const { useEpisodeProgress } = await import("../use-progress");
     const { client, Wrapper } = createWrapper();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
@@ -149,13 +166,27 @@ describe("useEpisodeProgress", () => {
       await result.current.toggleEpisodeSeen({ series, episode, watched: true });
     });
 
-    expect(toggleEpisodeSeenMock).toHaveBeenCalledWith(series, episode, true);
+    expect(toggleEpisodeSeenMock).toHaveBeenCalledWith(series, episode, true, undefined);
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.episodeProgress(DEFAULT_PROFILE_ID, 9));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.watchNextEpisode(DEFAULT_PROFILE_ID, 9));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.library(DEFAULT_PROFILE_ID));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.viewingEventsForMedia(DEFAULT_PROFILE_ID, "series", 9));
+  });
+
+  it("passes an optional note through to progressRepository.toggleEpisodeSeen", async () => {
+    const { useEpisodeProgress } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useEpisodeProgress(9), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.toggleEpisodeSeen({ series, episode, watched: true, note: "Great pilot" });
+    });
+
+    expect(toggleEpisodeSeenMock).toHaveBeenCalledWith(series, episode, true, "Great pilot");
   });
 
   it("marking a season delegates to progressRepository.markSeason", async () => {
@@ -182,6 +213,23 @@ describe("useEpisodeProgress", () => {
     });
 
     expect(markSeriesMock).toHaveBeenCalledWith(series, [season], true);
+  });
+});
+
+describe("useViewingEventsForMedia", () => {
+  it("is disabled for a non-finite media id and loads a title's viewing events otherwise", async () => {
+    const { useViewingEventsForMedia } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+
+    const { result: disabled } = renderHook(() => useViewingEventsForMedia(Number.NaN, "movie"), {
+      wrapper: Wrapper,
+    });
+    expect(disabled.current.fetchStatus).toBe("idle");
+
+    const { result } = renderHook(() => useViewingEventsForMedia(7, "movie"), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(listViewingEventsForMediaMock).toHaveBeenCalledWith(7, "movie");
   });
 });
 

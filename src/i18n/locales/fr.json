@@ -51,7 +51,15 @@
     "openOnYoutube": "Ouvrir sur YouTube",
     "fallbackTitle": "Saison {{number}}",
     "episodesAvailable_one": "{{count}} épisode disponible dans cette saison.",
-    "episodesAvailable_other": "{{count}} épisodes disponibles dans cette saison."
+    "episodesAvailable_other": "{{count}} épisodes disponibles dans cette saison.",
+    "addWatchNoteAction": "Ajouter une note",
+    "addWatchNoteTitle": "Ajouter une note",
+    "addWatchNoteDescription": "Optionnel — écrivez quelque chose à propos de ce visionnage. Les notes ne sont pas modifiables ensuite.",
+    "addWatchNoteLabel": "Votre note",
+    "addWatchNotePlaceholder": "Qu'en avez-vous pensé ?",
+    "addWatchNoteFailed": "Impossible d'enregistrer votre note — réessayez.",
+    "watchHistoryTitle": "Journal de visionnage",
+    "watchHistoryUnavailable": "Impossible de charger votre journal de visionnage — réessayez dans un instant."
   },
   "pages": {
     "notFound": "Page introuvable",
@@ -94,6 +102,26 @@
     "configureTmdb": "Configurez votre accès TMDB",
     "configureTmdbDesc": "Ajoutez ou déverrouillez votre token TMDB dans les paramètres pour charger le catalogue.",
     "configureTmdbCta": "Aller aux réglages",
+    "noTokenTitle": "Suivez vos contenus sans token TMDB",
+    "noTokenDesc": "Un token TMDB n'est pas nécessaire pour utiliser CineTrack — il ne fait que déverrouiller la découverte de nouveaux titres.",
+    "noTokenWorksTitle": "Fonctionne dès maintenant, hors ligne",
+    "noTokenWorksItem1": "Votre bibliothèque et votre liste à voir",
+    "noTokenWorksItem2": "Votre historique et les séries suivies",
+    "noTokenWorksItem3": "Vos statistiques et votre Wrapped annuel",
+    "noTokenUnlocksTitle": "Un token TMDB déverrouille",
+    "noTokenUnlocksItem1": "L'exploration et la recherche dans le catalogue",
+    "noTokenUnlocksItem2": "Les affiches et fiches détaillées des nouveaux titres",
+    "noTokenUnlocksItem3": "Des recommandations personnalisées",
+    "noTokenAddCta": "Ajouter un token TMDB maintenant",
+    "noTokenContinueCta": "Continuer sans token",
+    "noTokenBannerTitle": "L'exploration du catalogue est indisponible",
+    "noTokenBannerDesc": "Ajoutez un token TMDB dans les réglages pour explorer et rechercher de nouveaux titres.",
+    "offlineSummaryTitle": "Votre activité",
+    "offlineSummarySubtitle": "Données locales stockées sur cet appareil, aucun token requis.",
+    "offlineLinksLibraryDesc": "Parcourez ce que vous avez déjà ajouté",
+    "offlineLinksTrackingDesc": "Voyez la suite de vos séries",
+    "offlineLinksHistoryDesc": "Retrouvez tout ce que vous avez regardé",
+    "offlineLinksStatsDesc": "Consultez vos statistiques et votre Wrapped",
     "premiumSelection": "Tendances de la semaine",
     "viewDetails": "Voir la fiche",
     "exploreCatalog": "Explorer le catalogue",
@@ -219,17 +247,22 @@
       "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible.",
       "deleteFailed": "Impossible de supprimer le profil. Réessayez."
     },
+    "streaming": {
+      "title": "Mes services de streaming",
+      "description": "Choisissez les plateformes auxquelles vous êtes abonné·e — utilisé pour filtrer les alertes de disponibilité et les suggestions de « Ce soir »."
+    },
     "sections": {
       "account": "Compte",
       "accountDesc": "Gérez qui utilise CineTrack sur cet appareil.",
       "data": "Sauvegarde & import",
-      "dataDesc": "Faites entrer et sortir vos données de CineTrack."
+      "dataDesc": "Faites entrer et sortir vos données de CineTrack.",
+      "streaming": "Services de streaming",
+      "streamingDesc": "Indiquez à CineTrack les plateformes auxquelles vous êtes abonné·e."
     }
   },
   "mediaHub": {
     "myList": "Ma liste",
     "upcoming": "À venir",
-    "discover": "Découvrir",
     "browseAllMovies": "Parcourir tous les films",
     "browseAllSeries": "Parcourir toutes les séries"
   },
@@ -265,6 +298,12 @@
     "timeWatched": "Temps regardé",
     "currentStreak": "Série actuelle",
     "durationHoursMinutes": "{{hours}} h {{minutes}} min",
+    "watchDurationDays_one": "{{count}} jour",
+    "watchDurationDays_other": "{{count}} jours",
+    "watchDurationMonths_one": "{{count}} mois",
+    "watchDurationMonths_other": "{{count}} mois",
+    "watchDurationWithDays": "{{hours}} — soit environ {{days}}",
+    "watchDurationWithMonths": "{{hours}} — soit environ {{days}} (~{{months}})",
     "streakDays_one": "{{count}} j",
     "streakDays_other": "{{count}} j",
     "averageRating": "Note moyenne",
@@ -300,6 +339,12 @@
     "previousYear": "Année précédente",
     "nextYear": "Année suivante",
     "records": "Records",
+    "tabs": {
+      "overview": "Aperçu",
+      "thisYear": "Cette année",
+      "history": "Historique",
+      "records": "Records"
+    },
     "longestStreak": "Plus longue série",
     "biggestBinge": "Plus grosse séance",
     "mostRewatched": "Le plus revu",
@@ -362,7 +407,11 @@
     "remove": "Supprimer l'alerte pour {{title}}",
     "removeConfirmTitle": "Supprimer l'alerte pour « {{title}} » ?",
     "noResultsTitle": "Rien à afficher",
-    "noResults": "Rien ne correspond à ces filtres pour l'instant — élargissez-les, ou suivez un titre depuis sa fiche."
+    "noResults": "Rien ne correspond à ces filtres pour l'instant — élargissez-les, ou suivez un titre depuis sa fiche.",
+    "clearFilters": "Réinitialiser les filtres",
+    "emptyTitle": "Rien de suivi pour l'instant",
+    "emptyDesc": "Ajoutez une série ou un film à votre bibliothèque pour voir ici ses prochaines sorties et épisodes.",
+    "emptyCta": "Découvrir films et séries"
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
@@ -374,7 +423,10 @@
     "title": "Personnes",
     "description": "Acteurs, actrices, réalisateurs et filmographies.",
     "searchPlaceholder": "Rechercher une personne",
-    "fallbackDepartment": "Cinéma et télévision"
+    "fallbackDepartment": "Cinéma et télévision",
+    "popularTitle": "Personnalités populaires",
+    "noResultsTitle": "Aucune personne trouvée",
+    "noResultsDescription": "Essayez un autre nom, ou vérifiez l'orthographe."
   },
   "person": {
     "loading": "Chargement…",
@@ -414,12 +466,15 @@
     "description": "Quatre films et quatre séries issus d'abord de votre bibliothèque, puis du catalogue.",
     "allGenres": "Tous les genres",
     "allPlatforms": "Toutes les plateformes",
+    "myServices": "Mes services",
     "genre": "Genre",
     "platform": "Plateforme",
     "maxDuration": "Durée maximale",
     "retry": "Choisir à nouveau",
     "emptyTitle": "Aucun résultat pour ces filtres",
-    "emptyDesc": "Essayez un genre, une plateforme ou une durée plus large — ou ajoutez des titres à votre bibliothèque « à voir »."
+    "emptyDesc": "Essayez un genre, une plateforme ou une durée plus large — ou ajoutez des titres à votre bibliothèque « à voir ».",
+    "viewDetails": "Voir les détails",
+    "alternatesTitle": "Ou essayez plutôt"
   },
   "library": {
     "myLibrary": "Ma bibliothèque",
@@ -434,6 +489,10 @@
     "emptyTitle": "Votre bibliothèque est vide",
     "emptyDesc": "Ajoutez un film ou une série à votre bibliothèque depuis sa fiche pour suivre ici statut, note et progression.",
     "exploreCta": "Découvrir des films et séries",
+    "searchPlaceholder": "Rechercher dans votre bibliothèque par titre…",
+    "noResultsTitle": "Aucun résultat",
+    "noResultsDesc": "Aucun titre ne correspond à vos filtres ou à votre recherche. Ajustez-les ou réinitialisez-les.",
+    "clearFilters": "Réinitialiser les filtres",
     "favourite": "Favori",
     "favouritesOnly": "Favoris",
     "gridView": "Vue en grille",
@@ -472,8 +531,6 @@
       "deleteList": "Supprimer la liste {{name}}",
       "deleteListConfirmTitle": "Supprimer la liste « {{name}} » ?",
       "deleteListConfirmDescription": "Cette action supprime la liste et tous ses éléments. Elle est irréversible.",
-      "emptyListTitle": "Cette liste est vide",
-      "emptyListDesc": "Ouvrez la section « Listes personnalisées » ci-dessous pour y ajouter des titres.",
       "customList": "Liste personnalisée",
       "addToAList": "Ajouter à une liste…",
       "addToList": "Ajouter à la liste",
@@ -501,7 +558,11 @@
     "titles": "Titres",
     "searchingTitles": "Recherche de titres…",
     "onThisPage": "Sur cette fiche",
-    "removeFromLibrary": "Retirer de la bibliothèque"
+    "removeFromLibrary": "Retirer de la bibliothèque",
+    "quickLog": "Marquer comme vu",
+    "quickLogDone": "Déjà vu",
+    "quickLogSuccess": "« {{title}} » marqué comme vu.",
+    "quickLogError": "Impossible de marquer ce titre comme vu. Réessayez."
   },
   "backup": {
     "title": "Sauvegarde portable",
@@ -521,7 +582,16 @@
     "undoConfirmDescription": "Cela restaure vos données à leur état juste avant le dernier import — annulant tout ce que vous avez fait depuis.",
     "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée.",
     "importConfirmTitle": "Remplacer toutes vos données ?",
-    "importConfirmDescription": "Importer cette sauvegarde remplace votre bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement »."
+    "importConfirmDescription": "Importer cette sauvegarde remplace votre bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement ».",
+    "locationTitle": "Dossier de sauvegarde",
+    "locationDescription": "Choisissez un dossier déjà synchronisé par iCloud Drive, OneDrive ou Dropbox pour retrouver vos sauvegardes sur un autre appareil sans que CineTrack ait besoin d'une vraie synchronisation.",
+    "currentLocation": "Dossier actuel : {{path}}",
+    "defaultLocation": "Par défaut (dossier de données de l'application)",
+    "chooseFolder": "Choisir le dossier de sauvegarde",
+    "resetFolder": "Réinitialiser par défaut",
+    "folderUpdated": "Dossier de sauvegarde mis à jour.",
+    "folderReset": "Dossier de sauvegarde réinitialisé par défaut.",
+    "folderUpdateFailed": "Impossible de mettre à jour le dossier de sauvegarde. Réessayez."
   },
   "desktop": {
     "operationComplete": "Opération terminée.",
@@ -580,6 +650,7 @@
     "signOut": "Déconnexion",
     "collapse": "Réduire la barre latérale",
     "expand": "Déplier la barre latérale",
+    "switchProfile": "Changer de profil",
     "theme": {
       "dark": "Sombre",
       "light": "Clair"

@@ -3,7 +3,7 @@ import { progressRepository } from "@/features/progress/progress-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
-import type { Episode, MediaSummary, Season } from "@/types/media";
+import type { Episode, MediaSummary, MediaType, Season } from "@/types/media";
 
 export function useMovieSeen(movieId: number) {
   const profileId = useActiveProfileId();
@@ -14,12 +14,13 @@ export function useMovieSeen(movieId: number) {
   });
 
   const mutation = useInvalidatingMutation(
-    ({ movie, watched }: { movie: MediaSummary; watched: boolean }) =>
-      progressRepository.toggleMovieSeen(movie, watched),
+    ({ movie, watched, note }: { movie: MediaSummary; watched: boolean; note?: string }) =>
+      progressRepository.toggleMovieSeen(movie, watched, undefined, note),
     (_data, variables) => [
       queryKeys.local.movieSeen(profileId, variables.movie.id),
       queryKeys.local.history(profileId),
       queryKeys.local.stats(profileId),
+      queryKeys.local.viewingEventsForMedia(profileId, "movie", variables.movie.id),
       // Marking a movie seen can auto-complete an existing library entry
       // (see auto_sync_status_impl in src-tauri/src/commands/library.rs).
       queryKeys.local.library(profileId),
@@ -42,6 +43,7 @@ export function episodeProgressKeys(profileId: string, seriesId: number): QueryK
     queryKeys.local.stats(profileId),
     queryKeys.local.calendar(profileId),
     queryKeys.local.tracking(profileId),
+    queryKeys.local.viewingEventsForMedia(profileId, "series", seriesId),
     // Watching an episode can auto-start/complete an existing library entry
     // (see auto_sync_status_impl in src-tauri/src/commands/library.rs).
     queryKeys.local.library(profileId),
@@ -61,11 +63,13 @@ export function useEpisodeProgress(seriesId: number) {
       series,
       episode,
       watched,
+      note,
     }: {
       series: MediaSummary & { numberOfEpisodes?: number };
       episode: Episode;
       watched: boolean;
-    }) => progressRepository.toggleEpisodeSeen(series, episode, watched),
+      note?: string;
+    }) => progressRepository.toggleEpisodeSeen(series, episode, watched, note),
     (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
   );
 
@@ -102,6 +106,20 @@ export function useEpisodeProgress(seriesId: number) {
     markSeriesSeen: seriesMutation.mutateAsync,
     isSaving: toggleMutation.isPending || seasonMutation.isPending || seriesMutation.isPending,
   };
+}
+
+// A title's own watch diary — every viewing_events row for it, most recent
+// first, with whatever per-watch note was written at the time (see
+// listViewingEventsForMedia). Invalidated alongside movieSeen/
+// episodeProgress above, since a note is only ever written in the same
+// transaction as the watched-state toggle that produced it.
+export function useViewingEventsForMedia(mediaId: number, mediaType: MediaType) {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    queryKey: queryKeys.local.viewingEventsForMedia(profileId, mediaType, mediaId),
+    queryFn: () => progressRepository.listViewingEventsForMedia(mediaId, mediaType),
+    enabled: Number.isFinite(mediaId),
+  });
 }
 
 export function useTrackedSeries() {

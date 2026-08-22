@@ -45,5 +45,7 @@ export const queryKeys = {
     tracking: (profileId: string) => ["local", "tracking", profileId] as const,
     watchTonight: (profileId: string) => ["local", "watchTonight", profileId] as const,
     watchNextEpisode: (profileId: string, seriesId: number) => ["local", "watchNext", profileId, seriesId] as const,
+    viewingEventsForMedia: (profileId: string, mediaType: string, mediaId: number) =>
+      ["local", "viewingEventsForMedia", profileId, mediaType, mediaId] as const,
   },
 };

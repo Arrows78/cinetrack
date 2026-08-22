@@ -1,4 +1,13 @@
-import type { Episode, EpisodeProgress, HistoryAction, MediaSummary, Season, TrackedSeriesItem } from "@/types/media";
+import type {
+  Episode,
+  EpisodeProgress,
+  HistoryAction,
+  MediaSummary,
+  MediaType,
+  Season,
+  TrackedSeriesItem,
+  ViewingEventNote,
+} from "@/types/media";
 import { invokeCommand } from "@/shared/lib/invoke";
 
 const nowIso = () => new Date().toISOString();
@@ -26,21 +35,39 @@ export const progressRepository = {
     return invokeCommand<boolean>("is_movie_seen", { movieId });
   },
 
-  async toggleMovieSeen(movie: MediaSummary, watched: boolean, watchedAt = nowIso()): Promise<void> {
-    await invokeCommand<void>("toggle_movie_seen", { movie, watched, watchedAt });
+  // `note` is only ever meaningful when `watched` is true — the Rust side
+  // (toggle_movie_seen_with_note_impl) silently drops it when unwatching,
+  // and only ever writes it once, at the moment this call's viewing_events
+  // row is inserted. There's no separate "attach a note after the fact"
+  // command: a repeat call with the same `watched` value is a no-op (see
+  // the idempotency guard in progress.rs), so a caller can't add a note to
+  // an already-applied watch by calling this again.
+  async toggleMovieSeen(movie: MediaSummary, watched: boolean, watchedAt = nowIso(), note?: string): Promise<void> {
+    await invokeCommand<void>("toggle_movie_seen", { movie, watched, watchedAt, note: note ?? null });
   },
 
   async getEpisodeProgress(seriesId: number): Promise<EpisodeProgress[]> {
     return invokeCommand<EpisodeProgress[]>("get_episode_progress", { seriesId });
   },
 
-  async toggleEpisodeSeen(series: SeriesInput, episode: Episode, watched: boolean): Promise<void> {
-    await this.toggleEpisodesWatched(series, [episode], watched, nowIso(), {
-      action: watched ? "episode:watched" : "episode:unwatched",
-      seasonNumber: episode.seasonNumber,
-      episodeNumber: episode.episodeNumber,
-      episodeTitle: episode.title,
-    });
+  // Single-episode toggle — the only toggleEpisodesWatched caller that ever
+  // passes a real `note` (markSeason/markSeries below always pass none),
+  // matching apply_episodes_and_log_impl's own doc comment: a note should
+  // never get silently stamped across many episodes at once.
+  async toggleEpisodeSeen(series: SeriesInput, episode: Episode, watched: boolean, note?: string): Promise<void> {
+    await this.toggleEpisodesWatched(
+      series,
+      [episode],
+      watched,
+      nowIso(),
+      {
+        action: watched ? "episode:watched" : "episode:unwatched",
+        seasonNumber: episode.seasonNumber,
+        episodeNumber: episode.episodeNumber,
+        episodeTitle: episode.title,
+      },
+      note
+    );
   },
 
   async toggleEpisodesWatched(
@@ -48,7 +75,8 @@ export const progressRepository = {
     episodes: Episode[],
     watched: boolean,
     watchedAt = nowIso(),
-    history?: EpisodeHistoryInput
+    history?: EpisodeHistoryInput,
+    note?: string
   ): Promise<number> {
     return invokeCommand<number>("toggle_episodes_watched", {
       series,
@@ -56,6 +84,7 @@ export const progressRepository = {
       watched,
       watchedAt,
       history: history ?? null,
+      note: note ?? null,
     });
   },
 
@@ -81,5 +110,12 @@ export const progressRepository = {
   // actually changed — see refresh_tracked_series_status_impl.
   async refreshTrackedSeriesStatus(seriesId: number, status: string | null): Promise<void> {
     await invokeCommand<void>("refresh_tracked_series_status", { seriesId, status });
+  },
+
+  // One title's full watch history (every viewing_events row, most recent
+  // first), notes included where one was written — see
+  // list_viewing_events_for_media in src-tauri/src/commands/stats.rs.
+  async listViewingEventsForMedia(mediaId: number, mediaType: MediaType): Promise<ViewingEventNote[]> {
+    return invokeCommand<ViewingEventNote[]>("list_viewing_events_for_media", { mediaId, mediaType });
   },
 };

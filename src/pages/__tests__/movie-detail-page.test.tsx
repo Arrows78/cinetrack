@@ -77,6 +77,10 @@ vi.mock("@/components/media/availability-alert-button", () => ({
   AvailabilityAlertButton: () => <div data-testid="availability-alert-button" />,
 }));
 
+vi.mock("@/components/media/watch-history-panel", () => ({
+  WatchHistoryPanel: () => <div data-testid="watch-history-panel" />,
+}));
+
 vi.mock("@/components/media/seen-toggle", () => ({
   SeenToggle: ({ seen, disabled, onToggle }: { seen: boolean; disabled?: boolean; onToggle: () => void }) => (
     <button type="button" data-testid="seen-toggle" data-seen={seen} disabled={disabled} onClick={onToggle}>

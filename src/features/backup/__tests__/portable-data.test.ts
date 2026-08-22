@@ -30,6 +30,27 @@ describe("portableData", () => {
     expect((await libraryRepository.get(1, "movie"))?.status).toBe("watching");
   });
 
+  // Regression check for a real bug: viewingEventSchema (portable-data-schema.ts)
+  // didn't declare `note`, so zod's default strip-unknown-keys behavior erased
+  // it while validating an imported backup, even after the Rust side already
+  // carried it through export/import — a restore-from-backup silently erased
+  // every note ever written.
+  it("round-trips a viewing event's note through export and import", async () => {
+    const { portableData } = await import("../portable-data");
+    const { progressRepository } = await import("@/features/progress/progress-repository");
+
+    await progressRepository.toggleMovieSeen(makeMedia({ id: 2, title: "Noted Movie" }), true, undefined, "Loved it");
+
+    const backup = await portableData.export();
+    const note = backup.data.viewingEvents.find((event) => event.mediaId === 2)?.note;
+    expect(note).toBe("Loved it");
+
+    await portableData.import(backup);
+
+    const restoredNote = (await portableData.export()).data.viewingEvents.find((event) => event.mediaId === 2)?.note;
+    expect(restoredNote).toBe("Loved it");
+  });
+
   it("folds a legacy backup's watchlist array into planned library rows, dropping entries that already exist in the library", async () => {
     const { portableData } = await import("../portable-data");
     const { libraryRepository } = await import("@/features/library/library-repository");

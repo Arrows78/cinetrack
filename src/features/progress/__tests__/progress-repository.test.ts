@@ -210,6 +210,87 @@ describe("progressRepository", () => {
     expect(after[0]!.count).toBe(before[0]!.count);
   });
 
+  it("attaches an optional note to a movie's viewing_events row when marking it watched", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const movie = makeMedia({ id: 55, runtime: 118 });
+
+    await progressRepository.toggleMovieSeen(movie, true, undefined, "Loved the twist ending");
+
+    const events = await progressRepository.listViewingEventsForMedia(55, "movie");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ eventType: "watched", note: "Loved the twist ending" });
+  });
+
+  it("never stores a note when unwatching a movie, even if one is passed", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const movie = makeMedia({ id: 55, runtime: 118 });
+
+    await progressRepository.toggleMovieSeen(movie, true);
+    await progressRepository.toggleMovieSeen(movie, false, undefined, "should be ignored");
+
+    const events = await progressRepository.listViewingEventsForMedia(55, "movie");
+    const unwatchedEvent = events.find((event) => event.eventType === "unwatched");
+    expect(unwatchedEvent?.note).toBeUndefined();
+  });
+
+  it("attaches an optional note to a single episode's viewing_events row", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" });
+
+    await progressRepository.toggleEpisodeSeen(series, episode(), true, "Great pilot!");
+
+    const events = await progressRepository.listViewingEventsForMedia(9, "series");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ eventType: "watched", note: "Great pilot!" });
+  });
+
+  it("lists a title's viewing events most recent first, and never leaks another title's events", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" });
+    const otherSeries = makeMedia({ id: 10, mediaType: "series", title: "Other Show" });
+
+    await progressRepository.toggleEpisodesWatched(
+      series,
+      [episode({ id: 1 })],
+      true,
+      "2025-01-01T00:00:00.000Z",
+      undefined,
+      "first watch"
+    );
+    await progressRepository.toggleEpisodesWatched(
+      otherSeries,
+      [episode({ id: 2 })],
+      true,
+      "2025-06-01T00:00:00.000Z",
+      undefined,
+      "unrelated"
+    );
+    await progressRepository.toggleEpisodesWatched(series, [episode({ id: 1 })], false, "2025-06-15T00:00:00.000Z");
+    await progressRepository.toggleEpisodesWatched(
+      series,
+      [episode({ id: 1 })],
+      true,
+      "2026-01-01T00:00:00.000Z",
+      undefined,
+      "second watch"
+    );
+
+    const events = await progressRepository.listViewingEventsForMedia(9, "series");
+    expect(events.map((event) => event.note)).toEqual(["second watch", undefined, "first watch"]);
+  });
+
+  it("does not attach a note when marking a whole season watched (bulk marks never carry one)", async () => {
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" } as never);
+    const fullSeason = season([episode({ id: 1 })]);
+
+    await progressRepository.markSeason(series, fullSeason, true);
+
+    const events = await progressRepository.listViewingEventsForMedia(9, "series");
+    expect(events).toHaveLength(1);
+    expect(events[0]!.note).toBeUndefined();
+  });
+
   it("marking a series unwatched logs a series:unwatched history entry", async () => {
     const { progressRepository } = await import("../progress-repository");
     const series = makeMedia({ id: 9, mediaType: "series", title: "Test Show" } as never);

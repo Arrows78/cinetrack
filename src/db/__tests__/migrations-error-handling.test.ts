@@ -15,7 +15,8 @@ let fakeMigration: Migration;
 // runMigrations' version gate then skips (or runs) every entry exactly like
 // the first, since they share a version, so adding a real migration in
 // 002-availability-alerts-unique.ts / 003-merge-watchlist-into-library.ts /
-// 004-add-status-to-tracked-series.ts / 005-remove-rewatching-status.ts
+// 004-add-status-to-tracked-series.ts / 005-remove-rewatching-status.ts /
+// 006-add-note-to-viewing-events.ts
 // doesn't leak its own SQL into these error-recovery assertions.
 vi.mock("../migrations/001-initial-schema", () => ({
   get migration() {
@@ -38,6 +39,11 @@ vi.mock("../migrations/004-add-status-to-tracked-series", () => ({
   },
 }));
 vi.mock("../migrations/005-remove-rewatching-status", () => ({
+  get migration() {
+    return fakeMigration;
+  },
+}));
+vi.mock("../migrations/006-add-note-to-viewing-events", () => ({
   get migration() {
     return fakeMigration;
   },

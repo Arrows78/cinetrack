@@ -339,6 +339,22 @@ pub const MIGRATIONS: &[Migration] = &[
             "CREATE INDEX idx_library_media_id ON library_items(media_id, media_type)",
         ],
     },
+    Migration {
+        // Ported verbatim from src/db/migrations/006-add-note-to-viewing-events.ts.
+        // library_items.notes is a single free-text field per title, overwritten
+        // on every edit — a rewatch replaces whatever the user wrote the first
+        // time around. This column is additive and separate: one optional note
+        // per individual watch event, so a rewatch's note doesn't erase an
+        // earlier watch's. Write-once-at-log-time (set only when the
+        // viewing_events row is first inserted, never edited afterward) — the
+        // simpler product decision for a v1, and it keeps viewing_events'
+        // existing append-only invariant intact (see this file's own top
+        // comment: "gets `created_at` only, no `updated_at`" still holds, since
+        // this column never changes after insert).
+        version: 13,
+        name: "add note to viewing_events",
+        statements: &["ALTER TABLE viewing_events ADD COLUMN note TEXT"],
+    },
 ];
 
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
@@ -503,7 +519,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 12);
+        assert_eq!(version.0, 13);
 
         let mut tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -549,7 +565,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 12);
+        assert_eq!(version.0, 13);
     }
 
     #[tokio::test]
@@ -559,7 +575,7 @@ mod tests {
         // created every table and bumped user_version to 1 — running
         // migrations must not attempt to re-create them (that would error,
         // since the tables already exist), only apply the migrations still
-        // ahead of that version (11, here).
+        // ahead of that version (12, here).
         for statement in MIGRATIONS[0].statements {
             sqlx::query(*statement).execute(&pool).await.unwrap();
         }
@@ -574,7 +590,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 12);
+        assert_eq!(version.0, 13);
     }
 
     #[tokio::test]

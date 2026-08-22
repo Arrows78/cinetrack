@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
@@ -128,6 +130,7 @@ struct ViewingEventRow {
     episode_id: Option<i64>,
     season_number: Option<i64>,
     episode_number: Option<i64>,
+    note: Option<String>,
 }
 
 // ---------------------------------------------------------------------
@@ -353,6 +356,7 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
                     episode_id: row.episode_id,
                     season_number: row.season_number,
                     episode_number: row.episode_number,
+                    note: row.note,
                 })
             })
             .collect::<Result<Vec<_>, _>>()?,
@@ -603,7 +607,7 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
         tx,
         data.viewing_events,
         "INSERT INTO viewing_events
-              (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at) ",
+              (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,note,created_at) ",
         |b, item| {
             b.push_bind(&item.id)
                 .push_bind(&item.profile_id)
@@ -616,6 +620,7 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.episode_id)
                 .push_bind(item.season_number)
                 .push_bind(item.episode_number)
+                .push_bind(&item.note)
                 .push_bind(&item.watched_at);
         }
     );
@@ -732,6 +737,145 @@ pub async fn check_data_integrity(
 ) -> Result<DataIntegrityCheck, ApiError> {
     let (healthy, detail) = quick_check_impl(&pool).await?;
     Ok(DataIntegrityCheck { healthy, detail })
+}
+
+// ---------------------------------------------------------------------
+// Custom backup-location file I/O — used only when the user has pointed
+// the `backupDirectory` preference at a folder outside the app's default
+// `$APPDATA` location (see maintenance-service.ts). That path is an
+// arbitrary, user-chosen absolute path, so it can't go through
+// `@tauri-apps/plugin-fs` from JS: that plugin's capability scope
+// (capabilities/default.json) is a static `$APPDATA/**`-shaped allow-list
+// and can't safely pre-allow-list a path nobody knows ahead of time. A
+// Tauri command is trusted backend code, not subject to that webview-side
+// scoping, so plain `std::fs` here sidesteps the problem entirely — the
+// same reason this app already keeps all its real SQL work in Rust rather
+// than calling into SQLite from JS.
+//
+// Each blocking `std::fs` call runs inside `spawn_blocking` rather than a
+// `tokio::fs` (an async wrapper over the same syscalls): `tokio`'s "fs"
+// feature isn't enabled in this crate (see Cargo.toml), and these are
+// small, infrequent backup-file operations, so a dedicated blocking
+// thread is simpler than adding a new dependency feature for it.
+// ---------------------------------------------------------------------
+
+/// Same shape as the JS-side atomic write in maintenance-service.ts
+/// (`writeNamedBackup`): written to a `.tmp` sibling first, then renamed
+/// into place, so a crash or disk-full error mid-write never corrupts a
+/// previously-valid backup at `path`. Creates any missing parent
+/// directories first — the default `$APPDATA` path relies on `mkdir` being
+/// called separately by the JS side, but there's no equivalent
+/// "create-parent-dirs" plugin-fs call being reused here, so this command
+/// does it itself.
+fn write_backup_file_sync(path: &Path, contents: &str) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut tmp_path_os = path.as_os_str().to_owned();
+    tmp_path_os.push(".tmp");
+    let tmp_path = PathBuf::from(tmp_path_os);
+    std::fs::write(&tmp_path, contents)?;
+    std::fs::rename(&tmp_path, path)
+}
+
+/// `Ok(None)` when the file doesn't exist — mirrors the JS-side
+/// `readNamedBackup`'s `exists()`-then-read pattern (a missing backup is an
+/// expected, non-error state, e.g. no automatic backup has run yet).
+fn read_backup_file_sync(path: &Path) -> std::io::Result<Option<String>> {
+    match std::fs::read_to_string(path) {
+        Ok(contents) => Ok(Some(contents)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+/// File names (not full paths) directly inside `directory`, or an empty
+/// list if the directory doesn't exist yet — mirrors the JS-side
+/// `listAutoBackups`'s try/catch around `readDir` (no automatic backup has
+/// ever been created there yet).
+fn list_backup_directory_sync(directory: &Path) -> std::io::Result<Vec<String>> {
+    let entries = match std::fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
+    let mut names = Vec::new();
+    for entry in entries {
+        let entry = entry?;
+        if entry.file_type()?.is_file()
+            && let Some(name) = entry.file_name().to_str()
+        {
+            names.push(name.to_string());
+        }
+    }
+    Ok(names)
+}
+
+/// Idempotent: removing a file that's already gone is a no-op rather than
+/// an error, matching how the JS-side `pruneOldAutoBackups` already treats
+/// a failed removal as a non-fatal, logged-and-skipped condition.
+fn remove_backup_file_sync(path: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+/// Every I/O error from the commands below is wrapped through here rather
+/// than surfaced with `error.to_string()` verbatim: the frontend's
+/// `invokeCommand()` turns any Rust command failure into an
+/// `ApiCommandError`, and per this app's error-handling rule
+/// (`displayMessage` in shared/lib/user-facing-error.ts), an
+/// `ApiCommandError`'s `.message` is never rendered to the user directly —
+/// only an explicitly-thrown `UserFacingError` is. So this message is safe
+/// to keep in plain English with raw OS/path detail (it only ever reaches
+/// diagnostics logging and the generic translated toast fallback already
+/// used by every caller here), matching how `import_impl`/`export_impl`
+/// elsewhere in this file already wrap `serde_json`/`sqlx` errors with a
+/// plain `format!("...: {error}")` rather than a translated string.
+fn io_error(context: &str, path: &str, error: std::io::Error) -> ApiError {
+    ApiError::internal(format!("{context} at \"{path}\": {error}"))
+}
+
+#[tauri::command]
+pub async fn write_backup_to_path(path: String, contents: String) -> Result<(), ApiError> {
+    let path_buf = PathBuf::from(&path);
+    let path_for_error = path.clone();
+    tokio::task::spawn_blocking(move || write_backup_file_sync(&path_buf, &contents))
+        .await
+        .map_err(|error| ApiError::internal(format!("Backup write task panicked: {error}")))?
+        .map_err(|error| io_error("Failed to write backup file", &path_for_error, error))
+}
+
+#[tauri::command]
+pub async fn read_backup_from_path(path: String) -> Result<Option<String>, ApiError> {
+    let path_buf = PathBuf::from(&path);
+    let path_for_error = path.clone();
+    tokio::task::spawn_blocking(move || read_backup_file_sync(&path_buf))
+        .await
+        .map_err(|error| ApiError::internal(format!("Backup read task panicked: {error}")))?
+        .map_err(|error| io_error("Failed to read backup file", &path_for_error, error))
+}
+
+#[tauri::command]
+pub async fn list_backup_directory(directory: String) -> Result<Vec<String>, ApiError> {
+    let dir_buf = PathBuf::from(&directory);
+    let dir_for_error = directory.clone();
+    tokio::task::spawn_blocking(move || list_backup_directory_sync(&dir_buf))
+        .await
+        .map_err(|error| ApiError::internal(format!("Backup list task panicked: {error}")))?
+        .map_err(|error| io_error("Failed to list backup directory", &dir_for_error, error))
+}
+
+#[tauri::command]
+pub async fn remove_backup_file(path: String) -> Result<(), ApiError> {
+    let path_buf = PathBuf::from(&path);
+    let path_for_error = path.clone();
+    tokio::task::spawn_blocking(move || remove_backup_file_sync(&path_buf))
+        .await
+        .map_err(|error| ApiError::internal(format!("Backup remove task panicked: {error}")))?
+        .map_err(|error| io_error("Failed to remove backup file", &path_for_error, error))
 }
 
 #[cfg(test)]
@@ -931,6 +1075,7 @@ mod tests {
                 "episode_id",
                 "season_number",
                 "episode_number",
+                "note",
                 "created_at",
             ]),
         );
@@ -1213,8 +1358,8 @@ mod tests {
         .unwrap();
 
         sqlx::query(
-            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
-             VALUES ('ve1', 'default', 50, 'movie', 'Viewing Event Movie', 'watched', '2026-01-01T00:00:00.000Z', 120, NULL, NULL, NULL, '2026-01-01T00:00:00.000Z')",
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, note, created_at)
+             VALUES ('ve1', 'default', 50, 'movie', 'Viewing Event Movie', 'watched', '2026-01-01T00:00:00.000Z', 120, NULL, NULL, NULL, 'Loved it', '2026-01-01T00:00:00.000Z')",
         )
         .execute(&pool)
         .await
@@ -1298,6 +1443,7 @@ mod tests {
             ViewingEventType::Watched
         );
         assert_eq!(exported.viewing_events[0].duration_minutes, Some(120));
+        assert_eq!(exported.viewing_events[0].note.as_deref(), Some("Loved it"));
 
         assert_eq!(exported.custom_lists.len(), 1);
         assert_eq!(exported.custom_lists[0].name, "My List");
@@ -1340,6 +1486,18 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(preference_value.0, "\"dark\"");
+
+        // Regression check for a real bug: viewing_events.note used to be
+        // missing from both ViewingEventRow (export) and the import INSERT's
+        // column list, so a restore-from-backup (which deletes-then-reinserts
+        // every table, see import_impl) silently erased every note ever
+        // written the moment someone restored a backup.
+        let restored_note: Option<String> =
+            sqlx::query_scalar("SELECT note FROM viewing_events WHERE uuid = 've1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(restored_note.as_deref(), Some("Loved it"));
     }
 
     /// The `action` column has a schema `CHECK` constraint (see
@@ -1525,5 +1683,148 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(list_count.0, 0, "stale custom list should have been purged");
+    }
+
+    // ------------------------------------------------------------------
+    // Custom backup-location file I/O — plain `std::fs` against a real,
+    // uniquely-named temp directory (no SQLite involved, so no
+    // `migrated_pool()` needed). Each test gets its own subdirectory of
+    // `std::env::temp_dir()` (named with `new_uuid()`) so parallel test
+    // threads never collide on the same files.
+    // ------------------------------------------------------------------
+
+    fn temp_test_dir() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "cinetrack-backup-test-{}",
+            crate::database::new_uuid()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[tokio::test]
+    async fn write_backup_to_path_then_read_backup_from_path_round_trips_the_contents() {
+        let dir = temp_test_dir();
+        let path = dir.join("backup.json").to_str().unwrap().to_string();
+
+        write_backup_to_path(path.clone(), "{\"hello\":\"world\"}".to_string())
+            .await
+            .unwrap();
+
+        let read_back = read_backup_from_path(path).await.unwrap();
+        assert_eq!(read_back.as_deref(), Some("{\"hello\":\"world\"}"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn write_backup_to_path_creates_missing_parent_directories() {
+        let dir = temp_test_dir();
+        let nested = dir.join("nested").join("backups").join("backup.json");
+        let path = nested.to_str().unwrap().to_string();
+
+        write_backup_to_path(path.clone(), "content".to_string())
+            .await
+            .unwrap();
+
+        assert!(nested.exists());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn write_backup_to_path_never_corrupts_a_previous_backup_when_the_write_fails() {
+        // Simulates a mid-write crash: point `path` at a directory instead of
+        // a regular file, so the final `std::fs::rename` step fails, and
+        // confirm only the `.tmp` sibling exists — the (nonexistent) target
+        // is never partially written.
+        let dir = temp_test_dir();
+        let target_as_directory = dir.join("backup.json");
+        std::fs::create_dir_all(&target_as_directory).unwrap();
+        let path = target_as_directory.to_str().unwrap().to_string();
+
+        let result = write_backup_to_path(path, "content".to_string()).await;
+        assert!(result.is_err());
+
+        let tmp_path = dir.join("backup.json.tmp");
+        assert!(tmp_path.exists(), "the atomic tmp file should still exist");
+        assert!(
+            target_as_directory.is_dir(),
+            "the failed rename must never touch the original target"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn read_backup_from_path_returns_none_for_a_missing_file() {
+        let dir = temp_test_dir();
+        let path = dir.join("missing.json").to_str().unwrap().to_string();
+
+        let result = read_backup_from_path(path).await.unwrap();
+        assert_eq!(result, None);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn list_backup_directory_lists_only_files_directly_inside_the_directory() {
+        let dir = temp_test_dir();
+        std::fs::write(dir.join("auto-1.json"), "{}").unwrap();
+        std::fs::write(dir.join("auto-2.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.join("a-subdirectory")).unwrap();
+
+        let mut names = list_backup_directory(dir.to_str().unwrap().to_string())
+            .await
+            .unwrap();
+        names.sort();
+
+        assert_eq!(
+            names,
+            vec!["auto-1.json".to_string(), "auto-2.json".to_string()]
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn list_backup_directory_returns_an_empty_list_for_a_directory_that_does_not_exist() {
+        let dir = temp_test_dir();
+        let missing = dir.join("never-created");
+
+        let names = list_backup_directory(missing.to_str().unwrap().to_string())
+            .await
+            .unwrap();
+        assert!(names.is_empty());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn remove_backup_file_deletes_an_existing_file() {
+        let dir = temp_test_dir();
+        let path = dir.join("to-remove.json");
+        std::fs::write(&path, "{}").unwrap();
+
+        remove_backup_file(path.to_str().unwrap().to_string())
+            .await
+            .unwrap();
+        assert!(!path.exists());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn remove_backup_file_is_a_no_op_for_a_file_that_is_already_gone() {
+        let dir = temp_test_dir();
+        let path = dir.join("already-gone.json");
+
+        // Never created — must not error, matching the idempotent-removal
+        // contract callers (pruneOldAutoBackups) rely on.
+        remove_backup_file(path.to_str().unwrap().to_string())
+            .await
+            .unwrap();
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

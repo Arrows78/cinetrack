@@ -138,6 +138,23 @@ export interface ViewingEvent {
   episodeId?: number | null;
   seasonNumber?: number | null;
   episodeNumber?: number | null;
+  note?: string | null;
+}
+
+// One viewing_events row for a single title, as returned by
+// list_viewing_events_for_media (src-tauri/src/commands/stats.rs) — a
+// title-scoped read of "what did I write, each time I watched this",
+// distinct from ViewingEvent above which is used for cross-title stats
+// aggregation and always carries profileId/mediaId/mediaType/title (already
+// known by the caller here, so they're omitted).
+export interface ViewingEventNote {
+  id: string;
+  eventType: "watched" | "unwatched" | "rewatched";
+  watchedAt: string;
+  episodeId?: number | null;
+  seasonNumber?: number | null;
+  episodeNumber?: number | null;
+  note?: string;
 }
 
 export interface EpisodeProgress {
@@ -165,6 +182,12 @@ export interface SeriesProgress {
   }>;
   progressPercent: number;
   completed: boolean;
+  // True once every currently-aired episode is watched but the show still
+  // has unaired/unannounced episodes ahead — distinct from `completed`
+  // (which for an ongoing show basically never becomes true, since it also
+  // requires future episodes TMDB has announced). Mutually exclusive with a
+  // pending next episode: see getNextEpisode/calculateSeriesProgress.
+  isUpToDate: boolean;
 }
 
 export interface UserProfile {
@@ -191,6 +214,8 @@ export interface UserPreferences {
   preferredProviderIds: number[];
   activeProfileId: string;
   userProfile: UserProfile;
+  /** Absolute path to a user-chosen backup folder, or null to use the default app-data location. */
+  backupDirectory: string | null;
 }
 
 export interface TrackedSeriesItem {

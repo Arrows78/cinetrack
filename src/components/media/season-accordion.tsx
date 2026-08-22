@@ -50,7 +50,7 @@ export function SeasonAccordion({
   series: MediaSummary & { numberOfEpisodes?: number };
   seasons: Season[];
   watchedEpisodes: EpisodeProgress[];
-  onToggleEpisode: (episode: Season["episodes"][number], watched: boolean) => Promise<void>;
+  onToggleEpisode: (episode: Season["episodes"][number], watched: boolean, note?: string) => Promise<void>;
   onToggleSeason: (season: Season, watched: boolean) => Promise<void>;
   isSaving?: boolean;
 }) {
@@ -60,13 +60,18 @@ export function SeasonAccordion({
   const progress = calculateSeriesProgress(series.id, seasons, watchedEpisodes);
 
   /* Handler that detects season completion and fires confetti */
-  const handleToggleEpisode = async (season: Season, episode: Season["episodes"][number], watched: boolean) => {
+  const handleToggleEpisode = async (
+    season: Season,
+    episode: Season["episodes"][number],
+    watched: boolean,
+    note?: string
+  ) => {
     if (watched) {
       const seasonWatched = season.episodes.filter((ep) => watchedSet.has(ep.id)).length;
       const willComplete = seasonWatched + 1 === season.episodes.length;
       if (willComplete) setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
     }
-    await onToggleEpisode(episode, watched);
+    await onToggleEpisode(episode, watched, note);
   };
 
   return (
@@ -150,7 +155,7 @@ export function SeasonAccordion({
                         episode={{ ...episode, watched: isWatched }}
                         disabled={isSaving}
                         isLastUnwatched={isLastUnwatched}
-                        onToggleSeen={() => void handleToggleEpisode(season, episode, !isWatched)}
+                        onToggleSeen={(note) => void handleToggleEpisode(season, episode, !isWatched, note)}
                       />
                     );
                   })}

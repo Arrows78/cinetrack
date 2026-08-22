@@ -62,7 +62,7 @@ vi.mock("@/components/media/episode-card", () => ({
   EpisodeCard: ({ episode, onToggleSeen }: { episode: Episode; onToggleSeen: () => void }) => (
     <div data-testid={`episode-${episode.id}`} data-watched={String(Boolean(episode.watched))}>
       <span>{episode.title}</span>
-      <button aria-label={`toggle-episode-${episode.id}`} onClick={onToggleSeen}>
+      <button aria-label={`toggle-episode-${episode.id}`} onClick={() => onToggleSeen()}>
         toggle
       </button>
     </div>

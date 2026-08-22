@@ -167,7 +167,7 @@ describe("SeasonAccordion", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Mark watched" }));
 
-      expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 103 }), true);
+      expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 103 }), true, undefined);
       expect(celebrateMock).not.toHaveBeenCalled();
 
       vi.advanceTimersByTime(CONFETTI_SEASON_COMPLETE_DELAY_MS);
@@ -187,7 +187,7 @@ describe("SeasonAccordion", () => {
       expect(markWatchedButtons).toHaveLength(2);
       fireEvent.click(markWatchedButtons[0]!);
 
-      expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 302 }), true);
+      expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 302 }), true, undefined);
 
       vi.advanceTimersByTime(CONFETTI_SEASON_COMPLETE_DELAY_MS);
       expect(celebrateMock).not.toHaveBeenCalled();
@@ -204,7 +204,7 @@ describe("SeasonAccordion", () => {
 
       fireEvent.click(screen.getAllByRole("button", { name: "Mark unwatched" })[0]!);
 
-      expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 101 }), false);
+      expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 101 }), false, undefined);
       vi.advanceTimersByTime(CONFETTI_SEASON_COMPLETE_DELAY_MS);
       expect(celebrateMock).not.toHaveBeenCalled();
     } finally {

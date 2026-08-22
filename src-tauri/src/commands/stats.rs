@@ -38,6 +38,14 @@ pub struct ViewingEvent {
     pub episode_id: Option<i64>,
     pub season_number: Option<i64>,
     pub episode_number: Option<i64>,
+    /// Only ever populated by backup.rs's export (a plain `SELECT *`, which
+    /// picks up the column for free) — `list_viewing_events_since_impl`
+    /// below never selects it, since nothing consuming *that* endpoint
+    /// (stats/wrapped aggregation) needs it. `#[serde(default)]` so
+    /// importing a pre-this-field backup (no `note` key at all in its JSON)
+    /// deserializes as `None` instead of failing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -79,6 +87,9 @@ impl ViewingEventRow {
             episode_id: self.episode_id,
             season_number: self.season_number,
             episode_number: self.episode_number,
+            // This query never selects `note` — see `ViewingEvent::note`'s
+            // doc comment.
+            note: None,
         })
     }
 }
@@ -148,6 +159,100 @@ pub async fn list_viewing_events_for_year(
 ) -> Result<Vec<ViewingEvent>, ApiError> {
     let profile_id = current_profile_id(&pool).await?;
     list_viewing_events_for_year_impl(&pool, &profile_id, &range_start, &range_end).await
+}
+
+/// A single title's own viewing history, notes included — deliberately a
+/// separate type from `ViewingEvent` above rather than that struct plus a
+/// `note` field: `ViewingEvent` is also constructed by backup.rs's
+/// export/import round trip (see `ViewingEvent { .. }` there), and giving it
+/// a new required field would force edits to that unrelated, actively
+/// changing file for a column those code paths never need to touch (a
+/// backup round-trips `note` fine as-is, via `SELECT *`/`INSERT ... note`
+/// there once that file's own column list picks it up independently). This
+/// type exists purely to answer "what did I write about media X across all
+/// my past watches", scoped to one (media_id, media_type).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewingEventNote {
+    pub id: String,
+    pub event_type: ViewingEventType,
+    pub watched_at: String,
+    pub episode_id: Option<i64>,
+    pub season_number: Option<i64>,
+    pub episode_number: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct ViewingEventNoteRow {
+    uuid: String,
+    event_type: String,
+    watched_at: String,
+    episode_id: Option<i64>,
+    season_number: Option<i64>,
+    episode_number: Option<i64>,
+    note: Option<String>,
+}
+
+async fn list_viewing_events_for_media_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    media_id: i64,
+    media_type: MediaType,
+) -> Result<Vec<ViewingEventNote>, ApiError> {
+    let rows: Vec<ViewingEventNoteRow> = sqlx::query_as(
+        "SELECT uuid, event_type, watched_at, episode_id, season_number, episode_number, note
+         FROM viewing_events
+         WHERE profile_id = $1 AND media_id = $2 AND media_type = $3
+         ORDER BY watched_at DESC",
+    )
+    .bind(profile_id)
+    .bind(media_id)
+    .bind(media_type.as_db_str())
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    rows.into_iter()
+        .map(|row| -> Result<ViewingEventNote, ApiError> {
+            let event_type = match row.event_type.as_str() {
+                "watched" => ViewingEventType::Watched,
+                "unwatched" => ViewingEventType::Unwatched,
+                "rewatched" => ViewingEventType::Rewatched,
+                other => {
+                    return Err(ApiError::internal(format!(
+                        "Unknown viewing event type in database: {other}"
+                    )));
+                }
+            };
+            Ok(ViewingEventNote {
+                id: row.uuid,
+                event_type,
+                watched_at: row.watched_at,
+                episode_id: row.episode_id,
+                season_number: row.season_number,
+                episode_number: row.episode_number,
+                note: row.note,
+            })
+        })
+        .collect()
+}
+
+/// One title's full watch history (every viewing_events row, most recent
+/// first) with whatever per-watch note was attached at log time —
+/// unlike `list_recent_viewing_events`/`list_viewing_events_for_year` above
+/// (bounded by time, spanning every title, for stats/wrapped aggregation),
+/// this is bounded to a single (media_id, media_type), for a title-detail
+/// view that wants to show "what did I think, each time I watched this".
+#[tauri::command]
+pub async fn list_viewing_events_for_media(
+    media_id: i64,
+    media_type: MediaType,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<ViewingEventNote>, ApiError> {
+    let profile_id = current_profile_id(&pool).await?;
+    list_viewing_events_for_media_impl(&pool, &profile_id, media_id, media_type).await
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -445,6 +550,66 @@ mod tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].title, "Test");
         assert_eq!(events[0].event_type, ViewingEventType::Watched);
+    }
+
+    #[tokio::test]
+    async fn lists_a_titles_viewing_events_most_recent_first_with_notes_attached() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, note, created_at)
+             VALUES ('first', 'default', 42, 'movie', 'Rewatched Movie', 'watched', '2025-01-01T00:00:00.000Z', 'first watch', '2025-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, note, created_at)
+             VALUES ('second', 'default', 42, 'movie', 'Rewatched Movie', 'watched', '2026-01-01T00:00:00.000Z', 'even better the second time', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        // A different title entirely — must not leak into the result.
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+             VALUES ('other', 'default', 99, 'movie', 'Other Movie', 'watched', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let events = list_viewing_events_for_media_impl(&pool, "default", 42, MediaType::Movie)
+            .await
+            .unwrap();
+
+        assert_eq!(events.len(), 2);
+        // Most recent watch first.
+        assert_eq!(events[0].id, "second");
+        assert_eq!(
+            events[0].note.as_deref(),
+            Some("even better the second time")
+        );
+        assert_eq!(events[1].id, "first");
+        assert_eq!(events[1].note.as_deref(), Some("first watch"));
+    }
+
+    #[tokio::test]
+    async fn a_titles_viewing_events_read_returns_none_when_no_note_was_recorded() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+             VALUES ('a', 'default', 7, 'movie', 'No Note', 'watched', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let events = list_viewing_events_for_media_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].note, None);
     }
 
     async fn insert_event(

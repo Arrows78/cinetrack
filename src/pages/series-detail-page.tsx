@@ -12,10 +12,12 @@ import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/next-episode-card";
 import { ProgressBar } from "@/components/media/progress-bar";
+import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { SeasonAccordion } from "@/components/media/season-accordion";
 import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
+import { WatchHistoryPanel } from "@/components/media/watch-history-panel";
 import { AddToLibraryButton } from "@/components/media/add-to-library-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
@@ -109,7 +111,7 @@ export function SeriesDetailPage() {
       <NextEpisodeCard
         episode={nextEpisode}
         isSaving={progressQuery.isSaving}
-        onWatched={(episode) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true })}
+        onWatched={(episode, note) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true, note })}
       />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
@@ -118,7 +120,10 @@ export function SeriesDetailPage() {
         </Panel>
         <div className="space-y-4">
           <Panel tone="subtle">
-            <p className="text-overline font-bold uppercase text-muted-foreground">{t("series.currentProgress")}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-overline font-bold uppercase text-muted-foreground">{t("series.currentProgress")}</p>
+              {progress.isUpToDate ? <Badge variant="success">{t("media.upToDate")}</Badge> : null}
+            </div>
             <div className="mt-3 flex items-end justify-between gap-3">
               <p className="font-display text-5xl font-bold leading-none">
                 {progress.progressPercent}
@@ -163,10 +168,13 @@ export function SeriesDetailPage() {
           seasons={seasons}
           watchedEpisodes={progressQuery.data ?? []}
           isSaving={progressQuery.isSaving}
-          onToggleEpisode={(episode, watched) => progressQuery.toggleEpisodeSeen({ series, episode, watched })}
+          onToggleEpisode={(episode, watched, note) =>
+            progressQuery.toggleEpisodeSeen({ series, episode, watched, note })
+          }
           onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })}
         />
       </section>
+      <WatchHistoryPanel mediaId={series.id} mediaType="series" />
       <RecommendationsPanel media={series} />
       <section>
         <SectionHeader title={t("media.cast")} />

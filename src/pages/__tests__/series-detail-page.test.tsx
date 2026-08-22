@@ -116,6 +116,10 @@ vi.mock("@/components/media/seen-toggle", () => ({
   ),
 }));
 
+vi.mock("@/components/media/watch-history-panel", () => ({
+  WatchHistoryPanel: () => <div data-testid="watch-history-panel" />,
+}));
+
 const episodes: Episode[] = [
   {
     id: 1001,
@@ -388,6 +392,55 @@ describe("SeriesDetailPage", () => {
     renderPage();
 
     expect(refreshTrackedSeriesStatusMock).not.toHaveBeenCalled();
+  });
+
+  it("does not show the Up to date badge while an aired episode is still unwatched", () => {
+    renderPage();
+
+    expect(screen.queryByText("All up to date")).not.toBeInTheDocument();
+  });
+
+  it("shows the Up to date badge once every aired episode is watched but an unaired one is still ahead", () => {
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const unairedEpisode: Episode = {
+      id: 1004,
+      seasonNumber: 1,
+      episodeNumber: 4,
+      title: "Episode 4",
+      overview: "Not yet aired.",
+      airDate: farFuture,
+    };
+    seasonQueriesMock.mockReturnValue([
+      {
+        data: buildSeason({ episodes: [...episodes, unairedEpisode] }),
+        isPending: false,
+        isError: false,
+        refetch: vi.fn(),
+      },
+    ]);
+    episodeProgressMock.mockReturnValue({
+      data: [
+        ...watchedProgress,
+        {
+          id: "p3",
+          seriesId: 9,
+          episodeId: 1003,
+          seasonNumber: 1,
+          episodeNumber: 3,
+          watched: true,
+          createdAt: "2024-01-15T00:00:00.000Z",
+          updatedAt: "2024-01-15T00:00:00.000Z",
+        },
+      ],
+      isSaving: false,
+      toggleEpisodeSeen: toggleEpisodeSeenMock,
+      markSeasonSeen: markSeasonSeenMock,
+      markSeriesSeen: markSeriesSeenMock,
+    });
+
+    renderPage();
+
+    expect(screen.getByText("All up to date")).toBeInTheDocument();
   });
 
   it("marks the series seen with the flipped completed state when the seen toggle is clicked", () => {

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
 import { makeMedia } from "@/shared/test-utils";
 import type { Episode } from "@/types/media";
@@ -118,6 +118,38 @@ describe("EpisodeCard", () => {
     expect(button).toBeDisabled();
     button.click();
     expect(onToggleSeen).not.toHaveBeenCalled();
+  });
+
+  it("offers the add-a-note action only while unwatched", () => {
+    preferencesData = { spoilerProtection: false };
+    const { rerender } = render(<EpisodeCard episode={makeEpisode({ watched: false })} onToggleSeen={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Add a note" })).toBeInTheDocument();
+
+    rerender(<EpisodeCard episode={makeEpisode({ watched: true })} onToggleSeen={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Add a note" })).not.toBeInTheDocument();
+  });
+
+  it("calls onToggleSeen with the written note when the add-a-note dialog is confirmed", () => {
+    preferencesData = { spoilerProtection: false };
+    const onToggleSeen = vi.fn();
+    render(<EpisodeCard episode={makeEpisode({ watched: false })} onToggleSeen={onToggleSeen} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
+    fireEvent.change(screen.getByLabelText("Your note"), { target: { value: "A tense one" } });
+    fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
+
+    expect(onToggleSeen).toHaveBeenCalledWith("A tense one");
+  });
+
+  it("calls onToggleSeen with no note when the dialog is confirmed empty", () => {
+    preferencesData = { spoilerProtection: false };
+    const onToggleSeen = vi.fn();
+    render(<EpisodeCard episode={makeEpisode({ watched: false })} onToggleSeen={onToggleSeen} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
+
+    expect(onToggleSeen).toHaveBeenCalledWith(undefined);
   });
 });
 

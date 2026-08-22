@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
-import { TriangleAlert } from "lucide-react";
+import { NotebookPen, TriangleAlert } from "lucide-react";
+import { AddWatchNoteDialog } from "@/components/media/add-watch-note-dialog";
 import { AvailabilityAlertButton } from "@/components/media/availability-alert-button";
 import { ProviderAvailability } from "@/components/media/provider-availability";
 import { RecommendationsPanel } from "@/components/media/recommendations-panel";
@@ -10,7 +12,11 @@ import { CastList } from "@/components/media/cast-list";
 import { MediaDetailsHero } from "@/components/media/media-details-hero";
 import { SectionHeader } from "@/components/media/section-header";
 import { SeenToggle } from "@/components/media/seen-toggle";
+import { WatchHistoryPanel } from "@/components/media/watch-history-panel";
+import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
+import { IconTooltip } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/use-toast";
 import { AddToLibraryButton } from "@/components/media/add-to-library-button";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
@@ -26,6 +32,7 @@ export function MovieDetailPage() {
   const id = Number(movieId);
   const movieQuery = useMovieDetails(id);
   const seenQuery = useMovieSeen(id);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   useImageCache([movieQuery.data?.posterPath, movieQuery.data?.backdropPath]);
   // See series-detail-page.tsx's equivalent guard for why: a non-numeric id
   // and isPending-vs-isLoading both used to fall through to a bare `return
@@ -51,15 +58,43 @@ export function MovieDetailPage() {
         }
         extra={
           <div className="flex flex-col gap-2">
-            <SeenToggle
-              seen={Boolean(seenQuery.data)}
-              disabled={seenQuery.isSaving || seenQuery.isError}
-              onToggle={() => void seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
-              celebrateOnSeen
-            />
+            <div className="flex items-center gap-2">
+              <SeenToggle
+                seen={Boolean(seenQuery.data)}
+                disabled={seenQuery.isSaving || seenQuery.isError}
+                onToggle={() => void seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
+                celebrateOnSeen
+              />
+              {!seenQuery.data ? (
+                <IconTooltip label={t("media.addWatchNoteAction")}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("media.addWatchNoteAction")}
+                    disabled={seenQuery.isSaving || seenQuery.isError}
+                    onClick={() => setNoteDialogOpen(true)}
+                  >
+                    <NotebookPen className="size-4" />
+                  </Button>
+                </IconTooltip>
+              ) : null}
+            </div>
             {seenQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
           </div>
         }
+      />
+      <AddWatchNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        onConfirm={(note) => {
+          setNoteDialogOpen(false);
+          seenQuery.toggleMovieSeen({ movie, watched: true, note: note || undefined }).catch(() => {
+            // Never surface error.message here — it's the raw ApiCommandError
+            // from invokeCommand()/Rust, not a translated, user-facing string.
+            toast({ description: t("media.addWatchNoteFailed"), variant: "error" });
+          });
+        }}
       />
       <LibraryEditor media={movie} />
       <ProviderAvailability media={movie} />
@@ -86,6 +121,7 @@ export function MovieDetailPage() {
           </div>
         </Panel>
       </section>
+      <WatchHistoryPanel mediaId={movie.id} mediaType="movie" />
       <RecommendationsPanel media={movie} />
       <section>
         <SectionHeader title={t("media.cast")} subtitle={t("movies.castSubtitle")} />

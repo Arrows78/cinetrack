@@ -147,17 +147,43 @@ where
     Ok(row.0 > 0)
 }
 
-/// Unlike `apply_episodes_impl` below, this logs the history entry inside
-/// the same transaction as the seen-flag/viewing-event writes — matching
-/// progress-store-sql.ts's `toggleMovieSeen`, which committed history
-/// atomically for movies while episode-based actions logged it as a
-/// separate step one level up in progress-repository.ts.
+/// Thin wrapper over `toggle_movie_seen_with_note_impl` for callers (the
+/// existing test suite below, mainly) that never attach a per-watch note —
+/// mirrors `apply_episodes_impl`'s relationship to
+/// `apply_episodes_and_log_impl` just below. `#[cfg(test)]` because, unlike
+/// `apply_episodes_impl` (also used by tvtime's importer), nothing outside
+/// this file's own tests calls it anymore now that the `toggle_movie_seen`
+/// command calls `toggle_movie_seen_with_note_impl` directly.
+#[cfg(test)]
 pub(crate) async fn toggle_movie_seen_impl(
     pool: &SqlitePool,
     profile_id: &str,
     movie: MovieInput,
     watched: bool,
     watched_at: &str,
+) -> Result<(), ApiError> {
+    toggle_movie_seen_with_note_impl(pool, profile_id, movie, watched, watched_at, None).await
+}
+
+/// Unlike `apply_episodes_impl` below, this logs the history entry inside
+/// the same transaction as the seen-flag/viewing-event writes — matching
+/// progress-store-sql.ts's `toggleMovieSeen`, which committed history
+/// atomically for movies while episode-based actions logged it as a
+/// separate step one level up in progress-repository.ts.
+///
+/// `note` is only ever persisted when `watched` is true — write-once, at
+/// the moment the watch is logged (see migration 13's comment for why this
+/// is a v1-simple decision rather than an editable-after-the-fact one). A
+/// caller that passes a note while unwatching has it silently ignored
+/// rather than stored against an "unwatched" event, which would never be
+/// shown anywhere.
+pub(crate) async fn toggle_movie_seen_with_note_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    movie: MovieInput,
+    watched: bool,
+    watched_at: &str,
+    note: Option<String>,
 ) -> Result<(), ApiError> {
     // BEGIN IMMEDIATE (rather than plain pool.begin()'s deferred BEGIN)
     // acquires SQLite's write lock up front, before the idempotency check
@@ -183,6 +209,10 @@ pub(crate) async fn toggle_movie_seen_impl(
     if is_movie_seen_impl(&mut *tx, profile_id, movie.id).await? == watched {
         return Ok(());
     }
+
+    // See this function's doc comment: a note only ever attaches to a
+    // "watched" event.
+    let event_note = if watched { note.as_deref() } else { None };
 
     if watched {
         sqlx::query(
@@ -215,8 +245,8 @@ pub(crate) async fn toggle_movie_seen_impl(
     }
 
     sqlx::query(
-        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
-         VALUES ($1,$2,$3,'movie',$4,$5,$6,$7,NULL,NULL,NULL,$6)",
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, note, created_at)
+         VALUES ($1,$2,$3,'movie',$4,$5,$6,$7,NULL,NULL,NULL,$8,$6)",
     )
     .bind(new_uuid())
     .bind(profile_id)
@@ -225,6 +255,7 @@ pub(crate) async fn toggle_movie_seen_impl(
     .bind(if watched { "watched" } else { "unwatched" })
     .bind(watched_at)
     .bind(movie.runtime)
+    .bind(event_note)
     .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
@@ -243,7 +274,13 @@ pub(crate) async fn toggle_movie_seen_impl(
         season_number: None,
         episode_number: None,
         episode_title: None,
-        metadata: Some(json!({ "profileId": profile_id })),
+        // `note` rides along in the free-form metadata bag rather than as a
+        // dedicated ViewingHistoryItem field — that struct is also
+        // constructed (without a note) by library.rs and backup.rs, and
+        // giving it a new required field would force edits there too, for
+        // event kinds that never carry one. history-page.tsx / the history
+        // repository pull it back out of metadata on the way in.
+        metadata: Some(json!({ "profileId": profile_id, "note": event_note })),
     };
     add_history_item_impl(&mut *tx, pool, history_item).await?;
 
@@ -327,6 +364,14 @@ pub struct EpisodeHistoryInput {
 /// entry in the same transaction. Returns the number of episodes that
 /// changed. `pub(crate)` so tvtime's importer can reuse the same
 /// upsert/rollup logic (passing `history: None`, since it logs nothing).
+///
+/// `note` is written once, at log time, onto every changed episode's
+/// viewing_events row (never onto an "unwatched" one — see
+/// `toggle_movie_seen_with_note_impl`'s doc comment for the same rule
+/// applied to movies). In practice only the single-episode toggle path ever
+/// passes one; a season/series bulk mark always passes `None`, so this
+/// never silently stamps the same note across many episodes at once.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn apply_episodes_and_log_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -335,6 +380,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
     watched: bool,
     watched_at: &str,
     history: Option<EpisodeHistoryInput>,
+    note: Option<String>,
 ) -> Result<i64, ApiError> {
     // BEGIN IMMEDIATE up front, before reading which episodes are already
     // watched, for the same reason toggle_movie_seen_impl does: a plain
@@ -374,6 +420,10 @@ pub(crate) async fn apply_episodes_and_log_impl(
         return Ok(0);
     }
 
+    // Same rule as toggle_movie_seen_with_note_impl: a note only ever
+    // attaches to a "watched" event.
+    let event_note = if watched { note.as_deref() } else { None };
+
     for episode in &changed_episodes {
         let episode_watched_at = episode.watched_at.as_deref().unwrap_or(watched_at);
         if watched {
@@ -406,8 +456,8 @@ pub(crate) async fn apply_episodes_and_log_impl(
         }
 
         sqlx::query(
-            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
-             VALUES ($1,$2,$3,'series',$4,$5,$6,$7,$8,$9,$10,$6)",
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, note, created_at)
+             VALUES ($1,$2,$3,'series',$4,$5,$6,$7,$8,$9,$10,$11,$6)",
         )
         .bind(new_uuid())
         .bind(profile_id)
@@ -419,6 +469,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
         .bind(episode.id)
         .bind(episode.season_number)
         .bind(episode.episode_number)
+        .bind(event_note)
         .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
@@ -502,8 +553,12 @@ pub(crate) async fn apply_episodes_and_log_impl(
             season_number: history.season_number,
             episode_number: history.episode_number,
             episode_title: history.episode_title,
+            // See toggle_movie_seen_with_note_impl's history_item comment:
+            // `note` rides in metadata rather than as a dedicated field so
+            // library.rs/backup.rs's own ViewingHistoryItem literals (for
+            // history rows that never carry one) don't need touching.
             metadata: Some(
-                json!({ "profileId": profile_id, "episodeCount": changed_episodes.len() }),
+                json!({ "profileId": profile_id, "episodeCount": changed_episodes.len(), "note": event_note }),
             ),
         };
         add_history_item_impl(&mut *tx, pool, item).await?;
@@ -524,7 +579,7 @@ pub(crate) async fn apply_episodes_impl(
     watched_at: &str,
 ) -> Result<i64, ApiError> {
     apply_episodes_and_log_impl(
-        pool, profile_id, series, episodes, watched, watched_at, None,
+        pool, profile_id, series, episodes, watched, watched_at, None, None,
     )
     .await
 }
@@ -574,10 +629,11 @@ pub async fn toggle_movie_seen(
     movie: MovieInput,
     watched: bool,
     watched_at: String,
+    note: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
     let profile_id = current_profile_id(&pool).await?;
-    toggle_movie_seen_impl(&pool, &profile_id, movie, watched, &watched_at).await
+    toggle_movie_seen_with_note_impl(&pool, &profile_id, movie, watched, &watched_at, note).await
 }
 
 profile_scoped_command! {
@@ -591,6 +647,7 @@ pub async fn toggle_episodes_watched(
     watched: bool,
     watched_at: String,
     history: Option<EpisodeHistoryInput>,
+    note: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<i64, ApiError> {
     let profile_id = current_profile_id(&pool).await?;
@@ -602,6 +659,7 @@ pub async fn toggle_episodes_watched(
         watched,
         &watched_at,
         history,
+        note,
     )
     .await
 }
@@ -805,6 +863,70 @@ mod tests {
             library_status(&pool, 55, "movie").await,
             Some("completed".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn marking_a_movie_seen_with_a_note_stores_it_on_the_viewing_event_and_history() {
+        let pool = migrated_pool().await;
+
+        toggle_movie_seen_with_note_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:00.000Z",
+            Some("Loved the twist ending".to_string()),
+        )
+        .await
+        .unwrap();
+
+        let event_note: Option<String> =
+            sqlx::query_scalar("SELECT note FROM viewing_events WHERE media_id = 55")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(event_note.as_deref(), Some("Loved the twist ending"));
+
+        let metadata_raw: String =
+            sqlx::query_scalar("SELECT metadata FROM activity_log WHERE media_id = 55")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let metadata: serde_json::Value = serde_json::from_str(&metadata_raw).unwrap();
+        assert_eq!(metadata["note"], "Loved the twist ending");
+    }
+
+    #[tokio::test]
+    async fn unwatching_a_movie_never_stores_a_note_even_if_one_is_passed() {
+        let pool = migrated_pool().await;
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(55),
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        toggle_movie_seen_with_note_impl(
+            &pool,
+            "default",
+            movie(55),
+            false,
+            "2026-01-02T00:00:00.000Z",
+            Some("should be ignored".to_string()),
+        )
+        .await
+        .unwrap();
+
+        let event_note: Option<String> = sqlx::query_scalar(
+            "SELECT note FROM viewing_events WHERE media_id = 55 AND event_type = 'unwatched'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(event_note, None);
     }
 
     #[tokio::test]
@@ -1461,6 +1583,7 @@ mod tests {
             true,
             "2026-01-01T00:00:00.000Z",
             Some(history),
+            Some("Great pilot!".to_string()),
         )
         .await
         .unwrap();
@@ -1476,6 +1599,14 @@ mod tests {
         assert_eq!(row.1.as_deref(), Some("Pilot"));
         let metadata: serde_json::Value = serde_json::from_str(&row.2.unwrap()).unwrap();
         assert_eq!(metadata["episodeCount"], 1);
+        assert_eq!(metadata["note"], "Great pilot!");
+
+        let event_note: Option<String> =
+            sqlx::query_scalar("SELECT note FROM viewing_events WHERE media_id = 9")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(event_note.as_deref(), Some("Great pilot!"));
     }
 
     #[tokio::test]
@@ -1508,6 +1639,7 @@ mod tests {
             true,
             "2026-01-01T00:00:01.000Z",
             Some(history),
+            None,
         )
         .await
         .unwrap();
@@ -1609,6 +1741,7 @@ mod tests {
             movie(1),
             true,
             "2026-01-01T00:00:00.000Z".to_string(),
+            None,
             state.clone(),
         )
         .await
@@ -1637,6 +1770,7 @@ mod tests {
             true,
             "2026-01-01T00:00:00.000Z".to_string(),
             Some(history),
+            None,
             state.clone(),
         )
         .await
@@ -1659,6 +1793,7 @@ mod tests {
             vec![episode(100, 1)],
             true,
             "2026-01-01T00:00:00.000Z".to_string(),
+            None,
             None,
             state.clone(),
         )

@@ -51,7 +51,15 @@
     "openOnYoutube": "Open on YouTube",
     "fallbackTitle": "Season {{number}}",
     "episodesAvailable_one": "{{count}} episode available in this season.",
-    "episodesAvailable_other": "{{count}} episodes available in this season."
+    "episodesAvailable_other": "{{count}} episodes available in this season.",
+    "addWatchNoteAction": "Add a note",
+    "addWatchNoteTitle": "Add a note",
+    "addWatchNoteDescription": "Optional — write something about this watch. Notes can't be edited afterward.",
+    "addWatchNoteLabel": "Your note",
+    "addWatchNotePlaceholder": "What did you think?",
+    "addWatchNoteFailed": "Couldn't save your note — try again.",
+    "watchHistoryTitle": "Watch diary",
+    "watchHistoryUnavailable": "Couldn't load your watch diary — try again in a moment."
   },
   "pages": {
     "notFound": "Page not found",
@@ -94,6 +102,26 @@
     "configureTmdb": "Configure your TMDB access",
     "configureTmdbDesc": "Add or unlock your TMDB access token in Settings to load the catalog.",
     "configureTmdbCta": "Go to Settings",
+    "noTokenTitle": "Track without a TMDB token",
+    "noTokenDesc": "A TMDB token isn't required to use CineTrack — it only unlocks browsing and discovering new titles.",
+    "noTokenWorksTitle": "Works right now, offline",
+    "noTokenWorksItem1": "Your library and watchlist",
+    "noTokenWorksItem2": "Viewing history and tracked series",
+    "noTokenWorksItem3": "Stats and your yearly Wrapped",
+    "noTokenUnlocksTitle": "A TMDB token unlocks",
+    "noTokenUnlocksItem1": "Browsing and searching the catalog",
+    "noTokenUnlocksItem2": "Posters and details for new titles",
+    "noTokenUnlocksItem3": "Personalized recommendations",
+    "noTokenAddCta": "Add a TMDB token now",
+    "noTokenContinueCta": "Continue without a token",
+    "noTokenBannerTitle": "Catalog browsing is unavailable",
+    "noTokenBannerDesc": "Add a TMDB token in Settings to browse and search for new titles.",
+    "offlineSummaryTitle": "Your activity",
+    "offlineSummarySubtitle": "Local data stored on this device, no token required.",
+    "offlineLinksLibraryDesc": "Browse what you've already added",
+    "offlineLinksTrackingDesc": "See what's next in your shows",
+    "offlineLinksHistoryDesc": "Review everything you've watched",
+    "offlineLinksStatsDesc": "See your watching stats and Wrapped",
     "premiumSelection": "Trending this week",
     "viewDetails": "View details",
     "exploreCatalog": "Explore catalog",
@@ -219,17 +247,22 @@
       "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone.",
       "deleteFailed": "Couldn't delete the profile. Please try again."
     },
+    "streaming": {
+      "title": "My streaming services",
+      "description": "Pick the platforms you're subscribed to — used to filter availability alerts and Watch Tonight picks."
+    },
     "sections": {
       "account": "Account",
       "accountDesc": "Manage who's using CineTrack on this device.",
       "data": "Backup & import",
-      "dataDesc": "Move your data in and out of CineTrack."
+      "dataDesc": "Move your data in and out of CineTrack.",
+      "streaming": "Streaming services",
+      "streamingDesc": "Tell CineTrack which platforms you subscribe to."
     }
   },
   "mediaHub": {
     "myList": "My list",
     "upcoming": "Upcoming",
-    "discover": "Discover",
     "browseAllMovies": "Browse all movies",
     "browseAllSeries": "Browse all series"
   },
@@ -265,6 +298,12 @@
     "timeWatched": "Time watched",
     "currentStreak": "Current streak",
     "durationHoursMinutes": "{{hours}}h {{minutes}}min",
+    "watchDurationDays_one": "{{count}} day",
+    "watchDurationDays_other": "{{count}} days",
+    "watchDurationMonths_one": "{{count}} month",
+    "watchDurationMonths_other": "{{count}} months",
+    "watchDurationWithDays": "{{hours}} — that's about {{days}}",
+    "watchDurationWithMonths": "{{hours}} — that's about {{days}} (~{{months}})",
     "streakDays_one": "{{count}} day",
     "streakDays_other": "{{count}} days",
     "averageRating": "Average rating",
@@ -300,6 +339,12 @@
     "previousYear": "Previous year",
     "nextYear": "Next year",
     "records": "Records",
+    "tabs": {
+      "overview": "Overview",
+      "thisYear": "This year",
+      "history": "History",
+      "records": "Records"
+    },
     "longestStreak": "Longest streak",
     "biggestBinge": "Biggest binge day",
     "mostRewatched": "Most rewatched",
@@ -362,7 +407,11 @@
     "remove": "Remove the alert for {{title}}",
     "removeConfirmTitle": "Remove the alert for \"{{title}}\"?",
     "noResultsTitle": "Nothing to show",
-    "noResults": "Nothing matches these filters yet — try widening them, or follow a title from its page."
+    "noResults": "Nothing matches these filters yet — try widening them, or follow a title from its page.",
+    "clearFilters": "Clear filters",
+    "emptyTitle": "Nothing tracked yet",
+    "emptyDesc": "Add a series or movie to your library to see its upcoming releases and episodes here.",
+    "emptyCta": "Discover movies & series"
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
@@ -374,7 +423,10 @@
     "title": "People",
     "description": "Actors, actresses, directors and filmographies.",
     "searchPlaceholder": "Search for a person",
-    "fallbackDepartment": "Film & television"
+    "fallbackDepartment": "Film & television",
+    "popularTitle": "Popular people",
+    "noResultsTitle": "No people found",
+    "noResultsDescription": "Try another name — or check the spelling."
   },
   "person": {
     "loading": "Loading…",
@@ -414,12 +466,15 @@
     "description": "Four movies and four series from your library first, then from the catalog.",
     "allGenres": "All genres",
     "allPlatforms": "All platforms",
+    "myServices": "My services",
     "genre": "Genre",
     "platform": "Platform",
     "maxDuration": "Max duration",
     "retry": "Pick again",
     "emptyTitle": "No match for these filters",
-    "emptyDesc": "Try a wider genre, platform or duration — or add more titles to your \"to watch\" library."
+    "emptyDesc": "Try a wider genre, platform or duration — or add more titles to your \"to watch\" library.",
+    "viewDetails": "View details",
+    "alternatesTitle": "Or try one of these"
   },
   "library": {
     "myLibrary": "My library",
@@ -434,6 +489,10 @@
     "emptyTitle": "Your library is empty",
     "emptyDesc": "Add a movie or series to your library from its detail page to track status, ratings and progress here.",
     "exploreCta": "Discover movies & series",
+    "searchPlaceholder": "Search your library by title…",
+    "noResultsTitle": "No matches",
+    "noResultsDesc": "No title matches your current filters or search. Try adjusting them or clear everything.",
+    "clearFilters": "Clear filters",
     "favourite": "Favourite",
     "favouritesOnly": "Favourites",
     "gridView": "Grid view",
@@ -472,8 +531,6 @@
       "deleteList": "Delete list {{name}}",
       "deleteListConfirmTitle": "Delete the list \"{{name}}\"?",
       "deleteListConfirmDescription": "This deletes the list and all its items. This can't be undone.",
-      "emptyListTitle": "This list is empty",
-      "emptyListDesc": "Open the \"Custom lists\" section below to add titles to it.",
       "customList": "Custom list",
       "addToAList": "Add to a list…",
       "addToList": "Add to the list",
@@ -501,7 +558,11 @@
     "titles": "Titles",
     "searchingTitles": "Searching titles…",
     "onThisPage": "On this page",
-    "removeFromLibrary": "Remove from library"
+    "removeFromLibrary": "Remove from library",
+    "quickLog": "Mark as watched",
+    "quickLogDone": "Already watched",
+    "quickLogSuccess": "Marked \"{{title}}\" as watched.",
+    "quickLogError": "Couldn't mark this as watched. Please try again."
   },
   "backup": {
     "title": "Portable backup",
@@ -521,7 +582,16 @@
     "undoConfirmDescription": "This restores your data to how it was right before the last import — reversing anything you've done since.",
     "undoFailed": "Nothing to undo: no pre-import snapshot was found.",
     "importConfirmTitle": "Replace all your data?",
-    "importConfirmDescription": "Importing this backup overwrites your current library, history and lists. You can undo this right after with \"Undo last change\"."
+    "importConfirmDescription": "Importing this backup overwrites your current library, history and lists. You can undo this right after with \"Undo last change\".",
+    "locationTitle": "Backup folder",
+    "locationDescription": "Point this at a folder already synced by iCloud Drive, OneDrive, or Dropbox to get your backups onto another device without CineTrack needing real sync.",
+    "currentLocation": "Current folder: {{path}}",
+    "defaultLocation": "Default (app data folder)",
+    "chooseFolder": "Choose backup folder",
+    "resetFolder": "Reset to default",
+    "folderUpdated": "Backup folder updated.",
+    "folderReset": "Backup folder reset to default.",
+    "folderUpdateFailed": "Couldn't update the backup folder. Please try again."
   },
   "desktop": {
     "operationComplete": "Operation complete.",
@@ -580,6 +650,7 @@
     "signOut": "Sign out",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
+    "switchProfile": "Switch profile",
     "theme": {
       "dark": "Dark",
       "light": "Light"

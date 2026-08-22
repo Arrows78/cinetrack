@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import i18n from "@/i18n";
 import type { Episode } from "@/types/media";
@@ -64,5 +64,35 @@ describe("NextEpisodeCard", () => {
     expect(button).toBeDisabled();
     fireEvent.click(button);
     expect(onWatched).not.toHaveBeenCalled();
+  });
+
+  it("calls onWatched with the written note when the add-a-note dialog is confirmed", () => {
+    const episode = makeEpisode({ id: 555 });
+    const onWatched = vi.fn();
+    render(<NextEpisodeCard episode={episode} isSaving={false} onWatched={onWatched} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Your note"), { target: { value: "Loved this one" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Mark as watched" }));
+
+    expect(onWatched).toHaveBeenCalledWith(episode, "Loved this one");
+  });
+
+  it("calls onWatched with no note when the add-a-note dialog is confirmed with an empty note", () => {
+    const episode = makeEpisode({ id: 555 });
+    const onWatched = vi.fn();
+    render(<NextEpisodeCard episode={episode} isSaving={false} onWatched={onWatched} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Mark as watched" }));
+
+    expect(onWatched).toHaveBeenCalledWith(episode, undefined);
+  });
+
+  it("disables the add-a-note trigger while isSaving is true", () => {
+    render(<NextEpisodeCard episode={makeEpisode()} isSaving={true} onWatched={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Add a note" })).toBeDisabled();
   });
 });

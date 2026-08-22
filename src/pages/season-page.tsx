@@ -71,11 +71,12 @@ export function SeasonPage() {
             <EpisodeCard
               key={episode.id}
               episode={{ ...episode, watched: watchedSet.has(episode.id) }}
-              onToggleSeen={() =>
+              onToggleSeen={(note) =>
                 void progressQuery.toggleEpisodeSeen({
                   series,
                   episode,
                   watched: !watchedSet.has(episode.id),
+                  note,
                 })
               }
             />

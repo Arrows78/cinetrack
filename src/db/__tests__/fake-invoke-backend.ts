@@ -15,6 +15,7 @@ import type {
   TrackedSeriesItem,
   UserPreferences,
   ViewingEvent,
+  ViewingEventNote,
 } from "@/types/media";
 import type { LibraryPatch } from "@/features/library/library-repository";
 import type { PortableData } from "@/features/backup/portable-data-common";
@@ -314,7 +315,8 @@ function toggleMovieSeen(
   profileId: string,
   movie: MediaSummary,
   watched: boolean,
-  watchedAt: string
+  watchedAt: string,
+  note?: string | null
 ): void {
   if (watched) {
     sqlite
@@ -343,10 +345,13 @@ function toggleMovieSeen(
       .run({ $profileId: profileId, $movieId: movie.id });
   }
 
+  // Mirrors toggle_movie_seen_with_note_impl: a note only ever attaches to
+  // a "watched" event, never to "unwatched".
+  const eventNote = watched ? (note ?? null) : null;
   sqlite
     .prepare(
-      `INSERT INTO viewing_events (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at)
-       VALUES ($uuid,$profileId,$movieId,'movie',$title,$eventType,$watchedAt,$duration,NULL,NULL,NULL,$watchedAt)`
+      `INSERT INTO viewing_events (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,note,created_at)
+       VALUES ($uuid,$profileId,$movieId,'movie',$title,$eventType,$watchedAt,$duration,NULL,NULL,NULL,$note,$watchedAt)`
     )
     .run({
       $uuid: crypto.randomUUID(),
@@ -356,6 +361,7 @@ function toggleMovieSeen(
       $eventType: watched ? "watched" : "unwatched",
       $watchedAt: watchedAt,
       $duration: movie.runtime ?? null,
+      $note: eventNote,
     } as Record<string, SQLInputValue>);
 
   addHistoryItem(sqlite, {
@@ -401,7 +407,8 @@ function applyEpisodes(
   episodes: Episode[],
   watched: boolean,
   watchedAt: string,
-  history?: EpisodeHistoryInput | null
+  history?: EpisodeHistoryInput | null,
+  note?: string | null
 ): number {
   const rows = sqlite
     .prepare(
@@ -413,6 +420,10 @@ function applyEpisodes(
     watched ? !watchedIds.has(episode.id) : watchedIds.has(episode.id)
   );
   if (!changedEpisodes.length) return 0;
+
+  // Mirrors apply_episodes_and_log_impl: a note only ever attaches to a
+  // "watched" event, never to "unwatched".
+  const eventNote = watched ? (note ?? null) : null;
 
   for (const episode of changedEpisodes) {
     if (watched) {
@@ -444,8 +455,8 @@ function applyEpisodes(
 
     sqlite
       .prepare(
-        `INSERT INTO viewing_events (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at)
-         VALUES ($uuid,$profileId,$seriesId,'series',$title,$eventType,$watchedAt,$duration,$episodeId,$seasonNumber,$episodeNumber,$watchedAt)`
+        `INSERT INTO viewing_events (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,note,created_at)
+         VALUES ($uuid,$profileId,$seriesId,'series',$title,$eventType,$watchedAt,$duration,$episodeId,$seasonNumber,$episodeNumber,$note,$watchedAt)`
       )
       .run({
         $uuid: crypto.randomUUID(),
@@ -458,6 +469,7 @@ function applyEpisodes(
         $episodeId: episode.id,
         $seasonNumber: episode.seasonNumber,
         $episodeNumber: episode.episodeNumber,
+        $note: eventNote,
       } as Record<string, SQLInputValue>);
   }
 
@@ -566,6 +578,35 @@ function listViewingEvents(sqlite: DatabaseSync, profileId: string): ViewingEven
     episodeId: row.episode_id === null ? null : Number(row.episode_id),
     seasonNumber: row.season_number === null ? null : Number(row.season_number),
     episodeNumber: row.episode_number === null ? null : Number(row.episode_number),
+  }));
+}
+
+// Mirrors src-tauri/src/commands/stats.rs::list_viewing_events_for_media —
+// one title's own history (most recent first), notes included. A separate
+// query from listViewingEvents() above since ViewingEventNote carries
+// `note`, a column ViewingEvent doesn't model.
+function listViewingEventsForMedia(
+  sqlite: DatabaseSync,
+  profileId: string,
+  mediaId: number,
+  mediaType: string
+): ViewingEventNote[] {
+  const rows = sqlite
+    .prepare(
+      `SELECT uuid, event_type, watched_at, episode_id, season_number, episode_number, note
+       FROM viewing_events
+       WHERE profile_id = $profileId AND media_id = $mediaId AND media_type = $mediaType
+       ORDER BY watched_at DESC`
+    )
+    .all({ $profileId: profileId, $mediaId: mediaId, $mediaType: mediaType }) as Array<Record<string, unknown>>;
+  return rows.map((row) => ({
+    id: String(row.uuid),
+    eventType: String(row.event_type) as ViewingEventNote["eventType"],
+    watchedAt: String(row.watched_at),
+    episodeId: row.episode_id === null ? null : Number(row.episode_id),
+    seasonNumber: row.season_number === null ? null : Number(row.season_number),
+    episodeNumber: row.episode_number === null ? null : Number(row.episode_number),
+    note: row.note === null || row.note === undefined ? undefined : String(row.note),
   }));
 }
 
@@ -733,6 +774,7 @@ function exportBackupData(sqlite: DatabaseSync): PortableData {
     episodeId: row.episode_id === null ? null : Number(row.episode_id),
     seasonNumber: row.season_number === null ? null : Number(row.season_number),
     episodeNumber: row.episode_number === null ? null : Number(row.episode_number),
+    note: row.note === null ? null : String(row.note),
   }));
   const profiles = rowsOf("profiles").map((row) => ({
     id: String(row.uuid),
@@ -940,8 +982,8 @@ function importBackupData(sqlite: DatabaseSync, data: PortableData): void {
     sqlite
       .prepare(
         `INSERT INTO viewing_events
-          (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at)
-         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$eventType,$watchedAt,$durationMinutes,$episodeId,$seasonNumber,$episodeNumber,$watchedAt)`
+          (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,note,created_at)
+         VALUES ($uuid,$profileId,$mediaId,$mediaType,$title,$eventType,$watchedAt,$durationMinutes,$episodeId,$seasonNumber,$episodeNumber,$note,$watchedAt)`
       )
       .run({
         $uuid: item.id,
@@ -955,6 +997,7 @@ function importBackupData(sqlite: DatabaseSync, data: PortableData): void {
         $episodeId: item.episodeId ?? null,
         $seasonNumber: item.seasonNumber ?? null,
         $episodeNumber: item.episodeNumber ?? null,
+        $note: item.note ?? null,
       } as Record<string, SQLInputValue>);
   }
   for (const item of data.customLists) {
@@ -1086,7 +1129,8 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
           loadPreferences(sqlite).activeProfileId,
           args.movie as MediaSummary,
           args.watched as boolean,
-          args.watchedAt as string
+          args.watchedAt as string,
+          args.note as string | null | undefined
         );
         return undefined;
       case "get_episode_progress":
@@ -1099,7 +1143,15 @@ export function createFakeInvoke(sqlite: DatabaseSync) {
           args.episodes as Episode[],
           args.watched as boolean,
           args.watchedAt as string,
-          args.history as EpisodeHistoryInput | null | undefined
+          args.history as EpisodeHistoryInput | null | undefined,
+          args.note as string | null | undefined
+        );
+      case "list_viewing_events_for_media":
+        return listViewingEventsForMedia(
+          sqlite,
+          loadPreferences(sqlite).activeProfileId,
+          args.mediaId as number,
+          args.mediaType as string
         );
       case "list_tracked_series":
         return listTrackedSeries(sqlite, loadPreferences(sqlite).activeProfileId);
