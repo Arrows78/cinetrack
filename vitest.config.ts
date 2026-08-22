@@ -41,17 +41,21 @@ export default defineConfig({
       // components/pages/hooks — narrowing `include` would hide it.
       include: ["src/**/*.{ts,tsx}"],
       // Otherwise matches any sibling worktree's own src/ too (see the
-      // `test.exclude` comment above). The 5 app-bootstrap files below are
-      // pure composition/wiring (root render, router instance, the
-      // declarative route tree, the QueryClient config object, and
-      // App.tsx's top-level provider nesting + Tauri lifecycle wiring) with
-      // no branching logic of their own to isolate — unit-testing them
-      // would mean mounting the whole app tree, or asserting on config
-      // shape, neither of which exercises real behavior. Excluded from the
-      // coverage denominator so the global % reflects code that can
-      // actually be meaningfully tested; everything else (including other
-      // Tauri-adjacent modules like notification-service.ts/token-gate.tsx)
-      // stays in scope since it has real logic worth covering.
+      // `test.exclude` comment above). The 4 app-bootstrap files below are
+      // pure composition/wiring (root render, router instance, and the
+      // declarative route tree, plus App.tsx's top-level provider nesting +
+      // Tauri lifecycle wiring) with no branching logic of their own to
+      // isolate — unit-testing them would mean mounting the whole app tree,
+      // or asserting on config shape, neither of which exercises real
+      // behavior. Excluded from the coverage denominator so the global %
+      // reflects code that can actually be meaningfully tested; everything
+      // else (including other Tauri-adjacent modules like
+      // notification-service.ts/token-gate.tsx) stays in scope since it has
+      // real logic worth covering. src/app/query-client.ts used to be in
+      // this list too, but now exports `shouldDehydrateQuery` — the
+      // remote-vs-local persistence boundary enforced before anything is
+      // written to localStorage — which has real branching logic and is
+      // covered by src/app/__tests__/query-client.test.ts.
       exclude: [
         ...coverageConfigDefaults.exclude,
         ".claude/**",
@@ -59,7 +63,6 @@ export default defineConfig({
         "src/app/App.tsx",
         "src/app/router.tsx",
         "src/app/router-config.tsx",
-        "src/app/query-client.ts",
       ],
       // Global thresholds aren't meaningful yet (~10% overall, since most
       // UI has no tests at all — see the coverage report). Only enforce a
