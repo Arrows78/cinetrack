@@ -16,7 +16,7 @@ import { useAvailabilityAlerts } from "@/features/availability/use-availability-
 import { useTracking } from "@/features/tracking/use-tracking";
 import { PLATFORMS } from "@/shared/constants/discover";
 import { staggerDelayMs } from "@/shared/utils/animation";
-import { formatEpisodeCode, formatFullDate } from "@/shared/utils/format";
+import { formatEpisodeCode, formatFullDate, formatRelativeCountdown } from "@/shared/utils/format";
 import type { TrackingEntry, TrackingEntryType, TrackingScope } from "@/types/media";
 
 type ScopeFilter = TrackingScope | "all";
@@ -204,7 +204,10 @@ export function TrackingList({
 
       {Object.entries(groups).map(([date, entries], index) => (
         <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 2)}ms` }}>
-          <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
+            <Badge variant="secondary">{formatRelativeCountdown(date)}</Badge>
+          </div>
           <div className="mt-3 grid gap-2">
             {entries.map((entry) => (
               <ReleaseTile key={entry.id} entry={entry} showScopeBadge={showScopeBadge} />

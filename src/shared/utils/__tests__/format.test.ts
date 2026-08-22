@@ -1,3 +1,4 @@
+import { addDays, format as formatDateFns } from "date-fns";
 import { beforeEach, describe, expect, it } from "vitest";
 import i18n from "@/i18n";
 import {
@@ -6,6 +7,7 @@ import {
   formatEpisodeCode,
   formatEpisodeNumber,
   formatRating,
+  formatRelativeCountdown,
   formatRelativeDate,
   formatRuntime,
   formatWatchDurationBreakdown,
@@ -57,6 +59,53 @@ describe("formatRelativeDate", () => {
   it("falls back on missing or invalid input", () => {
     expect(formatRelativeDate(null)).toBe("Date inconnue");
     expect(formatRelativeDate("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("formatRelativeCountdown", () => {
+  const day = (offset: number) => formatDateFns(addDays(new Date(), offset), "yyyy-MM-dd");
+
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("shows 'Today' and 'Tomorrow' for the two nearest days", () => {
+    expect(formatRelativeCountdown(day(0))).toBe("Today");
+    expect(formatRelativeCountdown(day(1))).toBe("Tomorrow");
+  });
+
+  it("counts in days from 2 up to (not including) a full week", () => {
+    expect(formatRelativeCountdown(day(2))).toBe("In 2 days");
+    expect(formatRelativeCountdown(day(3))).toBe("In 3 days");
+    expect(formatRelativeCountdown(day(6))).toBe("In 6 days");
+  });
+
+  it("switches to week granularity at 7 days out, never showing 'In 0 weeks' or 'In 7 days'", () => {
+    expect(formatRelativeCountdown(day(7))).toBe("In 1 week");
+    expect(formatRelativeCountdown(day(9))).toBe("In 1 week");
+  });
+
+  it("rounds to the nearest week for dates further out", () => {
+    expect(formatRelativeCountdown(day(13))).toBe("In 2 weeks");
+    expect(formatRelativeCountdown(day(14))).toBe("In 2 weeks");
+    expect(formatRelativeCountdown(day(30))).toBe("In 4 weeks");
+  });
+
+  it("uses the active language", async () => {
+    await i18n.changeLanguage("fr");
+    expect(formatRelativeCountdown(day(0))).toBe("Aujourd'hui");
+    expect(formatRelativeCountdown(day(1))).toBe("Demain");
+    expect(formatRelativeCountdown(day(3))).toBe("Dans 3 jours");
+    expect(formatRelativeCountdown(day(7))).toBe("Dans 1 semaine");
+    expect(formatRelativeCountdown(day(14))).toBe("Dans 2 semaines");
+  });
+
+  it("falls back to the generic relative-date phrasing for a past date", () => {
+    expect(formatRelativeCountdown(day(-3))).toBe(formatRelativeDate(day(-3)));
+  });
+
+  it("falls back to the raw value for malformed input", () => {
+    expect(formatRelativeCountdown("not-a-date")).toBe("not-a-date");
   });
 });
 

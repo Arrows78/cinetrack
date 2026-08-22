@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, formatDistanceToNow, parseISO } from "date-fns";
 import { enUS, fr } from "date-fns/locale";
 import i18n from "@/i18n";
 
@@ -45,6 +45,49 @@ export const formatRelativeDate = (value?: string | null) => {
 
   try {
     return formatDistanceToNow(new Date(value), { addSuffix: true, locale: dateLocale() });
+  } catch {
+    return value;
+  }
+};
+
+const DAYS_PER_WEEK = 7;
+// Below this many days out, the countdown stays in day granularity ("In 6
+// days"); at or beyond it, it switches to week granularity ("In 1 week").
+const COUNTDOWN_WEEK_THRESHOLD_DAYS = 7;
+
+/**
+ * Short countdown chip for a Calendar/Upcoming date ("Today", "Tomorrow",
+ * "In 3 days", "In 2 weeks") — pairs with the exact date wherever a
+ * `CalendarEntry` is shown, rather than replacing it. `value` is a date-only
+ * string ("2026-08-08"), so this uses `parseISO` for the same reason
+ * `formatFullDate` does: `new Date(value)` would parse it as UTC midnight,
+ * which reads as the previous day in any negative-UTC-offset timezone.
+ *
+ * Granularity adapts to distance instead of always showing one unit, same
+ * spirit as `formatWatchDurationBreakdown`'s non-zero-unit rule: days count
+ * up to (but not including) a full week, then it switches to whole weeks —
+ * so it never shows something like "In 0 weeks" or "In 7 days" once a full
+ * week has passed. A date already in the past (shouldn't normally reach
+ * this — Calendar/Upcoming entries are always today or later — but a stale
+ * cache or a caller reusing this outside that context could still pass one)
+ * falls back to the generic relative-date phrasing instead of a nonsensical
+ * negative countdown.
+ */
+export const formatRelativeCountdown = (value: string): string => {
+  try {
+    const days = differenceInCalendarDays(parseISO(value), new Date());
+    // date-fns returns NaN rather than throwing for an unparseable date —
+    // unlike formatDate/formatRelativeDate's underlying calls, so this needs
+    // its own explicit guard to reach the same "return the raw value"
+    // fallback on malformed input.
+    if (Number.isNaN(days)) return value;
+    if (days < 0) return formatRelativeDate(value);
+    if (days === 0) return i18n.t("common.countdownToday");
+    if (days === 1) return i18n.t("common.countdownTomorrow");
+    if (days < COUNTDOWN_WEEK_THRESHOLD_DAYS) return i18n.t("common.countdownInDays", { count: days });
+
+    const weeks = Math.max(1, Math.round(days / DAYS_PER_WEEK));
+    return i18n.t("common.countdownInWeeks", { count: weeks });
   } catch {
     return value;
   }

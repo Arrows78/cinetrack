@@ -170,13 +170,16 @@ describe("TrackingList", () => {
     expect(within(pendingHeading.parentElement as HTMLElement).getByText("Pending Series")).toBeInTheDocument();
 
     // Dated entries, one panel per date, each showing only its own entries.
+    // The heading now sits in its own row (alongside the countdown chip
+    // added by formatRelativeCountdown — see tracking-list.tsx), so the
+    // panel is the heading's grandparent, not its direct parent.
     const sept1Heading = screen.getByRole("heading", { name: /1 September 2026/i });
-    const sept1Panel = sept1Heading.parentElement as HTMLElement;
+    const sept1Panel = sept1Heading.parentElement?.parentElement as HTMLElement;
     expect(within(sept1Panel).getByText("Mine Movie")).toBeInTheDocument();
     expect(within(sept1Panel).queryByText("Discovery Series")).not.toBeInTheDocument();
 
     const sept2Heading = screen.getByRole("heading", { name: /2 September 2026/i });
-    const sept2Panel = sept2Heading.parentElement as HTMLElement;
+    const sept2Panel = sept2Heading.parentElement?.parentElement as HTMLElement;
     expect(within(sept2Panel).getByText("Discovery Series")).toBeInTheDocument();
     expect(within(sept2Panel).getByText("S2E5 · The Return")).toBeInTheDocument();
     expect(within(sept2Panel).queryByText("Mine Movie")).not.toBeInTheDocument();
