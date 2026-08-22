@@ -67,7 +67,12 @@ describe("Pill", () => {
   it("omits both genreMovie and genreSeries when neither id nor providerId is given", () => {
     render(<Pill label="Untagged" />);
 
-    expect(searchOf("Untagged")).toEqual({ q: "Untagged", scope: "all", genreMovie: undefined, genreSeries: undefined });
+    expect(searchOf("Untagged")).toEqual({
+      q: "Untagged",
+      scope: "all",
+      genreMovie: undefined,
+      genreSeries: undefined,
+    });
   });
 
   it("forwards a custom className alongside its base styling", () => {

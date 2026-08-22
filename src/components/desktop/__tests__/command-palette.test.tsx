@@ -510,9 +510,7 @@ describe("CommandPalette", () => {
       await waitFor(() => screen.getByRole("button", { name: "Availability alert" }));
       fireEvent.click(screen.getByRole("button", { name: "Availability alert" }));
 
-      await waitFor(() =>
-        expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_TMDB_REGION, [])
-      );
+      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_TMDB_REGION, []));
     });
 
     it("marking watched runs the real toggle mutation with the cached movie", async () => {

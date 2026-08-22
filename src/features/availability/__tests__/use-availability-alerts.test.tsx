@@ -25,9 +25,7 @@ const alert: AvailabilityAlert = {
 } as AvailabilityAlert;
 
 const listAlertsMock = vi.fn(async (): Promise<AvailabilityAlert[]> => [alert]);
-const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<AvailabilityAlert | null>>(
-  async () => null
-);
+const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<AvailabilityAlert | null>>(async () => null);
 const toggleMock = vi.fn<
   (media: MediaSummary, region: string, providerIds: number[]) => Promise<AvailabilityAlert | null>
 >(async () => alert);

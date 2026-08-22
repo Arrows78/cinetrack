@@ -327,7 +327,9 @@ describe("TvTimeImportCard", () => {
     (await screen.findByRole("button", { name: "Import" })).click();
 
     await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ description: "Import failed", variant: "error" }))
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Import failed", variant: "error" })
+      )
     );
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("db write failed"));
   });
@@ -363,7 +365,12 @@ describe("TvTimeImportCard", () => {
         label: "Some Unresolved Movie",
         searchTitle: "Some Unresolved Movie",
         searchYear: null,
-        movie: { title: "Some Unresolved Movie", year: null, watchedAt: new Date().toISOString(), runtimeMinutes: null },
+        movie: {
+          title: "Some Unresolved Movie",
+          year: null,
+          watchedAt: new Date().toISOString(),
+          runtimeMinutes: null,
+        },
       },
     ];
     applyTvTimeImportMock.mockResolvedValueOnce({

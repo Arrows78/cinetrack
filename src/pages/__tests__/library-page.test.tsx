@@ -211,53 +211,53 @@ beforeAll(async () => {
 
 beforeEach(() => {
   libraryQueryMock.mockReset().mockReturnValue({
-      data: [
-        {
-          mediaId: 1,
-          mediaType: "movie",
-          title: "Dune",
-          posterPath: null,
-          backdropPath: null,
-          year: 2021,
-          rating: 8,
-          userRating: null,
-          genres: [],
-          status: "planned",
-          favourite: false,
-          updatedAt: "2026-01-02T00:00:00.000Z",
-        },
-        {
-          mediaId: 2,
-          mediaType: "series",
-          title: "Severance",
-          posterPath: null,
-          backdropPath: null,
-          year: 2022,
-          rating: 9,
-          userRating: null,
-          genres: [],
-          status: "watching",
-          favourite: false,
-          updatedAt: "2026-01-01T00:00:00.000Z",
-        },
-      ],
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    customListsState.data = [];
-    customListsState.isLoading = false;
-    customListsState.isError = false;
-    customListsState.error = null;
-    customListsState.refetch = vi.fn();
-    customListsState.create.mockReset().mockResolvedValue(undefined);
-    customListsState.remove.mockReset().mockResolvedValue(undefined);
-    customListItemsMock.mockClear();
-    listItemsErrorRefetchMock.mockReset();
-    listItemRemoveMock.mockReset().mockResolvedValue(undefined);
-    updatePreferenceMock.mockReset();
-    preferencesDataMock.mockReset().mockReturnValue({ libraryViewMode: "grid" });
+    data: [
+      {
+        mediaId: 1,
+        mediaType: "movie",
+        title: "Dune",
+        posterPath: null,
+        backdropPath: null,
+        year: 2021,
+        rating: 8,
+        userRating: null,
+        genres: [],
+        status: "planned",
+        favourite: false,
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+      {
+        mediaId: 2,
+        mediaType: "series",
+        title: "Severance",
+        posterPath: null,
+        backdropPath: null,
+        year: 2022,
+        rating: 9,
+        userRating: null,
+        genres: [],
+        status: "watching",
+        favourite: false,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+  customListsState.data = [];
+  customListsState.isLoading = false;
+  customListsState.isError = false;
+  customListsState.error = null;
+  customListsState.refetch = vi.fn();
+  customListsState.create.mockReset().mockResolvedValue(undefined);
+  customListsState.remove.mockReset().mockResolvedValue(undefined);
+  customListItemsMock.mockClear();
+  listItemsErrorRefetchMock.mockReset();
+  listItemRemoveMock.mockReset().mockResolvedValue(undefined);
+  updatePreferenceMock.mockReset();
+  preferencesDataMock.mockReset().mockReturnValue({ libraryViewMode: "grid" });
 });
 
 describe("LibraryPage — lists", () => {
@@ -471,13 +471,11 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
     fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
 
     const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });
-    expect(screen.getByText('Remove Only In List from this list?')).toBeInTheDocument();
+    expect(screen.getByText("Remove Only In List from this list?")).toBeInTheDocument();
     expect(listItemRemoveMock).not.toHaveBeenCalled();
     dialogConfirm.click();
 
-    await waitFor(() =>
-      expect(listItemRemoveMock).toHaveBeenCalledWith({ mediaId: 10, mediaType: "movie" })
-    );
+    await waitFor(() => expect(listItemRemoveMock).toHaveBeenCalledWith({ mediaId: 10, mediaType: "movie" }));
   });
 
   it("shows a translated error when confirming item removal rejects", async () => {
@@ -515,7 +513,6 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
 });
 
 describe("LibraryExplorer — lockedMediaType", () => {
-  
   it("hides the type filter and pre-applies it when locked to movies", async () => {
     renderExplorer({ lockedMediaType: "movie" });
 
@@ -552,7 +549,6 @@ describe("LibraryExplorer — lockedMediaType", () => {
 });
 
 describe("LibraryExplorer — favourites filter", () => {
-  
   it("filters down to favourites only and reflects the pressed state", async () => {
     libraryQueryMock.mockReturnValue({
       data: [
@@ -579,7 +575,6 @@ describe("LibraryExplorer — favourites filter", () => {
 });
 
 describe("LibraryExplorer — sorting", () => {
-  
   beforeEach(() => {
     // Title (asc) order: Apple, Banana, Cherry.
     // Rating (desc, null -> 0) order: Banana(9), Cherry(5), Apple(null).
@@ -630,7 +625,6 @@ describe("LibraryExplorer — sorting", () => {
 });
 
 describe("LibraryExplorer — status filter", () => {
-  
   beforeEach(() => {
     libraryQueryMock.mockReturnValue({
       data: [
@@ -667,7 +661,6 @@ describe("LibraryExplorer — status filter", () => {
 });
 
 describe("LibraryExplorer — onBrowseAll / browseAllLabel", () => {
-  
   it("renders the browse-all button and calls onBrowseAll when clicked", async () => {
     const onBrowseAll = vi.fn();
     renderExplorer({ onBrowseAll, browseAllLabel: "See all movies" });
@@ -708,7 +701,6 @@ describe("LibraryExplorer — onBrowseAll / browseAllLabel", () => {
 });
 
 describe("LibraryExplorer — empty states", () => {
-  
   it("shows the generic empty-library state with an explore-catalogue CTA when nothing matches at all", async () => {
     libraryQueryMock.mockReturnValue({
       data: [],
@@ -739,7 +731,6 @@ describe("LibraryExplorer — empty states", () => {
 });
 
 describe("LibraryExplorer — remote error states", () => {
-  
   it("renders a RemoteErrorState with working retry when the library query itself errors", async () => {
     const refetch = vi.fn();
     libraryQueryMock.mockReturnValue({

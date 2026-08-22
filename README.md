@@ -274,78 +274,76 @@ CineTrack aims to become a **private, local-first home for movie and TV tracking
 | `SYNC`         | Optional multi-device functionality                |
 | `SOCIAL`       | Sharing, profiles and community                    |
 
-
 ### 🟠 P1 — Core experience
 
 P1 should make CineTrack better at answering: **What can I watch now? What should I watch next? What am I waiting for?**
 
 #### Series tracking
 
-* [ ] **`TRACKING` — Add historical watch-date backfilling.**
-  When marking an older movie or episode as watched, offer **Watched now** and **Choose date**. For seasons, allow users to assign historical dates efficiently instead of opening every episode individually.
+- [ ] **`TRACKING` — Add historical watch-date backfilling.**
+      When marking an older movie or episode as watched, offer **Watched now** and **Choose date**. For seasons, allow users to assign historical dates efficiently instead of opening every episode individually.
 
-* [ ] **`TRACKING` — Add an explicit “Up to date” state for TV shows.**
-  Separate shows with an available unwatched episode from shows where every currently aired episode has been watched. Show the latter under **Up to date**, with the next known air date when available.
+- [ ] **`TRACKING` — Add an explicit “Up to date” state for TV shows.**
+      Separate shows with an available unwatched episode from shows where every currently aired episode has been watched. Show the latter under **Up to date**, with the next known air date when available.
 
-* [ ] **`TRACKING` — Show watched date next to episode air date.**
-  Build on the existing air-date display with information such as **Aired Mar 12 · Watched Mar 26 · 14 days later** to make catch-up gaps visible.
+- [ ] **`TRACKING` — Show watched date next to episode air date.**
+      Build on the existing air-date display with information such as **Aired Mar 12 · Watched Mar 26 · 14 days later** to make catch-up gaps visible.
 
-* [ ] **`TRACKING` — Improve bulk season history editing.**
-  When marking a full season watched, allow choosing how dates are assigned: **Today**, **One selected date**, or individual dates afterwards. Keep episode-level corrections possible.
+- [ ] **`TRACKING` — Improve bulk season history editing.**
+      When marking a full season watched, allow choosing how dates are assigned: **Today**, **One selected date**, or individual dates afterwards. Keep episode-level corrections possible.
 
 #### Streaming services
 
-* [ ] **`STREAMING` — Add profile-level “My streaming services”.**
-  Let each profile declare which services it subscribes to in Settings — Netflix, Prime Video, Disney+, Max, Apple TV+, etc. Use these preferences to prioritise **Watch Tonight**, Discover and **Where to watch** based on what is actually accessible to that profile.
+- [ ] **`STREAMING` — Add profile-level “My streaming services”.**
+      Let each profile declare which services it subscribes to in Settings — Netflix, Prime Video, Disney+, Max, Apple TV+, etc. Use these preferences to prioritise **Watch Tonight**, Discover and **Where to watch** based on what is actually accessible to that profile.
 
-* [ ] **`STREAMING` — Add a provider-aware availability alert editor.**
-  When enabling an availability alert, allow **Any streaming service**, **My streaming services**, or a custom selection of providers. Let users override the default on a per-title basis.
+- [ ] **`STREAMING` — Add a provider-aware availability alert editor.**
+      When enabling an availability alert, allow **Any streaming service**, **My streaming services**, or a custom selection of providers. Let users override the default on a per-title basis.
 
-* [ ] **`STREAMING` — Expose notification lead time in Settings.**
-  Surface the existing lead-time capability with presets such as **At release**, **1 hour before**, **1 day before**, and **3 days before**.
+- [ ] **`STREAMING` — Expose notification lead time in Settings.**
+      Surface the existing lead-time capability with presets such as **At release**, **1 hour before**, **1 day before**, and **3 days before**.
 
 #### Watch Tonight & recommendations
 
-* [ ] **`DISCOVERY` — Add “Not interested” to Watch Tonight.**
-  Let users dismiss a suggestion without adding it to their library first. The title should stop resurfacing for that profile, with an immediate **Undo** action after dismissal.
+- [ ] **`DISCOVERY` — Add “Not interested” to Watch Tonight.**
+      Let users dismiss a suggestion without adding it to their library first. The title should stop resurfacing for that profile, with an immediate **Undo** action after dismissal.
 
-* [ ] **`DISCOVERY` — Add recommendation feedback.**
-  Support signals such as **Already seen elsewhere**, **More like this**, and **Less like this**. Use this feedback alongside ratings, favourites, genres and viewing history to improve future recommendations.
+- [ ] **`DISCOVERY` — Add recommendation feedback.**
+      Support signals such as **Already seen elsewhere**, **More like this**, and **Less like this**. Use this feedback alongside ratings, favourites, genres and viewing history to improve future recommendations.
 
-* [ ] **`DISCOVERY` — Explain Watch Tonight recommendations.**
-  Surface lightweight reasons such as **Because you liked Arrival**, **Matches your sci-fi favourites**, **Under 2 hours**, or **Available on Netflix**.
+- [ ] **`DISCOVERY` — Explain Watch Tonight recommendations.**
+      Surface lightweight reasons such as **Because you liked Arrival**, **Matches your sci-fi favourites**, **Under 2 hours**, or **Available on Netflix**.
 
-* [ ] **`DISCOVERY` — Add a “Surprise me from my library” mode.**
-  Let Watch Tonight pick only from planned or unwatched titles already saved by the user, while keeping genre, runtime and streaming-service filters.
+- [ ] **`DISCOVERY` — Add a “Surprise me from my library” mode.**
+      Let Watch Tonight pick only from planned or unwatched titles already saved by the user, while keeping genre, runtime and streaming-service filters.
 
 #### Data portability
 
-* [ ] **`DATA` — Import Letterboxd history.**
-  Import watched films, diary dates, ratings, tags and rewatches from Letterboxd CSV exports. Preserve separate diary entries instead of reducing everything to a watched flag.
+- [ ] **`DATA` — Import Letterboxd history.**
+      Import watched films, diary dates, ratings, tags and rewatches from Letterboxd CSV exports. Preserve separate diary entries instead of reducing everything to a watched flag.
 
-* [ ] **`DATA` — Import Trakt history.**
-  Import movie and episode history, ratings, watchlists and lists while preserving original watch dates and repeated watches.
+- [ ] **`DATA` — Import Trakt history.**
+      Import movie and episode history, ratings, watchlists and lists while preserving original watch dates and repeated watches.
 
-* [ ] **`DATA` — Import IMDb data.**
-  Support IMDb ratings and watchlist CSV exports as a lightweight migration path for users moving an existing collection into CineTrack.
+- [ ] **`DATA` — Import IMDb data.**
+      Support IMDb ratings and watchlist CSV exports as a lightweight migration path for users moving an existing collection into CineTrack.
 
-* [ ] **`DATA` — Add portable CSV exports beyond the JSON backup.**
-  Keep the complete JSON backup for CineTrack round-trips, but also provide plain CSV exports for **Library**, **Viewing history**, **Episodes**, **Ratings**, and **Lists**. The exported data should be readable in a spreadsheet and reusable by other applications.
+- [ ] **`DATA` — Add portable CSV exports beyond the JSON backup.**
+      Keep the complete JSON backup for CineTrack round-trips, but also provide plain CSV exports for **Library**, **Viewing history**, **Episodes**, **Ratings**, and **Lists**. The exported data should be readable in a spreadsheet and reusable by other applications.
 
 #### Onboarding & desktop experience
 
-* [ ] **`UX` — Add onboarding for the no-token path.**
-  Now that local features work without a TMDB token, make this explicit during first run. Explain what works locally, what TMDB unlocks, and offer two clear actions: **Add a TMDB token now** and **Set it up later in Settings**.
+- [ ] **`UX` — Add onboarding for the no-token path.**
+      Now that local features work without a TMDB token, make this explicit during first run. Explain what works locally, what TMDB unlocks, and offer two clear actions: **Add a TMDB token now** and **Set it up later in Settings**.
 
-* [ ] **`UX` — Add a “System” theme mode.**
-  Add **System** alongside the existing Light and Dark modes and automatically follow operating-system appearance changes.
+- [ ] **`UX` — Add a “System” theme mode.**
+      Add **System** alongside the existing Light and Dark modes and automatically follow operating-system appearance changes.
 
-* [ ] **`UX` — Show app version and build information.**
-  Display the CineTrack version and build number in Settings and make the information easy to copy for bug reports or diagnostics.
+- [ ] **`UX` — Show app version and build information.**
+      Display the CineTrack version and build number in Settings and make the information easy to copy for bug reports or diagnostics.
 
-* [ ] **`UX` — Expose image-cache maintenance in Settings.**
-  Show the current image-cache size and provide a **Clear image cache** action, including the amount of disk space that will be recovered.
-
+- [ ] **`UX` — Expose image-cache maintenance in Settings.**
+      Show the current image-cache size and provide a **Clear image cache** action, including the amount of disk space that will be recovered.
 
 ### 🟡 P2 — Power features
 
@@ -353,65 +351,64 @@ P2 focuses on users with larger libraries and longer viewing histories, while ma
 
 #### Library & lists
 
-* [ ] **`LIBRARY` — Add smart lists.**
-  Create automatically updated lists from rules such as **Unwatched + Horror + under 100 min**, **My Services + rating ≥ 8**, or **Series with episodes waiting**.
+- [ ] **`LIBRARY` — Add smart lists.**
+      Create automatically updated lists from rules such as **Unwatched + Horror + under 100 min**, **My Services + rating ≥ 8**, or **Series with episodes waiting**.
 
-* [ ] **`LIBRARY` — Add saved filters.**
-  Save reusable views such as **Short movies on my services**, **Paused shows**, or **Favourite sci-fi** and reopen them in one click.
+- [ ] **`LIBRARY` — Add saved filters.**
+      Save reusable views such as **Short movies on my services**, **Paused shows**, or **Favourite sci-fi** and reopen them in one click.
 
-* [ ] **`LIBRARY` — Add removable active-filter chips.**
-  Display active filters directly above filtered Library and Search results. Let users remove individual conditions without reopening the filter controls.
+- [ ] **`LIBRARY` — Add removable active-filter chips.**
+      Display active filters directly above filtered Library and Search results. Let users remove individual conditions without reopening the filter controls.
 
 #### Discovery
 
-* [ ] **`DISCOVERY` — Add franchise and collection progress.**
-  For TMDB movie collections, show progress such as **3 / 8 watched** with watched, planned and missing entries. Add an action to **Add unwatched movies to library/list**.
+- [ ] **`DISCOVERY` — Add franchise and collection progress.**
+      For TMDB movie collections, show progress such as **3 / 8 watched** with watched, planned and missing entries. Add an action to **Add unwatched movies to library/list**.
 
-* [ ] **`DISCOVERY` — Add people-based personal discovery.**
-  Use viewing history to surface recommendations such as **Movies from directors you watch most**, **More with actors you like**, and similar personalised rails.
+- [ ] **`DISCOVERY` — Add people-based personal discovery.**
+      Use viewing history to surface recommendations such as **Movies from directors you watch most**, **More with actors you like**, and similar personalised rails.
 
-* [ ] **`DISCOVERY` — Add “Hide watched” to discovery surfaces.**
-  Give users a persistent option to hide already watched titles from Discover and Watch Tonight when they specifically want something new.
+- [ ] **`DISCOVERY` — Add “Hide watched” to discovery surfaces.**
+      Give users a persistent option to hide already watched titles from Discover and Watch Tonight when they specifically want something new.
 
 #### Calendar
 
-* [ ] **`CALENDAR` — Add relative release countdowns.**
-  Display chips such as **Tomorrow**, **In 3 days**, or **In 2 weeks** alongside the exact release date in Calendar and Upcoming views.
+- [ ] **`CALENDAR` — Add relative release countdowns.**
+      Display chips such as **Tomorrow**, **In 3 days**, or **In 2 weeks** alongside the exact release date in Calendar and Upcoming views.
 
-* [ ] **`CALENDAR` — Add a weekly personal agenda.**
-  Provide a compact **This week** view containing tracked movie releases, season premieres, upcoming episodes and relevant availability changes for the active profile.
+- [ ] **`CALENDAR` — Add a weekly personal agenda.**
+      Provide a compact **This week** view containing tracked movie releases, season premieres, upcoming episodes and relevant availability changes for the active profile.
 
 #### Personal history & insights
 
-* [ ] **`INSIGHTS` — Add “On this day”.**
-  Add a small, opt-in Home surface showing what the user watched on the same date in previous years, for example **On August 21, 2023 you watched Oppenheimer**. Reuse existing viewing-history data rather than introducing a new tracking mechanism.
+- [ ] **`INSIGHTS` — Add “On this day”.**
+      Add a small, opt-in Home surface showing what the user watched on the same date in previous years, for example **On August 21, 2023 you watched Oppenheimer**. Reuse existing viewing-history data rather than introducing a new tracking mechanism.
 
-* [ ] **`INSIGHTS` — Add a dedicated monthly recap.**
-  Build on existing statistics with a summary of movies watched, episodes watched, watch time, top-rated title, favourite genre and biggest binge for the month.
+- [ ] **`INSIGHTS` — Add a dedicated monthly recap.**
+      Build on existing statistics with a summary of movies watched, episodes watched, watch time, top-rated title, favourite genre and biggest binge for the month.
 
-* [ ] **`INSIGHTS` — Expand rewatch analytics.**
-  Build beyond the existing most-rewatched record with total rewatches, rewatch share, favourite comfort titles and rewatch activity over time.
+- [ ] **`INSIGHTS` — Expand rewatch analytics.**
+      Build beyond the existing most-rewatched record with total rewatches, rewatch share, favourite comfort titles and rewatch activity over time.
 
-* [ ] **`INSIGHTS` — Add director and actor statistics.**
-  Show the directors and actors that appear most frequently across the user's viewing history.
+- [ ] **`INSIGHTS` — Add director and actor statistics.**
+      Show the directors and actors that appear most frequently across the user's viewing history.
 
-* [ ] **`INSIGHTS` — Add rating distribution and evolution.**
-  Show personal rating distribution, average rating by month/year and how rating behaviour evolves over time.
+- [ ] **`INSIGHTS` — Add rating distribution and evolution.**
+      Show personal rating distribution, average rating by month/year and how rating behaviour evolves over time.
 
-* [ ] **`INSIGHTS` — Add watch milestones.**
-  Surface meaningful milestones such as **1,000 episodes watched**, **500 hours tracked**, **100 different directors**, or **50 completed series**.
+- [ ] **`INSIGHTS` — Add watch milestones.**
+      Surface meaningful milestones such as **1,000 episodes watched**, **500 hours tracked**, **100 different directors**, or **50 completed series**.
 
-* [ ] **`INSIGHTS` — Add shareable monthly and milestone cards.**
-  Extend the existing Wrapped image-export system to monthly recaps and selected personal milestones without requiring a social account.
+- [ ] **`INSIGHTS` — Add shareable monthly and milestone cards.**
+      Extend the existing Wrapped image-export system to monthly recaps and selected personal milestones without requiring a social account.
 
 #### Desktop experience
 
-* [ ] **`UX` — Add a keyboard-first Quick Log command.**
-  Provide a shortcut or command palette to search a title and immediately **Mark watched**, **Log watch**, **Add to library**, or **Open next episode** without navigating through multiple pages.
+- [ ] **`UX` — Add a keyboard-first Quick Log command.**
+      Provide a shortcut or command palette to search a title and immediately **Mark watched**, **Log watch**, **Add to library**, or **Open next episode** without navigating through multiple pages.
 
-* [ ] **`UX` — Add more translations.**
-  Expand beyond English and French based on actual user and contributor demand.
-
+- [ ] **`UX` — Add more translations.**
+      Expand beyond English and French based on actual user and contributor demand.
 
 ### 🟢 P3 — Product bets
 
@@ -421,47 +418,47 @@ Most require a durable online identity, backend infrastructure, moderation, or a
 
 #### Multi-device
 
-* [ ] **`SYNC` — Add optional multi-device sync.**
-  Sync library items, viewing events, episode progress, lists, ratings, notes and profile preferences while keeping the local SQLite database fully usable offline.
+- [ ] **`SYNC` — Add optional multi-device sync.**
+      Sync library items, viewing events, episode progress, lists, ratings, notes and profile preferences while keeping the local SQLite database fully usable offline.
 
-* [ ] **`SYNC` — Add visible conflict and sync-state management.**
-  Show **Last synced**, pending local changes, sync errors and conflicts instead of silently treating local and remote state as identical.
+- [ ] **`SYNC` — Add visible conflict and sync-state management.**
+      Show **Last synced**, pending local changes, sync errors and conflicts instead of silently treating local and remote state as identical.
 
 #### Sharing
 
-* [ ] **`SOCIAL` — Add shareable public lists.**
-  Allow selected lists to generate an optional read-only public link without exposing the rest of the user's profile.
+- [ ] **`SOCIAL` — Add shareable public lists.**
+      Allow selected lists to generate an optional read-only public link without exposing the rest of the user's profile.
 
-* [ ] **`SOCIAL` — Add opt-in public profiles.**
-  Let users explicitly publish favourites, selected statistics, lists, diary activity and reviews while keeping local/private as the default.
+- [ ] **`SOCIAL` — Add opt-in public profiles.**
+      Let users explicitly publish favourites, selected statistics, lists, diary activity and reviews while keeping local/private as the default.
 
-* [ ] **`SOCIAL` — Add public reviews.**
-  Extend personal reviews with an opt-in public mode, spoiler controls and links back to the associated watch entry.
+- [ ] **`SOCIAL` — Add public reviews.**
+      Extend personal reviews with an opt-in public mode, spoiler controls and links back to the associated watch entry.
 
 #### Social layer
 
-* [ ] **`SOCIAL` — Add following and followers.**
-  Give online profiles a durable social graph that users can opt into.
+- [ ] **`SOCIAL` — Add following and followers.**
+      Give online profiles a durable social graph that users can opt into.
 
-* [ ] **`SOCIAL` — Add an activity feed.**
-  Surface selected watches, ratings, reviews, completed shows and published lists from followed profiles.
+- [ ] **`SOCIAL` — Add an activity feed.**
+      Surface selected watches, ratings, reviews, completed shows and published lists from followed profiles.
 
-* [ ] **`SOCIAL` — Add spoiler-safe episode discussions.**
-  Allow comments at episode level while hiding discussion content until that episode has been marked watched.
+- [ ] **`SOCIAL` — Add spoiler-safe episode discussions.**
+      Allow comments at episode level while hiding discussion content until that episode has been marked watched.
 
-* [ ] **`SOCIAL` — Add topic-based community groups.**
-  Create opt-in communities around genres, franchises, shows or other interests, with discussions, recommendations and shared lists.
+- [ ] **`SOCIAL` — Add topic-based community groups.**
+      Create opt-in communities around genres, franchises, shows or other interests, with discussions, recommendations and shared lists.
 
 #### Community interactions
 
-* [ ] **`SOCIAL` — Add action-based achievements and badges.**
-  Reward meaningful behaviours rather than simple watch-count milestones, for example **Completed a 10-season series**, **Finished an entire franchise**, or **Watched a movie from 20 different countries**.
+- [ ] **`SOCIAL` — Add action-based achievements and badges.**
+      Reward meaningful behaviours rather than simple watch-count milestones, for example **Completed a 10-season series**, **Finished an entire franchise**, or **Watched a movie from 20 different countries**.
 
-* [ ] **`SOCIAL` — Add per-episode emotional reactions.**
-  Let users record a lightweight reaction such as ❤️, 😂, 😭, 😱 or 🤯 alongside the existing episode rating. If community features are enabled, optionally show aggregated reactions after the episode has been watched.
+- [ ] **`SOCIAL` — Add per-episode emotional reactions.**
+      Let users record a lightweight reaction such as ❤️, 😂, 😭, 😱 or 🤯 alongside the existing episode rating. If community features are enabled, optionally show aggregated reactions after the episode has been watched.
 
-* [ ] **`SOCIAL` — Add character voting per episode.**
-  After watching an episode, optionally answer **Who was your favourite character?** and compare the result with other viewers without revealing responses before the episode is marked watched.
+- [ ] **`SOCIAL` — Add character voting per episode.**
+      After watching an episode, optionally answer **Who was your favourite character?** and compare the result with other viewers without revealing responses before the episode is marked watched.
 
 ## 🙌 Contributing
 

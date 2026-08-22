@@ -253,9 +253,11 @@ describe("SettingsPage — preferences", () => {
 
   beforeEach(() => {
     authRequired = false;
-    listProfilesMock.mockReset().mockResolvedValue([
-      { id: "default", name: "Default", avatar: null, createdAt: "2026-01-01", supabaseUserId: null },
-    ]);
+    listProfilesMock
+      .mockReset()
+      .mockResolvedValue([
+        { id: "default", name: "Default", avatar: null, createdAt: "2026-01-01", supabaseUserId: null },
+      ]);
     getPreferencesMock.mockReset().mockResolvedValue(preferencesData);
     updatePreferenceMock.mockReset().mockResolvedValue(preferencesData);
     toastMock.mockReset();
@@ -279,9 +281,7 @@ describe("SettingsPage — preferences", () => {
 
     screen.getByRole("button", { name: "Blue" }).click();
 
-    await waitFor(() =>
-      expect(updatePreferenceMock).toHaveBeenCalledWith("accentColor", "blue")
-    );
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("accentColor", "blue"));
   });
 
   it("updates the language preference and the active i18n language", async () => {
@@ -311,9 +311,7 @@ describe("SettingsPage — preferences", () => {
 
     screen.getByRole("button", { name: "Series" }).click();
 
-    await waitFor(() =>
-      expect(updatePreferenceMock).toHaveBeenCalledWith("defaultSearchType", "series")
-    );
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("defaultSearchType", "series"));
   });
 
   it("toggles reduce-motion, compact mode and spoiler protection", async () => {
@@ -321,14 +319,10 @@ describe("SettingsPage — preferences", () => {
     await screen.findByText("Default profile");
 
     screen.getByRole("button", { name: "Reduce animations" }).click();
-    await waitFor(() =>
-      expect(updatePreferenceMock).toHaveBeenCalledWith("reduceMotion", true)
-    );
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("reduceMotion", true));
 
     screen.getByRole("button", { name: "Compact mode" }).click();
-    await waitFor(() =>
-      expect(updatePreferenceMock).toHaveBeenCalledWith("compactMode", true)
-    );
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("compactMode", true));
 
     screen.getByRole("button", { name: "Spoiler protection" }).click();
     await waitFor(() =>
@@ -345,9 +339,7 @@ describe("SettingsPage — preferences", () => {
     screen.getByRole("button", { name: "Calendar notifications" }).click();
 
     await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(updatePreferenceMock).toHaveBeenCalledWith("notificationsEnabled", true)
-    );
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("notificationsEnabled", true));
   });
 
   it("does not enable calendar notifications when permission is refused", async () => {
@@ -358,8 +350,6 @@ describe("SettingsPage — preferences", () => {
     screen.getByRole("button", { name: "Calendar notifications" }).click();
 
     await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
-    expect(updatePreferenceMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ key: "notificationsEnabled" })
-    );
+    expect(updatePreferenceMock).not.toHaveBeenCalledWith(expect.objectContaining({ key: "notificationsEnabled" }));
   });
 });

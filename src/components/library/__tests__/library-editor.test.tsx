@@ -309,9 +309,7 @@ describe("LibraryEditor", () => {
     fireEvent.change(screen.getByLabelText("Private notes"), { target: { value: "   " } });
     screen.getByRole("button", { name: /save/i }).click();
 
-    expect(save).toHaveBeenCalledWith(
-      expect.objectContaining({ tags: ["comfort watch", "rewatch"], notes: null })
-    );
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ tags: ["comfort watch", "rewatch"], notes: null }));
   });
 
   it("renders the form with no Remove button for a title that isn't in the library yet", () => {
