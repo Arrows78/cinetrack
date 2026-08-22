@@ -18,34 +18,39 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 ### Discover
 
 - Browse popular, top-rated, currently airing, and upcoming films and TV series.
-- Explore the catalogue by genre and streaming provider, or get a random pick with "Watch tonight".
-- Search films and TV series together, with filters by media type.
-- View detailed media pages with synopses, cast members, genres, status, trailers, recommendations, and streaming availability by region.
+- Explore the catalogue by genre and streaming provider, or get a random pick with "Watch tonight" — featuring one large pick with lower-key alternates, filterable to your own streaming services.
+- Search films and TV series together, with filters by media type, active-filter chips, and reusable saved filters.
+- View detailed media pages with synopses, cast members, genres, status, trailers, recommendations, streaming availability by region, and — for movies that belong to one — franchise/collection progress with an action to add every missing entry to your library.
+- Personalised "from directors you watch most" and "more with actors you like" rails, built from your own completed library.
+- Hide already-watched titles from Discover and Watch Tonight with a persistent toggle.
 
 ### Organise
 
 - Add films and TV series to your library (planned/watching/paused/completed/dropped) or custom lists.
-- Filter and sort your library by media type, status, date, title, or rating.
+- Filter and sort your library by media type, status, date, title, or rating, with removable active-filter chips and reusable saved filters.
+- Create smart lists — automatically updated views defined by rules (status, genre, runtime, rating, streaming provider, or "series with episodes waiting") — evaluated live against your current library.
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
 - Manage multiple profiles, each with its own library and history — switch, create, or remove local-only profiles freely offline; with optional Supabase sign-in configured (see "Personalise" below), a profile can also be linked to an account so it's only reachable by that account.
 - Import a TV Time GDPR export (watched episodes and movies with their original dates, plus the to-watch list) as a one-time bulk migration.
+- Back up and restore your full library as a portable JSON file, optionally to a custom folder (e.g. one already synced by iCloud Drive, OneDrive, or Dropbox) instead of the default location.
 
 ### Track TV series
 
-- Mark individual episodes as watched or unwatched.
+- Mark individual episodes as watched or unwatched, optionally attaching a note to that specific watch (kept separate from earlier watches of the same title, so a rewatch never overwrites a previous note).
 - Mark an entire season or series at once.
-- View overall and season-by-season progress.
+- View overall and season-by-season progress, including an explicit "Up to date" state for shows where every currently aired episode has been watched.
 - Quickly resume series already in progress from the home page.
-- Get notified when a release date or new episode is coming up via the calendar, and set streaming-availability alerts.
+- Get notified when a release date or new episode is coming up via the calendar — with relative countdown chips and a compact weekly agenda on the home page — and set streaming-availability alerts.
 
 ### Personalise
 
 - Switch between light and dark themes and several accent colours.
 - Enable compact mode or reduced motion.
 - Set a default filter for search.
+- Declare which streaming services you subscribe to, used to prioritise Watch Tonight and Discover.
 - Sign in with Supabase (email OTP or social OAuth) when optional sign-in is configured; the app otherwise works fully offline with a local-only profile.
-- Review viewing statistics and a yearly "wrapped" summary.
+- Review viewing statistics and a yearly "wrapped" summary, plus a monthly recap, expanded rewatch analytics, personal rating distribution and evolution, watch milestones, and an opt-in "On this day" home surface revisiting past watches.
 
 ## 🧱 Technology stack
 
@@ -211,7 +216,8 @@ cinetrack/
 │   │   ├── media/                #   TMDB client + MediaProvider, search/discovery hooks, image cache
 │   │   ├── preferences/          #   Theme, language, region, and other user settings
 │   │   ├── progress/              #   Movie/episode watched state and series progress
-│   │   ├── stats/                #   Viewing statistics and yearly wrap-up
+│   │   ├── saved-filters/         #   Reusable, named Library/Search filter views
+│   │   ├── stats/                #   Viewing statistics, insights, and yearly wrap-up
 │   │   ├── tvtime/                #   One-time bulk import from a TV Time export
 │   │   └── watch-tonight/        #   Random pick service
 │   ├── hooks/                   # Generic, repository-free hooks (debounce, confetti)
@@ -246,7 +252,7 @@ The SQLite schema (a single migration, see `src/db/migrations/001-initial-schema
 
 - `profiles`, `preferences`;
 - `library_items`, `viewing_events`, `seen_movies`, `episode_progress`, `tracked_series`;
-- `custom_lists`, `custom_list_items`;
+- `custom_lists`, `custom_list_items`, `smart_lists`, `saved_filters`;
 - `availability_alerts`, `availability_snapshots`;
 - `activity_log`.
 
@@ -283,7 +289,7 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 - [ ] **`TRACKING` — Add historical watch-date backfilling.**
       When marking an older movie or episode as watched, offer **Watched now** and **Choose date**. For seasons, allow users to assign historical dates efficiently instead of opening every episode individually.
 
-- [ ] **`TRACKING` — Add an explicit “Up to date” state for TV shows.**
+- [x] **`TRACKING` — Add an explicit “Up to date” state for TV shows.**
       Separate shows with an available unwatched episode from shows where every currently aired episode has been watched. Show the latter under **Up to date**, with the next known air date when available.
 
 - [ ] **`TRACKING` — Show watched date next to episode air date.**
@@ -294,7 +300,7 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 
 #### Streaming services
 
-- [ ] **`STREAMING` — Add profile-level “My streaming services”.**
+- [x] **`STREAMING` — Add profile-level “My streaming services”.**
       Let each profile declare which services it subscribes to in Settings — Netflix, Prime Video, Disney+, Max, Apple TV+, etc. Use these preferences to prioritise **Watch Tonight**, Discover and **Where to watch** based on what is actually accessible to that profile.
 
 - [ ] **`STREAMING` — Add a provider-aware availability alert editor.**
@@ -333,7 +339,7 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 
 #### Onboarding & desktop experience
 
-- [ ] **`UX` — Add onboarding for the no-token path.**
+- [x] **`UX` — Add onboarding for the no-token path.**
       Now that local features work without a TMDB token, make this explicit during first run. Explain what works locally, what TMDB unlocks, and offer two clear actions: **Add a TMDB token now** and **Set it up later in Settings**.
 
 - [ ] **`UX` — Add a “System” theme mode.**
@@ -351,53 +357,53 @@ P2 focuses on users with larger libraries and longer viewing histories, while ma
 
 #### Library & lists
 
-- [ ] **`LIBRARY` — Add smart lists.**
+- [x] **`LIBRARY` — Add smart lists.**
       Create automatically updated lists from rules such as **Unwatched + Horror + under 100 min**, **My Services + rating ≥ 8**, or **Series with episodes waiting**.
 
-- [ ] **`LIBRARY` — Add saved filters.**
+- [x] **`LIBRARY` — Add saved filters.**
       Save reusable views such as **Short movies on my services**, **Paused shows**, or **Favourite sci-fi** and reopen them in one click.
 
-- [ ] **`LIBRARY` — Add removable active-filter chips.**
+- [x] **`LIBRARY` — Add removable active-filter chips.**
       Display active filters directly above filtered Library and Search results. Let users remove individual conditions without reopening the filter controls.
 
 #### Discovery
 
-- [ ] **`DISCOVERY` — Add franchise and collection progress.**
+- [x] **`DISCOVERY` — Add franchise and collection progress.**
       For TMDB movie collections, show progress such as **3 / 8 watched** with watched, planned and missing entries. Add an action to **Add unwatched movies to library/list**.
 
-- [ ] **`DISCOVERY` — Add people-based personal discovery.**
+- [x] **`DISCOVERY` — Add people-based personal discovery.**
       Use viewing history to surface recommendations such as **Movies from directors you watch most**, **More with actors you like**, and similar personalised rails.
 
-- [ ] **`DISCOVERY` — Add “Hide watched” to discovery surfaces.**
+- [x] **`DISCOVERY` — Add “Hide watched” to discovery surfaces.**
       Give users a persistent option to hide already watched titles from Discover and Watch Tonight when they specifically want something new.
 
 #### Calendar
 
-- [ ] **`CALENDAR` — Add relative release countdowns.**
+- [x] **`CALENDAR` — Add relative release countdowns.**
       Display chips such as **Tomorrow**, **In 3 days**, or **In 2 weeks** alongside the exact release date in Calendar and Upcoming views.
 
-- [ ] **`CALENDAR` — Add a weekly personal agenda.**
+- [x] **`CALENDAR` — Add a weekly personal agenda.**
       Provide a compact **This week** view containing tracked movie releases, season premieres, upcoming episodes and relevant availability changes for the active profile.
 
 #### Personal history & insights
 
-- [ ] **`INSIGHTS` — Add “On this day”.**
+- [x] **`INSIGHTS` — Add “On this day”.**
       Add a small, opt-in Home surface showing what the user watched on the same date in previous years, for example **On August 21, 2023 you watched Oppenheimer**. Reuse existing viewing-history data rather than introducing a new tracking mechanism.
 
-- [ ] **`INSIGHTS` — Add a dedicated monthly recap.**
+- [x] **`INSIGHTS` — Add a dedicated monthly recap.**
       Build on existing statistics with a summary of movies watched, episodes watched, watch time, top-rated title, favourite genre and biggest binge for the month.
 
-- [ ] **`INSIGHTS` — Expand rewatch analytics.**
+- [x] **`INSIGHTS` — Expand rewatch analytics.**
       Build beyond the existing most-rewatched record with total rewatches, rewatch share, favourite comfort titles and rewatch activity over time.
 
 - [ ] **`INSIGHTS` — Add director and actor statistics.**
-      Show the directors and actors that appear most frequently across the user's viewing history.
+      Show the directors and actors that appear most frequently across the user's viewing history. _Deferred: no credits data is cached client-side today, and fetching it for every watched title isn't cheap enough for a v1 — worth reconsidering alongside a proper credits cache._
 
-- [ ] **`INSIGHTS` — Add rating distribution and evolution.**
+- [x] **`INSIGHTS` — Add rating distribution and evolution.**
       Show personal rating distribution, average rating by month/year and how rating behaviour evolves over time.
 
-- [ ] **`INSIGHTS` — Add watch milestones.**
-      Surface meaningful milestones such as **1,000 episodes watched**, **500 hours tracked**, **100 different directors**, or **50 completed series**.
+- [x] **`INSIGHTS` — Add watch milestones.**
+      Surface meaningful milestones such as **1,000 episodes watched**, **500 hours tracked**, **100 different directors**, or **50 completed series**. _Director-count milestones are on hold for the same reason as director/actor statistics above; episode, movie, hour, and completed-series milestones are live._
 
 - [ ] **`INSIGHTS` — Add shareable monthly and milestone cards.**
       Extend the existing Wrapped image-export system to monthly recaps and selected personal milestones without requiring a social account.
