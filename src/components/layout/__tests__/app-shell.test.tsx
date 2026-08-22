@@ -35,6 +35,10 @@ vi.mock("@/components/layout/mobile-tab-bar", () => ({
   MobileTabBar: () => <div data-testid="mobile-tab-bar" />,
 }));
 
+vi.mock("@/components/layout/profile-switcher", () => ({
+  ProfileSwitcher: () => <div data-testid="profile-switcher" />,
+}));
+
 vi.mock("@/components/layout/sidebar-nav", () => ({
   SidebarNav: ({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) => (
     <div data-testid="sidebar-nav" data-collapsed={collapsed}>

@@ -4,6 +4,7 @@ import { PanelLeftClose, PanelLeft, Moon, Sun, LogOut } from "lucide-react";
 import { navigationSections, useNavigationItems, type NavigationItem } from "@/shared/constants/navigation";
 import { cn } from "@/shared/lib/cn";
 import { BrandMarkIcon } from "@/components/layout/brand-mark-icon";
+import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -246,23 +247,37 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
           </div>
         )}
 
-        {/* Account card */}
+        {/* Account card — the avatar/name area doubles as the profile
+            switcher's trigger (see ProfileSwitcher's `children` prop), so
+            switching profiles reads as part of this card rather than a
+            second, unrelated control bolted elsewhere in the sidebar.
+            Sign-out stays its own separate button: a different action, not
+            part of the profile-switch flow. */}
         {!collapsed ? (
-          <div className={cn(FOOTER_SURFACE_CLASS, "flex items-center gap-3 p-2.5")}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
-              {getInitials(userName)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">
-                {user?.user_metadata?.full_name ??
-                  user?.user_metadata?.name ??
-                  user?.email ??
-                  t("sidebar.defaultAccount")}
-              </p>
-              <p className="truncate text-overline uppercase text-muted-foreground">
-                {user?.user_metadata?.role ?? t("sidebar.defaultMember")}
-              </p>
-            </div>
+          <div className={cn(FOOTER_SURFACE_CLASS, "flex items-center gap-1 p-1.5")}>
+            <ProfileSwitcher>
+              <button
+                type="button"
+                aria-label={t("sidebar.switchProfile")}
+                title={t("sidebar.switchProfile")}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left transition-colors hover:bg-foreground/5"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
+                  {getInitials(userName)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {user?.user_metadata?.full_name ??
+                      user?.user_metadata?.name ??
+                      user?.email ??
+                      t("sidebar.defaultAccount")}
+                  </p>
+                  <p className="truncate text-overline uppercase text-muted-foreground">
+                    {user?.user_metadata?.role ?? t("sidebar.defaultMember")}
+                  </p>
+                </div>
+              </button>
+            </ProfileSwitcher>
             <button
               type="button"
               aria-label={t("sidebar.signOut")}
@@ -275,19 +290,18 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
           </div>
         ) : (
           <div className={cn(FOOTER_SURFACE_CLASS, "space-y-1 p-1")}>
-            <div
-              className="flex h-9 w-full items-center justify-center rounded-xl"
-              title={
-                user?.user_metadata?.full_name ??
-                user?.user_metadata?.name ??
-                user?.email ??
-                t("sidebar.defaultAccount")
-              }
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
-                {getInitials(userName)}
-              </div>
-            </div>
+            <ProfileSwitcher>
+              <button
+                type="button"
+                aria-label={t("sidebar.switchProfile")}
+                title={t("sidebar.switchProfile")}
+                className="flex h-9 w-full items-center justify-center rounded-xl transition-colors hover:bg-foreground/5"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
+                  {getInitials(userName)}
+                </div>
+              </button>
+            </ProfileSwitcher>
             <button
               type="button"
               aria-label={t("sidebar.signOut")}

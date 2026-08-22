@@ -146,4 +146,23 @@ describe("ProfileSwitcher", () => {
     await waitFor(() => expect(warnMock).toHaveBeenCalled());
     expect(screen.queryByRole("button", { name: "Switch profile" })).not.toBeInTheDocument();
   });
+
+  describe("with a custom trigger (sidebar-nav's account card)", () => {
+    it("opens the picker from the given trigger instead of the built-in pill button", async () => {
+      renderSwitcher({ children: <button type="button">Account trigger</button> });
+
+      expect(screen.queryByRole("button", { name: "Switch profile" })).not.toBeInTheDocument();
+      fireEvent.click(await screen.findByRole("button", { name: "Account trigger" }));
+
+      expect(await screen.findByText("Alex")).toBeInTheDocument();
+    });
+
+    it("still renders the given trigger, inert, when the profiles query fails", async () => {
+      listProfilesMock.mockReset().mockRejectedValue(new Error("sqlite unavailable"));
+      renderSwitcher({ children: <button type="button">Account trigger</button> });
+
+      await waitFor(() => expect(warnMock).toHaveBeenCalled());
+      expect(screen.getByRole("button", { name: "Account trigger" })).toBeInTheDocument();
+    });
+  });
 });

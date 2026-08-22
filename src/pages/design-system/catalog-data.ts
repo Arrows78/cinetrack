@@ -543,6 +543,14 @@ export const componentInventory = [
     "Synchronizes reduced-motion preferences with the rendered application."
   ),
   component(
+    "ProfileSwitcher",
+    "components/layout/profile-switcher.tsx",
+    "Layout",
+    "pattern",
+    "reference",
+    "Lets the user switch the active local profile from a trigger embedded in the sidebar's account card."
+  ),
+  component(
     "RootErrorBoundary",
     "components/layout/root-error-boundary.tsx",
     "Layout",
@@ -829,6 +837,22 @@ export const componentInventory = [
     "feature",
     "live",
     "Groups upcoming releases, episodes and availability alerts, shared by /tracking and the /movies and /series 'Upcoming' tab."
+  ),
+  component(
+    "AddWatchNoteDialog",
+    "components/media/add-watch-note-dialog.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Captures an optional per-watch note at the moment a movie or episode is marked watched."
+  ),
+  component(
+    "WatchHistoryPanel",
+    "components/media/watch-history-panel.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Lists a title's past watches that carry a note, most recent first."
   ),
   component(
     "BackupTools",

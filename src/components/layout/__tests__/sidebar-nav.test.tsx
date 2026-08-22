@@ -186,12 +186,12 @@ describe("SidebarNav", () => {
       expect(screen.getByText("U")).toBeInTheDocument();
     });
 
-    it("shows the user's name and initials in the collapsed avatar-only card", () => {
+    it("shows the user's initials in the collapsed avatar-only card, behind the profile-switch trigger", () => {
       authUser = { user_metadata: { full_name: "Ada Lovelace" } } as unknown as User;
       renderSidebar({ collapsed: true });
 
       expect(screen.getByText("AL")).toBeInTheDocument();
-      expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: i18n.t("sidebar.switchProfile") })).toBeInTheDocument();
     });
 
     it("signs out when the sign-out button is clicked, expanded and collapsed", () => {

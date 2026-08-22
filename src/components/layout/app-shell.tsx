@@ -5,6 +5,7 @@ import { cn } from "@/shared/lib/cn";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CommandPalette } from "@/components/desktop/command-palette";
+import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -81,6 +82,7 @@ export function AppShell() {
                 <h1 className="text-base font-semibold">{t("sidebar.brand.name")}</h1>
               </div>
             </div>
+            <ProfileSwitcher collapsed />
           </header>
 
           {/* Desktop back button */}

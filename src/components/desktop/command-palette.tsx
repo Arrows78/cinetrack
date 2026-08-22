@@ -1,8 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useRouterState } from "@tanstack/react-router";
-import { Bell, BellOff, Bookmark, BookmarkCheck, Eye, EyeOff, Film, Moon, Search, Sun, Tv } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  Bookmark,
+  BookmarkCheck,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Film,
+  Moon,
+  Search,
+  Sun,
+  Tv,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useNavigationItems } from "@/shared/constants/navigation";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -11,9 +25,12 @@ import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { notificationService } from "@/features/desktop/notification-service";
+import { logger } from "@/features/diagnostics/logger";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { IconTooltip } from "@/components/ui/tooltip";
+import { toast } from "@/components/ui/use-toast";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
@@ -27,6 +44,12 @@ interface PaletteItem {
   icon: LucideIcon;
   section: "contextual" | "command" | "title";
   run: () => void;
+  // Only ever set on a movie title result — lets that row render an extra
+  // "Quick Log" affordance (mark watched without leaving the palette). Series
+  // results deliberately don't get one: "watched" isn't a single well-defined
+  // action for a series (which episode?), and guessing at one from a bare
+  // search result risks logging progress the user didn't intend.
+  quickLogMovie?: MediaSummary;
 }
 
 type CurrentDetailMedia =
@@ -204,6 +227,7 @@ export function CommandPalette() {
       icon: media.mediaType === "movie" ? Film : Tv,
       section: "title",
       run: () => navigate(media.mediaType === "movie" ? `/movies/${media.id}` : `/series/${media.id}`),
+      quickLogMovie: media.mediaType === "movie" ? media : undefined,
     }));
   }, [titleSearch.items, debouncedQuery, navigate]);
 
@@ -396,26 +420,73 @@ function PaletteRow({
   const Icon = item.icon;
   const isSelected = index === selectedIndex;
   return (
-    <button
-      ref={(node) => onRegisterRef(index, node)}
-      id={`${COMMAND_PALETTE_ROW_ID_PREFIX}-${index}`}
-      type="button"
+    <div
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
+        "flex w-full items-center gap-1 rounded-xl transition-colors",
         isSelected ? "bg-muted" : "hover:bg-muted/60"
       )}
-      aria-selected={isSelected}
-      onMouseEnter={() => onHover(index)}
-      onClick={item.run}
     >
-      <Icon className="size-4 text-primary" />
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      {item.sublabel ? (
-        <>
-          {" "}
-          <span className="shrink-0 text-xs text-muted-foreground">{item.sublabel}</span>
-        </>
-      ) : null}
-    </button>
+      <button
+        ref={(node) => onRegisterRef(index, node)}
+        id={`${COMMAND_PALETTE_ROW_ID_PREFIX}-${index}`}
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left"
+        aria-selected={isSelected}
+        onMouseEnter={() => onHover(index)}
+        onClick={item.run}
+      >
+        <Icon className="size-4 text-primary" />
+        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        {item.sublabel ? (
+          <>
+            {" "}
+            <span className="shrink-0 text-xs text-muted-foreground">{item.sublabel}</span>
+          </>
+        ) : null}
+      </button>
+      {item.quickLogMovie ? <QuickLogButton media={item.quickLogMovie} /> : null}
+    </div>
+  );
+}
+
+// Sits as a sibling of the row's own <button> (never nested inside it —
+// nested interactive elements are invalid HTML and would make the row's
+// click target ambiguous) so a click here can mark the movie watched
+// without triggering the row's own navigate-away action.
+function QuickLogButton({ media }: { media: MediaSummary }) {
+  const { t } = useTranslation();
+  const movieSeen = useMovieSeen(media.id);
+  const alreadyWatched = Boolean(movieSeen.data);
+  const label = t(alreadyWatched ? "commandPalette.quickLogDone" : "commandPalette.quickLog");
+
+  const handleClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (alreadyWatched || movieSeen.isSaving) return;
+    void (async () => {
+      try {
+        await movieSeen.toggleMovieSeen({ movie: media, watched: true });
+        toast({ description: t("commandPalette.quickLogSuccess", { title: media.title }), variant: "success" });
+      } catch (error) {
+        logger.error(`CommandPalette: quick log failed for movie ${media.id}: ${String(error)}`);
+        toast({ description: t("commandPalette.quickLogError"), variant: "error" });
+      }
+    })();
+  };
+
+  return (
+    <IconTooltip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        disabled={alreadyWatched || movieSeen.isSaving}
+        onClick={handleClick}
+        className={cn(
+          "mr-2 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+          alreadyWatched ? "text-success" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )}
+      >
+        <CheckCircle2 className="size-4" aria-hidden="true" />
+      </button>
+    </IconTooltip>
   );
 }

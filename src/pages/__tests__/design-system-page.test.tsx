@@ -79,7 +79,7 @@ describe("DesignSystemPage", () => {
     );
 
     expect(screen.getByRole("heading", { level: 1, name: "Design system" })).toBeInTheDocument();
-    expect(screen.getByText("75 components shown")).toBeInTheDocument();
+    expect(screen.getByText("77 components shown")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Component group"), { target: { value: "UI primitives" } });
     expect(screen.getByText("20 components shown")).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("DesignSystemPage", () => {
     expect(screen.getByText("No component found")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
-    expect(screen.getByText("75 components shown")).toBeInTheDocument();
+    expect(screen.getByText("77 components shown")).toBeInTheDocument();
 
     const patternSearch = screen.getByPlaceholderText("Search titles, people or genres");
     fireEvent.change(patternSearch, { target: { value: "Arrival" } });

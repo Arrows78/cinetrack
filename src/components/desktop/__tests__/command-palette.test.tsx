@@ -56,6 +56,9 @@ vi.mock("@/features/progress/progress-repository", () => ({
   },
 }));
 
+const toastMock = vi.fn();
+vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
+
 const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<{ id: string } | null>>(async () => null);
 const toggleAlertMock = vi.fn<(media: MediaSummary, region: string, providerIds: number[]) => Promise<{ id: string }>>(
   async () => ({ id: "alert-1" })
@@ -134,8 +137,9 @@ describe("CommandPalette", () => {
     navigateMock.mockClear();
     updatePreferenceMock.mockClear();
     useSearchMock.mockClear();
-    isMovieSeenMock.mockClear();
-    toggleMovieSeenMock.mockClear();
+    isMovieSeenMock.mockClear().mockResolvedValue(false);
+    toggleMovieSeenMock.mockClear().mockResolvedValue(undefined);
+    toastMock.mockClear();
     getAlertMock.mockClear();
     toggleAlertMock.mockClear();
     requestPermissionMock.mockClear();
@@ -236,6 +240,85 @@ describe("CommandPalette", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dune: Prophecy" }));
 
     expect(navigateMock).toHaveBeenCalledWith({ to: "/series/43" });
+  });
+
+  describe("quick log on a movie search result", () => {
+    it("offers a quick-log action on a movie result but not on a series result", async () => {
+      searchItems = [
+        movie({ id: 42, mediaType: "movie", title: "Dune", year: 2021 }),
+        movie({ id: 43, mediaType: "series", title: "Dune: Prophecy", year: undefined }),
+      ];
+      renderPalette();
+      openPalette();
+
+      typeQuery("du");
+      await waitFor(() => screen.getByText("Titles"));
+
+      expect(screen.getAllByRole("button", { name: "Mark as watched" })).toHaveLength(1);
+    });
+
+    it("marks a movie watched from the palette without navigating away or closing it", async () => {
+      searchItems = [movie({ id: 42, mediaType: "movie", title: "Dune", year: 2021 })];
+      renderPalette();
+      openPalette();
+
+      typeQuery("du");
+      await waitFor(() => screen.getByText("Titles"));
+      fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
+
+      await waitFor(() =>
+        expect(toggleMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ id: 42, title: "Dune" }), true)
+      );
+      expect(navigateMock).not.toHaveBeenCalled();
+      expect(screen.getByText("Titles")).toBeInTheDocument();
+    });
+
+    it("shows a success toast after quick-logging a movie", async () => {
+      searchItems = [movie({ id: 42, mediaType: "movie", title: "Dune", year: 2021 })];
+      renderPalette();
+      openPalette();
+
+      typeQuery("du");
+      await waitFor(() => screen.getByText("Titles"));
+      fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith({ description: 'Marked "Dune" as watched.', variant: "success" })
+      );
+    });
+
+    it("shows a translated error toast, not the raw error, when the quick-log mutation fails", async () => {
+      toggleMovieSeenMock.mockRejectedValueOnce(new Error("boom"));
+      searchItems = [movie({ id: 42, mediaType: "movie", title: "Dune", year: 2021 })];
+      renderPalette();
+      openPalette();
+
+      typeQuery("du");
+      await waitFor(() => screen.getByText("Titles"));
+      fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith({
+          description: "Couldn't mark this as watched. Please try again.",
+          variant: "error",
+        })
+      );
+    });
+
+    it("disables the quick-log action once the movie is already watched, and it's a no-op if clicked", async () => {
+      isMovieSeenMock.mockResolvedValue(true);
+      searchItems = [movie({ id: 42, mediaType: "movie", title: "Dune", year: 2021 })];
+      renderPalette();
+      openPalette();
+
+      typeQuery("du");
+      await waitFor(() => screen.getByText("Titles"));
+
+      const button = await screen.findByRole("button", { name: "Already watched" });
+      expect(button).toBeDisabled();
+      fireEvent.click(button);
+      expect(toggleMovieSeenMock).not.toHaveBeenCalled();
+    });
   });
 
   it("toggles open/closed with the Ctrl+K and Cmd+K shortcuts", () => {
