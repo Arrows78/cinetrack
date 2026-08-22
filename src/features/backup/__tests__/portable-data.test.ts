@@ -13,7 +13,7 @@ vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 describe("portableData", () => {
-  useTestSqlite();
+  const db = useTestSqlite();
 
   it("exports the current state and can round-trip it back in", async () => {
     const { portableData } = await import("../portable-data");
@@ -49,6 +49,59 @@ describe("portableData", () => {
 
     const restoredNote = (await portableData.export()).data.viewingEvents.find((event) => event.mediaId === 2)?.note;
     expect(restoredNote).toBe("Loved it");
+  });
+
+  // Regression check for a real bug: smart_lists and saved_filters were both
+  // added to PROFILE_SCOPED_TABLES (so a restore's purge step already
+  // deletes them) but were never added to PortableData's export/import at
+  // all — a restore-from-backup silently wiped every smart list and saved
+  // filter a profile had, since nothing re-inserted them afterward.
+  it("round-trips a smart list and a saved filter through export and import", async () => {
+    const { portableData } = await import("../portable-data");
+    const { libraryRepository } = await import("@/features/library/library-repository");
+
+    // A real repository call first, so getDatabase() has already run
+    // migrations before these tables are touched directly — smart_lists/
+    // saved_filters have no TS repository wired into the fake invoke()
+    // backend yet (only the Rust command layer), so this test seeds them
+    // with raw SQL against the same in-memory database, the same way the
+    // Rust-side regression test for this exact bug does.
+    await libraryRepository.save(makeMedia({ id: 3, title: "Unrelated" }), { status: "planned" });
+
+    const rules = JSON.stringify({
+      status: "any",
+      mediaType: "movie",
+      genre: "Horror",
+      maxRuntimeMinutes: 100,
+      minRating: null,
+      provider: "any",
+      hasEpisodeWaiting: false,
+    });
+    db.current
+      .prepare(
+        `INSERT INTO smart_lists (uuid, profile_id, name, rules, created_at, updated_at)
+         VALUES ('sl1', ?, 'Short horror', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      )
+      .run(DEFAULT_PROFILE_ID, rules);
+    db.current
+      .prepare(
+        `INSERT INTO saved_filters (uuid, profile_id, page, name, filters, created_at, updated_at)
+         VALUES ('sf1', ?, 'library', 'Paused shows', '{"statusFilter":"paused"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      )
+      .run(DEFAULT_PROFILE_ID);
+
+    const backup = await portableData.export();
+    expect(backup.data.smartLists).toHaveLength(1);
+    expect(backup.data.smartLists[0]?.name).toBe("Short horror");
+    expect(backup.data.savedFilters).toHaveLength(1);
+    expect(backup.data.savedFilters[0]?.name).toBe("Paused shows");
+
+    await portableData.import(backup);
+
+    const smartListCount = db.current.prepare("SELECT COUNT(*) as count FROM smart_lists").get();
+    const savedFilterCount = db.current.prepare("SELECT COUNT(*) as count FROM saved_filters").get();
+    expect(smartListCount?.count).toBe(1);
+    expect(savedFilterCount?.count).toBe(1);
   });
 
   it("folds a legacy backup's watchlist array into planned library rows, dropping entries that already exist in the library", async () => {

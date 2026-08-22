@@ -13,6 +13,8 @@ use crate::commands::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
 use crate::commands::library::{LibraryItem, LibraryRow, LibraryStatus};
 use crate::commands::profiles::{ProfileRow, UserProfile};
 use crate::commands::progress::{EpisodeProgress, TrackedSeriesItem};
+use crate::commands::saved_filters::{SavedFilter, SavedFilterRow};
+use crate::commands::smart_lists::{SmartList, SmartListRow};
 use crate::commands::stats::{ViewingEvent, ViewingEventType};
 use crate::database::new_uuid;
 use crate::error::ApiError;
@@ -50,6 +52,8 @@ pub struct PortableData {
     pub custom_list_items: Vec<CustomListItem>,
     pub availability_snapshots: Vec<AvailabilitySnapshot>,
     pub availability_alerts: Vec<AvailabilityAlert>,
+    pub smart_lists: Vec<SmartList>,
+    pub saved_filters: Vec<SavedFilter>,
 }
 
 fn parse_number_array(raw: &str) -> Vec<i64> {
@@ -214,6 +218,8 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
     let custom_list_items = export_table!(tx, "custom_list_items", CustomListItemRow);
     let availability_snapshots = export_table!(tx, "availability_snapshots", SnapshotRow);
     let availability_alerts = export_table!(tx, "availability_alerts", AlertRow);
+    let smart_lists = export_table!(tx, "smart_lists", SmartListRow);
+    let saved_filters = export_table!(tx, "saved_filters", SavedFilterRow);
 
     tx.commit().await.map_err(ApiError::from)?;
 
@@ -419,6 +425,14 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
                 created_at: row.created_at,
             })
             .collect(),
+        smart_lists: smart_lists
+            .into_iter()
+            .map(SmartList::try_from)
+            .collect::<Result<Vec<_>, _>>()?,
+        saved_filters: saved_filters
+            .into_iter()
+            .map(SavedFilter::try_from)
+            .collect::<Result<Vec<_>, _>>()?,
     })
 }
 
@@ -685,6 +699,35 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
                 .push_bind(item.enabled)
                 .push_bind(&item.created_at)
                 .push_bind(&item.created_at);
+        }
+    );
+
+    import_table!(
+        tx,
+        data.smart_lists,
+        "INSERT INTO smart_lists (uuid,profile_id,name,rules,created_at,updated_at) ",
+        |b, item| {
+            b.push_bind(&item.id)
+                .push_bind(&item.profile_id)
+                .push_bind(&item.name)
+                .push_bind(serde_json::to_string(&item.rules).unwrap())
+                .push_bind(&item.created_at)
+                .push_bind(&item.updated_at);
+        }
+    );
+
+    import_table!(
+        tx,
+        data.saved_filters,
+        "INSERT INTO saved_filters (uuid,profile_id,page,name,filters,created_at,updated_at) ",
+        |b, item| {
+            b.push_bind(&item.id)
+                .push_bind(&item.profile_id)
+                .push_bind(&item.page)
+                .push_bind(&item.name)
+                .push_bind(serde_json::to_string(&item.filters).unwrap())
+                .push_bind(&item.created_at)
+                .push_bind(&item.updated_at);
         }
     );
 
@@ -1123,6 +1166,29 @@ mod tests {
             table_columns(&pool, "preferences").await,
             sorted(vec!["key", "value", "updated_at"])
         );
+        assert_eq!(
+            table_columns(&pool, "smart_lists").await,
+            sorted(vec![
+                "uuid",
+                "profile_id",
+                "name",
+                "rules",
+                "created_at",
+                "updated_at"
+            ]),
+        );
+        assert_eq!(
+            table_columns(&pool, "saved_filters").await,
+            sorted(vec![
+                "uuid",
+                "profile_id",
+                "page",
+                "name",
+                "filters",
+                "created_at",
+                "updated_at",
+            ]),
+        );
     }
 
     #[tokio::test]
@@ -1397,6 +1463,22 @@ mod tests {
         .await
         .unwrap();
 
+        sqlx::query(
+            "INSERT INTO smart_lists (uuid, profile_id, name, rules, created_at, updated_at)
+             VALUES ('sl1', 'default', 'Short horror', '{\"genre\":\"Horror\",\"maxRuntimeMinutes\":100}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO saved_filters (uuid, profile_id, page, name, filters, created_at, updated_at)
+             VALUES ('sf1', 'default', 'library', 'Paused shows', '{\"statusFilter\":\"paused\"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
         let exported = export_impl(&pool).await.unwrap();
 
         assert_eq!(exported.seen_movies.len(), 1);
@@ -1457,6 +1539,17 @@ mod tests {
         assert_eq!(exported.availability_alerts.len(), 1);
         assert_eq!(exported.availability_alerts[0].provider_ids, vec![8]);
 
+        // Regression check for a real bug: smart_lists/saved_filters were
+        // missing from PortableData entirely — both tables are in
+        // PROFILE_SCOPED_TABLES, so import_impl's purge already deleted them
+        // on every restore, but nothing re-inserted them since they were
+        // never exported in the first place. A restore silently wiped every
+        // smart list and saved filter a profile had.
+        assert_eq!(exported.smart_lists.len(), 1);
+        assert_eq!(exported.smart_lists[0].name, "Short horror");
+        assert_eq!(exported.saved_filters.len(), 1);
+        assert_eq!(exported.saved_filters[0].page, "library");
+
         import_impl(&pool, exported).await.unwrap();
 
         for (table, expected_count) in [
@@ -1471,6 +1564,8 @@ mod tests {
             ("custom_list_items", 1),
             ("availability_snapshots", 1),
             ("availability_alerts", 1),
+            ("smart_lists", 1),
+            ("saved_filters", 1),
         ] {
             let count: (i64,) =
                 sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))

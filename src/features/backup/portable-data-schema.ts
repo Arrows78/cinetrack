@@ -181,6 +181,45 @@ export const availabilityAlertSchema = z.object({
   createdAt: z.string(),
 });
 
+// Mirrors SmartListRules (src/types/media.ts) exactly — Rust never inspects
+// this shape (it's stored/round-tripped as opaque JSON), so this is the only
+// place that structurally validates a smart list surviving a backup import.
+const smartListRulesSchema = z.object({
+  status: z.union([libraryStatus, z.literal("any")]),
+  mediaType: z.union([mediaType, z.literal("any")]),
+  genre: z.string().nullable(),
+  maxRuntimeMinutes: z.number().nullable(),
+  minRating: z.number().nullable(),
+  provider: z.union([z.literal("any"), z.literal("mine"), z.number()]),
+  hasEpisodeWaiting: z.boolean(),
+});
+
+export const smartListSchema = z.object({
+  id: z.string(),
+  profileId: z.string(),
+  name: z.string(),
+  rules: smartListRulesSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+// Mirrors LibraryFilterState | SearchFilterState (src/types/media.ts) —
+// deliberately permissive (a partial-looking object still parses) since,
+// like smart list rules, nothing on the Rust side inspects this shape and a
+// saved filter missing a field just means that control resets to its own
+// default when reapplied, not a hard failure.
+const savedFilterStateSchema = z.record(z.string(), z.unknown());
+
+export const savedFilterSchema = z.object({
+  id: z.string(),
+  profileId: z.string(),
+  page: z.union([z.literal("library"), z.literal("search")]),
+  name: z.string(),
+  filters: savedFilterStateSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
 // Generous upper bounds — far beyond anything a real single-user library
 // would ever contain — so a corrupted or hostile payload can't force an
 // unbounded insert loop against SQLite (each array is inserted row-by-row
@@ -207,4 +246,6 @@ export const portableDataSchema = z.object({
   customListItems: z.array(customListItemSchema).max(MAX_EVENT_ITEMS).optional(),
   availabilitySnapshots: z.array(availabilitySnapshotSchema).max(MAX_LIST_ITEMS).optional(),
   availabilityAlerts: z.array(availabilityAlertSchema).max(MAX_LIST_ITEMS).optional(),
+  smartLists: z.array(smartListSchema).max(MAX_LISTS).optional(),
+  savedFilters: z.array(savedFilterSchema).max(MAX_LISTS).optional(),
 });

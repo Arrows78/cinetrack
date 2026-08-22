@@ -819,6 +819,23 @@ function exportBackupData(sqlite: DatabaseSync): PortableData {
     enabled: Boolean(row.enabled),
     createdAt: String(row.created_at),
   }));
+  const smartLists = rowsOf("smart_lists").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id),
+    name: String(row.name),
+    rules: JSON.parse(String(row.rules)),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
+  const savedFilters = rowsOf("saved_filters").map((row) => ({
+    id: String(row.uuid),
+    profileId: String(row.profile_id),
+    page: String(row.page),
+    name: String(row.name),
+    filters: JSON.parse(String(row.filters)),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }));
 
   return {
     seenMovies,
@@ -833,6 +850,8 @@ function exportBackupData(sqlite: DatabaseSync): PortableData {
     customListItems,
     availabilitySnapshots,
     availabilityAlerts,
+    smartLists,
+    savedFilters,
   } as PortableData;
 }
 
@@ -1061,6 +1080,37 @@ function importBackupData(sqlite: DatabaseSync, data: PortableData): void {
         $providerIds: JSON.stringify(item.providerIds),
         $enabled: item.enabled ? 1 : 0,
         $createdAt: item.createdAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.smartLists) {
+    sqlite
+      .prepare(
+        `INSERT INTO smart_lists (uuid,profile_id,name,rules,created_at,updated_at)
+         VALUES ($uuid,$profileId,$name,$rules,$createdAt,$updatedAt)`
+      )
+      .run({
+        $uuid: item.id,
+        $profileId: item.profileId,
+        $name: item.name,
+        $rules: JSON.stringify(item.rules),
+        $createdAt: item.createdAt,
+        $updatedAt: item.updatedAt,
+      } as Record<string, SQLInputValue>);
+  }
+  for (const item of data.savedFilters) {
+    sqlite
+      .prepare(
+        `INSERT INTO saved_filters (uuid,profile_id,page,name,filters,created_at,updated_at)
+         VALUES ($uuid,$profileId,$page,$name,$filters,$createdAt,$updatedAt)`
+      )
+      .run({
+        $uuid: item.id,
+        $profileId: item.profileId,
+        $page: item.page,
+        $name: item.name,
+        $filters: JSON.stringify(item.filters),
+        $createdAt: item.createdAt,
+        $updatedAt: item.updatedAt,
       } as Record<string, SQLInputValue>);
   }
 }

@@ -5,6 +5,8 @@ import type {
   CustomListItem,
   EpisodeProgress,
   LibraryItem,
+  SavedFilter,
+  SmartList,
   TrackedSeriesItem,
   UserPreferences,
   UserProfile,
@@ -34,6 +36,8 @@ export interface PortableData {
   customListItems: CustomListItem[];
   availabilitySnapshots: AvailabilitySnapshot[];
   availabilityAlerts: AvailabilityAlert[];
+  smartLists: SmartList[];
+  savedFilters: SavedFilter[];
 }
 
 export const emptyData = (): PortableData => ({
@@ -49,6 +53,8 @@ export const emptyData = (): PortableData => ({
   customListItems: [],
   availabilitySnapshots: [],
   availabilityAlerts: [],
+  smartLists: [],
+  savedFilters: [],
 });
 
 export const mediaType = (value: unknown) => (value === "movie" ? ("movie" as const) : ("series" as const));
