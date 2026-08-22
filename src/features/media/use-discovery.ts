@@ -33,6 +33,12 @@ export function usePeopleSearch(query: string) {
     enabled: query.trim().length >= 2,
   });
 }
+export function usePopularPeople() {
+  return useQuery({
+    queryKey: queryKeys.remote.popularPeople,
+    queryFn: () => mediaRepository.getPopularPeople(),
+  });
+}
 export function usePerson(personId: number) {
   return useQuery({
     queryKey: queryKeys.remote.person(personId),
