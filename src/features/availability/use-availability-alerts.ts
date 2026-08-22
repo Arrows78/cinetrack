@@ -18,6 +18,16 @@ export function useAvailabilityAlerts() {
   return { ...query, remove: removeMutation.mutateAsync };
 }
 
+// Not profile-scoped (see queryKeys.local.availabilitySnapshots's own
+// comment) — every profile shares the same cache. Backs the smart-lists
+// provider rule (see smart-list-evaluation.ts).
+export function useAvailabilitySnapshots() {
+  return useQuery({
+    queryKey: queryKeys.local.availabilitySnapshots,
+    queryFn: () => availabilityRepository.listSnapshots(),
+  });
+}
+
 export function useAvailabilityAlert(
   media: MediaSummary,
   region: string,

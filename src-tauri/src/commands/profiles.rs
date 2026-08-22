@@ -355,6 +355,14 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
+        sqlx::query(
+            "INSERT INTO smart_lists (uuid, profile_id, name, rules, created_at, updated_at)
+             VALUES ('sl1', $1, 'My Smart List', '{}', 'now', 'now')",
+        )
+        .bind(&created.id)
+        .execute(&pool)
+        .await
+        .unwrap();
         // custom_list_items cascades transitively via custom_lists, not profile_id directly.
         sqlx::query(
             "INSERT INTO custom_list_items (uuid, list_id, media_id, media_type, title, position, added_at, updated_at)

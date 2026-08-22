@@ -355,6 +355,55 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "add note to viewing_events",
         statements: &["ALTER TABLE viewing_events ADD COLUMN note TEXT"],
     },
+    Migration {
+        // Ported verbatim from src/db/migrations/007-add-smart-lists.ts. A
+        // smart list is a saved, named rule set evaluated live against the
+        // current library every time it's opened — never a stored/cached
+        // list of matching media ids. `rules` is a single JSON TEXT column
+        // (same pattern as library_items.genres/tags) since the rule shape
+        // is one small fixed struct, not something SQL needs to filter on —
+        // evaluation happens entirely client-side in TypeScript.
+        version: 14,
+        name: "add smart lists",
+        statements: &[
+            r#"CREATE TABLE smart_lists (
+          uuid TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          rules TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )"#,
+            "CREATE INDEX idx_smart_lists_profile_updated ON smart_lists(profile_id, updated_at DESC)",
+        ],
+    },
+    Migration {
+        // Ported verbatim from src/db/migrations/008-add-saved-filters.ts. A
+        // saved filter is a named snapshot of one page's own filter-control
+        // state (LibraryExplorer's type/status/favourites/list/sort/search,
+        // or SearchPage's scope/genre/provider) — reopening it just means
+        // "set that page's filter state to this JSON blob," entirely
+        // client-side, so this table (like smart_lists.rules) stores an
+        // opaque JSON TEXT column rather than relational columns per filter
+        // dimension. `page` distinguishes which page a row belongs to since
+        // the two pages' filter shapes are unrelated — a Library-saved
+        // filter should never show up in Search's own saved-filters list or
+        // vice versa.
+        version: 15,
+        name: "add saved filters",
+        statements: &[
+            r#"CREATE TABLE saved_filters (
+          uuid TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
+          page TEXT NOT NULL,
+          name TEXT NOT NULL,
+          filters TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )"#,
+            "CREATE INDEX idx_saved_filters_profile_page_updated ON saved_filters(profile_id, page, updated_at DESC)",
+        ],
+    },
 ];
 
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
@@ -519,7 +568,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 13);
+        assert_eq!(version.0, 15);
 
         let mut tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -541,7 +590,9 @@ mod tests {
                 "library_items",
                 "preferences",
                 "profiles",
+                "saved_filters",
                 "seen_movies",
+                "smart_lists",
                 "tracked_series",
                 "viewing_events",
             ]
@@ -565,7 +616,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 13);
+        assert_eq!(version.0, 15);
     }
 
     #[tokio::test]
@@ -575,7 +626,7 @@ mod tests {
         // created every table and bumped user_version to 1 — running
         // migrations must not attempt to re-create them (that would error,
         // since the tables already exist), only apply the migrations still
-        // ahead of that version (12, here).
+        // ahead of that version (14, here).
         for statement in MIGRATIONS[0].statements {
             sqlx::query(*statement).execute(&pool).await.unwrap();
         }
@@ -590,7 +641,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 13);
+        assert_eq!(version.0, 15);
     }
 
     #[tokio::test]

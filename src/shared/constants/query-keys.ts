@@ -18,14 +18,24 @@ export const queryKeys = {
     popularPeople: ["remote", "people", "popular"] as const,
     availability: (mediaType: string, mediaId: number, region: string) =>
       ["remote", "availability", mediaType, mediaId, region] as const,
+    collection: (collectionId: number) => ["remote", "collection", collectionId] as const,
+    // "cast"/"crew" here mirrors DiscoverArgs' withCast/withCrew — a movie
+    // discover query filtered to one person's credits, used by the
+    // "people you watch most" home rail.
+    discoverByPerson: (role: "cast" | "crew", personId: number) =>
+      ["remote", "discoverByPerson", role, personId] as const,
   },
-  // Every entry below except `preferences` and `profiles` takes the active
-  // profile id as its first argument (see useActiveProfileId in
-  // use-preferences.ts) — the underlying data is scoped to one local
-  // profile, so two profiles must never share a cache entry. `preferences`
-  // and `profiles` are the exceptions: preferences is a single global
-  // key/value store (it's literally what stores which profile is active),
-  // and `profiles` lists every profile, not one profile's data.
+  // Every entry below except `preferences`, `profiles` and
+  // `availabilitySnapshots` takes the active profile id as its first
+  // argument (see useActiveProfileId in use-preferences.ts) — the
+  // underlying data is scoped to one local profile, so two profiles must
+  // never share a cache entry. `preferences` and `profiles` are exceptions:
+  // preferences is a single global key/value store (it's literally what
+  // stores which profile is active), and `profiles` lists every profile,
+  // not one profile's data. `availabilitySnapshots` is a third exception —
+  // the underlying `availability_snapshots` table is a shared TTL cache with
+  // no `profile_id` column at all (see database::PROFILE_SCOPED_TABLES's own
+  // doc comment on the Rust side).
   local: {
     history: (profileId: string) => ["local", "history", profileId] as const,
     preferences: ["local", "preferences"] as const,
@@ -40,12 +50,22 @@ export const queryKeys = {
     profiles: ["local", "profiles"] as const,
     customLists: (profileId: string) => ["local", "customLists", profileId] as const,
     customList: (profileId: string, listId: string) => ["local", "customLists", profileId, listId] as const,
+    smartLists: (profileId: string) => ["local", "smartLists", profileId] as const,
+    savedFilters: (profileId: string, page: string) => ["local", "savedFilters", profileId, page] as const,
     calendar: (profileId: string) => ["local", "calendar", profileId] as const,
     availabilityAlerts: (profileId: string) => ["local", "availabilityAlerts", profileId] as const,
+    availabilitySnapshots: ["local", "availabilitySnapshots"] as const,
     tracking: (profileId: string) => ["local", "tracking", profileId] as const,
     watchTonight: (profileId: string) => ["local", "watchTonight", profileId] as const,
     watchNextEpisode: (profileId: string, seriesId: number) => ["local", "watchNext", profileId, seriesId] as const,
     viewingEventsForMedia: (profileId: string, mediaType: string, mediaId: number) =>
       ["local", "viewingEventsForMedia", profileId, mediaType, mediaId] as const,
+    // `signature` is a joined "mediaType:mediaId" list of the completed
+    // library items currently feeding the "people you watch most" rail —
+    // this fetches remote credits, but is keyed under `local` (with the
+    // profile id) because *which* titles it fetches for is entirely
+    // profile-scoped library data, not a global catalogue query.
+    peopleYouWatchCredits: (profileId: string, signature: string) =>
+      ["local", "peopleYouWatchCredits", profileId, signature] as const,
   },
 };

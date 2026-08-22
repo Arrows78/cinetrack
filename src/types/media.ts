@@ -31,6 +31,18 @@ export interface CastMember {
   order?: number;
 }
 
+// A crew credit — currently only ever populated with "Director" jobs (see
+// mapCrew in api/mapper.ts), which is all the people-based discovery and
+// collection features need for v1. Kept as its own shape (rather than
+// reusing CastMember, which carries a "character" field crew members don't
+// have) since TMDB's own credits response distinguishes cast from crew too.
+export interface CrewMember {
+  id: number;
+  name: string;
+  job?: string;
+  profilePath?: string | null;
+}
+
 export interface MediaSummary {
   id: number;
   mediaType: MediaType;
@@ -49,11 +61,44 @@ export interface MediaSummary {
   status?: string;
   runtime?: number | null;
   cast: CastMember[];
+  // Optional (unlike `cast`, which every existing MediaSummary literal in
+  // the codebase already sets) so this addition doesn't force every one of
+  // those pre-existing literals — test fixtures, design-system sample
+  // data, etc. — to be updated just to keep typechecking. Consumers that
+  // care (people-you-watch.ts) treat a missing value the same as `[]`.
+  /** Directors from this title's credits (job === "Director"). Undefined/empty unless fetched via a detail endpoint that appends credits. */
+  directors?: CrewMember[];
+}
+
+// The TMDB collection a movie belongs to, as embedded in `/movie/{id}`'s
+// `belongs_to_collection` field — just enough to link to and render the
+// full collection (fetched separately via MediaProvider.getCollection).
+export interface CollectionSummary {
+  id: number;
+  name: string;
+  posterPath?: string | null;
+  backdropPath?: string | null;
 }
 
 export interface Movie extends MediaSummary {
   mediaType: "movie";
   duration?: number | null;
+  /** The franchise/collection this movie belongs to on TMDB, or null/undefined if it isn't part of one. */
+  collection?: CollectionSummary | null;
+}
+
+// The full `/collection/{id}` response: a franchise's movies ("parts"),
+// each mapped the same way any other movie summary is. Parts never carry
+// credits (TMDB's collection endpoint doesn't return them), so their
+// `cast`/`directors` are always empty — collection-progress.ts only needs
+// id/mediaType/status from each part, never credits.
+export interface MovieCollection {
+  id: number;
+  name: string;
+  overview: string;
+  posterPath?: string | null;
+  backdropPath?: string | null;
+  parts: Movie[];
 }
 
 export interface Episode {
@@ -216,6 +261,10 @@ export interface UserPreferences {
   userProfile: UserProfile;
   /** Absolute path to a user-chosen backup folder, or null to use the default app-data location. */
   backupDirectory: string | null;
+  /** Persistent "Hide watched" toggle for Discover-style surfaces (home catalogue rails) and Watch Tonight. */
+  hideWatchedInDiscovery: boolean;
+  /** Opt-in "On this day" Home card surfacing past-year viewing history matching today's date. Defaults to false — see the doc comment on the Rust struct's field for why it stays off until deliberately enabled. */
+  onThisDayEnabled: boolean;
 }
 
 export interface TrackedSeriesItem {
@@ -251,6 +300,87 @@ export interface CustomListItem {
   posterPath?: string | null;
   position: number;
   addedAt: string;
+  updatedAt: string;
+}
+
+// "any" means "don't filter on this dimension at all" — every rule field
+// has an explicit not-set value rather than treating an absent/undefined
+// key as "any", so a saved smart list always round-trips through
+// create/update with the exact same shape.
+export type SmartListMediaTypeFilter = MediaType | "any";
+
+// "mine" resolves to the profile's `preferredProviderIds` preference at
+// evaluation time (see watch-tonight-page.tsx's identical MY_SERVICES_VALUE
+// idea) — a specific TMDB provider id is stored as a number.
+export type SmartListProviderFilter = "any" | "mine" | number;
+
+// The fixed rule shape a smart list evaluates — deliberately AND-only, no
+// nested groups: matches every README example ("Unwatched + Horror + under
+// 100 min", "My Services + rating >= 8", "Series with episodes waiting")
+// without needing a generic rule engine. Rust never inspects this shape (see
+// src-tauri/src/commands/smart_lists.rs's doc comment) — it's stored and
+// round-tripped as opaque JSON, and evaluated entirely client-side (see
+// src/features/library/smart-list-evaluation.ts).
+export interface SmartListRules {
+  status: LibraryStatus | "any";
+  mediaType: SmartListMediaTypeFilter;
+  /** Canonical English genre label (MergedGenre.label from use-merged-genres.ts, e.g. "Horror") — matches library_items.genres, which are always stored in that canonical form. `null` = any genre. */
+  genre: string | null;
+  /** Movies only — a series has no single well-defined runtime, so this never excludes series (see smart-list-evaluation.ts). */
+  maxRuntimeMinutes: number | null;
+  minRating: number | null;
+  provider: SmartListProviderFilter;
+  /** Series only — "at least one episode not yet watched, per local progress" (see smart-list-evaluation.ts). Always false for movies. */
+  hasEpisodeWaiting: boolean;
+}
+
+export interface SmartList {
+  id: string;
+  profileId: string;
+  name: string;
+  rules: SmartListRules;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Which page a saved filter belongs to — the two pages' filter-state shapes
+// below are unrelated, so a Library-saved filter must never show up in
+// Search's own saved-filters list or vice versa. Kept in sync with
+// `VALID_PAGES` in src-tauri/src/commands/saved_filters.rs.
+export type SavedFilterPage = "library" | "search";
+
+// LibraryExplorer's own filter-control state (src/components/media/library-explorer.tsx),
+// captured verbatim — reopening a saved filter is just "set the page's state
+// back to this object," entirely client-side (see
+// src/features/saved-filters/saved-filter-repository.ts's doc comment).
+export interface LibraryFilterState {
+  typeFilter: "all" | MediaType;
+  statusFilter: LibraryStatus | "all";
+  favouritesOnly: boolean;
+  listFilter: string;
+  sort: "recent" | "title" | "rating";
+  search: string;
+}
+
+// SearchPage's own filter-control state (src/pages/search-page.tsx) — a
+// different shape from LibraryFilterState since Search's own filters
+// (scope/genre/provider) are unrelated to Library's (status/list/sort).
+export interface SearchFilterState {
+  scope: SearchScope;
+  genreMovie?: string;
+  genreSeries?: string;
+  provider?: string;
+}
+
+export type SavedFilterState = LibraryFilterState | SearchFilterState;
+
+export interface SavedFilter<TState extends SavedFilterState = SavedFilterState> {
+  id: string;
+  profileId: string;
+  page: SavedFilterPage;
+  name: string;
+  filters: TState;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -368,6 +498,48 @@ export interface LibraryStats {
   biggestBingeDay: { day: string; count: number } | null;
   libraryCompletionPercent: number;
   heatmap: Array<{ day: number; hour: number; count: number }>;
+}
+
+// A recap for one calendar month is a historical breakdown (like Wrapped or
+// monthlyActivity above) rather than a current-state total — it counts every
+// watched/rewatched event that fell in the month, even one later unwatched.
+export interface MonthlyRecap {
+  month: string;
+  moviesWatched: number;
+  episodesWatched: number;
+  minutesWatched: number;
+  topRatedTitle: { title: string; rating: number } | null;
+  favouriteGenre: string | null;
+  biggestBingeDay: { day: string; count: number } | null;
+}
+
+export interface RewatchStats {
+  // A rewatch is itself a historical action, not a reversible state like
+  // "watched" — a raw count of every `rewatched` event ever logged, not
+  // deduped to "the latest event per title" the way LibraryStats' totals are.
+  totalRewatches: number;
+  rewatchSharePercent: number;
+  favouriteComfortTitles: Array<{ title: string; count: number }>;
+  rewatchActivity: Array<{ month: string; count: number; minutes: number }>;
+}
+
+export interface RatingDistribution {
+  // Current-state: library_items.user_rating is a single mutable value with
+  // no change history, so a changed rating is reflected immediately here.
+  distribution: Array<{ rating: number; count: number }>;
+  averageByMonth: Array<{ period: string; average: number; count: number }>;
+  averageByYear: Array<{ period: string; average: number; count: number }>;
+}
+
+export type MilestoneCategory = "episodes" | "movies" | "hours" | "series";
+
+export interface WatchMilestone {
+  id: string;
+  category: MilestoneCategory;
+  threshold: number;
+  currentValue: number;
+  achieved: boolean;
+  achievedAt: string | null;
 }
 
 export interface HomeFeed {

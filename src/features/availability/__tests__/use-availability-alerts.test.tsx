@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { queryKeys } from "@/shared/constants/query-keys";
-import type { AvailabilityAlert, MediaSummary } from "@/types/media";
+import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
 
 const media: MediaSummary = {
   id: 7,
@@ -30,6 +30,14 @@ const toggleMock = vi.fn<
   (media: MediaSummary, region: string, providerIds: number[]) => Promise<AvailabilityAlert | null>
 >(async () => alert);
 const removeMock = vi.fn<(id: string) => Promise<undefined>>(async () => undefined);
+const snapshot: AvailabilitySnapshot = {
+  mediaId: 1,
+  mediaType: "movie",
+  region: "FR",
+  providerIds: [8],
+  checkedAt: "2026-01-01T00:00:00.000Z",
+};
+const listSnapshotsMock = vi.fn(async (): Promise<AvailabilitySnapshot[]> => [snapshot]);
 // useActiveProfileId() (see use-preferences.ts) resolves to this via
 // preferencesRepository.getPreferences() — fixed to "default" so every key
 // assertion below is deterministic regardless of when it resolves (it
@@ -43,6 +51,7 @@ vi.mock("@/features/availability/availability-repository", () => ({
     toggle: (mediaArg: MediaSummary, region: string, providerIds: number[]) =>
       toggleMock(mediaArg, region, providerIds),
     remove: (id: string) => removeMock(id),
+    listSnapshots: () => listSnapshotsMock(),
   },
 }));
 
@@ -65,6 +74,7 @@ beforeEach(() => {
   getAlertMock.mockClear().mockResolvedValue(null);
   toggleMock.mockClear().mockResolvedValue(alert);
   removeMock.mockClear().mockResolvedValue(undefined);
+  listSnapshotsMock.mockClear().mockResolvedValue([snapshot]);
   getPreferencesMock.mockClear();
 });
 
@@ -139,5 +149,17 @@ describe("useAvailabilityAlert", () => {
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.availabilityAlerts(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+  });
+});
+
+describe("useAvailabilitySnapshots", () => {
+  it("loads every cached snapshot under the shared, non-profile-scoped query key", async () => {
+    const { useAvailabilitySnapshots } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAvailabilitySnapshots(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data).toEqual([snapshot]);
+    expect(listSnapshotsMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,6 +6,8 @@ import { migration as m003 } from "./003-merge-watchlist-into-library";
 import { migration as m004 } from "./004-add-status-to-tracked-series";
 import { migration as m005 } from "./005-remove-rewatching-status";
 import { migration as m006 } from "./006-add-note-to-viewing-events";
+import { migration as m007 } from "./007-add-smart-lists";
+import { migration as m008 } from "./008-add-saved-filters";
 
 export type { Migration } from "./types";
 
@@ -22,7 +24,7 @@ export type { Migration } from "./types";
 // or higher, not `version: 2` — reusing an already-passed version number
 // would make it silently skip on any pre-squash install once this app ships
 // publicly.
-export const migrations: readonly Migration[] = [m001, m002, m003, m004, m005, m006];
+export const migrations: readonly Migration[] = [m001, m002, m003, m004, m005, m006, m007, m008];
 
 export async function runMigrations(db: Database): Promise<void> {
   const rows = await db.select<Array<{ user_version: number }>>("PRAGMA user_version");

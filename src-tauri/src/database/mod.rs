@@ -32,7 +32,9 @@ pub const PROFILE_SCOPED_TABLES: &[&str] = &[
     "custom_lists",
     "episode_progress",
     "library_items",
+    "saved_filters",
     "seen_movies",
+    "smart_lists",
     "tracked_series",
     "viewing_events",
 ];

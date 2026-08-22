@@ -79,7 +79,12 @@
     "durationHoursMinutes": "{{hours}}h {{minutes}}",
     "durationMinutes": "{{minutes}} min",
     "episodeCode": "S{{season}}E{{episode}}",
-    "episodeNumber": "E{{episode}}"
+    "episodeNumber": "E{{episode}}",
+    "countdownToday": "Today",
+    "countdownTomorrow": "Tomorrow",
+    "countdownInDays": "In {{count}} days",
+    "countdownInWeeks_one": "In {{count}} week",
+    "countdownInWeeks_other": "In {{count}} weeks"
   },
   "theme": {
     "dark": "Dark",
@@ -154,7 +159,17 @@
     "becauseYouLoveGenre": "Because you love {{genre}}",
     "becauseYouLoveGenreSubtitle": "More picks in your favorite genre.",
     "forYou": "For you",
-    "forYouSubtitle": "Picked from your library and watch history."
+    "forYouSubtitle": "Picked from your library and watch history.",
+    "onThisDayTitle": "On this day",
+    "onThisDayEntry": "On {{date}}, you watched {{title}}",
+    "onThisDayYearsAgo_one": "{{count}} year ago",
+    "onThisDayYearsAgo_other": "{{count}} years ago",
+    "thisWeekTitle": "This week",
+    "thisWeekSubtitle": "Releases, new episodes, and availability changes for the next 7 days.",
+    "becauseYouWatchDirector": "Movies from {{name}}, a director you watch most",
+    "becauseYouWatchDirectorSubtitle": "Picked from the director credited most often in your finished library.",
+    "becauseYouWatchActor": "More with {{name}}, an actor you like",
+    "becauseYouWatchActorSubtitle": "Picked from the actor billed most often in your finished library."
   },
   "history": {
     "recentActivity": "Recent Activity",
@@ -196,6 +211,29 @@
   "filterBar": {
     "defaultLabel": "Filter"
   },
+  "filters": {
+    "activeFiltersLabel": "Active filters",
+    "removeFilter": "Remove filter {{filter}}",
+    "chips": {
+      "type": "Type: {{value}}",
+      "status": "Status: {{value}}",
+      "favourites": "Favourites",
+      "list": "List: {{value}}",
+      "sort": "Sort: {{value}}",
+      "search": "Search: \"{{value}}\"",
+      "genre": "Genre: {{value}}",
+      "provider": "Service: {{value}}"
+    },
+    "savedFilters": {
+      "namePlaceholder": "Name this view…",
+      "nameLabel": "Saved filter name",
+      "save": "Save view",
+      "saveFailed": "Couldn't save this view. Please try again.",
+      "delete": "Delete the saved view \"{{name}}\"",
+      "deleteConfirmTitle": "Delete the saved view \"{{name}}\"?",
+      "deleteFailed": "Couldn't delete this view. Please try again."
+    }
+  },
   "settings": {
     "subtitleDesktop": "Interface, catalog, privacy and desktop integration.",
     "uiPreferences": "UI Preferences",
@@ -216,6 +254,7 @@
     "compactMode": "Compact mode",
     "spoilerProtection": "Spoiler protection",
     "calendarNotifications": "Calendar notifications",
+    "onThisDay": "\"On this day\" memories",
     "desktopSecurity": "Desktop & Security",
     "desktopSecurityDesc": "Encrypted token, shortcuts, startup, updates and recovery.",
     "regionOptions": {
@@ -368,6 +407,37 @@
       "cellTitle_other": "{{count}} watches",
       "less": "Less",
       "more": "More"
+    },
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "monthlyRecap": {
+      "title": "Monthly recap",
+      "topRatedTitle": "Top-rated title",
+      "favouriteGenre": "Favourite genre"
+    },
+    "rewatch": {
+      "title": "Rewatch analytics",
+      "totalRewatches": "Total rewatches",
+      "rewatchShare": "Share of all watches",
+      "comfortTitles": "Favourite comfort titles",
+      "activityTitle": "Rewatches over 12 months",
+      "rewatches": "rewatches"
+    },
+    "ratingDistribution": {
+      "title": "Rating distribution",
+      "titlesLabel": "titles",
+      "byMonth": "Average rating by month",
+      "byYear": "Average rating by year"
+    },
+    "milestones": {
+      "title": "Watch milestones",
+      "description": "Achievements unlocked as your watch history grows.",
+      "episodesThreshold": "{{count}} episodes watched",
+      "moviesThreshold": "{{count}} movies watched",
+      "hoursThreshold": "{{count}} hours tracked",
+      "seriesThreshold": "{{count}} completed series",
+      "achieved": "Achieved",
+      "progress": "{{current}} / {{target}}"
     }
   },
   "bootRecovery": {
@@ -539,6 +609,30 @@
       "addToAListLabel": "Add to a list",
       "noneYetPrefix": "You don't have any lists yet.",
       "noneYetLink": "Create one from your library."
+    },
+    "smartLists": {
+      "title": "Smart lists",
+      "filterLabel": "Filter by smart list",
+      "noFilter": "No smart list",
+      "nameLabel": "Smart list name",
+      "namePlaceholder": "Name",
+      "statusLabel": "Status",
+      "mediaTypeLabel": "Type",
+      "genreLabel": "Genre",
+      "maxRuntimeLabel": "Max runtime (minutes)",
+      "maxRuntimePlaceholder": "e.g. 100",
+      "minRatingLabel": "Min rating",
+      "minRatingPlaceholder": "e.g. 8",
+      "providerLabel": "Streaming service",
+      "hasEpisodeWaitingLabel": "Series with episodes waiting",
+      "create": "Create smart list",
+      "save": "Save changes",
+      "cancel": "Cancel edit",
+      "noLists": "You haven't created any smart lists yet.",
+      "edit": "Edit smart list {{name}}",
+      "delete": "Delete smart list {{name}}",
+      "deleteConfirmTitle": "Delete the smart list \"{{name}}\"?",
+      "deleteConfirmDescription": "This only deletes the saved rules — nothing in your library is affected."
     },
     "sections": {
       "recentlyWatched": "Recently watched",
@@ -812,5 +906,24 @@
       "pointer_one": "{{count}} title needs your input below.",
       "pointer_other": "{{count}} titles need your input below."
     }
+  },
+  "discovery": {
+    "hideWatched": "Hide watched"
+  },
+  "collection": {
+    "title": "Collection",
+    "unavailable": "Couldn't load this collection — try again in a moment.",
+    "progressLabel": "{{watched}} / {{total}} watched",
+    "watchedGroupTitle_one": "Watched",
+    "watchedGroupTitle_other": "Watched",
+    "plannedGroupTitle_one": "In your library",
+    "plannedGroupTitle_other": "In your library",
+    "missingGroupTitle_one": "Not in your library yet",
+    "missingGroupTitle_other": "Not in your library yet",
+    "addMissingCta_one": "Add {{count}} missing movie",
+    "addMissingCta_other": "Add {{count}} missing movies",
+    "addMissingSuccess_one": "Added {{count}} movie to your library",
+    "addMissingSuccess_other": "Added {{count}} movies to your library",
+    "addMissingFailed": "Couldn't add the missing movies to your library — try again."
   }
 }

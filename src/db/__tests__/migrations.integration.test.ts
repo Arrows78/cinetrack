@@ -38,7 +38,9 @@ describe("runMigrations against real SQLite", () => {
         "library_items",
         "preferences",
         "profiles",
+        "saved_filters",
         "seen_movies",
+        "smart_lists",
         "tracked_series",
         "viewing_events",
       ].sort()
@@ -160,11 +162,16 @@ describe("runMigrations against real SQLite", () => {
         `INSERT INTO custom_list_items (uuid, list_id, media_id, media_type, title, position, added_at, updated_at)
          VALUES ('i1', 'list-1', 1, 'movie', 'Test', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
       );
+      sqlite.exec(
+        `INSERT INTO smart_lists (uuid, profile_id, name, rules, created_at, updated_at)
+         VALUES ('sm1', 'alex', 'My Smart List', '{}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+      );
 
       sqlite.exec("DELETE FROM profiles WHERE uuid = 'alex'");
 
       expect(sqlite.prepare("SELECT * FROM library_items WHERE profile_id = 'alex'").all()).toHaveLength(0);
       expect(sqlite.prepare("SELECT * FROM custom_lists WHERE profile_id = 'alex'").all()).toHaveLength(0);
+      expect(sqlite.prepare("SELECT * FROM smart_lists WHERE profile_id = 'alex'").all()).toHaveLength(0);
       // Deleting the list must itself have cascaded to its items.
       expect(sqlite.prepare("SELECT * FROM custom_list_items WHERE list_id = 'list-1'").all()).toHaveLength(0);
     });

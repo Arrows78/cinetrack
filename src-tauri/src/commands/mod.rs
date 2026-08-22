@@ -8,6 +8,8 @@ mod macros;
 mod preferences;
 mod profiles;
 mod progress;
+mod saved_filters;
+mod smart_lists;
 mod stats;
 mod tmdb;
 mod tvtime;
@@ -15,7 +17,8 @@ mod updater;
 
 pub use availability::{
     get_availability_alert, get_availability_snapshot, list_availability_alerts,
-    remove_availability_alert, save_availability_snapshot, toggle_availability_alert,
+    list_availability_snapshots, remove_availability_alert, save_availability_snapshot,
+    toggle_availability_alert,
 };
 pub use backup::{
     check_data_integrity, export_backup_data, import_backup_data, list_backup_directory,
@@ -42,9 +45,12 @@ pub use progress::{
     get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
     toggle_episodes_watched, toggle_movie_seen,
 };
+pub use saved_filters::{create_saved_filter, list_saved_filters, remove_saved_filter};
+pub use smart_lists::{create_smart_list, list_smart_lists, remove_smart_list, update_smart_list};
 pub use stats::{
-    get_stats_overview, list_recent_viewing_events, list_viewing_events_for_media,
-    list_viewing_events_for_year, list_yearly_activity,
+    get_monthly_recap, get_rating_distribution, get_rewatch_stats, get_stats_overview,
+    get_watch_milestones, list_on_this_day_events, list_recent_viewing_events,
+    list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
 };
 pub use tmdb::tmdb_request;
 pub use tvtime::{import_movie_seen, import_series_progress};

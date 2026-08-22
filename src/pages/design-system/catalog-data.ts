@@ -591,6 +591,14 @@ export const componentInventory = [
     "Edits saved library metadata and user-specific media state."
   ),
   component(
+    "ActiveFilterChips",
+    "components/media/active-filter-chips.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Shows the current filter conditions above Library/Search results, each removable on its own."
+  ),
+  component(
     "AvailabilityAlertButton",
     "components/media/availability-alert-button.tsx",
     "Media",
@@ -623,6 +631,14 @@ export const componentInventory = [
     "Renders the shared trending/top-rated/upcoming rows used by both the home dashboard and Search's default browse state."
   ),
   component(
+    "CollectionProgressPanel",
+    "components/media/collection-progress-panel.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Shows a TMDB collection's watched/planned/missing entries and adds the missing ones to the library."
+  ),
+  component(
     "EpisodeCard",
     "components/media/episode-card.tsx",
     "Media",
@@ -637,6 +653,14 @@ export const componentInventory = [
     "pattern",
     "live",
     "Combines media-type filters with count-aware selection controls."
+  ),
+  component(
+    "HideWatchedToggle",
+    "components/media/hide-watched-toggle.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Persistent toggle that filters already-watched titles out of Discover-style surfaces and Watch Tonight."
   ),
   component(
     "LibrarySections",
@@ -703,6 +727,22 @@ export const componentInventory = [
     "Highlights the next episode available to continue."
   ),
   component(
+    "OnThisDaySection",
+    "components/media/on-this-day-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Opt-in Home card surfacing what was watched on this date in a past year."
+  ),
+  component(
+    "PeopleYouWatchRails",
+    "components/media/people-you-watch-rails.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Discover rails built from the directors/actors the profile's completed library skews toward most."
+  ),
+  component(
     "Pill",
     "components/media/pill.tsx",
     "Media",
@@ -741,6 +781,14 @@ export const componentInventory = [
     "feature",
     "reference",
     "Displays related titles and discovery recommendations."
+  ),
+  component(
+    "SavedFiltersBar",
+    "components/media/saved-filters-bar.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Saves the current Library/Search filter state under a name and reopens it later."
   ),
   component(
     "SearchBar",
@@ -783,6 +831,14 @@ export const componentInventory = [
     "Circular 'mark as seen' toggle button for inline use in rows and cards."
   ),
   component(
+    "SmartListsPanel",
+    "components/media/smart-lists-panel.tsx",
+    "Media",
+    "feature",
+    "live",
+    "Create/edit/delete rule-based smart lists, evaluated live against the current library."
+  ),
+  component(
     "StatCard",
     "components/media/stat-card.tsx",
     "Media",
@@ -813,6 +869,14 @@ export const componentInventory = [
     "feature",
     "reference",
     "Composes prioritized continue-watching recommendations."
+  ),
+  component(
+    "WeeklyAgendaSection",
+    "components/media/weekly-agenda-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Compact 'This week' agenda of tracked releases, episodes and availability changes."
   ),
   component(
     "AddToLibraryButton",
@@ -853,6 +917,38 @@ export const componentInventory = [
     "pattern",
     "reference",
     "Lists a title's past watches that carry a note, most recent first."
+  ),
+  component(
+    "MonthlyRecapSection",
+    "components/stats/monthly-recap-section.tsx",
+    "Stats",
+    "pattern",
+    "live",
+    "Movies/episodes/time watched, top-rated title, favourite genre and biggest binge for a chosen month."
+  ),
+  component(
+    "RewatchAnalyticsSection",
+    "components/stats/rewatch-analytics-section.tsx",
+    "Stats",
+    "pattern",
+    "live",
+    "Total rewatches, rewatch share, comfort titles and rewatch activity over time."
+  ),
+  component(
+    "RatingDistributionSection",
+    "components/stats/rating-distribution-section.tsx",
+    "Stats",
+    "pattern",
+    "live",
+    "Histogram of personal ratings plus average rating by month/year."
+  ),
+  component(
+    "WatchMilestonesSection",
+    "components/stats/watch-milestones-section.tsx",
+    "Stats",
+    "pattern",
+    "live",
+    "Threshold-crossing achievements (episodes, hours, completed series) based on current watch state."
   ),
   component(
     "BackupTools",

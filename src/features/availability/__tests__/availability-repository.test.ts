@@ -92,4 +92,12 @@ describe("availabilityRepository", () => {
     await availabilityRepository.saveSnapshot(s);
     expect(invokeMock).toHaveBeenCalledWith("save_availability_snapshot", { snapshot: s });
   });
+
+  it("listSnapshots() invokes list_availability_snapshots", async () => {
+    invokeMock.mockResolvedValueOnce([snapshot()]);
+    const { availabilityRepository } = await import("../availability-repository");
+
+    await expect(availabilityRepository.listSnapshots()).resolves.toEqual([snapshot()]);
+    expect(invokeMock).toHaveBeenCalledWith("list_availability_snapshots", undefined);
+  });
 });

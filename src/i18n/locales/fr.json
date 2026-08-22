@@ -79,7 +79,12 @@
     "durationHoursMinutes": "{{hours}}h {{minutes}}",
     "durationMinutes": "{{minutes}} min",
     "episodeCode": "S{{season}}E{{episode}}",
-    "episodeNumber": "E{{episode}}"
+    "episodeNumber": "E{{episode}}",
+    "countdownToday": "Aujourd'hui",
+    "countdownTomorrow": "Demain",
+    "countdownInDays": "Dans {{count}} jours",
+    "countdownInWeeks_one": "Dans {{count}} semaine",
+    "countdownInWeeks_other": "Dans {{count}} semaines"
   },
   "theme": {
     "dark": "Sombre",
@@ -154,7 +159,17 @@
     "becauseYouLoveGenre": "Parce que vous aimez {{genre}}",
     "becauseYouLoveGenreSubtitle": "D'autres suggestions dans votre genre favori.",
     "forYou": "Pour vous",
-    "forYouSubtitle": "Choisi à partir de votre bibliothèque et de votre historique."
+    "forYouSubtitle": "Choisi à partir de votre bibliothèque et de votre historique.",
+    "onThisDayTitle": "Ce jour-là",
+    "onThisDayEntry": "Le {{date}}, vous avez regardé {{title}}",
+    "onThisDayYearsAgo_one": "il y a {{count}} an",
+    "onThisDayYearsAgo_other": "il y a {{count}} ans",
+    "thisWeekTitle": "Cette semaine",
+    "thisWeekSubtitle": "Sorties, nouveaux épisodes et changements de disponibilité des 7 prochains jours.",
+    "becauseYouWatchDirector": "Des films de {{name}}, un réalisateur que vous suivez souvent",
+    "becauseYouWatchDirectorSubtitle": "Sélectionnés d'après le réalisateur le plus crédité dans votre bibliothèque terminée.",
+    "becauseYouWatchActor": "Encore avec {{name}}, un acteur que vous aimez",
+    "becauseYouWatchActorSubtitle": "Sélectionnés d'après l'acteur le plus souvent au générique de votre bibliothèque terminée."
   },
   "history": {
     "recentActivity": "Activité récente",
@@ -196,6 +211,29 @@
   "filterBar": {
     "defaultLabel": "Filtrer"
   },
+  "filters": {
+    "activeFiltersLabel": "Filtres actifs",
+    "removeFilter": "Retirer le filtre {{filter}}",
+    "chips": {
+      "type": "Type : {{value}}",
+      "status": "Statut : {{value}}",
+      "favourites": "Favoris",
+      "list": "Liste : {{value}}",
+      "sort": "Tri : {{value}}",
+      "search": "Recherche : « {{value}} »",
+      "genre": "Genre : {{value}}",
+      "provider": "Service : {{value}}"
+    },
+    "savedFilters": {
+      "namePlaceholder": "Nommer cette vue…",
+      "nameLabel": "Nom du filtre enregistré",
+      "save": "Enregistrer la vue",
+      "saveFailed": "Impossible d'enregistrer cette vue. Veuillez réessayer.",
+      "delete": "Supprimer la vue enregistrée « {{name}} »",
+      "deleteConfirmTitle": "Supprimer la vue enregistrée « {{name}} » ?",
+      "deleteFailed": "Impossible de supprimer cette vue. Veuillez réessayer."
+    }
+  },
   "settings": {
     "subtitleDesktop": "Interface, catalogue, confidentialité et intégration desktop.",
     "uiPreferences": "Préférences d'interface",
@@ -216,6 +254,7 @@
     "compactMode": "Mode compact",
     "spoilerProtection": "Protection anti-spoiler",
     "calendarNotifications": "Notifications calendrier",
+    "onThisDay": "Souvenirs « Ce jour-là »",
     "desktopSecurity": "Desktop et sécurité",
     "desktopSecurityDesc": "Token chiffré, raccourcis, démarrage, mises à jour et récupération.",
     "regionOptions": {
@@ -368,6 +407,37 @@
       "cellTitle_other": "{{count}} visionnages",
       "less": "Moins",
       "more": "Plus"
+    },
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "monthlyRecap": {
+      "title": "Récap du mois",
+      "topRatedTitle": "Titre le mieux noté",
+      "favouriteGenre": "Genre favori"
+    },
+    "rewatch": {
+      "title": "Analyse des revisionnages",
+      "totalRewatches": "Total des revisionnages",
+      "rewatchShare": "Part de tous les visionnages",
+      "comfortTitles": "Titres réconfort favoris",
+      "activityTitle": "Revisionnages sur 12 mois",
+      "rewatches": "revisionnages"
+    },
+    "ratingDistribution": {
+      "title": "Distribution des notes",
+      "titlesLabel": "titres",
+      "byMonth": "Note moyenne par mois",
+      "byYear": "Note moyenne par année"
+    },
+    "milestones": {
+      "title": "Jalons de visionnage",
+      "description": "Récompenses débloquées au fil de votre historique de visionnage.",
+      "episodesThreshold": "{{count}} épisodes vus",
+      "moviesThreshold": "{{count}} films vus",
+      "hoursThreshold": "{{count}} heures suivies",
+      "seriesThreshold": "{{count}} séries terminées",
+      "achieved": "Débloqué",
+      "progress": "{{current}} / {{target}}"
     }
   },
   "bootRecovery": {
@@ -539,6 +609,30 @@
       "addToAListLabel": "Ajouter à une liste",
       "noneYetPrefix": "Vous n'avez pas encore de liste.",
       "noneYetLink": "Créez-en une depuis votre bibliothèque."
+    },
+    "smartLists": {
+      "title": "Listes intelligentes",
+      "filterLabel": "Filtrer par liste intelligente",
+      "noFilter": "Aucune liste intelligente",
+      "nameLabel": "Nom de la liste intelligente",
+      "namePlaceholder": "Nom",
+      "statusLabel": "Statut",
+      "mediaTypeLabel": "Type",
+      "genreLabel": "Genre",
+      "maxRuntimeLabel": "Durée max (minutes)",
+      "maxRuntimePlaceholder": "ex. 100",
+      "minRatingLabel": "Note minimale",
+      "minRatingPlaceholder": "ex. 8",
+      "providerLabel": "Service de streaming",
+      "hasEpisodeWaitingLabel": "Séries avec épisodes en attente",
+      "create": "Créer la liste intelligente",
+      "save": "Enregistrer les modifications",
+      "cancel": "Annuler la modification",
+      "noLists": "Vous n'avez pas encore créé de liste intelligente.",
+      "edit": "Modifier la liste intelligente {{name}}",
+      "delete": "Supprimer la liste intelligente {{name}}",
+      "deleteConfirmTitle": "Supprimer la liste intelligente « {{name}} » ?",
+      "deleteConfirmDescription": "Seules les règles enregistrées sont supprimées — rien dans votre bibliothèque n'est affecté."
     },
     "sections": {
       "recentlyWatched": "Vu récemment",
@@ -812,5 +906,24 @@
       "pointer_one": "{{count}} titre a besoin de vous ci-dessous.",
       "pointer_other": "{{count}} titres ont besoin de vous ci-dessous."
     }
+  },
+  "discovery": {
+    "hideWatched": "Masquer les titres vus"
+  },
+  "collection": {
+    "title": "Saga",
+    "unavailable": "Impossible de charger cette saga — réessayez dans un instant.",
+    "progressLabel": "{{watched}} / {{total}} vus",
+    "watchedGroupTitle_one": "Vus",
+    "watchedGroupTitle_other": "Vus",
+    "plannedGroupTitle_one": "Dans votre bibliothèque",
+    "plannedGroupTitle_other": "Dans votre bibliothèque",
+    "missingGroupTitle_one": "Pas encore dans votre bibliothèque",
+    "missingGroupTitle_other": "Pas encore dans votre bibliothèque",
+    "addMissingCta_one": "Ajouter {{count}} film manquant",
+    "addMissingCta_other": "Ajouter {{count}} films manquants",
+    "addMissingSuccess_one": "{{count}} film ajouté à votre bibliothèque",
+    "addMissingSuccess_other": "{{count}} films ajoutés à votre bibliothèque",
+    "addMissingFailed": "Impossible d'ajouter les films manquants à votre bibliothèque — réessayez."
   }
 }

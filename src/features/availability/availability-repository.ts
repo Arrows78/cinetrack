@@ -32,4 +32,13 @@ export const availabilityRepository = {
   async saveSnapshot(snapshot: AvailabilitySnapshot): Promise<void> {
     await invokeCommand<void>("save_availability_snapshot", { snapshot });
   },
+
+  // Every cached snapshot across every title (not profile-scoped — see
+  // save_availability_snapshot's own comment on the underlying table).
+  // Backs the smart-lists provider rule (see smart-list-evaluation.ts),
+  // which matches a library item against whatever's already been checked
+  // during normal app usage rather than issuing a fresh TMDB call per item.
+  async listSnapshots(): Promise<AvailabilitySnapshot[]> {
+    return invokeCommand<AvailabilitySnapshot[]>("list_availability_snapshots");
+  },
 };

@@ -238,6 +238,23 @@ async fn get_snapshot_impl(
     Ok(row.map(Into::into))
 }
 
+// Not profile-scoped: `availability_snapshots` is a global TTL cache keyed
+// by (media_id, media_type, region) shared across every local profile (see
+// database::PROFILE_SCOPED_TABLES's own doc comment). Ordered/limited the
+// same way library.rs's `list_impl` bounds `library_items` — a defensive
+// cap against pathological growth, not a real pagination contract.
+const LIST_SNAPSHOTS_SAFETY_LIMIT: i64 = 5000;
+
+async fn list_snapshots_impl(pool: &SqlitePool) -> Result<Vec<AvailabilitySnapshot>, ApiError> {
+    let rows: Vec<SnapshotRow> =
+        sqlx::query_as("SELECT * FROM availability_snapshots ORDER BY checked_at DESC LIMIT $1")
+            .bind(LIST_SNAPSHOTS_SAFETY_LIMIT)
+            .fetch_all(pool)
+            .await
+            .map_err(ApiError::from)?;
+    Ok(rows.into_iter().map(Into::into).collect())
+}
+
 async fn save_snapshot_impl(
     pool: &SqlitePool,
     snapshot: AvailabilitySnapshot,
@@ -298,6 +315,20 @@ pub async fn save_availability_snapshot(
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
     save_snapshot_impl(&pool, snapshot).await
+}
+
+/// Backs the smart-lists "My Services"/specific-provider rule (see
+/// smart-list-evaluation.ts): rather than re-fetching TMDB watch-provider
+/// data for every library item at evaluation time, that rule matches
+/// against whatever's already cached here from normal app usage (visiting a
+/// detail page, setting an availability alert). Not profile-scoped, for the
+/// same reason `get_availability_snapshot` isn't: the cache itself has no
+/// notion of "profile".
+#[tauri::command]
+pub async fn list_availability_snapshots(
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<AvailabilitySnapshot>, ApiError> {
+    list_snapshots_impl(&pool).await
 }
 
 #[cfg(test)]
@@ -695,5 +726,64 @@ mod tests {
         let alerts = list_availability_alerts(state).await.unwrap();
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].media_id, 7);
+    }
+
+    #[tokio::test]
+    async fn list_snapshots_impl_returns_every_cached_snapshot_regardless_of_profile() {
+        let pool = migrated_pool().await;
+        save_snapshot_impl(
+            &pool,
+            AvailabilitySnapshot {
+                media_id: 1,
+                media_type: MediaType::Movie,
+                region: "FR".to_string(),
+                provider_ids: vec![8],
+                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
+            },
+        )
+        .await
+        .unwrap();
+        save_snapshot_impl(
+            &pool,
+            AvailabilitySnapshot {
+                media_id: 2,
+                media_type: MediaType::Series,
+                region: "US".to_string(),
+                provider_ids: vec![119],
+                checked_at: "2026-01-02T00:00:00.000Z".to_string(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let snapshots = list_snapshots_impl(&pool).await.unwrap();
+        assert_eq!(snapshots.len(), 2);
+        // Newest-checked first.
+        assert_eq!(snapshots[0].media_id, 2);
+        assert_eq!(snapshots[1].media_id, 1);
+    }
+
+    #[tokio::test]
+    async fn list_availability_snapshots_command_returns_every_snapshot() {
+        let pool = migrated_pool().await;
+        save_snapshot_impl(
+            &pool,
+            AvailabilitySnapshot {
+                media_id: 1,
+                media_type: MediaType::Movie,
+                region: "FR".to_string(),
+                provider_ids: vec![8],
+                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let snapshots = list_availability_snapshots(state).await.unwrap();
+        assert_eq!(snapshots.len(), 1);
+        assert_eq!(snapshots[0].media_id, 1);
     }
 }

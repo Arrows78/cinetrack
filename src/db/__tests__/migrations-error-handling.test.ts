@@ -16,7 +16,8 @@ let fakeMigration: Migration;
 // the first, since they share a version, so adding a real migration in
 // 002-availability-alerts-unique.ts / 003-merge-watchlist-into-library.ts /
 // 004-add-status-to-tracked-series.ts / 005-remove-rewatching-status.ts /
-// 006-add-note-to-viewing-events.ts
+// 006-add-note-to-viewing-events.ts / 007-add-smart-lists.ts /
+// 008-add-saved-filters.ts
 // doesn't leak its own SQL into these error-recovery assertions.
 vi.mock("../migrations/001-initial-schema", () => ({
   get migration() {
@@ -44,6 +45,16 @@ vi.mock("../migrations/005-remove-rewatching-status", () => ({
   },
 }));
 vi.mock("../migrations/006-add-note-to-viewing-events", () => ({
+  get migration() {
+    return fakeMigration;
+  },
+}));
+vi.mock("../migrations/007-add-smart-lists", () => ({
+  get migration() {
+    return fakeMigration;
+  },
+}));
+vi.mock("../migrations/008-add-saved-filters", () => ({
   get migration() {
     return fakeMigration;
   },
