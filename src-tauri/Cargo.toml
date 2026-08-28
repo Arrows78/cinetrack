@@ -11,6 +11,14 @@ edition = "2024"
 name = "cinetrack_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "cinetrack"
+path = "src/main.rs"
+# The desktop entry point contains no tests. Disabling its test harness keeps
+# Tauri's application manifest from colliding with the Common Controls v6
+# manifest that build.rs embeds specifically for Windows Rust test binaries.
+test = false
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
