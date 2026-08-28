@@ -1,6 +1,7 @@
-import { invokeCommand } from "@/shared/lib/invoke";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { profileCommands } from "@/features/profiles/profile-commands";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { UserProfile } from "@/types/media";
 
 // The default-profile seed, supabase auto-claim logic and cascading delete
@@ -8,11 +9,11 @@ import type { UserProfile } from "@/types/media";
 // repository is a thin invoke() wrapper.
 export const profileRepository = {
   async list(): Promise<UserProfile[]> {
-    return invokeCommand<UserProfile[]>("list_profiles");
+    return invokeTypedCommand(profileCommands.list);
   },
 
   async create(name: string, avatar?: string | null, supabaseUserId?: string | null): Promise<UserProfile> {
-    return invokeCommand<UserProfile>("create_profile", {
+    return invokeTypedCommand(profileCommands.create, {
       name,
       avatar: avatar ?? null,
       supabaseUserId: supabaseUserId ?? null,
@@ -26,11 +27,11 @@ export const profileRepository = {
   },
 
   async findBySupabaseUserId(supabaseUserId: string): Promise<UserProfile | null> {
-    return invokeCommand<UserProfile | null>("find_profile_by_supabase_user_id", { supabaseUserId });
+    return invokeTypedCommand(profileCommands.findBySupabaseUserId, { supabaseUserId });
   },
 
   async linkToSupabaseUser(profileId: string, supabaseUserId: string): Promise<UserProfile> {
-    return invokeCommand<UserProfile>("link_profile_to_supabase_user", { profileId, supabaseUserId });
+    return invokeTypedCommand(profileCommands.linkToSupabaseUser, { profileId, supabaseUserId });
   },
 
   /**
@@ -42,11 +43,11 @@ export const profileRepository = {
    * meaning the caller must offer to create a brand new profile.
    */
   async resolveForSupabaseUser(supabaseUserId: string): Promise<UserProfile | null> {
-    return invokeCommand<UserProfile | null>("resolve_profile_for_supabase_user", { supabaseUserId });
+    return invokeTypedCommand(profileCommands.resolveForSupabaseUser, { supabaseUserId });
   },
 
   async remove(profileId: string): Promise<void> {
-    await invokeCommand<void>("remove_profile", { profileId });
+    await invokeTypedCommand(profileCommands.remove, { profileId });
 
     const preferences = await preferencesRepository.getPreferences();
     if (preferences.activeProfileId === profileId) {

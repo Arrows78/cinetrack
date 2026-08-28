@@ -37,3 +37,23 @@ describe("invokeCommand", () => {
     await expect(invokeCommand("some_command")).rejects.toBe(original);
   });
 });
+
+describe("invokeTypedCommand", () => {
+  it("forwards a typed command definition and args through invokeCommand", async () => {
+    invokeMock.mockResolvedValueOnce({ ok: true });
+    const { defineCommand, invokeTypedCommand } = await import("../invoke");
+    const command = defineCommand<{ id: string }, { ok: boolean }>("typed_command");
+
+    await expect(invokeTypedCommand(command, { id: "item-1" })).resolves.toEqual({ ok: true });
+    expect(invokeMock).toHaveBeenCalledWith("typed_command", { id: "item-1" });
+  });
+
+  it("supports typed commands without args", async () => {
+    invokeMock.mockResolvedValueOnce(["ok"]);
+    const { defineCommand, invokeTypedCommand } = await import("../invoke");
+    const command = defineCommand<undefined, string[]>("typed_command_without_args");
+
+    await expect(invokeTypedCommand(command)).resolves.toEqual(["ok"]);
+    expect(invokeMock).toHaveBeenCalledWith("typed_command_without_args", undefined);
+  });
+});
