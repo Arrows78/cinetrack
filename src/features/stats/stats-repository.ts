@@ -1,9 +1,5 @@
 import { addDays, eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth, subDays, subMonths } from "date-fns";
-import {
-  statsCommands,
-  type StatsOverviewDto,
-  type YearlyActivityBucket,
-} from "@/features/stats/stats-commands";
+import { statsCommands, type YearlyActivityBucket } from "@/features/stats/stats-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import { libraryRepository } from "@/features/library/library-repository";
 import { progressRepository } from "@/features/progress/progress-repository";

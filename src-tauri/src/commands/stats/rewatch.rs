@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 
-use super::{ComfortTitle, RewatchStats};
 use super::monthly_activity::{self, MonthlyActivityRow};
+use super::{ComfortTitle, RewatchStats};
 use crate::error::ApiError;
 
 #[derive(sqlx::FromRow)]
@@ -15,7 +15,6 @@ struct ComfortTitleRow {
     title: String,
     count: i64,
 }
-
 
 const COMFORT_TITLES_LIMIT: i64 = 5;
 
@@ -75,7 +74,10 @@ pub(super) async fn get_rewatch_stats_impl(
         rewatch_share_percent,
         favourite_comfort_titles: comfort_rows
             .into_iter()
-            .map(|row| ComfortTitle { title: row.title, count: row.count })
+            .map(|row| ComfortTitle {
+                title: row.title,
+                count: row.count,
+            })
             .collect(),
         rewatch_activity,
     })

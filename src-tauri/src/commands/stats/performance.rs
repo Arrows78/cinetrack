@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::SqlitePool;
+use sqlx::sqlite::SqlitePoolOptions;
 use tauri::{Manager, State};
 
 use super::milestones::get_watch_milestones_impl;
@@ -251,7 +251,11 @@ async fn seed_scale_fixture(pool: &SqlitePool, library_items: i64, viewing_event
         let is_series = (media_id - 1) % 5 == 0;
         let media_type = if is_series { "series" } else { "movie" };
         let episode_id = is_series.then_some(index + 1);
-        let event_type = if index % 7 == 0 { "rewatched" } else { "watched" };
+        let event_type = if index % 7 == 0 {
+            "rewatched"
+        } else {
+            "watched"
+        };
         let month = (index % 12) + 1;
         let day = (index % 28) + 1;
         let hour = index % 24;
@@ -301,14 +305,10 @@ async fn benchmark_case(library_items: i64, viewing_events: i64) {
         .collect::<Vec<_>>();
 
     let started = Instant::now();
-    let overview = get_stats_overview_impl(
-        &pool,
-        "default",
-        "2026-01-01T00:00:00.000Z",
-        &month_labels,
-    )
-    .await
-    .unwrap();
+    let overview =
+        get_stats_overview_impl(&pool, "default", "2026-01-01T00:00:00.000Z", &month_labels)
+            .await
+            .unwrap();
     let overview_elapsed = started.elapsed();
 
     let started = Instant::now();

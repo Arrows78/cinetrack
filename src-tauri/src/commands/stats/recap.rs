@@ -47,7 +47,10 @@ pub(super) async fn get_monthly_recap_impl(
     .await
     .map_err(ApiError::from)?;
 
-    let movies_watched = events.iter().filter(|row| row.media_type == "movie").count() as i64;
+    let movies_watched = events
+        .iter()
+        .filter(|row| row.media_type == "movie")
+        .count() as i64;
     let episodes_watched = events.iter().filter(|row| row.episode_id.is_some()).count() as i64;
     let minutes_watched: i64 = events.iter().filter_map(|row| row.duration_minutes).sum();
 
@@ -122,8 +125,14 @@ pub(super) async fn get_monthly_recap_impl(
         movies_watched,
         episodes_watched,
         minutes_watched,
-        top_rated_title: top_rated.map(|row| TitleRating { title: row.title, rating: row.rating }),
+        top_rated_title: top_rated.map(|row| TitleRating {
+            title: row.title,
+            rating: row.rating,
+        }),
         favourite_genre,
-        biggest_binge_day: binge_row.map(|row| BiggestBingeDay { day: row.day, count: row.count }),
+        biggest_binge_day: binge_row.map(|row| BiggestBingeDay {
+            day: row.day,
+            count: row.count,
+        }),
     })
 }
