@@ -1,25 +1,22 @@
+import {
+  progressCommands,
+  type EpisodeHistoryInput,
+  type SeriesInput,
+} from "@/features/progress/progress-commands";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type {
   Episode,
   EpisodeProgress,
-  HistoryAction,
   MediaSummary,
   MediaType,
   Season,
   TrackedSeriesItem,
   ViewingEventNote,
 } from "@/types/media";
-import { invokeCommand } from "@/shared/lib/invoke";
 
 const nowIso = () => new Date().toISOString();
 
-export type SeriesInput = MediaSummary & { numberOfEpisodes?: number };
-
-interface EpisodeHistoryInput {
-  action: HistoryAction;
-  seasonNumber?: number;
-  episodeNumber?: number;
-  episodeTitle?: string;
-}
+export type { SeriesInput } from "@/features/progress/progress-commands";
 
 // The seen_movies/episode_progress/tracked_series/viewing_events writes live
 // in Rust (see src-tauri/src/commands/progress.rs) — this repository is a
@@ -32,7 +29,7 @@ interface EpisodeHistoryInput {
 // already-fetched data and live in progress-utils.ts, not here.
 export const progressRepository = {
   async isMovieSeen(movieId: number): Promise<boolean> {
-    return invokeCommand<boolean>("is_movie_seen", { movieId });
+    return invokeTypedCommand(progressCommands.isMovieSeen, { movieId });
   },
 
   // `note` is only ever meaningful when `watched` is true — the Rust side
@@ -43,11 +40,11 @@ export const progressRepository = {
   // the idempotency guard in progress.rs), so a caller can't add a note to
   // an already-applied watch by calling this again.
   async toggleMovieSeen(movie: MediaSummary, watched: boolean, watchedAt = nowIso(), note?: string): Promise<void> {
-    await invokeCommand<void>("toggle_movie_seen", { movie, watched, watchedAt, note: note ?? null });
+    await invokeTypedCommand(progressCommands.toggleMovieSeen, { movie, watched, watchedAt, note: note ?? null });
   },
 
   async getEpisodeProgress(seriesId: number): Promise<EpisodeProgress[]> {
-    return invokeCommand<EpisodeProgress[]>("get_episode_progress", { seriesId });
+    return invokeTypedCommand(progressCommands.getEpisodeProgress, { seriesId });
   },
 
   // Single-episode toggle — the only toggleEpisodesWatched caller that ever
@@ -78,7 +75,7 @@ export const progressRepository = {
     history?: EpisodeHistoryInput,
     note?: string
   ): Promise<number> {
-    return invokeCommand<number>("toggle_episodes_watched", {
+    return invokeTypedCommand(progressCommands.toggleEpisodesWatched, {
       series,
       episodes,
       watched,
@@ -103,19 +100,19 @@ export const progressRepository = {
   },
 
   async listTrackedSeries(): Promise<TrackedSeriesItem[]> {
-    return invokeCommand<TrackedSeriesItem[]>("list_tracked_series");
+    return invokeTypedCommand(progressCommands.listTrackedSeries);
   },
 
   // A no-op in Rust if the series isn't tracked yet or the status hasn't
   // actually changed — see refresh_tracked_series_status_impl.
   async refreshTrackedSeriesStatus(seriesId: number, status: string | null): Promise<void> {
-    await invokeCommand<void>("refresh_tracked_series_status", { seriesId, status });
+    await invokeTypedCommand(progressCommands.refreshTrackedSeriesStatus, { seriesId, status });
   },
 
   // One title's full watch history (every viewing_events row, most recent
   // first), notes included where one was written — see
   // list_viewing_events_for_media in src-tauri/src/commands/stats.rs.
   async listViewingEventsForMedia(mediaId: number, mediaType: MediaType): Promise<ViewingEventNote[]> {
-    return invokeCommand<ViewingEventNote[]>("list_viewing_events_for_media", { mediaId, mediaType });
+    return invokeTypedCommand(progressCommands.listViewingEventsForMedia, { mediaId, mediaType });
   },
 };
