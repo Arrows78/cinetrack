@@ -46,7 +46,24 @@ jobs:
         run: pnpm format:check
 
       - name: Test with coverage
-        run: pnpm test:coverage
+        run: |
+          mkdir -p test-results
+          pnpm exec vitest run --coverage \
+            --reporter=default \
+            --reporter=github-actions \
+            --reporter=junit \
+            --outputFile.junit=./test-results/vitest-junit.xml
+
+      - name: Upload frontend test diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-diagnostics
+          path: |
+            test-results/vitest-junit.xml
+            coverage/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Typecheck
         run: pnpm typecheck
@@ -99,7 +116,9 @@ jobs:
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
       - name: Test Rust application
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+        env:
+          RUST_BACKTRACE: "1"
+        run: cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture
 
   cargo-audit:
     runs-on: ubuntu-latest
