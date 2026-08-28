@@ -41,3 +41,25 @@ export async function invokeCommand<T>(command: string, args?: Record<string, un
     throw asApiCommandError(error);
   }
 }
+
+export type TauriCommand<Args, Result> = {
+  readonly name: string;
+  readonly __types?: {
+    readonly args: Args;
+    readonly result: Result;
+  };
+};
+
+export const defineCommand = <Args, Result>(name: string): TauriCommand<Args, Result> => ({ name });
+
+export function invokeTypedCommand<Result>(command: TauriCommand<undefined, Result>): Promise<Result>;
+export function invokeTypedCommand<Args extends object, Result>(
+  command: TauriCommand<Args, Result>,
+  args: Args
+): Promise<Result>;
+export function invokeTypedCommand<Args extends object | undefined, Result>(
+  command: TauriCommand<Args, Result>,
+  args?: Args
+): Promise<Result> {
+  return invokeCommand<Result>(command.name, args as Record<string, unknown> | undefined);
+}
