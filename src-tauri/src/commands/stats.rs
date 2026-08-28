@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tauri::State;
 
-use crate::database::current_profile_id;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
@@ -13,17 +12,26 @@ mod overview;
 mod performance;
 mod ratings;
 mod recap;
+mod repository;
 mod rewatch;
+mod service;
 mod viewing_events;
 
+#[cfg(test)]
 use milestones::get_watch_milestones_impl;
+#[cfg(test)]
 use overview::{get_stats_overview_impl, list_yearly_activity_impl};
+#[cfg(test)]
 use ratings::get_rating_distribution_impl;
+#[cfg(test)]
 use recap::get_monthly_recap_impl;
+#[cfg(test)]
 use rewatch::get_rewatch_stats_impl;
+use service::StatsService;
 #[cfg(test)]
 use viewing_events::ViewingEventRow;
 pub use viewing_events::{ViewingEvent, ViewingEventNote, ViewingEventType};
+#[cfg(test)]
 use viewing_events::{
     list_on_this_day_events_impl, list_viewing_events_for_media_impl,
     list_viewing_events_for_year_impl, list_viewing_events_since_impl,
@@ -37,8 +45,7 @@ pub async fn list_recent_viewing_events(
     since: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_viewing_events_since_impl(&pool, &profile_id, &since).await
+    StatsService::new(pool.inner()).list_recent_viewing_events(&since).await
 }
 
 /// Bounded fetch for the yearly "wrapped" summary — only ever needs one
@@ -50,8 +57,9 @@ pub async fn list_viewing_events_for_year(
     range_end: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_viewing_events_for_year_impl(&pool, &profile_id, &range_start, &range_end).await
+    StatsService::new(pool.inner())
+        .list_viewing_events_for_year(&range_start, &range_end)
+        .await
 }
 
 /// Powers the opt-in "On this day" Home card for the active profile.
@@ -60,8 +68,7 @@ pub async fn list_on_this_day_events(
     today: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_on_this_day_events_impl(&pool, &profile_id, &today).await
+    StatsService::new(pool.inner()).list_on_this_day_events(&today).await
 }
 
 /// One title's full watch history, notes included, for the active profile.
@@ -71,8 +78,9 @@ pub async fn list_viewing_events_for_media(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEventNote>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_viewing_events_for_media_impl(&pool, &profile_id, media_id, media_type).await
+    StatsService::new(pool.inner())
+        .list_viewing_events_for_media(media_id, media_type)
+        .await
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -115,8 +123,9 @@ pub async fn get_stats_overview(
     month_labels: Vec<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<StatsOverview, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_stats_overview_impl(&pool, &profile_id, &window_start, &month_labels).await
+    StatsService::new(pool.inner())
+        .get_stats_overview(&window_start, &month_labels)
+        .await
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -132,8 +141,7 @@ pub struct YearlyActivityBucket {
 pub async fn list_yearly_activity(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_yearly_activity_impl(&pool, &profile_id).await
+    StatsService::new(pool.inner()).list_yearly_activity().await
 }
 
 // ---------------------------------------------------------------------------
@@ -184,8 +192,9 @@ pub async fn get_monthly_recap(
     range_end: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<MonthlyRecap, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_monthly_recap_impl(&pool, &profile_id, &month, &range_start, &range_end).await
+    StatsService::new(pool.inner())
+        .get_monthly_recap(&month, &range_start, &range_end)
+        .await
 }
 
 // ---------------------------------------------------------------------------
@@ -222,8 +231,9 @@ pub async fn get_rewatch_stats(
     month_labels: Vec<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<RewatchStats, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_rewatch_stats_impl(&pool, &profile_id, &window_start, &month_labels).await
+    StatsService::new(pool.inner())
+        .get_rewatch_stats(&window_start, &month_labels)
+        .await
 }
 
 // ---------------------------------------------------------------------------
@@ -269,8 +279,9 @@ pub async fn get_rating_distribution(
     window_start: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<RatingDistribution, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_rating_distribution_impl(&pool, &profile_id, &window_start).await
+    StatsService::new(pool.inner())
+        .get_rating_distribution(&window_start)
+        .await
 }
 
 // ---------------------------------------------------------------------------
@@ -301,8 +312,7 @@ pub struct WatchMilestone {
 pub async fn get_watch_milestones(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<WatchMilestone>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    get_watch_milestones_impl(&pool, &profile_id).await
+    StatsService::new(pool.inner()).get_watch_milestones().await
 }
 
 #[cfg(test)]
