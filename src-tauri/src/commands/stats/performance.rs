@@ -1,4 +1,8 @@
-use std::time::Instant;
+use std::fs;
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
+
+use serde::Serialize;
 
 use sqlx::SqlitePool;
 use sqlx::sqlite::SqlitePoolOptions;
@@ -176,8 +180,12 @@ async fn tracked_series_query_uses_profile_and_progress_indexes() {
     let plan = joined_plan(&rows);
 
     assert!(
-        plan.contains("idx_tracked_series_profile_updated"),
-        "expected tracked-series profile/update index, got: {plan}"
+        plan.contains("SEARCH ts USING INDEX") || plan.contains("SEARCH ts USING COVERING INDEX"),
+        "expected indexed tracked-series profile lookup, got: {plan}"
+    );
+    assert!(
+        !plan.contains("SCAN ts"),
+        "tracked-series lookup should not scan the table: {plan}"
     );
     assert!(
         plan.contains("idx_episode_progress_series_watched"),
@@ -283,10 +291,116 @@ async fn seed_scale_fixture(pool: &SqlitePool, library_items: i64, viewing_event
     tx.commit().await.unwrap();
 }
 
-async fn benchmark_case(library_items: i64, viewing_events: i64) {
-    let pool = migrated_pool().await;
-    seed_scale_fixture(&pool, library_items, viewing_events).await;
+const WARMUP_ITERATIONS: usize = 3;
+const SAMPLE_ITERATIONS: usize = 20;
+const REPORT_FORMAT_VERSION: u32 = 1;
+const REPORT_PATH_ENV: &str = "CINETRACK_PERF_REPORT";
 
+#[derive(Debug, Clone, Serialize)]
+struct LatencySummary {
+    p50_ms: f64,
+    p95_ms: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct OperationReport {
+    library_list: LatencySummary,
+    tracked_series: LatencySummary,
+    stats_overview: LatencySummary,
+    monthly_recap: LatencySummary,
+    rating_distribution: LatencySummary,
+    watch_milestones: LatencySummary,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BenchmarkCaseReport {
+    library_items: i64,
+    viewing_events: i64,
+    library_rows_returned: usize,
+    tracked_series_returned: usize,
+    operations: OperationReport,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BenchmarkReport {
+    format_version: u32,
+    schema_version: i64,
+    warmup_iterations: usize,
+    sample_iterations: usize,
+    target_os: &'static str,
+    target_arch: &'static str,
+    cases: Vec<BenchmarkCaseReport>,
+}
+
+#[derive(Default)]
+struct BenchmarkSamples {
+    library_list: Vec<Duration>,
+    tracked_series: Vec<Duration>,
+    stats_overview: Vec<Duration>,
+    monthly_recap: Vec<Duration>,
+    rating_distribution: Vec<Duration>,
+    watch_milestones: Vec<Duration>,
+}
+
+struct BenchmarkIteration {
+    library_rows: usize,
+    tracked_rows: usize,
+    monthly_activity_buckets: usize,
+    library_list: Duration,
+    tracked_series: Duration,
+    stats_overview: Duration,
+    monthly_recap: Duration,
+    rating_distribution: Duration,
+    watch_milestones: Duration,
+}
+
+fn duration_ms(duration: Duration) -> f64 {
+    duration.as_secs_f64() * 1_000.0
+}
+
+/// Nearest-rank percentile. For N samples and percentile P, select
+/// ceil(P / 100 * N) from the sorted sample set (one-indexed).
+fn percentile_ms(samples: &[Duration], percentile: usize) -> f64 {
+    assert!(!samples.is_empty(), "percentiles need at least one sample");
+    assert!((1..=100).contains(&percentile), "percentile must be 1..=100");
+
+    let mut sorted = samples.to_vec();
+    sorted.sort_unstable();
+    let rank = (percentile * sorted.len()).div_ceil(100);
+    duration_ms(sorted[rank - 1])
+}
+
+fn summarize(samples: &[Duration]) -> LatencySummary {
+    LatencySummary {
+        p50_ms: percentile_ms(samples, 50),
+        p95_ms: percentile_ms(samples, 95),
+    }
+}
+
+impl BenchmarkSamples {
+    fn push(&mut self, iteration: &BenchmarkIteration) {
+        self.library_list.push(iteration.library_list);
+        self.tracked_series.push(iteration.tracked_series);
+        self.stats_overview.push(iteration.stats_overview);
+        self.monthly_recap.push(iteration.monthly_recap);
+        self.rating_distribution
+            .push(iteration.rating_distribution);
+        self.watch_milestones.push(iteration.watch_milestones);
+    }
+
+    fn report(&self) -> OperationReport {
+        OperationReport {
+            library_list: summarize(&self.library_list),
+            tracked_series: summarize(&self.tracked_series),
+            stats_overview: summarize(&self.stats_overview),
+            monthly_recap: summarize(&self.monthly_recap),
+            rating_distribution: summarize(&self.rating_distribution),
+            watch_milestones: summarize(&self.watch_milestones),
+        }
+    }
+}
+
+async fn benchmark_iteration(pool: &SqlitePool) -> BenchmarkIteration {
     let app = tauri::test::mock_app();
     app.manage(pool.clone());
 
@@ -306,14 +420,14 @@ async fn benchmark_case(library_items: i64, viewing_events: i64) {
 
     let started = Instant::now();
     let overview =
-        get_stats_overview_impl(&pool, "default", "2026-01-01T00:00:00.000Z", &month_labels)
+        get_stats_overview_impl(pool, "default", "2026-01-01T00:00:00.000Z", &month_labels)
             .await
             .unwrap();
     let overview_elapsed = started.elapsed();
 
     let started = Instant::now();
     get_monthly_recap_impl(
-        &pool,
+        pool,
         "default",
         "2026-06",
         "2026-06-01T00:00:00.000Z",
@@ -324,34 +438,150 @@ async fn benchmark_case(library_items: i64, viewing_events: i64) {
     let recap_elapsed = started.elapsed();
 
     let started = Instant::now();
-    get_rating_distribution_impl(&pool, "default", "2026-01-01T00:00:00.000Z")
+    get_rating_distribution_impl(pool, "default", "2026-01-01T00:00:00.000Z")
         .await
         .unwrap();
     let ratings_elapsed = started.elapsed();
 
     let started = Instant::now();
-    get_watch_milestones_impl(&pool, "default").await.unwrap();
+    get_watch_milestones_impl(pool, "default").await.unwrap();
     let milestones_elapsed = started.elapsed();
 
-    assert_eq!(overview.monthly_activity.len(), 12);
-    assert_eq!(library.len(), library_items.min(5_000) as usize);
-    assert_eq!(tracked.len(), ((library_items + 4) / 5) as usize);
-    eprintln!(
-        "scale library={library_items} events={viewing_events} library_rows={} tracked_rows={} library_ms={:.2} progress_ms={:.2} overview_ms={:.2} recap_ms={:.2} ratings_ms={:.2} milestones_ms={:.2}",
-        library.len(),
-        tracked.len(),
-        library_elapsed.as_secs_f64() * 1000.0,
-        progress_elapsed.as_secs_f64() * 1000.0,
-        overview_elapsed.as_secs_f64() * 1000.0,
-        recap_elapsed.as_secs_f64() * 1000.0,
-        ratings_elapsed.as_secs_f64() * 1000.0,
-        milestones_elapsed.as_secs_f64() * 1000.0,
+    BenchmarkIteration {
+        library_rows: library.len(),
+        tracked_rows: tracked.len(),
+        monthly_activity_buckets: overview.monthly_activity.len(),
+        library_list: library_elapsed,
+        tracked_series: progress_elapsed,
+        stats_overview: overview_elapsed,
+        monthly_recap: recap_elapsed,
+        rating_distribution: ratings_elapsed,
+        watch_milestones: milestones_elapsed,
+    }
+}
+
+fn validate_iteration(iteration: &BenchmarkIteration, library_items: i64) {
+    assert_eq!(iteration.monthly_activity_buckets, 12);
+    assert_eq!(iteration.library_rows, library_items.min(5_000) as usize);
+    assert_eq!(iteration.tracked_rows, ((library_items + 4) / 5) as usize);
+}
+
+async fn benchmark_case(library_items: i64, viewing_events: i64) -> BenchmarkCaseReport {
+    let pool = migrated_pool().await;
+    seed_scale_fixture(&pool, library_items, viewing_events).await;
+
+    for _ in 0..WARMUP_ITERATIONS {
+        let iteration = benchmark_iteration(&pool).await;
+        validate_iteration(&iteration, library_items);
+    }
+
+    let mut samples = BenchmarkSamples::default();
+    let mut library_rows_returned = 0;
+    let mut tracked_series_returned = 0;
+    for _ in 0..SAMPLE_ITERATIONS {
+        let iteration = benchmark_iteration(&pool).await;
+        validate_iteration(&iteration, library_items);
+        library_rows_returned = iteration.library_rows;
+        tracked_series_returned = iteration.tracked_rows;
+        samples.push(&iteration);
+    }
+
+    BenchmarkCaseReport {
+        library_items,
+        viewing_events,
+        library_rows_returned,
+        tracked_series_returned,
+        operations: samples.report(),
+    }
+}
+
+fn markdown_report(report: &BenchmarkReport) -> String {
+    let mut output = format!(
+        "# CineTrack database benchmark\n\nSchema: {} · warmup: {} · samples: {} · target: {}/{}\n\n",
+        report.schema_version,
+        report.warmup_iterations,
+        report.sample_iterations,
+        report.target_os,
+        report.target_arch
     );
+
+    for case in &report.cases {
+        output.push_str(&format!(
+            "## {} library items / {} viewing events\n\n",
+            case.library_items, case.viewing_events
+        ));
+        output.push_str("| Operation | p50 (ms) | p95 (ms) |\n| --- | ---: | ---: |\n");
+        for (name, latency) in [
+            ("Library list", &case.operations.library_list),
+            ("Tracked series", &case.operations.tracked_series),
+            ("Stats overview", &case.operations.stats_overview),
+            ("Monthly recap", &case.operations.monthly_recap),
+            ("Rating distribution", &case.operations.rating_distribution),
+            ("Watch milestones", &case.operations.watch_milestones),
+        ] {
+            output.push_str(&format!(
+                "| {name} | {:.3} | {:.3} |\n",
+                latency.p50_ms, latency.p95_ms
+            ));
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
+fn report_json_path() -> PathBuf {
+    std::env::var_os(REPORT_PATH_ENV)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("target/performance/database-benchmark.json")
+        })
+}
+
+fn write_report(report: &BenchmarkReport) {
+    let json_path = report_json_path();
+    if let Some(parent) = json_path.parent() {
+        fs::create_dir_all(parent).expect("failed to create benchmark report directory");
+    }
+    let markdown_path = json_path.with_extension("md");
+    let json = serde_json::to_string_pretty(report).expect("failed to serialize benchmark report");
+    let markdown = markdown_report(report);
+
+    fs::write(&json_path, format!("{json}\n")).expect("failed to write benchmark JSON report");
+    fs::write(&markdown_path, &markdown).expect("failed to write benchmark Markdown report");
+
+    eprintln!("{markdown}");
+    eprintln!("JSON report: {}", json_path.display());
+    eprintln!("Markdown report: {}", markdown_path.display());
+}
+
+#[test]
+fn percentile_uses_nearest_rank_for_p50_and_p95() {
+    let samples = [1, 2, 3, 4, 100].map(Duration::from_millis);
+
+    assert_eq!(percentile_ms(&samples, 50), 3.0);
+    assert_eq!(percentile_ms(&samples, 95), 100.0);
 }
 
 #[tokio::test]
-#[ignore = "manual scalability benchmark; run with --ignored --nocapture"]
+#[ignore = "manual scalability benchmark; run with `pnpm perf:database`"]
 async fn benchmark_library_progress_and_stats_at_1k_and_10k_scale() {
-    benchmark_case(1_000, 5_000).await;
-    benchmark_case(10_000, 50_000).await;
+    let report = BenchmarkReport {
+        format_version: REPORT_FORMAT_VERSION,
+        schema_version: crate::database::migrations::MIGRATIONS
+            .last()
+            .expect("at least one migration")
+            .version,
+        warmup_iterations: WARMUP_ITERATIONS,
+        sample_iterations: SAMPLE_ITERATIONS,
+        target_os: std::env::consts::OS,
+        target_arch: std::env::consts::ARCH,
+        cases: vec![
+            benchmark_case(1_000, 5_000).await,
+            benchmark_case(10_000, 50_000).await,
+        ],
+    };
+
+    write_report(&report);
 }

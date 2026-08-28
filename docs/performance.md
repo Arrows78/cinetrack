@@ -1,16 +1,17 @@
 # Performance checks
 
 CineTrack keeps deterministic query-plan checks in the normal Rust test suite
-and a larger opt-in scale benchmark for local profiling.
+and a larger opt-in scale benchmark for reproducible profiling.
 
 ## Query-plan regression checks
 
 The regular backend test suite verifies that the critical Library, Progress,
-and Stats query shapes use their intended SQLite indexes. These checks
-intentionally avoid wall-clock thresholds, because CI runner speed is too
-variable to make millisecond limits a reliable correctness gate.
+and Stats query shapes use indexed access. The checks intentionally assert the
+query property that matters instead of one SQLite-specific index choice: the
+optimizer is allowed to pick an equivalent unique/covering index.
 
-Run them with the normal backend validation:
+These checks do not use wall-clock thresholds, because CI runner speed is too
+variable to make millisecond limits a reliable correctness gate.
 
 ```bash
 pnpm validate:backend
@@ -28,16 +29,33 @@ the Progress aggregation is exercised alongside Library and Stats. The Library
 command keeps its production 5,000-row safety cap, so the 10k fixture measures
 the real capped payload rather than bypassing that guard.
 
-The benchmark reports elapsed time for Library loading, tracked-series
-aggregation, Stats overview, monthly recap, rating distribution, and milestones
-without enforcing machine-specific limits.
+Each dataset gets 3 warmup iterations followed by 20 measured iterations. The
+warmups are excluded from the sample set. CineTrack records nearest-rank p50 and
+p95 latency for:
+
+- Library list;
+- tracked-series aggregation;
+- Stats overview;
+- monthly recap;
+- rating distribution;
+- watch milestones.
+
+Run the benchmark with:
 
 ```bash
-cargo test --locked --manifest-path src-tauri/Cargo.toml \
-  stats::performance::benchmark_library_progress_and_stats_at_1k_and_10k_scale \
-  -- --ignored --nocapture
+pnpm perf:database
 ```
 
-When comparing changes, run the command on the same machine and record the
-before/after output. Treat a repeatable regression as a signal to inspect the
-query plan before changing a threshold or adding caching.
+The command writes both reports under `src-tauri/target/performance/` by default:
+
+- `database-benchmark.json` for machine-readable comparisons;
+- `database-benchmark.md` for a human-readable baseline.
+
+Set `CINETRACK_PERF_REPORT` to a different JSON path when a CI job or local
+comparison needs a custom artifact location; the Markdown report is written next
+to it with the same basename.
+
+Do not compare absolute numbers across different machines. For a before/after
+change, run both revisions on the same machine and compare p50/p95. A repeatable
+regression is a signal to inspect the query plan before adding caching or any
+machine-specific threshold.
