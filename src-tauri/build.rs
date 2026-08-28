@@ -21,8 +21,5 @@ fn embed_manifest_for_windows_tests() {
 
     println!("cargo:rerun-if-changed={}", manifest.display());
     println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
-    println!(
-        "cargo:rustc-link-arg=/MANIFESTINPUT:{}",
-        manifest.display()
-    );
+    println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
 }

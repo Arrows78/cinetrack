@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const isTauriAppMock = vi.fn(() => false);
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => isTauriAppMock() }));
 
-vi.mock("@/shared/config/env", () => ({ env: { VITE_TMDB_API_TOKEN: undefined } }));
+const envMock = vi.hoisted(() => ({ VITE_TMDB_API_TOKEN: undefined as string | undefined }));
+vi.mock("@/shared/config/env", () => ({ env: envMock }));
 
 vi.mock("@tauri-apps/api/path", () => ({ appDataDir: vi.fn(async () => "/mock/app-data") }));
 
@@ -31,6 +32,7 @@ function mockClient() {
 
 describe("tokenVault", () => {
   beforeEach(() => {
+    envMock.VITE_TMDB_API_TOKEN = undefined;
     isTauriAppMock.mockReturnValue(false);
     window.localStorage.clear();
     storeGet.mockReset();
@@ -122,16 +124,8 @@ describe("tokenVault", () => {
   });
 
   describe("with an env-provided token", () => {
-    afterEach(() => {
-      // Restore the file-level default rather than fully unmocking — an
-      // unmock here would also undo the top-level vi.mock() for every test
-      // that runs after this block, silently letting the real env.ts (and
-      // whatever real VITE_TMDB_API_TOKEN happens to be in .env) leak in.
-      vi.doMock("@/shared/config/env", () => ({ env: { VITE_TMDB_API_TOKEN: undefined } }));
-    });
-
     it("starts unlocked and configured, sourced from env", async () => {
-      vi.doMock("@/shared/config/env", () => ({ env: { VITE_TMDB_API_TOKEN: "env-token" } }));
+      envMock.VITE_TMDB_API_TOKEN = "env-token";
       const { tokenVault } = await importFresh();
 
       expect(tokenVault.getToken()).toBe("env-token");
@@ -139,7 +133,7 @@ describe("tokenVault", () => {
     });
 
     it("initialize() is a no-op once a token is already set", async () => {
-      vi.doMock("@/shared/config/env", () => ({ env: { VITE_TMDB_API_TOKEN: "env-token" } }));
+      envMock.VITE_TMDB_API_TOKEN = "env-token";
       const { tokenVault } = await importFresh();
 
       await tokenVault.initialize();
@@ -149,7 +143,7 @@ describe("tokenVault", () => {
     });
 
     it("lock() is a no-op for an env-sourced token", async () => {
-      vi.doMock("@/shared/config/env", () => ({ env: { VITE_TMDB_API_TOKEN: "env-token" } }));
+      envMock.VITE_TMDB_API_TOKEN = "env-token";
       const { tokenVault } = await importFresh();
 
       tokenVault.lock();

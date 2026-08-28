@@ -17,7 +17,7 @@ let fakeMigration: Migration;
 // 002-availability-alerts-unique.ts / 003-merge-watchlist-into-library.ts /
 // 004-add-status-to-tracked-series.ts / 005-remove-rewatching-status.ts /
 // 006-add-note-to-viewing-events.ts / 007-add-smart-lists.ts /
-// 008-add-saved-filters.ts
+// 008-add-saved-filters.ts / 009-add-performance-indexes.ts
 // doesn't leak its own SQL into these error-recovery assertions.
 vi.mock("../migrations/001-initial-schema", () => ({
   get migration() {
@@ -55,6 +55,11 @@ vi.mock("../migrations/007-add-smart-lists", () => ({
   },
 }));
 vi.mock("../migrations/008-add-saved-filters", () => ({
+  get migration() {
+    return fakeMigration;
+  },
+}));
+vi.mock("../migrations/009-add-performance-indexes", () => ({
   get migration() {
     return fakeMigration;
   },
