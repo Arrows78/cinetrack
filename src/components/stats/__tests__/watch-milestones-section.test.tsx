@@ -1,7 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import i18n from "@/i18n";
 import { WatchMilestonesSection } from "../watch-milestones-section";
+import { ShareCancelledError, downloadMilestoneCard, renderMilestoneCard } from "@/features/stats/wrapped-export";
+import { toast } from "@/components/ui/use-toast";
 import type { WatchMilestone } from "@/types/media";
 
 const useWatchMilestonesMock = vi.fn();
@@ -13,6 +15,18 @@ const loggerWarnMock = vi.fn();
 vi.mock("@/features/diagnostics/logger", () => ({
   logger: { warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn(), info: vi.fn() },
 }));
+
+vi.mock("@/features/stats/wrapped-export", () => ({
+  ShareCancelledError: class ShareCancelledError extends Error {},
+  downloadMilestoneCard: vi.fn(),
+  renderMilestoneCard: vi.fn(),
+}));
+
+vi.mock("@/components/ui/use-toast", () => ({ toast: vi.fn() }));
+
+const downloadMilestoneCardMock = vi.mocked(downloadMilestoneCard);
+const renderMilestoneCardMock = vi.mocked(renderMilestoneCard);
+const toastMock = vi.mocked(toast);
 
 function makeMilestone(overrides: Partial<WatchMilestone> = {}): WatchMilestone {
   return {
@@ -34,6 +48,9 @@ describe("WatchMilestonesSection", () => {
   beforeEach(() => {
     useWatchMilestonesMock.mockReset();
     loggerWarnMock.mockClear();
+    downloadMilestoneCardMock.mockReset();
+    renderMilestoneCardMock.mockReset();
+    toastMock.mockReset();
   });
 
   it("renders nothing while loading", () => {
@@ -92,5 +109,46 @@ describe("WatchMilestonesSection", () => {
     render(<WatchMilestonesSection />);
 
     expect(screen.getByText("Achieved")).toBeInTheDocument();
+  });
+
+  it("exports an achieved milestone and reports success", async () => {
+    const milestone = makeMilestone({ achieved: true, achievedAt: "2026-01-02T00:00:00.000Z" });
+    useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
+    const blob = new Blob(["milestone"], { type: "image/png" });
+    renderMilestoneCardMock.mockResolvedValue(blob);
+    downloadMilestoneCardMock.mockResolvedValue(undefined);
+    render(<WatchMilestonesSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(downloadMilestoneCardMock).toHaveBeenCalledWith(blob, milestone.id));
+    expect(renderMilestoneCardMock).toHaveBeenCalledOnce();
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
+  });
+
+  it("treats a cancelled milestone share as a non-error", async () => {
+    const milestone = makeMilestone({ achieved: true });
+    useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
+    renderMilestoneCardMock.mockRejectedValue(new ShareCancelledError());
+    render(<WatchMilestonesSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(renderMilestoneCardMock).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole("button", { name: /export/i })).not.toBeDisabled());
+    expect(loggerWarnMock).not.toHaveBeenCalled();
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it("logs and surfaces an unexpected milestone export failure", async () => {
+    const milestone = makeMilestone({ achieved: true });
+    useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
+    renderMilestoneCardMock.mockRejectedValue("export failed");
+    render(<WatchMilestonesSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("export failed")));
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
   });
 });

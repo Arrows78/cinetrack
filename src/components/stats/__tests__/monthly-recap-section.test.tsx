@@ -1,7 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import i18n from "@/i18n";
 import { MonthlyRecapSection } from "../monthly-recap-section";
+import { ShareCancelledError, downloadMonthlyRecapCard, renderMonthlyRecapCard } from "@/features/stats/wrapped-export";
+import { toast } from "@/components/ui/use-toast";
 import type { MonthlyRecap } from "@/types/media";
 
 const useMonthlyRecapMock = vi.fn();
@@ -13,6 +15,18 @@ const loggerWarnMock = vi.fn();
 vi.mock("@/features/diagnostics/logger", () => ({
   logger: { warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn(), info: vi.fn() },
 }));
+
+vi.mock("@/features/stats/wrapped-export", () => ({
+  ShareCancelledError: class ShareCancelledError extends Error {},
+  downloadMonthlyRecapCard: vi.fn(),
+  renderMonthlyRecapCard: vi.fn(),
+}));
+
+vi.mock("@/components/ui/use-toast", () => ({ toast: vi.fn() }));
+
+const downloadMonthlyRecapCardMock = vi.mocked(downloadMonthlyRecapCard);
+const renderMonthlyRecapCardMock = vi.mocked(renderMonthlyRecapCard);
+const toastMock = vi.mocked(toast);
 
 function makeRecap(overrides: Partial<MonthlyRecap> = {}): MonthlyRecap {
   return {
@@ -35,6 +49,9 @@ describe("MonthlyRecapSection", () => {
   beforeEach(() => {
     useMonthlyRecapMock.mockReset();
     loggerWarnMock.mockClear();
+    downloadMonthlyRecapCardMock.mockReset();
+    renderMonthlyRecapCardMock.mockReset();
+    toastMock.mockReset();
   });
 
   it("renders nothing while loading", () => {
@@ -92,5 +109,57 @@ describe("MonthlyRecapSection", () => {
     render(<MonthlyRecapSection />);
 
     expect(screen.getByRole("button", { name: "Next month" })).toBeDisabled();
+  });
+
+  it("moves forward again after browsing to the previous month", () => {
+    useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
+    render(<MonthlyRecapSection />);
+    const initialMonth = useMonthlyRecapMock.mock.calls[0]?.[0] as string;
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+    const nextButton = screen.getByRole("button", { name: "Next month" });
+    expect(nextButton).not.toBeDisabled();
+    fireEvent.click(nextButton);
+
+    expect(useMonthlyRecapMock.mock.calls.at(-1)?.[0]).toBe(initialMonth);
+  });
+
+  it("exports the selected recap and reports success", async () => {
+    useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
+    const blob = new Blob(["recap"], { type: "image/png" });
+    renderMonthlyRecapCardMock.mockResolvedValue(blob);
+    downloadMonthlyRecapCardMock.mockResolvedValue(undefined);
+    render(<MonthlyRecapSection />);
+    const month = useMonthlyRecapMock.mock.calls[0]?.[0] as string;
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(downloadMonthlyRecapCardMock).toHaveBeenCalledWith(blob, month));
+    expect(renderMonthlyRecapCardMock).toHaveBeenCalledOnce();
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
+  });
+
+  it("treats a cancelled recap share as a non-error", async () => {
+    useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
+    renderMonthlyRecapCardMock.mockRejectedValue(new ShareCancelledError());
+    render(<MonthlyRecapSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(renderMonthlyRecapCardMock).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole("button", { name: /export/i })).not.toBeDisabled());
+    expect(loggerWarnMock).not.toHaveBeenCalled();
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it("logs and surfaces an unexpected recap export failure", async () => {
+    useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
+    renderMonthlyRecapCardMock.mockRejectedValue("export failed");
+    render(<MonthlyRecapSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("export failed")));
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
   });
 });
