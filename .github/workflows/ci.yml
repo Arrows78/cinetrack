@@ -107,10 +107,10 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Check Rust application
-        run: cargo check --manifest-path src-tauri/Cargo.toml
+        run: cargo check --locked --manifest-path src-tauri/Cargo.toml
 
       - name: Lint Rust application
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
       - name: Check Rust formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
@@ -118,7 +118,7 @@ jobs:
       - name: Test Rust application
         env:
           RUST_BACKTRACE: "1"
-        run: cargo test --manifest-path src-tauri/Cargo.toml -- --nocapture
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --nocapture
 
   cargo-audit:
     runs-on: ubuntu-latest
