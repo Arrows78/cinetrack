@@ -16,11 +16,6 @@ mod recap;
 mod rewatch;
 mod viewing_events;
 
-pub use viewing_events::{ViewingEvent, ViewingEventNote, ViewingEventType};
-use viewing_events::{
-    list_on_this_day_events_impl, list_viewing_events_for_media_impl,
-    list_viewing_events_for_year_impl, list_viewing_events_since_impl,
-};
 use milestones::get_watch_milestones_impl;
 use overview::{get_stats_overview_impl, list_yearly_activity_impl};
 use ratings::get_rating_distribution_impl;
@@ -28,6 +23,11 @@ use recap::get_monthly_recap_impl;
 use rewatch::get_rewatch_stats_impl;
 #[cfg(test)]
 use viewing_events::ViewingEventRow;
+pub use viewing_events::{ViewingEvent, ViewingEventNote, ViewingEventType};
+use viewing_events::{
+    list_on_this_day_events_impl, list_viewing_events_for_media_impl,
+    list_viewing_events_for_year_impl, list_viewing_events_since_impl,
+};
 
 /// Bounded fetch for computations that only need a recent window (current
 /// streak, catch-up pace) — avoids pulling a profile's entire lifetime of

@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 
-use super::{StatsOverview, StatsTotals, YearlyActivityBucket};
 use super::monthly_activity::{self, MonthlyActivityRow};
+use super::{StatsOverview, StatsTotals, YearlyActivityBucket};
 use crate::error::ApiError;
 
 #[derive(sqlx::FromRow)]
@@ -19,7 +19,6 @@ struct LibraryTotalsRow {
     completed: i64,
     completed_series: i64,
 }
-
 
 pub(super) async fn get_stats_overview_impl(
     pool: &SqlitePool,

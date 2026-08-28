@@ -73,15 +73,26 @@ pub(super) async fn get_rating_distribution_impl(
     Ok(RatingDistribution {
         distribution: distribution
             .into_iter()
-            .map(|row| RatingBucket { rating: row.rating, count: row.count })
+            .map(|row| RatingBucket {
+                rating: row.rating,
+                count: row.count,
+            })
             .collect(),
         average_by_month: average_by_month
             .into_iter()
-            .map(|row| RatingPeriodAverage { period: row.period, average: row.average, count: row.count })
+            .map(|row| RatingPeriodAverage {
+                period: row.period,
+                average: row.average,
+                count: row.count,
+            })
             .collect(),
         average_by_year: average_by_year
             .into_iter()
-            .map(|row| RatingPeriodAverage { period: row.period, average: row.average, count: row.count })
+            .map(|row| RatingPeriodAverage {
+                period: row.period,
+                average: row.average,
+                count: row.count,
+            })
             .collect(),
     })
 }
