@@ -1,5 +1,10 @@
 import { addDays, eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth, subDays, subMonths } from "date-fns";
-import { invokeCommand } from "@/shared/lib/invoke";
+import {
+  statsCommands,
+  type StatsOverviewDto,
+  type YearlyActivityBucket,
+} from "@/features/stats/stats-commands";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import { libraryRepository } from "@/features/library/library-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
 import type {
@@ -47,25 +52,7 @@ interface YearSummary {
   activeDays: number;
 }
 
-export interface YearlyActivityBucket {
-  year: number;
-  moviesWatched: number;
-  episodesWatched: number;
-  minutesWatched: number;
-}
-
-interface StatsOverviewDto {
-  totals: {
-    moviesWatched: number;
-    episodesWatched: number;
-    minutesWatched: number;
-    movieMinutesWatched: number;
-    episodeMinutesWatched: number;
-    completedSeries: number;
-    libraryCompletionPercent: number;
-  };
-  monthlyActivity: Array<{ month: string; count: number; minutes: number }>;
-}
+export type { YearlyActivityBucket } from "@/features/stats/stats-commands";
 
 const localDay = (timestamp: string) => format(parseISO(timestamp), "yyyy-MM-dd");
 
@@ -264,7 +251,7 @@ function recentEventsSince(): string {
 }
 
 async function loadRecentEvents(): Promise<ViewingEvent[]> {
-  return invokeCommand<ViewingEvent[]>("list_recent_viewing_events", { since: recentEventsSince() });
+  return invokeTypedCommand(statsCommands.listRecentViewingEvents, { since: recentEventsSince() });
 }
 
 /**
@@ -292,7 +279,7 @@ export const statsRepository = {
 
     const [library, overview, recentEvents] = await Promise.all([
       libraryRepository.list(),
-      invokeCommand<StatsOverviewDto>("get_stats_overview", {
+      invokeTypedCommand(statsCommands.getOverview, {
         windowStart: windowStart.toISOString(),
         monthLabels,
       }),
@@ -323,7 +310,7 @@ export const statsRepository = {
   async getYearSummary(year = new Date().getFullYear()): Promise<YearSummary> {
     const [library, selected] = await Promise.all([
       libraryRepository.list(),
-      invokeCommand<ViewingEvent[]>("list_viewing_events_for_year", {
+      invokeTypedCommand(statsCommands.listViewingEventsForYear, {
         rangeStart: `${year}-01-01T00:00:00.000Z`,
         rangeEnd: `${year + 1}-01-01T00:00:00.000Z`,
       }).then(activeEvents),
@@ -355,7 +342,7 @@ export const statsRepository = {
   // page's year-over-year chart and bounds its year switcher, in one query
   // instead of probing getYearSummary one year at a time.
   async getYearlyActivity(): Promise<YearlyActivityBucket[]> {
-    return invokeCommand<YearlyActivityBucket[]>("list_yearly_activity");
+    return invokeTypedCommand(statsCommands.listYearlyActivity);
   },
   // Powers the opt-in "On this day" Home card — every past-year watch whose
   // watched_at falls on today's month-day, most recent year first. `today`
@@ -363,7 +350,7 @@ export const statsRepository = {
   // Rust side read its own clock, mirroring getYearSummary's rangeStart/
   // rangeEnd above, so a fixed reference date stays trivial to test.
   async getOnThisDayEvents(today = new Date().toISOString()): Promise<ViewingEvent[]> {
-    return invokeCommand<ViewingEvent[]>("list_on_this_day_events", { today });
+    return invokeTypedCommand(statsCommands.listOnThisDayEvents, { today });
   },
   // `month` is a "YYYY-MM" label; rangeStart/rangeEnd are built as literal
   // UTC-midnight boundaries — like getYearSummary's rangeStart/rangeEnd
@@ -376,7 +363,7 @@ export const statsRepository = {
     const monthNumber = Number(month.slice(5, 7));
     const nextMonth = monthNumber === 12 ? 1 : monthNumber + 1;
     const nextYear = monthNumber === 12 ? year + 1 : year;
-    return invokeCommand<MonthlyRecap>("get_monthly_recap", {
+    return invokeTypedCommand(statsCommands.getMonthlyRecap, {
       month,
       rangeStart: `${month}-01T00:00:00.000Z`,
       rangeEnd: `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00.000Z`,
@@ -384,18 +371,18 @@ export const statsRepository = {
   },
   async getRewatchStats(): Promise<RewatchStats> {
     const { windowStart, monthLabels } = trailing12MonthsWindow();
-    return invokeCommand<RewatchStats>("get_rewatch_stats", {
+    return invokeTypedCommand(statsCommands.getRewatchStats, {
       windowStart: windowStart.toISOString(),
       monthLabels,
     });
   },
   async getRatingDistribution(): Promise<RatingDistribution> {
     const { windowStart } = trailing12MonthsWindow();
-    return invokeCommand<RatingDistribution>("get_rating_distribution", {
+    return invokeTypedCommand(statsCommands.getRatingDistribution, {
       windowStart: windowStart.toISOString(),
     });
   },
   async getWatchMilestones(): Promise<WatchMilestone[]> {
-    return invokeCommand<WatchMilestone[]>("get_watch_milestones");
+    return invokeTypedCommand(statsCommands.getWatchMilestones);
   },
 };
