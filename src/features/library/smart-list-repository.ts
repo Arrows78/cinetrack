@@ -1,4 +1,5 @@
-import { invokeCommand } from "@/shared/lib/invoke";
+import { smartListCommands } from "@/features/library/smart-list-commands";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { SmartList, SmartListRules } from "@/types/media";
 
 // The name/rules validation and active-profile resolution now live in Rust
@@ -6,18 +7,18 @@ import type { SmartList, SmartListRules } from "@/types/media";
 // invoke() wrapper, matching custom-list-repository.ts's own shape.
 export const smartListRepository = {
   async list(): Promise<SmartList[]> {
-    return invokeCommand<SmartList[]>("list_smart_lists");
+    return invokeTypedCommand(smartListCommands.list);
   },
 
   async create(name: string, rules: SmartListRules): Promise<SmartList> {
-    return invokeCommand<SmartList>("create_smart_list", { name, rules });
+    return invokeTypedCommand(smartListCommands.create, { name, rules });
   },
 
   async update(smartListId: string, name: string, rules: SmartListRules): Promise<SmartList> {
-    return invokeCommand<SmartList>("update_smart_list", { smartListId, name, rules });
+    return invokeTypedCommand(smartListCommands.update, { smartListId, name, rules });
   },
 
   async remove(smartListId: string): Promise<void> {
-    await invokeCommand<void>("remove_smart_list", { smartListId });
+    await invokeTypedCommand(smartListCommands.remove, { smartListId });
   },
 };
