@@ -5,7 +5,7 @@ import type { Migration } from "./types";
 // SQLite contract tests exercise the same query shape as the desktop app.
 export const migration: Migration = {
   version: 16,
-  name: "add indexes for large-library statistics",
+  name: "index large-library stats queries",
   statements: [
     "CREATE INDEX idx_viewing_events_profile_media_episode_date ON viewing_events(profile_id, media_id, media_type, episode_id, watched_at DESC, created_at DESC)",
     "CREATE INDEX idx_viewing_events_profile_media_date ON viewing_events(profile_id, media_id, media_type, watched_at DESC)",

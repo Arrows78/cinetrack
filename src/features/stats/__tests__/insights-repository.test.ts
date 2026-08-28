@@ -1,8 +1,15 @@
 import { format } from "date-fns";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const invokeCommandMock = vi.fn();
-vi.mock("@/shared/lib/invoke", () => ({ invokeCommand: (...args: unknown[]) => invokeCommandMock(...args) }));
+const invokeCommandMock = vi.hoisted(() => vi.fn());
+vi.mock("@/shared/lib/invoke", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    invokeTypedCommand: (command: { name: string }, args?: Record<string, unknown>) =>
+      args === undefined ? invokeCommandMock(command.name) : invokeCommandMock(command.name, args),
+  };
+});
 
 import { statsRepository, trailing12MonthsWindow } from "../stats-repository";
 
