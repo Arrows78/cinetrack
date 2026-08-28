@@ -1,5 +1,6 @@
 import i18n from "@/i18n";
-import { invokeCommand } from "@/shared/lib/invoke";
+import { backupCommands } from "@/features/backup/backup-commands";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { cineTrackBackupSchema } from "./backup-schema";
@@ -62,13 +63,13 @@ function parseBackup(value: unknown): CineTrackBackup {
 // isn't SQL and stays in TS where it's already tested.
 export const portableData = {
   async export(): Promise<CineTrackBackup> {
-    const data = await invokeCommand<PortableData>("export_backup_data");
+    const data = await invokeTypedCommand(backupCommands.exportData);
     return { format: "cinetrack-backup", version: 1, exportedAt: new Date().toISOString(), data };
   },
 
   async import(backup: unknown): Promise<void> {
     const { data } = parseBackup(backup);
-    await invokeCommand<void>("import_backup_data", { data });
+    await invokeTypedCommand(backupCommands.importData, { data });
     await preferencesRepository.refresh();
   },
 };
