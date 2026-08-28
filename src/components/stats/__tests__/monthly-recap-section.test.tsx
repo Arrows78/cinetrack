@@ -121,7 +121,8 @@ describe("MonthlyRecapSection", () => {
     expect(nextButton).not.toBeDisabled();
     fireEvent.click(nextButton);
 
-    expect(useMonthlyRecapMock.mock.calls.at(-1)?.[0]).toBe(initialMonth);
+    const lastCall = useMonthlyRecapMock.mock.calls[useMonthlyRecapMock.mock.calls.length - 1];
+    expect(lastCall?.[0]).toBe(initialMonth);
   });
 
   it("exports the selected recap and reports success", async () => {
