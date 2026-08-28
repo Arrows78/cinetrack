@@ -76,10 +76,10 @@ export default defineConfig({
       // exercised) — recalibrate the specific file's numbers rather than
       // treating a drop as a real regression without checking first.
       thresholds: {
-        // The 001-008 migration files this used to list one-by-one were
-        // squashed into this single schema file (see git history) — only
-        // one file, and one threshold, left to track.
-        "src/db/migrations/001-initial-schema.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
+        // Migration SQL now has one production authority in Rust. Keep the
+        // same floor on the TypeScript canonical parser that feeds SQLite
+        // integration tests from that source.
+        "src/db/migrations/canonical.ts": { statements: 90, branches: 80, functions: 90, lines: 90 },
         // Exercised end-to-end against a real SQLite engine in
         // migrations.integration.test.ts (see also sqlite-adapter.ts) — not
         // just string-shape-checked like migrations.test.ts.

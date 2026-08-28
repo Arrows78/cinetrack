@@ -8,9 +8,10 @@ pub struct Migration {
     pub statements: &'static [&'static str],
 }
 
-// Ported verbatim from src/db/migrations/001-initial-schema.ts (the
-// TypeScript migration runner that created every already-installed
-// database). Every data table uses UUID as PRIMARY KEY (stable public
+// Canonical migration source for both production and the TypeScript SQLite
+// contract tests. src/db/migrations/canonical.ts parses this table directly,
+// so SQL statements are maintained in one place only. Every data table uses
+// UUID as PRIMARY KEY (stable public
 // identifier, generated at insert time — no separate INTEGER id).
 // `created_at`/`updated_at` are ISO-8601 strings supplied by the app.
 //
@@ -30,8 +31,8 @@ pub struct Migration {
 // user_version 8. The next migration added here MUST use version 9 or
 // higher, not version 2 — reusing an already-passed version number would
 // make it silently skip on any pre-squash install once this app ships
-// publicly. Keep this in sync with src/db/migrations/index.ts's own copy of
-// this warning.
+// publicly. The TypeScript test runner consumes this exact table rather than
+// maintaining a second statement list.
 pub const MIGRATIONS: &[Migration] = &[
     Migration {
         version: 1,

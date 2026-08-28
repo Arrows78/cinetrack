@@ -1,15 +1,9 @@
 // @vitest-environment node
 //
-// src-tauri/src/database/migrations.rs is a hand-maintained Rust port of
-// this file's migration.statements (see that file's own comment: "Ported
-// verbatim from src/db/migrations/001-initial-schema.ts", and the same
-// comment on each later migration). Nothing enforces the two stay
-// identical — a schema change applied to only one side would silently
-// desync the TS-tested schema from the schema the app actually runs
-// against in production. This test reads the Rust source as text and
-// diffs its full migration list (version, name, statements — not just the
-// first migration) against the TS side, so drift on ANY migration fails
-// loudly here instead of being discovered later.
+// The production Rust migration table is now the single authority and the
+// TypeScript SQLite test runner parses it through migrations/canonical.ts.
+// Keep an independent extractor here so a parser regression cannot silently
+// change the migration list exercised by frontend integration tests.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -73,8 +67,8 @@ function extractRustMigrations(source: string): ParsedMigration[] {
 
 const normalize = (statement: string) => statement.trim().replace(/\s+/g, " ");
 
-describe("migrations.rs stays in sync with the TypeScript migrations", () => {
-  it("has the same version, name and statements, in the same order, for every migration", () => {
+describe("the canonical migration parser", () => {
+  it("extracts every production version, name and statement in the same order", () => {
     const rustMigrations = extractRustMigrations(readFileSync(rustSourcePath, "utf-8"));
 
     expect(rustMigrations.map((m) => m.version)).toEqual(migrations.map((m) => m.version));
