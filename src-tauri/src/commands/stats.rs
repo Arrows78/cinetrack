@@ -9,6 +9,8 @@ use crate::models::MediaType;
 mod milestones;
 mod monthly_activity;
 mod overview;
+#[cfg(test)]
+mod performance;
 mod ratings;
 mod recap;
 mod rewatch;
