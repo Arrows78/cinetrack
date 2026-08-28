@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { invokeCommand } from "@/shared/lib/invoke";
+import { preferencesCommands } from "@/features/preferences/preferences-commands";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserPreferences } from "@/types/media";
@@ -42,14 +43,14 @@ export const defaultPreferences: UserPreferences = preferencesSchema.parse({
 // because backup-schema.ts still validates restored backups against them.
 export const preferencesRepository = {
   async getPreferences(): Promise<UserPreferences> {
-    return invokeCommand<UserPreferences>("get_preferences");
+    return invokeTypedCommand(preferencesCommands.get);
   },
 
   async updatePreference<Key extends Exclude<keyof UserPreferences, "activeProfileId">>(
     key: Key,
     value: UserPreferences[Key]
   ): Promise<UserPreferences> {
-    return invokeCommand<UserPreferences>("update_preference", { key, value });
+    return invokeTypedCommand(preferencesCommands.update, { key, value });
   },
 
   // The only legitimate way to switch activeProfileId — Rust rejects it via
@@ -57,13 +58,16 @@ export const preferencesRepository = {
   // doc comment (src-tauri/src/commands/preferences.rs) for what
   // supabaseUserId does and doesn't prove.
   async setActiveProfile(profileId: string, supabaseUserId?: string | null): Promise<UserPreferences> {
-    return invokeCommand<UserPreferences>("set_active_profile", { profileId, supabaseUserId: supabaseUserId ?? null });
+    return invokeTypedCommand(preferencesCommands.setActiveProfile, {
+      profileId,
+      supabaseUserId: supabaseUserId ?? null,
+    });
   },
 
   // Callers that write preferences storage directly (bulk backup restore)
   // must call this so the next getPreferences() re-reads instead of serving
   // a now-stale cached value.
   async refresh(): Promise<void> {
-    await invokeCommand<void>("refresh_preferences");
+    await invokeTypedCommand(preferencesCommands.refresh);
   },
 };

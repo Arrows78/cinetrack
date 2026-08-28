@@ -1,4 +1,5 @@
-import { invokeCommand } from "@/shared/lib/invoke";
+import { availabilityCommands } from "@/features/availability/availability-commands";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
 
 // The toggle/remove/snapshot writes and active-profile resolution now live
@@ -6,19 +7,19 @@ import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/ty
 // a thin invoke() wrapper.
 export const availabilityRepository = {
   async listAlerts(): Promise<AvailabilityAlert[]> {
-    return invokeCommand<AvailabilityAlert[]>("list_availability_alerts");
+    return invokeTypedCommand(availabilityCommands.listAlerts);
   },
 
   async getAlert(mediaId: number, mediaType: MediaSummary["mediaType"]): Promise<AvailabilityAlert | null> {
-    return invokeCommand<AvailabilityAlert | null>("get_availability_alert", { mediaId, mediaType });
+    return invokeTypedCommand(availabilityCommands.getAlert, { mediaId, mediaType });
   },
 
   async toggle(media: MediaSummary, region: string, providerIds: number[]): Promise<AvailabilityAlert | null> {
-    return invokeCommand<AvailabilityAlert | null>("toggle_availability_alert", { media, region, providerIds });
+    return invokeTypedCommand(availabilityCommands.toggleAlert, { media, region, providerIds });
   },
 
   async remove(id: string): Promise<void> {
-    await invokeCommand<void>("remove_availability_alert", { id });
+    await invokeTypedCommand(availabilityCommands.removeAlert, { id });
   },
 
   async getSnapshot(
@@ -26,11 +27,11 @@ export const availabilityRepository = {
     mediaType: MediaSummary["mediaType"],
     region: string
   ): Promise<AvailabilitySnapshot | null> {
-    return invokeCommand<AvailabilitySnapshot | null>("get_availability_snapshot", { mediaId, mediaType, region });
+    return invokeTypedCommand(availabilityCommands.getSnapshot, { mediaId, mediaType, region });
   },
 
   async saveSnapshot(snapshot: AvailabilitySnapshot): Promise<void> {
-    await invokeCommand<void>("save_availability_snapshot", { snapshot });
+    await invokeTypedCommand(availabilityCommands.saveSnapshot, { snapshot });
   },
 
   // Every cached snapshot across every title (not profile-scoped — see
@@ -39,6 +40,6 @@ export const availabilityRepository = {
   // which matches a library item against whatever's already been checked
   // during normal app usage rather than issuing a fresh TMDB call per item.
   async listSnapshots(): Promise<AvailabilitySnapshot[]> {
-    return invokeCommand<AvailabilitySnapshot[]>("list_availability_snapshots");
+    return invokeTypedCommand(availabilityCommands.listSnapshots);
   },
 };
