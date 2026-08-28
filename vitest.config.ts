@@ -24,15 +24,15 @@ export default defineConfig({
     },
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
-    // Default "threads" pool runs test files across multiple worker
-    // threads — fine locally, but CI (more available parallelism) exposed
-    // cross-test module-cache timing issues in the vi.resetModules()-based
-    // token-vault tests that never reproduced locally. A single fork
-    // removes that source of flakiness; the suite is fast enough that
-    // losing file-level parallelism isn't a real cost.
-    // (Vitest 4: poolOptions.forks.singleFork was replaced by the top-level
-    // maxWorkers — see https://vitest.dev/guide/migration#pool-rework.)
-    pool: "forks",
+    // Keep test files serialized: the token-vault suite uses
+    // vi.resetModules() and was flaky when multiple workers mutated module
+    // state concurrently.
+    //
+    // Use a worker thread instead of a child-process fork. In CI the forked
+    // Vitest worker dies while parsing @vitest/utils (`Unexpected token
+    // 'with'`) even though the parent runner is Node 22. A single thread
+    // preserves serialization without starting a second Node process.
+    pool: "threads",
     maxWorkers: 1,
     coverage: {
       reporter: ["text", "html"],
