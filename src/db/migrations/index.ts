@@ -1,22 +1,14 @@
 import type Database from "@tauri-apps/plugin-sql";
-import type { Migration } from "./types";
-import { migration as m001 } from "./001-initial-schema";
-import { migration as m002 } from "./002-availability-alerts-unique";
-import { migration as m003 } from "./003-merge-watchlist-into-library";
-import { migration as m004 } from "./004-add-status-to-tracked-series";
-import { migration as m005 } from "./005-remove-rewatching-status";
-import { migration as m006 } from "./006-add-note-to-viewing-events";
-import { migration as m007 } from "./007-add-smart-lists";
-import { migration as m008 } from "./008-add-saved-filters";
-import { migration as m009 } from "./009-add-performance-indexes";
+import { migrations } from "./canonical";
 
 export type { Migration } from "./types";
+export { migrations } from "./canonical";
 
 // Order matters: each migration runs against the schema left by the ones
 // before it, in this exact sequence.
 //
-// IMPORTANT — version numbering: this single 001-initial-schema.ts replaces
-// what used to be 8 incremental migrations (001 through 008; see git commit
+// IMPORTANT — version numbering: the canonical Rust migration with version 1
+// replaces what used to be 8 incremental migrations (see git commit
 // "refactor(db): squash migrations into a single clean schema"), squashed
 // while the app had no shipped users yet — `runMigrations` skips any
 // migration whose version is <= the database's current `PRAGMA user_version`
@@ -24,8 +16,8 @@ export type { Migration } from "./types";
 // sits at user_version 8. The next migration added here MUST use `version: 9`
 // or higher, not `version: 2` — reusing an already-passed version number
 // would make it silently skip on any pre-squash install once this app ships
-// publicly.
-export const migrations: readonly Migration[] = [m001, m002, m003, m004, m005, m006, m007, m008, m009];
+// publicly. The version/name/statement list itself comes directly from the
+// production Rust source via canonical.ts; there is no parallel TS copy.
 
 export async function runMigrations(db: Database): Promise<void> {
   const rows = await db.select<Array<{ user_version: number }>>("PRAGMA user_version");
