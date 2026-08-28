@@ -1,11 +1,5 @@
 import { defineCommand } from "@/shared/lib/invoke";
-import type {
-  MonthlyRecap,
-  RatingDistribution,
-  RewatchStats,
-  ViewingEvent,
-  WatchMilestone,
-} from "@/types/media";
+import type { MonthlyRecap, RatingDistribution, RewatchStats, ViewingEvent, WatchMilestone } from "@/types/media";
 
 export interface YearlyActivityBucket {
   year: number;

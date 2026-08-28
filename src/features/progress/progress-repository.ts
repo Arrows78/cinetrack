@@ -1,8 +1,4 @@
-import {
-  progressCommands,
-  type EpisodeHistoryInput,
-  type SeriesInput,
-} from "@/features/progress/progress-commands";
+import { progressCommands, type EpisodeHistoryInput, type SeriesInput } from "@/features/progress/progress-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type {
   Episode,
