@@ -404,6 +404,21 @@ pub const MIGRATIONS: &[Migration] = &[
             "CREATE INDEX idx_saved_filters_profile_page_updated ON saved_filters(profile_id, page, updated_at DESC)",
         ],
     },
+    Migration {
+        // Stats queries repeatedly partition viewing events by media/episode,
+        // fetch one title's history in reverse chronology, filter completed
+        // series, and group current ratings. These indexes match those exact
+        // query shapes and keep the 10k-library/50k-event benchmark from
+        // regressing into avoidable temporary sorts or broad table scans.
+        version: 16,
+        name: "index large-library stats queries",
+        statements: &[
+            "CREATE INDEX idx_viewing_events_profile_media_episode_date ON viewing_events(profile_id, media_id, media_type, episode_id, watched_at DESC, created_at DESC)",
+            "CREATE INDEX idx_viewing_events_profile_media_date ON viewing_events(profile_id, media_id, media_type, watched_at DESC)",
+            "CREATE INDEX idx_library_profile_type_status_completed ON library_items(profile_id, media_type, status, completed_at ASC)",
+            "CREATE INDEX idx_library_profile_rating ON library_items(profile_id, user_rating) WHERE user_rating IS NOT NULL",
+        ],
+    },
 ];
 
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
@@ -568,7 +583,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 15);
+        assert_eq!(version.0, MIGRATIONS.last().unwrap().version);
 
         let mut tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -616,7 +631,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 15);
+        assert_eq!(version.0, MIGRATIONS.last().unwrap().version);
     }
 
     #[tokio::test]
@@ -641,7 +656,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 15);
+        assert_eq!(version.0, MIGRATIONS.last().unwrap().version);
     }
 
     #[tokio::test]
