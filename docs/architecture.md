@@ -15,7 +15,9 @@ flowchart LR
     UI --> LR[Local repositories]
     LR --> IPC[Tauri invoke]
     IPC --> CMD[Rust commands]
-    CMD --> DB[(SQLite app.db)]
+    CMD --> SVC[Application service]
+    SVC --> REPO[Repository / queries]
+    REPO --> DB[(SQLite app.db)]
 ```
 
 - **Catalogue data** (titles, images, cast, availability) comes from TMDB through `MediaProvider` (`src/features/media/media-provider.ts`, implemented by `tmdb-media-provider.ts`), fetched with TanStack Query. Nothing else in the app talks to the network.
@@ -25,11 +27,11 @@ Outside the Tauri window (`pnpm dev` alone, or a browser tab), the UI still rend
 
 ## The feature shape
 
-Every domain under `src/features/<domain>/` follows the same four layers. Reading them bottom-up, using `library` as the running example:
+Frontend domains live under `src/features/<domain>/`. Core backend domains that own substantial business or persistence logic live as crate-root vertical slices under `src-tauri/src/<domain>/`; `src-tauri/src/commands/mod.rs` remains the Tauri IPC registry. Reading the Library flow bottom-up:
 
-### 1. Rust command layer — `src-tauri/src/commands/library.rs`
+### 1. Rust domain slice — `src-tauri/src/library/`
 
-Owns the SQL, transactions, cascades, and active-profile resolution. A command is a thin `#[tauri::command]` wrapper around an `_impl` function that does the real work against a `SqlitePool`:
+`commands.rs` is a thin `#[tauri::command]` adapter. `service.rs` resolves the active profile and orchestrates the use case, while `repository.rs` and `queries.rs` own SQL, transactions, cascades, and persistence details:
 
 ```rust
 #[tauri::command]
@@ -38,12 +40,11 @@ pub async fn save_library_item(
     patch: Option<LibraryPatch>,
     pool: State<'_, SqlitePool>,
 ) -> Result<LibraryItem, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    upsert_impl(&pool, media, patch.unwrap_or_default(), &profile_id).await
+    LibraryService::new(pool.inner()).save(media, patch).await
 }
 ```
 
-`current_profile_id(pool)` (`src-tauri/src/database/mod.rs`) resolves which local profile a read/write applies to by reading the `activeProfileId` preference, defaulting to `"default"`. Commands that mutate more than one table wrap the work in `pool.begin()` / `tx.commit()` (see `library.rs`, `progress.rs`, `backup.rs`, `tvtime.rs`, `profiles.rs`) so a failure partway through doesn't leave orphaned rows — a real bug of exactly this shape (a list-deletion command running two unwrapped `DELETE`s) was fixed in `custom_lists.rs::remove_impl`, which is now the pattern every new multi-statement command should copy. `library.rs::upsert_impl` also shows the idempotent-mutation pattern from `CLAUDE.md`: it only appends a history entry the first time an item is created (`is_new`, captured before the insert), never on a plain status/rating update — the same guard `remove_impl` and the guarded `remove_if_planned_impl` apply on the delete side.
+`current_profile_id(pool)` (`src-tauri/src/database/mod.rs`) resolves which local profile a read/write applies to by reading the `activeProfileId` preference, defaulting to `"default"`; the crate-root services call it rather than duplicating profile selection in each Tauri adapter. Multi-table mutations keep their transaction in the persistence boundary (see `src-tauri/src/library/repository.rs`, `src-tauri/src/progress/repository.rs`, `src-tauri/src/backup/repository.rs`, and the legacy `src-tauri/src/commands/tvtime.rs` / `profiles.rs`) so a failure partway through cannot leave orphaned rows. `library/repository.rs::upsert_impl` also shows the idempotent-mutation pattern from `CLAUDE.md`: it appends a history entry only when an item is first created, never on a plain status/rating update.
 
 Every command returns `Result<T, ApiError>` (`src-tauri/src/error.rs`), a small serializable struct:
 
@@ -110,7 +111,7 @@ The frontend surfaces this: `get_boot_recovery` (`src/features/desktop/boot-reco
 
 ## Testing strategy
 
-- **Rust** (`cargo test`) exercises the command layer directly against a real, migrated SQLite pool (`migrated_pool()` test helper) — this is where cascades, transactions, and multi-table invariants are proven, not just "does the call succeed."
+- **Rust** (`cargo test`) exercises the crate-root domain slices directly against real, migrated SQLite pools — this is where service orchestration, cascades, transactions, query behavior, and multi-table invariants are proven, not just "does the call succeed."
 - **TS repositories** are tested either against a fake `invoke()` backend (`src/db/__tests__/fake-invoke-backend.ts`, for invoke-plumbing behavior) or a real SQLite engine (`sqlite-adapter.ts` / `sqlite-test-harness.ts`, for SQL behavior like joins and cascades) — prefer the real engine when the thing under test is actually about SQL.
 - `vitest.config.ts` pins coverage thresholds **per file**, not globally — most UI has no tests yet, which is a known, tracked gap rather than a silent regression. If you give a listed file real tests, move its threshold up with it; don't leave it stale.
 - There is currently no end-to-end test suite (no Playwright/Cypress) — only unit/component tests plus `cargo test`.
@@ -119,7 +120,7 @@ The frontend surfaces this: `get_boot_recovery` (`src/features/desktop/boot-reco
 
 Extending the app with a 16th feature domain touches a small, fixed set of places — the cost is linear, not something that multiplies as the app grows:
 
-1. `src-tauri/src/commands/<domain>.rs` — commands + `_impl` functions, registered in the `tauri::generate_handler![...]` list in `src-tauri/src/lib.rs`.
+1. For a substantial backend domain, add `src-tauri/src/<domain>/` with a thin `commands.rs`, application `service.rs`, and focused repository/query modules; register the root module in `src-tauri/src/lib.rs` and re-export its Tauri commands from `src-tauri/src/commands/mod.rs` so the existing `tauri::generate_handler![...]` registry remains the IPC facade.
 2. `src/features/<domain>/<domain>-repository.ts` — thin `invokeCommand()` wrapper.
 3. `src/features/<domain>/use-<domain>.ts` — `useQuery`/`useInvalidatingMutation` hook.
 4. A new `local.<domain>` entry in `src/shared/constants/query-keys.ts`.
