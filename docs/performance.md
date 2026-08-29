@@ -63,7 +63,7 @@ machine-specific threshold.
 
 ## Stress metrics: beyond read latency
 
-The same benchmark run also seeds a real *file-backed* SQLite database (the
+The same benchmark run also seeds a real _file-backed_ SQLite database (the
 1k/10k/50k cases above deliberately stay in-memory, to keep the read-latency
 percentiles free of disk-I/O noise — file size can't be measured on a
 database that has no file at all) at the 50k/100k scale, and records:
