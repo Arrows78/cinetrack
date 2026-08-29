@@ -126,8 +126,6 @@ jobs:
 
       - name: Record database performance baseline
         if: runner.os == 'Linux'
-        env:
-          CINETRACK_PERF_REPORT: src-tauri/target/performance/database-benchmark.json
         run: >-
           cargo test --locked --manifest-path src-tauri/Cargo.toml
           stats::performance::benchmark_library_progress_and_stats_at_1k_and_10k_scale
