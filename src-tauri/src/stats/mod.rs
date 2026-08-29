@@ -14,12 +14,11 @@ pub use commands::{
     get_watch_milestones, list_on_this_day_events, list_recent_viewing_events,
     list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
 };
-pub use models::{
-    BiggestBingeDay, ComfortTitle, MilestoneCategory, MonthlyActivityBucket, MonthlyRecap,
-    RatingBucket, RatingDistribution, RatingPeriodAverage, RewatchStats, StatsOverview, StatsTotals,
-    TitleRating, WatchMilestone, YearlyActivityBucket,
+use models::{
+    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, WatchMilestone,
+    YearlyActivityBucket,
 };
-pub use queries::{ViewingEvent, ViewingEventNote, ViewingEventType};
+pub(crate) use queries::{ViewingEvent, ViewingEventNote, ViewingEventType};
 
 use queries::{milestones, overview, ratings, recap, rewatch, viewing_events};
 
@@ -43,9 +42,11 @@ use viewing_events::{
 
 #[cfg(test)]
 mod tests {
+    use super::models::*;
     use super::*;
+    use crate::models::MediaType;
     use sqlx::sqlite::SqlitePoolOptions;
-    use tauri::Manager;
+    use tauri::{Manager, State};
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()

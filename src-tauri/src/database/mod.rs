@@ -342,11 +342,8 @@ mod tests {
         // apply_pending_migrations try (and fail) to run the newer
         // migrations against a schema-less database, which exercises the
         // blocked path this test isn't about.
-        let latest_version = crate::database::migrations::MIGRATIONS
-            .iter()
-            .map(|migration| migration.version)
-            .max()
-            .expect("MIGRATIONS is never empty");
+        let latest_version = crate::database::migrations::latest_version()
+            .expect("database migrations are registered");
         let broken = SqlitePoolOptions::new()
             .connect(&format!("sqlite://{}?mode=rwc", path.display()))
             .await

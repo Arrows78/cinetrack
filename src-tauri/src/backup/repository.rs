@@ -7,11 +7,6 @@ use super::commands::{
     read_backup_from_path, remove_backup_file, write_backup_to_path,
 };
 #[cfg(test)]
-use super::filesystem::{
-    list_backup_directory_sync, read_backup_file_sync, remove_backup_file_sync,
-    write_backup_file_sync,
-};
-#[cfg(test)]
 use super::integrity::quick_check_impl;
 
 use serde::{Deserialize, Serialize};
@@ -25,15 +20,15 @@ use crate::commands::availability::{
 };
 use crate::commands::custom_lists::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
 use crate::commands::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
-use crate::library::{LibraryItem, LibraryRow, LibraryStatus};
 use crate::commands::profiles::{ProfileRow, UserProfile};
-use crate::progress::{EpisodeProgress, TrackedSeriesItem};
 use crate::commands::saved_filters::{SavedFilter, SavedFilterRow};
 use crate::commands::smart_lists::{SmartList, SmartListRow};
-use crate::stats::{ViewingEvent, ViewingEventType};
 use crate::database::new_uuid;
 use crate::error::ApiError;
+use crate::library::{LibraryItem, LibraryRow, LibraryStatus};
 use crate::models::MediaType;
+use crate::progress::{EpisodeProgress, TrackedSeriesItem};
+use crate::stats::{ViewingEvent, ViewingEventType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

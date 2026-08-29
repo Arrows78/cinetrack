@@ -47,21 +47,21 @@ pub struct ViewingEvent {
 }
 
 #[derive(sqlx::FromRow)]
-pub(super) struct ViewingEventRow {
-    pub(super) uuid: String,
-    pub(super) media_id: i64,
-    pub(super) media_type: String,
-    pub(super) title: String,
-    pub(super) event_type: String,
-    pub(super) watched_at: String,
-    pub(super) duration_minutes: Option<i64>,
-    pub(super) episode_id: Option<i64>,
-    pub(super) season_number: Option<i64>,
-    pub(super) episode_number: Option<i64>,
+pub(in crate::stats) struct ViewingEventRow {
+    pub(in crate::stats) uuid: String,
+    pub(in crate::stats) media_id: i64,
+    pub(in crate::stats) media_type: String,
+    pub(in crate::stats) title: String,
+    pub(in crate::stats) event_type: String,
+    pub(in crate::stats) watched_at: String,
+    pub(in crate::stats) duration_minutes: Option<i64>,
+    pub(in crate::stats) episode_id: Option<i64>,
+    pub(in crate::stats) season_number: Option<i64>,
+    pub(in crate::stats) episode_number: Option<i64>,
 }
 
 impl ViewingEventRow {
-    pub(super) fn into_event(self, profile_id: &str) -> Result<ViewingEvent, ApiError> {
+    pub(in crate::stats) fn into_event(self, profile_id: &str) -> Result<ViewingEvent, ApiError> {
         let event_type = match self.event_type.as_str() {
             "watched" => ViewingEventType::Watched,
             "unwatched" => ViewingEventType::Unwatched,
@@ -92,7 +92,7 @@ impl ViewingEventRow {
     }
 }
 
-pub(super) async fn list_viewing_events_since_impl(
+pub(in crate::stats) async fn list_viewing_events_since_impl(
     pool: &SqlitePool,
     profile_id: &str,
     since: &str,
@@ -112,7 +112,7 @@ pub(super) async fn list_viewing_events_since_impl(
         .collect()
 }
 
-pub(super) async fn list_viewing_events_for_year_impl(
+pub(in crate::stats) async fn list_viewing_events_for_year_impl(
     pool: &SqlitePool,
     profile_id: &str,
     range_start: &str,
@@ -142,7 +142,7 @@ pub(super) async fn list_viewing_events_for_year_impl(
 /// computed client-side) rather than read from SQLite's own `now()`, so this
 /// stays deterministically testable and immune to whatever timezone the
 /// SQLite build happens to be running under.
-pub(super) async fn list_on_this_day_events_impl(
+pub(in crate::stats) async fn list_on_this_day_events_impl(
     pool: &SqlitePool,
     profile_id: &str,
     today: &str,
@@ -201,7 +201,7 @@ struct ViewingEventNoteRow {
     note: Option<String>,
 }
 
-pub(super) async fn list_viewing_events_for_media_impl(
+pub(in crate::stats) async fn list_viewing_events_for_media_impl(
     pool: &SqlitePool,
     profile_id: &str,
     media_id: i64,

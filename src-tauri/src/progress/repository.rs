@@ -9,9 +9,9 @@ use super::queries::is_movie_seen_impl;
 #[cfg(test)]
 use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
 use crate::commands::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
-use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
 use crate::database::new_uuid;
 use crate::error::ApiError;
+use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
 use crate::models::MediaType;
 
 /// Thin wrapper over `toggle_movie_seen_with_note_impl` for callers (the
@@ -451,7 +451,12 @@ pub(super) async fn refresh_tracked_series_status_impl(
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
-    use tauri::Manager;
+    use tauri::{Manager, State};
+
+    use crate::progress::{
+        get_episode_progress, is_movie_seen, list_tracked_series, toggle_episodes_watched,
+        toggle_movie_seen,
+    };
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
