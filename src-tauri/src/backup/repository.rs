@@ -25,12 +25,12 @@ use crate::commands::availability::{
 };
 use crate::commands::custom_lists::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
 use crate::commands::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
-use crate::commands::library::{LibraryItem, LibraryRow, LibraryStatus};
+use crate::library::{LibraryItem, LibraryRow, LibraryStatus};
 use crate::commands::profiles::{ProfileRow, UserProfile};
-use crate::commands::progress::{EpisodeProgress, TrackedSeriesItem};
+use crate::progress::{EpisodeProgress, TrackedSeriesItem};
 use crate::commands::saved_filters::{SavedFilter, SavedFilterRow};
 use crate::commands::smart_lists::{SmartList, SmartListRow};
-use crate::commands::stats::{ViewingEvent, ViewingEventType};
+use crate::stats::{ViewingEvent, ViewingEventType};
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::models::MediaType;

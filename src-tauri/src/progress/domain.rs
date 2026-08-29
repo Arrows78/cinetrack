@@ -1,4 +1,4 @@
-use crate::commands::library::LibraryStatus;
+use crate::library::LibraryStatus;
 
 pub(super) fn auto_sync_target(
     watched_episodes: i64,

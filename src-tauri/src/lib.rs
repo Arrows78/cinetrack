@@ -1,7 +1,11 @@
+mod backup;
 mod commands;
 mod database;
 mod error;
+mod library;
 mod models;
+mod progress;
+mod stats;
 // tray::build uses tauri::tray/tauri::menu, which only exist on desktop —
 // the module itself must be gated, not just its (already-gated) call site:
 // Rust compiles every `mod`-included file regardless of whether anything
