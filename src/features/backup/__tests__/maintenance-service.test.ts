@@ -59,11 +59,14 @@ vi.mock("@/features/preferences/preferences-repository", async (importOriginal) 
   return { ...actual, preferencesRepository: { getPreferences: getPreferencesMock } };
 });
 
+// Mocked at this layer (not `@/shared/lib/invoke`) so it transparently
+// covers both `invokeCommand` and `invokeTypedCommand` — maintenanceService
+// now goes through the latter for every Rust custom-path command (see
+// backup-commands.ts), same convention as library-repository.test.ts.
 const invokeCommandMock = vi.hoisted(() => vi.fn());
-vi.mock("@/shared/lib/invoke", async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>;
-  return { ...actual, invokeCommand: (name: string, args?: Record<string, unknown>) => invokeCommandMock(name, args) };
-});
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (command: string, args?: Record<string, unknown>) => invokeCommandMock(command, args),
+}));
 
 beforeEach(() => {
   fsState.files.clear();

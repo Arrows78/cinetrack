@@ -9,8 +9,9 @@ import {
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
 import i18n from "@/i18n";
-import { invokeCommand } from "@/shared/lib/invoke";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
+import { backupCommands, type DataIntegrityCheck } from "@/features/backup/backup-commands";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { STALE_24_HOURS } from "@/shared/constants/query";
@@ -66,7 +67,7 @@ const joinCustomPath = (directory: string, fileName: string) => `${directory.rep
 async function listAutoBackups(): Promise<string[]> {
   const customDirectory = await customBackupDirectory();
   if (customDirectory) {
-    const names = await invokeCommand<string[]>("list_backup_directory", {
+    const names = await invokeTypedCommand(backupCommands.listDirectory, {
       directory: joinCustomPath(customDirectory, BACKUP_DIR),
     });
     return names
@@ -93,7 +94,7 @@ async function pruneOldAutoBackups(): Promise<void> {
   await Promise.all(
     excess.map((file) =>
       (customDirectory
-        ? invokeCommand<void>("remove_backup_file", { path: joinCustomPath(customDirectory, file) })
+        ? invokeTypedCommand(backupCommands.removeFile, { path: joinCustomPath(customDirectory, file) })
         : remove(file, { baseDir: BaseDirectory.AppData })
       ).catch((error) => {
         logger.warn(`Failed to remove old backup ${file}: ${error}`);
@@ -114,7 +115,7 @@ async function pruneOldAutoBackups(): Promise<void> {
 async function writeNamedBackup(fileName: string, content: string): Promise<void> {
   const customDirectory = await customBackupDirectory();
   if (customDirectory) {
-    await invokeCommand<void>("write_backup_to_path", {
+    await invokeTypedCommand(backupCommands.writeToPath, {
       path: joinCustomPath(customDirectory, fileName),
       contents: content,
     });
@@ -129,7 +130,7 @@ async function writeNamedBackup(fileName: string, content: string): Promise<void
 async function readNamedBackup(fileName: string): Promise<string | null> {
   const customDirectory = await customBackupDirectory();
   if (customDirectory) {
-    return invokeCommand<string | null>("read_backup_from_path", {
+    return invokeTypedCommand(backupCommands.readFromPath, {
       path: joinCustomPath(customDirectory, fileName),
     });
   }
@@ -153,8 +154,8 @@ function assertReasonableSize(raw: string): void {
 }
 
 export const maintenanceService = {
-  async checkDataIntegrity(): Promise<{ healthy: boolean; detail: string }> {
-    return invokeCommand<{ healthy: boolean; detail: string }>("check_data_integrity");
+  async checkDataIntegrity(): Promise<DataIntegrityCheck> {
+    return invokeTypedCommand(backupCommands.checkDataIntegrity);
   },
 
   async createAutomaticBackup(force = false): Promise<void> {

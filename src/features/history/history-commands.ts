@@ -2,7 +2,7 @@ import { defineCommand } from "@/shared/lib/invoke";
 import type { ViewingHistoryItem } from "@/types/media";
 
 type ListHistoryArgs = {
-  limit: number;
+  limit: number | undefined;
   beforeTimestamp: string | undefined;
   beforeId: string | undefined;
 };
