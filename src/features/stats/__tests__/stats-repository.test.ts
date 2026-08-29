@@ -1,12 +1,23 @@
-// @vitest-environment node
-//
-// The second describe block below uses useTestSqlite() (see
-// sqlite-test-harness.ts), which relies on the real node:sqlite built-in.
-// Under the default jsdom environment, Vite treats this file as browser
-// ("client") code and refuses to bundle a Node built-in into it — applies
-// to the whole file since environment is a per-file pragma, but the first
-// describe block's plain data assertions don't depend on jsdom either way.
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
+import { makeLibraryItem } from "@/shared/test-utils";
+import type { LibraryItem, TrackedSeriesItem, ViewingEvent } from "@/types/media";
+
+const invokeCommandMock = vi.hoisted(() => vi.fn());
+vi.mock("@/shared/lib/invoke", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    invokeTypedCommand: (command: { name: string }, args?: Record<string, unknown>) =>
+      args === undefined ? invokeCommandMock(command.name) : invokeCommandMock(command.name, args),
+  };
+});
+
+const libraryListMock = vi.hoisted(() => vi.fn());
+vi.mock("@/features/library/library-repository", () => ({
+  libraryRepository: { list: libraryListMock },
+}));
+
 import {
   biggestBingeDay,
   computeForecast,
@@ -16,10 +27,6 @@ import {
   monthOverMonthComparison,
   viewingHeatmap,
 } from "../stats-repository";
-import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
-import { makeLibraryItem, makeMedia } from "@/shared/test-utils";
-import type { LibraryItem, TrackedSeriesItem, ViewingEvent } from "@/types/media";
 
 const libraryItem = makeLibraryItem;
 
@@ -327,47 +334,53 @@ describe("computeForecast", () => {
   });
 });
 
-describe("statsRepository.getYearSummary (real SQLite path)", () => {
-  vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-  vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-  vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
-  useTestSqlite();
+// The year-range scoping itself (rangeStart/rangeEnd filtering) happens in
+// Rust and is exercised there (see list_viewing_events_for_year's own tests
+// in src-tauri/src/stats/) — listViewingEventsForYear's mock below only ever
+// returns events already scoped to the requested year, matching what Rust
+// actually hands back. This test is only about the title/genre ranking done
+// in TS on top of that.
+describe("statsRepository.getYearSummary", () => {
+  beforeEach(() => {
+    invokeCommandMock.mockReset();
+    libraryListMock.mockReset();
+  });
 
-  it("aggregates the selected year only, with top titles and favourite genre", async () => {
-    const { libraryRepository } = await import("../../library/library-repository");
-    const { progressRepository } = await import("../../progress/progress-repository");
+  const viewingEvent = (overrides: Partial<ViewingEvent>): ViewingEvent =>
+    ({
+      id: crypto.randomUUID(),
+      profileId: DEFAULT_PROFILE_ID,
+      mediaId: 1,
+      mediaType: "movie",
+      title: "Film A",
+      eventType: "watched",
+      watchedAt: "2026-02-01T00:00:00.000Z",
+      durationMinutes: 0,
+      ...overrides,
+    }) as ViewingEvent;
+
+  it("aggregates the given year's events, ranking top titles and favourite genre", async () => {
+    const year = 2026;
+    libraryListMock.mockResolvedValue([
+      libraryItem({ mediaId: 1, mediaType: "movie", title: "Film A", genres: ["Drame"] }),
+      // A second title/genre so topTitles and favouriteGenre each have more
+      // than one entry to rank — otherwise Array.sort never calls its
+      // comparator on a single-element input and the sort branch goes untested.
+      libraryItem({ mediaId: 3, mediaType: "movie", title: "Film B", genres: ["Comédie"] }),
+    ]);
+    invokeCommandMock.mockResolvedValue([
+      viewingEvent({ mediaId: 1, title: "Film A", watchedAt: `${year}-02-01T00:00:00.000Z`, durationMinutes: 100 }),
+      viewingEvent({ mediaId: 1, title: "Film A", watchedAt: `${year}-03-01T00:00:00.000Z`, durationMinutes: 50 }),
+      viewingEvent({ mediaId: 3, title: "Film B", watchedAt: `${year}-04-01T00:00:00.000Z`, durationMinutes: 20 }),
+    ]);
     const { statsRepository: repo } = await import("../stats-repository");
-    const year = new Date().getFullYear();
-
-    await libraryRepository.save(makeMedia({ id: 1, title: "Film A", genres: ["Drame"] }));
-    // A second in-year title/genre so topTitles and favouriteGenre each have
-    // more than one entry to rank — otherwise Array.sort never calls its
-    // comparator on a single-element input and the sort branch goes untested.
-    await libraryRepository.save(makeMedia({ id: 3, title: "Film B", genres: ["Comédie"] }));
-
-    await progressRepository.toggleMovieSeen(
-      makeMedia({ id: 1, title: "Film A", runtime: 100 }),
-      true,
-      `${year}-02-01T00:00:00.000Z`
-    );
-    await progressRepository.toggleMovieSeen(
-      makeMedia({ id: 1, title: "Film A", runtime: 50 }),
-      true,
-      `${year}-03-01T00:00:00.000Z`
-    );
-    await progressRepository.toggleMovieSeen(
-      makeMedia({ id: 3, title: "Film B", runtime: 20 }),
-      true,
-      `${year}-04-01T00:00:00.000Z`
-    );
-    await progressRepository.toggleMovieSeen(
-      makeMedia({ id: 2, title: "Hors année" }),
-      true,
-      `${year - 1}-03-01T00:00:00.000Z`
-    );
 
     const summary = await repo.getYearSummary(year);
 
+    expect(invokeCommandMock).toHaveBeenCalledWith("list_viewing_events_for_year", {
+      rangeStart: `${year}-01-01T00:00:00.000Z`,
+      rangeEnd: `${year + 1}-01-01T00:00:00.000Z`,
+    });
     expect(summary.movies).toBe(3);
     expect(summary.minutes).toBe(170);
     expect(summary.activeDays).toBe(3);
@@ -376,5 +389,19 @@ describe("statsRepository.getYearSummary (real SQLite path)", () => {
     // Both Drame and Comédie appear exactly once (one matching library item
     // each) — favouriteGenre just needs to be one of the tied candidates.
     expect(["Drame", "Comédie"]).toContain(summary.favouriteGenre);
+  });
+
+  it("excludes an unwatched rollback event from the aggregation", async () => {
+    libraryListMock.mockResolvedValue([libraryItem({ mediaId: 1, mediaType: "movie", genres: ["Drame"] })]);
+    invokeCommandMock.mockResolvedValue([
+      viewingEvent({ mediaId: 1, eventType: "watched", durationMinutes: 100 }),
+      viewingEvent({ mediaId: 1, eventType: "unwatched", durationMinutes: 100 }),
+    ]);
+    const { statsRepository: repo } = await import("../stats-repository");
+
+    const summary = await repo.getYearSummary(2026);
+
+    expect(summary.movies).toBe(1);
+    expect(summary.minutes).toBe(100);
   });
 });

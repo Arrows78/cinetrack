@@ -1,23 +1,8 @@
-// @vitest-environment node
-//
-// useTestSqlite() (see sqlite-test-harness.ts) uses the real node:sqlite
-// built-in. Under the default jsdom environment, Vite treats this file as
-// browser ("client") code and refuses to bundle a Node built-in into it.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { InvokeArgs } from "@tauri-apps/api/core";
 import { rename, writeTextFile } from "@tauri-apps/plugin-fs";
-import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
-
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 // `vi.hoisted` so `fsState` is reachable both from the (hoisted) vi.mock
-// factory below and from the top-level `beforeEach` that clears it — plain
-// `vi.resetModules()` (see the shared harness) doesn't reliably re-run
-// vi.mock factories, so without an explicit reset, files written by one
-// test would still be visible to the next.
+// factory below and from the top-level `beforeEach` that clears it.
 const fsState = vi.hoisted(() => ({ files: new Map<string, string>() }));
 
 vi.mock("@tauri-apps/plugin-fs", () => ({
@@ -53,51 +38,66 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   }),
 }));
 
-// createAutomaticBackup() reads/writes window.localStorage (just the
-// once-per-24h throttle timestamp, not app data) — stubbed here since this
-// file runs under the node environment (no window global), unlike the app
-// itself which always runs in a webview.
-const localStorageState = new Map<string, string>();
-(globalThis as unknown as { window: { localStorage: Storage } }).window = {
-  localStorage: {
-    getItem: (key: string) => localStorageState.get(key) ?? null,
-    setItem: (key: string, value: string) => void localStorageState.set(key, value),
-    removeItem: (key: string) => void localStorageState.delete(key),
-  } as Storage,
-};
+// Everything maintenanceService actually reads/writes (SQLite rows behind
+// portableData.export()/import(), the Rust custom-path commands) is faked
+// here instead of round-tripped through a real backend, since this file is
+// entirely about maintenanceService's own orchestration — atomic tmp+rename
+// writes, retention pruning, snapshot-before-restore/undo, custom-directory
+// routing — not about what portableData actually contains. That content is
+// covered by portable-data.test.ts and, on the Rust side, by
+// src-tauri/src/backup/repository.rs's own tests.
+const exportMock = vi.hoisted(() => vi.fn());
+const importMock = vi.hoisted(() => vi.fn());
+vi.mock("@/features/backup/portable-data", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return { ...actual, portableData: { export: exportMock, import: importMock } };
+});
+
+const getPreferencesMock = vi.hoisted(() => vi.fn());
+vi.mock("@/features/preferences/preferences-repository", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return { ...actual, preferencesRepository: { getPreferences: getPreferencesMock } };
+});
+
+const invokeCommandMock = vi.hoisted(() => vi.fn());
+vi.mock("@/shared/lib/invoke", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return { ...actual, invokeCommand: (name: string, args?: Record<string, unknown>) => invokeCommandMock(name, args) };
+});
 
 beforeEach(() => {
   fsState.files.clear();
-  localStorageState.clear();
+  window.localStorage.clear();
+  // restoreFromBackup always snapshots the "current" state via export()
+  // before importing, whatever it's restoring — every test gets a working
+  // default here so only the tests that actually care about the snapshot's
+  // content need to override it.
+  exportMock.mockReset().mockResolvedValue(backup("default-snapshot"));
+  importMock.mockReset();
+  invokeCommandMock.mockReset();
+  getPreferencesMock.mockReset().mockResolvedValue({ backupDirectory: null });
 });
 
-const media = (mediaId: number) => ({
-  id: mediaId,
-  mediaType: "movie" as const,
-  title: `Movie ${mediaId}`,
-  overview: "",
-  genres: [] as string[],
-  cast: [] as never[],
+const backup = (marker: string, extra: Record<string, unknown> = {}) => ({
+  format: "cinetrack-backup" as const,
+  version: 1 as const,
+  exportedAt: "2026-01-01T00:00:00.000Z",
+  data: { marker, ...extra },
 });
 
 describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
-  useTestSqlite();
-
   it("snapshots the current state before importing, and undo restores it", async () => {
+    const currentState = backup("current");
+    exportMock.mockResolvedValue(currentState);
     const { maintenanceService } = await import("../maintenance-service");
-    const { libraryRepository } = await import("@/features/library/library-repository");
+    const replacement = backup("replacement");
 
-    await libraryRepository.save(media(1), { status: "planned" });
-    const before = await libraryRepository.list();
-    expect(before).toHaveLength(1);
-
-    const replacement = { format: "cinetrack-backup", version: 1, exportedAt: "", data: { library: [] } };
     await maintenanceService.restoreFromBackup(replacement);
-    expect(await libraryRepository.list()).toHaveLength(0);
+    expect(importMock).toHaveBeenLastCalledWith(replacement);
+    expect(fsState.files.get("backups/pre-restore.json")).toBe(JSON.stringify(currentState, null, 2));
 
     await maintenanceService.undoLastRestore();
-    expect(await libraryRepository.list()).toHaveLength(1);
-    expect((await libraryRepository.list())[0]!.mediaId).toBe(1);
+    expect(importMock).toHaveBeenLastCalledWith(currentState);
   });
 
   it("throws when there is nothing to undo", async () => {
@@ -107,20 +107,17 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
   });
 
   it("never corrupts the previous pre-restore snapshot if the atomic rename fails mid-write", async () => {
+    exportMock.mockResolvedValue(backup("current"));
     const { maintenanceService } = await import("../maintenance-service");
-    const { libraryRepository } = await import("@/features/library/library-repository");
-    await libraryRepository.save(media(1), { status: "planned" });
 
-    await maintenanceService.restoreFromBackup({ format: "cinetrack-backup", version: 1, exportedAt: "", data: {} });
+    await maintenanceService.restoreFromBackup(backup("first replacement"));
     const goodSnapshot = fsState.files.get("backups/pre-restore.json");
     expect(goodSnapshot).toBeDefined();
 
     vi.mocked(rename).mockImplementationOnce(async () => {
       throw new Error("disk full");
     });
-    await expect(
-      maintenanceService.restoreFromBackup({ format: "cinetrack-backup", version: 1, exportedAt: "", data: {} })
-    ).rejects.toThrow();
+    await expect(maintenanceService.restoreFromBackup(backup("second replacement"))).rejects.toThrow();
 
     // The temp file was written, but the previously-valid snapshot was
     // never touched by the failed rename.
@@ -129,71 +126,37 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
   });
 });
 
-// Backups are seeded directly into fsState rather than via repeated
-// createAutomaticBackup() calls — the filename embeds exportedAt
-// (new Date().toISOString()), and two calls executed within the same test
-// can land in the same millisecond, colliding on one file instead of
-// producing two.
-const autoBackupContent = (mediaId: number) =>
-  JSON.stringify({
-    format: "cinetrack-backup",
-    version: 1,
-    exportedAt: "",
-    data: {
-      library: [
-        {
-          profileId: DEFAULT_PROFILE_ID,
-          mediaId,
-          mediaType: "movie",
-          title: `Seed ${mediaId}`,
-          genres: [],
-          status: "planned",
-          favourite: false,
-          tags: [],
-          rewatchCount: 0,
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-        },
-      ],
-    },
-  });
-
 describe("maintenanceService automatic backup rotation", () => {
-  useTestSqlite();
-
   it("creating an automatic backup and restoring it round-trips the data", async () => {
+    exportMock.mockResolvedValue(backup("round-trip"));
     const { maintenanceService } = await import("../maintenance-service");
-    const { libraryRepository } = await import("@/features/library/library-repository");
-    await libraryRepository.save(media(1), { status: "planned" });
 
     await maintenanceService.createAutomaticBackup(true);
-    await libraryRepository.remove(1, "movie");
-    expect(await libraryRepository.list()).toHaveLength(0);
-
     await maintenanceService.restoreAutomaticBackup();
-    expect((await libraryRepository.list())[0]?.mediaId).toBe(1);
+
+    expect(importMock).toHaveBeenLastCalledWith(backup("round-trip"));
   });
 
   it("restores the most recently created automatic backup, not just any", async () => {
-    fsState.files.set("backups/auto-2026-01-01T00-00-00-000Z.json", autoBackupContent(1));
-    fsState.files.set("backups/auto-2026-06-01T00-00-00-000Z.json", autoBackupContent(2));
-
+    fsState.files.set("backups/auto-2026-01-01T00-00-00-000Z.json", JSON.stringify(backup("older")));
+    fsState.files.set("backups/auto-2026-06-01T00-00-00-000Z.json", JSON.stringify(backup("newer")));
     const { maintenanceService } = await import("../maintenance-service");
-    const { libraryRepository } = await import("@/features/library/library-repository");
 
     await maintenanceService.restoreAutomaticBackup();
 
-    const items = await libraryRepository.list();
-    expect(items).toHaveLength(1);
-    expect(items[0]!.mediaId).toBe(2);
+    expect(importMock).toHaveBeenLastCalledWith(backup("newer"));
   });
 
   it("prunes automatic backups beyond the retention limit when a new one is created", async () => {
     for (let day = 1; day <= 7; day++) {
-      fsState.files.set(`backups/auto-2026-01-0${day}T00-00-00-000Z.json`, autoBackupContent(day));
+      fsState.files.set(`backups/auto-2026-01-0${day}T00-00-00-000Z.json`, JSON.stringify(backup(`day-${day}`)));
     }
-
+    // Later than every seeded day so the new file sorts after all of them —
+    // the fixed default exportedAt in backup() would otherwise collide with
+    // day 1's filename instead of adding an 8th entry to prune from.
+    exportMock.mockResolvedValue({ ...backup("new"), exportedAt: "2026-02-01T00:00:00.000Z" });
     const { maintenanceService } = await import("../maintenance-service");
+
     await maintenanceService.createAutomaticBackup(true);
 
     const remaining = Array.from(fsState.files.keys())
@@ -211,19 +174,18 @@ describe("maintenanceService automatic backup rotation", () => {
   });
 
   it("falls back to the pre-rotation backups/latest.json when no rotated backup exists yet", async () => {
-    fsState.files.set("backups/latest.json", autoBackupContent(9));
-
+    fsState.files.set("backups/latest.json", JSON.stringify(backup("legacy")));
     const { maintenanceService } = await import("../maintenance-service");
-    const { libraryRepository } = await import("@/features/library/library-repository");
 
     const info = await maintenanceService.getAutomaticBackupInfo();
     expect(info).not.toBeNull();
 
     await maintenanceService.restoreAutomaticBackup();
-    expect((await libraryRepository.list())[0]?.mediaId).toBe(9);
+    expect(importMock).toHaveBeenLastCalledWith(backup("legacy"));
   });
 
   it("flags the last backup attempt as failed, then clears the flag on the next success", async () => {
+    exportMock.mockResolvedValue(backup("status"));
     const { maintenanceService } = await import("../maintenance-service");
 
     vi.mocked(writeTextFile).mockImplementationOnce(async () => {
@@ -241,25 +203,19 @@ describe("maintenanceService automatic backup rotation", () => {
 
 // A custom backupDirectory routes every read/write through the
 // write_backup_to_path/read_backup_from_path/list_backup_directory/
-// remove_backup_file Rust commands (src-tauri/src/commands/backup.rs)
-// instead of the @tauri-apps/plugin-fs calls used above — that plugin can't
-// safely be pre-allow-listed for an arbitrary, user-chosen absolute path.
-// These commands are pure file I/O with no SQL behind them, so rather than
-// extend the shared SQL-backed fake-invoke-backend.ts, each test here layers
-// a small in-memory file map directly over the sqlite-backed fake invoke()
-// (falling back to it for every other command, e.g. get_preferences).
+// remove_backup_file Rust commands (src-tauri/src/backup/) instead of the
+// @tauri-apps/plugin-fs calls used above — that plugin can't safely be
+// pre-allow-listed for an arbitrary, user-chosen absolute path. These
+// commands are pure file I/O with no SQL behind them, so they're faked here
+// with a small in-memory file map instead of a second plugin-fs mock.
 describe("maintenanceService with a custom backup directory", () => {
-  useTestSqlite();
-
   const CUSTOM_DIR = "/Users/alex/iCloud Drive/CineTrack Backups";
 
-  async function useCustomDirectoryFakeInvoke() {
-    const { invoke } = await import("@tauri-apps/api/core");
-    const sqlBackedInvoke = vi.mocked(invoke).getMockImplementation()!;
+  function useCustomDirectory(): Map<string, string> {
+    getPreferencesMock.mockResolvedValue({ backupDirectory: CUSTOM_DIR });
     const customFiles = new Map<string, string>();
-
-    vi.mocked(invoke).mockImplementation(async (command: string, rawArgs?: InvokeArgs) => {
-      const args = (rawArgs ?? {}) as Record<string, unknown>;
+    invokeCommandMock.mockImplementation(async (command: string, rawArgs?: Record<string, unknown>) => {
+      const args = rawArgs ?? {};
       switch (command) {
         case "write_backup_to_path":
           customFiles.set(args.path as string, args.contents as string);
@@ -280,46 +236,43 @@ describe("maintenanceService with a custom backup directory", () => {
           customFiles.delete(args.path as string);
           return undefined;
         default:
-          return sqlBackedInvoke(command, args);
+          throw new Error(`unexpected invokeCommand("${command}") in a custom-directory test`);
       }
     });
-
-    const { preferencesRepository } = await import("@/features/preferences/preferences-repository");
-    await preferencesRepository.updatePreference("backupDirectory", CUSTOM_DIR);
-
     return customFiles;
   }
 
   it("writes automatic backups through the custom-path commands instead of plugin-fs, and can restore them back", async () => {
-    const customFiles = await useCustomDirectoryFakeInvoke();
+    exportMock.mockResolvedValue(backup("custom"));
+    const customFiles = useCustomDirectory();
     const { maintenanceService } = await import("../maintenance-service");
-    const { libraryRepository } = await import("@/features/library/library-repository");
-    await libraryRepository.save(media(1), { status: "planned" });
 
-    // writeTextFile's call history isn't reset between tests (no clearMocks
-    // in vitest.config.ts) and earlier describe blocks in this file legitimately
-    // call it via the default $APPDATA branch — clear it here so the
-    // assertion below reflects only this test's own operation.
+    // writeTextFile's call history isn't reset between tests (no
+    // clearMocks in vitest.config.ts) and earlier tests in this file
+    // legitimately call it via the default $APPDATA branch — clear it here
+    // so the assertion below reflects only this test's own operation.
     vi.mocked(writeTextFile).mockClear();
     await maintenanceService.createAutomaticBackup(true);
 
     expect(writeTextFile).not.toHaveBeenCalled();
     expect(Array.from(customFiles.keys()).some((path) => path.startsWith(`${CUSTOM_DIR}/backups/auto-`))).toBe(true);
 
-    await libraryRepository.remove(1, "movie");
-    expect(await libraryRepository.list()).toHaveLength(0);
-
     await maintenanceService.restoreAutomaticBackup();
-    expect((await libraryRepository.list())[0]?.mediaId).toBe(1);
+    expect(importMock).toHaveBeenLastCalledWith(backup("custom"));
   });
 
   it("prunes automatic backups beyond the retention limit inside the custom directory too", async () => {
-    const customFiles = await useCustomDirectoryFakeInvoke();
+    const customFiles = useCustomDirectory();
     for (let day = 1; day <= 7; day++) {
-      customFiles.set(`${CUSTOM_DIR}/backups/auto-2026-01-0${day}T00-00-00-000Z.json`, autoBackupContent(day));
+      customFiles.set(
+        `${CUSTOM_DIR}/backups/auto-2026-01-0${day}T00-00-00-000Z.json`,
+        JSON.stringify(backup(`d${day}`))
+      );
     }
-
+    // Later than every seeded day — see the equivalent $APPDATA pruning test.
+    exportMock.mockResolvedValue({ ...backup("new"), exportedAt: "2026-02-01T00:00:00.000Z" });
     const { maintenanceService } = await import("../maintenance-service");
+
     await maintenanceService.createAutomaticBackup(true);
 
     const remaining = Array.from(customFiles.keys())
@@ -332,26 +285,16 @@ describe("maintenanceService with a custom backup directory", () => {
   });
 
   it("snapshots and undoes a restore against the custom directory", async () => {
-    await useCustomDirectoryFakeInvoke();
+    exportMock.mockResolvedValue(backup("current", { preferences: { backupDirectory: CUSTOM_DIR } }));
+    const customFiles = useCustomDirectory();
     const { maintenanceService } = await import("../maintenance-service");
-    const { libraryRepository } = await import("@/features/library/library-repository");
-    await libraryRepository.save(media(1), { status: "planned" });
 
-    // Carries `preferences.backupDirectory` because a real backup (from
-    // `portableData.export()`) always does — restoring one that omitted it
-    // would wipe the just-set custom directory back to null on import,
-    // causing the very next call (undoLastRestore, which re-reads that
-    // preference) to look in the wrong place.
-    const replacement = {
-      format: "cinetrack-backup",
-      version: 1,
-      exportedAt: "",
-      data: { library: [], preferences: { backupDirectory: CUSTOM_DIR } },
-    };
+    const replacement = backup("replacement", { preferences: { backupDirectory: CUSTOM_DIR } });
     await maintenanceService.restoreFromBackup(replacement);
-    expect(await libraryRepository.list()).toHaveLength(0);
+    expect(importMock).toHaveBeenLastCalledWith(replacement);
+    expect(customFiles.has(`${CUSTOM_DIR}/backups/pre-restore.json`)).toBe(true);
 
     await maintenanceService.undoLastRestore();
-    expect((await libraryRepository.list())[0]?.mediaId).toBe(1);
+    expect(importMock).toHaveBeenLastCalledWith(backup("current", { preferences: { backupDirectory: CUSTOM_DIR } }));
   });
 });
