@@ -8,12 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm tauri dev        # run the desktop app (only place SQLite/IPC actually works)
 pnpm dev              # Vite server alone, for UI/layout iteration (SQLite calls fail silently, banner shown)
 
-pnpm lint             # ESLint
+pnpm lint             # ESLint (includes boundaries/dependencies — see docs/architecture.md's "Architecture boundaries")
 pnpm format           # Prettier --write
 pnpm typecheck        # tsc --noEmit
 pnpm test             # vitest run
 pnpm test:watch       # vitest
 pnpm test:coverage    # vitest run --coverage (see per-file thresholds in vitest.config.ts)
+pnpm contract:generate # regenerate src/generated/tauri-command-names.ts from lib.rs's tauri::generate_handler!
+pnpm contract:check   # contract:generate --check, plus scripts/check-contract-drift.mjs (Rust<->TS DTO field-name drift)
 pnpm build            # pnpm typecheck && vite build
 
 pnpm cargo:check         # cargo check (src-tauri)
@@ -24,7 +26,7 @@ pnpm cargo:format:check  # cargo fmt -- --check (what CI runs)
 pnpm cargo:test          # cargo test
 pnpm cargo:coverage      # cargo +nightly llvm-cov --branch (see the Testing section below)
 
-pnpm validate:frontend # lint, format:check, typecheck, test:coverage, build
+pnpm validate:frontend # contract:check, lint, format:check, typecheck, test:coverage, build
 pnpm validate:backend  # cargo:check, cargo:clippy, cargo:format:check, cargo:test
 pnpm validate           # validate:frontend && validate:backend — run before considering work done
 ```
@@ -40,7 +42,7 @@ Two-sided data model, kept deliberately separate:
 - **Catalogue data** (movies/series metadata, images) comes from TMDB through `MediaProvider` (`src/features/media/media-provider.ts`, implemented by `tmdb-media-provider.ts`), fetched via TanStack Query. This is the only network dependency.
 - **Personal data** (library, progress, history, profiles, preferences, custom lists, availability alerts) lives in local SQLite (`sqlite:app.db`), reachable only from inside the Tauri webview.
 
-Frontend domains live under `src/features/<domain>/`: the TS **repository** (`<domain>-repository.ts`) is a thin `invokeCommand()` wrapper with no business logic of its own, and a **hook** (`use-<domain>.ts`) wraps that repository in TanStack Query. Core Rust domains such as Library, Progress, Stats, and Backup live at `src-tauri/src/<domain>/` as vertical slices: `commands.rs` is the thin Tauri adapter, `service.rs` owns use-case orchestration and active-profile resolution, and `repository.rs` / `queries.rs` own persistence. `src-tauri/src/commands/mod.rs` remains the IPC registry and re-exports those domain commands alongside legacy command-only modules. Pages (`src/pages/`) compose hooks; they don't call repositories directly.
+Frontend domains live under `src/features/<domain>/`: the TS **repository** (`<domain>-repository.ts`) is a thin `invokeCommand()` wrapper with no business logic of its own, and a **hook** (`use-<domain>.ts`) wraps that repository in TanStack Query. Every substantial Rust domain (Library, Progress, Stats, Backup, Availability, Profiles, Preferences, History, the `lists/` bounded context, `integrations/{tmdb,tvtime}`) lives at `src-tauri/src/<domain>/` as a vertical slice: `commands.rs` is the thin Tauri adapter, `service.rs` owns use-case orchestration and active-profile resolution (skipped for the handful of domains with no real orchestration to speak of — see docs/architecture.md), and `repository.rs` / `queries.rs` own persistence. `src-tauri/src/commands/mod.rs` is now just the IPC registry: it re-exports every domain's commands and holds only `boot.rs`/`updater.rs` directly (too small to be worth their own slice). Dependency direction between these layers is enforced by the compiler itself (`pub(super)`/`pub(crate)` visibility) and, on the frontend, by `eslint-plugin-boundaries` — see docs/architecture.md's "Architecture boundaries" section for the normative rules, not just this summary. Pages (`src/pages/`) compose hooks; they don't call repositories directly.
 
 `invokeCommand()` (`src/shared/lib/invoke.ts`) normalizes every Rust command failure into `ApiCommandError { message, status }`, mirroring the `ApiError` shape Rust serializes (`src-tauri/src/error.rs`). Don't catch and re-stringify IPC errors elsewhere — let this shape flow up to a remote-error state.
 
