@@ -2,8 +2,6 @@ mod boot;
 pub(crate) mod custom_lists;
 pub(crate) mod history;
 mod macros;
-mod preferences;
-pub(crate) mod profiles;
 pub(crate) mod saved_filters;
 pub(crate) mod smart_lists;
 mod tmdb;
@@ -23,6 +21,13 @@ pub use crate::library::{
     get_library_item, has_library_item, list_library, remove_library_item,
     remove_planned_library_item, save_library_item,
 };
+pub use crate::preferences::{
+    PreferencesCache, get_preferences, refresh_preferences, set_active_profile, update_preference,
+};
+pub use crate::profiles::{
+    create_profile, find_profile_by_supabase_user_id, link_profile_to_supabase_user, list_profiles,
+    remove_profile, resolve_profile_for_supabase_user,
+};
 pub use crate::progress::{
     get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
     toggle_episodes_watched, toggle_movie_seen,
@@ -38,13 +43,6 @@ pub use custom_lists::{
     remove_custom_list, remove_custom_list_item,
 };
 pub use history::list_history;
-pub use preferences::{
-    PreferencesCache, get_preferences, refresh_preferences, set_active_profile, update_preference,
-};
-pub use profiles::{
-    create_profile, find_profile_by_supabase_user_id, link_profile_to_supabase_user, list_profiles,
-    remove_profile, resolve_profile_for_supabase_user,
-};
 pub use saved_filters::{create_saved_filter, list_saved_filters, remove_saved_filter};
 pub use smart_lists::{create_smart_list, list_smart_lists, remove_smart_list, update_smart_list};
 pub use tmdb::tmdb_request;

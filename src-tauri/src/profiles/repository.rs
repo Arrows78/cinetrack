@@ -1,42 +1,10 @@
-use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use tauri::State;
 
+use super::models::{ProfileRow, UserProfile};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserProfile {
-    pub id: String,
-    pub name: String,
-    pub avatar: Option<String>,
-    pub created_at: String,
-    pub supabase_user_id: Option<String>,
-}
-
-#[derive(sqlx::FromRow)]
-pub(crate) struct ProfileRow {
-    pub(crate) uuid: String,
-    pub(crate) name: String,
-    pub(crate) avatar: Option<String>,
-    pub(crate) created_at: String,
-    pub(crate) supabase_user_id: Option<String>,
-}
-
-impl From<ProfileRow> for UserProfile {
-    fn from(row: ProfileRow) -> Self {
-        Self {
-            id: row.uuid,
-            name: row.name,
-            avatar: row.avatar,
-            created_at: row.created_at,
-            supabase_user_id: row.supabase_user_id,
-        }
-    }
-}
-
-async fn list_impl(pool: &SqlitePool) -> Result<Vec<UserProfile>, ApiError> {
+pub(super) async fn list_impl(pool: &SqlitePool) -> Result<Vec<UserProfile>, ApiError> {
     let now = now_iso(pool).await?;
     sqlx::query(
         "INSERT OR IGNORE INTO profiles (uuid, name, avatar, created_at, updated_at) VALUES ('default', 'Default', NULL, $1, $1)",
@@ -55,7 +23,7 @@ async fn list_impl(pool: &SqlitePool) -> Result<Vec<UserProfile>, ApiError> {
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
-async fn create_impl(
+pub(super) async fn create_impl(
     pool: &SqlitePool,
     name: &str,
     avatar: Option<String>,
@@ -88,7 +56,22 @@ async fn create_impl(
     Ok(profile)
 }
 
-async fn find_by_supabase_user_id_impl(
+/// Crate-visible so other domains can resolve a profile without duplicating
+/// this query — `preferences::set_active_profile` reads `supabase_user_id`
+/// off the result rather than running its own `SELECT ... FROM profiles`.
+pub(crate) async fn get_by_id_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<Option<UserProfile>, ApiError> {
+    let row: Option<ProfileRow> = sqlx::query_as("SELECT * FROM profiles WHERE uuid = $1")
+        .bind(profile_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(row.map(Into::into))
+}
+
+pub(super) async fn find_by_supabase_user_id_impl(
     pool: &SqlitePool,
     supabase_user_id: &str,
 ) -> Result<Option<UserProfile>, ApiError> {
@@ -101,7 +84,7 @@ async fn find_by_supabase_user_id_impl(
     Ok(row.map(Into::into))
 }
 
-async fn link_to_supabase_user_impl(
+pub(super) async fn link_to_supabase_user_impl(
     pool: &SqlitePool,
     profile_id: &str,
     supabase_user_id: &str,
@@ -115,12 +98,8 @@ async fn link_to_supabase_user_impl(
         .await
         .map_err(ApiError::from)?;
 
-    let row: Option<ProfileRow> = sqlx::query_as("SELECT * FROM profiles WHERE uuid = $1")
-        .bind(profile_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(ApiError::from)?;
-    row.map(Into::into)
+    get_by_id_impl(pool, profile_id)
+        .await?
         .ok_or_else(|| ApiError::not_found("Profile not found."))
 }
 
@@ -130,7 +109,7 @@ async fn link_to_supabase_user_impl(
 /// Supabase auth entirely, auto-claimed so pre-existing local data isn't
 /// orphaned by this feature. Returns None when neither applies, meaning the
 /// caller must offer to create a brand new profile.
-async fn resolve_for_supabase_user_impl(
+pub(super) async fn resolve_for_supabase_user_impl(
     pool: &SqlitePool,
     supabase_user_id: &str,
 ) -> Result<Option<UserProfile>, ApiError> {
@@ -151,7 +130,7 @@ async fn resolve_for_supabase_user_impl(
     Ok(None)
 }
 
-async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError> {
+pub(super) async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError> {
     if profile_id == "default" {
         return Err(ApiError::bad_request(
             "The default profile cannot be deleted.",
@@ -179,59 +158,10 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError
     Ok(())
 }
 
-#[tauri::command]
-pub async fn list_profiles(pool: State<'_, SqlitePool>) -> Result<Vec<UserProfile>, ApiError> {
-    list_impl(&pool).await
-}
-
-#[tauri::command]
-pub async fn create_profile(
-    name: String,
-    avatar: Option<String>,
-    supabase_user_id: Option<String>,
-    pool: State<'_, SqlitePool>,
-) -> Result<UserProfile, ApiError> {
-    create_impl(&pool, &name, avatar, supabase_user_id).await
-}
-
-#[tauri::command]
-pub async fn find_profile_by_supabase_user_id(
-    supabase_user_id: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<Option<UserProfile>, ApiError> {
-    find_by_supabase_user_id_impl(&pool, &supabase_user_id).await
-}
-
-#[tauri::command]
-pub async fn link_profile_to_supabase_user(
-    profile_id: String,
-    supabase_user_id: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<UserProfile, ApiError> {
-    link_to_supabase_user_impl(&pool, &profile_id, &supabase_user_id).await
-}
-
-#[tauri::command]
-pub async fn resolve_profile_for_supabase_user(
-    supabase_user_id: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<Option<UserProfile>, ApiError> {
-    resolve_for_supabase_user_impl(&pool, &supabase_user_id).await
-}
-
-#[tauri::command]
-pub async fn remove_profile(
-    profile_id: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    remove_impl(&pool, &profile_id).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
-    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -243,16 +173,6 @@ mod tests {
             .await
             .unwrap();
         pool
-    }
-
-    #[tokio::test]
-    async fn list_profiles_command_returns_the_default_profile() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let profiles = list_profiles(state).await.unwrap();
-        assert!(profiles.iter().any(|p| p.id == "default"));
     }
 
     #[tokio::test]
@@ -284,6 +204,12 @@ mod tests {
     async fn rejects_a_whitespace_only_profile_name() {
         let pool = migrated_pool().await;
         assert!(create_impl(&pool, "   ", None, None).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn get_by_id_impl_returns_none_for_an_unknown_profile() {
+        let pool = migrated_pool().await;
+        assert!(get_by_id_impl(&pool, "ghost").await.unwrap().is_none());
     }
 
     #[tokio::test]
@@ -451,64 +377,5 @@ mod tests {
 
         let result = link_to_supabase_user_impl(&pool, &second.id, "user-1").await;
         assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn create_profile_command_creates_a_new_profile() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let created = create_profile("Alex".to_string(), None, None, state)
-            .await
-            .unwrap();
-        assert_eq!(created.name, "Alex");
-    }
-
-    #[tokio::test]
-    async fn find_profile_by_supabase_user_id_command_returns_none_when_unclaimed() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let found = find_profile_by_supabase_user_id("user-1".to_string(), state)
-            .await
-            .unwrap();
-        assert!(found.is_none());
-    }
-
-    #[tokio::test]
-    async fn link_profile_to_supabase_user_command_links_the_profile() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let linked =
-            link_profile_to_supabase_user("default".to_string(), "user-1".to_string(), state)
-                .await
-                .unwrap();
-        assert_eq!(linked.supabase_user_id.as_deref(), Some("user-1"));
-    }
-
-    #[tokio::test]
-    async fn resolve_profile_for_supabase_user_command_claims_the_default_profile() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let resolved = resolve_profile_for_supabase_user("user-1".to_string(), state)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(resolved.id, "default");
-    }
-
-    #[tokio::test]
-    async fn remove_profile_command_refuses_to_remove_the_default_profile() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        assert!(remove_profile("default".to_string(), state).await.is_err());
     }
 }

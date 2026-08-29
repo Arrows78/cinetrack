@@ -5,6 +5,8 @@ mod database;
 mod error;
 mod library;
 mod models;
+mod preferences;
+mod profiles;
 mod progress;
 mod stats;
 // tray::build uses tauri::tray/tauri::menu, which only exist on desktop —
