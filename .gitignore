@@ -6,6 +6,11 @@ target/
 src-tauri/target/
 src-tauri/gen/
 src-tauri/icons/
+# ts-rs's default export dir when TS_RS_EXPORT_DIR isn't set (e.g. cargo
+# invoked from inside src-tauri/ rather than via the repo-root pnpm scripts
+# that pick up .cargo/config.toml). The committed bindings live in
+# src/generated/dto/ instead.
+src-tauri/bindings/
 *.log
 .env
 .env.local

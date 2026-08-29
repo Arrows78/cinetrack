@@ -14,6 +14,8 @@ const trackedSeries = (overrides: Partial<TrackedSeriesItem> = {}): TrackedSerie
   profileId: "default",
   seriesId: 42,
   title: "Test Show",
+  posterPath: null,
+  backdropPath: null,
   totalEpisodes: 10,
   watchedEpisodes: 3,
   status: "Returning Series",

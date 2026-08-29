@@ -91,6 +91,7 @@ function makeMediaItem(overrides: Partial<MediaGridItem> = {}): MediaGridItem {
 function makeTracked(overrides: Partial<TrackedSeriesItem> = {}): TrackedSeriesItem {
   return {
     id: "tracked-1",
+    profileId: null,
     seriesId: 1,
     title: "The Wire",
     posterPath: "/wire.jpg",

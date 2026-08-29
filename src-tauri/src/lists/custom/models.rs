@@ -2,8 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::MediaType;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Generates `src/generated/dto/CustomList.ts`, re-exported as `CustomList` from
+/// `src/types/media.ts` — that file no longer hand-declares this interface.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct CustomList {
     pub id: String,
     pub profile_id: String,
@@ -47,8 +50,11 @@ pub struct MediaSummaryInput {
     pub poster_path: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Generates `src/generated/dto/CustomListItem.ts`, re-exported as `CustomListItem`
+/// from `src/types/media.ts` — that file no longer hand-declares this interface.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct CustomListItem {
     pub id: String,
     pub list_id: String,

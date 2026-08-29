@@ -29,7 +29,15 @@ export const preferencesSchema = z.object({
   userProfile: z.object({
     id: z.string().default(DEFAULT_PROFILE_ID),
     name: z.string().nullable().default(null),
-    avatar: z.string().nullable().optional(),
+    // Still accepts `null` so a backup written before avatar's wire shape
+    // tightened to "omitted or string" (never an explicit null, see
+    // src-tauri/src/preferences/models.rs's UserProfile) still restores —
+    // normalized to `undefined` here to match UserProfile's generated type.
+    avatar: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((value) => value ?? undefined),
   }),
 });
 

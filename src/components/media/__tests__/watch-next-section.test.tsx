@@ -28,12 +28,14 @@ vi.mock("@tanstack/react-router", () => ({
 function makeSeries(overrides: Partial<TrackedSeriesItem> = {}): TrackedSeriesItem {
   return {
     id: "tracked-1",
+    profileId: null,
     seriesId: 42,
     title: "The Wire",
     posterPath: "/wire.jpg",
     backdropPath: null,
     totalEpisodes: 60,
     watchedEpisodes: 10,
+    status: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,

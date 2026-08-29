@@ -140,6 +140,30 @@ jobs:
           CINETRACK_WINDOWS_TEST_MANIFEST: "1"
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml -- --nocapture
 
+      # Linux-only: the check is OS-deterministic (pure Rust type reflection,
+      # no filesystem/locale-dependent output), so running it on all three
+      # matrix legs would be redundant, not more thorough. Needs pnpm/prettier
+      # to reformat ts-rs's raw export output the same way it's committed
+      # (see contract:check-ts-bindings in package.json) before diffing.
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        if: runner.os == 'Linux'
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        if: runner.os == 'Linux'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        if: runner.os == 'Linux'
+        run: pnpm install --frozen-lockfile
+
+      - name: Check generated TS DTO bindings are up to date
+        if: runner.os == 'Linux'
+        run: pnpm contract:check-ts-bindings
+
       - name: Record database performance baseline
         if: runner.os == 'Linux'
         run: >-

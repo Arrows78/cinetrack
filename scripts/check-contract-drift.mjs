@@ -1,19 +1,23 @@
 // Catches the class of bug scripts/generate-tauri-command-names.mjs doesn't:
 // a Rust DTO's fields and its hand-written TS mirror silently drifting apart
-// (a field renamed, added, or removed on one side and not the other). This
-// is deliberately NOT a Rust->TS type generator (see docs/architecture.md's
-// "Architecture boundaries" section for why: tauri-specta, the obvious
-// generator, is still 2.0.0-rc.* after 1.5+ years with no stable release) —
-// it only compares field-NAME sets between an explicitly paired Rust
-// `pub struct`/TS `interface`, after snake_case->camelCase conversion. It
-// does not check field types, optionality, or nesting, so it cannot catch
-// every drift (e.g. a field changing from `Option<String>` to `String`
-// without being renamed) — narrower than a full contract, but zero new
-// runtime dependency and no false positives from things it doesn't
-// understand.
+// (a field renamed, added, or removed on one side and not the other).
 //
-// Extend PAIRS below whenever a new IPC DTO is added or an existing one
-// becomes complex enough that hand-checking its TS mirror is error-prone.
+// Most IPC DTOs no longer need this: they derive `ts_rs::TS` and generate
+// their real TS shape straight into src/generated/dto/ (see
+// docs/architecture.md's IPC boundary section) — the ts-rs `export_bindings`
+// tests plus a fresh `cargo test` run are what actually keep those in sync,
+// not this script. What's left in PAIRS below is deliberately NOT
+// ts-rs-generated: `SmartList.rules` and `SavedFilter.filters` are opaque
+// `serde_json::Value` on the Rust side by design (nothing in Rust inspects
+// their fields — see those structs' own doc comments), while their TS
+// mirrors are intentionally MORE precise (a real `SmartListRules` union, a
+// generic `SavedFilter<TState>`) than Rust models them — generating from
+// Rust here would be a regression in type safety, not an improvement. This
+// script only compares field-NAME sets between an explicitly paired Rust
+// `pub struct`/TS `interface`, after snake_case->camelCase conversion, so it
+// still can't catch a field's type/optionality/nesting changing without a
+// rename — extend PAIRS if another DTO needs this same deliberately-opaque
+// treatment, and prefer `#[derive(ts_rs::TS)]` for anything else.
 
 import { readFileSync } from "node:fs";
 import process from "node:process";
@@ -23,19 +27,8 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const PAIRS = [
-  { rustFile: "src-tauri/src/library/models.rs", rustType: "LibraryItem", tsType: "LibraryItem" },
-  { rustFile: "src-tauri/src/history/models.rs", rustType: "ViewingHistoryItem", tsType: "ViewingHistoryItem" },
-  { rustFile: "src-tauri/src/preferences/models.rs", rustType: "UserPreferences", tsType: "UserPreferences" },
-  { rustFile: "src-tauri/src/lists/custom/models.rs", rustType: "CustomList", tsType: "CustomList" },
-  { rustFile: "src-tauri/src/lists/custom/models.rs", rustType: "CustomListItem", tsType: "CustomListItem" },
   { rustFile: "src-tauri/src/lists/smart/models.rs", rustType: "SmartList", tsType: "SmartList" },
   { rustFile: "src-tauri/src/lists/saved_filters/models.rs", rustType: "SavedFilter", tsType: "SavedFilter" },
-  {
-    rustFile: "src-tauri/src/availability/models.rs",
-    rustType: "AvailabilitySnapshot",
-    tsType: "AvailabilitySnapshot",
-  },
-  { rustFile: "src-tauri/src/availability/models.rs", rustType: "AvailabilityAlert", tsType: "AvailabilityAlert" },
 ];
 const TS_FILE = "src/types/media.ts";
 

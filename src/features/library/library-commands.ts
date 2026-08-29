@@ -1,5 +1,12 @@
 import { defineCommand } from "@/shared/lib/invoke";
-import type { LibraryItem, LibraryStatus, MediaSummary, MediaType } from "@/types/media";
+import type {
+  LibraryItem,
+  LibraryListParams,
+  LibraryPage,
+  LibrarySort,
+  LibraryStatus,
+  MediaSummary,
+} from "@/types/media";
 
 export interface LibraryPatch {
   status?: LibraryStatus;
@@ -20,26 +27,8 @@ type SaveLibraryItemArgs = {
   patch?: LibraryPatch;
 };
 
-// Mirrors src-tauri/src/library/models.rs's LibrarySort — server-side sort
-// for the cursor-paginated Library page (list_library_page), as opposed to
-// LibraryFilterState.sort's client-side sort over the whole (safety-capped)
-// list_library array used everywhere else useLibrary() is called.
-export type LibraryPageSort = "recent" | "title" | "rating";
-
-export interface LibraryListParams {
-  mediaType?: MediaType;
-  status?: LibraryStatus;
-  favouritesOnly: boolean;
-  search?: string;
-  sort: LibraryPageSort;
-  cursor?: string;
-  limit: number;
-}
-
-export interface LibraryPage {
-  items: LibraryItem[];
-  nextCursor: string | null;
-}
+export type { LibraryListParams, LibraryPage, LibrarySort };
+export type LibraryPageSort = LibrarySort;
 
 export const libraryCommands = {
   list: defineCommand<undefined, LibraryItem[]>("list_library"),

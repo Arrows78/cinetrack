@@ -1,0 +1,23 @@
+# TS_RS_EXPORT_DIR controls where `#[ts(export)]`-derived types (ts-rs, see
+# src-tauri/Cargo.toml) write their generated TypeScript mirrors when
+# `cargo test` runs. Lives at the repo root, not under src-tauri/, because
+# Cargo resolves .cargo/config.toml by walking up from the current working
+# directory — every `pnpm cargo:*` script invokes cargo with
+# --manifest-path src-tauri/Cargo.toml from the repo root, not from inside
+# src-tauri/, so a config file placed there would never be discovered.
+# `relative = true` resolves the path against this file's own parent
+# directory (the repo root), landing at src/generated/dto/ — see
+# docs/architecture.md's IPC boundary section for why that's the single
+# source of truth for these DTOs' TS shape, not a hand-written
+# src/types/media.ts interface.
+#
+# TS_RS_LARGE_INT overrides ts-rs's default mapping of Rust i64 to TS
+# `bigint`. Every id/count in this schema (media_id, rewatch_count, ...) is
+# an i64 in Rust but crosses the Tauri IPC boundary as a plain JSON number,
+# never a real JS BigInt — typing it `bigint` here would be actively wrong
+# (arithmetic, JSON.stringify, and every existing consumer already expect
+# `number`), not just imprecise for values outside Number.MAX_SAFE_INTEGER
+# (2^53), which none of these ids/counts get remotely close to.
+[env]
+TS_RS_EXPORT_DIR = { value = "src/generated/dto", relative = true }
+TS_RS_LARGE_INT = "number"

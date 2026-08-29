@@ -13,8 +13,11 @@ pub struct MediaSummaryInput {
     pub title: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Generates `src/generated/dto/AvailabilityAlert.ts`, re-exported as `AvailabilityAlert`
+/// from `src/types/media.ts` — that file no longer hand-declares this interface.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct AvailabilityAlert {
     pub id: String,
     pub profile_id: String,
@@ -27,8 +30,11 @@ pub struct AvailabilityAlert {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Generates `src/generated/dto/AvailabilitySnapshot.ts`, re-exported as `AvailabilitySnapshot`
+/// from `src/types/media.ts` — that file no longer hand-declares this interface.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct AvailabilitySnapshot {
     pub media_id: i64,
     pub media_type: MediaType,

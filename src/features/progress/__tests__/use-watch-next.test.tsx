@@ -6,10 +6,14 @@ import type { Episode, TrackedSeriesItem } from "@/types/media";
 
 const inProgressSeries: TrackedSeriesItem = {
   id: "t1",
+  profileId: null,
   seriesId: 1,
   title: "In Progress",
+  posterPath: null,
+  backdropPath: null,
   totalEpisodes: 10,
   watchedEpisodes: 3,
+  status: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };

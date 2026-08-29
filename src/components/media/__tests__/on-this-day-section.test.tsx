@@ -36,6 +36,10 @@ const event = (overrides: Partial<ViewingEvent> = {}): ViewingEvent => ({
   title: "Oppenheimer",
   eventType: "watched",
   watchedAt: "2023-08-21T20:00:00.000Z",
+  durationMinutes: null,
+  episodeId: null,
+  seasonNumber: null,
+  episodeNumber: null,
   ...overrides,
 });
 

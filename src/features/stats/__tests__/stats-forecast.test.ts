@@ -12,6 +12,7 @@ const tracked = (watched: number, total: number): TrackedSeriesItem => ({
   backdropPath: null,
   totalEpisodes: total,
   watchedEpisodes: watched,
+  status: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 });

@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct StatsTotals {
     pub movies_watched: i64,
     pub episodes_watched: i64,
@@ -15,23 +16,26 @@ pub struct StatsTotals {
     pub library_completion_percent: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct MonthlyActivityBucket {
     pub month: String,
     pub count: i64,
     pub minutes: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct StatsOverview {
     pub totals: StatsTotals,
     pub monthly_activity: Vec<MonthlyActivityBucket>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct YearlyActivityBucket {
     pub year: i64,
     pub movies_watched: i64,
@@ -39,22 +43,25 @@ pub struct YearlyActivityBucket {
     pub minutes_watched: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct TitleRating {
     pub title: String,
     pub rating: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct BiggestBingeDay {
     pub day: String,
     pub count: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct MonthlyRecap {
     pub month: String,
     // Historical breakdown: count every watched/rewatched event that fell in
@@ -67,15 +74,17 @@ pub struct MonthlyRecap {
     pub biggest_binge_day: Option<BiggestBingeDay>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ComfortTitle {
     pub title: String,
     pub count: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct RewatchStats {
     pub total_rewatches: i64,
     /// Rewatches as a percentage of every watch event (`watched` +
@@ -85,23 +94,26 @@ pub struct RewatchStats {
     pub rewatch_activity: Vec<MonthlyActivityBucket>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct RatingBucket {
     pub rating: f64,
     pub count: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct RatingPeriodAverage {
     pub period: String,
     pub average: f64,
     pub count: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct RatingDistribution {
     // Current-state: user_rating is one mutable value per title.
     pub distribution: Vec<RatingBucket>,
@@ -110,8 +122,9 @@ pub struct RatingDistribution {
     pub average_by_year: Vec<RatingPeriodAverage>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum MilestoneCategory {
     Episodes,
     Movies,
@@ -119,8 +132,9 @@ pub enum MilestoneCategory {
     Series,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct WatchMilestone {
     pub id: String,
     pub category: MilestoneCategory,

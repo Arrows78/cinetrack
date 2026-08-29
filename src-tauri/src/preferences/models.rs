@@ -2,15 +2,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ApiError;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Generates `src/generated/dto/Theme.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum Theme {
     Dark,
     Light,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Generates `src/generated/dto/AccentColor.ts`, re-exported as `AccentColor`
+/// from `src/shared/constants/colors.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum AccentColor {
     Violet,
     Blue,
@@ -22,34 +27,49 @@ pub enum AccentColor {
     Red,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Generates `src/generated/dto/Language.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum Language {
     En,
     Fr,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Generates `src/generated/dto/SearchScope.ts`, re-exported as `SearchScope` from `src/types/media.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum SearchScope {
     All,
     Movie,
     Series,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Generates `src/generated/dto/LibraryViewMode.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum LibraryViewMode {
     Grid,
     List,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Nested profile snapshot stored inside UserPreferences. Distinct from
+/// `profiles::models::UserProfile` (id/name/avatar/createdAt/supabaseUserId)
+/// — the two share a frontend name in `src/types/media.ts` as a loose
+/// superset, so this generated file is NOT re-exported as `UserProfile`.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct UserProfile {
     pub id: String,
     pub name: Option<String>,
+    // skip_serializing_if without #[serde(default)]: the key is omitted on
+    // the wire when None, never sent as an explicit `null` — #[ts(optional)]
+    // renders that as `field?: T` instead of ts-rs's default `T | null`.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub avatar: Option<String>,
 }
 
@@ -63,8 +83,11 @@ impl Default for UserProfile {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Generates `src/generated/dto/UserPreferences.ts`, re-exported as `UserPreferences`
+/// from `src/types/media.ts` — that file no longer hand-declares this interface.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct UserPreferences {
     pub theme: Theme,
     pub accent_color: AccentColor,

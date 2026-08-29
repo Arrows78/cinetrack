@@ -6,8 +6,9 @@ use crate::models::MediaType;
 
 /// How a paginated library listing is ordered — mirrors the `sort` union
 /// already used by the frontend's (now server-side) Library filters.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum LibrarySort {
     #[default]
     Recent,
@@ -18,22 +19,28 @@ pub enum LibrarySort {
 /// Filters + cursor for a single page of `list_library_page`. `limit` is
 /// clamped server-side (see `list_page_impl`) — never trust a page size the
 /// frontend sent verbatim.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct LibraryListParams {
+    #[ts(optional)]
     pub media_type: Option<MediaType>,
+    #[ts(optional)]
     pub status: Option<LibraryStatus>,
     #[serde(default)]
     pub favourites_only: bool,
+    #[ts(optional)]
     pub search: Option<String>,
     #[serde(default)]
     pub sort: LibrarySort,
+    #[ts(optional)]
     pub cursor: Option<String>,
     pub limit: i64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct LibraryPage {
     pub items: Vec<LibraryItem>,
     pub next_cursor: Option<String>,
@@ -122,8 +129,12 @@ pub struct MediaSummaryInput {
     pub genres: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Generates `src/generated/dto/LibraryItem.ts` (see docs/architecture.md's
+/// IPC boundary section), re-exported as `LibraryItem` from `src/types/media.ts`
+/// — that file no longer hand-declares this interface.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct LibraryItem {
     pub id: String,
     pub profile_id: String,

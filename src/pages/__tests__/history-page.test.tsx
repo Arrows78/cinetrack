@@ -76,10 +76,14 @@ function makeHistoryItem(overrides: Partial<ViewingHistoryItem>): ViewingHistory
 function makeTrackedSeries(overrides: Partial<TrackedSeriesItem>): TrackedSeriesItem {
   return {
     id: "tracked-1",
+    profileId: null,
     seriesId: 42,
     title: "Some Series",
+    posterPath: null,
+    backdropPath: null,
     totalEpisodes: 10,
     watchedEpisodes: 4,
+    status: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,

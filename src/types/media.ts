@@ -1,20 +1,20 @@
-export type MediaType = "movie" | "series";
-export type SearchScope = "all" | MediaType;
-export type LibraryStatus = "planned" | "watching" | "paused" | "completed" | "dropped";
-export type HistoryAction =
-  | "movie:watched"
-  | "movie:unwatched"
-  | "episode:watched"
-  | "episode:unwatched"
-  | "season:watched"
-  | "season:unwatched"
-  | "series:watched"
-  | "series:unwatched"
-  | "watchlist:add"
-  | "watchlist:remove"
-  | "library:update"
-  | "list:add"
-  | "list:remove";
+// Generated straight from the matching Rust DTO (see docs/architecture.md's
+// IPC boundary section) rather than hand-mirrored here — regenerate via
+// `cargo test` in src-tauri, never edit src/generated/dto/*.ts by hand.
+// Imported (not just re-exported) since other types below still reference
+// these by name.
+import type { MediaType } from "@/generated/dto/MediaType";
+import type { SearchScope } from "@/generated/dto/SearchScope";
+import type { LibraryStatus } from "@/generated/dto/LibraryStatus";
+import type { LibrarySort } from "@/generated/dto/LibrarySort";
+
+export type { MediaType } from "@/generated/dto/MediaType";
+export type { SearchScope } from "@/generated/dto/SearchScope";
+export type { LibraryStatus } from "@/generated/dto/LibraryStatus";
+export type { HistoryAction } from "@/generated/dto/HistoryAction";
+export type { Theme } from "@/generated/dto/Theme";
+export type { Language } from "@/generated/dto/Language";
+export type { LibraryViewMode } from "@/generated/dto/LibraryViewMode";
 
 export interface PageResult<T> {
   page: number;
@@ -135,85 +135,16 @@ export interface Series extends MediaSummary {
   seasons: Season[];
 }
 
-export interface LibraryItem {
-  id: string;
-  profileId: string;
-  mediaId: number;
-  mediaType: MediaType;
-  title: string;
-  posterPath?: string | null;
-  backdropPath?: string | null;
-  year?: number | null;
-  rating?: number | null;
-  createdAt: string;
-  updatedAt: string;
-  genres: string[];
-  status: LibraryStatus;
-  favourite: boolean;
-  userRating?: number | null;
-  notes?: string | null;
-  tags: string[];
-  startedAt?: string | null;
-  completedAt?: string | null;
-  rewatchCount: number;
-}
-
-export interface ViewingHistoryItem {
-  id: string;
-  mediaId: number;
-  mediaType: MediaType;
-  title: string;
-  action: HistoryAction;
-  timestamp: string;
-  seasonNumber?: number;
-  episodeNumber?: number;
-  episodeTitle?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface ViewingEvent {
-  id: string;
-  profileId: string;
-  mediaId: number;
-  mediaType: MediaType;
-  title: string;
-  eventType: "watched" | "unwatched" | "rewatched";
-  watchedAt: string;
-  durationMinutes?: number | null;
-  episodeId?: number | null;
-  seasonNumber?: number | null;
-  episodeNumber?: number | null;
-  note?: string | null;
-}
-
-// One viewing_events row for a single title, as returned by
-// list_viewing_events_for_media (src-tauri/src/commands/stats.rs) — a
-// title-scoped read of "what did I write, each time I watched this",
-// distinct from ViewingEvent above which is used for cross-title stats
-// aggregation and always carries profileId/mediaId/mediaType/title (already
-// known by the caller here, so they're omitted).
-export interface ViewingEventNote {
-  id: string;
-  eventType: "watched" | "unwatched" | "rewatched";
-  watchedAt: string;
-  episodeId?: number | null;
-  seasonNumber?: number | null;
-  episodeNumber?: number | null;
-  note?: string;
-}
-
-export interface EpisodeProgress {
-  id: string;
-  profileId?: string;
-  seriesId: number;
-  episodeId: number;
-  seasonNumber: number;
-  episodeNumber: number;
-  watched: boolean;
-  watchedAt?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type { LibraryItem } from "@/generated/dto/LibraryItem";
+export type { LibraryPage } from "@/generated/dto/LibraryPage";
+export type { LibraryListParams } from "@/generated/dto/LibraryListParams";
+export type { LibrarySort };
+export type { ViewingHistoryItem } from "@/generated/dto/ViewingHistoryItem";
+export type { ViewingEvent } from "@/generated/dto/ViewingEvent";
+export type { ViewingEventType } from "@/generated/dto/ViewingEventType";
+export type { ViewingEventNote } from "@/generated/dto/ViewingEventNote";
+export type { EpisodeProgress } from "@/generated/dto/EpisodeProgress";
+export type { TrackedSeriesItem } from "@/generated/dto/TrackedSeriesItem";
 
 export interface SeriesProgress {
   seriesId: number;
@@ -243,65 +174,17 @@ export interface UserProfile {
   supabaseUserId?: string | null;
 }
 
-export interface UserPreferences {
-  theme: "dark" | "light";
-  accentColor: "violet" | "blue" | "teal" | "green" | "amber" | "orange" | "rose" | "red";
-  language: "en" | "fr";
-  region: string;
-  defaultSearchType: SearchScope;
-  reduceMotion: boolean;
-  compactMode: boolean;
-  sidebarCollapsed: boolean;
-  libraryViewMode: "grid" | "list";
-  spoilerProtection: boolean;
-  notificationsEnabled: boolean;
-  notifyHoursBefore: number;
-  preferredProviderIds: number[];
-  activeProfileId: string;
-  userProfile: UserProfile;
-  /** Absolute path to a user-chosen backup folder, or null to use the default app-data location. */
-  backupDirectory: string | null;
-  /** Persistent "Hide watched" toggle for Discover-style surfaces (home catalogue rails) and Watch Tonight. */
-  hideWatchedInDiscovery: boolean;
-  /** Opt-in "On this day" Home card surfacing past-year viewing history matching today's date. Defaults to false — see the doc comment on the Rust struct's field for why it stays off until deliberately enabled. */
-  onThisDayEnabled: boolean;
-}
-
-export interface TrackedSeriesItem {
-  id: string;
-  profileId?: string;
-  seriesId: number;
-  title: string;
-  posterPath?: string | null;
-  backdropPath?: string | null;
-  totalEpisodes: number;
-  watchedEpisodes: number;
-  /** TMDB's own production status ("Returning Series", "Ended", …) — null/undefined means unknown (rows from before this existed, or a TV Time import), never treated as "ended". */
-  status?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CustomList {
-  id: string;
-  profileId: string;
-  name: string;
-  description?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CustomListItem {
-  id: string;
-  listId: string;
-  mediaId: number;
-  mediaType: MediaType;
-  title: string;
-  posterPath?: string | null;
-  position: number;
-  addedAt: string;
-  updatedAt: string;
-}
+// Not UserProfile above: that hand-written interface is a loose superset
+// covering both this DTO's own minimal nested profile shape (id/name/avatar
+// only — src-tauri/src/preferences/models.rs) AND the richer, separate
+// profiles::models::UserProfile (id/name/avatar/createdAt/supabaseUserId) —
+// two distinct Rust structs sharing one frontend name. The generated
+// UserPreferences type below references the correct (minimal) one
+// internally; re-exporting that same generated file as `UserProfile` here
+// would silently drop the fields the richer profiles-domain usages need.
+export type { UserPreferences } from "@/generated/dto/UserPreferences";
+export type { CustomList } from "@/generated/dto/CustomList";
+export type { CustomListItem } from "@/generated/dto/CustomListItem";
 
 // "any" means "don't filter on this dimension at all" — every rule field
 // has an explicit not-set value rather than treating an absent/undefined
@@ -358,7 +241,7 @@ export interface LibraryFilterState {
   statusFilter: LibraryStatus | "all";
   favouritesOnly: boolean;
   listFilter: string;
-  sort: "recent" | "title" | "rating";
+  sort: LibrarySort;
   search: string;
 }
 
@@ -430,25 +313,8 @@ export interface CalendarEntry {
   episodeTitle?: string;
 }
 
-export interface AvailabilitySnapshot {
-  mediaId: number;
-  mediaType: MediaType;
-  region: string;
-  providerIds: number[];
-  checkedAt: string;
-}
-
-export interface AvailabilityAlert {
-  id: string;
-  profileId: string;
-  mediaId: number;
-  mediaType: MediaType;
-  title: string;
-  region: string;
-  providerIds: number[];
-  enabled: boolean;
-  createdAt: string;
-}
+export type { AvailabilitySnapshot } from "@/generated/dto/AvailabilitySnapshot";
+export type { AvailabilityAlert } from "@/generated/dto/AvailabilityAlert";
 
 // The Calendar and Alerts pages merged into one "Suivi"/"Tracking" feed
 // (see src/features/tracking/tracking-service.ts): a release date and a
@@ -500,47 +366,13 @@ export interface LibraryStats {
   heatmap: Array<{ day: number; hour: number; count: number }>;
 }
 
-// A recap for one calendar month is a historical breakdown (like Wrapped or
-// monthlyActivity above) rather than a current-state total — it counts every
-// watched/rewatched event that fell in the month, even one later unwatched.
-export interface MonthlyRecap {
-  month: string;
-  moviesWatched: number;
-  episodesWatched: number;
-  minutesWatched: number;
-  topRatedTitle: { title: string; rating: number } | null;
-  favouriteGenre: string | null;
-  biggestBingeDay: { day: string; count: number } | null;
-}
-
-export interface RewatchStats {
-  // A rewatch is itself a historical action, not a reversible state like
-  // "watched" — a raw count of every `rewatched` event ever logged, not
-  // deduped to "the latest event per title" the way LibraryStats' totals are.
-  totalRewatches: number;
-  rewatchSharePercent: number;
-  favouriteComfortTitles: Array<{ title: string; count: number }>;
-  rewatchActivity: Array<{ month: string; count: number; minutes: number }>;
-}
-
-export interface RatingDistribution {
-  // Current-state: library_items.user_rating is a single mutable value with
-  // no change history, so a changed rating is reflected immediately here.
-  distribution: Array<{ rating: number; count: number }>;
-  averageByMonth: Array<{ period: string; average: number; count: number }>;
-  averageByYear: Array<{ period: string; average: number; count: number }>;
-}
-
-export type MilestoneCategory = "episodes" | "movies" | "hours" | "series";
-
-export interface WatchMilestone {
-  id: string;
-  category: MilestoneCategory;
-  threshold: number;
-  currentValue: number;
-  achieved: boolean;
-  achievedAt: string | null;
-}
+export type { MonthlyRecap } from "@/generated/dto/MonthlyRecap";
+export type { RewatchStats } from "@/generated/dto/RewatchStats";
+export type { RatingDistribution } from "@/generated/dto/RatingDistribution";
+export type { MilestoneCategory } from "@/generated/dto/MilestoneCategory";
+export type { WatchMilestone } from "@/generated/dto/WatchMilestone";
+export type { StatsOverview } from "@/generated/dto/StatsOverview";
+export type { YearlyActivityBucket } from "@/generated/dto/YearlyActivityBucket";
 
 export interface HomeFeed {
   trendingSeries: Series[];

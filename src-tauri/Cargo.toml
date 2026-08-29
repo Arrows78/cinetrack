@@ -34,6 +34,13 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 sqlx = { version = "0.9", default-features = false, features = ["sqlite", "runtime-tokio", "macros", "json"] }
 uuid = { version = "1", features = ["v4", "v7"] }
+# Generates the TS mirror of an IPC DTO straight from its Rust struct/enum
+# (see docs/architecture.md's IPC boundary section) instead of hand-writing
+# it in src/types/media.ts and hoping check-contract-drift.mjs's field-name
+# diff catches drift — serde-compat (default feature) reads the existing
+# #[serde(rename_all/tag/...)] attributes directly, so no duplicate #[ts(...)]
+# annotations are needed on top of what's already there for serde.
+ts-rs = "12"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-deep-link = "2"
 tauri-plugin-dialog = "2"

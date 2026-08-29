@@ -1,5 +1,5 @@
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import type { LibraryItem, MediaSummary } from "@/types/media";
+import type { EpisodeProgress, LibraryItem, MediaSummary, TrackedSeriesItem, ViewingEvent } from "@/types/media";
 
 export function makeMedia(overrides: Partial<MediaSummary> = {}): MediaSummary {
   return {
@@ -37,6 +37,58 @@ export function makeLibraryItem(overrides: Partial<LibraryItem> = {}): LibraryIt
     rewatchCount: 0,
     posterPath: null,
     backdropPath: null,
+    startedAt: null,
+    completedAt: null,
+    ...overrides,
+  };
+}
+
+export function makeTrackedSeries(overrides: Partial<TrackedSeriesItem> = {}): TrackedSeriesItem {
+  return {
+    id: "tracked-1",
+    profileId: DEFAULT_PROFILE_ID,
+    seriesId: 1,
+    title: "Test Series",
+    posterPath: null,
+    backdropPath: null,
+    totalEpisodes: 10,
+    watchedEpisodes: 4,
+    status: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+export function makeEpisodeProgress(overrides: Partial<EpisodeProgress> = {}): EpisodeProgress {
+  return {
+    id: "progress-1",
+    profileId: null,
+    seriesId: 9,
+    episodeId: 1,
+    seasonNumber: 1,
+    episodeNumber: 1,
+    watched: true,
+    watchedAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+export function makeViewingEvent(overrides: Partial<ViewingEvent> = {}): ViewingEvent {
+  return {
+    id: "event-1",
+    profileId: DEFAULT_PROFILE_ID,
+    mediaId: 1,
+    mediaType: "movie",
+    title: "Test",
+    eventType: "watched",
+    watchedAt: "2026-01-01T00:00:00.000Z",
+    durationMinutes: null,
+    episodeId: null,
+    seasonNumber: null,
+    episodeNumber: null,
     ...overrides,
   };
 }

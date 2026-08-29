@@ -32,10 +32,11 @@ function toTrackedSeriesItem(item: MediaGridItem, tracked?: TrackedSeriesItem): 
   if (tracked) return tracked;
   return {
     id: `untracked-${item.id}`,
+    profileId: null,
     seriesId: item.id,
     title: item.title,
-    posterPath: item.posterPath,
-    backdropPath: item.backdropPath,
+    posterPath: item.posterPath ?? null,
+    backdropPath: item.backdropPath ?? null,
     totalEpisodes: 0,
     watchedEpisodes: 0,
     status: null,

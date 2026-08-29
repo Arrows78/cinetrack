@@ -11,7 +11,10 @@ use crate::models::MediaType;
 // user's already-stored `activity_log` rows. Only the Rust identifier
 // changed to reflect that these are now written by `library.rs`, not a
 // separate watchlist feature.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Generates `src/generated/dto/HistoryAction.ts`, re-exported as
+/// `HistoryAction` from `src/types/media.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
+#[ts(export)]
 pub enum HistoryAction {
     #[serde(rename = "movie:watched")]
     MovieWatched,
@@ -63,8 +66,12 @@ impl HistoryAction {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Generates `src/generated/dto/ViewingHistoryItem.ts`, re-exported as
+/// `ViewingHistoryItem` from `src/types/media.ts` — that file no longer
+/// hand-declares this interface.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ViewingHistoryItem {
     pub id: String,
     pub media_id: i64,
@@ -72,13 +79,28 @@ pub struct ViewingHistoryItem {
     pub title: String,
     pub action: HistoryAction,
     pub timestamp: String,
+    // `skip_serializing_if` here means the key is *omitted* on the wire when
+    // None, never sent as an explicit `null` — `#[ts(optional)]` renders that
+    // faithfully as `field?: T` rather than ts-rs's default `T | null`
+    // (correct for a plain `Option<T>` field, but wrong for one that's also
+    // skip_serializing_if'd like these three).
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub season_number: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub episode_number: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub episode_title: Option<String>,
+    // Opaque JSON blob, not a typed Rust struct — nothing in Rust ever reads
+    // its fields (see the module-level rationale on lists::smart::SmartList's
+    // `rules`, which is the same pattern). `#[ts(type = ...)]` keeps the
+    // generated type identical to what src/types/media.ts already declared
+    // by hand, rather than pulling in ts-rs's serde-json-impl feature's
+    // recursive `JsonValue` union, which no caller here is written against.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "Record<string, unknown>")]
     pub metadata: Option<Value>,
 }
 

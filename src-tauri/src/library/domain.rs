@@ -3,8 +3,11 @@ use serde_json::Value;
 
 use crate::error::ApiError;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Generates `src/generated/dto/LibraryStatus.ts` (see docs/architecture.md's
+/// IPC boundary section), re-exported as `LibraryStatus` from `src/types/media.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum LibraryStatus {
     Planned,
     Watching,

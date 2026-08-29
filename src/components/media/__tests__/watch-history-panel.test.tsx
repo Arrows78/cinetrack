@@ -14,6 +14,9 @@ function makeEvent(overrides: Partial<ViewingEventNote> = {}): ViewingEventNote 
     id: "evt-1",
     eventType: "watched",
     watchedAt: "2026-01-01T00:00:00.000Z",
+    episodeId: null,
+    seasonNumber: null,
+    episodeNumber: null,
     ...overrides,
   };
 }

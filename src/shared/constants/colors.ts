@@ -1,4 +1,6 @@
-export type AccentColor = "violet" | "blue" | "teal" | "green" | "amber" | "orange" | "rose" | "red";
+import type { AccentColor } from "@/generated/dto/AccentColor";
+
+export type { AccentColor };
 
 export interface ColorPreset {
   /** HSL values for dark theme (lighter for readability on dark bg) */

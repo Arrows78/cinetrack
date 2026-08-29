@@ -4,8 +4,9 @@ use sqlx::SqlitePool;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum ViewingEventType {
     Watched,
     Unwatched,
@@ -22,8 +23,9 @@ impl ViewingEventType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ViewingEvent {
     pub id: String,
     pub profile_id: String,
@@ -43,6 +45,7 @@ pub struct ViewingEvent {
     /// importing a pre-this-field backup (no `note` key at all in its JSON)
     /// deserializes as `None` instead of failing.
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub note: Option<String>,
 }
 
@@ -177,8 +180,9 @@ pub(in crate::stats) async fn list_on_this_day_events_impl(
 /// there once that file's own column list picks it up independently). This
 /// type exists purely to answer "what did I write about media X across all
 /// my past watches", scoped to one (media_id, media_type).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ViewingEventNote {
     pub id: String,
     pub event_type: ViewingEventType,
@@ -187,6 +191,7 @@ pub struct ViewingEventNote {
     pub season_number: Option<i64>,
     pub episode_number: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub note: Option<String>,
 }
 

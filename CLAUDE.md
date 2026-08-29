@@ -15,7 +15,9 @@ pnpm test             # vitest run
 pnpm test:watch       # vitest
 pnpm test:coverage    # vitest run --coverage (see per-file thresholds in vitest.config.ts)
 pnpm contract:generate # regenerate src/generated/tauri-command-names.ts from lib.rs's tauri::generate_handler!
-pnpm contract:check   # contract:generate --check, plus check-contract-drift.mjs (DTO field-name drift) and check-tauri-command-signatures.mjs (Args/Result signature drift)
+pnpm contract:check   # command-name check, plus check-contract-drift.mjs (opaque SmartList/SavedFilter field names) and check-tauri-command-signatures.mjs (Args/Result signature drift)
+pnpm contract:generate-ts-bindings # cargo test export_bindings + prettier — regenerate src/generated/dto from #[ts(export)] Rust DTOs
+pnpm contract:check-ts-bindings # generate-ts-bindings then git diff --exit-code on src/generated/dto
 pnpm architecture:check # scripts/check-feature-boundaries.mjs — enforces each feature's public surface (see docs/architecture.md's "Architecture boundaries")
 pnpm build            # pnpm typecheck && vite build
 
@@ -28,7 +30,7 @@ pnpm cargo:test          # cargo test
 pnpm cargo:coverage      # cargo +nightly llvm-cov --branch (see the Testing section below)
 
 pnpm validate:frontend # contract:check, architecture:check, lint, format:check, typecheck, test:coverage, build
-pnpm validate:backend  # cargo:check, cargo:clippy, cargo:format:check, cargo:test
+pnpm validate:backend  # cargo:check, cargo:clippy, cargo:format:check, cargo:test, contract:check-ts-bindings
 pnpm validate           # validate:frontend && validate:backend — run before considering work done
 ```
 

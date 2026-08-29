@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-/// Shared across every domain command module — mirrors `MediaType` in
-/// src/types/media.ts (`"movie" | "series"`).
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Shared across every domain command module — generates `src/generated/dto/MediaType.ts`
+/// (see docs/architecture.md's IPC boundary section), re-exported as `MediaType` from
+/// `src/types/media.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum MediaType {
     Movie,
     Series,

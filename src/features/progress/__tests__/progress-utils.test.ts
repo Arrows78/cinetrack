@@ -29,11 +29,13 @@ describe("progress-utils", () => {
     const now = new Date().toISOString();
     const mockProgress: EpisodeProgress = {
       id: "1",
+      profileId: null,
       seriesId: 9,
       episodeId: 1,
       seasonNumber: 1,
       episodeNumber: 1,
       watched: true,
+      watchedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -64,11 +66,13 @@ describe("progress-utils", () => {
     const now = new Date().toISOString();
     const watchedAired: EpisodeProgress = {
       id: "1",
+      profileId: null,
       seriesId: 9,
       episodeId: 1,
       seasonNumber: 1,
       episodeNumber: 1,
       watched: true,
+      watchedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -95,11 +99,13 @@ describe("progress-utils", () => {
     const now = new Date().toISOString();
     const watched: EpisodeProgress = {
       id: "1",
+      profileId: null,
       seriesId: 9,
       episodeId: 1,
       seasonNumber: 1,
       episodeNumber: 1,
       watched: true,
+      watchedAt: null,
       createdAt: now,
       updatedAt: now,
     };

@@ -59,6 +59,12 @@ const libraryItem = (overrides: Partial<LibraryItem> = {}): LibraryItem => ({
   favourite: false,
   tags: [],
   rewatchCount: 0,
+  posterPath: null,
+  backdropPath: null,
+  userRating: null,
+  notes: null,
+  startedAt: null,
+  completedAt: null,
   ...overrides,
 });
 

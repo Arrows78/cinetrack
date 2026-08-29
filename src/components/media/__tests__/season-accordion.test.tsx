@@ -48,11 +48,13 @@ function makeSeason(seasonNumber: number, name: string, episodes: Episode[]): Se
 function makeProgress(episodeId: number, seasonNumber: number, episodeNumber: number): EpisodeProgress {
   return {
     id: `progress-${episodeId}`,
+    profileId: null,
     seriesId: 42,
     episodeId,
     seasonNumber,
     episodeNumber,
     watched: true,
+    watchedAt: null,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
   };
