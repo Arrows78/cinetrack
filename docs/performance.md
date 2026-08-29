@@ -59,3 +59,11 @@ Do not compare absolute numbers across different machines. For a before/after
 change, run both revisions on the same machine and compare p50/p95. A repeatable
 regression is a signal to inspect the query plan before adding caching or any
 machine-specific threshold.
+
+## Pull-request baseline
+
+The Linux Rust CI job runs the same ignored benchmark after the full Rust test
+suite and uploads `database-benchmark.json` plus `database-benchmark.md` as the
+`database-performance-baseline` artifact. This records the p50/p95 baseline for
+the exact PR revision without turning machine-dependent latency into a pass/fail
+threshold. Query-plan assertions remain the correctness gate.
