@@ -2,6 +2,8 @@ node_modules/
 package-lock.json
 dist/
 coverage/
+test-results/
+playwright-report/
 target/
 src-tauri/target/
 src-tauri/gen/

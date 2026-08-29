@@ -34,7 +34,13 @@ for (const screen of SCREENS) {
   for (const theme of THEMES) {
     test(`${screen.name} — ${theme}`, async ({ page }) => {
       await gotoStable(page, screen.path, theme);
-      await expect(page).toHaveScreenshot(`${screen.name}-${theme}.png`, { fullPage: true });
+      // /design-system's in-page nav highlight (useActiveSection's
+      // IntersectionObserver, catalog-primitives.tsx) reacts to the scroll
+      // position a full-page capture steps through, which can need more
+      // than the 5s default to settle into two consecutive identical
+      // frames — found bootstrapping this suite's baselines, reproduced
+      // consistently at 1024px specifically (the lg: breakpoint boundary).
+      await expect(page).toHaveScreenshot(`${screen.name}-${theme}.png`, { fullPage: true, timeout: 20_000 });
     });
   }
 }

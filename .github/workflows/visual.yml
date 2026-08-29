@@ -31,13 +31,7 @@ jobs:
       - name: Install Playwright's Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      # No baseline screenshots are committed yet (see e2e/visual/README.md) —
-      # every comparison in this job currently fails with "no baseline found",
-      # not a real visual regression. continue-on-error keeps that from
-      # blocking merges; remove it once real Linux baselines have been
-      # generated and committed via the bootstrap-baselines job below.
       - name: Run visual regression suite
-        continue-on-error: true
         run: pnpm test:visual
 
       - name: Upload Playwright report
