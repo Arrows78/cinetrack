@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use sqlx::SqlitePool;
 
-use crate::commands::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
+use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
 use crate::commands::macros::profile_scoped_command;
-use crate::commands::progress::{EpisodeInput, SeriesInput, apply_episodes_impl};
+use crate::progress::{EpisodeInput, SeriesInput, apply_episodes_impl};
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::models::MediaType;

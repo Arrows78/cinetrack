@@ -11,8 +11,8 @@ use super::super::queries::milestones::get_watch_milestones_impl;
 use super::super::queries::overview::get_stats_overview_impl;
 use super::super::queries::ratings::get_rating_distribution_impl;
 use super::super::queries::recap::get_monthly_recap_impl;
-use crate::commands::library::list_library;
-use crate::commands::progress::list_tracked_series;
+use crate::library::list_library;
+use crate::progress::list_tracked_series;
 
 const WARMUP_ITERATIONS: usize = 3;
 const SAMPLE_ITERATIONS: usize = 20;
