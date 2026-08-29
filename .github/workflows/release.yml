@@ -59,9 +59,12 @@ jobs:
             patchelf
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Reads channel/components from rust-toolchain.toml (see ci.yml's
+        # equivalent step for why this action, not dtolnay/rust-toolchain).
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: clippy, rustfmt
+          cache: false
+          rustflags: ""
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
@@ -116,7 +119,12 @@ jobs:
             patchelf
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Reads channel/components from rust-toolchain.toml (see ci.yml's
+        # equivalent step for why this action, not dtolnay/rust-toolchain).
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: false
+          rustflags: ""
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
