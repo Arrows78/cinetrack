@@ -1,8 +1,9 @@
 // Test-only: production code no longer talks to SQLite directly (all
 // database access goes through Rust `#[tauri::command]`s via invoke()).
-// This client — and the migration runner it drives — only exists so
-// tests can bootstrap a real in-memory schema for the fake invoke
-// backend (see src/db/__tests__/{sqlite-test-harness,fake-invoke-backend}.ts).
+// This client — and the migration runner it drives — only exists so the
+// migration/recovery tests (src/db/__tests__/migrations*.test.ts,
+// client.test.ts) can bootstrap and inspect a real in-memory schema via
+// sqlite-adapter.ts.
 import Database from "@tauri-apps/plugin-sql";
 import { isTauriApp } from "@/shared/lib/platform";
 import { runMigrations } from "./migrations";

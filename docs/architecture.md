@@ -114,7 +114,7 @@ The frontend surfaces this: `get_boot_recovery` (`src/features/desktop/boot-reco
 ## Testing strategy
 
 - **Rust** (`cargo test`) exercises the crate-root domain slices directly against real, migrated SQLite pools — this is where service orchestration, cascades, transactions, query behavior, and multi-table invariants are proven, not just "does the call succeed."
-- **TS repositories** are tested either against a fake `invoke()` backend (`src/db/__tests__/fake-invoke-backend.ts`, for invoke-plumbing behavior) or a real SQLite engine (`sqlite-adapter.ts` / `sqlite-test-harness.ts`, for SQL behavior like joins and cascades) — prefer the real engine when the thing under test is actually about SQL.
+- **TS repositories** mock `invoke()`/`invokeTypedCommand` directly and assert the right command name/args plus result passthrough (see `library-repository.test.ts`) — the SQL, transactions, and cascades a command triggers are Rust's job, tested there via `cargo test`, not reproduced a second time in TS against a fake reimplementation (a real prior bug class: the TS fake and the Rust command drifting apart while both test suites stayed green). The one place TS still drives a real SQLite engine is `sqlite-adapter.ts`, used directly by the migration/recovery tests (`src/db/__tests__/migrations*.test.ts`) for schema/cascade behavior that's genuinely TS-side.
 - `vitest.config.ts` pins coverage thresholds **per file**, not globally — most UI has no tests yet, which is a known, tracked gap rather than a silent regression. If you give a listed file real tests, move its threshold up with it; don't leave it stale.
 - There is currently no end-to-end test suite (no Playwright/Cypress) — only unit/component tests plus `cargo test`.
 

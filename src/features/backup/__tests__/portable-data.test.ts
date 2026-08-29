@@ -1,33 +1,91 @@
-// @vitest-environment node
-//
-// useTestSqlite() (see sqlite-test-harness.ts) uses the real node:sqlite
-// built-in. Under the default jsdom environment, Vite treats this file as
-// browser ("client") code and refuses to bundle a Node built-in into it.
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import { useTestSqlite } from "@/db/__tests__/sqlite-test-harness";
-import { makeMedia } from "@/shared/test-utils";
+import { emptyData, type PortableData } from "../portable-data-common";
 
-vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => true }));
-vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load: vi.fn() } }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+const invokeCommandMock = vi.hoisted(() => vi.fn());
+vi.mock("@/shared/lib/invoke", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    invokeTypedCommand: (command: { name: string }, args?: Record<string, unknown>) =>
+      args === undefined ? invokeCommandMock(command.name) : invokeCommandMock(command.name, args),
+  };
+});
 
+const libraryItem = (overrides: Partial<PortableData["library"][number]> = {}): PortableData["library"][number] => ({
+  id: "lib-1",
+  profileId: DEFAULT_PROFILE_ID,
+  mediaId: 1,
+  mediaType: "movie",
+  title: "Test",
+  genres: [],
+  status: "watching",
+  favourite: false,
+  userRating: null,
+  notes: null,
+  tags: [],
+  startedAt: null,
+  completedAt: null,
+  rewatchCount: 0,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  ...overrides,
+});
+
+const viewingEvent = (overrides: Partial<PortableData["viewingEvents"][number]> = {}) => ({
+  id: "event-1",
+  profileId: DEFAULT_PROFILE_ID,
+  mediaId: 2,
+  mediaType: "movie" as const,
+  title: "Noted Movie",
+  eventType: "watched" as const,
+  watchedAt: "2026-01-01T00:00:00.000Z",
+  ...overrides,
+});
+
+function importArgs(): PortableData {
+  const call = invokeCommandMock.mock.calls.find(([name]) => name === "import_backup_data");
+  return (call?.[1] as { data: PortableData }).data;
+}
+
+// The per-table SQLite reads/writes behind export_backup_data/import_backup_data
+// live in Rust and are exercised there (see src-tauri/src/backup/repository.rs's
+// own tests) — this file only verifies portableData's Zod validation/
+// normalization (parseBackup) and that it forwards the normalized data to
+// invoke() unchanged, without a value getting silently stripped along the way.
 describe("portableData", () => {
-  const db = useTestSqlite();
+  beforeEach(() => {
+    invokeCommandMock.mockReset();
+    invokeCommandMock.mockResolvedValue(undefined);
+  });
 
-  it("exports the current state and can round-trip it back in", async () => {
+  it("export() wraps whatever export_backup_data resolves with in the backup envelope", async () => {
+    const data = { ...emptyData(), library: [libraryItem()] };
+    invokeCommandMock.mockResolvedValueOnce(data);
     const { portableData } = await import("../portable-data");
-    const { libraryRepository } = await import("@/features/library/library-repository");
-
-    await libraryRepository.save(makeMedia({ id: 1, title: "Round Trip" }), { status: "watching" });
 
     const backup = await portableData.export();
+
+    expect(invokeCommandMock).toHaveBeenCalledWith("export_backup_data");
     expect(backup.format).toBe("cinetrack-backup");
-    expect(backup.data.library).toHaveLength(1);
+    expect(backup.data).toBe(data);
+  });
 
-    await portableData.import(backup);
+  it("import() forwards the validated data to import_backup_data, then refreshes preferences", async () => {
+    const { portableData } = await import("../portable-data");
 
-    expect((await libraryRepository.get(1, "movie"))?.status).toBe("watching");
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { ...emptyData(), library: [libraryItem({ mediaId: 5 })] },
+    });
+
+    // libraryItemSchema doesn't declare `id` (Rust's library_items rows are
+    // keyed by (profileId, mediaId, mediaType), not a client-supplied uuid),
+    // so it's stripped by Zod on the way through — expected, not a bug.
+    expect(importArgs().library).toEqual([{ ...libraryItem({ mediaId: 5 }), id: undefined }]);
+    expect(invokeCommandMock).toHaveBeenCalledWith("refresh_preferences");
   });
 
   // Regression check for a real bug: viewingEventSchema (portable-data-schema.ts)
@@ -35,20 +93,17 @@ describe("portableData", () => {
   // it while validating an imported backup, even after the Rust side already
   // carried it through export/import — a restore-from-backup silently erased
   // every note ever written.
-  it("round-trips a viewing event's note through export and import", async () => {
+  it("preserves a viewing event's note through import validation", async () => {
     const { portableData } = await import("../portable-data");
-    const { progressRepository } = await import("@/features/progress/progress-repository");
 
-    await progressRepository.toggleMovieSeen(makeMedia({ id: 2, title: "Noted Movie" }), true, undefined, "Loved it");
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { ...emptyData(), viewingEvents: [viewingEvent({ note: "Loved it" })] },
+    });
 
-    const backup = await portableData.export();
-    const note = backup.data.viewingEvents.find((event) => event.mediaId === 2)?.note;
-    expect(note).toBe("Loved it");
-
-    await portableData.import(backup);
-
-    const restoredNote = (await portableData.export()).data.viewingEvents.find((event) => event.mediaId === 2)?.note;
-    expect(restoredNote).toBe("Loved it");
+    expect(importArgs().viewingEvents[0]?.note).toBe("Loved it");
   });
 
   // Regression check for a real bug: smart_lists and saved_filters were both
@@ -56,78 +111,63 @@ describe("portableData", () => {
   // deletes them) but were never added to PortableData's export/import at
   // all — a restore-from-backup silently wiped every smart list and saved
   // filter a profile had, since nothing re-inserted them afterward.
-  it("round-trips a smart list and a saved filter through export and import", async () => {
+  it("preserves smart lists and saved filters through import validation", async () => {
     const { portableData } = await import("../portable-data");
-    const { libraryRepository } = await import("@/features/library/library-repository");
-
-    // A real repository call first, so getDatabase() has already run
-    // migrations before these tables are touched directly — smart_lists/
-    // saved_filters have no TS repository wired into the fake invoke()
-    // backend yet (only the Rust command layer), so this test seeds them
-    // with raw SQL against the same in-memory database, the same way the
-    // Rust-side regression test for this exact bug does.
-    await libraryRepository.save(makeMedia({ id: 3, title: "Unrelated" }), { status: "planned" });
-
-    const rules = JSON.stringify({
-      status: "any",
-      mediaType: "movie",
+    const rules = {
+      status: "any" as const,
+      mediaType: "movie" as const,
       genre: "Horror",
       maxRuntimeMinutes: 100,
       minRating: null,
-      provider: "any",
+      provider: "any" as const,
       hasEpisodeWaiting: false,
-    });
-    db.current
-      .prepare(
-        `INSERT INTO smart_lists (uuid, profile_id, name, rules, created_at, updated_at)
-         VALUES ('sl1', ?, 'Short horror', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
-      )
-      .run(DEFAULT_PROFILE_ID, rules);
-    db.current
-      .prepare(
-        `INSERT INTO saved_filters (uuid, profile_id, page, name, filters, created_at, updated_at)
-         VALUES ('sf1', ?, 'library', 'Paused shows', '{"statusFilter":"paused"}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
-      )
-      .run(DEFAULT_PROFILE_ID);
-
-    const backup = await portableData.export();
-    expect(backup.data.smartLists).toHaveLength(1);
-    expect(backup.data.smartLists[0]?.name).toBe("Short horror");
-    expect(backup.data.savedFilters).toHaveLength(1);
-    expect(backup.data.savedFilters[0]?.name).toBe("Paused shows");
-
-    await portableData.import(backup);
-
-    const smartListCount = db.current.prepare("SELECT COUNT(*) as count FROM smart_lists").get();
-    const savedFilterCount = db.current.prepare("SELECT COUNT(*) as count FROM saved_filters").get();
-    expect(smartListCount?.count).toBe(1);
-    expect(savedFilterCount?.count).toBe(1);
-  });
-
-  it("folds a legacy backup's watchlist array into planned library rows, dropping entries that already exist in the library", async () => {
-    const { portableData } = await import("../portable-data");
-    const { libraryRepository } = await import("@/features/library/library-repository");
+    };
 
     await portableData.import({
       format: "cinetrack-backup",
       version: 1,
       exportedAt: "",
       data: {
-        library: [
+        ...emptyData(),
+        smartLists: [
           {
+            id: "sl1",
             profileId: DEFAULT_PROFILE_ID,
-            mediaId: 1,
-            mediaType: "movie",
-            title: "Already tracked",
-            genres: [],
-            status: "watching",
-            favourite: false,
-            tags: [],
-            rewatchCount: 0,
+            name: "Short horror",
+            rules,
             createdAt: "2026-01-01T00:00:00.000Z",
             updatedAt: "2026-01-01T00:00:00.000Z",
           },
         ],
+        savedFilters: [
+          {
+            id: "sf1",
+            profileId: DEFAULT_PROFILE_ID,
+            page: "library" as const,
+            name: "Paused shows",
+            filters: { statusFilter: "paused" },
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+
+    expect(importArgs().smartLists).toHaveLength(1);
+    expect(importArgs().smartLists[0]?.name).toBe("Short horror");
+    expect(importArgs().savedFilters).toHaveLength(1);
+    expect(importArgs().savedFilters[0]?.name).toBe("Paused shows");
+  });
+
+  it("folds a legacy backup's watchlist array into planned library rows, dropping entries that already exist in the library", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: {
+        library: [libraryItem({ mediaId: 1, title: "Already tracked", status: "watching" })],
         watchlist: [
           {
             id: "wl-1",
@@ -149,8 +189,9 @@ describe("portableData", () => {
       } as never,
     });
 
-    expect((await libraryRepository.get(1, "movie"))?.status).toBe("watching");
-    expect((await libraryRepository.get(2, "movie"))?.status).toBe("planned");
+    const library = importArgs().library;
+    expect(library.find((item) => item.mediaId === 1)?.status).toBe("watching");
+    expect(library.find((item) => item.mediaId === 2)?.status).toBe("planned");
   });
 
   it("rejects a backup with an unsupported format", async () => {
@@ -159,6 +200,7 @@ describe("portableData", () => {
     await expect(
       portableData.import({ format: "something-else", version: 1, exportedAt: "", data: {} } as never)
     ).rejects.toThrow();
+    expect(invokeCommandMock).not.toHaveBeenCalled();
   });
 
   it("rejects a backup whose array fields are not arrays", async () => {
@@ -224,15 +266,54 @@ describe("portableData", () => {
   it("falls back to the default profile if the active profile referenced in the backup is missing", async () => {
     const { portableData } = await import("../portable-data");
 
-    const backup = await portableData
-      .import({
-        format: "cinetrack-backup",
-        version: 1,
-        exportedAt: "",
-        data: { preferences: { activeProfileId: "ghost" } },
-      } as never)
-      .then(() => portableData.export());
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { preferences: { activeProfileId: "ghost" } },
+    } as never);
 
-    expect(backup.data.preferences.activeProfileId).toBe("default");
+    expect(importArgs().preferences.activeProfileId).toBe(DEFAULT_PROFILE_ID);
+  });
+
+  it("injects a default profile when the backup has none", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: {},
+    } as never);
+
+    expect(importArgs().profiles.map((profile) => profile.id)).toContain(DEFAULT_PROFILE_ID);
+  });
+
+  it("does not inject a duplicate default profile when the backup already has one", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { profiles: [{ id: DEFAULT_PROFILE_ID, name: "Default", createdAt: "2026-01-01T00:00:00.000Z" }] },
+    } as never);
+
+    expect(importArgs().profiles.filter((profile) => profile.id === DEFAULT_PROFILE_ID)).toHaveLength(1);
+  });
+
+  it("injects a default profile alongside other existing profiles that don't have that id", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { profiles: [{ id: "alex", name: "Alex", createdAt: "2026-01-01T00:00:00.000Z" }] },
+    } as never);
+
+    const ids = importArgs().profiles.map((profile) => profile.id);
+    expect(ids).toContain("alex");
+    expect(ids).toContain(DEFAULT_PROFILE_ID);
   });
 });
