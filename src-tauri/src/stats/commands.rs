@@ -6,6 +6,7 @@ use super::{
     MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent, ViewingEventNote,
     WatchMilestone, YearlyActivityBucket,
 };
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
@@ -17,9 +18,12 @@ pub async fn list_recent_viewing_events(
     since: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    StatsService::new(pool.inner())
-        .list_recent_viewing_events(&since)
-        .await
+    timed("list_recent_viewing_events", async {
+        StatsService::new(pool.inner())
+            .list_recent_viewing_events(&since)
+            .await
+    })
+    .await
 }
 
 /// Bounded fetch for the yearly "wrapped" summary — only ever needs one
@@ -31,9 +35,12 @@ pub async fn list_viewing_events_for_year(
     range_end: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    StatsService::new(pool.inner())
-        .list_viewing_events_for_year(&range_start, &range_end)
-        .await
+    timed("list_viewing_events_for_year", async {
+        StatsService::new(pool.inner())
+            .list_viewing_events_for_year(&range_start, &range_end)
+            .await
+    })
+    .await
 }
 
 /// Powers the opt-in "On this day" Home card for the active profile.
@@ -42,9 +49,12 @@ pub async fn list_on_this_day_events(
     today: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    StatsService::new(pool.inner())
-        .list_on_this_day_events(&today)
-        .await
+    timed("list_on_this_day_events", async {
+        StatsService::new(pool.inner())
+            .list_on_this_day_events(&today)
+            .await
+    })
+    .await
 }
 
 /// One title's full watch history, notes included, for the active profile.
@@ -54,9 +64,12 @@ pub async fn list_viewing_events_for_media(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEventNote>, ApiError> {
-    StatsService::new(pool.inner())
-        .list_viewing_events_for_media(media_id, media_type)
-        .await
+    timed("list_viewing_events_for_media", async {
+        StatsService::new(pool.inner())
+            .list_viewing_events_for_media(media_id, media_type)
+            .await
+    })
+    .await
 }
 
 /// `window_start` and `month_labels` are computed client-side (date-fns
@@ -69,16 +82,22 @@ pub async fn get_stats_overview(
     month_labels: Vec<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<StatsOverview, ApiError> {
-    StatsService::new(pool.inner())
-        .get_stats_overview(&window_start, &month_labels)
-        .await
+    timed("get_stats_overview", async {
+        StatsService::new(pool.inner())
+            .get_stats_overview(&window_start, &month_labels)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
 pub async fn list_yearly_activity(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-    StatsService::new(pool.inner()).list_yearly_activity().await
+    timed("list_yearly_activity", async {
+        StatsService::new(pool.inner()).list_yearly_activity().await
+    })
+    .await
 }
 
 /// `month` is the "YYYY-MM" label to echo back; `range_start`/`range_end` are
@@ -91,9 +110,12 @@ pub async fn get_monthly_recap(
     range_end: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<MonthlyRecap, ApiError> {
-    StatsService::new(pool.inner())
-        .get_monthly_recap(&month, &range_start, &range_end)
-        .await
+    timed("get_monthly_recap", async {
+        StatsService::new(pool.inner())
+            .get_monthly_recap(&month, &range_start, &range_end)
+            .await
+    })
+    .await
 }
 
 /// `window_start`/`month_labels` follow the same client-computed-window
@@ -104,9 +126,12 @@ pub async fn get_rewatch_stats(
     month_labels: Vec<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<RewatchStats, ApiError> {
-    StatsService::new(pool.inner())
-        .get_rewatch_stats(&window_start, &month_labels)
-        .await
+    timed("get_rewatch_stats", async {
+        StatsService::new(pool.inner())
+            .get_rewatch_stats(&window_start, &month_labels)
+            .await
+    })
+    .await
 }
 
 /// `window_start` bounds `average_by_month` only (same convention as
@@ -118,14 +143,20 @@ pub async fn get_rating_distribution(
     window_start: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<RatingDistribution, ApiError> {
-    StatsService::new(pool.inner())
-        .get_rating_distribution(&window_start)
-        .await
+    timed("get_rating_distribution", async {
+        StatsService::new(pool.inner())
+            .get_rating_distribution(&window_start)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
 pub async fn get_watch_milestones(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<WatchMilestone>, ApiError> {
-    StatsService::new(pool.inner()).get_watch_milestones().await
+    timed("get_watch_milestones", async {
+        StatsService::new(pool.inner()).get_watch_milestones().await
+    })
+    .await
 }

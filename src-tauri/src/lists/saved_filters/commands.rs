@@ -5,6 +5,7 @@ use tauri::State;
 use super::models::SavedFilter;
 use super::repository::{create_impl, list_impl, remove_impl};
 use crate::database::current_profile_id;
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 
 #[tauri::command]
@@ -12,8 +13,11 @@ pub async fn list_saved_filters(
     page: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<SavedFilter>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_impl(&pool, &profile_id, page).await
+    timed("list_saved_filters", async {
+        let profile_id = current_profile_id(&pool).await?;
+        list_impl(&pool, &profile_id, page).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -23,8 +27,11 @@ pub async fn create_saved_filter(
     filters: Value,
     pool: State<'_, SqlitePool>,
 ) -> Result<SavedFilter, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    create_impl(&pool, &profile_id, &page, &name, filters).await
+    timed("create_saved_filter", async {
+        let profile_id = current_profile_id(&pool).await?;
+        create_impl(&pool, &profile_id, &page, &name, filters).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -32,8 +39,11 @@ pub async fn remove_saved_filter(
     saved_filter_id: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    remove_impl(&pool, &profile_id, &saved_filter_id).await
+    timed("remove_saved_filter", async {
+        let profile_id = current_profile_id(&pool).await?;
+        remove_impl(&pool, &profile_id, &saved_filter_id).await
+    })
+    .await
 }
 
 #[cfg(test)]

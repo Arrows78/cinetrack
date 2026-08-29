@@ -3,6 +3,7 @@ use tauri::State;
 
 use super::models::ViewingHistoryItem;
 use super::service::HistoryService;
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 
 #[tauri::command]
@@ -12,10 +13,13 @@ pub async fn list_history(
     before_id: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingHistoryItem>, ApiError> {
-    let before = before_timestamp.as_deref().zip(before_id.as_deref());
-    HistoryService::new(pool.inner())
-        .list(limit.unwrap_or(50), before)
-        .await
+    timed("list_history", async {
+        let before = before_timestamp.as_deref().zip(before_id.as_deref());
+        HistoryService::new(pool.inner())
+            .list(limit.unwrap_or(50), before)
+            .await
+    })
+    .await
 }
 
 #[cfg(test)]

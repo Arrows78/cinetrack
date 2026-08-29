@@ -68,6 +68,7 @@ export const tauriCommandNames = [
   "read_backup_from_path",
   "list_backup_directory",
   "remove_backup_file",
+  "export_diagnostics_summary",
 ] as const;
 
 export type TauriCommandName = (typeof tauriCommandNames)[number];

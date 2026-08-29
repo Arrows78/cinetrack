@@ -6,13 +6,17 @@ use super::repository::{
     add_impl, create_impl, items_impl, list_impl, remove_impl, remove_item_impl,
 };
 use crate::database::current_profile_id;
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
 #[tauri::command]
 pub async fn list_custom_lists(pool: State<'_, SqlitePool>) -> Result<Vec<CustomList>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_impl(&pool, &profile_id).await
+    timed("list_custom_lists", async {
+        let profile_id = current_profile_id(&pool).await?;
+        list_impl(&pool, &profile_id).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -21,8 +25,11 @@ pub async fn create_custom_list(
     description: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<CustomList, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    create_impl(&pool, &profile_id, &name, description).await
+    timed("create_custom_list", async {
+        let profile_id = current_profile_id(&pool).await?;
+        create_impl(&pool, &profile_id, &name, description).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -30,8 +37,11 @@ pub async fn remove_custom_list(
     list_id: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    remove_impl(&pool, &profile_id, &list_id).await
+    timed("remove_custom_list", async {
+        let profile_id = current_profile_id(&pool).await?;
+        remove_impl(&pool, &profile_id, &list_id).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -39,8 +49,11 @@ pub async fn list_custom_list_items(
     list_id: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<CustomListItem>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    items_impl(&pool, &profile_id, &list_id).await
+    timed("list_custom_list_items", async {
+        let profile_id = current_profile_id(&pool).await?;
+        items_impl(&pool, &profile_id, &list_id).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -49,8 +62,11 @@ pub async fn add_custom_list_item(
     media: MediaSummaryInput,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    add_impl(&pool, &profile_id, &list_id, media).await
+    timed("add_custom_list_item", async {
+        let profile_id = current_profile_id(&pool).await?;
+        add_impl(&pool, &profile_id, &list_id, media).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -60,8 +76,11 @@ pub async fn remove_custom_list_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    remove_item_impl(&pool, &profile_id, &list_id, media_id, media_type).await
+    timed("remove_custom_list_item", async {
+        let profile_id = current_profile_id(&pool).await?;
+        remove_item_impl(&pool, &profile_id, &list_id, media_id, media_type).await
+    })
+    .await
 }
 
 #[cfg(test)]

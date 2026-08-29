@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { maintenanceService } from "@/features/backup/maintenance-service";
+import { diagnosticsService } from "@/features/desktop/diagnostics-service";
+import type { DiagnosticsSummary } from "@/features/desktop/diagnostics-commands";
 import { logger } from "@/shared/lib/logger";
 import { tokenVault } from "@/features/desktop/token-vault";
 import { updateService } from "@/features/desktop/update-service";
@@ -27,6 +29,14 @@ export function DesktopSettings() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupStatus, setBackupStatus] = useState<{ exportedAt: string | null; failed: boolean } | null>(null);
   const [logLines, setLogLines] = useState<string[] | null>(null);
+  const [timingSummary, setTimingSummary] = useState<DiagnosticsSummary | null>(null);
+  const refreshTimingSummary = () => {
+    if (!isTauriApp()) return;
+    void diagnosticsService
+      .exportSummary()
+      .then(setTimingSummary)
+      .catch((error: unknown) => logger.warn(`Failed to refresh the command timing summary: ${errorMessage(error)}`));
+  };
   const refreshBackupStatus = () => {
     if (isTauriApp())
       void maintenanceService
@@ -48,6 +58,7 @@ export function DesktopSettings() {
         .catch((error: unknown) => logger.warn(`Failed to read autostart state: ${errorMessage(error)}`));
     refreshBackupStatus();
     refreshLogs();
+    refreshTimingSummary();
   }, []);
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -270,6 +281,60 @@ export function DesktopSettings() {
                 </pre>
               ) : (
                 <p className="mt-3 text-xs text-muted-foreground">{t("desktop.diagnosticsEmpty")}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>{t("desktop.diagnosticsTimingTitle")}</CardTitle>
+              <CardDescription>{t("desktop.diagnosticsTimingDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={refreshTimingSummary}>
+                  {t("desktop.diagnosticsTimingRefresh")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!timingSummary?.commands.length}
+                  onClick={() => void navigator.clipboard.writeText(JSON.stringify(timingSummary, null, 2))}
+                >
+                  {t("desktop.diagnosticsTimingCopy")}
+                </Button>
+              </div>
+              {timingSummary?.commands.length ? (
+                <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-card text-muted-foreground">
+                      <tr>
+                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCommand")}</th>
+                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCount")}</th>
+                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingAvg")}</th>
+                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingP95")}</th>
+                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingMax")}</th>
+                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingErrors")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...timingSummary.commands]
+                        .sort((a, b) => b.p95DurationMs - a.p95DurationMs)
+                        .map((row) => (
+                          <tr key={row.command} className="border-t border-border">
+                            <td className="p-2 font-mono">{row.command}</td>
+                            <td className="p-2">{row.count}</td>
+                            <td className="p-2">{Math.round(row.avgDurationMs)}</td>
+                            <td className="p-2">{row.p95DurationMs}</td>
+                            <td className="p-2">{row.maxDurationMs}</td>
+                            <td className="p-2">{row.errorCount}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">{t("desktop.diagnosticsTimingEmpty")}</p>
               )}
             </CardContent>
           </Card>

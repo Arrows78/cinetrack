@@ -5,12 +5,16 @@ use tauri::State;
 use super::models::SmartList;
 use super::repository::{create_impl, list_impl, remove_impl, update_impl};
 use crate::database::current_profile_id;
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 
 #[tauri::command]
 pub async fn list_smart_lists(pool: State<'_, SqlitePool>) -> Result<Vec<SmartList>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    list_impl(&pool, &profile_id).await
+    timed("list_smart_lists", async {
+        let profile_id = current_profile_id(&pool).await?;
+        list_impl(&pool, &profile_id).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -19,8 +23,11 @@ pub async fn create_smart_list(
     rules: Value,
     pool: State<'_, SqlitePool>,
 ) -> Result<SmartList, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    create_impl(&pool, &profile_id, &name, rules).await
+    timed("create_smart_list", async {
+        let profile_id = current_profile_id(&pool).await?;
+        create_impl(&pool, &profile_id, &name, rules).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -30,8 +37,11 @@ pub async fn update_smart_list(
     rules: Value,
     pool: State<'_, SqlitePool>,
 ) -> Result<SmartList, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    update_impl(&pool, &profile_id, &smart_list_id, &name, rules).await
+    timed("update_smart_list", async {
+        let profile_id = current_profile_id(&pool).await?;
+        update_impl(&pool, &profile_id, &smart_list_id, &name, rules).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -39,8 +49,11 @@ pub async fn remove_smart_list(
     smart_list_id: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    remove_impl(&pool, &profile_id, &smart_list_id).await
+    timed("remove_smart_list", async {
+        let profile_id = current_profile_id(&pool).await?;
+        remove_impl(&pool, &profile_id, &smart_list_id).await
+    })
+    .await
 }
 
 #[cfg(test)]

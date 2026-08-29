@@ -25,6 +25,11 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Already in the dependency tree transitively (sqlx/reqwest) — used directly
+# only for a UTC ISO-8601 timestamp matching the frontend logger's own
+# `new Date().toISOString()` format (see diagnostics.rs), not for any real
+# date arithmetic.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 sqlx = { version = "0.9", default-features = false, features = ["sqlite", "runtime-tokio", "macros", "json"] }

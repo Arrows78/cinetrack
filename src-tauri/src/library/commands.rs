@@ -6,12 +6,16 @@ use super::models::{
     LibraryItem, LibraryListParams, LibraryPage, LibraryPatch, LibrarySort, MediaSummaryInput,
 };
 use super::service::LibraryService;
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
 #[tauri::command]
 pub async fn list_library(pool: State<'_, SqlitePool>) -> Result<Vec<LibraryItem>, ApiError> {
-    LibraryService::new(pool.inner()).list().await
+    timed("list_library", async {
+        LibraryService::new(pool.inner()).list().await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -26,16 +30,19 @@ pub async fn list_library_page(
     limit: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<LibraryPage, ApiError> {
-    let params = LibraryListParams {
-        media_type,
-        status,
-        favourites_only,
-        search,
-        sort,
-        cursor,
-        limit,
-    };
-    LibraryService::new(pool.inner()).list_page(params).await
+    timed("list_library_page", async {
+        let params = LibraryListParams {
+            media_type,
+            status,
+            favourites_only,
+            search,
+            sort,
+            cursor,
+            limit,
+        };
+        LibraryService::new(pool.inner()).list_page(params).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -44,9 +51,12 @@ pub async fn get_library_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<LibraryItem>, ApiError> {
-    LibraryService::new(pool.inner())
-        .get(media_id, media_type)
-        .await
+    timed("get_library_item", async {
+        LibraryService::new(pool.inner())
+            .get(media_id, media_type)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -55,9 +65,12 @@ pub async fn has_library_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<bool, ApiError> {
-    LibraryService::new(pool.inner())
-        .has(media_id, media_type)
-        .await
+    timed("has_library_item", async {
+        LibraryService::new(pool.inner())
+            .has(media_id, media_type)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -66,7 +79,10 @@ pub async fn save_library_item(
     patch: Option<LibraryPatch>,
     pool: State<'_, SqlitePool>,
 ) -> Result<LibraryItem, ApiError> {
-    LibraryService::new(pool.inner()).save(media, patch).await
+    timed("save_library_item", async {
+        LibraryService::new(pool.inner()).save(media, patch).await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -75,9 +91,12 @@ pub async fn remove_library_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    LibraryService::new(pool.inner())
-        .remove(media_id, media_type)
-        .await
+    timed("remove_library_item", async {
+        LibraryService::new(pool.inner())
+            .remove(media_id, media_type)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -86,7 +105,10 @@ pub async fn remove_planned_library_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<bool, ApiError> {
-    LibraryService::new(pool.inner())
-        .remove_if_planned(media_id, media_type)
-        .await
+    timed("remove_planned_library_item", async {
+        LibraryService::new(pool.inner())
+            .remove_if_planned(media_id, media_type)
+            .await
+    })
+    .await
 }

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use super::client::{TMDB_BASE_URL, http_client, is_valid_tmdb_path, tmdb_request_impl};
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 
 #[tauri::command]
@@ -11,11 +12,14 @@ pub async fn tmdb_request(
     params: HashMap<String, String>,
     token: String,
 ) -> Result<Value, ApiError> {
-    if !is_valid_tmdb_path(&path) {
-        return Err(ApiError::bad_request("Invalid TMDB path"));
-    }
+    timed("tmdb_request", async {
+        if !is_valid_tmdb_path(&path) {
+            return Err(ApiError::bad_request("Invalid TMDB path"));
+        }
 
-    tmdb_request_impl(TMDB_BASE_URL, http_client(), &path, &params, &token).await
+        tmdb_request_impl(TMDB_BASE_URL, http_client(), &path, &params, &token).await
+    })
+    .await
 }
 
 #[cfg(test)]

@@ -52,6 +52,11 @@ vi.mock("@/features/desktop/update-service", () => ({
   updateService: { checkAndInstall: (...args: unknown[]) => checkAndInstallMock(...args) },
 }));
 
+const exportSummaryMock = vi.fn();
+vi.mock("@/features/desktop/diagnostics-service", () => ({
+  diagnosticsService: { exportSummary: (...args: unknown[]) => exportSummaryMock(...args) },
+}));
+
 const disableMock = vi.fn();
 const enableMock = vi.fn();
 const isEnabledMock = vi.fn();
@@ -97,6 +102,7 @@ describe("DesktopSettings", () => {
     lockMock.mockReset();
 
     checkAndInstallMock.mockReset();
+    exportSummaryMock.mockReset().mockResolvedValue({ commands: [], totalLinesParsed: 0 });
 
     disableMock.mockReset().mockResolvedValue(undefined);
     enableMock.mockReset().mockResolvedValue(undefined);
@@ -134,30 +140,34 @@ describe("DesktopSettings", () => {
       expect(isEnabledMock).not.toHaveBeenCalled();
       expect(getLastBackupStatusMock).not.toHaveBeenCalled();
       expect(readRecentMock).not.toHaveBeenCalled();
+      expect(exportSummaryMock).not.toHaveBeenCalled();
     });
   });
 
   describe("inside Tauri: mount effects", () => {
-    it("calls isEnabled, getLastBackupStatus and readRecent on mount", async () => {
+    it("calls isEnabled, getLastBackupStatus, readRecent and exportSummary on mount", async () => {
       render(<DesktopSettings />);
 
       await waitFor(() => expect(isEnabledMock).toHaveBeenCalledTimes(1));
       await waitFor(() => expect(getLastBackupStatusMock).toHaveBeenCalledTimes(1));
       await waitFor(() => expect(readRecentMock).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(exportSummaryMock).toHaveBeenCalledTimes(1));
 
       expect(screen.getByText("System integration")).toBeInTheDocument();
       expect(screen.getByText("Automatic backup")).toBeInTheDocument();
       expect(screen.getByText("Diagnostics (local log)")).toBeInTheDocument();
+      expect(screen.getByText("Command timing summary")).toBeInTheDocument();
     });
 
     it("logs a warning through logger.warn when each mount call rejects", async () => {
       isEnabledMock.mockRejectedValueOnce(new Error("autostart broke"));
       getLastBackupStatusMock.mockRejectedValueOnce(new Error("status broke"));
       readRecentMock.mockRejectedValueOnce(new Error("logs broke"));
+      exportSummaryMock.mockRejectedValueOnce(new Error("summary broke"));
 
       render(<DesktopSettings />);
 
-      await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledTimes(3));
+      await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledTimes(4));
       const messages = loggerWarnMock.mock.calls.map((call) => call[0] as string);
       expect(messages.some((m) => m.includes("Failed to read autostart state") && m.includes("autostart broke"))).toBe(
         true
@@ -168,6 +178,9 @@ describe("DesktopSettings", () => {
       expect(messages.some((m) => m.includes("Failed to refresh diagnostic logs") && m.includes("logs broke"))).toBe(
         true
       );
+      expect(
+        messages.some((m) => m.includes("Failed to refresh the command timing summary") && m.includes("summary broke"))
+      ).toBe(true);
     });
   });
 
@@ -568,6 +581,81 @@ describe("DesktopSettings", () => {
 
       await waitFor(() => expect(screen.getByText("No log entries yet.")).toBeInTheDocument());
       expect(container.querySelector("pre")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("command timing summary", () => {
+    it("renders the empty placeholder when no commands have been recorded", async () => {
+      render(<DesktopSettings />);
+
+      await waitFor(() => expect(exportSummaryMock).toHaveBeenCalledTimes(1));
+      expect(screen.getByText("No timed commands recorded yet.")).toBeInTheDocument();
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    });
+
+    it("renders one row per command, sorted by p95 descending, and refresh re-fetches the summary", async () => {
+      exportSummaryMock.mockResolvedValue({
+        commands: [
+          {
+            command: "list_library",
+            count: 10,
+            errorCount: 0,
+            avgDurationMs: 4.2,
+            p95DurationMs: 8,
+            maxDurationMs: 12,
+          },
+          {
+            command: "get_stats_overview",
+            count: 3,
+            errorCount: 1,
+            avgDurationMs: 50,
+            p95DurationMs: 220,
+            maxDurationMs: 250,
+          },
+        ],
+        totalLinesParsed: 13,
+      });
+      render(<DesktopSettings />);
+
+      await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument());
+      const rows = screen.getAllByRole("row").slice(1); // drop the header row
+      expect(rows[0]).toHaveTextContent("get_stats_overview");
+      expect(rows[0]).toHaveTextContent("220");
+      expect(rows[1]).toHaveTextContent("list_library");
+
+      exportSummaryMock.mockResolvedValueOnce({ commands: [], totalLinesParsed: 0 });
+      screen.getByRole("button", { name: "Refresh summary" }).click();
+
+      await waitFor(() => expect(exportSummaryMock).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.getByText("No timed commands recorded yet.")).toBeInTheDocument());
+    });
+
+    it("copy as JSON is disabled with no data and writes the summary to the clipboard once loaded", async () => {
+      const summary = {
+        commands: [
+          {
+            command: "list_library",
+            count: 1,
+            errorCount: 0,
+            avgDurationMs: 4,
+            p95DurationMs: 4,
+            maxDurationMs: 4,
+          },
+        ],
+        totalLinesParsed: 1,
+      };
+      exportSummaryMock.mockResolvedValueOnce({ commands: [], totalLinesParsed: 0 }).mockResolvedValueOnce(summary);
+      render(<DesktopSettings />);
+
+      expect(screen.getByRole("button", { name: "Copy as JSON" })).toBeDisabled();
+
+      screen.getByRole("button", { name: "Refresh summary" }).click();
+      const copyButton = await screen.findByRole("button", { name: "Copy as JSON" });
+      await waitFor(() => expect(copyButton).not.toBeDisabled());
+
+      copyButton.click();
+
+      await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(JSON.stringify(summary, null, 2)));
     });
   });
 });

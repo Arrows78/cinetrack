@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n";
 import type { MediaSummary, Season, Series } from "@/types/media";
 import type { TvTimeExport } from "../parse-export";
+import type * as ApiClientModule from "@/features/media/api/client";
 
 const searchMock = vi.fn();
 const getSeriesDetailsMock = vi.fn();
@@ -13,8 +14,7 @@ vi.mock("@/features/media/media-repository", async () => {
   // re-exports it as part of media's public surface, so the mock has to
   // too, or tvtime-import-service.ts's `instanceof TmdbRequestError` check
   // would compare against a different class than the one these tests throw.
-  const { TmdbRequestError } =
-    await vi.importActual<typeof import("@/features/media/api/client")>("@/features/media/api/client");
+  const { TmdbRequestError } = await vi.importActual<typeof ApiClientModule>("@/features/media/api/client");
   return {
     TmdbRequestError,
     mediaRepository: {

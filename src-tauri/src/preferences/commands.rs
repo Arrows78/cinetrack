@@ -5,6 +5,7 @@ use tauri::State;
 use super::models::UserPreferences;
 use super::repository::PreferencesCache;
 use super::service::{PreferencesService, refresh};
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 
 #[tauri::command]
@@ -12,9 +13,12 @@ pub async fn get_preferences(
     pool: State<'_, SqlitePool>,
     cache: State<'_, PreferencesCache>,
 ) -> Result<UserPreferences, ApiError> {
-    PreferencesService::new(pool.inner(), cache.inner())
-        .get()
-        .await
+    timed("get_preferences", async {
+        PreferencesService::new(pool.inner(), cache.inner())
+            .get()
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -24,9 +28,12 @@ pub async fn update_preference(
     pool: State<'_, SqlitePool>,
     cache: State<'_, PreferencesCache>,
 ) -> Result<UserPreferences, ApiError> {
-    PreferencesService::new(pool.inner(), cache.inner())
-        .update(key, value)
-        .await
+    timed("update_preference", async {
+        PreferencesService::new(pool.inner(), cache.inner())
+            .update(key, value)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -36,9 +43,12 @@ pub async fn set_active_profile(
     pool: State<'_, SqlitePool>,
     cache: State<'_, PreferencesCache>,
 ) -> Result<UserPreferences, ApiError> {
-    PreferencesService::new(pool.inner(), cache.inner())
-        .set_active_profile(&profile_id, supabase_user_id.as_deref())
-        .await
+    timed("set_active_profile", async {
+        PreferencesService::new(pool.inner(), cache.inner())
+            .set_active_profile(&profile_id, supabase_user_id.as_deref())
+            .await
+    })
+    .await
 }
 
 #[tauri::command]

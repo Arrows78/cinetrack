@@ -3,6 +3,7 @@ use tauri::State;
 
 use super::models::{AvailabilityAlert, AvailabilitySnapshot, MediaSummaryInput};
 use super::service::AvailabilityService;
+use crate::diagnostics::timed;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
@@ -10,7 +11,10 @@ use crate::models::MediaType;
 pub async fn list_availability_alerts(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<AvailabilityAlert>, ApiError> {
-    AvailabilityService::new(pool.inner()).list_alerts().await
+    timed("list_availability_alerts", async {
+        AvailabilityService::new(pool.inner()).list_alerts().await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -19,9 +23,12 @@ pub async fn get_availability_alert(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<AvailabilityAlert>, ApiError> {
-    AvailabilityService::new(pool.inner())
-        .get_alert(media_id, media_type)
-        .await
+    timed("get_availability_alert", async {
+        AvailabilityService::new(pool.inner())
+            .get_alert(media_id, media_type)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -31,9 +38,12 @@ pub async fn toggle_availability_alert(
     provider_ids: Vec<i64>,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<AvailabilityAlert>, ApiError> {
-    AvailabilityService::new(pool.inner())
-        .toggle_alert(media, region, provider_ids)
-        .await
+    timed("toggle_availability_alert", async {
+        AvailabilityService::new(pool.inner())
+            .toggle_alert(media, region, provider_ids)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -41,9 +51,12 @@ pub async fn remove_availability_alert(
     id: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    AvailabilityService::new(pool.inner())
-        .remove_alert(&id)
-        .await
+    timed("remove_availability_alert", async {
+        AvailabilityService::new(pool.inner())
+            .remove_alert(&id)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -53,9 +66,12 @@ pub async fn get_availability_snapshot(
     region: String,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<AvailabilitySnapshot>, ApiError> {
-    AvailabilityService::new(pool.inner())
-        .get_snapshot(media_id, media_type, &region)
-        .await
+    timed("get_availability_snapshot", async {
+        AvailabilityService::new(pool.inner())
+            .get_snapshot(media_id, media_type, &region)
+            .await
+    })
+    .await
 }
 
 #[tauri::command]
@@ -63,9 +79,12 @@ pub async fn save_availability_snapshot(
     snapshot: AvailabilitySnapshot,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    AvailabilityService::new(pool.inner())
-        .save_snapshot(snapshot)
-        .await
+    timed("save_availability_snapshot", async {
+        AvailabilityService::new(pool.inner())
+            .save_snapshot(snapshot)
+            .await
+    })
+    .await
 }
 
 /// Backs the smart-lists "My Services"/specific-provider rule (see
@@ -79,9 +98,12 @@ pub async fn save_availability_snapshot(
 pub async fn list_availability_snapshots(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<AvailabilitySnapshot>, ApiError> {
-    AvailabilityService::new(pool.inner())
-        .list_snapshots()
-        .await
+    timed("list_availability_snapshots", async {
+        AvailabilityService::new(pool.inner())
+            .list_snapshots()
+            .await
+    })
+    .await
 }
 
 #[cfg(test)]

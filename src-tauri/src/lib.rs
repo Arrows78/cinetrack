@@ -2,6 +2,7 @@ mod availability;
 mod backup;
 mod commands;
 mod database;
+mod diagnostics;
 mod error;
 mod history;
 mod integrations;
@@ -22,6 +23,8 @@ mod stats;
 mod tray;
 
 use tauri::{Emitter, Manager};
+
+use diagnostics::export_diagnostics_summary;
 
 use commands::{
     PreferencesCache, add_custom_list_item, check_data_integrity, create_custom_list,
@@ -169,8 +172,17 @@ pub fn run() {
             read_backup_from_path,
             list_backup_directory,
             remove_backup_file,
+            export_diagnostics_summary,
         ])
         .setup(|app| {
+            // Same BaseDirectory.AppData root src/shared/lib/logger.ts
+            // writes under (see diagnostics.rs) — set before any command
+            // can possibly run, so every command's own timing log line
+            // lands in the same file from the very first invocation.
+            if let Ok(app_data_dir) = app.path().app_data_dir() {
+                diagnostics::init(app_data_dir);
+            }
+
             // Same "sqlite:app.db" file tauri-plugin-sql already opens
             // (resolved against the app config dir) — both drivers must
             // agree on the file while domains are migrated one at a time.
