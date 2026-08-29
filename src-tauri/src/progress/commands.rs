@@ -9,7 +9,9 @@ use crate::error::ApiError;
 
 #[tauri::command]
 pub async fn is_movie_seen(movie_id: i64, pool: State<'_, SqlitePool>) -> Result<bool, ApiError> {
-    ProgressService::new(pool.inner()).is_movie_seen(movie_id).await
+    ProgressService::new(pool.inner())
+        .is_movie_seen(movie_id)
+        .await
 }
 
 #[tauri::command]
@@ -54,7 +56,9 @@ pub async fn toggle_episodes_watched(
 pub async fn list_tracked_series(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<TrackedSeriesItem>, ApiError> {
-    ProgressService::new(pool.inner()).list_tracked_series().await
+    ProgressService::new(pool.inner())
+        .list_tracked_series()
+        .await
 }
 
 #[tauri::command]

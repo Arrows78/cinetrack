@@ -3,14 +3,14 @@ use std::time::{Duration, Instant};
 use sqlx::SqlitePool;
 use tauri::{Manager, State};
 
-use super::fixtures::{migrated_pool, seed_scale_fixture};
-use super::report::{
-    BenchmarkCaseReport, BenchmarkReport, LatencySummary, OperationReport, write_report,
-};
 use super::super::queries::milestones::get_watch_milestones_impl;
 use super::super::queries::overview::get_stats_overview_impl;
 use super::super::queries::ratings::get_rating_distribution_impl;
 use super::super::queries::recap::get_monthly_recap_impl;
+use super::fixtures::{migrated_pool, seed_scale_fixture};
+use super::report::{
+    BenchmarkCaseReport, BenchmarkReport, LatencySummary, OperationReport, write_report,
+};
 use crate::library::list_library;
 use crate::progress::list_tracked_series;
 
@@ -48,7 +48,10 @@ fn duration_ms(duration: Duration) -> f64 {
 /// ceil(P / 100 * N) from the sorted sample set (one-indexed).
 fn percentile_ms(samples: &[Duration], percentile: usize) -> f64 {
     assert!(!samples.is_empty(), "percentiles need at least one sample");
-    assert!((1..=100).contains(&percentile), "percentile must be 1..=100");
+    assert!(
+        (1..=100).contains(&percentile),
+        "percentile must be 1..=100"
+    );
 
     let mut sorted = samples.to_vec();
     sorted.sort_unstable();
@@ -69,8 +72,7 @@ impl BenchmarkSamples {
         self.tracked_series.push(iteration.tracked_series);
         self.stats_overview.push(iteration.stats_overview);
         self.monthly_recap.push(iteration.monthly_recap);
-        self.rating_distribution
-            .push(iteration.rating_distribution);
+        self.rating_distribution.push(iteration.rating_distribution);
         self.watch_milestones.push(iteration.watch_milestones);
     }
 

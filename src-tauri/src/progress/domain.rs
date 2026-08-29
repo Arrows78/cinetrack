@@ -19,7 +19,10 @@ mod tests {
     fn maps_episode_progress_to_the_expected_library_status() {
         assert_eq!(auto_sync_target(0, Some(10)), None);
         assert_eq!(auto_sync_target(1, Some(10)), Some(LibraryStatus::Watching));
-        assert_eq!(auto_sync_target(10, Some(10)), Some(LibraryStatus::Completed));
+        assert_eq!(
+            auto_sync_target(10, Some(10)),
+            Some(LibraryStatus::Completed)
+        );
         assert_eq!(auto_sync_target(1, None), Some(LibraryStatus::Watching));
     }
 }

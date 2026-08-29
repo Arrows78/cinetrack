@@ -10,8 +10,8 @@ use super::viewing_events::{
     list_viewing_events_for_year_impl, list_viewing_events_since_impl,
 };
 use super::{
-    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent,
-    ViewingEventNote, WatchMilestone, YearlyActivityBucket,
+    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent, ViewingEventNote,
+    WatchMilestone, YearlyActivityBucket,
 };
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -74,14 +74,7 @@ impl<'a> StatsRepository<'a> {
         range_start: &str,
         range_end: &str,
     ) -> Result<MonthlyRecap, ApiError> {
-        get_monthly_recap_impl(
-            self.pool,
-            &self.profile_id,
-            month,
-            range_start,
-            range_end,
-        )
-        .await
+        get_monthly_recap_impl(self.pool, &self.profile_id, month, range_start, range_end).await
     }
 
     pub(super) async fn get_rewatch_stats(

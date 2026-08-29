@@ -2,8 +2,8 @@ use sqlx::SqlitePool;
 
 use super::repository::StatsRepository;
 use super::{
-    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent,
-    ViewingEventNote, WatchMilestone, YearlyActivityBucket,
+    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent, ViewingEventNote,
+    WatchMilestone, YearlyActivityBucket,
 };
 use crate::database::current_profile_id;
 use crate::error::ApiError;
@@ -27,7 +27,10 @@ impl<'a> StatsService<'a> {
         &self,
         since: &str,
     ) -> Result<Vec<ViewingEvent>, ApiError> {
-        self.repository().await?.list_recent_viewing_events(since).await
+        self.repository()
+            .await?
+            .list_recent_viewing_events(since)
+            .await
     }
 
     pub(super) async fn list_viewing_events_for_year(
@@ -45,7 +48,10 @@ impl<'a> StatsService<'a> {
         &self,
         today: &str,
     ) -> Result<Vec<ViewingEvent>, ApiError> {
-        self.repository().await?.list_on_this_day_events(today).await
+        self.repository()
+            .await?
+            .list_on_this_day_events(today)
+            .await
     }
 
     pub(super) async fn list_viewing_events_for_media(
