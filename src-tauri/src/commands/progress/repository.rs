@@ -1,151 +1,18 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::SqlitePool;
-use tauri::State;
 
-use super::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
-use super::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
-use crate::commands::macros::profile_scoped_command;
-use crate::database::{current_profile_id, new_uuid};
+use super::domain::auto_sync_target;
+use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
+use super::queries::is_movie_seen_impl;
+#[cfg(test)]
+use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
+use crate::commands::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
+use crate::commands::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
+use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::models::MediaType;
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MovieInput {
-    pub id: i64,
-    pub title: String,
-    pub poster_path: Option<String>,
-    pub backdrop_path: Option<String>,
-    pub runtime: Option<i64>,
-    pub year: Option<i64>,
-    pub rating: Option<f64>,
-    #[serde(default)]
-    pub genres: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EpisodeInput {
-    pub id: i64,
-    pub season_number: i64,
-    pub episode_number: i64,
-    pub runtime: Option<i64>,
-    /// Per-episode override for `apply_episodes_impl`'s batch `watched_at`,
-    /// used only by the tvtime importer to preserve each episode's original
-    /// watch date instead of stamping every imported episode with the same
-    /// timestamp. Interactive callers (toggle/season/series) never set this,
-    /// so they keep sharing the single batch timestamp as before.
-    #[serde(default)]
-    pub watched_at: Option<String>,
-}
-
-/// Only the fields `toggle_episodes_watched` reads off the frontend's `SeriesInput`
-/// (`MediaSummary & { numberOfEpisodes?: number }`) — unknown fields are
-/// silently ignored by serde.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SeriesInput {
-    pub id: i64,
-    pub title: String,
-    pub poster_path: Option<String>,
-    pub backdrop_path: Option<String>,
-    pub runtime: Option<i64>,
-    pub number_of_episodes: Option<i64>,
-    pub year: Option<i64>,
-    pub rating: Option<f64>,
-    #[serde(default)]
-    pub genres: Vec<String>,
-    /// TMDB's own production status ("Returning Series", "Ended",
-    /// "Canceled", ...) — denormalized onto tracked_series so the library
-    /// grid can tell "caught up, more coming" from "actually finished"
-    /// without a per-card TMDB fetch. Absent for callers that don't have it
-    /// (the TV Time importer), which is fine — see the migration 11 comment.
-    #[serde(default)]
-    pub status: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EpisodeProgress {
-    pub id: String,
-    pub profile_id: Option<String>,
-    pub series_id: i64,
-    pub episode_id: i64,
-    pub season_number: i64,
-    pub episode_number: i64,
-    pub watched: bool,
-    pub watched_at: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-struct EpisodeProgressRow {
-    uuid: String,
-    series_id: i64,
-    episode_id: i64,
-    season_number: i64,
-    episode_number: i64,
-    watched: bool,
-    watched_at: Option<String>,
-    created_at: String,
-    updated_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TrackedSeriesItem {
-    pub id: String,
-    pub profile_id: Option<String>,
-    pub series_id: i64,
-    pub title: String,
-    pub poster_path: Option<String>,
-    pub backdrop_path: Option<String>,
-    pub total_episodes: i64,
-    pub watched_episodes: i64,
-    pub status: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-struct TrackedSeriesRow {
-    uuid: String,
-    series_id: i64,
-    title: String,
-    poster_path: Option<String>,
-    backdrop_path: Option<String>,
-    total_episodes: i64,
-    status: Option<String>,
-    created_at: String,
-    updated_at: String,
-    watched_episodes: i64,
-}
-
-// Generic over the executor (mirrors add_history_item_impl in history.rs)
-// so toggle_movie_seen_impl below can run this check on the same connection
-// as its BEGIN IMMEDIATE transaction, instead of a separate pre-transaction
-// query — see that function's comment for why this matters.
-async fn is_movie_seen_impl<'e, E>(
-    executor: E,
-    profile_id: &str,
-    movie_id: i64,
-) -> Result<bool, ApiError>
-where
-    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
-{
-    let row: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
-            .bind(profile_id)
-            .bind(movie_id)
-            .fetch_one(executor)
-            .await
-            .map_err(ApiError::from)?;
-    Ok(row.0 > 0)
-}
 
 /// Thin wrapper over `toggle_movie_seen_with_note_impl` for callers (the
 /// existing test suite below, mainly) that never attach a per-watch note —
@@ -310,52 +177,11 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
     Ok(())
 }
 
-async fn get_episode_progress_impl(
-    pool: &SqlitePool,
-    profile_id: &str,
-    series_id: i64,
-) -> Result<Vec<EpisodeProgress>, ApiError> {
-    let rows: Vec<EpisodeProgressRow> = sqlx::query_as(
-        "SELECT uuid, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at
-         FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1",
-    )
-    .bind(profile_id)
-    .bind(series_id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    Ok(rows
-        .into_iter()
-        .map(|row| EpisodeProgress {
-            id: row.uuid,
-            profile_id: Some(profile_id.to_string()),
-            series_id: row.series_id,
-            episode_id: row.episode_id,
-            season_number: row.season_number,
-            episode_number: row.episode_number,
-            watched: row.watched,
-            watched_at: row.watched_at,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        })
-        .collect())
-}
-
 /// What history entry (if any) to log alongside an episode/season/series
 /// toggle — supplied by the caller since only it knows which of the three
 /// interactive actions this is; `apply_episodes_and_log_impl` fills in
 /// media_id/title/metadata and writes it in the same transaction as the
 /// toggle itself, so a crash between the two can no longer happen.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EpisodeHistoryInput {
-    pub action: HistoryAction,
-    pub season_number: Option<i64>,
-    pub episode_number: Option<i64>,
-    pub episode_title: Option<String>,
-}
-
 /// Applies a watched/unwatched change to a set of episodes: writes only the
 /// episodes whose state actually changes, records a matching viewing_events
 /// row for each, refreshes the tracked_series rollup
@@ -522,11 +348,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
     // episode count can still register as "Watching" but never falsely
     // "Completed" from a single episode.
     if watched {
-        let auto_sync_target = match series.number_of_episodes {
-            Some(total) if total > 0 && watched_episodes >= total => Some(LibraryStatus::Completed),
-            _ if watched_episodes >= 1 => Some(LibraryStatus::Watching),
-            _ => None,
-        };
+        let auto_sync_target = auto_sync_target(watched_episodes, series.number_of_episodes);
         if let Some(target) = auto_sync_target {
             let media = AutoSyncMedia {
                 media_id: series.id,
@@ -584,90 +406,6 @@ pub(crate) async fn apply_episodes_impl(
     .await
 }
 
-async fn list_tracked_series_impl(
-    pool: &SqlitePool,
-    profile_id: &str,
-) -> Result<Vec<TrackedSeriesItem>, ApiError> {
-    let rows: Vec<TrackedSeriesRow> = sqlx::query_as(
-        "SELECT ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at,
-                COUNT(ep.episode_id) as watched_episodes
-         FROM tracked_series ts
-         LEFT JOIN episode_progress ep ON ep.profile_id = ts.profile_id AND ep.series_id = ts.series_id AND ep.watched = 1
-         WHERE ts.profile_id = $1
-         GROUP BY ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at
-         ORDER BY ts.updated_at DESC",
-    )
-    .bind(profile_id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    Ok(rows
-        .into_iter()
-        .map(|row| TrackedSeriesItem {
-            id: row.uuid,
-            profile_id: Some(profile_id.to_string()),
-            series_id: row.series_id,
-            title: row.title,
-            poster_path: row.poster_path,
-            backdrop_path: row.backdrop_path,
-            total_episodes: row.total_episodes,
-            watched_episodes: row.watched_episodes,
-            status: row.status,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        })
-        .collect())
-}
-
-profile_scoped_command! {
-    pub async fn is_movie_seen(movie_id: i64) -> bool => is_movie_seen_impl
-}
-
-#[tauri::command]
-pub async fn toggle_movie_seen(
-    movie: MovieInput,
-    watched: bool,
-    watched_at: String,
-    note: Option<String>,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    toggle_movie_seen_with_note_impl(&pool, &profile_id, movie, watched, &watched_at, note).await
-}
-
-profile_scoped_command! {
-    pub async fn get_episode_progress(series_id: i64) -> Vec<EpisodeProgress> => get_episode_progress_impl
-}
-
-#[tauri::command]
-pub async fn toggle_episodes_watched(
-    series: SeriesInput,
-    episodes: Vec<EpisodeInput>,
-    watched: bool,
-    watched_at: String,
-    history: Option<EpisodeHistoryInput>,
-    note: Option<String>,
-    pool: State<'_, SqlitePool>,
-) -> Result<i64, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    apply_episodes_and_log_impl(
-        &pool,
-        &profile_id,
-        &series,
-        &episodes,
-        watched,
-        &watched_at,
-        history,
-        note,
-    )
-    .await
-}
-
-profile_scoped_command! {
-    pub async fn list_tracked_series() -> Vec<TrackedSeriesItem> => list_tracked_series_impl
-}
-
 // tracked_series.status is a cache of TMDB's own production status,
 // written only as a side effect of toggling an episode (see
 // apply_episodes_and_log_impl's COALESCE upsert above) — a show nobody
@@ -677,7 +415,7 @@ profile_scoped_command! {
 // TMDB's current status in hand (a fresh fetch, not cached locally), so it
 // opportunistically writes it back here — a no-op if the series isn't
 // tracked yet, or if the status hasn't actually changed.
-async fn refresh_tracked_series_status_impl(
+pub(super) async fn refresh_tracked_series_status_impl(
     pool: &SqlitePool,
     profile_id: &str,
     series_id: i64,
@@ -707,16 +445,6 @@ async fn refresh_tracked_series_status_impl(
         .await
         .map_err(ApiError::from)?;
     Ok(())
-}
-
-#[tauri::command]
-pub async fn refresh_tracked_series_status(
-    series_id: i64,
-    status: Option<String>,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    refresh_tracked_series_status_impl(&pool, &profile_id, series_id, status).await
 }
 
 #[cfg(test)]
