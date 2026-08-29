@@ -1,6 +1,5 @@
 mod boot;
 pub(crate) mod custom_lists;
-pub(crate) mod history;
 mod macros;
 pub(crate) mod saved_filters;
 pub(crate) mod smart_lists;
@@ -17,6 +16,7 @@ pub use crate::backup::{
     check_data_integrity, export_backup_data, import_backup_data, list_backup_directory,
     read_backup_from_path, remove_backup_file, write_backup_to_path,
 };
+pub use crate::history::list_history;
 pub use crate::library::{
     get_library_item, has_library_item, list_library, remove_library_item,
     remove_planned_library_item, save_library_item,
@@ -42,7 +42,6 @@ pub use custom_lists::{
     add_custom_list_item, create_custom_list, list_custom_list_items, list_custom_lists,
     remove_custom_list, remove_custom_list_item,
 };
-pub use history::list_history;
 pub use saved_filters::{create_saved_filter, list_saved_filters, remove_saved_filter};
 pub use smart_lists::{create_smart_list, list_smart_lists, remove_smart_list, update_smart_list};
 pub use tmdb::tmdb_request;

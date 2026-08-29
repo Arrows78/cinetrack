@@ -10,9 +10,9 @@ use super::models::{AutoSyncMedia, LibraryItem, LibraryPatch, LibraryRow, MediaS
 use super::queries::get_impl;
 #[cfg(test)]
 use super::queries::{has_impl, list_impl};
-use crate::commands::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
+use crate::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
 use crate::models::MediaType;
 
 pub(super) async fn upsert_impl(
@@ -358,7 +358,7 @@ pub(super) async fn remove_if_planned_impl(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::history::list_history_impl;
+    use crate::history::list_history_impl;
     use sqlx::sqlite::SqlitePoolOptions;
     use tauri::Manager;
 
