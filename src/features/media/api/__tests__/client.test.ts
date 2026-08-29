@@ -172,13 +172,23 @@ describe("tmdbFetch", () => {
       expect((error as TmdbRequestError).status).toBe(404);
     });
 
-    it("passes an already-TmdbRequestError rejection through unchanged", async () => {
+    it("preserves the message and status of an already-TmdbRequestError rejection", async () => {
+      // Not a toBe(original) reference check: invokeCommand() (src/shared/lib/invoke.ts)
+      // sits between the mocked invoke() here and client.ts, and it
+      // unconditionally normalizes every rejection — including an
+      // already-rich Error instance — into a fresh ApiCommandError before
+      // client.ts's own asTmdbError ever sees it (see ApiCommandError's own
+      // doc comment: "let this shape flow up"). No feature-specific error
+      // class can survive that boundary by reference; the content
+      // (message/status) is what's guaranteed to make it through unchanged.
       const original = new TmdbRequestError("boom", 500);
       mocks.invoke.mockRejectedValue(original);
 
       const error = await tmdbFetch("/movie/550").catch((caught: unknown) => caught);
 
-      expect(error).toBe(original);
+      expect(error).toBeInstanceOf(TmdbRequestError);
+      expect((error as TmdbRequestError).message).toBe("boom");
+      expect((error as TmdbRequestError).status).toBe(500);
     });
 
     it("falls back to errorMessage(error) for any other thrown value", async () => {
