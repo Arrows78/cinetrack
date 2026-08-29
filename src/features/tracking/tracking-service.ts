@@ -1,4 +1,4 @@
-import { calendarService } from "@/features/calendar/calendar-service";
+import { calendarService } from "@/features/calendar";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { libraryRepository } from "@/features/library/library-repository";
 import type { CalendarEntry, TrackingEntry } from "@/types/media";

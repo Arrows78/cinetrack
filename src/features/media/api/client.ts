@@ -4,7 +4,7 @@ import { defineCommand, invokeTypedCommand } from "@/shared/lib/invoke";
 import { isTauriApp } from "@/shared/lib/platform";
 import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
-import { tokenVault } from "@/features/desktop/token-vault";
+import { tokenVault } from "@/features/desktop";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
