@@ -14,6 +14,17 @@ pub(super) struct LatencySummary {
 #[derive(Debug, Clone, Serialize)]
 pub(super) struct OperationReport {
     pub(super) library_list: LatencySummary,
+    /// `list_library_page`'s first, unfiltered, recent-sorted page — the
+    /// Library page's own default view.
+    pub(super) library_page_first: LatencySummary,
+    /// The same query `LIBRARY_PAGE_DEPTH` pages deep via its keyset
+    /// cursor — should track `library_page_first` closely at every scale;
+    /// see `timed_library_page`'s own doc comment.
+    pub(super) library_page_deep: LatencySummary,
+    pub(super) library_page_title_sort: LatencySummary,
+    pub(super) library_page_rating_sort: LatencySummary,
+    pub(super) library_page_filtered_status: LatencySummary,
+    pub(super) library_page_search: LatencySummary,
     pub(super) tracked_series: LatencySummary,
     pub(super) stats_overview: LatencySummary,
     pub(super) monthly_recap: LatencySummary,
@@ -77,6 +88,24 @@ fn markdown_report(report: &BenchmarkReport) -> String {
         output.push_str("| Operation | p50 (ms) | p95 (ms) |\n| --- | ---: | ---: |\n");
         for (name, latency) in [
             ("Library list", &case.operations.library_list),
+            ("Library page (first)", &case.operations.library_page_first),
+            ("Library page (10 deep)", &case.operations.library_page_deep),
+            (
+                "Library page (title sort)",
+                &case.operations.library_page_title_sort,
+            ),
+            (
+                "Library page (rating sort)",
+                &case.operations.library_page_rating_sort,
+            ),
+            (
+                "Library page (filtered status)",
+                &case.operations.library_page_filtered_status,
+            ),
+            (
+                "Library page (search)",
+                &case.operations.library_page_search,
+            ),
             ("Tracked series", &case.operations.tracked_series),
             ("Stats overview", &case.operations.stats_overview),
             ("Monthly recap", &case.operations.monthly_recap),

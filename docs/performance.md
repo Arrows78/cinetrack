@@ -41,12 +41,32 @@ Each dataset gets 3 warmup iterations followed by 20 measured iterations. The
 warmups are excluded from the sample set. CineTrack records nearest-rank p50 and
 p95 latency for:
 
-- Library list;
+- Library list (the plain, unpaginated `list_library` — see the safety-cap note
+  above);
+- Library page: first page, 10 pages deep via its keyset cursor, title sort,
+  rating sort, a status filter, and a search term (all `list_library_page` —
+  the Library page's own server-paginated command, see `library/queries.rs`'s
+  `list_page_impl`);
 - tracked-series aggregation;
 - Stats overview;
 - monthly recap;
 - rating distribution;
 - watch milestones.
+
+The six `list_library_page` cases exist specifically to benchmark the
+scalable path, not just the plain, safety-capped `list_library` above — a
+prior gap this benchmark had even after `list_library_page` shipped.
+"First page", "10 pages deep", "title sort", "rating sort", and "filtered
+status" all stay sub-millisecond at every tier including 50k, and "10 pages
+deep" tracks "first page" closely rather than growing — confirming the
+keyset (not `OFFSET`) cursor stays index-driven regardless of how far into
+the list a page is. "Search" (a `LIKE '%...%'` match) is the one exception:
+its latency grows with `library_items` (sub-millisecond at 1k, low
+single-digit ms at 10k, tens of ms at 50k) because a leading wildcard can't
+use the title index — this is the concrete evidence behind
+`list_page_impl`'s own comment about `LIKE` not benefiting from a B-tree
+index the way a prefix search would; revisit with FTS5 if this ever shows up
+as a real user-facing delay rather than a benchmark number.
 
 Run the benchmark with:
 

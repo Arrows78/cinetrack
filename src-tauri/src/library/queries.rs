@@ -85,6 +85,14 @@ pub(super) async fn list_page_impl(
         .map(str::trim)
         .filter(|s| !s.is_empty())
     {
+        // A leading `%` means this can never use a B-tree index on `title`
+        // the way a prefix search (`title LIKE 'foo%'`) could — confirmed by
+        // `stats::performance`'s own benchmark, where every other
+        // `list_library_page` case stays sub-millisecond at 50k rows but
+        // this one's latency grows with `library_items` (see
+        // docs/performance.md). Not switched to FTS5 preemptively: revisit
+        // if this ever shows up as a real user-facing delay rather than a
+        // benchmark number.
         qb.push(" AND title LIKE ")
             .push_bind(format!("%{search}%"))
             .push(" COLLATE NOCASE");

@@ -11,4 +11,8 @@ pub use commands::{
 };
 pub(crate) use domain::LibraryStatus;
 pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
+// Only used by stats::performance's benchmark, which is itself
+// `#[cfg(test)]`-only — see that module's `timed_library_page`.
+#[cfg(test)]
+pub(crate) use models::LibrarySort;
 pub(crate) use repository::auto_sync_status_impl;
