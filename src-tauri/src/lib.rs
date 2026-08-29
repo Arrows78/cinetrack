@@ -3,6 +3,7 @@ mod backup;
 mod commands;
 mod database;
 mod error;
+mod history;
 mod library;
 mod models;
 mod preferences;

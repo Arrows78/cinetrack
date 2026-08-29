@@ -17,11 +17,11 @@ use tauri::State;
 
 use crate::availability::{AlertRow, AvailabilityAlert, AvailabilitySnapshot, SnapshotRow};
 use crate::commands::custom_lists::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
-use crate::commands::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
 use crate::commands::saved_filters::{SavedFilter, SavedFilterRow};
 use crate::commands::smart_lists::{SmartList, SmartListRow};
 use crate::database::new_uuid;
 use crate::error::ApiError;
+use crate::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
 use crate::library::{LibraryItem, LibraryRow, LibraryStatus};
 use crate::models::MediaType;
 use crate::profiles::{ProfileRow, UserProfile};

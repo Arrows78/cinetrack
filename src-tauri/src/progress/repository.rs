@@ -8,9 +8,9 @@ use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
 use super::queries::is_movie_seen_impl;
 #[cfg(test)]
 use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
-use crate::commands::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
 use crate::database::new_uuid;
 use crate::error::ApiError;
+use crate::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
 use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
 use crate::models::MediaType;
 
