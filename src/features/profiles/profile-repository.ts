@@ -5,7 +5,7 @@ import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { UserProfile } from "@/types/media";
 
 // The default-profile seed, supabase auto-claim logic and cascading delete
-// now live in Rust (see src-tauri/src/commands/profiles.rs) — this
+// now live in Rust (see src-tauri/src/profiles/) — this
 // repository is a thin invoke() wrapper.
 export const profileRepository = {
   async list(): Promise<UserProfile[]> {

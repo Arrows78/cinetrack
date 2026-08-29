@@ -3,7 +3,7 @@ import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { SmartList, SmartListRules } from "@/types/media";
 
 // The name/rules validation and active-profile resolution now live in Rust
-// (see src-tauri/src/commands/smart_lists.rs) — this repository is a thin
+// (see src-tauri/src/lists/smart/) — this repository is a thin
 // invoke() wrapper, matching custom-list-repository.ts's own shape.
 export const smartListRepository = {
   async list(): Promise<SmartList[]> {

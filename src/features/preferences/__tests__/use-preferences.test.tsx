@@ -30,7 +30,7 @@ const defaultPreferences: UserPreferences = {
 let stored: UserPreferences;
 
 // Fakes the Rust `get_preferences`/`update_preference` commands (see
-// src-tauri/src/commands/preferences.rs) at the invoke() boundary — the real
+// src-tauri/src/preferences/) at the invoke() boundary — the real
 // SQL/business logic behind them is exercised by that module's own Rust
 // tests, this only verifies the hook wires up to invoke() correctly.
 const invokeMock = vi.fn(async (command: string, args?: Record<string, unknown>) => {

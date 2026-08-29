@@ -31,7 +31,7 @@ const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySn
 });
 
 // The toggle/remove/snapshot business logic now lives in Rust and is
-// exercised there (see src-tauri/src/commands/availability.rs's own tests)
+// exercised there (see src-tauri/src/availability/'s own tests)
 // — this only verifies the repository wraps invoke() with the right
 // command name/args.
 describe("availabilityRepository", () => {

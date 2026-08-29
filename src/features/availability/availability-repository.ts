@@ -3,7 +3,7 @@ import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
 
 // The toggle/remove/snapshot writes and active-profile resolution now live
-// in Rust (see src-tauri/src/commands/availability.rs) — this repository is
+// in Rust (see src-tauri/src/availability/) — this repository is
 // a thin invoke() wrapper.
 export const availabilityRepository = {
   async listAlerts(): Promise<AvailabilityAlert[]> {

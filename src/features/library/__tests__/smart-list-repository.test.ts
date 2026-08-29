@@ -28,7 +28,7 @@ const smartList = (overrides: Partial<SmartList> = {}): SmartList => ({
 });
 
 // The name/rules validation and active-profile resolution now live in Rust
-// and are exercised there (see src-tauri/src/commands/smart_lists.rs's own
+// and are exercised there (see src-tauri/src/lists/smart/'s own
 // tests) — this only verifies the repository wraps invoke() with the right
 // command name/args, matching custom-list-repository.test.ts's own shape.
 describe("smartListRepository", () => {

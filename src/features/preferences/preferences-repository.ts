@@ -38,7 +38,7 @@ export const defaultPreferences: UserPreferences = preferencesSchema.parse({
 });
 
 // Reading/writing/caching preferences now happens in Rust (see
-// src-tauri/src/commands/preferences.rs) — this repository is a thin
+// src-tauri/src/preferences/) — this repository is a thin
 // invoke() wrapper. `preferencesSchema`/`defaultPreferences` above stay here
 // because backup-schema.ts still validates restored backups against them.
 export const preferencesRepository = {
@@ -55,7 +55,7 @@ export const preferencesRepository = {
 
   // The only legitimate way to switch activeProfileId — Rust rejects it via
   // the generic updatePreference above. See set_active_profile_impl's own
-  // doc comment (src-tauri/src/commands/preferences.rs) for what
+  // doc comment (src-tauri/src/preferences/) for what
   // supabaseUserId does and doesn't prove.
   async setActiveProfile(profileId: string, supabaseUserId?: string | null): Promise<UserPreferences> {
     return invokeTypedCommand(preferencesCommands.setActiveProfile, {
