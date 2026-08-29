@@ -1,110 +1,13 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sqlx::SqlitePool;
-use tauri::State;
 
-use crate::commands::macros::profile_scoped_command;
+use super::models::{
+    AlertRow, AvailabilityAlert, AvailabilitySnapshot, MediaSummaryInput, SnapshotRow,
+};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
-/// Only the fields `toggle_availability_alert` reads off the frontend's
-/// `MediaSummary` object.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MediaSummaryInput {
-    pub id: i64,
-    pub media_type: MediaType,
-    pub title: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AvailabilityAlert {
-    pub id: String,
-    pub profile_id: String,
-    pub media_id: i64,
-    pub media_type: MediaType,
-    pub title: String,
-    pub region: String,
-    pub provider_ids: Vec<i64>,
-    pub enabled: bool,
-    pub created_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AvailabilitySnapshot {
-    pub media_id: i64,
-    pub media_type: MediaType,
-    pub region: String,
-    pub provider_ids: Vec<i64>,
-    pub checked_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-pub(crate) struct AlertRow {
-    pub(crate) uuid: String,
-    pub(crate) profile_id: String,
-    pub(crate) media_id: i64,
-    pub(crate) media_type: String,
-    pub(crate) title: String,
-    pub(crate) region: String,
-    pub(crate) provider_ids: String,
-    pub(crate) enabled: bool,
-    pub(crate) created_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-pub(crate) struct SnapshotRow {
-    pub(crate) media_id: i64,
-    pub(crate) media_type: String,
-    pub(crate) region: String,
-    pub(crate) provider_ids: String,
-    pub(crate) checked_at: String,
-}
-
-/// A corrupt provider_ids cell must not make the whole list/snapshot
-/// unreadable — mirrors parseProviderIds in the original TS.
-fn parse_provider_ids(raw: &str) -> Vec<i64> {
-    let Ok(Value::Array(values)) = serde_json::from_str::<Value>(raw) else {
-        return Vec::new();
-    };
-    values
-        .into_iter()
-        .filter_map(|value| value.as_i64())
-        .collect()
-}
-
-impl From<AlertRow> for AvailabilityAlert {
-    fn from(row: AlertRow) -> Self {
-        Self {
-            id: row.uuid,
-            profile_id: row.profile_id,
-            media_id: row.media_id,
-            media_type: MediaType::from_db_str(&row.media_type),
-            title: row.title,
-            region: row.region,
-            provider_ids: parse_provider_ids(&row.provider_ids),
-            enabled: row.enabled,
-            created_at: row.created_at,
-        }
-    }
-}
-
-impl From<SnapshotRow> for AvailabilitySnapshot {
-    fn from(row: SnapshotRow) -> Self {
-        Self {
-            media_id: row.media_id,
-            media_type: MediaType::from_db_str(&row.media_type),
-            region: row.region,
-            provider_ids: parse_provider_ids(&row.provider_ids),
-            checked_at: row.checked_at,
-        }
-    }
-}
-
-async fn list_alerts_impl(
+pub(super) async fn list_alerts_impl(
     pool: &SqlitePool,
     profile_id: &str,
 ) -> Result<Vec<AvailabilityAlert>, ApiError> {
@@ -118,7 +21,7 @@ async fn list_alerts_impl(
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
-async fn get_alert_impl(
+pub(super) async fn get_alert_impl(
     pool: &SqlitePool,
     profile_id: &str,
     media_id: i64,
@@ -136,7 +39,7 @@ async fn get_alert_impl(
     Ok(row.map(Into::into))
 }
 
-async fn toggle_impl(
+pub(super) async fn toggle_impl(
     pool: &SqlitePool,
     profile_id: &str,
     media: MediaSummaryInput,
@@ -208,7 +111,11 @@ async fn toggle_impl(
 /// Scoped to `profile_id` so a profile that only knows another profile's
 /// alert UUID can't delete it — `remove_availability_alert` used to accept
 /// a bare `id` with no ownership check at all.
-async fn remove_impl(pool: &SqlitePool, profile_id: &str, id: &str) -> Result<(), ApiError> {
+pub(super) async fn remove_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    id: &str,
+) -> Result<(), ApiError> {
     let result = sqlx::query("DELETE FROM availability_alerts WHERE uuid = $1 AND profile_id = $2")
         .bind(id)
         .bind(profile_id)
@@ -221,7 +128,7 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str, id: &str) -> Result<()
     Ok(())
 }
 
-async fn get_snapshot_impl(
+pub(super) async fn get_snapshot_impl(
     pool: &SqlitePool,
     media_id: i64,
     media_type: MediaType,
@@ -245,7 +152,9 @@ async fn get_snapshot_impl(
 // cap against pathological growth, not a real pagination contract.
 const LIST_SNAPSHOTS_SAFETY_LIMIT: i64 = 5000;
 
-async fn list_snapshots_impl(pool: &SqlitePool) -> Result<Vec<AvailabilitySnapshot>, ApiError> {
+pub(super) async fn list_snapshots_impl(
+    pool: &SqlitePool,
+) -> Result<Vec<AvailabilitySnapshot>, ApiError> {
     let rows: Vec<SnapshotRow> =
         sqlx::query_as("SELECT * FROM availability_snapshots ORDER BY checked_at DESC LIMIT $1")
             .bind(LIST_SNAPSHOTS_SAFETY_LIMIT)
@@ -255,7 +164,7 @@ async fn list_snapshots_impl(pool: &SqlitePool) -> Result<Vec<AvailabilitySnapsh
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
-async fn save_snapshot_impl(
+pub(super) async fn save_snapshot_impl(
     pool: &SqlitePool,
     snapshot: AvailabilitySnapshot,
 ) -> Result<(), ApiError> {
@@ -274,68 +183,10 @@ async fn save_snapshot_impl(
     Ok(())
 }
 
-profile_scoped_command! {
-    pub async fn list_availability_alerts() -> Vec<AvailabilityAlert> => list_alerts_impl
-}
-
-profile_scoped_command! {
-    pub async fn get_availability_alert(media_id: i64, media_type: MediaType) -> Option<AvailabilityAlert> => get_alert_impl
-}
-
-profile_scoped_command! {
-    pub async fn toggle_availability_alert(
-        media: MediaSummaryInput,
-        region: String,
-        provider_ids: Vec<i64>
-    ) -> Option<AvailabilityAlert> => toggle_impl
-}
-
-#[tauri::command]
-pub async fn remove_availability_alert(
-    id: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    let profile_id = crate::database::current_profile_id(&pool).await?;
-    remove_impl(&pool, &profile_id, &id).await
-}
-
-#[tauri::command]
-pub async fn get_availability_snapshot(
-    media_id: i64,
-    media_type: MediaType,
-    region: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<Option<AvailabilitySnapshot>, ApiError> {
-    get_snapshot_impl(&pool, media_id, media_type, &region).await
-}
-
-#[tauri::command]
-pub async fn save_availability_snapshot(
-    snapshot: AvailabilitySnapshot,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    save_snapshot_impl(&pool, snapshot).await
-}
-
-/// Backs the smart-lists "My Services"/specific-provider rule (see
-/// smart-list-evaluation.ts): rather than re-fetching TMDB watch-provider
-/// data for every library item at evaluation time, that rule matches
-/// against whatever's already cached here from normal app usage (visiting a
-/// detail page, setting an availability alert). Not profile-scoped, for the
-/// same reason `get_availability_snapshot` isn't: the cache itself has no
-/// notion of "profile".
-#[tauri::command]
-pub async fn list_availability_snapshots(
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<AvailabilitySnapshot>, ApiError> {
-    list_snapshots_impl(&pool).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
-    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -563,12 +414,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn tolerates_corrupt_provider_ids_json() {
-        assert_eq!(parse_provider_ids("not json"), Vec::<i64>::new());
-        assert_eq!(parse_provider_ids("[8, \"x\", 119]"), vec![8, 119]);
-    }
-
-    #[tokio::test]
     async fn a_profile_cannot_remove_another_profiles_alert() {
         let pool = migrated_pool().await;
         let alert = toggle_impl(
@@ -626,109 +471,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn remove_availability_alert_command_removes_the_callers_alert() {
-        let pool = migrated_pool().await;
-        let alert = toggle_impl(
-            &pool,
-            "default",
-            media(7, MediaType::Movie, "Alerte"),
-            "FR".to_string(),
-            vec![8],
-        )
-        .await
-        .unwrap()
-        .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        remove_availability_alert(alert.id.clone(), state)
-            .await
-            .unwrap();
-
-        assert!(
-            get_alert_impl(&app.state::<SqlitePool>(), "default", 7, MediaType::Movie)
-                .await
-                .unwrap()
-                .is_none()
-        );
-    }
-
-    #[tokio::test]
-    async fn get_availability_snapshot_command_returns_a_saved_snapshot() {
-        let pool = migrated_pool().await;
-        save_snapshot_impl(
-            &pool,
-            AvailabilitySnapshot {
-                media_id: 1,
-                media_type: MediaType::Movie,
-                region: "FR".to_string(),
-                provider_ids: vec![8],
-                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
-            },
-        )
-        .await
-        .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let snapshot = get_availability_snapshot(1, MediaType::Movie, "FR".to_string(), state)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(snapshot.provider_ids, vec![8]);
-    }
-
-    #[tokio::test]
-    async fn save_availability_snapshot_command_persists_the_snapshot() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-
-        save_availability_snapshot(
-            AvailabilitySnapshot {
-                media_id: 1,
-                media_type: MediaType::Movie,
-                region: "FR".to_string(),
-                provider_ids: vec![119],
-                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
-            },
-            state,
-        )
-        .await
-        .unwrap();
-
-        let snapshot = get_snapshot_impl(&app.state::<SqlitePool>(), 1, MediaType::Movie, "FR")
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(snapshot.provider_ids, vec![119]);
-    }
-
-    #[tokio::test]
-    async fn list_availability_alerts_command_returns_the_callers_alerts() {
-        let pool = migrated_pool().await;
-        toggle_impl(
-            &pool,
-            "default",
-            media(7, MediaType::Movie, "Alerte"),
-            "FR".to_string(),
-            vec![8],
-        )
-        .await
-        .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let alerts = list_availability_alerts(state).await.unwrap();
-        assert_eq!(alerts.len(), 1);
-        assert_eq!(alerts[0].media_id, 7);
-    }
-
-    #[tokio::test]
     async fn list_snapshots_impl_returns_every_cached_snapshot_regardless_of_profile() {
         let pool = migrated_pool().await;
         save_snapshot_impl(
@@ -761,29 +503,5 @@ mod tests {
         // Newest-checked first.
         assert_eq!(snapshots[0].media_id, 2);
         assert_eq!(snapshots[1].media_id, 1);
-    }
-
-    #[tokio::test]
-    async fn list_availability_snapshots_command_returns_every_snapshot() {
-        let pool = migrated_pool().await;
-        save_snapshot_impl(
-            &pool,
-            AvailabilitySnapshot {
-                media_id: 1,
-                media_type: MediaType::Movie,
-                region: "FR".to_string(),
-                provider_ids: vec![8],
-                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
-            },
-        )
-        .await
-        .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let snapshots = list_availability_snapshots(state).await.unwrap();
-        assert_eq!(snapshots.len(), 1);
-        assert_eq!(snapshots[0].media_id, 1);
     }
 }

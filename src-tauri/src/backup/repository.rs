@@ -15,9 +15,7 @@ use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 #[cfg(test)]
 use tauri::State;
 
-use crate::commands::availability::{
-    AlertRow, AvailabilityAlert, AvailabilitySnapshot, SnapshotRow,
-};
+use crate::availability::{AlertRow, AvailabilityAlert, AvailabilitySnapshot, SnapshotRow};
 use crate::commands::custom_lists::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
 use crate::commands::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
 use crate::commands::profiles::{ProfileRow, UserProfile};
