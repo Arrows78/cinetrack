@@ -79,6 +79,14 @@ fn migrations() -> Result<Vec<Migration>, ApiError> {
     Ok(migrations)
 }
 
+#[cfg(test)]
+pub(crate) fn latest_version() -> Result<i64, ApiError> {
+    migrations()?
+        .last()
+        .map(|migration| migration.version)
+        .ok_or_else(|| ApiError::internal("No database migrations are registered"))
+}
+
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
     let is_alter_table = statement.trim_start().starts_with("ALTER TABLE");
     let mentions_duplicate_column = error
