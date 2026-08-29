@@ -10,7 +10,7 @@ export type { ImportableEpisode, ImportableMovie } from "@/features/tvtime/tvtim
 
 // The batch upsert/rollup logic (reusing the same Rust code as the
 // interactive progress toggles) now lives in Rust (see
-// src-tauri/src/commands/tvtime.rs) — this repository is a thin invoke()
+// src-tauri/src/integrations/tvtime/) — this repository is a thin invoke()
 // wrapper. Active-profile resolution moved there too, so callers no longer
 // pass a profile explicitly.
 export const tvTimeImportRepository = {

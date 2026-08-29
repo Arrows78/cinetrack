@@ -299,7 +299,7 @@ export function LibraryExplorer({
       }));
 
     // custom_list_items has no dependency on library_items (see
-    // src-tauri/src/commands/custom_lists.rs) — a list can hold media never
+    // src-tauri/src/lists/custom/) — a list can hold media never
     // added to the library, which still needs to render here, just without
     // any status/rating/progress.
     const listOnly =

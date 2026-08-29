@@ -101,7 +101,7 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
           )
         ) : (
           // No Supabase account is in play at all offline — set_active_profile
-          // (src-tauri/src/commands/preferences.rs) only ever rejects a switch
+          // (src-tauri/src/preferences/) only ever rejects a switch
           // into a profile that's linked to one, so free switching between
           // these local-only profiles is safe.
           <div className="space-y-3">

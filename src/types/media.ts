@@ -318,7 +318,7 @@ export type SmartListProviderFilter = "any" | "mine" | number;
 // nested groups: matches every README example ("Unwatched + Horror + under
 // 100 min", "My Services + rating >= 8", "Series with episodes waiting")
 // without needing a generic rule engine. Rust never inspects this shape (see
-// src-tauri/src/commands/smart_lists.rs's doc comment) — it's stored and
+// src-tauri/src/lists/smart/'s doc comment) — it's stored and
 // round-tripped as opaque JSON, and evaluated entirely client-side (see
 // src/features/library/smart-list-evaluation.ts).
 export interface SmartListRules {
@@ -346,7 +346,7 @@ export interface SmartList {
 // Which page a saved filter belongs to — the two pages' filter-state shapes
 // below are unrelated, so a Library-saved filter must never show up in
 // Search's own saved-filters list or vice versa. Kept in sync with
-// `VALID_PAGES` in src-tauri/src/commands/saved_filters.rs.
+// `VALID_PAGES` in src-tauri/src/lists/saved_filters/.
 export type SavedFilterPage = "library" | "search";
 
 // LibraryExplorer's own filter-control state (src/components/media/library-explorer.tsx),

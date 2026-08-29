@@ -44,7 +44,7 @@ pub async fn save_library_item(
 }
 ```
 
-`current_profile_id(pool)` (`src-tauri/src/database/mod.rs`) resolves which local profile a read/write applies to by reading the `activeProfileId` preference, defaulting to `"default"`; the crate-root services call it rather than duplicating profile selection in each Tauri adapter. Multi-table mutations keep their transaction in the persistence boundary (see `src-tauri/src/library/repository.rs`, `src-tauri/src/progress/repository.rs`, `src-tauri/src/backup/repository.rs`, and the legacy `src-tauri/src/commands/tvtime.rs` / `profiles.rs`) so a failure partway through cannot leave orphaned rows. `library/repository.rs::upsert_impl` also shows the idempotent-mutation pattern from `CLAUDE.md`: it appends a history entry only when an item is first created, never on a plain status/rating update.
+`current_profile_id(pool)` (`src-tauri/src/database/mod.rs`) resolves which local profile a read/write applies to by reading the `activeProfileId` preference, defaulting to `"default"`; the crate-root services call it rather than duplicating profile selection in each Tauri adapter. Multi-table mutations keep their transaction in the persistence boundary (see `src-tauri/src/library/repository.rs`, `src-tauri/src/progress/repository.rs`, `src-tauri/src/backup/repository.rs`, and `src-tauri/src/integrations/tvtime/importer.rs`) so a failure partway through cannot leave orphaned rows. `library/repository.rs::upsert_impl` also shows the idempotent-mutation pattern from `CLAUDE.md`: it appends a history entry only when an item is first created, never on a plain status/rating update.
 
 Every command returns `Result<T, ApiError>` (`src-tauri/src/error.rs`), a small serializable struct:
 

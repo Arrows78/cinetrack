@@ -8,7 +8,7 @@ import type { SavedFilterPage, SavedFilterState } from "@/types/media";
 /**
  * One page's list of saved filters, plus create/remove mutations. `page`
  * pins both the query key and the Rust-side scoping (see
- * src-tauri/src/commands/saved_filters.rs) so LibraryExplorer and SearchPage
+ * src-tauri/src/lists/saved_filters/) so LibraryExplorer and SearchPage
  * each only ever see their own saved filters, never the other page's.
  *
  * Reapplying a saved filter is not a mutation here — it's just the caller

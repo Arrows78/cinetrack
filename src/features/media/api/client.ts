@@ -26,7 +26,7 @@ export class TmdbRequestError extends Error {
 }
 
 // Shape of the Err(TmdbError) the Rust `tmdb_request` command serializes over
-// IPC (see src-tauri/src/commands/tmdb.rs) — invoke() rejects with this
+// IPC (see src-tauri/src/integrations/tmdb/) — invoke() rejects with this
 // object directly, no string parsing needed.
 interface StructuredTmdbError {
   message: string;

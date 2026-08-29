@@ -14,7 +14,7 @@ const MAX_SAVED_FILTER_NAME_LENGTH = 100;
 /**
  * Save-the-current-view / reopen-a-saved-view bar, shared by LibraryExplorer
  * and SearchPage — the two only differ in `page` (which scopes storage, see
- * src-tauri/src/commands/saved_filters.rs) and in the shape of `TState`
+ * src-tauri/src/lists/saved_filters/) and in the shape of `TState`
  * (LibraryFilterState vs SearchFilterState). Clicking a saved filter's name
  * calls `onApply` with the exact object that was captured at save time —
  * reopening a saved filter is entirely client-side, there is no

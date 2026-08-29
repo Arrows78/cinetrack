@@ -3,7 +3,7 @@ import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { ViewingHistoryItem } from "@/types/media";
 
 // The activity_log upsert, profile scoping and profileId fallback logic now
-// live in Rust (see src-tauri/src/commands/history.rs) — this repository is
+// live in Rust (see src-tauri/src/history/) — this repository is
 // a thin invoke() wrapper.
 export interface HistoryCursor {
   beforeTimestamp: string;

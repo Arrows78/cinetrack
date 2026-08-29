@@ -3,7 +3,7 @@ import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { CustomList, CustomListItem, MediaSummary } from "@/types/media";
 
 // The name validation, position assignment/dedup and active-profile
-// resolution now live in Rust (see src-tauri/src/commands/custom_lists.rs)
+// resolution now live in Rust (see src-tauri/src/lists/custom/)
 // — this repository is a thin invoke() wrapper.
 export const customListRepository = {
   async list(): Promise<CustomList[]> {

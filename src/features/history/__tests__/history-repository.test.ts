@@ -18,7 +18,7 @@ const entry = (overrides: Partial<ViewingHistoryItem> = {}): ViewingHistoryItem 
 
 // The activity_log upsert, profile scoping and profileId fallback behavior
 // now live in Rust and are exercised there (see
-// src-tauri/src/commands/history.rs's own tests) — this only verifies the
+// src-tauri/src/history/'s own tests) — this only verifies the
 // repository wraps invoke() with the right command name/args.
 describe("historyRepository", () => {
   beforeEach(() => {

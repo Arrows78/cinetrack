@@ -29,7 +29,7 @@ const savedFilter = (overrides: Partial<SavedFilter<LibraryFilterState>> = {}): 
 
 // Name/page validation, JSON-shape checks and active-profile resolution all
 // live in Rust and are exercised there (see
-// src-tauri/src/commands/saved_filters.rs's own tests) — this only verifies
+// src-tauri/src/lists/saved_filters/'s own tests) — this only verifies
 // the repository wraps invoke() with the right command name/args.
 describe("savedFilterRepository", () => {
   beforeEach(() => {

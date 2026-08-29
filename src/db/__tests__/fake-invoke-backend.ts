@@ -1,5 +1,5 @@
 // Simulates the Rust commands behind `preferencesRepository`/
-// `historyRepository` (see src-tauri/src/commands/preferences.rs and
+// `historyRepository` (see src-tauri/src/preferences/ and
 // history.rs) against the same in-memory node:sqlite database
 // `useTestSqlite()` already wires up. Domains not migrated to Rust yet still
 // call these two repositories internally (to resolve the active profile, or

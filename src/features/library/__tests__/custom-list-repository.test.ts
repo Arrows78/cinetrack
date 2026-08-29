@@ -33,7 +33,7 @@ const item = (overrides: Partial<CustomListItem> = {}): CustomListItem => ({
 
 // The name validation, position assignment/dedup and active-profile
 // resolution now live in Rust and are exercised there (see
-// src-tauri/src/commands/custom_lists.rs's own tests) — this only verifies
+// src-tauri/src/lists/custom/'s own tests) — this only verifies
 // the repository wraps invoke() with the right command name/args.
 describe("customListRepository", () => {
   beforeEach(() => {

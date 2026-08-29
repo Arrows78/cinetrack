@@ -18,7 +18,7 @@ const profile = (overrides: Partial<UserProfile> = {}): UserProfile => ({
 
 // The default-profile seed, supabase auto-claim logic and cascading delete
 // now live in Rust and are exercised there (see
-// src-tauri/src/commands/profiles.rs's own tests) — this only verifies the
+// src-tauri/src/profiles/'s own tests) — this only verifies the
 // repository wraps invoke() with the right command name/args, plus the one
 // bit of orchestration still in TS: remove() resetting activeProfileId.
 describe("profileRepository", () => {

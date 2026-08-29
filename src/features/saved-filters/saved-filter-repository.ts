@@ -3,7 +3,7 @@ import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { SavedFilter, SavedFilterPage, SavedFilterState } from "@/types/media";
 
 // Name validation, page validation, JSON-shape checks and active-profile
-// resolution all live in Rust (see src-tauri/src/commands/saved_filters.rs)
+// resolution all live in Rust (see src-tauri/src/lists/saved_filters/)
 // — this repository is a thin invoke() wrapper. Reopening a saved filter is
 // entirely client-side: the caller just spreads `filters` back into the
 // page's own state, there is no "apply"/"evaluate" command.
