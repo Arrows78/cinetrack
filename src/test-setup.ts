@@ -1,4 +1,8 @@
+import { expect } from "vitest";
 import "@testing-library/jest-dom/vitest";
+import { toHaveNoViolations } from "jest-axe";
+
+expect.extend(toHaveNoViolations);
 
 // Recent Node.js versions ship an experimental global `localStorage` that
 // conflicts with jsdom's own per-window implementation, leaving

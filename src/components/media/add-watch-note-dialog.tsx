@@ -54,6 +54,9 @@ export function AddWatchNoteDialog({
             placeholder={t("media.addWatchNotePlaceholder")}
             value={note}
             onChange={(event) => setNote(event.target.value)}
+            // This dialog's sole field: autofocusing it the moment the dialog
+            // opens is the expected behavior, not a distraction.
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
           <div className="mt-5 flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">

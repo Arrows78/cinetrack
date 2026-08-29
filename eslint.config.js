@@ -3,6 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import i18next from "eslint-plugin-i18next";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import boundaries from "eslint-plugin-boundaries";
 import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
@@ -16,6 +17,10 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    ...jsxA11y.flatConfigs.recommended,
+    files: ["src/**/*.{ts,tsx}"],
+  },
   {
     files: ["src/**/*.{ts,tsx}"],
     languageOptions: {

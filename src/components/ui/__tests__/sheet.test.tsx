@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 
 import {
   Sheet,
@@ -77,5 +78,13 @@ describe("Sheet", () => {
     expect(dialog).toHaveAttribute("data-side", side);
     expect(dialog).toHaveAttribute("data-size", size);
     expect(dialog.className).toContain(side === "left" || side === "right" ? "h-full" : "w-full");
+  });
+
+  it("has no detectable accessibility violations while open", async () => {
+    render(<SheetExample />);
+    fireEvent.click(screen.getByRole("button", { name: "Open panel" }));
+    await screen.findByRole("dialog", { name: "Filters" });
+
+    expect(await axe(document.body)).toHaveNoViolations();
   });
 });

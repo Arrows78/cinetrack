@@ -13,6 +13,10 @@ CardHeader.displayName = "CardHeader";
 
 export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
+    // Content always comes from the spread `children`/`props`, invisible to
+    // this static rule; every real call site passes translated text (see
+    // card.test.tsx).
+    // eslint-disable-next-line jsx-a11y/heading-has-content
     <h3 ref={ref} className={cn("text-lg font-semibold tracking-tight", className)} {...props} />
   )
 );

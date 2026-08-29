@@ -46,6 +46,9 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
         <form className="mt-7" onSubmit={handleSubmit}>
           <AuthTextField
             icon={UserPlus}
+            // This screen's sole field: autofocusing it is the expected
+            // behavior for a single-field auth step, not a distraction.
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
             required
             value={name}

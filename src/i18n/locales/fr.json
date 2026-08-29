@@ -683,6 +683,8 @@
     "message": "Aperçu navigateur — les données SQLite ne sont pas disponibles en dehors de la fenêtre Tauri."
   },
   "commandPalette": {
+    "dialogLabel": "Palette de commandes",
+    "resultsLabel": "Résultats",
     "searchPlaceholder": "Rechercher une page, une action, ou un titre…",
     "switchToLight": "Passer au thème clair",
     "switchToDark": "Passer au thème sombre",

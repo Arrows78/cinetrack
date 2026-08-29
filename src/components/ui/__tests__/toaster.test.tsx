@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 import i18n from "@/i18n";
 
 async function importFresh() {
@@ -81,5 +82,16 @@ describe("Toaster", () => {
     });
 
     expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
+  });
+
+  it("has no detectable accessibility violations with a toast showing", async () => {
+    const { Toaster, toast } = await importFresh();
+    const { container } = render(<Toaster />);
+
+    act(() => {
+      toast({ title: "Library", description: "Saved.", variant: "success" });
+    });
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

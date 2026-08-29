@@ -683,6 +683,8 @@
     "message": "Browser preview — SQLite data isn't available outside the Tauri window."
   },
   "commandPalette": {
+    "dialogLabel": "Command palette",
+    "resultsLabel": "Results",
     "searchPlaceholder": "Search for a page, an action, or a title…",
     "switchToLight": "Switch to light theme",
     "switchToDark": "Switch to dark theme",

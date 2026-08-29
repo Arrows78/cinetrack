@@ -41,6 +41,9 @@ export function AuthOtpStep({
       </p>
 
       <input
+        // This step's sole field: autofocusing it is the expected behavior for
+        // a single-field auth step, not a distraction.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         required
         inputMode="numeric"

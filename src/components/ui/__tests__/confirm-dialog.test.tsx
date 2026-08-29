@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { ConfirmDialog } from "../confirm-dialog";
 
 function Harness() {
@@ -53,5 +54,24 @@ describe("ConfirmDialog", () => {
 
     fireEvent.click(screen.getByText("Delete"));
     expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  it("has no detectable accessibility violations while open", async () => {
+    // Radix renders DialogPrimitive.Content through a portal appended to
+    // document.body, not inside render()'s own container — axe has to run
+    // against the full document to actually see it.
+    render(
+      <ConfirmDialog
+        open
+        onOpenChange={() => undefined}
+        title="Delete this?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={() => undefined}
+      />
+    );
+
+    expect(await axe(document.body)).toHaveNoViolations();
   });
 });

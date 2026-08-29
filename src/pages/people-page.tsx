@@ -71,6 +71,7 @@ export function PeoplePage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("people.searchPlaceholder")}
+            aria-label={t("people.searchPlaceholder")}
           />
         </label>
       </Panel>

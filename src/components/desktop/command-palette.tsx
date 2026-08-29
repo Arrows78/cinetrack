@@ -105,7 +105,9 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   // Only actually searches once the palette is open and the query has real
   // content — an empty/short query short-circuits inside useSearch itself
@@ -258,16 +260,45 @@ export function CommandPalette() {
     itemRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex]);
 
+  // Focus-return half of the focus trap (see the Tab handling below for the
+  // other half): every other dialog in the app (Sheet, ConfirmDialog, ...)
+  // gets this for free from Radix; this palette is a hand-rolled overlay, so
+  // it has to be done explicitly. The *capture* has to happen synchronously
+  // before setOpen(true) is even called, not in a useEffect keyed on `open`
+  // — the search input's `autoFocus` steals focus during the same commit
+  // that mounts it, which runs before any passive effect fires, so an
+  // effect reading document.activeElement here would already see the input.
+  useEffect(() => {
+    if (open) return;
+    previouslyFocusedRef.current?.focus();
+    previouslyFocusedRef.current = null;
+  }, [open]);
+
   useEffect(() => {
     const keyboard = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
+        if (!stateRef.current.open) previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
         setOpen((value) => !value);
         return;
       }
       if (!stateRef.current.open) return;
       if (event.key === "Escape") {
         setOpen(false);
+        return;
+      }
+      if (event.key === "Tab") {
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'input, button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusable || focusable.length === 0) return;
+        event.preventDefault();
+        const list = Array.from(focusable);
+        const currentIndex = list.indexOf(document.activeElement as HTMLElement);
+        const nextIndex = event.shiftKey
+          ? (currentIndex - 1 + list.length) % list.length
+          : (currentIndex + 1) % list.length;
+        list[nextIndex]?.focus();
         return;
       }
       if (event.key === "ArrowDown") {
@@ -285,7 +316,10 @@ export function CommandPalette() {
         if (item) item.run();
       }
     };
-    const external = () => setOpen(true);
+    const external = () => {
+      if (!stateRef.current.open) previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+      setOpen(true);
+    };
     window.addEventListener("keydown", keyboard);
     window.addEventListener("cinetrack:command-palette", external);
     return () => {
@@ -297,24 +331,39 @@ export function CommandPalette() {
   const contextualResults = results.filter((item) => item.section === "contextual");
   const commandResults = results.filter((item) => item.section === "command");
   const titleResultsOnly = results.filter((item) => item.section === "title");
-  const registerItemRef = (index: number, node: HTMLButtonElement | null) => {
+  const registerItemRef = (index: number, node: HTMLDivElement | null) => {
     itemRefs.current[index] = node;
   };
 
   return (
     <>
       {open ? (
+        // Backdrop click-to-dismiss is a mouse-only convenience; Escape (handled
+        // above) is already the keyboard equivalent, so this is intentionally
+        // exempt from needing its own keyboard handler.
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
         <div
           className="fixed inset-0 z-command-palette grid place-items-start bg-black/55 p-4 pt-[12vh] backdrop-blur-sm"
           onMouseDown={() => setOpen(false)}
         >
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions --
+              onMouseDown here only stops the backdrop's close-on-click from firing when
+              clicking inside the dialog; it has no keyboard/screen-reader-relevant effect. */}
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("commandPalette.dialogLabel")}
             className="mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="relative flex items-center border-b border-border">
               <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                // Autofocusing the search field is this palette's sole purpose the
+                // moment it opens (Cmd/Ctrl+K); focus-return (above) already restores
+                // the caller's focus once it closes.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -327,7 +376,11 @@ export function CommandPalette() {
                 Esc
               </kbd>
             </div>
-            <div role="listbox" className="max-h-96 overflow-y-auto p-2 pb-3">
+            <div
+              role="listbox"
+              aria-label={t("commandPalette.resultsLabel")}
+              className="max-h-96 overflow-y-auto p-2 pb-3"
+            >
               {contextualResults.length ? (
                 <p className="px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {t("commandPalette.onThisPage")}
@@ -414,7 +467,7 @@ function PaletteRow({
   item: PaletteItem;
   index: number;
   selectedIndex: number;
-  onRegisterRef: (index: number, node: HTMLButtonElement | null) => void;
+  onRegisterRef: (index: number, node: HTMLDivElement | null) => void;
   onHover: (index: number) => void;
 }) {
   const Icon = item.icon;
@@ -426,10 +479,20 @@ function PaletteRow({
         isSelected ? "bg-muted" : "hover:bg-muted/60"
       )}
     >
-      <button
+      {/* role="option", not a <button>: this row's selection is driven by the
+          input's aria-activedescendant + the global arrow-key/Enter handler
+          (virtual focus), not by giving the row itself real DOM focus — a
+          focusable button here would fight that model and widen the Tab
+          trap for no benefit. tabIndex={-1} keeps it out of the tab order
+          while still clickable for mouse users; the keyboard equivalent of
+          this onClick is the global Enter handler above, which the linter
+          can't see from here. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
+      <div
         ref={(node) => onRegisterRef(index, node)}
         id={`${COMMAND_PALETTE_ROW_ID_PREFIX}-${index}`}
-        type="button"
+        role="option"
+        tabIndex={-1}
         className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left"
         aria-selected={isSelected}
         onMouseEnter={() => onHover(index)}
@@ -443,7 +506,7 @@ function PaletteRow({
             <span className="shrink-0 text-xs text-muted-foreground">{item.sublabel}</span>
           </>
         ) : null}
-      </button>
+      </div>
       {item.quickLogMovie ? <QuickLogButton media={item.quickLogMovie} /> : null}
     </div>
   );

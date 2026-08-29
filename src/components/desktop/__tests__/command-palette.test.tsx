@@ -2,6 +2,7 @@ import { act } from "react";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -161,9 +162,9 @@ describe("CommandPalette", () => {
 
     openPalette();
 
-    expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tracking" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /switch to light theme/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Home" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Tracking" })).toBeInTheDocument();
   });
 
   it("offers the opposite theme depending on the current one", () => {
@@ -171,17 +172,17 @@ describe("CommandPalette", () => {
     renderPalette();
     openPalette();
 
-    expect(screen.getByRole("button", { name: /switch to dark theme/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /switch to dark theme/i })).toBeInTheDocument();
   });
 
   it("running the theme action closes the palette and flips the preference", () => {
     renderPalette();
     openPalette();
 
-    fireEvent.click(screen.getByRole("button", { name: /switch to light theme/i }));
+    fireEvent.click(screen.getByRole("option", { name: /switch to light theme/i }));
 
     expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "theme", value: "light" });
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home" })).not.toBeInTheDocument();
   });
 
   it("filters pages by the typed query", () => {
@@ -190,8 +191,8 @@ describe("CommandPalette", () => {
 
     typeQuery("stat");
 
-    expect(screen.getByRole("button", { name: "Stats" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Stats" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home" })).not.toBeInTheDocument();
   });
 
   it("searches titles once the query reaches two characters, under a Titles heading", async () => {
@@ -205,8 +206,8 @@ describe("CommandPalette", () => {
     typeQuery("du");
 
     await waitFor(() => expect(screen.getByText("Titles")).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: /Dune 2021/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dune: Prophecy" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Dune 2021/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Dune: Prophecy" })).toBeInTheDocument();
   });
 
   it("does not search titles for a single-character query", () => {
@@ -225,7 +226,7 @@ describe("CommandPalette", () => {
 
     typeQuery("du");
     await waitFor(() => screen.getByText("Titles"));
-    fireEvent.click(screen.getByRole("button", { name: /Dune 2021/ }));
+    fireEvent.click(screen.getByRole("option", { name: /Dune 2021/ }));
 
     expect(navigateMock).toHaveBeenCalledWith({ to: "/movies/42" });
   });
@@ -237,7 +238,7 @@ describe("CommandPalette", () => {
 
     typeQuery("du");
     await waitFor(() => screen.getByText("Titles"));
-    fireEvent.click(screen.getByRole("button", { name: "Dune: Prophecy" }));
+    fireEvent.click(screen.getByRole("option", { name: "Dune: Prophecy" }));
 
     expect(navigateMock).toHaveBeenCalledWith({ to: "/series/43" });
   });
@@ -323,23 +324,71 @@ describe("CommandPalette", () => {
 
   it("toggles open/closed with the Ctrl+K and Cmd+K shortcuts", () => {
     renderPalette();
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home" })).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Home" })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "k", metaKey: true });
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home" })).not.toBeInTheDocument();
   });
 
   it("closes on Escape", () => {
     renderPalette();
     openPalette();
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Home" })).toBeInTheDocument();
 
     fireEvent.keyDown(getSearchInput(), { key: "Escape" });
 
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home" })).not.toBeInTheDocument();
+  });
+
+  it("exposes the palette as a modal dialog with an accessible name", () => {
+    renderPalette();
+    openPalette();
+
+    expect(screen.getByRole("dialog", { name: "Command palette" })).toBeInTheDocument();
+  });
+
+  it("returns focus to the previously focused element once closed", () => {
+    renderPalette();
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    openPalette();
+    fireEvent.keyDown(getSearchInput(), { key: "Escape" });
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
+  it("traps Tab focus within the dialog instead of leaking to the page behind it", async () => {
+    searchItems = [movie({ id: 42, mediaType: "movie", title: "Dune", year: 2021 })];
+    renderPalette();
+    openPalette();
+    typeQuery("du");
+    await waitFor(() => screen.getByText("Titles"));
+
+    const input = getSearchInput();
+    const quickLog = screen.getByRole("button", { name: "Mark as watched" });
+    expect(document.activeElement).toBe(input);
+
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(document.activeElement).toBe(quickLog);
+
+    fireEvent.keyDown(quickLog, { key: "Tab" });
+    expect(document.activeElement).toBe(input);
+
+    fireEvent.keyDown(input, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(quickLog);
+  });
+
+  it("has no detectable accessibility violations while open", async () => {
+    const { container } = renderPalette();
+    openPalette();
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("ignores an unrelated key press while open", () => {
@@ -348,7 +397,7 @@ describe("CommandPalette", () => {
 
     fireEvent.keyDown(getSearchInput(), { key: "a" });
 
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Home" })).toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
@@ -359,7 +408,7 @@ describe("CommandPalette", () => {
     fireEvent.keyDown(window, { key: "Enter" });
     fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home" })).not.toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
@@ -387,7 +436,7 @@ describe("CommandPalette", () => {
     renderPalette();
     openPalette();
 
-    const rows = () => screen.getAllByRole("button");
+    const rows = () => screen.getAllByRole("option");
     // Selection starts at the top result (the theme action).
     expect(rows()[0]).toHaveAttribute("aria-selected", "true");
 
@@ -429,7 +478,7 @@ describe("CommandPalette", () => {
     renderPalette();
     openPalette();
 
-    const rows = screen.getAllByRole("button");
+    const rows = screen.getAllByRole("option");
     fireEvent.mouseEnter(rows[2]!);
 
     expect(rows[2]).toHaveAttribute("aria-selected", "true");
@@ -439,15 +488,15 @@ describe("CommandPalette", () => {
   it("closes when clicking the backdrop, but not when clicking inside the panel", () => {
     const { container } = renderPalette();
     openPalette();
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Home" })).toBeInTheDocument();
 
     const panel = screen.getByRole("listbox").parentElement as HTMLElement;
     fireEvent.mouseDown(panel);
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Home" })).toBeInTheDocument();
 
     const backdrop = container.querySelector(".fixed.inset-0") as HTMLElement;
     fireEvent.mouseDown(backdrop);
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Home" })).not.toBeInTheDocument();
   });
 
   describe("contextual actions on a detail page", () => {
@@ -474,8 +523,8 @@ describe("CommandPalette", () => {
       renderPalette();
       openPalette();
 
-      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Availability alert" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Mark watched" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Availability alert" })).not.toBeInTheDocument();
     });
 
     it("offers mark-watched and availability-alert on a cached movie page", async () => {
@@ -483,8 +532,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => expect(screen.getByRole("button", { name: "Mark watched" })).toBeInTheDocument());
-      expect(screen.getByRole("button", { name: "Availability alert" })).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole("option", { name: "Mark watched" })).toBeInTheDocument());
+      expect(screen.getByRole("option", { name: "Availability alert" })).toBeInTheDocument();
     });
 
     it("groups contextual actions under an 'On this page' heading, separate from the menu", async () => {
@@ -492,13 +541,13 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => expect(screen.getByRole("button", { name: "Mark watched" })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole("option", { name: "Mark watched" })).toBeInTheDocument());
       const heading = screen.getByText("On this page");
-      const markWatched = screen.getByRole("button", { name: "Mark watched" });
-      const addToLibrary = screen.getByRole("button", { name: "Add to library" });
-      const homePage = screen.getByRole("button", { name: "Home" });
+      const markWatched = screen.getByRole("option", { name: "Mark watched" });
+      const addToLibrary = screen.getByRole("option", { name: "Add to library" });
+      const homePage = screen.getByRole("option", { name: "Home" });
 
-      const position = (node: Element) => Array.from(document.querySelectorAll("p, button")).indexOf(node);
+      const position = (node: Element) => Array.from(document.querySelectorAll("p, [role='option']")).indexOf(node);
       expect(position(heading)).toBeLessThan(position(addToLibrary));
       expect(position(addToLibrary)).toBeLessThan(position(markWatched));
       expect(position(markWatched)).toBeLessThan(position(homePage));
@@ -516,8 +565,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "Add to library" }));
-      fireEvent.click(screen.getByRole("button", { name: "Add to library" }));
+      await waitFor(() => screen.getByRole("option", { name: "Add to library" }));
+      fireEvent.click(screen.getByRole("option", { name: "Add to library" }));
 
       await waitFor(() => expect(librarySaveMock).toHaveBeenCalledWith(cachedMovie, { status: "planned" }));
     });
@@ -529,8 +578,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "Remove from library" }));
-      fireEvent.click(screen.getByRole("button", { name: "Remove from library" }));
+      await waitFor(() => screen.getByRole("option", { name: "Remove from library" }));
+      fireEvent.click(screen.getByRole("option", { name: "Remove from library" }));
 
       await waitFor(() => expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
       expect(libraryRemoveMock).not.toHaveBeenCalled();
@@ -544,8 +593,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "Remove from library" }));
-      fireEvent.click(screen.getByRole("button", { name: "Remove from library" }));
+      await waitFor(() => screen.getByRole("option", { name: "Remove from library" }));
+      fireEvent.click(screen.getByRole("option", { name: "Remove from library" }));
 
       await waitFor(() => expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
       expect(await screen.findByText("Remove this title from your library?")).toBeInTheDocument();
@@ -560,9 +609,9 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.seriesDetails(9), cachedSeries));
       openPalette();
 
-      await waitFor(() => expect(screen.getByRole("button", { name: "Availability alert" })).toBeInTheDocument());
-      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Mark unwatched" })).not.toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole("option", { name: "Availability alert" })).toBeInTheDocument());
+      expect(screen.queryByRole("option", { name: "Mark watched" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Mark unwatched" })).not.toBeInTheDocument();
     });
 
     it("offers nothing contextual when the page's own query hasn't populated the cache yet", () => {
@@ -570,7 +619,7 @@ describe("CommandPalette", () => {
       renderPalette();
       openPalette();
 
-      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Mark watched" })).not.toBeInTheDocument();
     });
 
     it("offers nothing contextual on a series page whose cache hasn't populated yet either", () => {
@@ -578,7 +627,7 @@ describe("CommandPalette", () => {
       renderPalette();
       openPalette();
 
-      expect(screen.queryByRole("button", { name: "Availability alert" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Availability alert" })).not.toBeInTheDocument();
     });
 
     it("falls back to the default theme, region, and provider list while preferences haven't loaded", async () => {
@@ -588,10 +637,10 @@ describe("CommandPalette", () => {
       openPalette();
 
       // theme falls back to "dark", so the offered switch is to light.
-      expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: /switch to light theme/i })).toBeInTheDocument();
 
-      await waitFor(() => screen.getByRole("button", { name: "Availability alert" }));
-      fireEvent.click(screen.getByRole("button", { name: "Availability alert" }));
+      await waitFor(() => screen.getByRole("option", { name: "Availability alert" }));
+      fireEvent.click(screen.getByRole("option", { name: "Availability alert" }));
 
       await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_TMDB_REGION, []));
     });
@@ -601,11 +650,11 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "Mark watched" }));
-      fireEvent.click(screen.getByRole("button", { name: "Mark watched" }));
+      await waitFor(() => screen.getByRole("option", { name: "Mark watched" }));
+      fireEvent.click(screen.getByRole("option", { name: "Mark watched" }));
 
       await waitFor(() => expect(toggleMovieSeenMock).toHaveBeenCalledWith(cachedMovie, true));
-      expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Mark watched" })).not.toBeInTheDocument();
     });
 
     it("shows mark-unwatched once the movie is already seen", async () => {
@@ -614,7 +663,7 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => expect(screen.getByRole("button", { name: "Mark unwatched" })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole("option", { name: "Mark unwatched" })).toBeInTheDocument());
     });
 
     it("requests notification permission before enabling a new alert", async () => {
@@ -623,8 +672,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "Availability alert" }));
-      fireEvent.click(screen.getByRole("button", { name: "Availability alert" }));
+      await waitFor(() => screen.getByRole("option", { name: "Availability alert" }));
+      fireEvent.click(screen.getByRole("option", { name: "Availability alert" }));
 
       await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
       expect(toggleAlertMock).not.toHaveBeenCalled();
@@ -635,8 +684,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => screen.getByRole("button", { name: "Availability alert" }));
-      fireEvent.click(screen.getByRole("button", { name: "Availability alert" }));
+      await waitFor(() => screen.getByRole("option", { name: "Availability alert" }));
+      fireEvent.click(screen.getByRole("option", { name: "Availability alert" }));
 
       await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
       await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", []));
@@ -648,8 +697,8 @@ describe("CommandPalette", () => {
       renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
       openPalette();
 
-      await waitFor(() => expect(screen.getByRole("button", { name: "Disable alert" })).toBeInTheDocument());
-      fireEvent.click(screen.getByRole("button", { name: "Disable alert" }));
+      await waitFor(() => expect(screen.getByRole("option", { name: "Disable alert" })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole("option", { name: "Disable alert" }));
 
       await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", []));
       expect(requestPermissionMock).not.toHaveBeenCalled();

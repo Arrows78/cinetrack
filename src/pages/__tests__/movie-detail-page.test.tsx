@@ -10,7 +10,7 @@ import { MovieDetailPage } from "../movie-detail-page";
 const params = { movieId: "42" as string };
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children?: React.ReactNode }) => <a>{children}</a>,
+  Link: ({ children, to }: { children?: React.ReactNode; to?: string }) => <a href={to}>{children}</a>,
   useParams: () => params,
 }));
 
