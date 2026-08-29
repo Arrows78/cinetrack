@@ -1,48 +1,55 @@
-import rustMigrationsSource from "../../../src-tauri/src/database/migrations.rs?raw";
+import m001 from "../../../src-tauri/src/database/migrations/001-initial-schema.sql?raw";
+import m009 from "../../../src-tauri/src/database/migrations/009-availability-alerts-unique.sql?raw";
+import m010 from "../../../src-tauri/src/database/migrations/010-merge-watchlist-into-library.sql?raw";
+import m011 from "../../../src-tauri/src/database/migrations/011-add-status-to-tracked-series.sql?raw";
+import m012 from "../../../src-tauri/src/database/migrations/012-remove-rewatching-status.sql?raw";
+import m013 from "../../../src-tauri/src/database/migrations/013-add-note-to-viewing-events.sql?raw";
+import m014 from "../../../src-tauri/src/database/migrations/014-add-smart-lists.sql?raw";
+import m015 from "../../../src-tauri/src/database/migrations/015-add-saved-filters.sql?raw";
+import m016 from "../../../src-tauri/src/database/migrations/016-index-large-library-stats.sql?raw";
 import type { Migration } from "./types";
 
-// The production Rust table is the single migration authority. This parser is
-// deliberately structural rather than SQL-aware: statements are already
-// delimited by Rust string literals, so we never split SQL on semicolons.
-const rustStringLiteral = /r#"([\s\S]*?)"#|"([^"\\]*)"/g;
+const statementMarker = "-- cinetrack:statement";
 
-function literalsIn(text: string): string[] {
-  return Array.from(text.matchAll(rustStringLiteral), (match) => match[1] ?? match[2] ?? "");
-}
+export function parseCanonicalMigration(source: string): Migration {
+  const header = source.split(statementMarker, 1)[0] ?? "";
+  const versionValue = header
+    .split("\n")
+    .find((line) => line.startsWith("-- cinetrack:version "))
+    ?.slice("-- cinetrack:version ".length);
+  const name = header
+    .split("\n")
+    .find((line) => line.startsWith("-- cinetrack:name "))
+    ?.slice("-- cinetrack:name ".length);
 
-export function extractCanonicalMigrations(source: string): readonly Migration[] {
-  const firstStatements = source.indexOf("statements: &[");
-  const end = source.indexOf("\nfn is_tolerable_duplicate_column");
-  if (firstStatements === -1 || end === -1) {
-    throw new Error("Could not locate the canonical MIGRATIONS table in migrations.rs");
+  const version = Number(versionValue);
+  if (!Number.isInteger(version) || version <= 0) {
+    throw new Error("Canonical migration has an invalid or missing version header");
+  }
+  if (!name) {
+    throw new Error(`Canonical migration ${version} has no name header`);
   }
 
-  const firstBlock = source.lastIndexOf("Migration {", firstStatements);
-  if (firstBlock === -1) {
-    throw new Error("Could not locate the first canonical migration block in migrations.rs");
+  const statements = source
+    .split(statementMarker)
+    .slice(1)
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+  if (statements.length === 0) {
+    throw new Error(`Canonical migration ${version} (${name}) has no statements`);
   }
 
-  const blocks = source.slice(firstBlock, end).split(/\n\s*\},\s*\n\s*Migration\s*\{/);
-
-  return blocks.map((block) => {
-    const versionMatch = /version:\s*(\d+)/.exec(block);
-    const nameMatch = /name:\s*"([^"]*)"/.exec(block);
-    const statementsStart = block.indexOf("statements: &[");
-    if (!versionMatch || !nameMatch || statementsStart === -1) {
-      throw new Error(`Could not parse a canonical migration block: ${block.slice(0, 80)}...`);
-    }
-
-    const statements = literalsIn(block.slice(statementsStart));
-    if (statements.length === 0) {
-      throw new Error(`Canonical migration ${versionMatch[1]} has no statements`);
-    }
-
-    return {
-      version: Number(versionMatch[1]),
-      name: nameMatch[1]!,
-      statements,
-    };
-  });
+  return { version, name, statements };
 }
 
-export const migrations = extractCanonicalMigrations(rustMigrationsSource);
+export function extractCanonicalMigrations(sources: readonly string[]): readonly Migration[] {
+  const parsed = sources.map(parseCanonicalMigration);
+  for (let index = 1; index < parsed.length; index += 1) {
+    if (parsed[index]!.version <= parsed[index - 1]!.version) {
+      throw new Error("Canonical migration versions must be strictly increasing");
+    }
+  }
+  return parsed;
+}
+
+export const migrations = extractCanonicalMigrations([m001, m009, m010, m011, m012, m013, m014, m015, m016]);
