@@ -1,101 +1,16 @@
-use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use tauri::State;
 
-use crate::commands::macros::profile_scoped_command;
-use crate::database::{current_profile_id, new_uuid, now_iso};
+use super::models::{
+    CustomList, CustomListItem, CustomListItemRow, CustomListRow, MediaSummaryInput,
+};
+use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomList {
-    pub id: String,
-    pub profile_id: String,
-    pub name: String,
-    pub description: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-pub(crate) struct CustomListRow {
-    pub(crate) uuid: String,
-    pub(crate) profile_id: String,
-    pub(crate) name: String,
-    pub(crate) description: Option<String>,
-    pub(crate) created_at: String,
-    pub(crate) updated_at: String,
-}
-
-impl From<CustomListRow> for CustomList {
-    fn from(row: CustomListRow) -> Self {
-        Self {
-            id: row.uuid,
-            profile_id: row.profile_id,
-            name: row.name,
-            description: row.description,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        }
-    }
-}
-
-/// Only the fields `add_custom_list_item` reads off the frontend's
-/// `MediaSummary` object.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MediaSummaryInput {
-    pub id: i64,
-    pub media_type: MediaType,
-    pub title: String,
-    pub poster_path: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CustomListItem {
-    pub id: String,
-    pub list_id: String,
-    pub media_id: i64,
-    pub media_type: MediaType,
-    pub title: String,
-    pub poster_path: Option<String>,
-    pub position: i64,
-    pub added_at: String,
-    pub updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-pub(crate) struct CustomListItemRow {
-    pub(crate) uuid: String,
-    pub(crate) list_id: String,
-    pub(crate) media_id: i64,
-    pub(crate) media_type: String,
-    pub(crate) title: String,
-    pub(crate) poster_path: Option<String>,
-    pub(crate) position: i64,
-    pub(crate) added_at: String,
-    pub(crate) updated_at: String,
-}
-
-impl From<CustomListItemRow> for CustomListItem {
-    fn from(row: CustomListItemRow) -> Self {
-        Self {
-            id: row.uuid,
-            list_id: row.list_id,
-            media_id: row.media_id,
-            media_type: MediaType::from_db_str(&row.media_type),
-            title: row.title,
-            poster_path: row.poster_path,
-            position: row.position,
-            added_at: row.added_at,
-            updated_at: row.updated_at,
-        }
-    }
-}
-
-async fn list_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<CustomList>, ApiError> {
+pub(super) async fn list_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<Vec<CustomList>, ApiError> {
     let rows: Vec<CustomListRow> =
         sqlx::query_as("SELECT * FROM custom_lists WHERE profile_id = $1 ORDER BY updated_at DESC")
             .bind(profile_id)
@@ -107,7 +22,7 @@ async fn list_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<CustomList
 
 const MAX_LIST_NAME_LENGTH: usize = 100;
 
-async fn create_impl(
+pub(super) async fn create_impl(
     pool: &SqlitePool,
     profile_id: &str,
     name: &str,
@@ -174,7 +89,11 @@ where
         .ok_or_else(|| ApiError::not_found("List not found."))
 }
 
-async fn remove_impl(pool: &SqlitePool, profile_id: &str, list_id: &str) -> Result<(), ApiError> {
+pub(super) async fn remove_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    list_id: &str,
+) -> Result<(), ApiError> {
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
     assert_owns_list(&mut *tx, profile_id, list_id).await?;
 
@@ -193,7 +112,7 @@ async fn remove_impl(pool: &SqlitePool, profile_id: &str, list_id: &str) -> Resu
     Ok(())
 }
 
-async fn items_impl(
+pub(super) async fn items_impl(
     pool: &SqlitePool,
     profile_id: &str,
     list_id: &str,
@@ -208,7 +127,7 @@ async fn items_impl(
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
-async fn add_impl(
+pub(super) async fn add_impl(
     pool: &SqlitePool,
     profile_id: &str,
     list_id: &str,
@@ -274,7 +193,7 @@ async fn add_impl(
     Ok(())
 }
 
-async fn remove_item_impl(
+pub(super) async fn remove_item_impl(
     pool: &SqlitePool,
     profile_id: &str,
     list_id: &str,
@@ -294,64 +213,10 @@ async fn remove_item_impl(
     Ok(())
 }
 
-profile_scoped_command! {
-    pub async fn list_custom_lists() -> Vec<CustomList> => list_impl
-}
-
-#[tauri::command]
-pub async fn create_custom_list(
-    name: String,
-    description: Option<String>,
-    pool: State<'_, SqlitePool>,
-) -> Result<CustomList, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    create_impl(&pool, &profile_id, &name, description).await
-}
-
-#[tauri::command]
-pub async fn remove_custom_list(
-    list_id: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    remove_impl(&pool, &profile_id, &list_id).await
-}
-
-#[tauri::command]
-pub async fn list_custom_list_items(
-    list_id: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<CustomListItem>, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    items_impl(&pool, &profile_id, &list_id).await
-}
-
-#[tauri::command]
-pub async fn add_custom_list_item(
-    list_id: String,
-    media: MediaSummaryInput,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    add_impl(&pool, &profile_id, &list_id, media).await
-}
-
-#[tauri::command]
-pub async fn remove_custom_list_item(
-    list_id: String,
-    media_id: i64,
-    media_type: MediaType,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    remove_item_impl(&pool, &profile_id, &list_id, media_id, media_type).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use sqlx::sqlite::SqlitePoolOptions;
-    use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
         let pool = SqlitePoolOptions::new()
@@ -541,110 +406,5 @@ mod tests {
             1
         );
         assert_eq!(list_impl(&pool, "default").await.unwrap().len(), 1);
-    }
-
-    #[tokio::test]
-    async fn create_custom_list_command_creates_a_list_for_the_active_profile() {
-        let pool = migrated_pool().await;
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-
-        let list = create_custom_list("Ma liste".to_string(), None, state)
-            .await
-            .unwrap();
-        assert_eq!(list.name, "Ma liste");
-        assert_eq!(list.profile_id, "default");
-    }
-
-    #[tokio::test]
-    async fn remove_custom_list_command_removes_the_callers_list() {
-        let pool = migrated_pool().await;
-        let list = create_impl(&pool, "default", "À supprimer", None)
-            .await
-            .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        remove_custom_list(list.id.clone(), state).await.unwrap();
-
-        assert_eq!(
-            list_impl(&app.state::<SqlitePool>(), "default")
-                .await
-                .unwrap()
-                .len(),
-            0
-        );
-    }
-
-    #[tokio::test]
-    async fn list_custom_list_items_command_returns_the_lists_items() {
-        let pool = migrated_pool().await;
-        let list = create_impl(&pool, "default", "Ma liste", None)
-            .await
-            .unwrap();
-        add_impl(&pool, "default", &list.id, media(1, "Un"))
-            .await
-            .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        let items = list_custom_list_items(list.id.clone(), state)
-            .await
-            .unwrap();
-        assert_eq!(items.len(), 1);
-        assert_eq!(items[0].media_id, 1);
-    }
-
-    #[tokio::test]
-    async fn add_custom_list_item_command_adds_the_item_to_the_list() {
-        let pool = migrated_pool().await;
-        let list = create_impl(&pool, "default", "Ma liste", None)
-            .await
-            .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        add_custom_list_item(list.id.clone(), media(1, "Un"), state)
-            .await
-            .unwrap();
-
-        let items = items_impl(&app.state::<SqlitePool>(), "default", &list.id)
-            .await
-            .unwrap();
-        assert_eq!(items.len(), 1);
-        assert_eq!(items[0].media_id, 1);
-    }
-
-    #[tokio::test]
-    async fn remove_custom_list_item_command_removes_only_the_named_item() {
-        let pool = migrated_pool().await;
-        let list = create_impl(&pool, "default", "Ma liste", None)
-            .await
-            .unwrap();
-        add_impl(&pool, "default", &list.id, media(1, "Un"))
-            .await
-            .unwrap();
-        add_impl(&pool, "default", &list.id, media(2, "Deux"))
-            .await
-            .unwrap();
-
-        let app = tauri::test::mock_app();
-        app.manage(pool);
-        let state: State<'_, SqlitePool> = app.state();
-        remove_custom_list_item(list.id.clone(), 1, MediaType::Movie, state)
-            .await
-            .unwrap();
-
-        let items = items_impl(&app.state::<SqlitePool>(), "default", &list.id)
-            .await
-            .unwrap();
-        assert_eq!(
-            items.iter().map(|i| i.media_id).collect::<Vec<_>>(),
-            vec![2]
-        );
     }
 }
