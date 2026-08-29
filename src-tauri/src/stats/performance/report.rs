@@ -30,6 +30,23 @@ pub(super) struct BenchmarkCaseReport {
     pub(super) operations: OperationReport,
 }
 
+/// Beyond read-latency percentiles (`BenchmarkCaseReport`, above): the cost
+/// of the *other* things that scale with data volume — the on-disk file
+/// size, a full backup export/import round trip, and (Linux CI only) this
+/// process's own resident memory right after seeding. `peak_rss_bytes` is
+/// `None` on any non-Linux target — see memory.rs's own doc comment for why
+/// that's a deliberate gap, not a bug.
+#[derive(Debug, Clone, Serialize)]
+pub(super) struct StressReport {
+    pub(super) library_items: i64,
+    pub(super) viewing_events: i64,
+    pub(super) db_file_size_bytes: u64,
+    pub(super) export_duration_ms: f64,
+    pub(super) export_payload_bytes: usize,
+    pub(super) import_duration_ms: f64,
+    pub(super) peak_rss_bytes: Option<u64>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub(super) struct BenchmarkReport {
     pub(super) format_version: u32,
@@ -39,6 +56,7 @@ pub(super) struct BenchmarkReport {
     pub(super) target_os: &'static str,
     pub(super) target_arch: &'static str,
     pub(super) cases: Vec<BenchmarkCaseReport>,
+    pub(super) stress: Option<StressReport>,
 }
 
 fn markdown_report(report: &BenchmarkReport) -> String {
@@ -71,6 +89,27 @@ fn markdown_report(report: &BenchmarkReport) -> String {
             ));
         }
         output.push('\n');
+    }
+
+    if let Some(stress) = &report.stress {
+        output.push_str(&format!(
+            "## Stress: {} library items / {} viewing events\n\n",
+            stress.library_items, stress.viewing_events
+        ));
+        output.push_str(&format!(
+            "- Database file size: {:.2} MB\n\
+             - Backup export: {:.1} ms, {:.2} MB payload\n\
+             - Backup import (into a fresh database): {:.1} ms\n\
+             - Peak resident memory: {}\n\n",
+            stress.db_file_size_bytes as f64 / 1_048_576.0,
+            stress.export_duration_ms,
+            stress.export_payload_bytes as f64 / 1_048_576.0,
+            stress.import_duration_ms,
+            stress
+                .peak_rss_bytes
+                .map(|bytes| format!("{:.1} MB", bytes as f64 / 1_048_576.0))
+                .unwrap_or_else(|| "n/a (Linux only)".to_string()),
+        ));
     }
 
     output

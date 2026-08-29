@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use sqlx::SqlitePool;
+use sqlx::sqlite::SqlitePoolOptions;
 use tauri::{Manager, State};
 
 use super::super::queries::milestones::get_watch_milestones_impl;
@@ -8,9 +9,12 @@ use super::super::queries::overview::get_stats_overview_impl;
 use super::super::queries::ratings::get_rating_distribution_impl;
 use super::super::queries::recap::get_monthly_recap_impl;
 use super::fixtures::{migrated_pool, seed_scale_fixture};
+use super::memory::current_rss_bytes;
 use super::report::{
-    BenchmarkCaseReport, BenchmarkReport, LatencySummary, OperationReport, write_report,
+    BenchmarkCaseReport, BenchmarkReport, LatencySummary, OperationReport, StressReport,
+    write_report,
 };
+use crate::backup::{export_backup_data, import_backup_data};
 use crate::library::list_library;
 use crate::progress::list_tracked_series;
 
@@ -183,6 +187,79 @@ async fn benchmark_case(library_items: i64, viewing_events: i64) -> BenchmarkCas
     }
 }
 
+/// Measures what read-latency percentiles above don't: on-disk file size, a
+/// full backup export/import round trip, and (best-effort, Linux CI only)
+/// this process's own resident memory — the dimensions docs/performance.md
+/// calls out as "the *other* things that scale with data volume." Seeds a
+/// real file-backed database (the read-latency cases above deliberately
+/// stay in-memory, to keep percentile measurements free of disk-I/O noise;
+/// file size can't be measured on a database that has no file at all).
+async fn benchmark_stress(library_items: i64, viewing_events: i64) -> StressReport {
+    let db_path = std::env::temp_dir().join(format!(
+        "cinetrack-stress-benchmark-{}-{}.db",
+        std::process::id(),
+        library_items
+    ));
+    // A stale file from a previous crashed run would otherwise make the
+    // file-size measurement below reflect leftover data, not this run's.
+    let _ = std::fs::remove_file(&db_path);
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&format!("sqlite://{}?mode=rwc", db_path.display()))
+        .await
+        .expect("failed to open file-backed benchmark database");
+    crate::database::migrations::run_migrations(&pool)
+        .await
+        .expect("failed to migrate the file-backed benchmark database");
+    seed_scale_fixture(&pool, library_items, viewing_events).await;
+
+    let peak_rss_bytes = current_rss_bytes();
+
+    let app = tauri::test::mock_app();
+    app.manage(pool.clone());
+    let export_state: State<'_, SqlitePool> = app.state();
+    let started = Instant::now();
+    let exported = export_backup_data(export_state)
+        .await
+        .expect("benchmark backup export failed");
+    let export_duration_ms = duration_ms(started.elapsed());
+    let export_payload_bytes = serde_json::to_string(&exported)
+        .expect("failed to serialize the exported benchmark payload")
+        .len();
+
+    // Timed separately, into a fresh in-memory database — this measures
+    // import's own cost, not export's, and never risks corrupting the
+    // file-backed database the size measurement below still needs to read.
+    let import_pool = migrated_pool().await;
+    let import_app = tauri::test::mock_app();
+    import_app.manage(import_pool);
+    let import_state: State<'_, SqlitePool> = import_app.state();
+    let started = Instant::now();
+    import_backup_data(exported, import_state)
+        .await
+        .expect("benchmark backup import failed");
+    let import_duration_ms = duration_ms(started.elapsed());
+
+    pool.close().await;
+    let db_file_size_bytes = std::fs::metadata(&db_path)
+        .map(|meta| meta.len())
+        .unwrap_or(0);
+    let _ = std::fs::remove_file(&db_path);
+    let _ = std::fs::remove_file(format!("{}-wal", db_path.display()));
+    let _ = std::fs::remove_file(format!("{}-shm", db_path.display()));
+
+    StressReport {
+        library_items,
+        viewing_events,
+        db_file_size_bytes,
+        export_duration_ms,
+        export_payload_bytes,
+        import_duration_ms,
+        peak_rss_bytes,
+    }
+}
+
 #[test]
 fn percentile_uses_nearest_rank_for_p50_and_p95() {
     let samples = [1, 2, 3, 4, 100].map(Duration::from_millis);
@@ -203,7 +280,9 @@ pub(super) async fn run() {
         cases: vec![
             benchmark_case(1_000, 5_000).await,
             benchmark_case(10_000, 50_000).await,
+            benchmark_case(50_000, 100_000).await,
         ],
+        stress: Some(benchmark_stress(50_000, 100_000).await),
     };
 
     write_report(&report);

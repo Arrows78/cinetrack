@@ -17,12 +17,13 @@ variable to make millisecond limits a reliable correctness gate.
 pnpm validate:backend
 ```
 
-## 1k / 10k scale benchmark
+## 1k / 10k / 50k scale benchmark
 
-The ignored benchmark seeds two in-memory fixtures:
+The ignored benchmark seeds three in-memory fixtures:
 
 - 1,000 library items and 5,000 viewing events;
-- 10,000 library items and 50,000 viewing events.
+- 10,000 library items and 50,000 viewing events;
+- 50,000 library items and 100,000 viewing events.
 
 Series rows also receive synthetic tracked-series and episode-progress data so
 the Progress aggregation is exercised alongside Library and Stats. The Library
@@ -59,6 +60,26 @@ Do not compare absolute numbers across different machines. For a before/after
 change, run both revisions on the same machine and compare p50/p95. A repeatable
 regression is a signal to inspect the query plan before adding caching or any
 machine-specific threshold.
+
+## Stress metrics: beyond read latency
+
+The same benchmark run also seeds a real *file-backed* SQLite database (the
+1k/10k/50k cases above deliberately stay in-memory, to keep the read-latency
+percentiles free of disk-I/O noise — file size can't be measured on a
+database that has no file at all) at the 50k/100k scale, and records:
+
+- the on-disk database file size;
+- a full backup export round trip (`export_backup_data`) — duration and the
+  serialized JSON payload size, a proxy for the frontend's own IPC
+  deserialization cost;
+- a full backup import round trip (`import_backup_data`), timed separately
+  against a fresh database so it never shares a number with export;
+- this process's own resident memory right after seeding — Linux-only (see
+  `stats/performance/memory.rs`'s own doc comment for why), reported as `n/a`
+  everywhere else, including local macOS/Windows dev runs.
+
+Like the read-latency percentiles above, none of this is a pass/fail gate —
+it's the same "informational, compare same-machine before/after" contract.
 
 ## Pull-request baseline
 

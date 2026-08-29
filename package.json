@@ -46,7 +46,7 @@
     "cargo:format": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "cargo:format:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
     "cargo:test": "cargo test --locked --manifest-path src-tauri/Cargo.toml",
-    "perf:database": "cargo test --locked --manifest-path src-tauri/Cargo.toml stats::performance::benchmark_library_progress_and_stats_at_1k_and_10k_scale -- --ignored --nocapture",
+    "perf:database": "cargo test --locked --manifest-path src-tauri/Cargo.toml stats::performance::benchmark_library_progress_and_stats_at_1k_10k_and_50k_scale -- --ignored --nocapture",
     "cargo:coverage": "cargo +nightly llvm-cov --manifest-path src-tauri/Cargo.toml --branch",
     "validate:frontend": "pnpm contract:check && pnpm architecture:check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build",
     "validate:backend": "pnpm cargo:check && pnpm cargo:clippy && pnpm cargo:format:check && pnpm cargo:test",
