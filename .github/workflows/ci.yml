@@ -153,6 +153,64 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # Informational only (see docs/performance.md) — turns this PR's own
+      # benchmark run into a "main vs. PR vs. delta" table instead of a
+      # snapshot artifact a human has to manually download and eyeball
+      # across runs. Skipped on a push-to-main run: there's no "PR" to
+      # compare main against in that case, and main's own freshly-uploaded
+      # artifact above already is next time's baseline.
+      - name: Download main's latest database performance baseline
+        if: runner.os == 'Linux' && !cancelled() && github.event_name == 'pull_request'
+        id: download-main-baseline
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: "ci.yml",
+              branch: "main",
+              status: "success",
+              per_page: 1,
+            });
+            const run = runs.data.workflow_runs[0];
+            if (!run) {
+              core.warning("No successful CI run on main yet — skipping the performance comparison.");
+              core.setOutput("found", "false");
+              return;
+            }
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner,
+              repo,
+              run_id: run.id,
+            });
+            const artifact = artifacts.data.artifacts.find((a) => a.name === "database-performance-baseline");
+            if (!artifact) {
+              core.warning(`main's latest successful run (${run.id}) has no database-performance-baseline artifact — skipping.`);
+              core.setOutput("found", "false");
+              return;
+            }
+            const download = await github.rest.actions.downloadArtifact({
+              owner,
+              repo,
+              artifact_id: artifact.id,
+              archive_format: "zip",
+            });
+            const fs = require("node:fs");
+            fs.writeFileSync("main-baseline.zip", Buffer.from(download.data));
+            core.setOutput("found", "true");
+
+      - name: Compare this PR's benchmark against main's baseline
+        if: runner.os == 'Linux' && !cancelled() && steps.download-main-baseline.outputs.found == 'true'
+        run: |
+          mkdir -p main-baseline
+          unzip -o main-baseline.zip -d main-baseline
+          node scripts/compare-performance-baseline.mjs \
+            main-baseline/database-benchmark.json \
+            src-tauri/target/performance/database-benchmark.json \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
   cargo-audit:
     runs-on: ubuntu-latest
     # rustsec/audit-check reports its result as a GitHub Check Run, which

@@ -67,3 +67,18 @@ suite and uploads `database-benchmark.json` plus `database-benchmark.md` as the
 `database-performance-baseline` artifact. This records the p50/p95 baseline for
 the exact PR revision without turning machine-dependent latency into a pass/fail
 threshold. Query-plan assertions remain the correctness gate.
+
+## Trend: PR vs. `main`
+
+On a pull request (not on a push to `main` — there's no "PR" to compare `main`
+against in that case), the same CI job also downloads `main`'s most recent
+successful `database-performance-baseline` artifact and runs
+`scripts/compare-performance-baseline.mjs` against the PR's own freshly
+recorded report, matching cases by scale (library item count + viewing event
+count, not array position, since the benchmark's own case order is an
+implementation detail). The resulting `main` vs. PR vs. delta-percent table is
+written to the job's step summary — still purely informational, with a ⚠️
+marker at ±20% delta as a visual flag for a human skimming the table, not a
+build gate. If `main` has no successful run yet, or that run's artifact
+expired (30-day retention) or predates this feature, the comparison step is
+skipped with a warning rather than failing the job.
