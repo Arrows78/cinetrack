@@ -1,3 +1,4 @@
+mod availability;
 mod backup;
 mod commands;
 mod database;

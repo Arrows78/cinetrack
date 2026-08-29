@@ -1,4 +1,3 @@
-pub(crate) mod availability;
 mod boot;
 pub(crate) mod custom_lists;
 pub(crate) mod history;
@@ -11,6 +10,11 @@ mod tmdb;
 mod tvtime;
 mod updater;
 
+pub use crate::availability::{
+    get_availability_alert, get_availability_snapshot, list_availability_alerts,
+    list_availability_snapshots, remove_availability_alert, save_availability_snapshot,
+    toggle_availability_alert,
+};
 pub use crate::backup::{
     check_data_integrity, export_backup_data, import_backup_data, list_backup_directory,
     read_backup_from_path, remove_backup_file, write_backup_to_path,
@@ -27,11 +31,6 @@ pub use crate::stats::{
     get_monthly_recap, get_rating_distribution, get_rewatch_stats, get_stats_overview,
     get_watch_milestones, list_on_this_day_events, list_recent_viewing_events,
     list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
-};
-pub use availability::{
-    get_availability_alert, get_availability_snapshot, list_availability_alerts,
-    list_availability_snapshots, remove_availability_alert, save_availability_snapshot,
-    toggle_availability_alert,
 };
 pub use boot::get_boot_recovery;
 pub use custom_lists::{
