@@ -1,21 +1,27 @@
-use serde::{Deserialize, Serialize};
+#[cfg(test)]
 use sqlx::SqlitePool;
-use tauri::State;
 
-use crate::error::ApiError;
-use crate::models::MediaType;
-
-mod milestones;
-mod monthly_activity;
-mod overview;
+mod commands;
+mod models;
 #[cfg(test)]
 mod performance;
-mod ratings;
-mod recap;
+mod queries;
 mod repository;
-mod rewatch;
 mod service;
-mod viewing_events;
+
+pub use commands::{
+    get_monthly_recap, get_rating_distribution, get_rewatch_stats, get_stats_overview,
+    get_watch_milestones, list_on_this_day_events, list_recent_viewing_events,
+    list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
+};
+pub use models::{
+    BiggestBingeDay, ComfortTitle, MilestoneCategory, MonthlyActivityBucket, MonthlyRecap,
+    RatingBucket, RatingDistribution, RatingPeriodAverage, RewatchStats, StatsOverview, StatsTotals,
+    TitleRating, WatchMilestone, YearlyActivityBucket,
+};
+pub use queries::{ViewingEvent, ViewingEventNote, ViewingEventType};
+
+use queries::{milestones, overview, ratings, recap, rewatch, viewing_events};
 
 #[cfg(test)]
 use milestones::get_watch_milestones_impl;
@@ -27,293 +33,13 @@ use ratings::get_rating_distribution_impl;
 use recap::get_monthly_recap_impl;
 #[cfg(test)]
 use rewatch::get_rewatch_stats_impl;
-use service::StatsService;
 #[cfg(test)]
 use viewing_events::ViewingEventRow;
-pub use viewing_events::{ViewingEvent, ViewingEventNote, ViewingEventType};
 #[cfg(test)]
 use viewing_events::{
     list_on_this_day_events_impl, list_viewing_events_for_media_impl,
     list_viewing_events_for_year_impl, list_viewing_events_since_impl,
 };
-
-/// Bounded fetch for computations that only need a recent window (current
-/// streak, catch-up pace) — avoids pulling a profile's entire lifetime of
-/// events for a calculation that never looks further back than `since`.
-#[tauri::command]
-pub async fn list_recent_viewing_events(
-    since: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<ViewingEvent>, ApiError> {
-    StatsService::new(pool.inner()).list_recent_viewing_events(&since).await
-}
-
-/// Bounded fetch for the yearly "wrapped" summary — only ever needs one
-/// calendar year's worth of events, not the whole history. `range_start`/
-/// `range_end` are ISO instants (end exclusive).
-#[tauri::command]
-pub async fn list_viewing_events_for_year(
-    range_start: String,
-    range_end: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<ViewingEvent>, ApiError> {
-    StatsService::new(pool.inner())
-        .list_viewing_events_for_year(&range_start, &range_end)
-        .await
-}
-
-/// Powers the opt-in "On this day" Home card for the active profile.
-#[tauri::command]
-pub async fn list_on_this_day_events(
-    today: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<ViewingEvent>, ApiError> {
-    StatsService::new(pool.inner()).list_on_this_day_events(&today).await
-}
-
-/// One title's full watch history, notes included, for the active profile.
-#[tauri::command]
-pub async fn list_viewing_events_for_media(
-    media_id: i64,
-    media_type: MediaType,
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<ViewingEventNote>, ApiError> {
-    StatsService::new(pool.inner())
-        .list_viewing_events_for_media(media_id, media_type)
-        .await
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StatsTotals {
-    pub movies_watched: i64,
-    pub episodes_watched: i64,
-    pub minutes_watched: i64,
-    /// Minutes from movie-typed events only — the movies/series split card
-    /// on the Stats page reads this alongside `episode_minutes_watched`
-    /// instead of re-deriving it from a second, unbounded events fetch.
-    pub movie_minutes_watched: i64,
-    pub episode_minutes_watched: i64,
-    pub completed_series: i64,
-    pub library_completion_percent: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MonthlyActivityBucket {
-    pub month: String,
-    pub count: i64,
-    pub minutes: i64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StatsOverview {
-    pub totals: StatsTotals,
-    pub monthly_activity: Vec<MonthlyActivityBucket>,
-}
-
-/// `window_start` and `month_labels` are computed client-side (date-fns
-/// already owns "current month" logic elsewhere in the app) and passed in,
-/// so this command stays a pure aggregation over a caller-specified window
-/// rather than a second place that decides what "the last 12 months" means.
-#[tauri::command]
-pub async fn get_stats_overview(
-    window_start: String,
-    month_labels: Vec<String>,
-    pool: State<'_, SqlitePool>,
-) -> Result<StatsOverview, ApiError> {
-    StatsService::new(pool.inner())
-        .get_stats_overview(&window_start, &month_labels)
-        .await
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct YearlyActivityBucket {
-    pub year: i64,
-    pub movies_watched: i64,
-    pub episodes_watched: i64,
-    pub minutes_watched: i64,
-}
-
-#[tauri::command]
-pub async fn list_yearly_activity(
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-    StatsService::new(pool.inner()).list_yearly_activity().await
-}
-
-// ---------------------------------------------------------------------------
-// Monthly recap
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TitleRating {
-    pub title: String,
-    pub rating: f64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BiggestBingeDay {
-    pub day: String,
-    pub count: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MonthlyRecap {
-    pub month: String,
-    // Like monthly_activity/yearly_activity above, a recap for a given
-    // calendar month is a historical breakdown ("what did I watch in
-    // March") rather than a current-state total — it counts every
-    // watched/rewatched event that fell in the month, exactly like
-    // `getYearSummary`'s Wrapped figures do for a year. It deliberately does
-    // NOT dedupe to "the latest event per title" the way get_stats_overview's
-    // headline totals do, since a title watched and later unwatched still
-    // did happen in that month.
-    pub movies_watched: i64,
-    pub episodes_watched: i64,
-    pub minutes_watched: i64,
-    pub top_rated_title: Option<TitleRating>,
-    pub favourite_genre: Option<String>,
-    pub biggest_binge_day: Option<BiggestBingeDay>,
-}
-
-/// `month` is the "YYYY-MM" label to echo back; `range_start`/`range_end` are
-/// ISO instants (end exclusive) computed client-side, same convention as
-/// `list_viewing_events_for_year` above.
-#[tauri::command]
-pub async fn get_monthly_recap(
-    month: String,
-    range_start: String,
-    range_end: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<MonthlyRecap, ApiError> {
-    StatsService::new(pool.inner())
-        .get_monthly_recap(&month, &range_start, &range_end)
-        .await
-}
-
-// ---------------------------------------------------------------------------
-// Rewatch analytics
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ComfortTitle {
-    pub title: String,
-    pub count: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RewatchStats {
-    // A rewatch is itself a historical action, not a reversible state like
-    // "watched" — so unlike get_stats_overview's headline totals, this is
-    // legitimately a raw count of every `rewatched` event ever logged, not
-    // deduped to "the latest event per title".
-    pub total_rewatches: i64,
-    /// Rewatches as a percentage of every watch event (`watched` +
-    /// `rewatched`), rounded to the nearest whole percent.
-    pub rewatch_share_percent: i64,
-    pub favourite_comfort_titles: Vec<ComfortTitle>,
-    pub rewatch_activity: Vec<MonthlyActivityBucket>,
-}
-
-/// `window_start`/`month_labels` follow the same client-computed-window
-/// convention as `get_stats_overview` above.
-#[tauri::command]
-pub async fn get_rewatch_stats(
-    window_start: String,
-    month_labels: Vec<String>,
-    pool: State<'_, SqlitePool>,
-) -> Result<RewatchStats, ApiError> {
-    StatsService::new(pool.inner())
-        .get_rewatch_stats(&window_start, &month_labels)
-        .await
-}
-
-// ---------------------------------------------------------------------------
-// Rating distribution & evolution
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RatingBucket {
-    pub rating: f64,
-    pub count: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RatingPeriodAverage {
-    pub period: String,
-    pub average: f64,
-    pub count: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RatingDistribution {
-    // Current-state: `library_items.user_rating` is a single mutable value
-    // per title (no history kept), so a changed rating is reflected
-    // immediately here and never accumulates — there is nothing to "undo".
-    pub distribution: Vec<RatingBucket>,
-    // Historical breakdowns, same exception as monthly/yearly activity: which
-    // month/year a title was watched in doesn't change in hindsight, even
-    // though the rating value read for it is always the *current* rating
-    // (the schema has no rating-at-time-of-watch to read instead).
-    pub average_by_month: Vec<RatingPeriodAverage>,
-    pub average_by_year: Vec<RatingPeriodAverage>,
-}
-
-/// `window_start` bounds `average_by_month` only (same convention as
-/// `get_stats_overview`'s window) — `average_by_year` groups a profile's
-/// entire history, same as `list_yearly_activity` above, since one row per
-/// year stays cheap no matter how long the app has been in use.
-#[tauri::command]
-pub async fn get_rating_distribution(
-    window_start: String,
-    pool: State<'_, SqlitePool>,
-) -> Result<RatingDistribution, ApiError> {
-    StatsService::new(pool.inner())
-        .get_rating_distribution(&window_start)
-        .await
-}
-
-// ---------------------------------------------------------------------------
-// Watch milestones
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum MilestoneCategory {
-    Episodes,
-    Movies,
-    Hours,
-    Series,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WatchMilestone {
-    pub id: String,
-    pub category: MilestoneCategory,
-    pub threshold: i64,
-    pub current_value: i64,
-    pub achieved: bool,
-    pub achieved_at: Option<String>,
-}
-
-#[tauri::command]
-pub async fn get_watch_milestones(
-    pool: State<'_, SqlitePool>,
-) -> Result<Vec<WatchMilestone>, ApiError> {
-    StatsService::new(pool.inner()).get_watch_milestones().await
-}
 
 #[cfg(test)]
 mod tests {

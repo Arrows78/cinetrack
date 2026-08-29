@@ -70,9 +70,7 @@ impl<'a> StatsService<'a> {
             .await
     }
 
-    pub(super) async fn list_yearly_activity(
-        &self,
-    ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+    pub(super) async fn list_yearly_activity(&self) -> Result<Vec<YearlyActivityBucket>, ApiError> {
         self.repository().await?.list_yearly_activity().await
     }
 
