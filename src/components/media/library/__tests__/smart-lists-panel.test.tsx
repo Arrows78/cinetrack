@@ -1,8 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import i18n from "@/i18n";
-import { DEFAULT_SMART_LIST_RULES } from "@/features/library/smart-list-evaluation";
-import type { useSmartLists } from "@/features/library/use-smart-lists";
+import { DEFAULT_SMART_LIST_RULES } from "@/features/smart-lists/smart-list-evaluation";
+import type { useSmartLists } from "@/features/smart-lists/use-smart-lists";
 import type { SmartList, SmartListRules } from "@/types/media";
 import { SmartListsAccordionContent } from "../smart-lists-panel";
 

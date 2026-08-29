@@ -1,4 +1,4 @@
-import { customListCommands } from "@/features/library/custom-list-commands";
+import { customListCommands } from "@/features/custom-lists/custom-list-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { CustomList, CustomListItem, MediaSummary } from "@/types/media";
 

@@ -1,4 +1,4 @@
-import { smartListCommands } from "@/features/library/smart-list-commands";
+import { smartListCommands } from "@/features/smart-lists/smart-list-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { SmartList, SmartListRules } from "@/types/media";
 

@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import { DEFAULT_SMART_LIST_RULES } from "@/features/library/smart-list-evaluation";
+import { DEFAULT_SMART_LIST_RULES } from "@/features/smart-lists/smart-list-evaluation";
 import type { SmartList, SmartListRules } from "@/types/media";
 
 const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, status: "planned" };
@@ -24,7 +24,7 @@ const updateMock = vi.fn<(id: string, name: string, rules: SmartListRules) => Pr
 );
 const removeMock = vi.fn<(id: string) => Promise<void>>(async () => undefined);
 
-vi.mock("@/features/library/smart-list-repository", () => ({
+vi.mock("@/features/smart-lists/smart-list-repository", () => ({
   smartListRepository: {
     list: () => listMock(),
     create: (name: string, r: SmartListRules) => createMock(name, r),

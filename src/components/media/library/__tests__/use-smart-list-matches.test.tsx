@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { makeLibraryItem } from "@/shared/test-utils";
-import { DEFAULT_SMART_LIST_RULES } from "@/features/library/smart-list-evaluation";
+import { DEFAULT_SMART_LIST_RULES } from "@/features/smart-lists/smart-list-evaluation";
 import type { AvailabilitySnapshot, LibraryItem, Movie, SmartListRules, TrackedSeriesItem } from "@/types/media";
 
 const getPreferencesMock = vi.fn(

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { customListRepository } from "@/features/library/custom-list-repository";
+import { customListRepository } from "@/features/custom-lists/custom-list-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";

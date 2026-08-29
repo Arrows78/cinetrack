@@ -22,7 +22,7 @@ const addMock = vi.fn<(listId: string, mediaArg: MediaSummary) => Promise<void>>
 // assertion below is deterministic regardless of when it resolves.
 const getPreferencesMock = vi.fn(async () => ({ activeProfileId: DEFAULT_PROFILE_ID }) as never);
 
-vi.mock("@/features/library/custom-list-repository", () => ({
+vi.mock("@/features/custom-lists/custom-list-repository", () => ({
   customListRepository: {
     list: () => listMock(),
     create: (name: string, description?: string) => createMock(name, description),

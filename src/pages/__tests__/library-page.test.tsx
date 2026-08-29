@@ -259,7 +259,7 @@ const customListItemsMock = vi.fn((listId: string) => {
     isSaving: false,
   };
 });
-vi.mock("@/features/library/use-custom-lists", () => ({
+vi.mock("@/features/custom-lists/use-custom-lists", () => ({
   useCustomLists: () => customListsState,
   useCustomListItems: (listId: string) => customListItemsMock(listId),
 }));

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { ListPlus } from "lucide-react";
 import type { MediaSummary } from "@/types/media";
-import { useAddToCustomList, useCustomLists } from "@/features/library/use-custom-lists";
+import { useAddToCustomList, useCustomLists } from "@/features/custom-lists/use-custom-lists";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";

@@ -16,8 +16,8 @@ import {
   NO_SMART_LIST_SELECTED,
   SMART_LIST_PROVIDER_ANY,
   SMART_LIST_PROVIDER_MINE,
-} from "@/features/library/smart-list-evaluation";
-import type { useSmartLists } from "@/features/library/use-smart-lists";
+} from "@/features/smart-lists/smart-list-evaluation";
+import type { useSmartLists } from "@/features/smart-lists/use-smart-lists";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { PLATFORMS } from "@/shared/constants/discover";

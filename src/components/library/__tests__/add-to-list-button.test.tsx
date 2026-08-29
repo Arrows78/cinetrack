@@ -11,7 +11,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 const listsState = { data: [] as Array<{ id: string; name: string }>, isLoading: false };
 const addMock = vi.fn();
-vi.mock("@/features/library/use-custom-lists", () => ({
+vi.mock("@/features/custom-lists/use-custom-lists", () => ({
   useCustomLists: () => listsState,
   useAddToCustomList: () => ({ add: addMock, isSaving: false }),
 }));

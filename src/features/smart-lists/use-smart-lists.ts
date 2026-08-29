@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { smartListRepository } from "@/features/library/smart-list-repository";
+import { smartListRepository } from "@/features/smart-lists/smart-list-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";

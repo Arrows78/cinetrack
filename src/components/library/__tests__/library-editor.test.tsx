@@ -20,7 +20,7 @@ vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toa
 // LibraryEditor now renders AddToListButton inline (see the "within the
 // library panel" fix) — stub the lists it reads so this suite stays focused
 // on the save/remove form instead of also exercising list data.
-vi.mock("@/features/library/custom-list-repository", () => ({
+vi.mock("@/features/custom-lists/custom-list-repository", () => ({
   customListRepository: { list: () => Promise.resolve([]) },
 }));
 
