@@ -84,8 +84,91 @@ vi.mock("@/features/saved-filters/use-saved-filters", () => ({
 }));
 
 const libraryQueryMock = vi.fn();
+// useLibraryPage backs LibraryExplorer's default "browse everything" view
+// (no list/smart-list filter, no lockedMediaType) — its real implementation
+// moves filtering/sorting server-side (see src-tauri/src/library/queries.rs's
+// list_page_impl, and that file's own tests for the actual filtering
+// correctness guarantee). This mock derives its response from the same
+// libraryQueryMock() fixture every test in this file already configures, so
+// existing sort/status/favourites/search assertions stay meaningful without
+// duplicating Rust's filtering logic as a second "real" implementation —
+// it's a test double for wiring/rendering behavior, not a correctness check.
+const libraryPageQueryMock = vi.fn(
+  (filters: { mediaType?: string; status: string; favouritesOnly: boolean; search: string; sort: string }) => {
+    const source = libraryQueryMock();
+    if (source.isLoading) {
+      return {
+        data: undefined,
+        isLoading: true,
+        isError: false,
+        error: null,
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        refetch: vi.fn(),
+      };
+    }
+    if (source.isError) {
+      return {
+        data: undefined,
+        isLoading: false,
+        isError: true,
+        error: source.error,
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        refetch: source.refetch,
+      };
+    }
+
+    type SourceItem = {
+      mediaId: number;
+      mediaType: string;
+      title: string;
+      posterPath: string | null;
+      backdropPath: string | null;
+      year: number;
+      rating: number | null;
+      userRating: number | null;
+      genres: string[];
+      status: string;
+      favourite: boolean;
+      updatedAt: string;
+    };
+    const normalizedSearch = filters.search.trim().toLowerCase();
+    const items = ((source.data ?? []) as SourceItem[])
+      .filter((item) => (filters.mediaType ? item.mediaType === filters.mediaType : true))
+      .filter((item) => (filters.status === "all" ? true : item.status === filters.status))
+      .filter((item) => (filters.favouritesOnly ? item.favourite : true))
+      .filter((item) => (normalizedSearch ? item.title.toLowerCase().includes(normalizedSearch) : true))
+      .slice()
+      .sort((a, b) => {
+        if (filters.sort === "title") return a.title.localeCompare(b.title);
+        if (filters.sort === "rating") return (b.userRating ?? b.rating ?? 0) - (a.userRating ?? a.rating ?? 0);
+        return b.updatedAt.localeCompare(a.updatedAt);
+      });
+
+    return {
+      data: { pages: [{ items, nextCursor: null }] },
+      isLoading: false,
+      isError: false,
+      error: null,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      refetch: source.refetch,
+    };
+  }
+);
 vi.mock("@/features/library/use-library", () => ({
   useLibrary: () => libraryQueryMock(),
+  useLibraryPage: (filters: {
+    mediaType?: string;
+    status: string;
+    favouritesOnly: boolean;
+    search: string;
+    sort: string;
+  }) => libraryPageQueryMock(filters),
 }));
 
 vi.mock("@/features/progress/use-progress", () => ({
@@ -793,8 +876,11 @@ describe("LibraryExplorer — text search", () => {
 
     fireEvent.change(screen.getByLabelText("Search your library by title…"), { target: { value: "dun" } });
 
+    // The server-paginated search term is debounced (see DEBOUNCE_MS in
+    // library-explorer.tsx), so the filtered result lands a moment after
+    // the keystroke rather than in the same tick.
+    await waitFor(() => expect(screen.queryByText("Severance")).not.toBeInTheDocument());
     expect(screen.getByText("Dune")).toBeInTheDocument();
-    expect(screen.queryByText("Severance")).not.toBeInTheDocument();
   });
 
   it("combines the text search with other active filters using AND semantics", async () => {
@@ -814,8 +900,10 @@ describe("LibraryExplorer — text search", () => {
     fireEvent.change(screen.getByLabelText("Search your library by title…"), { target: { value: "dune" } });
     fireEvent.click(screen.getByRole("button", { name: "Watching" }));
 
+    // Same debounce note as the test above — the search half of this
+    // combined filter lands a moment after the keystroke.
+    await waitFor(() => expect(screen.queryByText("Dune")).not.toBeInTheDocument());
     expect(screen.getByText("Dune Two")).toBeInTheDocument();
-    expect(screen.queryByText("Dune")).not.toBeInTheDocument();
   });
 });
 

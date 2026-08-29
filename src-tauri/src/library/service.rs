@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 
-use super::models::{LibraryItem, LibraryPatch, MediaSummaryInput};
-use super::queries::{get_impl, has_impl, list_impl};
+use super::models::{LibraryItem, LibraryListParams, LibraryPage, LibraryPatch, MediaSummaryInput};
+use super::queries::{get_impl, has_impl, list_impl, list_page_impl};
 use super::repository::{remove_if_planned_impl, remove_impl, upsert_impl};
 use crate::database::current_profile_id;
 use crate::error::ApiError;
@@ -23,6 +23,14 @@ impl<'a> LibraryService<'a> {
     pub(super) async fn list(&self) -> Result<Vec<LibraryItem>, ApiError> {
         let profile_id = self.profile_id().await?;
         list_impl(self.pool, &profile_id).await
+    }
+
+    pub(super) async fn list_page(
+        &self,
+        params: LibraryListParams,
+    ) -> Result<LibraryPage, ApiError> {
+        let profile_id = self.profile_id().await?;
+        list_page_impl(self.pool, &profile_id, params).await
     }
 
     pub(super) async fn get(

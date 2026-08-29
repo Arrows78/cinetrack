@@ -4,6 +4,90 @@ use super::domain::LibraryStatus;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
+/// How a paginated library listing is ordered — mirrors the `sort` union
+/// already used by the frontend's (now server-side) Library filters.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum LibrarySort {
+    #[default]
+    Recent,
+    Title,
+    Rating,
+}
+
+/// Filters + cursor for a single page of `list_library_page`. `limit` is
+/// clamped server-side (see `list_page_impl`) — never trust a page size the
+/// frontend sent verbatim.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryListParams {
+    pub media_type: Option<MediaType>,
+    pub status: Option<LibraryStatus>,
+    #[serde(default)]
+    pub favourites_only: bool,
+    pub search: Option<String>,
+    #[serde(default)]
+    pub sort: LibrarySort,
+    pub cursor: Option<String>,
+    pub limit: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryPage {
+    pub items: Vec<LibraryItem>,
+    pub next_cursor: Option<String>,
+}
+
+/// Opaque keyset cursor: encodes the sort column's value plus the
+/// `(media_id, media_type)` tiebreaker from the last row of the previous
+/// page, tagged by sort mode so a cursor can never silently be replayed
+/// against a different sort (a sort change always starts a fresh
+/// `useInfiniteQuery` client-side, so this should never actually happen —
+/// the tag is a defensive check, not a real usage path).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "sort", rename_all = "camelCase")]
+pub(super) enum LibraryCursorPayload {
+    Recent {
+        updated_at: String,
+        media_id: i64,
+        media_type: String,
+    },
+    Title {
+        title: String,
+        media_id: i64,
+        media_type: String,
+    },
+    Rating {
+        rating: f64,
+        media_id: i64,
+        media_type: String,
+    },
+}
+
+impl LibraryCursorPayload {
+    pub(super) fn encode(&self) -> Result<String, ApiError> {
+        serde_json::to_string(self).map_err(|e| ApiError::internal(e.to_string()))
+    }
+
+    pub(super) fn decode(cursor: &str, expected_sort: LibrarySort) -> Result<Self, ApiError> {
+        let payload: LibraryCursorPayload = serde_json::from_str(cursor)
+            .map_err(|_| ApiError::bad_request("Invalid library page cursor"))?;
+        let matches = matches!(
+            (&payload, expected_sort),
+            (LibraryCursorPayload::Recent { .. }, LibrarySort::Recent)
+                | (LibraryCursorPayload::Title { .. }, LibrarySort::Title)
+                | (LibraryCursorPayload::Rating { .. }, LibrarySort::Rating)
+        );
+        if !matches {
+            return Err(ApiError::bad_request(
+                "Library page cursor does not match the requested sort",
+            ));
+        }
+        Ok(payload)
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryPatch {

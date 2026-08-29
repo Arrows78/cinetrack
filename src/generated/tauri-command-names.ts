@@ -11,6 +11,7 @@ export const tauriCommandNames = [
   "refresh_preferences",
   "list_history",
   "list_library",
+  "list_library_page",
   "get_library_item",
   "has_library_item",
   "save_library_item",

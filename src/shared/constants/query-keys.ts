@@ -45,6 +45,11 @@ export const queryKeys = {
     trackedSeries: (profileId: string) => ["local", "trackedSeries", profileId] as const,
     stats: (profileId: string) => ["local", "stats", profileId] as const,
     library: (profileId: string) => ["local", "library", profileId] as const,
+    // Prefix only (no filters) — invalidating this key invalidates every
+    // filter/sort variant useLibraryPage caches underneath it, since
+    // TanStack Query invalidates by key prefix, not exact match. The hook
+    // itself appends its filters to build the actual per-query key.
+    libraryPage: (profileId: string) => ["local", "libraryPage", profileId] as const,
     libraryItem: (profileId: string, mediaType: string, mediaId: number) =>
       ["local", "library", profileId, mediaType, mediaId] as const,
     profiles: ["local", "profiles"] as const,

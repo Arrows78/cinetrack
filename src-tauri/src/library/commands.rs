@@ -1,7 +1,10 @@
 use sqlx::SqlitePool;
 use tauri::State;
 
-use super::models::{LibraryItem, LibraryPatch, MediaSummaryInput};
+use super::domain::LibraryStatus;
+use super::models::{
+    LibraryItem, LibraryListParams, LibraryPage, LibraryPatch, LibrarySort, MediaSummaryInput,
+};
 use super::service::LibraryService;
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -9,6 +12,30 @@ use crate::models::MediaType;
 #[tauri::command]
 pub async fn list_library(pool: State<'_, SqlitePool>) -> Result<Vec<LibraryItem>, ApiError> {
     LibraryService::new(pool.inner()).list().await
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn list_library_page(
+    media_type: Option<MediaType>,
+    status: Option<LibraryStatus>,
+    favourites_only: bool,
+    search: Option<String>,
+    sort: LibrarySort,
+    cursor: Option<String>,
+    limit: i64,
+    pool: State<'_, SqlitePool>,
+) -> Result<LibraryPage, ApiError> {
+    let params = LibraryListParams {
+        media_type,
+        status,
+        favourites_only,
+        search,
+        sort,
+        cursor,
+        limit,
+    };
+    LibraryService::new(pool.inner()).list_page(params).await
 }
 
 #[tauri::command]

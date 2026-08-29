@@ -24,6 +24,7 @@ export function useMovieSeen(movieId: number) {
       // Marking a movie seen can auto-complete an existing library entry
       // (see auto_sync_status_impl in src-tauri/src/commands/library.rs).
       queryKeys.local.library(profileId),
+      queryKeys.local.libraryPage(profileId),
     ]
   );
 
@@ -47,6 +48,7 @@ export function episodeProgressKeys(profileId: string, seriesId: number): QueryK
     // Watching an episode can auto-start/complete an existing library entry
     // (see auto_sync_status_impl in src-tauri/src/commands/library.rs).
     queryKeys.local.library(profileId),
+    queryKeys.local.libraryPage(profileId),
   ];
 }
 

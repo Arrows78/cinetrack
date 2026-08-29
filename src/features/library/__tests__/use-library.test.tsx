@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import type { LibraryPatch } from "@/features/library/library-repository";
+import type { LibraryListParams, LibraryPage, LibraryPatch } from "@/features/library/library-repository";
 import type { LibraryItem, MediaSummary } from "@/types/media";
 
 const media: MediaSummary = {
@@ -36,10 +36,12 @@ const removeMock = vi.fn(async (mediaId: number, mediaType: string) => {
 });
 const removeIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
 const hasMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => false);
+const listPageMock = vi.fn<(params: LibraryListParams) => Promise<LibraryPage>>();
 
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     list: listMock,
+    listPage: (params: LibraryListParams) => listPageMock(params),
     get: getMock,
     save: saveMock,
     remove: removeMock,
@@ -183,5 +185,59 @@ describe("useLibraryQuickToggle", () => {
     });
 
     expect(removeMock).toHaveBeenCalledWith(7, "movie");
+  });
+});
+
+describe("useLibraryPage", () => {
+  const baseFilters = {
+    status: "all" as const,
+    favouritesOnly: false,
+    search: "",
+    sort: "recent" as const,
+  };
+  const page = (mediaId: number, nextCursor: string | null): LibraryPage => ({
+    items: [{ mediaId, mediaType: "movie" } as LibraryItem],
+    nextCursor,
+  });
+
+  beforeEach(() => {
+    listPageMock.mockReset();
+  });
+
+  it("passes an omitted status/mediaType through as undefined, not the literal 'all'", async () => {
+    listPageMock.mockResolvedValueOnce(page(1, null));
+    const { useLibraryPage } = await import("../use-library");
+    const { result } = renderHook(() => useLibraryPage(baseFilters), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(listPageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: undefined, status: undefined, cursor: undefined })
+    );
+  });
+
+  it("fetches the next page using the previous page's cursor", async () => {
+    listPageMock.mockResolvedValueOnce(page(1, "cursor-1"));
+    const { useLibraryPage } = await import("../use-library");
+    const { result } = renderHook(() => useLibraryPage(baseFilters), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.hasNextPage).toBe(true);
+
+    listPageMock.mockResolvedValueOnce(page(2, null));
+    await result.current.fetchNextPage();
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+
+    expect(listPageMock).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: "cursor-1" }));
+    expect(result.current.hasNextPage).toBe(false);
+  });
+
+  it("stays disabled and never queries when enabled is explicitly false", async () => {
+    const { useLibraryPage } = await import("../use-library");
+    const { result } = renderHook(() => useLibraryPage(baseFilters, { enabled: false }), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(listPageMock).not.toHaveBeenCalled();
   });
 });

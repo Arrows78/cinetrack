@@ -9,7 +9,7 @@ const source = (version: number, name: string, statements: string[]) =>
 
 describe("canonical migrations", () => {
   it("exposes the exact production migration version sequence", () => {
-    expect(migrations.map((migration) => migration.version)).toEqual([1, 9, 10, 11, 12, 13, 14, 15, 16]);
+    expect(migrations.map((migration) => migration.version)).toEqual([1, 9, 10, 11, 12, 13, 14, 15, 16, 17]);
     expect(migrations.every((migration) => migration.statements.length > 0)).toBe(true);
   });
 

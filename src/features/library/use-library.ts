@@ -1,13 +1,55 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { libraryRepository, type LibraryPatch } from "@/features/library/library-repository";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { libraryRepository, type LibraryPageSort, type LibraryPatch } from "@/features/library/library-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
-import type { MediaSummary } from "@/types/media";
+import type { LibraryStatus, MediaSummary, MediaType } from "@/types/media";
 
 export function useLibrary() {
   const profileId = useActiveProfileId();
   return useQuery({ queryKey: queryKeys.local.library(profileId), queryFn: () => libraryRepository.list() });
+}
+
+const LIBRARY_PAGE_SIZE = 60;
+
+export interface LibraryPageFilters {
+  mediaType?: MediaType;
+  status: LibraryStatus | "all";
+  favouritesOnly: boolean;
+  search: string;
+  sort: LibraryPageSort;
+}
+
+// Cursor-paginated, server-filtered/sorted Library listing — backs the
+// standalone /library page's default browse view (no custom-list or
+// smart-list filter active), the one place that renders an unbounded,
+// scrollable view of the whole library. See library-repository.ts's
+// listPage doc comment for why every other Library consumer stays on the
+// plain useLibrary() above instead.
+export function useLibraryPage(filters: LibraryPageFilters, options?: { enabled?: boolean }) {
+  const profileId = useActiveProfileId();
+  const status = filters.status === "all" ? undefined : filters.status;
+  const search = filters.search.trim() || undefined;
+
+  return useInfiniteQuery({
+    queryKey: [
+      ...queryKeys.local.libraryPage(profileId),
+      { mediaType: filters.mediaType, status, favouritesOnly: filters.favouritesOnly, search, sort: filters.sort },
+    ],
+    queryFn: ({ pageParam }: { pageParam?: string }) =>
+      libraryRepository.listPage({
+        mediaType: filters.mediaType,
+        status,
+        favouritesOnly: filters.favouritesOnly,
+        search,
+        sort: filters.sort,
+        cursor: pageParam,
+        limit: LIBRARY_PAGE_SIZE,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: options?.enabled ?? true,
+  });
 }
 
 export function useLibraryItem(media: MediaSummary) {
@@ -23,6 +65,7 @@ export function useLibraryItem(media: MediaSummary) {
       queryClient.setQueryData(queryKeys.local.libraryItem(profileId, media.mediaType, media.id), item);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryPage(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
         // Adding a movie to the library can flip its calendar entry from
@@ -37,6 +80,7 @@ export function useLibraryItem(media: MediaSummary) {
       queryClient.setQueryData(queryKeys.local.libraryItem(profileId, media.mediaType, media.id), null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryPage(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
@@ -62,6 +106,7 @@ export function useLibraryQuickToggle() {
   const profileId = useActiveProfileId();
   const invalidateKeys = [
     queryKeys.local.library(profileId),
+    queryKeys.local.libraryPage(profileId),
     queryKeys.local.history(profileId),
     queryKeys.local.stats(profileId),
     queryKeys.local.watchTonight(profileId),

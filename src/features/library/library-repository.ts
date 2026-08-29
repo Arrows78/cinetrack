@@ -1,8 +1,18 @@
-import { libraryCommands, type LibraryPatch } from "@/features/library/library-commands";
+import {
+  libraryCommands,
+  type LibraryListParams,
+  type LibraryPage,
+  type LibraryPatch,
+} from "@/features/library/library-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { LibraryItem, MediaSummary } from "@/types/media";
 
-export type { LibraryPatch } from "@/features/library/library-commands";
+export type {
+  LibraryPatch,
+  LibraryListParams,
+  LibraryPage,
+  LibraryPageSort,
+} from "@/features/library/library-commands";
 
 // The status/startedAt/completedAt business rules, the save transaction
 // and active-profile resolution now live in Rust (see
@@ -11,6 +21,15 @@ export type { LibraryPatch } from "@/features/library/library-commands";
 export const libraryRepository = {
   async list(): Promise<LibraryItem[]> {
     return invokeTypedCommand(libraryCommands.list);
+  },
+
+  // Cursor-paginated, server-filtered/sorted counterpart to list() — see
+  // use-library.ts's useLibraryPage for the one consumer that actually
+  // needs this (the Library page's own scrollable grid/list). Every other
+  // useLibrary() caller does a bounded aggregate over the whole (still
+  // safety-capped) array and has no reason to move to this.
+  async listPage(params: LibraryListParams): Promise<LibraryPage> {
+    return invokeTypedCommand(libraryCommands.listPage, params);
   },
 
   async get(mediaId: number, mediaType: MediaSummary["mediaType"]): Promise<LibraryItem | null> {

@@ -13,7 +13,19 @@ export type MediaGridItem = MediaSummary & { progress?: MediaCardProgress; alrea
 // track the window's scroll position instead of wrapping its own.
 const DEFAULT_LIST_CLASS_NAME = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 2xl:grid-cols-5";
 
-export function MediaGrid({ items, listClassName }: { items: MediaGridItem[]; listClassName?: string }) {
+export function MediaGrid({
+  items,
+  listClassName,
+  onEndReached,
+}: {
+  items: MediaGridItem[];
+  listClassName?: string;
+  // Server-paginated callers (see use-library.ts's useLibraryPage) pass this
+  // to fetch the next page as Virtuoso approaches the end of what's already
+  // loaded — a no-op for every other caller, which hands the whole
+  // (already-fetched) array up front.
+  onEndReached?: () => void;
+}) {
   return (
     <VirtuosoGrid
       useWindowScroll
@@ -27,6 +39,7 @@ export function MediaGrid({ items, listClassName }: { items: MediaGridItem[]; li
       initialItemCount={Math.min(items.length, 20)}
       computeItemKey={(_index, media) => `${media.mediaType}-${media.id}`}
       listClassName={listClassName ?? DEFAULT_LIST_CLASS_NAME}
+      endReached={onEndReached}
       itemContent={(_index, media) => (
         <MediaCard media={media} progress={media.progress} alreadySeen={media.alreadySeen} />
       )}

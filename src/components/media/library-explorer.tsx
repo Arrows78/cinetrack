@@ -22,10 +22,12 @@ import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useCustomListItems, useCustomLists } from "@/features/library/use-custom-lists";
-import { useLibrary } from "@/features/library/use-library";
+import { useLibrary, useLibraryPage } from "@/features/library/use-library";
 import { useSmartListMatches, useSmartLists } from "@/features/library/use-smart-lists";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { DEBOUNCE_MS } from "@/shared/constants/query";
 import type { LibraryFilterState, LibraryStatus } from "@/types/media";
 
 type StatusFilter = LibraryStatus | "all";
@@ -252,13 +254,63 @@ export function LibraryExplorer({
   // way a selected custom list already restricts by media key.
   const smartListMatches = useSmartListMatches(activeSmartList?.rules);
 
+  // Server-side cursor pagination only applies to the plain "browse
+  // everything" view: a custom-list or smart-list filter restricts to an
+  // already-bounded candidate set (the list's own items, or the smart list's
+  // matches) that's cheaper to keep filtering client-side than to thread
+  // through the server query, and lockedMediaType's "My list" tabs bucket by
+  // watch progress up front (see MovieLibrarySections/SeriesLibrarySections),
+  // which needs the whole set for that media type at once. Every one of
+  // those modes keeps using the plain (safety-capped) useLibrary() below.
+  const isServerPaginated = !lockedMediaType && listFilter === "all" && smartListFilter === "all";
+  const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS);
+  const libraryPageQuery = useLibraryPage(
+    {
+      mediaType: typeFilter === "all" ? undefined : typeFilter,
+      status: statusFilter,
+      favouritesOnly,
+      search: debouncedSearch,
+      sort,
+    },
+    { enabled: isServerPaginated }
+  );
+
+  const progressBySeries = useMemo(
+    () =>
+      new Map(
+        (trackedSeries ?? []).map((series) => [
+          series.seriesId,
+          { watched: series.watchedEpisodes, total: series.totalEpisodes, seriesStatus: series.status },
+        ])
+      ),
+    [trackedSeries]
+  );
+
+  const serverItems = useMemo<MediaGridItem[]>(() => {
+    if (!isServerPaginated) return [];
+    return (libraryPageQuery.data?.pages ?? [])
+      .flatMap((page) => page.items)
+      .map((item) => ({
+        id: item.mediaId,
+        mediaType: item.mediaType,
+        title: item.title,
+        posterPath: item.posterPath,
+        backdropPath: item.backdropPath,
+        overview: "",
+        year: item.year,
+        rating: item.userRating ?? item.rating,
+        genres: item.genres,
+        cast: [],
+        progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
+        alreadySeen: item.mediaType === "movie" && item.status === "completed",
+      }));
+  }, [isServerPaginated, libraryPageQuery.data, progressBySeries]);
+
+  const loadNextServerPage = () => {
+    if (libraryPageQuery.hasNextPage && !libraryPageQuery.isFetchingNextPage) void libraryPageQuery.fetchNextPage();
+  };
+
   const filtered = useMemo(() => {
-    const progressBySeries = new Map(
-      (trackedSeries ?? []).map((series) => [
-        series.seriesId,
-        { watched: series.watchedEpisodes, total: series.totalEpisodes, seriesStatus: series.status },
-      ])
-    );
     const libraryByKey = new Map((items ?? []).map((item) => [`${item.mediaType}-${item.mediaId}`, item]));
     const listMediaKeys =
       listFilter === "all" ? null : new Set((listItems.data ?? []).map((li) => `${li.mediaType}-${li.mediaId}`));
@@ -332,7 +384,7 @@ export function LibraryExplorer({
       .map((entry) => entry.media);
   }, [
     items,
-    trackedSeries,
+    progressBySeries,
     typeFilter,
     statusFilter,
     favouritesOnly,
@@ -422,6 +474,34 @@ export function LibraryExplorer({
       ? [{ key: "search", label: t("filters.chips.search", { value: search }), onRemove: () => setSearch("") }]
       : []),
   ];
+
+  // Shared between the server-paginated and client-filtered branches below —
+  // "library has nothing at all" vs. "these filters just don't match" reads
+  // the same way regardless of which query produced the empty result.
+  const emptyLibraryState = (
+    <EmptyState
+      icon={LibraryBig}
+      title={t("library.emptyTitle")}
+      description={t("library.emptyDesc")}
+      action={
+        <Button asChild>
+          <Link to="/search">{t("library.exploreCta")}</Link>
+        </Button>
+      }
+    />
+  );
+  const noResultsState = (
+    <EmptyState
+      icon={SearchX}
+      title={t("library.noResultsTitle")}
+      description={t("library.noResultsDesc")}
+      action={
+        <Button type="button" variant="outline" onClick={clearFilters}>
+          {t("library.clearFilters")}
+        </Button>
+      }
+    />
+  );
 
   return (
     <div className="space-y-6">
@@ -569,9 +649,25 @@ export function LibraryExplorer({
         </Accordion>
       )}
 
-      {libraryQuery.isLoading ||
-      (isFilteredToList && listItems.isLoading) ||
-      (smartListFilter !== "all" && smartListMatches.isLoading) ? (
+      {isServerPaginated ? (
+        libraryPageQuery.isLoading ? (
+          <GridSkeleton />
+        ) : libraryPageQuery.isError ? (
+          <RemoteErrorState error={libraryPageQuery.error} onRetry={() => void libraryPageQuery.refetch()} />
+        ) : serverItems.length ? (
+          viewMode === "grid" ? (
+            <MediaGrid items={serverItems} onEndReached={loadNextServerPage} />
+          ) : (
+            <MediaList items={serverItems} onEndReached={loadNextServerPage} />
+          )
+        ) : !hasAnyLibraryItems ? (
+          emptyLibraryState
+        ) : (
+          noResultsState
+        )
+      ) : libraryQuery.isLoading ||
+        (isFilteredToList && listItems.isLoading) ||
+        (smartListFilter !== "all" && smartListMatches.isLoading) ? (
         <GridSkeleton />
       ) : libraryQuery.isError ? (
         <RemoteErrorState error={libraryQuery.error} onRetry={() => void libraryQuery.refetch()} />
@@ -590,30 +686,12 @@ export function LibraryExplorer({
           <MediaList items={filtered} />
         )
       ) : !hasAnyLibraryItems ? (
-        <EmptyState
-          icon={LibraryBig}
-          title={t("library.emptyTitle")}
-          description={t("library.emptyDesc")}
-          action={
-            <Button asChild>
-              <Link to="/search">{t("library.exploreCta")}</Link>
-            </Button>
-          }
-        />
+        emptyLibraryState
       ) : (
-        <EmptyState
-          icon={SearchX}
-          title={t("library.noResultsTitle")}
-          description={t("library.noResultsDesc")}
-          action={
-            <Button type="button" variant="outline" onClick={clearFilters}>
-              {t("library.clearFilters")}
-            </Button>
-          }
-        />
+        noResultsState
       )}
 
-      {onBrowseAll && filtered.length ? (
+      {onBrowseAll && (isServerPaginated ? serverItems.length : filtered.length) ? (
         <div className="flex justify-center pt-2">
           <Button type="button" variant="outline" onClick={onBrowseAll}>
             {browseAllLabel}

@@ -13,7 +13,7 @@ pub use crate::backup::{
 pub use crate::history::list_history;
 pub use crate::integrations::{import_movie_seen, import_series_progress, tmdb_request};
 pub use crate::library::{
-    get_library_item, has_library_item, list_library, remove_library_item,
+    get_library_item, has_library_item, list_library, list_library_page, remove_library_item,
     remove_planned_library_item, save_library_item,
 };
 pub use crate::lists::{

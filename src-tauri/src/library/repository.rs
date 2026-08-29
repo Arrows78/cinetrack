@@ -7,9 +7,11 @@ use tauri::State;
 use super::commands::{get_library_item, list_library, remove_library_item, save_library_item};
 use super::domain::{LibraryStatus, auto_sync_rank};
 use super::models::{AutoSyncMedia, LibraryItem, LibraryPatch, LibraryRow, MediaSummaryInput};
+#[cfg(test)]
+use super::models::{LibraryListParams, LibrarySort};
 use super::queries::get_impl;
 #[cfg(test)]
-use super::queries::{has_impl, list_impl};
+use super::queries::{has_impl, list_impl, list_page_impl};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
@@ -463,6 +465,320 @@ mod tests {
         // for the theoretical same-id/different-type case).
         assert_eq!(items[0].media_id, 2);
         assert_eq!(items[1].media_id, 1);
+    }
+
+    async fn set_updated_at(pool: &SqlitePool, media_id: i64, updated_at: &str) {
+        sqlx::query("UPDATE library_items SET updated_at = $1 WHERE media_id = $2")
+            .bind(updated_at)
+            .bind(media_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    fn media_titled(id: i64, title: &str, rating: Option<f64>) -> MediaSummaryInput {
+        MediaSummaryInput {
+            id,
+            media_type: MediaType::Movie,
+            title: title.to_string(),
+            poster_path: None,
+            backdrop_path: None,
+            year: Some(2024),
+            rating,
+            genres: vec!["Drama".to_string()],
+        }
+    }
+
+    fn page_params(sort: LibrarySort, cursor: Option<String>, limit: i64) -> LibraryListParams {
+        LibraryListParams {
+            media_type: None,
+            status: None,
+            favourites_only: false,
+            search: None,
+            sort,
+            cursor,
+            limit,
+        }
+    }
+
+    // Every optional field on LibraryListParams (media_type, status, search,
+    // cursor) must deserialize to None when the frontend simply omits the
+    // key rather than sending it as an explicit `null` — TS callers only set
+    // the filters actually in use. `serde`'s derive gives Option<T> fields
+    // this behavior automatically without a `#[serde(default)]` attribute,
+    // but that's an easy thing for a future field addition to get wrong.
+    #[test]
+    fn library_list_params_treats_omitted_optional_keys_as_none() {
+        let params: LibraryListParams =
+            serde_json::from_str(r#"{"sort":"recent","limit":20}"#).unwrap();
+        assert_eq!(params.media_type, None);
+        assert_eq!(params.status, None);
+        assert!(!params.favourites_only);
+        assert_eq!(params.search, None);
+        assert_eq!(params.cursor, None);
+        assert_eq!(params.sort, LibrarySort::Recent);
+        assert_eq!(params.limit, 20);
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_paginates_recent_sorted_items_across_pages_via_the_cursor() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(3), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        set_updated_at(&pool, 1, "2026-01-01T00:00:00.000Z").await;
+        set_updated_at(&pool, 2, "2026-01-02T00:00:00.000Z").await;
+        set_updated_at(&pool, 3, "2026-01-03T00:00:00.000Z").await;
+
+        let first_page =
+            list_page_impl(&pool, "default", page_params(LibrarySort::Recent, None, 2))
+                .await
+                .unwrap();
+        assert_eq!(
+            first_page
+                .items
+                .iter()
+                .map(|i| i.media_id)
+                .collect::<Vec<_>>(),
+            vec![3, 2]
+        );
+        assert!(first_page.next_cursor.is_some());
+
+        let second_page = list_page_impl(
+            &pool,
+            "default",
+            page_params(LibrarySort::Recent, first_page.next_cursor, 2),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            second_page
+                .items
+                .iter()
+                .map(|i| i.media_id)
+                .collect::<Vec<_>>(),
+            vec![1]
+        );
+        assert!(second_page.next_cursor.is_none());
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_only_returns_the_requested_profiles_items() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "other")
+            .await
+            .unwrap();
+
+        let page = list_page_impl(&pool, "default", page_params(LibrarySort::Recent, None, 10))
+            .await
+            .unwrap();
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.items[0].profile_id, "default");
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_applies_type_status_favourite_and_search_filters_together() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Watching),
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                status: Some(LibraryStatus::Watching),
+                favourite: Some(false),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(3),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                media_type: MediaType::Series,
+                ..media(4)
+            },
+            LibraryPatch {
+                status: Some(LibraryStatus::Watching),
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let params = LibraryListParams {
+            media_type: Some(MediaType::Movie),
+            status: Some(LibraryStatus::Watching),
+            favourites_only: true,
+            search: Some("test".to_string()),
+            sort: LibrarySort::Recent,
+            cursor: None,
+            limit: 10,
+        };
+        let page = list_page_impl(&pool, "default", params).await.unwrap();
+
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.items[0].media_id, 1);
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_sorts_by_title_ascending_with_cursor_continuation() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media_titled(1, "Charlie", None),
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media_titled(2, "Alpha", None),
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media_titled(3, "Bravo", None),
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let mut cursor = None;
+        let mut seen = Vec::new();
+        loop {
+            let page = list_page_impl(&pool, "default", page_params(LibrarySort::Title, cursor, 1))
+                .await
+                .unwrap();
+            seen.extend(page.items.iter().map(|i| i.title.clone()));
+            cursor = page.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+        assert_eq!(seen, vec!["Alpha", "Bravo", "Charlie"]);
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_sorts_by_effective_rating_with_unrated_items_last() {
+        let pool = migrated_pool().await;
+        // Personal rating wins over the TMDB copy when both are present.
+        upsert_impl(
+            &pool,
+            media_titled(1, "TmdbOnly", Some(9.0)),
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media_titled(2, "PersonalRating", Some(5.0)),
+            LibraryPatch {
+                user_rating: Some(Some(7.0)),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media_titled(3, "Unrated", None),
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let mut cursor = None;
+        let mut seen = Vec::new();
+        loop {
+            let page = list_page_impl(
+                &pool,
+                "default",
+                page_params(LibrarySort::Rating, cursor, 1),
+            )
+            .await
+            .unwrap();
+            seen.extend(page.items.iter().map(|i| i.media_id));
+            cursor = page.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+        assert_eq!(seen, vec![1, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_rejects_a_cursor_encoded_for_a_different_sort() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        let recent_page =
+            list_page_impl(&pool, "default", page_params(LibrarySort::Recent, None, 1))
+                .await
+                .unwrap();
+        let recent_cursor = recent_page.next_cursor.expect("a second row exists");
+
+        let result = list_page_impl(
+            &pool,
+            "default",
+            page_params(LibrarySort::Title, Some(recent_cursor), 1),
+        )
+        .await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

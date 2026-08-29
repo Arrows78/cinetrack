@@ -14,6 +14,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/014-add-smart-lists.sql"),
     include_str!("migrations/015-add-saved-filters.sql"),
     include_str!("migrations/016-index-large-library-stats.sql"),
+    include_str!("migrations/017-library-cursor-pagination-indexes.sql"),
 ];
 
 #[derive(Debug)]
@@ -196,7 +197,7 @@ mod tests {
                 .iter()
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
-            vec![1, 9, 10, 11, 12, 13, 14, 15, 16]
+            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17]
         );
         assert_eq!(
             migrations
@@ -213,6 +214,7 @@ mod tests {
                 "add smart lists",
                 "add saved filters",
                 "index large-library stats queries",
+                "library cursor pagination indexes",
             ]
         );
         assert!(
@@ -270,7 +272,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 16);
+        assert_eq!(version.0, 17);
     }
 
     #[tokio::test]
@@ -290,13 +292,13 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 16);
+        assert_eq!(version.0, 17);
     }
 
     #[tokio::test]
     async fn rejects_a_database_that_claims_latest_version_but_is_missing_tables() {
         let pool = in_memory_pool().await;
-        sqlx::query("PRAGMA user_version = 16")
+        sqlx::query("PRAGMA user_version = 17")
             .execute(&pool)
             .await
             .unwrap();
@@ -446,6 +448,6 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 16);
+        assert_eq!(version.0, 17);
     }
 }
