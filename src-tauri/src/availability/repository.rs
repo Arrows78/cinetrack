@@ -149,8 +149,10 @@ pub(super) async fn get_snapshot_impl(
 // by (media_id, media_type, region) shared across every local profile (see
 // database::PROFILE_SCOPED_TABLES's own doc comment). Ordered/limited the
 // same way library.rs's `list_impl` bounds `library_items` — a defensive
-// cap against pathological growth, not a real pagination contract.
-const LIST_SNAPSHOTS_SAFETY_LIMIT: i64 = 5000;
+// cap against pathological growth, not a real pagination contract, so this
+// stays at the same magnitude as `library::queries::LIST_SAFETY_LIMIT`
+// rather than a number tuned for "typical" usage.
+const LIST_SNAPSHOTS_SAFETY_LIMIT: i64 = 200_000;
 
 pub(super) async fn list_snapshots_impl(
     pool: &SqlitePool,

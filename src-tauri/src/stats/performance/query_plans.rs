@@ -116,7 +116,7 @@ async fn library_list_query_uses_profile_updated_index() {
          SELECT * FROM library_items
          WHERE profile_id = 'default'
          ORDER BY updated_at DESC
-         LIMIT 5000",
+         LIMIT 200000",
     )
     .fetch_all(&pool)
     .await

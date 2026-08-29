@@ -27,8 +27,15 @@ The ignored benchmark seeds three in-memory fixtures:
 
 Series rows also receive synthetic tracked-series and episode-progress data so
 the Progress aggregation is exercised alongside Library and Stats. The Library
-command keeps its production 5,000-row safety cap, so the 10k fixture measures
-the real capped payload rather than bypassing that guard.
+command keeps its production `LIST_SAFETY_LIMIT` safety cap (`library/queries.rs`
+— a defensive backstop against pathological growth, not real pagination, sized
+well above any of these fixtures), so every tier here measures the real,
+untruncated full-library payload every non-`/library`-page consumer (recommendation
+rails, smart lists, custom lists, the /movies and /series "My list" tabs) actually
+reads. This is also why "Library list" latency now climbs noticeably at the
+50k tier instead of staying flat — that cost was previously invisible because
+the benchmark's own consumer read a 5,000-row truncation of it instead of the
+full set; see `docs/audit-findings.md`'s corresponding resolved entry.
 
 Each dataset gets 3 warmup iterations followed by 20 measured iterations. The
 warmups are excluded from the sample set. CineTrack records nearest-rank p50 and

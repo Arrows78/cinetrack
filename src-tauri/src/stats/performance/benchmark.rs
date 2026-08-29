@@ -154,7 +154,12 @@ async fn benchmark_iteration(pool: &SqlitePool) -> BenchmarkIteration {
 
 fn validate_iteration(iteration: &BenchmarkIteration, library_items: i64) {
     assert_eq!(iteration.monthly_activity_buckets, 12);
-    assert_eq!(iteration.library_rows, library_items.min(5_000) as usize);
+    // library::queries::LIST_SAFETY_LIMIT (200_000) is far above every scale
+    // benchmarked here (max 50_000), so `list_library` returns the whole
+    // seeded set at every tier below — no truncation to account for. If a
+    // future tier here is raised past that constant, this assertion needs
+    // to grow the same `.min(...)` guard back in, matching that constant.
+    assert_eq!(iteration.library_rows, library_items as usize);
     assert_eq!(iteration.tracked_rows, ((library_items + 4) / 5) as usize);
 }
 

@@ -6,7 +6,19 @@ use super::models::{
 use crate::error::ApiError;
 use crate::models::MediaType;
 
-const LIST_SAFETY_LIMIT: i64 = 5000;
+/// A defensive backstop against pathological growth (a corrupted DB, a
+/// runaway import loop), not a real pagination contract — every caller of
+/// `list_impl` (recommendation rails, smart list evaluation, custom lists,
+/// the /movies and /series "My list" bucketing, stats/tracking aggregates)
+/// needs the *whole* profile-scoped set for correctness, not a preview, so
+/// this must stay comfortably above any realistic single-profile library
+/// size rather than being tuned down for performance. `stats::performance`'s
+/// own benchmark seeds up to 50_000 library items and expects a full,
+/// untruncated read at that scale (see `benchmark.rs`'s `validate_iteration`)
+/// — this constant must stay above that ceiling, and the query above stays
+/// backed by `idx_library_profile_updated` (see `query_plans.rs`) so a full
+/// read at this scale is still index-driven, not a table scan.
+const LIST_SAFETY_LIMIT: i64 = 200_000;
 const PAGE_MIN_LIMIT: i64 = 1;
 const PAGE_MAX_LIMIT: i64 = 200;
 
