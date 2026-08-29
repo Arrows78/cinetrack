@@ -16,13 +16,13 @@ use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 use tauri::State;
 
 use crate::availability::{AlertRow, AvailabilityAlert, AvailabilitySnapshot, SnapshotRow};
-use crate::commands::custom_lists::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
-use crate::commands::saved_filters::{SavedFilter, SavedFilterRow};
-use crate::commands::smart_lists::{SmartList, SmartListRow};
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
 use crate::library::{LibraryItem, LibraryRow, LibraryStatus};
+use crate::lists::custom::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
+use crate::lists::saved_filters::{SavedFilter, SavedFilterRow};
+use crate::lists::smart::{SmartList, SmartListRow};
 use crate::models::MediaType;
 use crate::profiles::{ProfileRow, UserProfile};
 use crate::progress::{EpisodeProgress, TrackedSeriesItem};

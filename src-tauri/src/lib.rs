@@ -5,6 +5,7 @@ mod database;
 mod error;
 mod history;
 mod library;
+mod lists;
 mod models;
 mod preferences;
 mod profiles;
