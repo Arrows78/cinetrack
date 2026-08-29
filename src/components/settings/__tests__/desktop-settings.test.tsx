@@ -597,6 +597,7 @@ describe("DesktopSettings", () => {
       exportSummaryMock.mockResolvedValue({
         commands: [
           {
+            layer: "backend",
             command: "list_library",
             count: 10,
             errorCount: 0,
@@ -605,6 +606,7 @@ describe("DesktopSettings", () => {
             maxDurationMs: 12,
           },
           {
+            layer: "backend",
             command: "get_stats_overview",
             count: 3,
             errorCount: 1,
@@ -634,6 +636,7 @@ describe("DesktopSettings", () => {
       const summary = {
         commands: [
           {
+            layer: "backend",
             command: "list_library",
             count: 1,
             errorCount: 0,

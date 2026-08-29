@@ -772,6 +772,7 @@
     "diagnosticsTimingRefresh": "Refresh summary",
     "diagnosticsTimingCopy": "Copy as JSON",
     "diagnosticsTimingEmpty": "No timed commands recorded yet.",
+    "diagnosticsTimingLayer": "Layer",
     "diagnosticsTimingCommand": "Command",
     "diagnosticsTimingCount": "Calls",
     "diagnosticsTimingAvg": "Avg (ms)",

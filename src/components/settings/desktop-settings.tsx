@@ -309,6 +309,7 @@ export function DesktopSettings() {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-card text-muted-foreground">
                       <tr>
+                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingLayer")}</th>
                         <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCommand")}</th>
                         <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCount")}</th>
                         <th className="p-2 font-medium">{t("desktop.diagnosticsTimingAvg")}</th>
@@ -321,7 +322,8 @@ export function DesktopSettings() {
                       {[...timingSummary.commands]
                         .sort((a, b) => b.p95DurationMs - a.p95DurationMs)
                         .map((row) => (
-                          <tr key={row.command} className="border-t border-border">
+                          <tr key={`${row.layer}-${row.command}`} className="border-t border-border">
+                            <td className="p-2 font-mono">{row.layer}</td>
                             <td className="p-2 font-mono">{row.command}</td>
                             <td className="p-2">{row.count}</td>
                             <td className="p-2">{Math.round(row.avgDurationMs)}</td>

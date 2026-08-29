@@ -89,16 +89,39 @@ fn append_line(level: &str, message: &str) {
     }
 }
 
-/// Wraps a command's body with local, file-logged timing: `command=<name>
-/// duration=<ms>ms` (or `slow_command=` at warn level past
-/// `SLOW_COMMAND_THRESHOLD_MS`), `status=error` appended on failure —
-/// deliberately the exact same shape `invokeCommand()` already logs
-/// client-side (see src/shared/lib/invoke.ts), so a slow round trip can be
-/// traced to whichever side actually spent the time just by reading one
-/// file. Not a distributed trace ID: Tauri's IPC has no generic channel to
-/// thread one through every command signature without a much larger
-/// change, so command name + roughly-simultaneous timestamps are the
-/// practical correlation between the two sides' log lines.
+/// Which side of the IPC boundary wrote a given timing line — the whole
+/// point of this module's `layer=` prefix (see `timed` below). `Unknown`
+/// exists only for log lines written before this distinction existed (or
+/// any other line matching `command=`/`duration=` without a `layer=`
+/// marker) — `summarize` keeps them out of the `frontend`/`backend`
+/// buckets they were previously silently merged into rather than
+/// discarding them, so an old log file still summarizes, just under its
+/// own bucket.
+///
+/// Generates `src/generated/dto/DiagnosticsLayer.ts`, re-exported as
+/// `DiagnosticsLayer` from `src/features/desktop/diagnostics-commands.ts`.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, PartialOrd, Ord, ts_rs::TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum DiagnosticsLayer {
+    Frontend,
+    Backend,
+    Unknown,
+}
+
+/// Wraps a command's body with local, file-logged timing: `layer=backend
+/// command=<name> duration=<ms>ms` (or `slow_command=` at warn level past
+/// `SLOW_COMMAND_THRESHOLD_MS`), `status=error` appended on failure. The
+/// `layer=` prefix mirrors what `invokeCommand()` writes client-side (see
+/// src/shared/lib/invoke.ts) as `layer=frontend` — before this existed both
+/// sides wrote the exact same `command=<name> duration=<ms>ms` shape, so
+/// `summarize` below silently averaged the frontend's full round-trip time
+/// together with this function's own Rust-side execution time under one
+/// bucket per command name, which is two different measurements. Not a
+/// distributed trace ID: Tauri's IPC has no generic channel to thread one
+/// through every command signature without a much larger change, so layer +
+/// command name + roughly-simultaneous timestamps are the practical
+/// correlation between the two sides' log lines.
 pub async fn timed<T, F>(command: &str, fut: F) -> Result<T, ApiError>
 where
     F: Future<Output = Result<T, ApiError>>,
@@ -107,18 +130,22 @@ where
     let result = fut.await;
     let duration_ms = started.elapsed().as_millis();
     let status = if result.is_err() { " status=error" } else { "" };
-    let message = format!("command={command} duration={duration_ms}ms{status}");
+    let body = format!("command={command} duration={duration_ms}ms{status}");
     if duration_ms >= SLOW_COMMAND_THRESHOLD_MS {
-        append_line("warn", &format!("slow_{message}"));
+        append_line("warn", &format!("layer=backend slow_{body}"));
     } else {
-        append_line("info", &message);
+        append_line("info", &format!("layer=backend {body}"));
     }
     result
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
+/// Generates `src/generated/dto/CommandTimingSummary.ts`, re-exported as
+/// `CommandTimingSummary` from `src/features/desktop/diagnostics-commands.ts`.
+#[derive(Debug, Clone, Serialize, PartialEq, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct CommandTimingSummary {
+    pub layer: DiagnosticsLayer,
     pub command: String,
     pub count: usize,
     pub error_count: usize,
@@ -127,24 +154,44 @@ pub struct CommandTimingSummary {
     pub max_duration_ms: u64,
 }
 
-#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+/// Generates `src/generated/dto/DiagnosticsSummary.ts`, re-exported as
+/// `DiagnosticsSummary` from `src/features/desktop/diagnostics-commands.ts`.
+#[derive(Debug, Clone, Default, Serialize, PartialEq, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct DiagnosticsSummary {
     pub commands: Vec<CommandTimingSummary>,
     pub total_lines_parsed: usize,
 }
 
 struct ParsedLine {
+    layer: DiagnosticsLayer,
     command: String,
     duration_ms: u64,
     is_error: bool,
 }
 
+fn parse_layer(line: &str) -> DiagnosticsLayer {
+    let marker = "layer=";
+    let Some(start) = line.find(marker) else {
+        return DiagnosticsLayer::Unknown;
+    };
+    let rest = &line[start + marker.len()..];
+    let end = rest.find(' ').unwrap_or(rest.len());
+    match &rest[..end] {
+        "frontend" => DiagnosticsLayer::Frontend,
+        "backend" => DiagnosticsLayer::Backend,
+        _ => DiagnosticsLayer::Unknown,
+    }
+}
+
 // Parses exactly the shape `timed` (above) and invokeCommand() (TS) both
-// write: "... command=<name> duration=<n>ms[ status=error]", tolerating the
-// "slow_" prefix and either side's log level bracket. Lines that don't
-// match (any other log message) are silently skipped, not an error — this
-// is scanning a general-purpose debug log, not a dedicated metrics file.
+// write: "... layer=<side> command=<name> duration=<n>ms[ status=error]",
+// tolerating the "slow_" prefix, either side's log level bracket, and a
+// missing `layer=` marker entirely (see `DiagnosticsLayer::Unknown`).
+// Lines that don't match `command=`/`duration=` at all (any other log
+// message) are silently skipped, not an error — this is scanning a
+// general-purpose debug log, not a dedicated metrics file.
 fn parse_line(line: &str) -> Option<ParsedLine> {
     let command_marker = "command=";
     let command_start = line.find(command_marker)? + command_marker.len();
@@ -159,6 +206,7 @@ fn parse_line(line: &str) -> Option<ParsedLine> {
     let duration_ms = duration_rest[..duration_end].parse::<u64>().ok()?;
 
     Some(ParsedLine {
+        layer: parse_layer(line),
         command,
         duration_ms,
         is_error: line.contains("status=error"),
@@ -168,13 +216,13 @@ fn parse_line(line: &str) -> Option<ParsedLine> {
 pub fn summarize(log_contents: &str) -> DiagnosticsSummary {
     use std::collections::BTreeMap;
 
-    let mut by_command: BTreeMap<String, Vec<ParsedLine>> = BTreeMap::new();
+    let mut by_command: BTreeMap<(DiagnosticsLayer, String), Vec<ParsedLine>> = BTreeMap::new();
     let mut total_lines_parsed = 0;
     for line in log_contents.lines() {
         if let Some(parsed) = parse_line(line) {
             total_lines_parsed += 1;
             by_command
-                .entry(parsed.command.clone())
+                .entry((parsed.layer, parsed.command.clone()))
                 .or_default()
                 .push(parsed);
         }
@@ -182,7 +230,7 @@ pub fn summarize(log_contents: &str) -> DiagnosticsSummary {
 
     let commands = by_command
         .into_iter()
-        .map(|(command, mut entries)| {
+        .map(|((layer, command), mut entries)| {
             entries.sort_by_key(|entry| entry.duration_ms);
             let count = entries.len();
             let error_count = entries.iter().filter(|entry| entry.is_error).count();
@@ -192,6 +240,7 @@ pub fn summarize(log_contents: &str) -> DiagnosticsSummary {
             let p95_duration_ms = entries[p95_index.saturating_sub(1).min(count - 1)].duration_ms;
             let max_duration_ms = entries[count - 1].duration_ms;
             CommandTimingSummary {
+                layer,
                 command,
                 count,
                 error_count,
@@ -233,11 +282,11 @@ mod tests {
     #[test]
     fn summarize_computes_count_average_p95_and_max_per_command() {
         let log = "\
-2026-01-01T00:00:00.000Z [INFO] command=list_library duration=10ms
-2026-01-01T00:00:01.000Z [INFO] command=list_library duration=20ms
-2026-01-01T00:00:02.000Z [INFO] command=list_library duration=30ms
-2026-01-01T00:00:03.000Z [WARN] slow_command=list_library duration=250ms
-2026-01-01T00:00:04.000Z [INFO] command=save_library_item duration=5ms status=error
+2026-01-01T00:00:00.000Z [INFO] layer=backend command=list_library duration=10ms
+2026-01-01T00:00:01.000Z [INFO] layer=backend command=list_library duration=20ms
+2026-01-01T00:00:02.000Z [INFO] layer=backend command=list_library duration=30ms
+2026-01-01T00:00:03.000Z [WARN] layer=backend slow_command=list_library duration=250ms
+2026-01-01T00:00:04.000Z [INFO] layer=backend command=save_library_item duration=5ms status=error
 ";
         let summary = summarize(log);
         assert_eq!(summary.total_lines_parsed, 5);
@@ -247,6 +296,7 @@ mod tests {
             .iter()
             .find(|c| c.command == "list_library")
             .unwrap();
+        assert_eq!(library.layer, DiagnosticsLayer::Backend);
         assert_eq!(library.count, 4);
         assert_eq!(library.error_count, 0);
         assert_eq!(library.max_duration_ms, 250);
@@ -262,10 +312,53 @@ mod tests {
     }
 
     #[test]
+    fn summarize_keeps_the_same_command_on_different_layers_as_separate_entries() {
+        // Regression test for the bug this module's `layer=` prefix fixes:
+        // a frontend round-trip and this Rust command's own execution time
+        // used to write the exact same `command=<name> duration=<ms>ms`
+        // shape, so `summarize` silently averaged two different
+        // measurements together under one `list_library` bucket.
+        let log = "\
+2026-01-01T00:00:00.000Z [INFO] layer=frontend command=list_library duration=25ms
+2026-01-01T00:00:00.000Z [INFO] layer=backend command=list_library duration=17ms
+";
+        let summary = summarize(log);
+        assert_eq!(summary.commands.len(), 2);
+
+        let frontend = summary
+            .commands
+            .iter()
+            .find(|c| c.layer == DiagnosticsLayer::Frontend)
+            .unwrap();
+        assert_eq!(frontend.command, "list_library");
+        assert_eq!(frontend.max_duration_ms, 25);
+
+        let backend = summary
+            .commands
+            .iter()
+            .find(|c| c.layer == DiagnosticsLayer::Backend)
+            .unwrap();
+        assert_eq!(backend.command, "list_library");
+        assert_eq!(backend.max_duration_ms, 17);
+    }
+
+    #[test]
+    fn summarize_buckets_a_pre_layer_log_line_as_unknown_instead_of_dropping_it() {
+        // A log file written before this module had a `layer=` marker at
+        // all must still summarize, just under its own bucket rather than
+        // being silently merged into `frontend`/`backend` or discarded.
+        let log = "2026-01-01T00:00:00.000Z [INFO] command=list_library duration=10ms\n";
+        let summary = summarize(log);
+        assert_eq!(summary.total_lines_parsed, 1);
+        assert_eq!(summary.commands.len(), 1);
+        assert_eq!(summary.commands[0].layer, DiagnosticsLayer::Unknown);
+    }
+
+    #[test]
     fn summarize_ignores_unrelated_log_lines() {
         let log = "\
 2026-01-01T00:00:00.000Z [WARN] Failed to remove old backup foo.json: disk full
-2026-01-01T00:00:01.000Z [INFO] command=list_library duration=10ms
+2026-01-01T00:00:01.000Z [INFO] layer=backend command=list_library duration=10ms
 ";
         let summary = summarize(log);
         assert_eq!(summary.total_lines_parsed, 1);

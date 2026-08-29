@@ -46,10 +46,12 @@ export async function invokeCommand<T>(command: string, args?: Record<string, un
     // boundaries" section for the layers this crosses). A local,
     // file-based performance signal, not remote telemetry — see
     // src/shared/lib/logger.ts's own doc comment.
-    logger.info(`command=${command} duration=${Math.round(performance.now() - startedAt)}ms`);
+    logger.info(`layer=frontend command=${command} duration=${Math.round(performance.now() - startedAt)}ms`);
     return result;
   } catch (error) {
-    logger.info(`command=${command} duration=${Math.round(performance.now() - startedAt)}ms status=error`);
+    logger.info(
+      `layer=frontend command=${command} duration=${Math.round(performance.now() - startedAt)}ms status=error`
+    );
     throw asApiCommandError(error);
   }
 }

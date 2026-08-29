@@ -12,7 +12,15 @@ describe("diagnosticsService.exportSummary", () => {
   it("invokes export_diagnostics_summary with no args and returns its result", async () => {
     const summary: DiagnosticsSummary = {
       commands: [
-        { command: "list_library", count: 4, errorCount: 0, avgDurationMs: 5, p95DurationMs: 8, maxDurationMs: 9 },
+        {
+          layer: "backend",
+          command: "list_library",
+          count: 4,
+          errorCount: 0,
+          avgDurationMs: 5,
+          p95DurationMs: 8,
+          maxDurationMs: 9,
+        },
       ],
       totalLinesParsed: 4,
     };

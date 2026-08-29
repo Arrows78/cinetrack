@@ -772,6 +772,7 @@
     "diagnosticsTimingRefresh": "Actualiser le résumé",
     "diagnosticsTimingCopy": "Copier en JSON",
     "diagnosticsTimingEmpty": "Aucune commande chronométrée pour l'instant.",
+    "diagnosticsTimingLayer": "Couche",
     "diagnosticsTimingCommand": "Commande",
     "diagnosticsTimingCount": "Appels",
     "diagnosticsTimingAvg": "Moy. (ms)",

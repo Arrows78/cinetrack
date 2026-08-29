@@ -1,18 +1,9 @@
 import { defineCommand } from "@/shared/lib/invoke";
+import type { DiagnosticsSummary } from "@/generated/dto/DiagnosticsSummary";
 
-export interface CommandTimingSummary {
-  command: string;
-  count: number;
-  errorCount: number;
-  avgDurationMs: number;
-  p95DurationMs: number;
-  maxDurationMs: number;
-}
-
-export interface DiagnosticsSummary {
-  commands: CommandTimingSummary[];
-  totalLinesParsed: number;
-}
+export type { CommandTimingSummary } from "@/generated/dto/CommandTimingSummary";
+export type { DiagnosticsSummary } from "@/generated/dto/DiagnosticsSummary";
+export type { DiagnosticsLayer } from "@/generated/dto/DiagnosticsLayer";
 
 export const diagnosticsCommands = {
   exportSummary: defineCommand<undefined, DiagnosticsSummary>("export_diagnostics_summary"),
