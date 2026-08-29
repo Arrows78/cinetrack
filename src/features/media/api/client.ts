@@ -1,7 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
-
 import i18n from "@/i18n";
 import { env } from "@/shared/config/env";
+import { defineCommand, invokeTypedCommand } from "@/shared/lib/invoke";
 import { isTauriApp } from "@/shared/lib/platform";
 import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
@@ -33,6 +32,16 @@ interface StructuredTmdbError {
   message: string;
   status?: number;
 }
+
+type TmdbRequestArgs = {
+  path: string;
+  params: Record<string, string>;
+  token: string;
+};
+
+const tmdbCommands = {
+  request: defineCommand<TmdbRequestArgs, unknown>("tmdb_request"),
+} as const;
 
 const isStructuredTmdbError = (error: unknown): error is StructuredTmdbError =>
   typeof error === "object" &&
@@ -92,11 +101,12 @@ const fetchFromWebview = async <T>(path: string, params: Record<string, string>,
 
 const fetchFromNative = async <T>(path: string, params: Record<string, string>, bearer: string): Promise<T> => {
   try {
-    return await invoke<T>("tmdb_request", {
+    const result = await invokeTypedCommand(tmdbCommands.request, {
       path,
       params,
       token: bearer,
     });
+    return result as T;
   } catch (error) {
     throw asTmdbError(error);
   }

@@ -1,9 +1,13 @@
-import { invoke } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import i18n from "@/i18n";
+import { defineCommand, invokeTypedCommand } from "@/shared/lib/invoke";
 import { isTauriApp } from "@/shared/lib/platform";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
+
+const updaterCommands = {
+  isConfigured: defineCommand<undefined, boolean>("updater_is_configured"),
+} as const;
 
 export const updateService = {
   async checkAndInstall(onProgress?: (downloaded: number, total?: number) => void): Promise<string> {
