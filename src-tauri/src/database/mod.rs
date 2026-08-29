@@ -120,14 +120,18 @@ fn quarantine_broken_database(db_path: &Path) -> Result<String, ApiError> {
 /// to every connection the pool opens (not just the first one obtained),
 /// which is stronger than a one-off `PRAGMA` execute right after connecting.
 ///
-/// A migration failure (corrupt file, a version pragma left over from an
-/// unrelated database, an incomplete manual restore — see
-/// `migrations::verify_critical_tables`) no longer takes the whole process
-/// down with it. Instead: quarantine the broken file and retry once against
-/// a brand new one, which migrates cleanly since it starts empty. Only if
-/// *that* also fails (disk full, permissions — something no database-level
-/// recovery can route around) does this still propagate an error, exactly
-/// like before.
+/// A broken database file no longer takes the whole process down with it —
+/// but "broken" isn't one shape, so `init_pool_at` doesn't handle it one way.
+/// A failing migration statement leaves the file untouched and reports the
+/// boot as blocked (see that branch's own comment for why quarantining an
+/// otherwise-intact file here would be wrong). Missing tables despite every
+/// migration succeeding (corruption, an incomplete manual restore — see
+/// `migrations::verify_critical_tables`) is the case this file has no earlier
+/// valid state to recover to, so only *that* one quarantines the broken file
+/// and retries once against a brand new one, which migrates cleanly since it
+/// starts empty. Only if *that* also fails (disk full, permissions —
+/// something no database-level recovery can route around) does this still
+/// propagate an error, exactly like before.
 pub async fn init_pool<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Result<(SqlitePool, BootRecovery), ApiError> {
