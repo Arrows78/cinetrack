@@ -42,18 +42,18 @@ describe("invokeTypedCommand", () => {
   it("forwards a typed command definition and args through invokeCommand", async () => {
     invokeMock.mockResolvedValueOnce({ ok: true });
     const { defineCommand, invokeTypedCommand } = await import("../invoke");
-    const command = defineCommand<{ id: string }, { ok: boolean }>("typed_command");
+    const command = defineCommand<{ key: string; value: unknown }, { ok: boolean }>("update_preference");
 
-    await expect(invokeTypedCommand(command, { id: "item-1" })).resolves.toEqual({ ok: true });
-    expect(invokeMock).toHaveBeenCalledWith("typed_command", { id: "item-1" });
+    await expect(invokeTypedCommand(command, { key: "theme", value: "dark" })).resolves.toEqual({ ok: true });
+    expect(invokeMock).toHaveBeenCalledWith("update_preference", { key: "theme", value: "dark" });
   });
 
   it("supports typed commands without args", async () => {
     invokeMock.mockResolvedValueOnce(["ok"]);
     const { defineCommand, invokeTypedCommand } = await import("../invoke");
-    const command = defineCommand<undefined, string[]>("typed_command_without_args");
+    const command = defineCommand<undefined, string[]>("list_library");
 
     await expect(invokeTypedCommand(command)).resolves.toEqual(["ok"]);
-    expect(invokeMock).toHaveBeenCalledWith("typed_command_without_args", undefined);
+    expect(invokeMock).toHaveBeenCalledWith("list_library", undefined);
   });
 });
