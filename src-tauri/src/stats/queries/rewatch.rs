@@ -18,7 +18,7 @@ struct ComfortTitleRow {
 
 const COMFORT_TITLES_LIMIT: i64 = 5;
 
-pub(super) async fn get_rewatch_stats_impl(
+pub(in crate::stats) async fn get_rewatch_stats_impl(
     pool: &SqlitePool,
     profile_id: &str,
     window_start: &str,

@@ -103,7 +103,7 @@ fn milestones_for_hours(events: &[CurrentEventRow], thresholds: &[i64]) -> Vec<W
         .collect()
 }
 
-pub(super) async fn get_watch_milestones_impl(
+pub(in crate::stats) async fn get_watch_milestones_impl(
     pool: &SqlitePool,
     profile_id: &str,
 ) -> Result<Vec<WatchMilestone>, ApiError> {

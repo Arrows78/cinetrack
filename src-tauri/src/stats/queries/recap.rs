@@ -27,7 +27,7 @@ struct GenresRow {
     genres: String,
 }
 
-pub(super) async fn get_monthly_recap_impl(
+pub(in crate::stats) async fn get_monthly_recap_impl(
     pool: &SqlitePool,
     profile_id: &str,
     month: &str,

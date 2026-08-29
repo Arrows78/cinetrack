@@ -20,7 +20,7 @@ struct LibraryTotalsRow {
     completed_series: i64,
 }
 
-pub(super) async fn get_stats_overview_impl(
+pub(in crate::stats) async fn get_stats_overview_impl(
     pool: &SqlitePool,
     profile_id: &str,
     window_start: &str,
@@ -113,7 +113,7 @@ impl From<YearlyActivityRow> for YearlyActivityBucket {
     }
 }
 
-pub(super) async fn list_yearly_activity_impl(
+pub(in crate::stats) async fn list_yearly_activity_impl(
     pool: &SqlitePool,
     profile_id: &str,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {

@@ -16,7 +16,7 @@ struct RatingPeriodRow {
     count: i64,
 }
 
-pub(super) async fn get_rating_distribution_impl(
+pub(in crate::stats) async fn get_rating_distribution_impl(
     pool: &SqlitePool,
     profile_id: &str,
     window_start: &str,

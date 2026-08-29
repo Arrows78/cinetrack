@@ -2,7 +2,7 @@ use sqlx::SqlitePool;
 
 use super::models::{LibraryItem, LibraryPatch, MediaSummaryInput};
 use super::queries::{get_impl, has_impl, list_impl};
-use super::{remove_if_planned_impl, remove_impl, upsert_impl};
+use super::repository::{remove_if_planned_impl, remove_impl, upsert_impl};
 use crate::database::current_profile_id;
 use crate::error::ApiError;
 use crate::models::MediaType;
