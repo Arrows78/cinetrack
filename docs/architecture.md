@@ -116,6 +116,40 @@ The frontend surfaces this: `get_boot_recovery` (`src/features/desktop/boot-reco
 - `vitest.config.ts` pins coverage thresholds **per file**, not globally — most UI has no tests yet, which is a known, tracked gap rather than a silent regression. If you give a listed file real tests, move its threshold up with it; don't leave it stale.
 - There is currently no end-to-end test suite (no Playwright/Cypress) — only unit/component tests plus `cargo test`.
 
+## Architecture boundaries
+
+These are normative rules, not just a description of the current shape — a change that violates one of them should be treated as a bug in the change, not a precedent.
+
+**Rust — dependency direction within a domain slice:**
+
+```
+commands  →  service  →  repository / queries
+                              ↓
+                           domain
+```
+
+- `repository.rs` / `queries.rs` must never import from `commands.rs`, and must never `use tauri` outside a `#[cfg(test)]` block (the embedded command-wrapper tests are the one legitimate exception — see e.g. `library/repository.rs`'s test module). A repository that needs Tauri types has leaked an IPC concern into the persistence layer.
+- `domain.rs` (pure business rules — status transitions, ranking, validation) must never import `tauri` or `sqlx` at all. If a "domain" function needs a database connection, it isn't domain logic; it belongs in `repository.rs`.
+- Cross-domain calls go through a narrow, explicitly `pub(crate)`-exported function from the target domain's `mod.rs` (e.g. `history::add_history_item_impl`, `profiles::get_by_id_impl`), never by reaching into another domain's `repository.rs` or `service.rs` module path directly.
+
+This is enforced by the compiler, not just reviewed by convention: every `repository`/`queries`/`domain` function is `pub(super)` (visible only within its own domain module tree) unless a cross-domain caller specifically needs it, in which case it's `pub(crate)` and re-exported from that domain's `mod.rs`. A `pub(super)` function is not just discouraged from being called from another domain — Rust refuses to compile the call. `cargo check` is the boundary check here; there's no separate lint to run.
+
+**Frontend — dependency direction:**
+
+```
+pages
+  ↓
+features / product-pattern components (components/media, components/states, ...)
+  ↓
+components/ui, shared/
+```
+
+- `src/shared/**` and `src/components/ui/**` are the lowest layer: every feature and page may depend on them, but they must never import from `src/features/**` or `src/pages/**`. `src/shared/**` is generic app plumbing (query-keys, invoke wrapper, constants); `src/components/ui/**` is Alba-token primitives with zero business-domain awareness — see `CLAUDE.md`'s design-system section for the ui/product-component distinction.
+- `src/pages/**` compose features and components; nothing outside `src/pages/**` should import a page.
+- A feature should depend on another feature's public surface (its `*-repository.ts`/`use-*.ts`), not reach into an internal helper — this one is not yet lint-enforced (see below), so treat it as a rule to hold yourself to, not one the CI catches.
+
+`eslint.config.js`'s `boundaries/dependencies` rule (via `eslint-plugin-boundaries`) enforces the `shared ↛ features/pages` and `components/ui ↛ features/pages` rules as build-breaking errors — `pnpm lint` is the check. Feature-to-feature isolation is **not** currently lint-enforced: every one of the 17 `src/features/*/` directories is flat, with no existing public/private file convention to check imports against (only `media/` has a subdirectory at all). Enforcing it for real means first deciding how a feature declares its public surface — a barrel `index.ts`, a naming convention, or an explicit allow-list per feature — which is a separate follow-up, not a config tweak.
+
 ## Adding a new domain
 
 Extending the app with a 16th feature domain touches a small, fixed set of places — the cost is linear, not something that multiplies as the app grows:
