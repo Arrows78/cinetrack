@@ -23,9 +23,9 @@ describe("canonical migrations", () => {
   });
 
   it("rejects malformed metadata and empty migrations", () => {
-    expect(() => parseCanonicalMigration("-- cinetrack:name missing version\n-- cinetrack:statement\nSELECT 1")).toThrow(
-      "invalid or missing version"
-    );
+    expect(() =>
+      parseCanonicalMigration("-- cinetrack:name missing version\n-- cinetrack:statement\nSELECT 1")
+    ).toThrow("invalid or missing version");
     expect(() => parseCanonicalMigration("-- cinetrack:version 1\n-- cinetrack:statement\nSELECT 1")).toThrow(
       "has no name"
     );
@@ -35,7 +35,8 @@ describe("canonical migrations", () => {
   });
 
   it("rejects a non-increasing source sequence", () => {
-    expect(() => extractCanonicalMigrations([source(9, "later", ["SELECT 1"]), source(1, "earlier", ["SELECT 2"])]))
-      .toThrow("strictly increasing");
+    expect(() =>
+      extractCanonicalMigrations([source(9, "later", ["SELECT 1"]), source(1, "earlier", ["SELECT 2"])])
+    ).toThrow("strictly increasing");
   });
 });
