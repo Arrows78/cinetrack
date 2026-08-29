@@ -11,7 +11,7 @@ describe("canonical SQL migration sources", () => {
   it("are the exact files included by the Rust production runner", () => {
     const rustSource = readFileSync(rustSourcePath, "utf-8");
     const rustFiles = Array.from(
-      rustSource.matchAll(/include_str!\("migrations\/([^\"]+\.sql)"\)/g),
+      rustSource.matchAll(/include_str!\("migrations\/([^"]+\.sql)"\)/g),
       (match) => match[1]!
     );
     const diskFiles = readdirSync(sqlDirectory)

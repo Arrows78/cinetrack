@@ -11,57 +11,12 @@ import type { Migration } from "../migrations/types";
 
 let fakeMigration: Migration;
 
-// All real migration modules are replaced by the same controllable fake —
-// runMigrations' version gate then skips (or runs) every entry exactly like
-// the first, since they share a version, so adding a real migration in
-// 002-availability-alerts-unique.ts / 003-merge-watchlist-into-library.ts /
-// 004-add-status-to-tracked-series.ts / 005-remove-rewatching-status.ts /
-// 006-add-note-to-viewing-events.ts / 007-add-smart-lists.ts /
-// 008-add-saved-filters.ts / 009-add-performance-indexes.ts
-// doesn't leak its own SQL into these error-recovery assertions.
-vi.mock("../migrations/001-initial-schema", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/002-availability-alerts-unique", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/003-merge-watchlist-into-library", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/004-add-status-to-tracked-series", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/005-remove-rewatching-status", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/006-add-note-to-viewing-events", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/007-add-smart-lists", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/008-add-saved-filters", () => ({
-  get migration() {
-    return fakeMigration;
-  },
-}));
-vi.mock("../migrations/009-add-performance-indexes", () => ({
-  get migration() {
-    return fakeMigration;
+// The production runner consumes the canonical migration list derived from
+// the Rust SQL sources. Replace that list with one controllable migration so
+// these tests can exercise the runner's error-recovery paths in isolation.
+vi.mock("../migrations/canonical", () => ({
+  get migrations() {
+    return [fakeMigration];
   },
 }));
 

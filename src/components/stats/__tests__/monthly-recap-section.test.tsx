@@ -67,6 +67,19 @@ describe("MonthlyRecapSection", () => {
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("boom"));
   });
 
+  it("logs a non-Error recap failure", () => {
+    useMonthlyRecapMock.mockReturnValue({
+      data: undefined,
+      isError: true,
+      error: "backend unavailable",
+    });
+
+    const { container } = render(<MonthlyRecapSection />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("backend unavailable"));
+  });
+
   it("renders the recap's figures, top-rated title, favourite genre and biggest binge day", () => {
     useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
     render(<MonthlyRecapSection />);
