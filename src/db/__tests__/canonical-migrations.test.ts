@@ -1,8 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { extractCanonicalMigrations, migrations } from "../migrations/canonical";
+import { extractCanonicalMigrations, migrations, parseCanonicalMigration } from "../migrations/canonical";
 
-const runnerTail = "\nfn is_tolerable_duplicate_column";
+const source = (version: number, name: string, statements: string[]) =>
+  `-- cinetrack:version ${version}\n-- cinetrack:name ${name}\n${statements
+    .map((statement) => `-- cinetrack:statement\n${statement}`)
+    .join("\n")}`;
 
 describe("canonical migrations", () => {
   it("exposes the exact production migration version sequence", () => {
@@ -10,63 +13,29 @@ describe("canonical migrations", () => {
     expect(migrations.every((migration) => migration.statements.length > 0)).toBe(true);
   });
 
-  it("parses raw and plain Rust statement literals without splitting SQL", () => {
-    const source = `Migration {
-      version: 17,
-      name: "parser fixture",
-      statements: &[
-        r#"CREATE TABLE fixture (
-          id INTEGER PRIMARY KEY,
-          note TEXT DEFAULT ';'
-        )"#,
-        "CREATE INDEX idx_fixture_id ON fixture(id)",
-      ],
-    },
-    ];${runnerTail}`;
-
-    expect(extractCanonicalMigrations(source)).toEqual([
-      {
-        version: 17,
-        name: "parser fixture",
-        statements: [
-          "CREATE TABLE fixture (\n          id INTEGER PRIMARY KEY,\n          note TEXT DEFAULT ';'\n        )",
-          "CREATE INDEX idx_fixture_id ON fixture(id)",
-        ],
-      },
-    ]);
+  it("uses explicit statement markers instead of splitting SQL on semicolons", () => {
+    const migration = parseCanonicalMigration(source(99, "parser test", ["SELECT ';' AS value; SELECT 2"]));
+    expect(migration).toEqual({
+      version: 99,
+      name: "parser test",
+      statements: ["SELECT ';' AS value; SELECT 2"],
+    });
   });
 
-  it("rejects source without the canonical table markers", () => {
-    expect(() => extractCanonicalMigrations("pub const OTHER: &[Migration] = &[];")).toThrow(
-      "Could not locate the canonical MIGRATIONS table"
+  it("rejects malformed metadata and empty migrations", () => {
+    expect(() => parseCanonicalMigration("-- cinetrack:name missing version\n-- cinetrack:statement\nSELECT 1")).toThrow(
+      "invalid or missing version"
+    );
+    expect(() => parseCanonicalMigration("-- cinetrack:version 1\n-- cinetrack:statement\nSELECT 1")).toThrow(
+      "has no name"
+    );
+    expect(() => parseCanonicalMigration("-- cinetrack:version 1\n-- cinetrack:name empty")).toThrow(
+      "has no statements"
     );
   });
 
-  it("rejects a statements block without a Migration wrapper", () => {
-    expect(() => extractCanonicalMigrations(`statements: &["SELECT 1"]${runnerTail}`)).toThrow(
-      "Could not locate the first canonical migration block"
-    );
-  });
-
-  it("rejects malformed migration metadata", () => {
-    const source = `Migration {
-      version: invalid,
-      name: "broken",
-      statements: &["SELECT 1"],
-    },
-    ];${runnerTail}`;
-
-    expect(() => extractCanonicalMigrations(source)).toThrow("Could not parse a canonical migration block");
-  });
-
-  it("rejects a canonical migration with no SQL statements", () => {
-    const source = `Migration {
-      version: 17,
-      name: "empty",
-      statements: &[],
-    },
-    ];${runnerTail}`;
-
-    expect(() => extractCanonicalMigrations(source)).toThrow("Canonical migration 17 has no statements");
+  it("rejects a non-increasing source sequence", () => {
+    expect(() => extractCanonicalMigrations([source(9, "later", ["SELECT 1"]), source(1, "earlier", ["SELECT 2"])]))
+      .toThrow("strictly increasing");
   });
 });

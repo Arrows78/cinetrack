@@ -2,425 +2,82 @@ use sqlx::SqlitePool;
 
 use crate::error::ApiError;
 
-pub struct Migration {
-    pub version: i64,
-    pub name: &'static str,
-    pub statements: &'static [&'static str],
+const STATEMENT_MARKER: &str = "-- cinetrack:statement";
+
+const MIGRATION_SOURCES: &[&str] = &[
+    include_str!("migrations/001-initial-schema.sql"),
+    include_str!("migrations/009-availability-alerts-unique.sql"),
+    include_str!("migrations/010-merge-watchlist-into-library.sql"),
+    include_str!("migrations/011-add-status-to-tracked-series.sql"),
+    include_str!("migrations/012-remove-rewatching-status.sql"),
+    include_str!("migrations/013-add-note-to-viewing-events.sql"),
+    include_str!("migrations/014-add-smart-lists.sql"),
+    include_str!("migrations/015-add-saved-filters.sql"),
+    include_str!("migrations/016-index-large-library-stats.sql"),
+];
+
+#[derive(Debug)]
+struct Migration {
+    version: i64,
+    name: &'static str,
+    statements: Vec<&'static str>,
 }
 
-// Canonical migration source for both production and the TypeScript SQLite
-// contract tests. src/db/migrations/canonical.ts parses this table directly,
-// so SQL statements are maintained in one place only. Every data table uses
-// UUID as PRIMARY KEY (stable public
-// identifier, generated at insert time — no separate INTEGER id).
-// `created_at`/`updated_at` are ISO-8601 strings supplied by the app.
-//
-// Exceptions:
-// - `preferences`: singleton key/value store; `key` is already a stable PK.
-// - `availability_snapshots`: TTL cache keyed by (media_id, media_type, region);
-//   `checked_at` is enough temporal info, no created_at/updated_at needed.
-// - `viewing_events`: append-only; gets `created_at` only (no `updated_at`).
-// - `custom_list_items`: has business-meaningful `added_at`; gains `updated_at`
-//   (for reordering) but not redundant `created_at`.
-// IMPORTANT — version numbering: this single "initial schema" migration
-// replaces what used to be 8 incremental migrations (see git commit
-// "refactor(db): squash migrations into a single clean schema"), squashed
-// while the app had no shipped users yet. run_migrations() below skips any
-// migration whose version is <= the database's current PRAGMA user_version,
-// so a database created by that old 8-step sequence already sits at
-// user_version 8. The next migration added here MUST use version 9 or
-// higher, not version 2 — reusing an already-passed version number would
-// make it silently skip on any pre-squash install once this app ships
-// publicly. The TypeScript test runner consumes this exact table rather than
-// maintaining a second statement list.
-pub const MIGRATIONS: &[Migration] = &[
-    Migration {
-        version: 1,
-        name: "initial schema",
-        statements: &[
-            r#"CREATE TABLE profiles (
-          uuid TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          avatar TEXT,
-          supabase_user_id TEXT UNIQUE,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )"#,
-            r#"CREATE TABLE library_items (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          title TEXT NOT NULL,
-          poster_path TEXT,
-          backdrop_path TEXT,
-          year INTEGER CHECK (year IS NULL OR year > 1800),
-          rating REAL CHECK (rating IS NULL OR (rating >= 0 AND rating <= 10)),
-          genres TEXT NOT NULL DEFAULT '[]',
-          status TEXT NOT NULL DEFAULT 'planned'
-            CHECK (status IN ('planned','watching','paused','completed','dropped','rewatching')),
-          favourite INTEGER NOT NULL DEFAULT 0 CHECK (favourite IN (0,1)),
-          user_rating REAL CHECK (user_rating IS NULL OR (user_rating >= 1 AND user_rating <= 10)),
-          notes TEXT,
-          tags TEXT NOT NULL DEFAULT '[]',
-          started_at TEXT,
-          completed_at TEXT,
-          rewatch_count INTEGER NOT NULL DEFAULT 0 CHECK (rewatch_count >= 0),
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE (profile_id, media_id, media_type)
-        )"#,
-            "CREATE INDEX idx_library_profile_status ON library_items(profile_id, status, updated_at DESC)",
-            "CREATE INDEX idx_library_profile_updated ON library_items(profile_id, updated_at DESC)",
-            "CREATE INDEX idx_library_media_id ON library_items(media_id, media_type)",
-            r#"CREATE TABLE watchlist_items (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          title TEXT NOT NULL,
-          poster_path TEXT,
-          backdrop_path TEXT,
-          year INTEGER CHECK (year IS NULL OR year > 1800),
-          rating REAL CHECK (rating IS NULL OR (rating >= 0 AND rating <= 10)),
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE (profile_id, media_id, media_type)
-        )"#,
-            "CREATE INDEX idx_watchlist_items_profile_created ON watchlist_items(profile_id, created_at DESC)",
-            "CREATE INDEX idx_watchlist_media_id ON watchlist_items(media_id, media_type)",
-            r#"CREATE TABLE seen_movies (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          movie_id INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          poster_path TEXT,
-          backdrop_path TEXT,
-          watched_at TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE (profile_id, movie_id)
-        )"#,
-            "CREATE INDEX idx_seen_movies_profile_watched ON seen_movies(profile_id, watched_at DESC)",
-            "CREATE INDEX idx_seen_movies_movie_id ON seen_movies(movie_id)",
-            r#"CREATE TABLE episode_progress (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          series_id INTEGER NOT NULL,
-          episode_id INTEGER NOT NULL,
-          season_number INTEGER NOT NULL CHECK (season_number >= 0),
-          episode_number INTEGER NOT NULL CHECK (episode_number >= 0),
-          watched INTEGER NOT NULL DEFAULT 1 CHECK (watched IN (0,1)),
-          watched_at TEXT,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE (profile_id, series_id, episode_id)
-        )"#,
-            "CREATE INDEX idx_episode_progress_series_watched ON episode_progress(profile_id, series_id, watched)",
-            "CREATE INDEX idx_episode_progress_episode_id ON episode_progress(episode_id)",
-            r#"CREATE TABLE tracked_series (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          series_id INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          poster_path TEXT,
-          backdrop_path TEXT,
-          total_episodes INTEGER NOT NULL DEFAULT 0 CHECK (total_episodes >= 0),
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE (profile_id, series_id)
-        )"#,
-            "CREATE INDEX idx_tracked_series_profile_updated ON tracked_series(profile_id, updated_at DESC)",
-            "CREATE INDEX idx_tracked_series_series_id ON tracked_series(series_id)",
-            r#"CREATE TABLE viewing_events (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          title TEXT NOT NULL,
-          event_type TEXT NOT NULL CHECK (event_type IN ('watched','unwatched','rewatched')),
-          watched_at TEXT NOT NULL,
-          duration_minutes INTEGER CHECK (duration_minutes IS NULL OR duration_minutes > 0),
-          episode_id INTEGER,
-          season_number INTEGER CHECK (season_number IS NULL OR season_number >= 0),
-          episode_number INTEGER CHECK (episode_number IS NULL OR episode_number >= 0),
-          created_at TEXT NOT NULL
-        )"#,
-            "CREATE INDEX idx_viewing_events_profile_date ON viewing_events(profile_id, watched_at DESC)",
-            "CREATE INDEX idx_viewing_events_media_id ON viewing_events(media_id, media_type)",
-            r#"CREATE TABLE activity_log (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          title TEXT NOT NULL,
-          action TEXT NOT NULL CHECK (action IN (
-            'movie:watched','movie:unwatched','episode:watched','episode:unwatched',
-            'season:watched','season:unwatched','series:watched','series:unwatched',
-            'watchlist:add','watchlist:remove','library:update','list:add','list:remove'
-          )),
-          season_number INTEGER CHECK (season_number IS NULL OR season_number >= 0),
-          episode_number INTEGER CHECK (episode_number IS NULL OR episode_number >= 0),
-          episode_title TEXT,
-          metadata TEXT,
-          timestamp TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )"#,
-            "CREATE INDEX idx_activity_log_profile_timestamp ON activity_log(profile_id, timestamp DESC)",
-            "CREATE INDEX idx_activity_log_media_id ON activity_log(media_id, media_type)",
-            r#"CREATE TABLE custom_lists (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          name TEXT NOT NULL,
-          description TEXT,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )"#,
-            "CREATE INDEX idx_custom_lists_profile_updated ON custom_lists(profile_id, updated_at DESC)",
-            r#"CREATE TABLE custom_list_items (
-          uuid TEXT PRIMARY KEY,
-          list_id TEXT NOT NULL REFERENCES custom_lists(uuid) ON DELETE CASCADE,
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          title TEXT NOT NULL,
-          poster_path TEXT,
-          position INTEGER NOT NULL CHECK (position >= 0),
-          added_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE (list_id, media_id, media_type)
-        )"#,
-            "CREATE INDEX idx_custom_list_items_position ON custom_list_items(list_id, position)",
-            "CREATE INDEX idx_custom_list_items_media_id ON custom_list_items(media_id, media_type)",
-            r#"CREATE TABLE availability_alerts (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          title TEXT NOT NULL,
-          region TEXT NOT NULL,
-          provider_ids TEXT NOT NULL,
-          enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )"#,
-            "CREATE INDEX idx_availability_alerts_profile_created ON availability_alerts(profile_id, created_at DESC)",
-            "CREATE INDEX idx_availability_alerts_enabled ON availability_alerts(enabled, profile_id)",
-            r#"CREATE TABLE availability_snapshots (
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          region TEXT NOT NULL,
-          provider_ids TEXT NOT NULL,
-          checked_at TEXT NOT NULL,
-          PRIMARY KEY (media_id, media_type, region)
-        )"#,
-            r#"CREATE TABLE preferences (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )"#,
-            r#"INSERT OR IGNORE INTO profiles (uuid, name, created_at, updated_at)
-         VALUES ('default', 'Default', strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'), strftime('%Y-%m-%dT%H:%M:%S.000Z', 'now'))"#,
-        ],
-    },
-    Migration {
-        // Ported from src/db/migrations/002-availability-alerts-unique.ts.
-        // Fixes a real gap: toggle_impl read-then-wrote without a transaction,
-        // so two concurrent toggles for the same media could both insert an
-        // alert. The DELETE clears any duplicate this already produced
-        // (keeping the oldest row) before the UNIQUE index makes it
-        // impossible going forward.
-        version: 9,
-        name: "unique availability alert per profile and media",
-        statements: &[
-            r#"DELETE FROM availability_alerts
-         WHERE rowid NOT IN (
-           SELECT MIN(rowid) FROM availability_alerts GROUP BY profile_id, media_id, media_type
-         )"#,
-            "CREATE UNIQUE INDEX idx_availability_alerts_unique ON availability_alerts(profile_id, media_id, media_type)",
-        ],
-    },
-    Migration {
-        // Folds watchlist_items into library_items — the two tables had become
-        // near-duplicates (same unique key, watchlist_items a strict subset of
-        // library_items' columns) with no reconciliation between them; a
-        // `planned`-status library row already meant "to watch" everywhere else
-        // in the app (see watch-tonight-service.ts). Library always wins: a
-        // watchlist row is dropped whenever a library row already exists for the
-        // same (profile_id, media_id, media_type) — never overwrites real
-        // status/rating/notes/favourite. A watchlist-only row becomes a new
-        // `planned` library row, reusing its own uuid (safe: by construction no
-        // library row exists yet for that key, so no PK collision).
-        //
-        // Deliberately NOT touching activity_log or its CHECK constraint:
-        // existing 'watchlist:add'/'watchlist:remove' rows keep reading fine
-        // forever, and library.rs's add/remove paths now write those same two
-        // strings going forward too (see HistoryAction::LibraryAdd/LibraryRemove
-        // in history.rs, which keep the old wire strings on purpose) — only the
-        // Rust identifier changed, not the wire format, so no activity_log
-        // schema change is needed at all.
-        version: 10,
-        name: "merge watchlist_items into library_items",
-        statements: &[
-            r#"INSERT INTO library_items (
-          uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating,
-          genres, status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count,
-          created_at, updated_at
-        )
-        SELECT
-          w.uuid, w.profile_id, w.media_id, w.media_type, w.title, w.poster_path, w.backdrop_path, w.year, w.rating,
-          '[]', 'planned', 0, NULL, NULL, '[]', NULL, NULL, 0,
-          w.created_at, w.updated_at
-        FROM watchlist_items w
-        WHERE NOT EXISTS (
-          SELECT 1 FROM library_items l
-          WHERE l.profile_id = w.profile_id AND l.media_id = w.media_id AND l.media_type = w.media_type
-        )"#,
-            "DROP TABLE watchlist_items",
-        ],
-    },
-    Migration {
-        // Denormalizes the show's own TMDB production status (e.g. "Returning
-        // Series", "Ended", "Canceled") alongside total_episodes, the same way
-        // title/poster_path already are — lets the library grid tell "caught up,
-        // more episodes coming" apart from "the show itself is actually over"
-        // without an extra TMDB fetch per card. Null for rows written before
-        // this column existed, and for TV Time imports (no TMDB status in a
-        // GDPR export) — both read as "unknown", never as "ended".
-        version: 11,
-        name: "add status to tracked_series",
-        statements: &["ALTER TABLE tracked_series ADD COLUMN status TEXT"],
-    },
-    Migration {
-        // Ported verbatim from src/db/migrations/005-remove-rewatching-status.ts.
-        // SQLite can't ALTER a CHECK constraint in place — dropping 'rewatching'
-        // from library_items.status needs the standard rebuild: a new table
-        // with the narrower CHECK, every row copied across (remapping any
-        // existing 'rewatching' row to 'watching' — an audit found this status
-        // carried no behavior distinct from watching/completed; it was a
-        // selectable label only, unrelated to the separate rewatch_count field
-        // that actually powers rewatch tracking), drop the old table, rename,
-        // recreate its indexes.
-        version: 12,
-        name: "remove the rewatching library status",
-        statements: &[
-            r#"CREATE TABLE library_items_new (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          media_id INTEGER NOT NULL,
-          media_type TEXT NOT NULL CHECK (media_type IN ('movie','series')),
-          title TEXT NOT NULL,
-          poster_path TEXT,
-          backdrop_path TEXT,
-          year INTEGER CHECK (year IS NULL OR year > 1800),
-          rating REAL CHECK (rating IS NULL OR (rating >= 0 AND rating <= 10)),
-          genres TEXT NOT NULL DEFAULT '[]',
-          status TEXT NOT NULL DEFAULT 'planned'
-            CHECK (status IN ('planned','watching','paused','completed','dropped')),
-          favourite INTEGER NOT NULL DEFAULT 0 CHECK (favourite IN (0,1)),
-          user_rating REAL CHECK (user_rating IS NULL OR (user_rating >= 1 AND user_rating <= 10)),
-          notes TEXT,
-          tags TEXT NOT NULL DEFAULT '[]',
-          started_at TEXT,
-          completed_at TEXT,
-          rewatch_count INTEGER NOT NULL DEFAULT 0 CHECK (rewatch_count >= 0),
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          UNIQUE (profile_id, media_id, media_type)
-        )"#,
-            r#"INSERT INTO library_items_new
-         SELECT uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating,
-                genres, CASE WHEN status = 'rewatching' THEN 'watching' ELSE status END, favourite, user_rating,
-                notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at
-         FROM library_items"#,
-            "DROP TABLE library_items",
-            "ALTER TABLE library_items_new RENAME TO library_items",
-            "CREATE INDEX idx_library_profile_status ON library_items(profile_id, status, updated_at DESC)",
-            "CREATE INDEX idx_library_profile_updated ON library_items(profile_id, updated_at DESC)",
-            "CREATE INDEX idx_library_media_id ON library_items(media_id, media_type)",
-        ],
-    },
-    Migration {
-        // Ported verbatim from src/db/migrations/006-add-note-to-viewing-events.ts.
-        // library_items.notes is a single free-text field per title, overwritten
-        // on every edit — a rewatch replaces whatever the user wrote the first
-        // time around. This column is additive and separate: one optional note
-        // per individual watch event, so a rewatch's note doesn't erase an
-        // earlier watch's. Write-once-at-log-time (set only when the
-        // viewing_events row is first inserted, never edited afterward) — the
-        // simpler product decision for a v1, and it keeps viewing_events'
-        // existing append-only invariant intact (see this file's own top
-        // comment: "gets `created_at` only, no `updated_at`" still holds, since
-        // this column never changes after insert).
-        version: 13,
-        name: "add note to viewing_events",
-        statements: &["ALTER TABLE viewing_events ADD COLUMN note TEXT"],
-    },
-    Migration {
-        // Ported verbatim from src/db/migrations/007-add-smart-lists.ts. A
-        // smart list is a saved, named rule set evaluated live against the
-        // current library every time it's opened — never a stored/cached
-        // list of matching media ids. `rules` is a single JSON TEXT column
-        // (same pattern as library_items.genres/tags) since the rule shape
-        // is one small fixed struct, not something SQL needs to filter on —
-        // evaluation happens entirely client-side in TypeScript.
-        version: 14,
-        name: "add smart lists",
-        statements: &[
-            r#"CREATE TABLE smart_lists (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          name TEXT NOT NULL,
-          rules TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )"#,
-            "CREATE INDEX idx_smart_lists_profile_updated ON smart_lists(profile_id, updated_at DESC)",
-        ],
-    },
-    Migration {
-        // Ported verbatim from src/db/migrations/008-add-saved-filters.ts. A
-        // saved filter is a named snapshot of one page's own filter-control
-        // state (LibraryExplorer's type/status/favourites/list/sort/search,
-        // or SearchPage's scope/genre/provider) — reopening it just means
-        // "set that page's filter state to this JSON blob," entirely
-        // client-side, so this table (like smart_lists.rules) stores an
-        // opaque JSON TEXT column rather than relational columns per filter
-        // dimension. `page` distinguishes which page a row belongs to since
-        // the two pages' filter shapes are unrelated — a Library-saved
-        // filter should never show up in Search's own saved-filters list or
-        // vice versa.
-        version: 15,
-        name: "add saved filters",
-        statements: &[
-            r#"CREATE TABLE saved_filters (
-          uuid TEXT PRIMARY KEY,
-          profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE,
-          page TEXT NOT NULL,
-          name TEXT NOT NULL,
-          filters TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )"#,
-            "CREATE INDEX idx_saved_filters_profile_page_updated ON saved_filters(profile_id, page, updated_at DESC)",
-        ],
-    },
-    Migration {
-        // Stats queries repeatedly partition viewing events by media/episode,
-        // fetch one title's history in reverse chronology, filter completed
-        // series, and group current ratings. These indexes match those exact
-        // query shapes and keep the 10k-library/50k-event benchmark from
-        // regressing into avoidable temporary sorts or broad table scans.
-        version: 16,
-        name: "index large-library stats queries",
-        statements: &[
-            "CREATE INDEX idx_viewing_events_profile_media_episode_date ON viewing_events(profile_id, media_id, media_type, episode_id, watched_at DESC, created_at DESC)",
-            "CREATE INDEX idx_viewing_events_profile_media_date ON viewing_events(profile_id, media_id, media_type, watched_at DESC)",
-            "CREATE INDEX idx_library_profile_type_status_completed ON library_items(profile_id, media_type, status, completed_at ASC)",
-            "CREATE INDEX idx_library_profile_rating ON library_items(profile_id, user_rating) WHERE user_rating IS NOT NULL",
-        ],
-    },
-];
+fn parse_migration(source: &'static str) -> Result<Migration, ApiError> {
+    let header = source
+        .split_once(STATEMENT_MARKER)
+        .map(|(header, _)| header)
+        .ok_or_else(|| ApiError::internal("Migration source has no statement marker"))?;
+
+    let version = header
+        .lines()
+        .find_map(|line| line.strip_prefix("-- cinetrack:version "))
+        .ok_or_else(|| ApiError::internal("Migration source has no version header"))?
+        .parse::<i64>()
+        .map_err(|error| ApiError::internal(format!("Invalid migration version: {error}")))?;
+    let name = header
+        .lines()
+        .find_map(|line| line.strip_prefix("-- cinetrack:name "))
+        .ok_or_else(|| ApiError::internal(format!("Migration {version} has no name header")))?;
+
+    let statements: Vec<&'static str> = source
+        .split(STATEMENT_MARKER)
+        .skip(1)
+        .map(str::trim)
+        .filter(|statement| !statement.is_empty())
+        .collect();
+    if statements.is_empty() {
+        return Err(ApiError::internal(format!(
+            "Migration {version} ({name}) has no statements"
+        )));
+    }
+
+    Ok(Migration {
+        version,
+        name,
+        statements,
+    })
+}
+
+fn migrations() -> Result<Vec<Migration>, ApiError> {
+    let migrations: Vec<Migration> = MIGRATION_SOURCES
+        .iter()
+        .map(|source| parse_migration(source))
+        .collect::<Result<_, _>>()?;
+
+    let mut previous = 0;
+    for migration in &migrations {
+        if migration.version <= previous {
+            return Err(ApiError::internal(format!(
+                "Migration versions must strictly increase: {} follows {previous}",
+                migration.version
+            )));
+        }
+        previous = migration.version;
+    }
+
+    Ok(migrations)
+}
 
 fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
     let is_alter_table = statement.trim_start().starts_with("ALTER TABLE");
@@ -431,11 +88,6 @@ fn is_tolerable_duplicate_column(statement: &str, error: &sqlx::Error) -> bool {
     is_alter_table && mentions_duplicate_column
 }
 
-/// Every table the schema is expected to have: `PROFILE_SCOPED_TABLES` plus
-/// the tables that aren't scoped by a direct `profile_id` column —
-/// `profiles` itself (what those tables reference), `custom_list_items`
-/// (scoped only transitively via `custom_lists`), and the two
-/// global/cache tables `preferences` and `availability_snapshots`.
 fn expected_tables() -> Vec<&'static str> {
     let mut tables: Vec<&'static str> = super::PROFILE_SCOPED_TABLES.to_vec();
     tables.extend([
@@ -447,13 +99,6 @@ fn expected_tables() -> Vec<&'static str> {
     tables
 }
 
-/// Catches a database whose PRAGMA user_version claims every migration
-/// already ran but that's actually missing one or more expected tables — a
-/// corrupted file, a version pragma left over from an unrelated database,
-/// or an incomplete manual restore. Without this, run_migrations would
-/// skip every migration (version already at the latest) and the real
-/// problem would only surface much later, as a confusing "no such table"
-/// error from whichever command happens to run first.
 pub(crate) async fn verify_critical_tables(pool: &SqlitePool) -> Result<(), ApiError> {
     let existing: Vec<String> = sqlx::query_scalar(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -477,22 +122,6 @@ pub(crate) async fn verify_critical_tables(pool: &SqlitePool) -> Result<(), ApiE
     Ok(())
 }
 
-/// Version-gated migration runner, ported from src/db/migrations/index.ts so
-/// it behaves identically against databases the old TypeScript runner
-/// already created (same `PRAGMA user_version` bookkeeping, same tolerance
-/// for `duplicate column` errors on `ALTER TABLE`). On an existing database
-/// already at the latest version this is a no-op.
-///
-/// Split into `apply_pending_migrations` + `verify_critical_tables` (this is
-/// just the two chained together) so `database::mod::init_pool_at` can react
-/// differently to each: a migration statement failing is almost always an
-/// app-code bug, and every migration before it already committed, so the
-/// file is left at a valid prior schema version, untouched by the failure —
-/// very different from `verify_critical_tables` failing, which means the
-/// file itself looks broken despite claiming to be fully migrated. Treating
-/// both the same (the old behavior) meant a bad migration statement could
-/// quarantine and replace a perfectly intact database, which looks like
-/// total data loss for what's really a fixable app problem.
 pub async fn run_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
     apply_pending_migrations(pool).await?;
     verify_critical_tables(pool).await
@@ -505,17 +134,14 @@ pub(crate) async fn apply_pending_migrations(pool: &SqlitePool) -> Result<(), Ap
         .map_err(ApiError::from)?;
     let mut current_version = row.0;
 
-    for migration in MIGRATIONS {
+    for migration in migrations()? {
         if migration.version <= current_version {
             continue;
         }
 
         let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
-        for statement in migration.statements {
-            // `statement` is a `&'static str` literal from the fixed MIGRATIONS
-            // table below, never user input — dereferencing keeps it as such
-            // rather than the `&&'static str` iteration produces.
+        for statement in &migration.statements {
             if let Err(error) = sqlx::query(*statement).execute(&mut *tx).await
                 && !is_tolerable_duplicate_column(statement, &error)
             {
@@ -554,20 +180,45 @@ mod tests {
             .expect("failed to open in-memory sqlite pool")
     }
 
-    #[tokio::test]
-    async fn versions_are_unique_and_ascending() {
-        let mut previous = 0;
-        for migration in MIGRATIONS {
-            assert!(
-                migration.version > previous,
-                "migration versions must strictly increase"
-            );
-            assert!(
-                !migration.statements.is_empty(),
-                "migration must have statements"
-            );
-            previous = migration.version;
-        }
+    #[test]
+    fn canonical_sources_preserve_the_migration_sequence() {
+        let migrations = migrations().unwrap();
+        assert_eq!(
+            migrations
+                .iter()
+                .map(|migration| migration.version)
+                .collect::<Vec<_>>(),
+            vec![1, 9, 10, 11, 12, 13, 14, 15, 16]
+        );
+        assert_eq!(
+            migrations
+                .iter()
+                .map(|migration| migration.name)
+                .collect::<Vec<_>>(),
+            vec![
+                "initial schema",
+                "unique availability alert per profile and media",
+                "merge watchlist_items into library_items",
+                "add status to tracked_series",
+                "remove the rewatching library status",
+                "add note to viewing_events",
+                "add smart lists",
+                "add saved filters",
+                "index large-library stats queries",
+            ]
+        );
+        assert!(migrations
+            .iter()
+            .all(|migration| !migration.statements.is_empty()));
+    }
+
+    #[test]
+    fn parser_never_splits_sql_on_semicolons() {
+        let migration = parse_migration(
+            "-- cinetrack:version 99\n-- cinetrack:name parser test\n-- cinetrack:statement\nSELECT ';' AS value; SELECT 2",
+        )
+        .unwrap();
+        assert_eq!(migration.statements, vec!["SELECT ';' AS value; SELECT 2"]);
     }
 
     #[tokio::test]
@@ -584,42 +235,17 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, MIGRATIONS.last().unwrap().version);
+        assert_eq!(version.0, migrations().unwrap().last().unwrap().version);
 
-        let mut tables: Vec<String> = sqlx::query_scalar(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        let existing: Vec<String> = sqlx::query_scalar(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
         )
         .fetch_all(&pool)
         .await
         .unwrap();
-        tables.sort();
-
-        assert_eq!(
-            tables,
-            vec![
-                "activity_log",
-                "availability_alerts",
-                "availability_snapshots",
-                "custom_list_items",
-                "custom_lists",
-                "episode_progress",
-                "library_items",
-                "preferences",
-                "profiles",
-                "saved_filters",
-                "seen_movies",
-                "smart_lists",
-                "tracked_series",
-                "viewing_events",
-            ]
-        );
-
-        let default_profile: (String,) =
-            sqlx::query_as("SELECT name FROM profiles WHERE uuid = 'default'")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
-        assert_eq!(default_profile.0, "Default");
+        for table in expected_tables() {
+            assert!(existing.iter().any(|name| name == table), "missing table {table}");
+        }
     }
 
     #[tokio::test]
@@ -627,23 +253,18 @@ mod tests {
         let pool = in_memory_pool().await;
         run_migrations(&pool).await.unwrap();
         run_migrations(&pool).await.unwrap();
-
         let version: (i64,) = sqlx::query_as("PRAGMA user_version")
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, MIGRATIONS.last().unwrap().version);
+        assert_eq!(version.0, 16);
     }
 
     #[tokio::test]
     async fn skips_migrations_already_applied_by_the_typescript_runner() {
         let pool = in_memory_pool().await;
-        // Simulate an existing database where the old TS runner already
-        // created every table and bumped user_version to 1 — running
-        // migrations must not attempt to re-create them (that would error,
-        // since the tables already exist), only apply the migrations still
-        // ahead of that version (14, here).
-        for statement in MIGRATIONS[0].statements {
+        let migrations = migrations().unwrap();
+        for statement in &migrations[0].statements {
             sqlx::query(*statement).execute(&pool).await.unwrap();
         }
         sqlx::query("PRAGMA user_version = 1")
@@ -652,27 +273,20 @@ mod tests {
             .unwrap();
 
         run_migrations(&pool).await.unwrap();
-
         let version: (i64,) = sqlx::query_as("PRAGMA user_version")
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, MIGRATIONS.last().unwrap().version);
+        assert_eq!(version.0, 16);
     }
 
     #[tokio::test]
-    async fn rejects_a_database_that_reports_the_latest_version_but_is_missing_tables() {
+    async fn rejects_a_database_that_claims_latest_version_but_is_missing_tables() {
         let pool = in_memory_pool().await;
-        // Simulates a corrupted file, a version pragma copied from an
-        // unrelated database, or a restore that didn't finish: the pragma
-        // claims every migration already ran, but no table was ever
-        // created. Without verify_critical_tables this would silently
-        // skip every migration and proceed with a schema-less database.
-        sqlx::query("PRAGMA user_version = 10")
+        sqlx::query("PRAGMA user_version = 16")
             .execute(&pool)
             .await
             .unwrap();
-
         assert!(run_migrations(&pool).await.is_err());
     }
 
@@ -686,16 +300,14 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         let orphan_insert = sqlx::query(
-            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
-             VALUES ('a', 'missing-profile', 1, 'movie', 'Title', 'now', 'now')",
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)\n             VALUES ('a', 'missing-profile', 1, 'movie', 'Title', 'now', 'now')",
         )
         .execute(&pool)
         .await;
         assert!(orphan_insert.is_err());
 
         let bad_media_type = sqlx::query(
-            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
-             VALUES ('a', 'default', 1, 'song', 'Title', 'now', 'now')",
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)\n             VALUES ('a', 'default', 1, 'song', 'Title', 'now', 'now')",
         )
         .execute(&pool)
         .await;
@@ -710,8 +322,8 @@ mod tests {
             .await
             .unwrap();
 
-        // Simulate a pre-merge database at version 1 (has both tables).
-        for statement in MIGRATIONS[0].statements {
+        let migrations = migrations().unwrap();
+        for statement in &migrations[0].statements {
             sqlx::query(*statement).execute(&pool).await.unwrap();
         }
         sqlx::query("PRAGMA user_version = 1")
@@ -719,29 +331,33 @@ mod tests {
             .await
             .unwrap();
 
-        // A library row with real progress AND a colliding watchlist row for
-        // the same title — library must win, watchlist row must be dropped.
         sqlx::query(
-            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, favourite, created_at, updated_at)
-             VALUES ('lib-1', 'default', 1, 'movie', 'Already tracked', 'watching', 1, 'now', 'now')",
-        ).execute(&pool).await.unwrap();
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, favourite, created_at, updated_at)\n             VALUES ('lib-1', 'default', 1, 'movie', 'Already tracked', 'watching', 1, 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
         sqlx::query(
-            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
-             VALUES ('wl-1', 'default', 1, 'movie', 'Stale copy', 'now', 'now')",
-        ).execute(&pool).await.unwrap();
-        // A watchlist-only row — must become a new planned library row.
+            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)\n             VALUES ('wl-1', 'default', 1, 'movie', 'Stale copy', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
         sqlx::query(
-            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, year, rating, created_at, updated_at)
-             VALUES ('wl-2', 'default', 2, 'movie', 'To watch', 2020, 7.5, 'now', 'now')",
-        ).execute(&pool).await.unwrap();
+            "INSERT INTO watchlist_items (uuid, profile_id, media_id, media_type, title, year, rating, created_at, updated_at)\n             VALUES ('wl-2', 'default', 2, 'movie', 'To watch', 2020, 7.5, 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         run_migrations(&pool).await.unwrap();
 
-        let existing: (String, String, bool) =
-            sqlx::query_as("SELECT title, status, favourite FROM library_items WHERE media_id = 1")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let existing: (String, String, bool) = sqlx::query_as(
+            "SELECT title, status, favourite FROM library_items WHERE media_id = 1",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(
             existing,
             ("Already tracked".to_string(), "watching".to_string(), true)
@@ -773,8 +389,7 @@ mod tests {
         run_migrations(&pool).await.unwrap();
 
         sqlx::query(
-            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
-             VALUES ('item-1', 'default', 1, 'movie', 'Title', 'now', 'now')",
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)\n             VALUES ('item-1', 'default', 1, 'movie', 'Title', 'now', 'now')",
         )
         .execute(&pool)
         .await
@@ -795,16 +410,9 @@ mod tests {
     #[tokio::test]
     async fn tolerates_a_duplicate_column_error_left_by_the_old_ts_runner() {
         let pool = in_memory_pool().await;
-        // Build up the schema through migration 10 for real, then apply
-        // migration 11's own statement (`ALTER TABLE tracked_series ADD
-        // COLUMN status TEXT`) directly, out of band — simulating a database
-        // the old TypeScript runner already migrated — without bumping
-        // `user_version` past 10. `apply_pending_migrations` will attempt
-        // migration 11 again, hit a real "duplicate column" error, and must
-        // tolerate it (see `is_tolerable_duplicate_column`) rather than
-        // treat it as a genuine failure.
-        for migration in MIGRATIONS.iter().filter(|m| m.version <= 10) {
-            for statement in migration.statements {
+        let migrations = migrations().unwrap();
+        for migration in migrations.iter().filter(|migration| migration.version <= 10) {
+            for statement in &migration.statements {
                 sqlx::query(*statement).execute(&pool).await.unwrap();
             }
         }
@@ -823,7 +431,6 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        let latest_version = MIGRATIONS.iter().map(|m| m.version).max().unwrap();
-        assert_eq!(version.0, latest_version);
+        assert_eq!(version.0, 16);
     }
 }
