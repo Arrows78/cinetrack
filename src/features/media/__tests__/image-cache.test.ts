@@ -7,7 +7,7 @@ const META_KEY = "cinetrack.image-cache.meta.v1";
 const LIMIT = 250;
 
 const loggerWarnMock = vi.fn();
-vi.mock("@/features/diagnostics/logger", () => ({
+vi.mock("@/shared/lib/logger", () => ({
   logger: { info: vi.fn(), warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn() },
 }));
 

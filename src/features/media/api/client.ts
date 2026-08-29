@@ -4,6 +4,7 @@ import i18n from "@/i18n";
 import { env } from "@/shared/config/env";
 import { isTauriApp } from "@/shared/lib/platform";
 import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import { tokenVault } from "@/features/desktop/token-vault";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -116,12 +117,33 @@ export async function tmdbFetch<T>(path: string, params?: Record<string, string 
     throw new ApiConfigurationError(i18n.t("errors.tmdbNoToken"));
   }
 
+  // Timed from here, not from the top of this function — token-vault setup
+  // is one-time overhead unrelated to this specific request's latency. No
+  // `cache=` marker: there's no response cache for TMDB JSON payloads in
+  // this codebase to report on (TanStack Query's own cache is opaque from
+  // here, and image-cache.ts is unrelated — it only covers poster/backdrop
+  // bytes, not API responses), so a cache marker would just be fabricated.
+  const startedAt = performance.now();
+  const logDuration = (status?: "error") => {
+    const duration = Math.round(performance.now() - startedAt);
+    logger.info(`tmdb=${path} duration=${duration}ms${status ? ` status=${status}` : ""}`);
+  };
+
   if (!isTauriApp()) {
-    return fetchFromWebview<T>(path, cleanParams, bearer);
+    try {
+      const result = await fetchFromWebview<T>(path, cleanParams, bearer);
+      logDuration();
+      return result;
+    } catch (error) {
+      logDuration("error");
+      throw error;
+    }
   }
 
   try {
-    return await fetchFromNative<T>(path, cleanParams, bearer);
+    const result = await fetchFromNative<T>(path, cleanParams, bearer);
+    logDuration();
+    return result;
   } catch (error) {
     const nativeError = asTmdbError(error);
 
@@ -129,6 +151,7 @@ export async function tmdbFetch<T>(path: string, params?: Record<string, string 
       tokenVault.lock();
     }
 
+    logDuration("error");
     throw nativeError;
   }
 }

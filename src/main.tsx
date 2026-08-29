@@ -1,3 +1,7 @@
+// Imported first, before anything else in this file, so its module-level
+// timestamp is as close as possible to "the app started loading" — see
+// startup-timing.ts's own doc comment.
+import "@/shared/lib/startup-timing";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";

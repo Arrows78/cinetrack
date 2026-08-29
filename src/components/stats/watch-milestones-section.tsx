@@ -9,7 +9,7 @@ import { Tile } from "@/components/ui/tile";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate } from "@/shared/utils/format";
 import { cn } from "@/shared/lib/cn";

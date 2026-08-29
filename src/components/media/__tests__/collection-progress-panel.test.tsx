@@ -17,7 +17,7 @@ vi.mock("@/features/library/use-library", () => ({
   useLibraryQuickToggle: () => ({ addPlanned: addPlannedMock, isSaving: false }),
 }));
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
-vi.mock("@/features/diagnostics/logger", () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
+vi.mock("@/shared/lib/logger", () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
 vi.mock("@/components/media/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; title: string }> }) => (
     <div data-testid="grid">

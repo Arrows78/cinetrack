@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 
 export function RootLayout() {
   return <AppShell />;

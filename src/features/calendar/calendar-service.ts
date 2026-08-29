@@ -2,7 +2,7 @@ import { addDays, endOfDay, isAfter, isBefore, parseISO, startOfDay } from "date
 import { queryClient } from "@/app/query-client";
 import { mediaRepository } from "@/features/media/media-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_1_HOUR, STALE_5_MIN } from "@/shared/constants/query";

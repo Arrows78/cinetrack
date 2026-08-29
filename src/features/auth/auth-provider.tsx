@@ -12,7 +12,7 @@ import {
   type EmailOtpRequest,
   type EmailOtpVerification,
 } from "@/features/auth/auth-context";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 
 interface AuthErrorLike {

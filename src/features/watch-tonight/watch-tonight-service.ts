@@ -1,7 +1,7 @@
 import { libraryRepository } from "@/features/library/library-repository";
 import { filterHiddenIfWatched } from "@/features/library/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import type { LibraryItem, MediaSummary, MediaType, Movie, Series } from "@/types/media";
 
 export interface WatchTonightFilters {

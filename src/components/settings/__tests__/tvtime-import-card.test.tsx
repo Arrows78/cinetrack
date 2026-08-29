@@ -14,7 +14,7 @@ const toastMock = vi.fn();
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
 const loggerWarnMock = vi.fn();
-vi.mock("@/features/diagnostics/logger", () => ({ logger: { warn: (...args: unknown[]) => loggerWarnMock(...args) } }));
+vi.mock("@/shared/lib/logger", () => ({ logger: { warn: (...args: unknown[]) => loggerWarnMock(...args) } }));
 
 const applyTvTimeImportMock = vi.fn();
 vi.mock("@/features/tvtime/tvtime-import-service", async (importOriginal) => {

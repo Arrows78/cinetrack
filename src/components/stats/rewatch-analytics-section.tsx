@@ -5,7 +5,7 @@ import { useRewatchStats } from "@/features/stats/use-stats";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { ActivityBarChart } from "@/components/media/activity-bar-chart";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 
 /**
  * Rewatch analytics panel — builds beyond the existing "most rewatched"

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import type { TauriCommandName } from "@/generated/tauri-command-names";
+import { logger } from "@/shared/lib/logger";
 import { errorMessage } from "@/shared/lib/errors";
 
 // Shape of the Err(ApiError) every migrated Rust command serializes over IPC
@@ -36,9 +37,19 @@ const asApiCommandError = (error: unknown): ApiCommandError => {
 
 /** Thin wrapper over `invoke()` shared by every repository backed by a Rust command. */
 export async function invokeCommand<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const startedAt = performance.now();
   try {
-    return await invoke<T>(command, args);
+    const result = await invoke<T>(command, args);
+    // Round-trip time as observed from the caller — includes IPC
+    // serialization and the full Rust-side command/service/SQL chain, not
+    // just the SQL itself (see docs/architecture.md's "Architecture
+    // boundaries" section for the layers this crosses). A local,
+    // file-based performance signal, not remote telemetry — see
+    // src/shared/lib/logger.ts's own doc comment.
+    logger.info(`command=${command} duration=${Math.round(performance.now() - startedAt)}ms`);
+    return result;
   } catch (error) {
+    logger.info(`command=${command} duration=${Math.round(performance.now() - startedAt)}ms status=error`);
     throw asApiCommandError(error);
   }
 }

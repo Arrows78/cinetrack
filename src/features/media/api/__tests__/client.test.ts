@@ -75,7 +75,12 @@ describe("tmdbFetch", () => {
 
     await tmdbFetch("/movie/550");
 
-    expect(order).toEqual(["initialize", "getToken", "isTauriApp"]);
+    // The second "isTauriApp" isn't tmdbFetch's own transport-branch check
+    // (already recorded) — it's logger.info()'s own internal isTauriApp()
+    // guard, fired when tmdbFetch logs the request's duration after the
+    // webview fetch resolves. Both mocked functions share the same
+    // `@/shared/lib/platform` module, so this order array sees both.
+    expect(order).toEqual(["initialize", "getToken", "isTauriApp", "isTauriApp"]);
   });
 
   describe("webview transport (outside Tauri)", () => {

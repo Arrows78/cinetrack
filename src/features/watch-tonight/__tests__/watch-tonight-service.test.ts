@@ -25,7 +25,7 @@ vi.mock("@/features/media/media-repository", () => ({
   },
 }));
 
-vi.mock("@/features/diagnostics/logger", () => ({
+vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: mocks.loggerWarn },
 }));
 

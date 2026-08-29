@@ -12,19 +12,37 @@ import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate
 import { availabilityMonitor } from "@/features/availability/availability-monitor";
 import { desktopService } from "@/features/desktop/desktop-service";
 import { maintenanceService } from "@/features/backup/maintenance-service";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { trackingService } from "@/features/tracking/tracking-service";
 import { notificationService } from "@/features/desktop/notification-service";
 import type { BootRecovery } from "@/features/desktop/boot-recovery-repository";
 import { errorMessage } from "@/shared/lib/errors";
 import { isTauriApp } from "@/shared/lib/platform";
+import { appBootStartedAt } from "@/shared/lib/startup-timing";
 import { STALE_6_HOURS, TOOLTIP_DELAY_MS } from "@/shared/constants/query";
+
+// Module-level, not component state: React StrictMode intentionally mounts
+// this component's effect twice in dev (mount -> cleanup -> mount again) —
+// without this guard, "startup.total" would be logged twice, the second
+// time as a near-instant remount rather than the app's real boot time.
+let startupLogged = false;
 
 export function App() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (!startupLogged) {
+      startupLogged = true;
+      // App only ever mounts once BootRecoveryGate and AuthRoot (both above
+      // it in main.tsx) have let real content through — this is "the app
+      // is up," not just "React committed something," which is the whole
+      // point of this measurement. Covers JS boot only: startup.database
+      // (Rust-side pool init/migrations) isn't part of this number — see
+      // the P1.2 discussion in the session this was added.
+      logger.info(`startup.total duration=${Math.round(performance.now() - appBootStartedAt)}ms`);
+    }
+
     // Nothing below reaches SQLite (or any native Tauri capability) without
     // the Tauri webview. The rest of the UI still renders in a plain browser
     // tab (see BrowserPreviewBanner) for layout/styling work, but there's no
