@@ -8,7 +8,7 @@ use crate::error::ApiError;
 /// reqwest::Client wraps a connection pool internally — building a fresh one
 /// per call (the previous behavior) threw away keep-alive connections and
 /// paid the TLS handshake cost on every single TMDB request.
-fn http_client() -> &'static reqwest::Client {
+pub(super) fn http_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         reqwest::Client::builder()
@@ -21,13 +21,13 @@ fn http_client() -> &'static reqwest::Client {
 
 const MAX_ATTEMPTS: u32 = 3;
 const RETRY_BASE_DELAY: Duration = Duration::from_millis(250);
-const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
+pub(super) const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
 
 /// The frontend controls `path`, but it still crosses the IPC boundary, so it
 /// is validated as untrusted input: it must stay inside the TMDB v3 API and
 /// cannot smuggle a traversal segment, an absolute URL, or a query/fragment
 /// that would break out of the `format!`-built URL.
-fn is_valid_tmdb_path(path: &str) -> bool {
+pub(super) fn is_valid_tmdb_path(path: &str) -> bool {
     path.starts_with('/')
         && !path.contains("..")
         && !path.contains("://")
@@ -38,9 +38,9 @@ fn is_valid_tmdb_path(path: &str) -> bool {
 /// The base-URL-parameterized core of `tmdb_request` — split out so tests can
 /// point it at a local mock server instead of the real TMDB API, the same
 /// `_impl` split this codebase's command layer already uses everywhere else
-/// for the SQLite pool (see any commands/*.rs file), just for an HTTP
-/// dependency instead of a database one.
-async fn tmdb_request_impl(
+/// for the SQLite pool, just for an HTTP dependency instead of a database
+/// one.
+pub(super) async fn tmdb_request_impl(
     base_url: &str,
     client: &reqwest::Client,
     path: &str,
@@ -98,19 +98,6 @@ async fn tmdb_request_impl(
     }
 
     Err(last_error)
-}
-
-#[tauri::command]
-pub async fn tmdb_request(
-    path: String,
-    params: HashMap<String, String>,
-    token: String,
-) -> Result<Value, ApiError> {
-    if !is_valid_tmdb_path(&path) {
-        return Err(ApiError::bad_request("Invalid TMDB path"));
-    }
-
-    tmdb_request_impl(TMDB_BASE_URL, http_client(), &path, &params, &token).await
 }
 
 #[cfg(test)]
@@ -257,19 +244,6 @@ mod tests {
         .unwrap_err();
 
         assert_eq!(error.status, Some(503));
-    }
-
-    #[tokio::test]
-    async fn tmdb_request_command_rejects_an_invalid_path_before_making_any_request() {
-        // Exercises the `tmdb_request` command wrapper's own validation
-        // branch directly — without this early return, the real
-        // `http_client()` (a genuine reqwest::Client pointed at the real
-        // TMDB API) would be reached, which a unit test must never do.
-        let error = tmdb_request("movie/550".to_string(), HashMap::new(), "token".to_string())
-            .await
-            .unwrap_err();
-
-        assert_eq!(error.status, Some(400));
     }
 
     #[tokio::test]

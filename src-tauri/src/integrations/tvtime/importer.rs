@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use sqlx::SqlitePool;
 
-use crate::commands::macros::profile_scoped_command;
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
@@ -45,7 +44,7 @@ pub struct ImportableMovie {
 /// episode/season/series toggles) instead of duplicating it. Returns the
 /// number of episodes actually inserted — already-watched ones are skipped,
 /// so a re-import is idempotent.
-async fn import_series_progress_impl(
+pub(super) async fn import_series_progress_impl(
     pool: &SqlitePool,
     profile_id: &str,
     series: SeriesInput,
@@ -82,7 +81,7 @@ async fn import_series_progress_impl(
     .await
 }
 
-async fn import_movie_seen_impl(
+pub(super) async fn import_movie_seen_impl(
     pool: &SqlitePool,
     profile_id: &str,
     movie: ImportableMovie,
@@ -151,14 +150,6 @@ async fn import_movie_seen_impl(
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(true)
-}
-
-profile_scoped_command! {
-    pub async fn import_series_progress(series: SeriesInput, episodes: Vec<ImportableEpisode>) -> i64 => import_series_progress_impl
-}
-
-profile_scoped_command! {
-    pub async fn import_movie_seen(movie: ImportableMovie) -> bool => import_movie_seen_impl
 }
 
 #[cfg(test)]

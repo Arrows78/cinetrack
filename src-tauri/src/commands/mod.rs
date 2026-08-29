@@ -1,7 +1,4 @@
 mod boot;
-mod macros;
-mod tmdb;
-mod tvtime;
 mod updater;
 
 pub use crate::availability::{
@@ -14,6 +11,7 @@ pub use crate::backup::{
     read_backup_from_path, remove_backup_file, write_backup_to_path,
 };
 pub use crate::history::list_history;
+pub use crate::integrations::{import_movie_seen, import_series_progress, tmdb_request};
 pub use crate::library::{
     get_library_item, has_library_item, list_library, remove_library_item,
     remove_planned_library_item, save_library_item,
@@ -41,6 +39,4 @@ pub use crate::stats::{
     list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
 };
 pub use boot::get_boot_recovery;
-pub use tmdb::tmdb_request;
-pub use tvtime::{import_movie_seen, import_series_progress};
 pub use updater::{has_updater_config, updater_is_configured};
