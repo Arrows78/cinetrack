@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
-import { MediaGrid } from "@/components/media/media-grid";
+import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { Panel } from "@/components/ui/panel";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { usePerson } from "@/features/media/use-discovery";

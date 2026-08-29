@@ -18,7 +18,7 @@ vi.mock("@/features/library/use-library", () => ({
 }));
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 vi.mock("@/shared/lib/logger", () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; title: string }> }) => (
     <div data-testid="grid">
       {items.map((item) => (
@@ -28,7 +28,7 @@ vi.mock("@/components/media/media-grid", () => ({
   ),
 }));
 
-import { CollectionProgressPanel } from "@/components/media/collection-progress-panel";
+import { CollectionProgressPanel } from "@/components/media/detail/collection-progress-panel";
 
 const movie = (overrides: Partial<Movie> = {}): Movie => ({
   ...(makeMedia(overrides) as Movie),

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { CalendarDays } from "lucide-react";
-import { TrackingList } from "@/components/media/tracking-list";
+import { TrackingList } from "@/components/media/tracking/tracking-list";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
 export function TrackingPage() {

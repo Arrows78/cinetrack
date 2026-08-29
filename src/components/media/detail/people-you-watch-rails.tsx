@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { MediaGrid } from "@/components/media/media-grid";
-import { SectionHeader } from "@/components/media/section-header";
+import { MediaGrid } from "@/components/media/primitives/media-grid";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import type { PersonTally } from "@/features/media/use-people-you-watch";
 import type { MediaSummary } from "@/types/media";
 

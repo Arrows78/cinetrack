@@ -19,7 +19,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => preferencesMock(),
 }));
 
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; mediaType: string; title: string }> }) => (
     <div data-testid="grid">
       {items.map((item) => (
@@ -29,9 +29,9 @@ vi.mock("@/components/media/media-grid", () => ({
   ),
 }));
 
-import { ProviderAvailability } from "@/components/media/provider-availability";
-import { RecommendationsPanel } from "@/components/media/recommendations-panel";
-import { TrailerPanel } from "@/components/media/trailer-panel";
+import { ProviderAvailability } from "@/components/media/detail/provider-availability";
+import { RecommendationsPanel } from "@/components/media/detail/recommendations-panel";
+import { TrailerPanel } from "@/components/media/detail/trailer-panel";
 
 function buildMedia(overrides: Partial<MediaSummary> = {}): MediaSummary {
   return {

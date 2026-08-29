@@ -442,7 +442,7 @@ export const catalogWatchedEpisodeIds = new Set(catalogEpisodes.slice(0, 8).map(
 export const signatureApplications = [
   {
     name: "Episode filmstrip",
-    source: "components/media/season-accordion.tsx",
+    source: "components/media/detail/season-accordion.tsx",
     detail:
       'Each episode is a small perforation: a dark "unexposed" mark when unwatched, lit up in the current accent color when watched — the metaphor maps onto "watching" directly instead of decorating it.',
   },
@@ -592,7 +592,7 @@ export const componentInventory = [
   ),
   component(
     "ActiveFilterChips",
-    "components/media/active-filter-chips.tsx",
+    "components/media/library/active-filter-chips.tsx",
     "Media",
     "pattern",
     "live",
@@ -600,7 +600,7 @@ export const componentInventory = [
   ),
   component(
     "AvailabilityAlertButton",
-    "components/media/availability-alert-button.tsx",
+    "components/media/detail/availability-alert-button.tsx",
     "Media",
     "feature",
     "reference",
@@ -608,7 +608,7 @@ export const componentInventory = [
   ),
   component(
     "CastList",
-    "components/media/cast-list.tsx",
+    "components/media/detail/cast-list.tsx",
     "Media",
     "pattern",
     "live",
@@ -616,7 +616,7 @@ export const componentInventory = [
   ),
   component(
     "CatalogueBrowse",
-    "components/media/catalogue-browse.tsx",
+    "components/media/discover/catalogue-browse.tsx",
     "Media",
     "pattern",
     "live",
@@ -624,7 +624,7 @@ export const componentInventory = [
   ),
   component(
     "CatalogueSections",
-    "components/media/catalogue-sections.tsx",
+    "components/media/discover/catalogue-sections.tsx",
     "Media",
     "pattern",
     "live",
@@ -632,7 +632,7 @@ export const componentInventory = [
   ),
   component(
     "CollectionProgressPanel",
-    "components/media/collection-progress-panel.tsx",
+    "components/media/detail/collection-progress-panel.tsx",
     "Media",
     "pattern",
     "reference",
@@ -640,7 +640,7 @@ export const componentInventory = [
   ),
   component(
     "EpisodeCard",
-    "components/media/episode-card.tsx",
+    "components/media/tracking/episode-card.tsx",
     "Media",
     "pattern",
     "reference",
@@ -648,7 +648,7 @@ export const componentInventory = [
   ),
   component(
     "FilterBar",
-    "components/media/filter-bar.tsx",
+    "components/media/library/filter-bar.tsx",
     "Media",
     "pattern",
     "live",
@@ -656,7 +656,7 @@ export const componentInventory = [
   ),
   component(
     "HideWatchedToggle",
-    "components/media/hide-watched-toggle.tsx",
+    "components/media/library/hide-watched-toggle.tsx",
     "Media",
     "feature",
     "reference",
@@ -664,7 +664,7 @@ export const componentInventory = [
   ),
   component(
     "LibrarySections",
-    "components/media/library-sections.tsx",
+    "components/media/library/library-sections.tsx",
     "Media",
     "feature",
     "live",
@@ -672,7 +672,7 @@ export const componentInventory = [
   ),
   component(
     "LoadMoreButton",
-    "components/media/load-more-button.tsx",
+    "components/media/primitives/load-more-button.tsx",
     "Media",
     "pattern",
     "live",
@@ -680,7 +680,7 @@ export const componentInventory = [
   ),
   component(
     "MediaCard",
-    "components/media/media-card.tsx",
+    "components/media/primitives/media-card.tsx",
     "Media",
     "pattern",
     "live",
@@ -688,7 +688,7 @@ export const componentInventory = [
   ),
   component(
     "MediaDetailsHero",
-    "components/media/media-details-hero.tsx",
+    "components/media/detail/media-details-hero.tsx",
     "Media",
     "feature",
     "reference",
@@ -696,7 +696,7 @@ export const componentInventory = [
   ),
   component(
     "MediaGrid",
-    "components/media/media-grid.tsx",
+    "components/media/primitives/media-grid.tsx",
     "Media",
     "pattern",
     "live",
@@ -704,7 +704,7 @@ export const componentInventory = [
   ),
   component(
     "MediaList",
-    "components/media/media-list.tsx",
+    "components/media/primitives/media-list.tsx",
     "Media",
     "pattern",
     "live",
@@ -712,7 +712,7 @@ export const componentInventory = [
   ),
   component(
     "MediaListRow",
-    "components/media/media-list-row.tsx",
+    "components/media/primitives/media-list-row.tsx",
     "Media",
     "pattern",
     "live",
@@ -720,7 +720,7 @@ export const componentInventory = [
   ),
   component(
     "NextEpisodeCard",
-    "components/media/next-episode-card.tsx",
+    "components/media/tracking/next-episode-card.tsx",
     "Media",
     "feature",
     "reference",
@@ -728,7 +728,7 @@ export const componentInventory = [
   ),
   component(
     "OnThisDaySection",
-    "components/media/on-this-day-section.tsx",
+    "components/media/activity/on-this-day-section.tsx",
     "Media",
     "feature",
     "reference",
@@ -736,7 +736,7 @@ export const componentInventory = [
   ),
   component(
     "PeopleYouWatchRails",
-    "components/media/people-you-watch-rails.tsx",
+    "components/media/detail/people-you-watch-rails.tsx",
     "Media",
     "feature",
     "reference",
@@ -744,7 +744,7 @@ export const componentInventory = [
   ),
   component(
     "Pill",
-    "components/media/pill.tsx",
+    "components/media/primitives/pill.tsx",
     "Media",
     "primitive",
     "live",
@@ -752,7 +752,7 @@ export const componentInventory = [
   ),
   component(
     "ActivityBarChart",
-    "components/media/activity-bar-chart.tsx",
+    "components/media/activity/activity-bar-chart.tsx",
     "Media",
     "pattern",
     "live",
@@ -760,7 +760,7 @@ export const componentInventory = [
   ),
   component(
     "ProgressBar",
-    "components/media/progress-bar.tsx",
+    "components/media/primitives/progress-bar.tsx",
     "Media",
     "pattern",
     "live",
@@ -768,7 +768,7 @@ export const componentInventory = [
   ),
   component(
     "ProviderAvailability",
-    "components/media/provider-availability.tsx",
+    "components/media/detail/provider-availability.tsx",
     "Media",
     "feature",
     "reference",
@@ -776,7 +776,7 @@ export const componentInventory = [
   ),
   component(
     "RecommendationsPanel",
-    "components/media/recommendations-panel.tsx",
+    "components/media/detail/recommendations-panel.tsx",
     "Media",
     "feature",
     "reference",
@@ -784,7 +784,7 @@ export const componentInventory = [
   ),
   component(
     "SavedFiltersBar",
-    "components/media/saved-filters-bar.tsx",
+    "components/media/library/saved-filters-bar.tsx",
     "Media",
     "pattern",
     "live",
@@ -792,7 +792,7 @@ export const componentInventory = [
   ),
   component(
     "SearchBar",
-    "components/media/search-bar.tsx",
+    "components/media/primitives/search-bar.tsx",
     "Media",
     "pattern",
     "live",
@@ -800,7 +800,7 @@ export const componentInventory = [
   ),
   component(
     "SeasonAccordion",
-    "components/media/season-accordion.tsx",
+    "components/media/detail/season-accordion.tsx",
     "Media",
     "feature",
     "reference",
@@ -808,7 +808,7 @@ export const componentInventory = [
   ),
   component(
     "SectionHeader",
-    "components/media/section-header.tsx",
+    "components/media/primitives/section-header.tsx",
     "Media",
     "pattern",
     "live",
@@ -816,7 +816,7 @@ export const componentInventory = [
   ),
   component(
     "SeenToggle",
-    "components/media/seen-toggle.tsx",
+    "components/media/tracking/seen-toggle.tsx",
     "Media",
     "feature",
     "reference",
@@ -824,7 +824,7 @@ export const componentInventory = [
   ),
   component(
     "SeenToggleButton",
-    "components/media/seen-toggle-button.tsx",
+    "components/media/tracking/seen-toggle-button.tsx",
     "Media",
     "feature",
     "live",
@@ -832,7 +832,7 @@ export const componentInventory = [
   ),
   component(
     "SmartListsPanel",
-    "components/media/smart-lists-panel.tsx",
+    "components/media/library/smart-lists-panel.tsx",
     "Media",
     "feature",
     "live",
@@ -840,7 +840,7 @@ export const componentInventory = [
   ),
   component(
     "StatCard",
-    "components/media/stat-card.tsx",
+    "components/media/primitives/stat-card.tsx",
     "Media",
     "pattern",
     "live",
@@ -848,7 +848,7 @@ export const componentInventory = [
   ),
   component(
     "TrailerPanel",
-    "components/media/trailer-panel.tsx",
+    "components/media/detail/trailer-panel.tsx",
     "Media",
     "feature",
     "reference",
@@ -856,7 +856,7 @@ export const componentInventory = [
   ),
   component(
     "ViewingHeatmap",
-    "components/media/viewing-heatmap.tsx",
+    "components/media/activity/viewing-heatmap.tsx",
     "Media",
     "pattern",
     "live",
@@ -864,7 +864,7 @@ export const componentInventory = [
   ),
   component(
     "WatchNextSection",
-    "components/media/watch-next-section.tsx",
+    "components/media/tracking/watch-next-section.tsx",
     "Media",
     "feature",
     "reference",
@@ -872,7 +872,7 @@ export const componentInventory = [
   ),
   component(
     "WeeklyAgendaSection",
-    "components/media/weekly-agenda-section.tsx",
+    "components/media/tracking/weekly-agenda-section.tsx",
     "Media",
     "feature",
     "reference",
@@ -880,7 +880,7 @@ export const componentInventory = [
   ),
   component(
     "AddToLibraryButton",
-    "components/media/add-to-library-button.tsx",
+    "components/media/tracking/add-to-library-button.tsx",
     "Media",
     "feature",
     "reference",
@@ -888,7 +888,7 @@ export const componentInventory = [
   ),
   component(
     "LibraryExplorer",
-    "components/media/library-explorer.tsx",
+    "components/media/library/library-explorer.tsx",
     "Media",
     "feature",
     "live",
@@ -896,7 +896,7 @@ export const componentInventory = [
   ),
   component(
     "TrackingList",
-    "components/media/tracking-list.tsx",
+    "components/media/tracking/tracking-list.tsx",
     "Media",
     "feature",
     "live",
@@ -904,7 +904,7 @@ export const componentInventory = [
   ),
   component(
     "AddWatchNoteDialog",
-    "components/media/add-watch-note-dialog.tsx",
+    "components/media/tracking/add-watch-note-dialog.tsx",
     "Media",
     "pattern",
     "reference",
@@ -912,7 +912,7 @@ export const componentInventory = [
   ),
   component(
     "WatchHistoryPanel",
-    "components/media/watch-history-panel.tsx",
+    "components/media/activity/watch-history-panel.tsx",
     "Media",
     "pattern",
     "reference",

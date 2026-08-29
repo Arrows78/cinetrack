@@ -9,7 +9,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => preferencesMock(),
 }));
 
-import { HideWatchedToggle } from "@/components/media/hide-watched-toggle";
+import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
 
 describe("HideWatchedToggle", () => {
   beforeAll(async () => {

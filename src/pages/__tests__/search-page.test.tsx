@@ -116,14 +116,14 @@ vi.mock("@/features/media/use-media", () => ({
 // src/pages/__tests__/home-page.test.tsx / library-page.test.tsx — keeps
 // assertions targeted at SearchPage's own state/URL-sync logic rather than
 // these components' internals.
-vi.mock("@/components/media/catalogue-sections", () => ({
+vi.mock("@/components/media/discover/catalogue-sections", () => ({
   CatalogueSections: ({ startIndex }: { startIndex: number }) => (
     <div data-testid="catalogue-sections" data-start-index={startIndex} />
   ),
   CATALOGUE_SECTIONS: [{}, {}],
 }));
 
-vi.mock("@/components/media/catalogue-browse", () => ({
+vi.mock("@/components/media/discover/catalogue-browse", () => ({
   BrowseByGenre: ({ startIndex }: { startIndex: number }) => (
     <div data-testid="browse-by-genre" data-start-index={startIndex} />
   ),
@@ -132,7 +132,7 @@ vi.mock("@/components/media/catalogue-browse", () => ({
   ),
 }));
 
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; mediaType: string; title: string }> }) => (
     <div data-testid="media-grid">
       {items.map((item) => (

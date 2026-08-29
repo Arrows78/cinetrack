@@ -2,8 +2,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import i18n from "@/i18n";
 import { makeMedia } from "@/shared/test-utils";
-import { AddToLibraryButton } from "../add-to-library-button";
-import { AvailabilityAlertButton } from "../availability-alert-button";
+import { AddToLibraryButton } from "../tracking/add-to-library-button";
+import { AvailabilityAlertButton } from "../detail/availability-alert-button";
 
 const useIsInLibraryMock = vi.fn();
 const addPlannedMock = vi.fn();

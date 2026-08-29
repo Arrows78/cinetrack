@@ -3,8 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
-import { CATALOGUE_SECTIONS, CatalogueSections } from "@/components/media/catalogue-sections";
-import { BrowseByGenre, BrowseByPlatform } from "@/components/media/catalogue-browse";
+import { CATALOGUE_SECTIONS, CatalogueSections } from "@/components/media/discover/catalogue-sections";
+import { BrowseByGenre, BrowseByPlatform } from "@/components/media/discover/catalogue-browse";
 import { PLATFORMS } from "@/shared/constants/discover";
 import { staggerDelayMs } from "@/shared/utils/animation";
 import type { HomeFeed, Movie, Series } from "@/types/media";
@@ -44,7 +44,7 @@ vi.mock("@tanstack/react-router", () => ({
 // Same shallow pattern as library-page.test.tsx: stub MediaGrid down to the
 // item titles so assertions can target what CatalogueSections itself passed
 // through, without pulling in MediaCard's own library/progress hooks.
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; mediaType: string; title: string }> }) => (
     <div data-testid="grid">
       {items.map((item) => (

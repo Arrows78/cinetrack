@@ -28,7 +28,7 @@ vi.mock("@/features/progress/use-progress", () => ({
 // this page's own logic (title fallback, allWatched computation, wiring
 // toggles to mutations) doesn't need the real hero/card markup or their own
 // dependency trees.
-vi.mock("@/components/media/media-details-hero", () => ({
+vi.mock("@/components/media/detail/media-details-hero", () => ({
   MediaDetailsHero: ({
     media,
     actions,
@@ -46,11 +46,11 @@ vi.mock("@/components/media/media-details-hero", () => ({
   ),
 }));
 
-vi.mock("@/components/media/add-to-library-button", () => ({
+vi.mock("@/components/media/tracking/add-to-library-button", () => ({
   AddToLibraryButton: ({ media }: { media: MediaSummary }) => <button>Add {media.title}</button>,
 }));
 
-vi.mock("@/components/media/seen-toggle", () => ({
+vi.mock("@/components/media/tracking/seen-toggle", () => ({
   SeenToggle: ({ seen, disabled, onToggle }: { seen: boolean; disabled?: boolean; onToggle: () => void }) => (
     <button data-testid="seen-toggle" aria-pressed={seen} disabled={disabled} onClick={onToggle}>
       {seen ? "Season seen" : "Mark season seen"}
@@ -58,7 +58,7 @@ vi.mock("@/components/media/seen-toggle", () => ({
   ),
 }));
 
-vi.mock("@/components/media/episode-card", () => ({
+vi.mock("@/components/media/tracking/episode-card", () => ({
   EpisodeCard: ({ episode, onToggleSeen }: { episode: Episode; onToggleSeen: () => void }) => (
     <div data-testid={`episode-${episode.id}`} data-watched={String(Boolean(episode.watched))}>
       <span>{episode.title}</span>

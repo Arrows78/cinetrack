@@ -10,12 +10,12 @@ import { StatsPage } from "../stats-page";
 // ActivityBarChart/ViewingHeatmap are chart-rendering components (not this
 // page's own logic) that may not play well with jsdom — shallow-stub them,
 // same pattern as library-page.test.tsx stubbing media-grid/media-list.
-vi.mock("@/components/media/activity-bar-chart", () => ({
+vi.mock("@/components/media/activity/activity-bar-chart", () => ({
   ActivityBarChart: ({ data }: { data: Array<{ label: string; value: number }> }) => (
     <div data-testid="activity-bar-chart">{data.map((d) => `${d.label}:${d.value}`).join(",")}</div>
   ),
 }));
-vi.mock("@/components/media/viewing-heatmap", () => ({
+vi.mock("@/components/media/activity/viewing-heatmap", () => ({
   ViewingHeatmap: () => <div data-testid="viewing-heatmap" />,
 }));
 

@@ -4,7 +4,7 @@ import { Repeat } from "lucide-react";
 import { useRewatchStats } from "@/features/stats/use-stats";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
-import { ActivityBarChart } from "@/components/media/activity-bar-chart";
+import { ActivityBarChart } from "@/components/media/activity/activity-bar-chart";
 import { logger } from "@/shared/lib/logger";
 
 /**

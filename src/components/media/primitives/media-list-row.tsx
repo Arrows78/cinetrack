@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Check, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ProgressBar } from "@/components/media/progress-bar";
+import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useMovieSeen } from "@/features/progress/use-progress";

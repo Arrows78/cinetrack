@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
-import { TrackingList } from "@/components/media/tracking-list";
+import { TrackingList } from "@/components/media/tracking/tracking-list";
 import type { TrackingEntry } from "@/types/media";
 
 const useTrackingMock = vi.fn();

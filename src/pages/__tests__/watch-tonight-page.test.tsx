@@ -16,7 +16,7 @@ vi.mock("@tanstack/react-router", () => ({
 // seen toggle, ...) that would need a much wider invoke() mock than this
 // page's own filter/query logic is about — stub it down to the titles so
 // assertions can target what WatchTonightPage itself passed through.
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; mediaType: string; title: string }> }) => (
     <div data-testid="grid">
       {items.map((item) => (

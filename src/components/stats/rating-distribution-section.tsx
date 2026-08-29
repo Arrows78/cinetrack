@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useRatingDistribution } from "@/features/stats/use-stats";
 import { Panel } from "@/components/ui/panel";
-import { ActivityBarChart } from "@/components/media/activity-bar-chart";
+import { ActivityBarChart } from "@/components/media/activity/activity-bar-chart";
 import { logger } from "@/shared/lib/logger";
 
 const roundToOneDecimal = (value: number) => Math.round(value * 10) / 10;

@@ -9,7 +9,7 @@ import type * as TanstackRouterModule from "@tanstack/react-router";
 // LibraryPage/TrackingPage/etc.) — shallow-stub them so assertions here
 // target only what SeriesPage itself decides: which tab renders which
 // component, with which props, and the tab switching.
-vi.mock("@/components/media/library-explorer", () => ({
+vi.mock("@/components/media/library/library-explorer", () => ({
   LibraryExplorer: ({
     lockedMediaType,
     onBrowseAll,
@@ -28,7 +28,7 @@ vi.mock("@/components/media/library-explorer", () => ({
   ),
 }));
 
-vi.mock("@/components/media/tracking-list", () => ({
+vi.mock("@/components/media/tracking/tracking-list", () => ({
   TrackingList: ({
     lockedMediaType,
     onBrowseAll,

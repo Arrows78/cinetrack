@@ -1,5 +1,5 @@
 import { useQueries } from "@tanstack/react-query";
-import type { MediaGridItem } from "@/components/media/media-grid";
+import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import { useLibrary } from "@/features/library/use-library";
 import { buildSmartListEvalContext, matchesSmartListRules } from "@/features/library/smart-list-evaluation";
 import { useAvailabilitySnapshots } from "@/features/availability/use-availability-alerts";

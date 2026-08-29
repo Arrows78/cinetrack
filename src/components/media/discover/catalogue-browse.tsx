@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Panel } from "@/components/ui/panel";
-import { SectionHeader } from "@/components/media/section-header";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import { PLATFORMS } from "@/shared/constants/discover";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 

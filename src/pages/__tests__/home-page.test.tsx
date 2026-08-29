@@ -56,7 +56,7 @@ vi.mock("@/features/media/use-because-you-liked", () => ({
 }));
 
 const favouriteGenreRailMock = vi.fn();
-vi.mock("@/components/media/use-favourite-genre-rail", () => ({
+vi.mock("@/components/media/detail/use-favourite-genre-rail", () => ({
   useFavouriteGenreRail: () => favouriteGenreRailMock(),
 }));
 
@@ -76,14 +76,14 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 // Shallow-mocked presentational children, same pattern as
 // src/pages/__tests__/library-page.test.tsx — keeps assertions targeted at
 // HomePage's own composition/index-math logic rather than these components'.
-vi.mock("@/components/media/catalogue-sections", () => ({
+vi.mock("@/components/media/discover/catalogue-sections", () => ({
   CatalogueSections: ({ startIndex }: { startIndex: number }) => (
     <div data-testid="catalogue-sections" data-start-index={startIndex} />
   ),
   CATALOGUE_SECTIONS: [{}, {}],
 }));
 
-vi.mock("@/components/media/catalogue-browse", () => ({
+vi.mock("@/components/media/discover/catalogue-browse", () => ({
   BrowseByGenre: ({ startIndex }: { startIndex: number }) => (
     <div data-testid="browse-by-genre" data-start-index={startIndex} />
   ),
@@ -92,7 +92,7 @@ vi.mock("@/components/media/catalogue-browse", () => ({
   ),
 }));
 
-vi.mock("@/components/media/watch-next-section", () => ({
+vi.mock("@/components/media/tracking/watch-next-section", () => ({
   WatchNextSection: ({ entries }: { entries: unknown[] }) => (
     <div data-testid="watch-next-section" data-entries={entries.length} />
   ),
@@ -102,15 +102,15 @@ vi.mock("@/components/media/watch-next-section", () => ({
 // above: both pull in mediaRepository (calendar-service.ts's own import,
 // for WeeklyAgendaSection) or other hook chains well beyond what this test
 // is about — not related to the "For You" rails/hideWatched logic under test.
-vi.mock("@/components/media/weekly-agenda-section", () => ({
+vi.mock("@/components/media/tracking/weekly-agenda-section", () => ({
   WeeklyAgendaSection: () => <div data-testid="weekly-agenda-section" />,
 }));
 
-vi.mock("@/components/media/on-this-day-section", () => ({
+vi.mock("@/components/media/activity/on-this-day-section", () => ({
   OnThisDaySection: () => <div data-testid="on-this-day-section" />,
 }));
 
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; title: string }> }) => (
     <div data-testid="media-grid">
       {items.map((item) => (

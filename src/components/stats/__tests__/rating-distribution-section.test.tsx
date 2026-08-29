@@ -14,7 +14,7 @@ vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn(), info: vi.fn() },
 }));
 
-vi.mock("@/components/media/activity-bar-chart", () => ({
+vi.mock("@/components/media/activity/activity-bar-chart", () => ({
   ActivityBarChart: ({ data }: { data: Array<{ label: string; value: number }> }) => (
     <div data-testid="activity-bar-chart">{data.map((d) => `${d.label}:${d.value}`).join(",")}</div>
   ),

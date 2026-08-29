@@ -38,7 +38,7 @@ vi.mock("@/features/media/use-image-cache", () => ({
 // Shallow-mock every heavy child so the test targets SeriesDetailPage's own
 // composition/wiring (progress computation, error states, effect), not the
 // children's internals.
-vi.mock("@/components/media/media-details-hero", () => ({
+vi.mock("@/components/media/detail/media-details-hero", () => ({
   MediaDetailsHero: ({
     media,
     actions,
@@ -60,32 +60,32 @@ vi.mock("@/components/library/library-editor", () => ({
   LibraryEditor: () => <div data-testid="library-editor" />,
 }));
 
-vi.mock("@/components/media/provider-availability", () => ({
+vi.mock("@/components/media/detail/provider-availability", () => ({
   ProviderAvailability: () => <div data-testid="provider-availability" />,
 }));
 
-vi.mock("@/components/media/trailer-panel", () => ({
+vi.mock("@/components/media/detail/trailer-panel", () => ({
   TrailerPanel: () => <div data-testid="trailer-panel" />,
 }));
 
-vi.mock("@/components/media/recommendations-panel", () => ({
+vi.mock("@/components/media/detail/recommendations-panel", () => ({
   RecommendationsPanel: () => <div data-testid="recommendations-panel" />,
 }));
 
-vi.mock("@/components/media/cast-list", () => ({
+vi.mock("@/components/media/detail/cast-list", () => ({
   CastList: () => <div data-testid="cast-list" />,
 }));
 
-vi.mock("@/components/media/add-to-library-button", () => ({
+vi.mock("@/components/media/tracking/add-to-library-button", () => ({
   AddToLibraryButton: () => <div data-testid="add-to-library-button" />,
 }));
 
-vi.mock("@/components/media/availability-alert-button", () => ({
+vi.mock("@/components/media/detail/availability-alert-button", () => ({
   AvailabilityAlertButton: () => <div data-testid="availability-alert-button" />,
 }));
 
 const seasonAccordionPropsMock = vi.fn();
-vi.mock("@/components/media/season-accordion", () => ({
+vi.mock("@/components/media/detail/season-accordion", () => ({
   SeasonAccordion: (props: { seasons: Season[]; watchedEpisodes: EpisodeProgress[] }) => {
     seasonAccordionPropsMock(props);
     return <div data-testid="season-accordion" />;
@@ -93,7 +93,7 @@ vi.mock("@/components/media/season-accordion", () => ({
 }));
 
 const nextEpisodeCardPropsMock = vi.fn();
-vi.mock("@/components/media/next-episode-card", () => ({
+vi.mock("@/components/media/tracking/next-episode-card", () => ({
   NextEpisodeCard: ({ episode, onWatched }: { episode: Episode | null; onWatched: (episode: Episode) => void }) => {
     nextEpisodeCardPropsMock(episode);
     return (
@@ -108,7 +108,7 @@ vi.mock("@/components/media/next-episode-card", () => ({
   },
 }));
 
-vi.mock("@/components/media/seen-toggle", () => ({
+vi.mock("@/components/media/tracking/seen-toggle", () => ({
   SeenToggle: ({ seen, disabled, onToggle }: { seen: boolean; disabled?: boolean; onToggle: () => void }) => (
     <button type="button" data-testid="seen-toggle" data-seen={seen} disabled={disabled} onClick={onToggle}>
       seen-toggle
@@ -116,7 +116,7 @@ vi.mock("@/components/media/seen-toggle", () => ({
   ),
 }));
 
-vi.mock("@/components/media/watch-history-panel", () => ({
+vi.mock("@/components/media/activity/watch-history-panel", () => ({
   WatchHistoryPanel: () => <div data-testid="watch-history-panel" />,
 }));
 

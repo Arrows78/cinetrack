@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, NotebookPen, Play } from "lucide-react";
-import { AddWatchNoteDialog } from "@/components/media/add-watch-note-dialog";
+import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { IconTooltip } from "@/components/ui/tooltip";

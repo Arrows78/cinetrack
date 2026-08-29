@@ -4,7 +4,7 @@ import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
-import { LibraryExplorer } from "@/components/media/library-explorer";
+import { LibraryExplorer } from "@/components/media/library/library-explorer";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { LibraryPage } from "../library-page";
 
@@ -15,7 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
 // Shallow stubs so lockedMediaType branches can be asserted on without
 // exercising these sections' own hooks (next-episode resolution, seen
 // toggles, ...) — that behavior belongs to library-sections.test.tsx.
-vi.mock("@/components/media/library-sections", () => ({
+vi.mock("@/components/media/library/library-sections", () => ({
   SeriesLibrarySections: ({ items }: { items: Array<{ id: number; title: string }> }) => (
     <div data-testid="series-sections">
       {items.map((item) => (
@@ -36,7 +36,7 @@ vi.mock("@/components/media/library-sections", () => ({
 // toggle, seen toggle, ...) that would need a much wider invoke() mock than
 // this page's own filtering/list-management logic is about — stub it down to
 // the titles so assertions can target what LibraryPage itself computed.
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: Array<{ id: number; mediaType: string; title: string }> }) => (
     <div data-testid="grid">
       {items.map((item) => (
@@ -46,7 +46,7 @@ vi.mock("@/components/media/media-grid", () => ({
   ),
 }));
 
-vi.mock("@/components/media/media-list", () => ({
+vi.mock("@/components/media/primitives/media-list", () => ({
   MediaList: ({ items }: { items: Array<{ id: number; mediaType: string; title: string }> }) => (
     <div data-testid="list">
       {items.map((item) => (

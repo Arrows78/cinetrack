@@ -7,7 +7,7 @@ import { TrackingPage } from "../tracking-page";
 // TrackingList has its own coverage via TrackingPage/MoviesPage/SeriesPage
 // composition elsewhere — shallow-mock it so this test only asserts
 // TrackingPage's own header, not TrackingList's internals.
-vi.mock("@/components/media/tracking-list", () => ({
+vi.mock("@/components/media/tracking/tracking-list", () => ({
   TrackingList: () => <div data-testid="tracking-list" />,
 }));
 

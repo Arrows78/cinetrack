@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
 // usePerson's result — MediaGrid's rendering of `knownFor` items is covered
 // elsewhere, so stub it down to the titles it received, same pattern as
 // library-page.test.tsx's MediaGrid mock.
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: MediaSummary[] }) => (
     <div data-testid="grid">
       {items.map((item) => (

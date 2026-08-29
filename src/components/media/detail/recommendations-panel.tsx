@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useRecommendations } from "@/features/media/use-discovery";
-import { MediaGrid } from "@/components/media/media-grid";
-import { SectionHeader } from "@/components/media/section-header";
+import { MediaGrid } from "@/components/media/primitives/media-grid";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import type { MediaSummary } from "@/types/media";
 export function RecommendationsPanel({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();

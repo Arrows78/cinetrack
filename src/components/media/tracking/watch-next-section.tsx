@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { SectionHeader } from "@/components/media/section-header";
-import { SeenToggleButton } from "@/components/media/seen-toggle-button";
+import { SectionHeader } from "@/components/media/primitives/section-header";
+import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { useMarkWatchNext, type WatchNextEntry } from "@/features/progress/use-watch-next";
 import { buildTmdbImageUrl, formatEpisodeCode } from "@/shared/utils/format";
 import fallbackPoster from "@/assets/poster-placeholder.svg";

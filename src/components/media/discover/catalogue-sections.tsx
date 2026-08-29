@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { MediaGrid } from "@/components/media/media-grid";
-import { SectionHeader } from "@/components/media/section-header";
+import { MediaGrid } from "@/components/media/primitives/media-grid";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import { filterHiddenIfWatched } from "@/shared/utils/library-set";
 import type { HomeFeed, LibraryItem, MediaSummary } from "@/types/media";
 

@@ -1,11 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
-import { EpisodeCard } from "@/components/media/episode-card";
-import { MediaDetailsHero } from "@/components/media/media-details-hero";
-import { SeenToggle } from "@/components/media/seen-toggle";
-import { SectionHeader } from "@/components/media/section-header";
-import { AddToLibraryButton } from "@/components/media/add-to-library-button";
+import { EpisodeCard } from "@/components/media/tracking/episode-card";
+import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
+import { SeenToggle } from "@/components/media/tracking/seen-toggle";
+import { SectionHeader } from "@/components/media/primitives/section-header";
+import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";

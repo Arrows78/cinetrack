@@ -116,8 +116,18 @@ export default defineConfig({
         // already be non-null, so the guard can't actually be hit through the
         // UI without calling the internal handler directly.
         "src/components/settings/backup-tools.tsx": { statements: 95, branches: 90, functions: 100, lines: 100 },
-        "src/components/media/library-sections.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
-        "src/components/media/next-episode-card.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        "src/components/media/library/library-sections.tsx": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+        "src/components/media/tracking/next-episode-card.tsx": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
         // New Stats-page insights sections (monthly recap, rewatch
         // analytics, rating distribution, watch milestones), each with its
         // own test file under src/components/stats/__tests__/.

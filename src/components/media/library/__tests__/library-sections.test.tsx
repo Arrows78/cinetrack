@@ -4,8 +4,8 @@ import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
-import { SeriesLibrarySections, MovieLibrarySections } from "@/components/media/library-sections";
-import type { MediaGridItem } from "@/components/media/media-grid";
+import { SeriesLibrarySections, MovieLibrarySections } from "@/components/media/library/library-sections";
+import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import type { NextEpisodeResult } from "@/features/progress/use-watch-next";
 import type { Episode, TrackedSeriesItem, ViewingHistoryItem } from "@/types/media";
 
@@ -45,13 +45,13 @@ vi.mock("@/features/media/use-media", () => ({
 // Stubbed to plain titles — this file's own test file (watch-next-section.test.tsx)
 // already covers WatchNextRow's internal rendering/interaction; here we only
 // need to assert library-sections chose to render it (and with which entry).
-vi.mock("@/components/media/watch-next-section", () => ({
+vi.mock("@/components/media/tracking/watch-next-section", () => ({
   WatchNextRow: ({ entry }: { entry: { series: TrackedSeriesItem } }) => (
     <div data-testid="watch-next-row">{entry.series.title}</div>
   ),
 }));
 
-vi.mock("@/components/media/media-grid", () => ({
+vi.mock("@/components/media/primitives/media-grid", () => ({
   MediaGrid: ({ items }: { items: MediaGridItem[] }) => (
     <div data-testid="grid">
       {items.map((item) => (

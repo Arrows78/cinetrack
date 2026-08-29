@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { LibraryExplorer } from "@/components/media/library-explorer";
-import { SectionHeader } from "@/components/media/section-header";
+import { LibraryExplorer } from "@/components/media/library/library-explorer";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 
 export function LibraryPage() {
   const { t } = useTranslation();

@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Tv } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
-import { FilterBar } from "@/components/media/filter-bar";
-import { LibraryExplorer } from "@/components/media/library-explorer";
-import { TrackingList } from "@/components/media/tracking-list";
-import type { MediaTab } from "@/components/media/media-hub-tab";
+import { FilterBar } from "@/components/media/library/filter-bar";
+import { LibraryExplorer } from "@/components/media/library/library-explorer";
+import { TrackingList } from "@/components/media/tracking/tracking-list";
+import type { MediaTab } from "@/components/media/library/media-hub-tab";
 
 export function SeriesPage() {
   const { t } = useTranslation();

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Calendar, Check, Clock4, EyeOff, NotebookPen } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { AddWatchNoteDialog } from "@/components/media/add-watch-note-dialog";
+import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";

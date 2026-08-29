@@ -3,8 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
 import { makeMedia } from "@/shared/test-utils";
 import type { Episode } from "@/types/media";
-import { EpisodeCard } from "../episode-card";
-import { MediaDetailsHero } from "../media-details-hero";
+import { EpisodeCard } from "../tracking/episode-card";
+import { MediaDetailsHero } from "../detail/media-details-hero";
 
 let preferencesData: { spoilerProtection?: boolean } = {};
 vi.mock("@/features/preferences/use-preferences", () => ({
