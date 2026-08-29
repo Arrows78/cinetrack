@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren, ReactNode } from "react";
 import i18n from "@/i18n";
@@ -32,6 +33,17 @@ vi.mock("@/features/auth/auth-context", async (importOriginal) => ({
     requestEmailOtp: vi.fn(),
     verifyEmailOtp: vi.fn(),
     signOut: vi.fn(),
+  }),
+}));
+
+vi.mock("@/features/profiles/use-profiles", () => ({
+  useProfiles: () => ({ data: [], isLoading: false, isError: false }),
+}));
+
+vi.mock("@/features/preferences/use-preferences", () => ({
+  usePreferences: () => ({
+    data: { theme: "dark", activeProfileId: "default" },
+    updatePreference: vi.fn(),
   }),
 }));
 
@@ -85,5 +97,19 @@ describe("MobileTabBar", () => {
     fireEvent.click(screen.getByRole("link", { name: i18n.t("nav.series") }));
 
     expect(screen.queryByRole("link", { name: i18n.t("nav.settings") })).not.toBeInTheDocument();
+  });
+
+  it("has no detectable accessibility violations", async () => {
+    const { container } = renderTabBar();
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no detectable accessibility violations with the More sheet open", async () => {
+    renderTabBar();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.more") }));
+
+    expect(screen.getByRole("link", { name: i18n.t("nav.settings") })).toBeInTheDocument();
+    expect(await axe(document.body)).toHaveNoViolations();
   });
 });

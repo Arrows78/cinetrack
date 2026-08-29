@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -143,6 +144,27 @@ describe("BootRecoveryGate", () => {
     expect(screen.queryByText("app content")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /continue with a fresh start/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /restore last automatic backup/i })).toBeInTheDocument();
+  });
+
+  it("has no detectable accessibility violations on the recovered screen", async () => {
+    bootRecovery = {
+      recovered: true,
+      blocked: false,
+      quarantinedPath: "/data/app.db.corrupt-123",
+      originalError: "boom",
+    };
+    const { container } = renderGate();
+    await waitFor(() => expect(screen.getByText(/reset your local database/i)).toBeInTheDocument());
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no detectable accessibility violations on the blocked screen", async () => {
+    bootRecovery = { recovered: false, blocked: true, quarantinedPath: null, originalError: "Migration 12 failed" };
+    const { container } = renderGate();
+    await waitFor(() => expect(screen.getByText(/can't safely open right now/i)).toBeInTheDocument());
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("restoring from the blocked screen reloads the app on success", async () => {

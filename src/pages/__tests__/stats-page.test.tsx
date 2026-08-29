@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { LibraryStats } from "@/types/media";
@@ -304,5 +305,12 @@ describe("StatsPage", () => {
     expect(downloadWrappedCardMock).not.toHaveBeenCalled();
     expect(toastMock).toHaveBeenCalledWith({ description: "Couldn't export the Wrapped image", variant: "error" });
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("canvas exploded"));
+  });
+
+  it("has no detectable accessibility violations once stats have loaded", async () => {
+    const { container } = renderPage();
+    await screen.findByText("Stats");
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

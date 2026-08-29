@@ -82,7 +82,7 @@ function NavSection({ labelKey, items, collapsed, pathname, onNavigate, showDivi
       {!collapsed && labelKey && (
         <p className="mb-1.5 px-3 text-overline uppercase text-muted-foreground">{t(labelKey)}</p>
       )}
-      <nav className="space-y-0.5">
+      <nav className="space-y-0.5" aria-label={t(labelKey ?? "nav.home")}>
         {items.map((item) => (
           <NavLink
             key={item.to}

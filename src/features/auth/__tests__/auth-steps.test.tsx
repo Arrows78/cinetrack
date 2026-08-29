@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 
 import i18n from "@/i18n";
 import { authConfig } from "@/features/auth/auth-client";
@@ -96,6 +97,18 @@ describe("AuthEmailStep", () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
   });
+
+  it("has no detectable accessibility violations in signin mode", async () => {
+    const { container } = render(<AuthEmailStep {...baseProps} mode="signin" />);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no detectable accessibility violations in signup mode", async () => {
+    const { container } = render(<AuthEmailStep {...baseProps} mode="signup" />);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
 });
 
 describe("AuthOtpStep", () => {
@@ -167,6 +180,12 @@ describe("AuthOtpStep", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Change email" }));
     expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no detectable accessibility violations", async () => {
+    const { container } = render(<AuthOtpStep {...baseProps} />);
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
 
@@ -259,5 +278,11 @@ describe("AuthProvidersStep", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Continue with email" }));
     expect(onEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no detectable accessibility violations", async () => {
+    const { container } = render(<AuthProvidersStep {...baseProps} />);
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

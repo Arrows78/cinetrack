@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren, ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
@@ -44,6 +45,10 @@ vi.mock("@/features/preferences/use-preferences", () => ({
     data: { theme: preferencesTheme },
     updatePreference: updatePreferenceMock,
   }),
+}));
+
+vi.mock("@/features/profiles/use-profiles", () => ({
+  useProfiles: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 function renderSidebar(props: Partial<Parameters<typeof SidebarNav>[0]> = {}): ReturnType<typeof render> {
@@ -110,6 +115,20 @@ describe("SidebarNav", () => {
     ]) {
       expect(screen.getByRole("link", { name: i18n.t(`nav.${key}`) })).toBeInTheDocument();
     }
+  });
+
+  it("gives each section nav a unique accessible name", () => {
+    renderSidebar();
+
+    const names = screen.getAllByRole("navigation").map((node) => node.getAttribute("aria-label"));
+    expect(names).toEqual([
+      i18n.t("nav.home"),
+      i18n.t("sidebar.sections.discover"),
+      i18n.t("sidebar.sections.library"),
+      i18n.t("sidebar.sections.insights"),
+      i18n.t("sidebar.sections.account"),
+    ]);
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it("still fires onNavigate when a link is clicked, so the mobile sheet can close", () => {
@@ -204,5 +223,17 @@ describe("SidebarNav", () => {
       screen.getByRole("button", { name: i18n.t("sidebar.signOut") }).click();
       expect(signOutMock).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("has no detectable accessibility violations when expanded", async () => {
+    const { container } = renderSidebar();
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no detectable accessibility violations when collapsed", async () => {
+    const { container } = renderSidebar({ collapsed: true });
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

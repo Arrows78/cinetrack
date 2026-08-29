@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { SettingsPage } from "../settings-page";
@@ -372,5 +373,12 @@ describe("SettingsPage — preferences", () => {
     netflixChip.click();
 
     await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("preferredProviderIds", [337]));
+  });
+
+  it("has no detectable accessibility violations once preferences have loaded", async () => {
+    const { container } = renderPage();
+    await screen.findByText("Default profile");
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

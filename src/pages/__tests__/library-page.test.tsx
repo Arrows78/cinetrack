@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -936,5 +937,14 @@ describe("LibraryExplorer — remote error states", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
     expect(listItemsErrorRefetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("LibraryExplorer — accessibility", () => {
+  it("has no detectable accessibility violations with a populated library", async () => {
+    const { container } = renderExplorer();
+
+    expect(await screen.findByText("Dune")).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

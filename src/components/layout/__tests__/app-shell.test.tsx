@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 import i18n from "@/i18n";
 import { AppShell } from "../app-shell";
 
@@ -199,5 +200,19 @@ describe("AppShell", () => {
 
       expect(updatePreferenceSpy).toHaveBeenCalledWith({ key: "sidebarCollapsed", value: false });
     });
+  });
+
+  it("has no detectable accessibility violations on the root route", async () => {
+    const { container } = render(<AppShell />);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no detectable accessibility violations on a detail route with back buttons", async () => {
+    routerState.pathname = "/movies/42";
+    const { container } = render(<AppShell />);
+
+    expect(screen.getAllByRole("button", { name: i18n.t("common.back") })).toHaveLength(2);
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
