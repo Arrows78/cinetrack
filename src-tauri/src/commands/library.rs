@@ -1,204 +1,31 @@
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{Value, json};
+mod commands;
+mod domain;
+mod models;
+mod queries;
+mod service;
+
+pub use commands::{
+    get_library_item, has_library_item, list_library, remove_library_item,
+    remove_planned_library_item, save_library_item,
+};
+pub use domain::LibraryStatus;
+pub use models::{LibraryItem, LibraryPatch, MediaSummaryInput};
+pub(crate) use models::{AutoSyncMedia, LibraryRow};
+
+use serde_json::json;
 use sqlx::SqlitePool;
-use tauri::State;
 
 use super::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
-use crate::commands::macros::profile_scoped_command;
-use crate::database::{current_profile_id, new_uuid, now_iso};
+use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum LibraryStatus {
-    Planned,
-    Watching,
-    Paused,
-    Completed,
-    Dropped,
-}
-
-impl LibraryStatus {
-    pub(crate) fn as_db_str(self) -> &'static str {
-        match self {
-            LibraryStatus::Planned => "planned",
-            LibraryStatus::Watching => "watching",
-            LibraryStatus::Paused => "paused",
-            LibraryStatus::Completed => "completed",
-            LibraryStatus::Dropped => "dropped",
-        }
-    }
-
-    fn from_db_str(value: &str) -> Result<Self, ApiError> {
-        serde_json::from_value(Value::String(value.to_string()))
-            .map_err(|_| ApiError::internal(format!("Unknown library status in database: {value}")))
-    }
-}
-
-/// A patch coming over `invoke()`, where every field is optional. `favourite`,
-/// `status`, `tags` and `rewatchCount` treat both "key absent" and "key
-/// present but null" as "not provided" (matching the TS `??` fallback) — a
-/// plain `Option<T>` already collapses both cases to `None`, which is what we
-/// want. `userRating`/`notes` instead distinguish an explicit `null` (clear
-/// the value) from an absent key (keep the current value) — the TS code
-/// checks `!== undefined` specifically — so those two need the classic serde
-/// "double option" trick via `deserialize_double_option` below.
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LibraryPatch {
-    pub status: Option<LibraryStatus>,
-    pub favourite: Option<bool>,
-    #[serde(default, deserialize_with = "deserialize_double_option")]
-    pub user_rating: Option<Option<f64>>,
-    #[serde(default, deserialize_with = "deserialize_double_option")]
-    pub notes: Option<Option<String>>,
-    pub tags: Option<Vec<String>>,
-    pub rewatch_count: Option<i64>,
-}
-
-fn deserialize_double_option<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    Ok(Some(Option::deserialize(deserializer)?))
-}
-
-/// Only the fields `save_library_item` actually reads off the frontend's
-/// full `MediaSummary` object — unknown fields (overview, cast, ...) are
-/// silently ignored by serde, matching how the TS code only destructures
-/// these too.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MediaSummaryInput {
-    pub id: i64,
-    pub media_type: MediaType,
-    pub title: String,
-    pub poster_path: Option<String>,
-    pub backdrop_path: Option<String>,
-    pub year: Option<i64>,
-    pub rating: Option<f64>,
-    pub genres: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LibraryItem {
-    pub id: String,
-    pub profile_id: String,
-    pub media_id: i64,
-    pub media_type: MediaType,
-    pub title: String,
-    pub poster_path: Option<String>,
-    pub backdrop_path: Option<String>,
-    pub year: Option<i64>,
-    pub rating: Option<f64>,
-    pub genres: Vec<String>,
-    pub status: LibraryStatus,
-    pub favourite: bool,
-    pub user_rating: Option<f64>,
-    pub notes: Option<String>,
-    pub tags: Vec<String>,
-    pub started_at: Option<String>,
-    pub completed_at: Option<String>,
-    pub rewatch_count: i64,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-#[derive(sqlx::FromRow)]
-pub(crate) struct LibraryRow {
-    pub(crate) uuid: String,
-    pub(crate) profile_id: String,
-    pub(crate) media_id: i64,
-    pub(crate) media_type: String,
-    pub(crate) title: String,
-    pub(crate) poster_path: Option<String>,
-    pub(crate) backdrop_path: Option<String>,
-    pub(crate) year: Option<i64>,
-    pub(crate) rating: Option<f64>,
-    pub(crate) genres: String,
-    pub(crate) status: String,
-    pub(crate) favourite: bool,
-    pub(crate) user_rating: Option<f64>,
-    pub(crate) notes: Option<String>,
-    pub(crate) tags: String,
-    pub(crate) started_at: Option<String>,
-    pub(crate) completed_at: Option<String>,
-    pub(crate) rewatch_count: i64,
-    pub(crate) created_at: String,
-    pub(crate) updated_at: String,
-}
-
-impl TryFrom<LibraryRow> for LibraryItem {
-    type Error = ApiError;
-
-    fn try_from(row: LibraryRow) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: row.uuid,
-            profile_id: row.profile_id,
-            media_id: row.media_id,
-            media_type: MediaType::from_db_str(&row.media_type),
-            title: row.title,
-            poster_path: row.poster_path,
-            backdrop_path: row.backdrop_path,
-            year: row.year,
-            rating: row.rating,
-            genres: serde_json::from_str(&row.genres)
-                .map_err(|e| ApiError::internal(e.to_string()))?,
-            status: LibraryStatus::from_db_str(&row.status)?,
-            favourite: row.favourite,
-            user_rating: row.user_rating,
-            notes: row.notes,
-            tags: serde_json::from_str(&row.tags).map_err(|e| ApiError::internal(e.to_string()))?,
-            started_at: row.started_at,
-            completed_at: row.completed_at,
-            rewatch_count: row.rewatch_count,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        })
-    }
-}
-
-// The frontend grid is virtualized (react-virtuoso) and does its own
-// filter/sort over the full loaded set, so this can't paginate without
-// moving filtering and sorting into the query too. `LIST_SAFETY_LIMIT` is a
-// bound against pathological growth (not a page size): far above any real
-// library, it protects the query and the IPC payload from being truly
-// unbounded without changing today's "load everything, filter client-side"
-// contract.
-const LIST_SAFETY_LIMIT: i64 = 5000;
-
-async fn list_impl(pool: &SqlitePool, profile_id: &str) -> Result<Vec<LibraryItem>, ApiError> {
-    let rows: Vec<LibraryRow> = sqlx::query_as(
-        "SELECT * FROM library_items WHERE profile_id = $1 ORDER BY updated_at DESC LIMIT $2",
-    )
-    .bind(profile_id)
-    .bind(LIST_SAFETY_LIMIT)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
-    rows.into_iter().map(LibraryItem::try_from).collect()
-}
-
-async fn get_impl(
-    pool: &SqlitePool,
-    profile_id: &str,
-    media_id: i64,
-    media_type: MediaType,
-) -> Result<Option<LibraryItem>, ApiError> {
-    let row: Option<LibraryRow> = sqlx::query_as(
-        "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
-    )
-    .bind(profile_id)
-    .bind(media_id)
-    .bind(media_type.as_db_str())
-    .fetch_optional(pool)
-    .await
-    .map_err(ApiError::from)?;
-    row.map(LibraryItem::try_from).transpose()
-}
+use domain::auto_sync_rank;
+use queries::get_impl;
+#[cfg(test)]
+use queries::{has_impl, list_impl};
+#[cfg(test)]
+use tauri::State;
 
 async fn upsert_impl(
     pool: &SqlitePool,
@@ -345,35 +172,6 @@ async fn upsert_impl(
     Ok(item)
 }
 
-/// Rank used only to decide whether an automatic status sync (see
-/// `auto_sync_status_impl`) is allowed to move a library item forward.
-/// Watching/paused/dropped all count as "started" — none of them should be
-/// clobbered by a stray episode toggle — while completed counts as
-/// "finished".
-fn auto_sync_rank(status: LibraryStatus) -> u8 {
-    match status {
-        LibraryStatus::Planned => 0,
-        LibraryStatus::Watching | LibraryStatus::Paused | LibraryStatus::Dropped => 1,
-        LibraryStatus::Completed => 2,
-    }
-}
-
-/// Identity + TMDB metadata needed to *create* a library row from a viewing
-/// action (`auto_sync_status_impl`'s create-path) — bundled into one struct
-/// (rather than separate `media_id`/`media_type`/... parameters) to keep
-/// that function's argument count reasonable.
-#[derive(Debug, Clone)]
-pub(crate) struct AutoSyncMedia {
-    pub media_id: i64,
-    pub media_type: MediaType,
-    pub title: String,
-    pub poster_path: Option<String>,
-    pub backdrop_path: Option<String>,
-    pub year: Option<i64>,
-    pub rating: Option<f64>,
-    pub genres: Vec<String>,
-}
-
 /// Called from progress.rs/tvtime.rs, inside the same transaction as a "vu"
 /// toggle, to keep a library entry's status roughly in sync with actual
 /// viewing: watching a movie completes it, watching an episode starts a
@@ -475,24 +273,6 @@ pub(crate) async fn auto_sync_status_impl(
     Ok(())
 }
 
-async fn has_impl(
-    pool: &SqlitePool,
-    profile_id: &str,
-    media_id: i64,
-    media_type: MediaType,
-) -> Result<bool, ApiError> {
-    let row: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
-    )
-    .bind(profile_id)
-    .bind(media_id)
-    .bind(media_type.as_db_str())
-    .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)?;
-    Ok(row.0 > 0)
-}
-
 async fn remove_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -585,36 +365,6 @@ async fn remove_if_planned_impl(
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(true)
-}
-
-profile_scoped_command! {
-    pub async fn list_library() -> Vec<LibraryItem> => list_impl
-}
-
-profile_scoped_command! {
-    pub async fn get_library_item(media_id: i64, media_type: MediaType) -> Option<LibraryItem> => get_impl
-}
-
-profile_scoped_command! {
-    pub async fn has_library_item(media_id: i64, media_type: MediaType) -> bool => has_impl
-}
-
-#[tauri::command]
-pub async fn save_library_item(
-    media: MediaSummaryInput,
-    patch: Option<LibraryPatch>,
-    pool: State<'_, SqlitePool>,
-) -> Result<LibraryItem, ApiError> {
-    let profile_id = current_profile_id(&pool).await?;
-    upsert_impl(&pool, media, patch.unwrap_or_default(), &profile_id).await
-}
-
-profile_scoped_command! {
-    pub async fn remove_library_item(media_id: i64, media_type: MediaType) -> () => remove_impl
-}
-
-profile_scoped_command! {
-    pub async fn remove_planned_library_item(media_id: i64, media_type: MediaType) -> bool => remove_if_planned_impl
 }
 
 #[cfg(test)]
