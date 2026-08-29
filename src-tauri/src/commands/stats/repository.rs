@@ -64,9 +64,7 @@ impl<'a> StatsRepository<'a> {
         get_stats_overview_impl(self.pool, &self.profile_id, window_start, month_labels).await
     }
 
-    pub(super) async fn list_yearly_activity(
-        &self,
-    ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+    pub(super) async fn list_yearly_activity(&self) -> Result<Vec<YearlyActivityBucket>, ApiError> {
         list_yearly_activity_impl(self.pool, &self.profile_id).await
     }
 
