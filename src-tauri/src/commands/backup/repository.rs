@@ -1,26 +1,18 @@
 #[cfg(test)]
 use std::path::PathBuf;
 
-mod commands;
-mod export;
-mod filesystem;
-mod import;
-mod integrity;
-mod service;
-
-pub use commands::{
+#[cfg(test)]
+use super::commands::{
     check_data_integrity, export_backup_data, import_backup_data, list_backup_directory,
     read_backup_from_path, remove_backup_file, write_backup_to_path,
 };
-pub use integrity::DataIntegrityCheck;
-
 #[cfg(test)]
-use filesystem::{
+use super::filesystem::{
     list_backup_directory_sync, read_backup_file_sync, remove_backup_file_sync,
     write_backup_file_sync,
 };
 #[cfg(test)]
-use integrity::quick_check_impl;
+use super::integrity::quick_check_impl;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
