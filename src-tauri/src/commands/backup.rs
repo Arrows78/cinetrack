@@ -1,8 +1,31 @@
-use std::path::{Path, PathBuf};
+#[cfg(test)]
+use std::path::PathBuf;
+
+mod commands;
+mod export;
+mod filesystem;
+mod import;
+mod integrity;
+mod service;
+
+pub use commands::{
+    check_data_integrity, export_backup_data, import_backup_data, list_backup_directory,
+    read_backup_from_path, remove_backup_file, write_backup_to_path,
+};
+pub use integrity::DataIntegrityCheck;
+
+#[cfg(test)]
+use filesystem::{
+    list_backup_directory_sync, read_backup_file_sync, remove_backup_file_sync,
+    write_backup_file_sync,
+};
+#[cfg(test)]
+use integrity::quick_check_impl;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
+#[cfg(test)]
 use tauri::State;
 
 use crate::commands::availability::{
@@ -197,7 +220,7 @@ macro_rules! import_table {
     };
 }
 
-async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
+pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
     // All 12 reads share one transaction so the export is a single logical
     // snapshot — without this, a write landing between two of these
     // `SELECT *` calls (e.g. a movie marked watched right as the export
@@ -451,7 +474,7 @@ async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiError> {
 // columns): 200 * 20 = 4,000, far below the 32,766 default.
 const IMPORT_BATCH_SIZE: usize = 200;
 
-async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
+pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     // Child-first purge order: `custom_list_items` before `custom_lists`
@@ -733,192 +756,6 @@ async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiErr
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(())
-}
-
-async fn quick_check_impl(pool: &SqlitePool) -> Result<(bool, String), ApiError> {
-    let rows: Vec<(String,)> = sqlx::query_as("PRAGMA quick_check")
-        .fetch_all(pool)
-        .await
-        .map_err(ApiError::from)?;
-    let detail = rows
-        .into_iter()
-        .map(|(value,)| value)
-        .collect::<Vec<_>>()
-        .join(", ");
-    let detail = if detail.is_empty() {
-        "unknown".to_string()
-    } else {
-        detail
-    };
-    let healthy = detail == "ok";
-    Ok((healthy, detail))
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DataIntegrityCheck {
-    pub healthy: bool,
-    pub detail: String,
-}
-
-#[tauri::command]
-pub async fn export_backup_data(pool: State<'_, SqlitePool>) -> Result<PortableData, ApiError> {
-    export_impl(&pool).await
-}
-
-#[tauri::command]
-pub async fn import_backup_data(
-    data: PortableData,
-    pool: State<'_, SqlitePool>,
-) -> Result<(), ApiError> {
-    import_impl(&pool, data).await
-}
-
-#[tauri::command]
-pub async fn check_data_integrity(
-    pool: State<'_, SqlitePool>,
-) -> Result<DataIntegrityCheck, ApiError> {
-    let (healthy, detail) = quick_check_impl(&pool).await?;
-    Ok(DataIntegrityCheck { healthy, detail })
-}
-
-// ---------------------------------------------------------------------
-// Custom backup-location file I/O — used only when the user has pointed
-// the `backupDirectory` preference at a folder outside the app's default
-// `$APPDATA` location (see maintenance-service.ts). That path is an
-// arbitrary, user-chosen absolute path, so it can't go through
-// `@tauri-apps/plugin-fs` from JS: that plugin's capability scope
-// (capabilities/default.json) is a static `$APPDATA/**`-shaped allow-list
-// and can't safely pre-allow-list a path nobody knows ahead of time. A
-// Tauri command is trusted backend code, not subject to that webview-side
-// scoping, so plain `std::fs` here sidesteps the problem entirely — the
-// same reason this app already keeps all its real SQL work in Rust rather
-// than calling into SQLite from JS.
-//
-// Each blocking `std::fs` call runs inside `spawn_blocking` rather than a
-// `tokio::fs` (an async wrapper over the same syscalls): `tokio`'s "fs"
-// feature isn't enabled in this crate (see Cargo.toml), and these are
-// small, infrequent backup-file operations, so a dedicated blocking
-// thread is simpler than adding a new dependency feature for it.
-// ---------------------------------------------------------------------
-
-/// Same shape as the JS-side atomic write in maintenance-service.ts
-/// (`writeNamedBackup`): written to a `.tmp` sibling first, then renamed
-/// into place, so a crash or disk-full error mid-write never corrupts a
-/// previously-valid backup at `path`. Creates any missing parent
-/// directories first — the default `$APPDATA` path relies on `mkdir` being
-/// called separately by the JS side, but there's no equivalent
-/// "create-parent-dirs" plugin-fs call being reused here, so this command
-/// does it itself.
-fn write_backup_file_sync(path: &Path, contents: &str) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let mut tmp_path_os = path.as_os_str().to_owned();
-    tmp_path_os.push(".tmp");
-    let tmp_path = PathBuf::from(tmp_path_os);
-    std::fs::write(&tmp_path, contents)?;
-    std::fs::rename(&tmp_path, path)
-}
-
-/// `Ok(None)` when the file doesn't exist — mirrors the JS-side
-/// `readNamedBackup`'s `exists()`-then-read pattern (a missing backup is an
-/// expected, non-error state, e.g. no automatic backup has run yet).
-fn read_backup_file_sync(path: &Path) -> std::io::Result<Option<String>> {
-    match std::fs::read_to_string(path) {
-        Ok(contents) => Ok(Some(contents)),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error),
-    }
-}
-
-/// File names (not full paths) directly inside `directory`, or an empty
-/// list if the directory doesn't exist yet — mirrors the JS-side
-/// `listAutoBackups`'s try/catch around `readDir` (no automatic backup has
-/// ever been created there yet).
-fn list_backup_directory_sync(directory: &Path) -> std::io::Result<Vec<String>> {
-    let entries = match std::fs::read_dir(directory) {
-        Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => return Err(error),
-    };
-    let mut names = Vec::new();
-    for entry in entries {
-        let entry = entry?;
-        if entry.file_type()?.is_file()
-            && let Some(name) = entry.file_name().to_str()
-        {
-            names.push(name.to_string());
-        }
-    }
-    Ok(names)
-}
-
-/// Idempotent: removing a file that's already gone is a no-op rather than
-/// an error, matching how the JS-side `pruneOldAutoBackups` already treats
-/// a failed removal as a non-fatal, logged-and-skipped condition.
-fn remove_backup_file_sync(path: &Path) -> std::io::Result<()> {
-    match std::fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(error),
-    }
-}
-
-/// Every I/O error from the commands below is wrapped through here rather
-/// than surfaced with `error.to_string()` verbatim: the frontend's
-/// `invokeCommand()` turns any Rust command failure into an
-/// `ApiCommandError`, and per this app's error-handling rule
-/// (`displayMessage` in shared/lib/user-facing-error.ts), an
-/// `ApiCommandError`'s `.message` is never rendered to the user directly —
-/// only an explicitly-thrown `UserFacingError` is. So this message is safe
-/// to keep in plain English with raw OS/path detail (it only ever reaches
-/// diagnostics logging and the generic translated toast fallback already
-/// used by every caller here), matching how `import_impl`/`export_impl`
-/// elsewhere in this file already wrap `serde_json`/`sqlx` errors with a
-/// plain `format!("...: {error}")` rather than a translated string.
-fn io_error(context: &str, path: &str, error: std::io::Error) -> ApiError {
-    ApiError::internal(format!("{context} at \"{path}\": {error}"))
-}
-
-#[tauri::command]
-pub async fn write_backup_to_path(path: String, contents: String) -> Result<(), ApiError> {
-    let path_buf = PathBuf::from(&path);
-    let path_for_error = path.clone();
-    tokio::task::spawn_blocking(move || write_backup_file_sync(&path_buf, &contents))
-        .await
-        .map_err(|error| ApiError::internal(format!("Backup write task panicked: {error}")))?
-        .map_err(|error| io_error("Failed to write backup file", &path_for_error, error))
-}
-
-#[tauri::command]
-pub async fn read_backup_from_path(path: String) -> Result<Option<String>, ApiError> {
-    let path_buf = PathBuf::from(&path);
-    let path_for_error = path.clone();
-    tokio::task::spawn_blocking(move || read_backup_file_sync(&path_buf))
-        .await
-        .map_err(|error| ApiError::internal(format!("Backup read task panicked: {error}")))?
-        .map_err(|error| io_error("Failed to read backup file", &path_for_error, error))
-}
-
-#[tauri::command]
-pub async fn list_backup_directory(directory: String) -> Result<Vec<String>, ApiError> {
-    let dir_buf = PathBuf::from(&directory);
-    let dir_for_error = directory.clone();
-    tokio::task::spawn_blocking(move || list_backup_directory_sync(&dir_buf))
-        .await
-        .map_err(|error| ApiError::internal(format!("Backup list task panicked: {error}")))?
-        .map_err(|error| io_error("Failed to list backup directory", &dir_for_error, error))
-}
-
-#[tauri::command]
-pub async fn remove_backup_file(path: String) -> Result<(), ApiError> {
-    let path_buf = PathBuf::from(&path);
-    let path_for_error = path.clone();
-    tokio::task::spawn_blocking(move || remove_backup_file_sync(&path_buf))
-        .await
-        .map_err(|error| ApiError::internal(format!("Backup remove task panicked: {error}")))?
-        .map_err(|error| io_error("Failed to remove backup file", &path_for_error, error))
 }
 
 #[cfg(test)]
