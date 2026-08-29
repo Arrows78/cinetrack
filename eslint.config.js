@@ -3,6 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import i18next from "eslint-plugin-i18next";
+import boundaries from "eslint-plugin-boundaries";
 import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
 
@@ -29,9 +30,51 @@ export default tseslint.config(
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
       i18next,
+      boundaries,
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./tsconfig.json",
+        },
+      },
+      // Only the layers with an actual rule below are modeled — deliberately
+      // not a full classification of src/** (that would need `no-unknown`
+      // too, and pages/features have no existing internal-vs-public
+      // convention to check against yet; see the "Architecture boundaries"
+      // section of docs/architecture.md).
+      "boundaries/elements": [
+        { type: "shared", pattern: "src/shared/**" },
+        { type: "ui-primitives", pattern: "src/components/ui/**" },
+        { type: "features", pattern: "src/features/*/**" },
+        { type: "pages", pattern: "src/pages/**" },
+      ],
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Dependency direction from docs/architecture.md's "Architecture
+      // boundaries" section — shared/ and components/ui/ are the lowest
+      // layer and must stay reusable outside any one feature or page.
+      "boundaries/dependencies": [
+        "error",
+        {
+          default: "allow",
+          policies: [
+            {
+              from: { element: { type: "shared" } },
+              disallow: [{ to: { element: { type: "features" } } }, { to: { element: { type: "pages" } } }],
+              message:
+                "src/shared/** must not depend on a feature or page — it's the layer every feature/page depends on, not the other way round. See docs/architecture.md.",
+            },
+            {
+              from: { element: { type: "ui-primitives" } },
+              disallow: [{ to: { element: { type: "features" } } }, { to: { element: { type: "pages" } } }],
+              message:
+                "src/components/ui/** primitives must not depend on business-domain code — put domain-aware composition in components/media, components/states, etc. instead. See docs/architecture.md.",
+            },
+          ],
+        },
+      ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-misused-promises": "error",
