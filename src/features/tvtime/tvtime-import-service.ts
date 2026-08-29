@@ -1,6 +1,5 @@
 import i18n from "@/i18n";
-import { TmdbRequestError } from "@/features/media/api/client";
-import { mediaRepository } from "@/features/media/media-repository";
+import { TmdbRequestError, mediaRepository } from "@/features/media/media-repository";
 import { libraryRepository } from "@/features/library/library-repository";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import type { MediaSummary, Series } from "@/types/media";

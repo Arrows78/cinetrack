@@ -23,7 +23,7 @@ import { useWatchNext } from "@/features/progress/use-watch-next";
 import { useLibrary } from "@/features/library/use-library";
 import { useHomeFeed } from "@/features/media/use-media";
 import { useBecauseYouLiked } from "@/features/media/use-because-you-liked";
-import { useFavouriteGenreRail } from "@/features/media/use-favourite-genre-rail";
+import { useFavouriteGenreRail } from "@/components/media/use-favourite-genre-rail";
 import { usePeopleYouWatch } from "@/features/media/use-people-you-watch";
 import { WatchNextSection } from "@/components/media/watch-next-section";
 import { WeeklyAgendaSection } from "@/components/media/weekly-agenda-section";
@@ -316,7 +316,7 @@ export function HomePage() {
 
       {/* Compact "this week" personal agenda — releases, new episodes, and
           availability changes for the active profile (see
-          src/features/calendar/use-weekly-agenda.ts). Renders nothing when
+          src/features/tracking/use-weekly-agenda.ts). Renders nothing when
           there's nothing to show, same as the rails above. */}
       <WeeklyAgendaSection index={++sectionIndex} />
 

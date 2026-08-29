@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { weeklyAgendaService } from "@/features/calendar/weekly-agenda-service";
+import { weeklyAgendaService } from "@/features/tracking/weekly-agenda-service";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_30_MIN } from "@/shared/constants/query";

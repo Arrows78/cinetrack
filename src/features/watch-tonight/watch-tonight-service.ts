@@ -1,5 +1,5 @@
 import { libraryRepository } from "@/features/library/library-repository";
-import { filterHiddenIfWatched } from "@/features/library/library-set";
+import { filterHiddenIfWatched } from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { logger } from "@/shared/lib/logger";
 import type { LibraryItem, MediaSummary, MediaType, Movie, Series } from "@/types/media";

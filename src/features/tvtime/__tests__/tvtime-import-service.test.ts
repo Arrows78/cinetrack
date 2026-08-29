@@ -7,14 +7,24 @@ const searchMock = vi.fn();
 const getSeriesDetailsMock = vi.fn();
 const getSeasonDetailsMock = vi.fn();
 const findSeriesByTvdbIdMock = vi.fn();
-vi.mock("@/features/media/media-repository", () => ({
-  mediaRepository: {
-    search: (...args: unknown[]) => searchMock(...args),
-    getSeriesDetails: (...args: unknown[]) => getSeriesDetailsMock(...args),
-    getSeasonDetails: (...args: unknown[]) => getSeasonDetailsMock(...args),
-    findSeriesByTvdbId: (...args: unknown[]) => findSeriesByTvdbIdMock(...args),
-  },
-}));
+vi.mock("@/features/media/media-repository", async () => {
+  // TmdbRequestError itself isn't mocked (this file's own tests construct
+  // real instances via api/client below) — media-repository.ts just
+  // re-exports it as part of media's public surface, so the mock has to
+  // too, or tvtime-import-service.ts's `instanceof TmdbRequestError` check
+  // would compare against a different class than the one these tests throw.
+  const { TmdbRequestError } =
+    await vi.importActual<typeof import("@/features/media/api/client")>("@/features/media/api/client");
+  return {
+    TmdbRequestError,
+    mediaRepository: {
+      search: (...args: unknown[]) => searchMock(...args),
+      getSeriesDetails: (...args: unknown[]) => getSeriesDetailsMock(...args),
+      getSeasonDetails: (...args: unknown[]) => getSeasonDetailsMock(...args),
+      findSeriesByTvdbId: (...args: unknown[]) => findSeriesByTvdbIdMock(...args),
+    },
+  };
+});
 
 const librarySaveMock = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({

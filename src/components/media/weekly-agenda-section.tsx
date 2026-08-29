@@ -5,7 +5,7 @@ import { Bell, Film, Tv } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tile } from "@/components/ui/tile";
 import { SectionHeader } from "@/components/media/section-header";
-import { useWeeklyAgenda } from "@/features/calendar/use-weekly-agenda";
+import { useWeeklyAgenda } from "@/features/tracking/use-weekly-agenda";
 import { logger } from "@/shared/lib/logger";
 import { errorMessage } from "@/shared/lib/errors";
 import { formatEpisodeCode, formatRelativeCountdown } from "@/shared/utils/format";

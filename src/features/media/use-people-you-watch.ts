@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/shared/lib/logger";
 import { useLibrary } from "@/features/library/use-library";
-import { EMPTY_LIBRARY, filterAvailableItems } from "@/features/library/library-set";
+import { EMPTY_LIBRARY, filterAvailableItems } from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";

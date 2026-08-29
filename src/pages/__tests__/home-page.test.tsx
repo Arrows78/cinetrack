@@ -56,7 +56,7 @@ vi.mock("@/features/media/use-because-you-liked", () => ({
 }));
 
 const favouriteGenreRailMock = vi.fn();
-vi.mock("@/features/media/use-favourite-genre-rail", () => ({
+vi.mock("@/components/media/use-favourite-genre-rail", () => ({
   useFavouriteGenreRail: () => favouriteGenreRailMock(),
 }));
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useLibrary } from "@/features/library/use-library";
-import { EMPTY_LIBRARY, filterAvailableItems } from "@/features/library/library-set";
+import { EMPTY_LIBRARY, filterAvailableItems } from "@/shared/utils/library-set";
 import { useRecommendations } from "@/features/media/use-discovery";
 import type { LibraryItem, MediaSummary } from "@/types/media";
 

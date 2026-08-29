@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pickTopGenre } from "../use-favourite-genre-rail";
-import type { MergedGenre } from "../use-merged-genres";
+import type { MergedGenre } from "@/features/media/use-merged-genres";
 
 const genre = (overrides: Partial<MergedGenre> = {}): MergedGenre => ({
   id: 18,

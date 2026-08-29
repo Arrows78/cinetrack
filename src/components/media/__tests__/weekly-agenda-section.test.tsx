@@ -11,7 +11,7 @@ const { useWeeklyAgendaMock, loggerWarnMock } = vi.hoisted(() => ({
   loggerWarnMock: vi.fn(),
 }));
 
-vi.mock("@/features/calendar/use-weekly-agenda", () => ({
+vi.mock("@/features/tracking/use-weekly-agenda", () => ({
   useWeeklyAgenda: () => useWeeklyAgendaMock(),
 }));
 

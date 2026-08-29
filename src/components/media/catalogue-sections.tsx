@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
-import { filterHiddenIfWatched } from "@/features/library/library-set";
+import { filterHiddenIfWatched } from "@/shared/utils/library-set";
 import type { HomeFeed, LibraryItem, MediaSummary } from "@/types/media";
 
 export const CATALOGUE_SECTIONS = [

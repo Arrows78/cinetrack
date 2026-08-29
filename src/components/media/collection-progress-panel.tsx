@@ -9,7 +9,7 @@ import { MediaGrid } from "@/components/media/media-grid";
 import { SectionHeader } from "@/components/media/section-header";
 import { computeCollectionProgress } from "@/features/media/collection-progress";
 import { useMovieCollection } from "@/features/media/use-collection";
-import { EMPTY_LIBRARY } from "@/features/library/library-set";
+import { EMPTY_LIBRARY } from "@/shared/utils/library-set";
 import { useLibrary, useLibraryQuickToggle } from "@/features/library/use-library";
 import { logger } from "@/shared/lib/logger";
 import type { CollectionEntryStatus } from "@/features/media/collection-progress";
