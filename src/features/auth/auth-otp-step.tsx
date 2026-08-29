@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { LoaderCircle, RotateCw, ShieldCheck } from "lucide-react";
 
 import { authConfig } from "@/features/auth/auth-client";
-import { AuthBackLink } from "@/features/auth/auth-back-link";
-import { AuthStepIcon } from "@/features/auth/auth-step-icon";
+import { AuthBackLink } from "@/features/auth/atoms/auth-back-link";
+import { AuthStepIcon } from "@/features/auth/atoms/auth-step-icon";
 import { Button } from "@/components/ui/button";
 
 interface AuthOtpStepProps {

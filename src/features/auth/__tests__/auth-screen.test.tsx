@@ -32,11 +32,11 @@ vi.mock("@/features/auth/auth-client", () => ({
   authConfig: authConfigMock,
 }));
 
-vi.mock("@/features/auth/auth-backdrop", () => ({
+vi.mock("@/features/auth/atoms/auth-backdrop", () => ({
   AuthBackdrop: () => <div data-testid="auth-backdrop" />,
 }));
 
-vi.mock("@/features/auth/auth-brand-mark", () => ({
+vi.mock("@/features/auth/atoms/auth-brand-mark", () => ({
   AuthBrandMark: () => <div data-testid="auth-brand-mark" />,
 }));
 

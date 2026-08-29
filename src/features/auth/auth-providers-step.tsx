@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LoaderCircle, Mail } from "lucide-react";
 
 import type { SocialAuthProvider } from "@/features/auth/auth-client";
-import { ProviderIcon } from "@/features/auth/provider-icon";
+import { ProviderIcon } from "@/features/auth/atoms/provider-icon";
 import { cn } from "@/shared/lib/cn";
 import { OAUTH_BRAND_COLORS } from "@/shared/constants/colors";
 

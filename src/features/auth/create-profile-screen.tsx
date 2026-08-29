@@ -2,10 +2,10 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { UserPlus } from "lucide-react";
 
-import { AuthBackdrop } from "@/features/auth/auth-backdrop";
-import { AuthBrandMark } from "@/features/auth/auth-brand-mark";
-import { AuthStepIcon } from "@/features/auth/auth-step-icon";
-import { AuthTextField } from "@/features/auth/auth-text-field";
+import { AuthBackdrop } from "@/features/auth/atoms/auth-backdrop";
+import { AuthBrandMark } from "@/features/auth/atoms/auth-brand-mark";
+import { AuthStepIcon } from "@/features/auth/atoms/auth-step-icon";
+import { AuthTextField } from "@/features/auth/atoms/auth-text-field";
 import { useAuth } from "@/features/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import { useCreateProfileForSupabaseUser } from "@/features/profiles/use-profiles";

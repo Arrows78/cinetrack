@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Check, Mail } from "lucide-react";
 
 import { authConfig } from "@/features/auth/auth-client";
-import { AuthBackLink } from "@/features/auth/auth-back-link";
-import { AuthTextField } from "@/features/auth/auth-text-field";
+import { AuthBackLink } from "@/features/auth/atoms/auth-back-link";
+import { AuthTextField } from "@/features/auth/atoms/auth-text-field";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/cn";
 
