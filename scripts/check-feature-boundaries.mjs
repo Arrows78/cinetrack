@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import process from "node:process";
 import { basename, dirname, extname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,20 +25,12 @@ function featureOf(file) {
 
 function isPublicFeatureFile(file) {
   const name = basename(file);
-  return (
-    /^index\.(?:ts|tsx)$/.test(name) ||
-    /-repository\.(?:ts|tsx)$/.test(name) ||
-    /^use-.*\.(?:ts|tsx)$/.test(name)
-  );
+  return /^index\.(?:ts|tsx)$/.test(name) || /-repository\.(?:ts|tsx)$/.test(name) || /^use-.*\.(?:ts|tsx)$/.test(name);
 }
 
 function resolveImport(specifier, containingFile) {
-  const resolved = ts.resolveModuleName(
-    specifier,
-    containingFile,
-    parsed.options,
-    ts.sys
-  ).resolvedModule?.resolvedFileName;
+  const resolved = ts.resolveModuleName(specifier, containingFile, parsed.options, ts.sys).resolvedModule
+    ?.resolvedFileName;
 
   if (!resolved) return null;
   if (![".ts", ".tsx"].includes(extname(resolved))) return null;

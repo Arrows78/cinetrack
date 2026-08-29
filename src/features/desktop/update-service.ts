@@ -13,7 +13,7 @@ export const updateService = {
   async checkAndInstall(onProgress?: (downloaded: number, total?: number) => void): Promise<string> {
     if (!isTauriApp()) return i18n.t("desktop.updateNativeOnly");
 
-    const configured = await invoke<boolean>("updater_is_configured").catch(() => false);
+    const configured = await invokeTypedCommand(updaterCommands.isConfigured).catch(() => false);
     if (!configured) {
       return i18n.t("desktop.updateChannelNotConfigured");
     }

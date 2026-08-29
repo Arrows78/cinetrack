@@ -55,13 +55,7 @@ function splitTopLevel(source, separator = ",") {
     else if (char === "]") bracket = Math.max(0, bracket - 1);
     else if (char === "{") brace += 1;
     else if (char === "}") brace = Math.max(0, brace - 1);
-    else if (
-      char === separator &&
-      angle === 0 &&
-      paren === 0 &&
-      bracket === 0 &&
-      brace === 0
-    ) {
+    else if (char === separator && angle === 0 && paren === 0 && bracket === 0 && brace === 0) {
       parts.push(source.slice(start, i).trim());
       start = i + 1;
     }
@@ -73,7 +67,10 @@ function splitTopLevel(source, separator = ",") {
 }
 
 function genericInner(type, wrapper) {
-  const normalized = type.trim().replace(/^&(?:'[_a-zA-Z0-9]+\s*)?/, "").trim();
+  const normalized = type
+    .trim()
+    .replace(/^&(?:'[_a-zA-Z0-9]+\s*)?/, "")
+    .trim();
   const prefix = `${wrapper}<`;
   if (!normalized.startsWith(prefix) || !normalized.endsWith(">")) return null;
   return normalized.slice(prefix.length, -1).trim();
@@ -81,7 +78,7 @@ function genericInner(type, wrapper) {
 
 function unwrapRustResult(type) {
   const inner = genericInner(type, "Result");
-  return inner === null ? type.trim() : splitTopLevel(inner)[0] ?? type.trim();
+  return inner === null ? type.trim() : (splitTopLevel(inner)[0] ?? type.trim());
 }
 
 function rustShape(type) {
@@ -142,7 +139,10 @@ function rustCommandSignatures() {
         .map((parameter) => {
           const colon = parameter.indexOf(":");
           if (colon === -1) return null;
-          const rawName = parameter.slice(0, colon).trim().replace(/^mut\s+/, "");
+          const rawName = parameter
+            .slice(0, colon)
+            .trim()
+            .replace(/^mut\s+/, "");
           const type = parameter.slice(colon + 1).trim();
           if (isInjectedRustArg(type)) return null;
           return {
@@ -192,9 +192,7 @@ function stripNullishTs(type) {
     return { type, nullable: Boolean(type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) };
   }
 
-  const remaining = type.types.filter(
-    (member) => !(member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
-  );
+  const remaining = type.types.filter((member) => !(member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)));
   const nullable = remaining.length !== type.types.length;
   return { type: remaining.length === 1 ? remaining[0] : type, nullable };
 }
@@ -248,16 +246,12 @@ function tsCommandDescriptors() {
       ) {
         const name = node.arguments[0].text;
         if (descriptors.has(name)) {
-          throw new Error(
-            `Duplicate defineCommand descriptor for "${name}" in ${relative(root, sourceFile.fileName)}`
-          );
+          throw new Error(`Duplicate defineCommand descriptor for "${name}" in ${relative(root, sourceFile.fileName)}`);
         }
 
         const argsType = checker.getTypeFromTypeNode(node.typeArguments[0]);
         const resultType = checker.getTypeFromTypeNode(node.typeArguments[1]);
-        const argsAreUndefined = Boolean(
-          argsType.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void)
-        );
+        const argsAreUndefined = Boolean(argsType.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Void));
 
         const args = argsAreUndefined
           ? []
@@ -294,14 +288,8 @@ function tsCommandDescriptors() {
 }
 
 function compareCategory(commandName, label, rust, tsValue, failures) {
-  if (
-    rust.category !== "named" &&
-    tsValue.category !== "named" &&
-    rust.category !== tsValue.category
-  ) {
-    failures.push(
-      `${commandName}: ${label} category differs (Rust ${rust.category}, TS ${tsValue.category})`
-    );
+  if (rust.category !== "named" && tsValue.category !== "named" && rust.category !== tsValue.category) {
+    failures.push(`${commandName}: ${label} category differs (Rust ${rust.category}, TS ${tsValue.category})`);
   }
 
   if (rust.nullable && !tsValue.nullable) {
@@ -324,9 +312,7 @@ for (const name of registered) {
     continue;
   }
   if (!descriptor) {
-    failures.push(
-      `${name}: registered in Rust but has no defineCommand<Args, Result>("${name}") descriptor in src/**`
-    );
+    failures.push(`${name}: registered in Rust but has no defineCommand<Args, Result>("${name}") descriptor in src/**`);
     continue;
   }
 
@@ -343,9 +329,7 @@ for (const name of registered) {
     }
 
     if (rustArg.optional && !(tsArg.optional || tsArg.shape.nullable)) {
-      failures.push(
-        `${name}.${argName}: Rust Option<...> accepts omission/null but TS requires ${tsArg.tsType}`
-      );
+      failures.push(`${name}.${argName}: Rust Option<...> accepts omission/null but TS requires ${tsArg.tsType}`);
     }
     if (!rustArg.optional && tsArg.optional) {
       failures.push(
