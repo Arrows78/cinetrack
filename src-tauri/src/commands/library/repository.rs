@@ -1,33 +1,21 @@
-mod commands;
-mod domain;
-mod models;
-mod queries;
-mod service;
-
-pub use commands::{
-    get_library_item, has_library_item, list_library, remove_library_item,
-    remove_planned_library_item, save_library_item,
-};
-pub use domain::LibraryStatus;
-pub use models::{LibraryItem, LibraryPatch, MediaSummaryInput};
-pub(crate) use models::{AutoSyncMedia, LibraryRow};
-
 use serde_json::json;
 use sqlx::SqlitePool;
+#[cfg(test)]
+use tauri::State;
 
-use super::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
+#[cfg(test)]
+use super::commands::{get_library_item, list_library, remove_library_item, save_library_item};
+use super::domain::{LibraryStatus, auto_sync_rank};
+use super::models::{AutoSyncMedia, LibraryItem, LibraryPatch, LibraryRow, MediaSummaryInput};
+use super::queries::get_impl;
+#[cfg(test)]
+use super::queries::{has_impl, list_impl};
+use crate::commands::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
-use domain::auto_sync_rank;
-use queries::get_impl;
-#[cfg(test)]
-use queries::{has_impl, list_impl};
-#[cfg(test)]
-use tauri::State;
-
-async fn upsert_impl(
+pub(super) async fn upsert_impl(
     pool: &SqlitePool,
     media: MediaSummaryInput,
     patch: LibraryPatch,
@@ -273,7 +261,7 @@ pub(crate) async fn auto_sync_status_impl(
     Ok(())
 }
 
-async fn remove_impl(
+pub(super) async fn remove_impl(
     pool: &SqlitePool,
     profile_id: &str,
     media_id: i64,
@@ -320,7 +308,7 @@ async fn remove_impl(
 /// otherwise (already started/finished, or already gone) — unlike
 /// `remove_library_item`, which is unconditional and sits behind
 /// `LibraryEditor`'s own `ConfirmDialog`.
-async fn remove_if_planned_impl(
+pub(super) async fn remove_if_planned_impl(
     pool: &SqlitePool,
     profile_id: &str,
     media_id: i64,
