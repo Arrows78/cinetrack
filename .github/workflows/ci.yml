@@ -100,9 +100,22 @@ jobs:
             patchelf
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Reads channel/components from rust-toolchain.toml at the repo root
+        # (no `toolchain:` input given) — local `cargo`/`rustup` invocations
+        # already respect that same file, so CI and local dev always build
+        # with the exact same Rust version. `dtolnay/rust-toolchain@stable`
+        # doesn't support that file at all (deliberately, per its own
+        # README), which is why this uses a different action.
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: clippy, rustfmt
+          # This action's own build-in caching would stack with (and
+          # duplicate) the explicit swatinem/rust-cache step below.
+          cache: false
+          # This action defaults to injecting RUSTFLAGS=-D warnings into
+          # every cargo invocation in this job — cargo check/test below
+          # aren't meant to be warnings-as-errors, only the explicit
+          # `cargo clippy -- -D warnings` step is. Empty string opts out.
+          rustflags: ""
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
