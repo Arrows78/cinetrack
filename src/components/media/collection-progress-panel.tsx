@@ -11,7 +11,7 @@ import { computeCollectionProgress } from "@/features/media/collection-progress"
 import { useMovieCollection } from "@/features/media/use-collection";
 import { EMPTY_LIBRARY } from "@/features/library/library-set";
 import { useLibrary, useLibraryQuickToggle } from "@/features/library/use-library";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import type { CollectionEntryStatus } from "@/features/media/collection-progress";
 import type { Movie } from "@/types/media";
 

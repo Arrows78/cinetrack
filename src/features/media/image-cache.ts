@@ -1,4 +1,4 @@
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 
 const CACHE_NAME = "cinetrack-images-v1";
 const META_KEY = "cinetrack.image-cache.meta.v1";

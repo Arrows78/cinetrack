@@ -38,7 +38,7 @@ import { RatingDistributionSection } from "@/components/stats/rating-distributio
 import { WatchMilestonesSection } from "@/components/stats/watch-milestones-section";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { StatsSkeleton } from "@/components/states/loading-skeletons";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";

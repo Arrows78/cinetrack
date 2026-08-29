@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { maintenanceService } from "@/features/backup/maintenance-service";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { errorMessage } from "@/shared/lib/errors";
 import { displayMessage, UserFacingError } from "@/shared/lib/user-facing-error";

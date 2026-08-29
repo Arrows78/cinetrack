@@ -4,7 +4,7 @@ import i18n from "@/i18n";
 import { ErrorComponent, PendingComponent, RootLayout } from "../router-components";
 
 const loggerErrorMock = vi.fn();
-vi.mock("@/features/diagnostics/logger", () => ({
+vi.mock("@/shared/lib/logger", () => ({
   logger: { error: (message: string) => loggerErrorMock(message) },
 }));
 

@@ -14,7 +14,7 @@ import { UserFacingError } from "@/shared/lib/user-facing-error";
 import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { STALE_24_HOURS } from "@/shared/constants/query";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 
 const BACKUP_DIR = "backups";
 const AUTO_BACKUP_PREFIX = "auto-";

@@ -12,7 +12,7 @@ vi.mock("@/features/stats/use-stats", () => ({
 }));
 
 const loggerWarnMock = vi.fn();
-vi.mock("@/features/diagnostics/logger", () => ({
+vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn(), info: vi.fn() },
 }));
 

@@ -6,7 +6,7 @@ import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { EmptyState } from "@/components/states/empty-state";
 import { LoadingScreen } from "@/components/states/loading-screen";
 import { maintenanceService } from "@/features/backup/maintenance-service";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { useBootRecovery } from "@/features/desktop/use-boot-recovery";
 import { isTauriApp } from "@/shared/lib/platform";
 

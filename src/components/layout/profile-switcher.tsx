@@ -9,7 +9,7 @@ import { Tile } from "@/components/ui/tile";
 import { toast } from "@/components/ui/use-toast";
 import { authConfig } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/auth-context";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useProfiles } from "@/features/profiles/use-profiles";

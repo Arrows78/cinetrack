@@ -15,7 +15,7 @@ vi.mock("@/features/calendar/use-weekly-agenda", () => ({
   useWeeklyAgenda: () => useWeeklyAgendaMock(),
 }));
 
-vi.mock("@/features/diagnostics/logger", () => ({
+vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: loggerWarnMock, error: vi.fn(), info: vi.fn() },
 }));
 

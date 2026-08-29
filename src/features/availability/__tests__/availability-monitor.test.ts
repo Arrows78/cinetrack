@@ -26,7 +26,7 @@ vi.mock("@/features/desktop/notification-service", () => ({
 }));
 
 const loggerWarn = vi.hoisted(() => vi.fn());
-vi.mock("@/features/diagnostics/logger", () => ({
+vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: loggerWarn, error: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 

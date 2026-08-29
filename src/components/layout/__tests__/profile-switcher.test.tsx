@@ -18,7 +18,7 @@ const toastMock = vi.fn();
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
 const warnMock = vi.fn();
-vi.mock("@/features/diagnostics/logger", () => ({ logger: { warn: (...args: unknown[]) => warnMock(...args) } }));
+vi.mock("@/shared/lib/logger", () => ({ logger: { warn: (...args: unknown[]) => warnMock(...args) } }));
 
 const listProfilesMock = vi.fn();
 vi.mock("@/features/profiles/profile-repository", () => ({

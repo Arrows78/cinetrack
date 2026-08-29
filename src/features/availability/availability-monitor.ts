@@ -2,7 +2,7 @@ import i18n from "@/i18n";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { mediaRepository } from "@/features/media/media-repository";
 import { notificationService } from "@/features/desktop/notification-service";
-import { logger } from "@/features/diagnostics/logger";
+import { logger } from "@/shared/lib/logger";
 
 export const availabilityMonitor = {
   async checkAll({ notificationsEnabled = true }: { notificationsEnabled?: boolean } = {}) {
