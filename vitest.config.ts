@@ -12,7 +12,10 @@ export default defineConfig({
     // worktrees created via the worktree tool, co-located under this
     // checkout) — without this, `pnpm test` also picks up and runs whatever
     // test files happen to exist in any sibling worktree's own src/.
-    exclude: [...configDefaults.exclude, ".claude/**"],
+    // e2e/** is Playwright's own suite (playwright.config.ts) — its
+    // test()/expect() come from @playwright/test, not vitest, and Vitest
+    // trying to execute those files directly throws.
+    exclude: [...configDefaults.exclude, ".claude/**", "e2e/**"],
     environment: "jsdom",
     environmentOptions: {
       jsdom: {

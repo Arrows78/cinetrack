@@ -37,6 +37,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots",
     "contract:generate": "node scripts/generate-tauri-command-names.mjs",
     "contract:check": "node scripts/generate-tauri-command-names.mjs --check && node scripts/check-contract-drift.mjs && node scripts/check-tauri-command-signatures.mjs",
     "architecture:check": "node scripts/check-feature-boundaries.mjs",
@@ -102,6 +104,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.11.4",
     "@tauri-apps/plugin-sql": "^2.0.0",

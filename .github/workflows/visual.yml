@@ -1,0 +1,91 @@
+name: Visual regression
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright's Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # No baseline screenshots are committed yet (see e2e/visual/README.md) —
+      # every comparison in this job currently fails with "no baseline found",
+      # not a real visual regression. continue-on-error keeps that from
+      # blocking merges; remove it once real Linux baselines have been
+      # generated and committed via the bootstrap-baselines job below.
+      - name: Run visual regression suite
+        continue-on-error: true
+        run: pnpm test:visual
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Manual, on-demand only: generates fresh Linux-rendered screenshots and
+  # uploads them as a build artifact rather than committing them directly —
+  # committing binary baseline images from an automated job without a human
+  # reviewing the actual pixels first is exactly the kind of thing that could
+  # silently bake a broken/wrong rendering in as the new "correct" baseline.
+  # To (re)bootstrap baselines: run this job from the Actions tab, download
+  # the "visual-baselines" artifact, extract it into
+  # e2e/visual/__screenshots__/, review the images, then commit them.
+  bootstrap-baselines:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright's Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Generate baseline screenshots
+        run: pnpm test:visual:update
+
+      - name: Upload baseline screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: e2e/visual/__screenshots__/
+          if-no-files-found: error
+          retention-days: 30

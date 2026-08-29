@@ -19,6 +19,7 @@ afterEach(() => {
   document.documentElement.className = "";
   document.body.className = "";
   document.getElementById("cinetrack-accent-vars")?.remove();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("ThemeController", () => {
@@ -95,6 +96,23 @@ describe("ThemeController", () => {
 
     const style = document.getElementById("cinetrack-accent-vars");
     expect(style?.textContent).toContain("0 0% 98%");
+  });
+
+  it("the ?e2e-theme URL param overrides preferences.theme (Playwright visual-suite escape hatch)", () => {
+    preferences = { theme: "dark", accentColor: "violet" };
+    window.history.replaceState(null, "", "/?e2e-theme=light");
+    render(<ThemeController />);
+
+    expect(document.documentElement.classList.contains("light")).toBe(true);
+    expect(document.body.classList.contains("light")).toBe(true);
+  });
+
+  it("ignores an unrecognized ?e2e-theme value and falls back to preferences.theme", () => {
+    preferences = { theme: "light", accentColor: "violet" };
+    window.history.replaceState(null, "", "/?e2e-theme=nonsense");
+    render(<ThemeController />);
+
+    expect(document.documentElement.classList.contains("light")).toBe(true);
   });
 
   it("reuses the existing <style> tag instead of inserting a second one when preferences change", () => {

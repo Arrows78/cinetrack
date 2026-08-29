@@ -33,13 +33,25 @@ function applyAccentVars(primaryHsl: string, primaryFg: string) {
   style.textContent = `:root.dark,:root.light,body.dark,body.light{--primary:${primaryHsl};--primary-foreground:${primaryFg};--ring:${primaryHsl}}`;
 }
 
+// Query-param escape hatch for the Playwright visual-regression suite
+// (e2e/visual/) only: `preferences.theme` comes from SQLite, which fails
+// silently under `pnpm dev` alone (see CLAUDE.md's browser-preview note),
+// so the app always renders in the "dark" fallback below there — Playwright
+// can't otherwise produce a real light-theme screenshot outside the actual
+// Tauri window. Never set by any real navigation, so it's a no-op for
+// every real user.
+function themeOverrideFromUrl(): "light" | "dark" | null {
+  const value = new URLSearchParams(window.location.search).get("e2e-theme");
+  return value === "light" || value === "dark" ? value : null;
+}
+
 export function ThemeController() {
   const { data: preferences } = usePreferences();
 
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    const theme = preferences?.theme ?? "dark";
+    const theme = themeOverrideFromUrl() ?? preferences?.theme ?? "dark";
     const accent = preferences?.accentColor ?? DEFAULT_ACCENT;
 
     // — Theme class
