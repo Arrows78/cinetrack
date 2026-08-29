@@ -4,6 +4,7 @@ mod commands;
 mod database;
 mod error;
 mod history;
+mod integrations;
 mod library;
 mod lists;
 mod models;
