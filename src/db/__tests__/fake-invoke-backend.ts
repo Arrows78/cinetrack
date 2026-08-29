@@ -6,6 +6,7 @@
 // to log activity) — this keeps their tests exercising real SQL end-to-end
 // without a Tauri runtime, instead of hitting a missing `invoke()` global.
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
+import type { TauriCommandName } from "@/generated/tauri-command-names";
 import { defaultPreferences, preferencesSchema } from "@/features/preferences/preferences-repository";
 import type {
   Episode,
@@ -1116,7 +1117,7 @@ function importBackupData(sqlite: DatabaseSync, data: PortableData): void {
 }
 
 export function createFakeInvoke(sqlite: DatabaseSync) {
-  return async (command: string, args: Record<string, unknown> = {}): Promise<unknown> => {
+  return async (command: TauriCommandName, args: Record<string, unknown> = {}): Promise<unknown> => {
     // Route through the same `getDatabase()` singleton the repository under
     // test uses (memoized in db/client.ts) rather than running our own
     // independent migration pass — repositories often resolve the active

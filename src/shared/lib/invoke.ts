@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import type { TauriCommandName } from "@/generated/tauri-command-names";
 import { errorMessage } from "@/shared/lib/errors";
 
 // Shape of the Err(ApiError) every migrated Rust command serializes over IPC
@@ -43,14 +44,14 @@ export async function invokeCommand<T>(command: string, args?: Record<string, un
 }
 
 export type TauriCommand<Args, Result> = {
-  readonly name: string;
+  readonly name: TauriCommandName;
   readonly __types?: {
     readonly args: Args;
     readonly result: Result;
   };
 };
 
-export const defineCommand = <Args, Result>(name: string): TauriCommand<Args, Result> => ({ name });
+export const defineCommand = <Args, Result>(name: TauriCommandName): TauriCommand<Args, Result> => ({ name });
 
 export function invokeTypedCommand<Result>(command: TauriCommand<undefined, Result>): Promise<Result>;
 export function invokeTypedCommand<Args extends object, Result>(

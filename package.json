@@ -37,6 +37,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "contract:generate": "node scripts/generate-tauri-command-names.mjs",
+    "contract:check": "node scripts/generate-tauri-command-names.mjs --check",
     "cargo:check": "cargo check --locked --manifest-path src-tauri/Cargo.toml",
     "cargo:clippy": "cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "cargo:clippy:fix": "cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets --fix -- -D warnings",
@@ -45,7 +47,7 @@
     "cargo:test": "cargo test --locked --manifest-path src-tauri/Cargo.toml",
     "perf:database": "cargo test --locked --manifest-path src-tauri/Cargo.toml stats::performance::benchmark_library_progress_and_stats_at_1k_and_10k_scale -- --ignored --nocapture",
     "cargo:coverage": "cargo +nightly llvm-cov --manifest-path src-tauri/Cargo.toml --branch",
-    "validate:frontend": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build",
+    "validate:frontend": "pnpm contract:check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build",
     "validate:backend": "pnpm cargo:check && pnpm cargo:clippy && pnpm cargo:format:check && pnpm cargo:test",
     "validate": "pnpm validate:frontend && pnpm validate:backend",
     "tauri": "tauri"

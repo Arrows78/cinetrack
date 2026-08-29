@@ -17,7 +17,7 @@ type LibraryIdentityArgs = {
 
 type SaveLibraryItemArgs = {
   media: MediaSummary;
-  patch: LibraryPatch;
+  patch?: LibraryPatch;
 };
 
 export const libraryCommands = {
