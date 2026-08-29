@@ -8,8 +8,8 @@ This document is the code-grounded companion to the "Data integrity & authorizat
 
 Any command that updates a current-state row **and** appends to an append-only log (`viewing_events`, `activity_log`) must check the requested state actually differs from the current one before writing anything. A repeated call — a retry, a double invoke, a caller that doesn't track whether it already succeeded — must be a no-op, not a second log row. This matters here specifically because `viewing_events` feeds the stats and yearly-wrap-up features directly: duplicate rows silently inflate what the user sees as their own history.
 
-- **Reference implementation:** `apply_episodes_and_log_impl` (`src-tauri/src/commands/progress.rs`) — see the test `does_not_reapply_an_already_applied_episode` and `apply_episodes_only_writes_rows_that_actually_changed_state`.
-- **Counter-example found:** `toggle_movie_seen_impl` in the same file inserts a `viewing_events` row and a history entry on every call with `watched=true`, without checking whether the movie was already marked seen. The interactive `SeenToggle` button mitigates this in normal use (it's disabled while a mutation is pending), but the command itself has no guard, unlike its episode counterpart.
+- **Reference implementation:** `apply_episodes_and_log_impl` (`src-tauri/src/progress/repository.rs`) — see the test `does_not_reapply_an_already_applied_episode` and `apply_episodes_only_writes_rows_that_actually_changed_state`.
+- **Fixed:** `toggle_movie_seen_with_note_impl` (same file) used to insert a `viewing_events` row and a history entry on every call with `watched=true`, without checking whether the movie was already marked seen. It now opens a `BEGIN IMMEDIATE` transaction and short-circuits (`return Ok(())`) when `is_movie_seen_impl(...) == watched`, mirroring `apply_episodes_and_log_impl`'s pattern — see "Resolved since the initial pass" below.
 - **Rule:** before writing to an event/history table, read the current state in the same transaction and short-circuit if nothing would change.
 
 ### Server-side authorization
@@ -23,7 +23,7 @@ A React-level gate (`ProfileGate`, `AuthGate`, or similar) controls what renders
 
 If a set of names — table names, routes, query keys — needs to be enumerated in more than one place, extract a single shared constant instead of retyping the list at each call site. A drift between two copies isn't caught by any test.
 
-- **Counter-example found:** the list of profile-scoped table names is currently typed out separately in `migrations.rs` (`EXPECTED_TABLES`), twice in `profiles.rs` (the cascade delete and its own test), and again in `backup.rs` (the pre-import purge) — four independent copies that happen to agree today.
+- **Fixed:** the list of profile-scoped table names used to be typed out separately in `migrations.rs`, `profiles.rs`, and `backup.rs` — four independent copies that happened to agree. Now defined once, `pub const PROFILE_SCOPED_TABLES` (`src-tauri/src/database/mod.rs`), consumed by `migrations.rs::expected_tables()`, `backup/repository.rs`'s pre-import purge order, and `profiles/repository.rs` (which no longer hand-deletes per table at all, relying solely on `ON DELETE CASCADE`).
 - **Rule:** define the list once (a shared `const`/array in one module) and import it everywhere it's needed.
 
 ### Irreversible actions require confirmation
@@ -47,9 +47,9 @@ Anything that can't be undone — delete, restore, undo-an-import — routes thr
 
 - **Counter-example found:** `src/features/desktop/token-vault.ts` threw `new Error("Token absent")` — a hardcoded French string — which surfaced verbatim in `token-gate.tsx`'s error display. Fixed by routing it through `t()` like the rest of the file already did for its other error path.
 
-### Responsive breakpoints below the desktop window's floor are dead code
+### Responsive breakpoints are live in the shipped app (fixed since the initial pass)
 
-`tauri.conf.json` fixes the window's `minWidth` at 1100px. Tailwind's default `sm:`/`md:`/`lg:` breakpoints (640/768/1024) are therefore mechanically always active in the shipped app — only `xl:` (1280) and `2xl:` (1536) ever toggle when the window is resized. Don't add `sm:`/`md:` to product content expecting it to matter in the real app; that only affects the `pnpm dev` browser-preview surface, not the Tauri window users actually run.
+At the time of the original audit, `tauri.conf.json` fixed the window's `minWidth` at 1100px, making Tailwind's `sm:`/`md:`/`lg:` breakpoints (640/768/1024) mechanically dead code in the shipped app. `minWidth` is now 360px (see `CLAUDE.md`), specifically so those breakpoints are reachable by resizing the real Tauri window, not just in the `pnpm dev` browser-preview surface — `app-shell.tsx`'s `lg:` split (sidebar vs. mobile header + `MobileTabBar`) is live production behavior. Don't assume `sm:`/`md:`/`lg:` content is unreachable; test it by actually resizing the window.
 
 ### Keep documentation honest
 
@@ -64,7 +64,7 @@ Anything that can't be undone — delete, restore, undo-an-import — routes thr
 
 When two domains represent overlapping real-world state — here, viewing activity (`seen_movies`/`episode_progress`) and `library_items.status` — a sync mechanism that only fires from one interactive action is an illusion of consistency: it silently breaks the moment a second path writes the same underlying activity.
 
-- **Reference implementation:** `auto_sync_status_impl` (`src-tauri/src/commands/library.rs`), called from `progress.rs` (`toggle_movie_seen_impl`, `apply_episodes_and_log_impl`) and `tvtime.rs` (`import_movie_seen_impl`). As of 2026-08-15 it also _creates_ the library entry when none exists (logging a `LibraryAdd` history entry, matching the manual-add idempotent pattern) — previously it only updated an existing row, so viewing activity for a title never added to the library had no visible effect anywhere, which was the actual product gap reported.
+- **Reference implementation:** `auto_sync_status_impl` (`src-tauri/src/library/repository.rs`), called from `progress/repository.rs` (`toggle_movie_seen_with_note_impl`, `apply_episodes_and_log_impl`) and the `integrations/tvtime` importer (`import_movie_seen_impl`). As of 2026-08-15 it also _creates_ the library entry when none exists (logging a `LibraryAdd` history entry, matching the manual-add idempotent pattern) — previously it only updated an existing row, so viewing activity for a title never added to the library had no visible effect anywhere, which was the actual product gap reported.
 - **Counter-example found & fixed:** TV Time's watched-_movie_ import (`import_movie_seen_impl`) never called this function at all — unlike the interactive "mark seen" toggle and unlike TV Time's own watched-_series_ import path, both of which did. A movie already "planned" that got bulk-imported as watched stayed "planned" forever; only the code path differed, not anything about the data.
 - **Counter-example found & fixed:** the episode-sync block in `apply_episodes_and_log_impl` ran unconditionally on both watch and unwatch, recomputed purely from the live watched-count — so un-marking one episode of a partially-watched series could push an existing status _up_ (e.g. `planned` → `watching`) as a side effect of _removing_ progress. Now guarded to only run on a watch.
 - **Rule:** when a sync/derived-state mechanism exists between two domains, enumerate every mutation entry point for the source domain (every interactive action _and_ every bulk-import path) before trusting that "it's already handled" — a second entry point added later (here, TV Time's movie import) is exactly where this kind of gap hides.
@@ -104,3 +104,7 @@ Remove a line once it's actually fixed — don't let this turn into a second bug
 - [x] `release.yml` now publishes a draft GitHub Release (installers attached, one per platform) on a `v*` tag push instead of only uploading workflow artifacts — draft on purpose, so a human reviews and clicks "Publish" rather than it going out automatically. `docs/release-signing.md` gained a rollback-strategy section (pulling a broken release from "latest" instead of deleting it, cutting a new patch tag rather than reusing one). Code signing itself is still unresolved — see the open item above, it needs real certificates the repo owner has to obtain.
 - [x] Raw error messages no longer surface anywhere in the UI — see "Error handling" above for the full list of 7 fixed spots and the new `UserFacingError` pattern.
 - [x] Last-resort startup crash (second migration failure after quarantine-and-retry) now shows a native OS dialog instead of a silent panic — see "Startup database failures must degrade, not crash" above.
+- [x] `toggle_movie_seen_with_note_impl` missing idempotency guard — see "Idempotent mutations" above.
+- [x] Profile-scoped table names hand-duplicated across `migrations.rs`/`profiles.rs`/`backup.rs` — see "No hand-duplicated literal lists" above.
+- [x] Responsive breakpoints (`sm:`/`md:`/`lg:`) dead in the shipped app — `minWidth` lowered to 360px, see "Responsive breakpoints are live in the shipped app" above.
+- [x] Feature-to-feature isolation not lint-enforced — `pnpm architecture:check` (`scripts/check-feature-boundaries.mjs`) now enforces each feature's public surface; see `docs/architecture.md`'s "Architecture boundaries".

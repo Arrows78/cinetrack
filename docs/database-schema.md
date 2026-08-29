@@ -4,9 +4,9 @@ The database is local SQLite, embedded in the app via Tauri — no server, every
 
 Every table's primary key is a `uuid TEXT PRIMARY KEY`, generated app-side in Rust (`new_uuid()`, a UUIDv7, in [`src-tauri/src/database/mod.rs`](../src-tauri/src/database/mod.rs)) — there is no separate internal integer id. Two tables deliberately don't follow this: `preferences` (`key` is already a stable natural primary key) and `availability_snapshots` (a pure cache keyed by `(media_id, media_type, region)`, with no row ever referenced individually).
 
-**12 active tables · 5 migrations · 1 database file per machine.**
+**14 active tables · 9 migrations · 1 database file per machine.**
 
-The full DDL lives in [`src/db/migrations/001-initial-schema.ts`](../src/db/migrations/001-initial-schema.ts) plus four follow-ups — [`002-availability-alerts-unique.ts`](../src/db/migrations/002-availability-alerts-unique.ts), [`003-merge-watchlist-into-library.ts`](../src/db/migrations/003-merge-watchlist-into-library.ts), [`004-add-status-to-tracked-series.ts`](../src/db/migrations/004-add-status-to-tracked-series.ts), [`005-remove-rewatching-status.ts`](../src/db/migrations/005-remove-rewatching-status.ts) — (ported verbatim to Rust in [`src-tauri/src/database/migrations.rs`](../src-tauri/src/database/migrations.rs), which is what the desktop app actually runs against — the TypeScript copies back the test harness). This document is a readable companion to that file, not a replacement for it.
+The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus eight follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
 
 ## Profiles & preferences
 
@@ -59,7 +59,7 @@ The full record of a movie or show in a profile's library: its **status** (`plan
 | `started_at`, `completed_at`, `rewatch_count` | …         | set based on status changes                                             |
 | `created_at`, `updated_at`                    | TEXT      | ISO dates                                                               |
 
-Indexes: `(profile_id, status, updated_at DESC)`, `(profile_id, updated_at DESC)`, `(media_id, media_type)`.
+Indexes: `(profile_id, status, updated_at DESC)`, `(profile_id, updated_at DESC)`, `(media_id, media_type)`, plus two added by migration 16 for large-library stats queries: `(profile_id, media_type, status, completed_at ASC)` and a partial index `(profile_id, user_rating) WHERE user_rating IS NOT NULL`.
 
 Relations: a profile owns `0..n` library entries. Deleting the profile deletes the row (`ON DELETE CASCADE`). Updates go through `INSERT … ON CONFLICT DO UPDATE` rather than `INSERT OR REPLACE`, so `uuid`/`created_at` survive a status change.
 
@@ -77,9 +77,10 @@ Every watch (or un-watch) generates a row here: a whole movie or a specific epis
 | `event_type`                                    | TEXT      | `watched` / `unwatched` / `rewatched`                                                   |
 | `watched_at`, `duration_minutes`                | TEXT, INT | timestamp + duration for stats                                                          |
 | `episode_id`, `season_number`, `episode_number` | INT       | null for a movie                                                                        |
+| `note`                                          | TEXT      | optional free-form note on the event, nullable (added by migration 13)                  |
 | `created_at`                                    | TEXT      | ISO date; no `updated_at` — **append-only** log, no row is ever modified after the fact |
 
-Indexes: `(profile_id, watched_at DESC)`, `(media_id, media_type)`.
+Indexes: `(profile_id, watched_at DESC)`, `(media_id, media_type)`, plus two added by migration 16 for large-library stats queries: `(profile_id, media_id, media_type, episode_id, watched_at DESC, created_at DESC)` and `(profile_id, media_id, media_type, watched_at DESC)`.
 
 Relations: a profile logs `0..n` events.
 
@@ -191,6 +192,43 @@ Indexes: `(list_id, position)`, `(media_id, media_type)`.
 
 Relations: a list contains `0..n` items.
 
+## Smart lists & saved filters
+
+Two lighter-weight personalization tables, both added after the initial schema: a smart list is a saved _rule_, not a saved set of items (contrast with `custom_lists`/`custom_list_items` above), and a saved filter is a named shortcut back to a specific filter/sort combination on a given page.
+
+### `smart_lists`
+
+A named, rule-based list: instead of storing member items, it stores the filter/sort rule that defines membership, evaluated live against `library_items` whenever the list is opened.
+
+| Column                     | Type | Notes                                  |
+| -------------------------- | ---- | -------------------------------------- |
+| `uuid` **PK**              | TEXT | public identifier of the row           |
+| `profile_id` `FK`          | TEXT | → `profiles.uuid`                      |
+| `name`                     | TEXT |                                        |
+| `rules`                    | TEXT | JSON — the filter/sort rule definition |
+| `created_at`, `updated_at` | TEXT | ISO dates                              |
+
+Indexes: `(profile_id, updated_at DESC)`.
+
+Relations: a profile creates `0..n` smart lists. Deleting the profile deletes them (`ON DELETE CASCADE`).
+
+### `saved_filters`
+
+A named shortcut to a filter/sort combination, scoped to a specific page (e.g. the Library page vs. a custom list's page) so the same name can mean different things in different contexts.
+
+| Column                     | Type | Notes                                    |
+| -------------------------- | ---- | ---------------------------------------- |
+| `uuid` **PK**              | TEXT | public identifier of the row             |
+| `profile_id` `FK`          | TEXT | → `profiles.uuid`                        |
+| `page`                     | TEXT | which page/screen this filter applies to |
+| `name`                     | TEXT |                                          |
+| `filters`                  | TEXT | JSON — the saved filter/sort state       |
+| `created_at`, `updated_at` | TEXT | ISO dates                                |
+
+Indexes: `(profile_id, page, updated_at DESC)`.
+
+Relations: a profile creates `0..n` saved filters. Deleting the profile deletes them (`ON DELETE CASCADE`).
+
 ## Streaming availability
 
 "What to watch tonight" and availability alerts rely on these two tables — one belongs to a profile, the other describes a fact about a title, shared by everyone.
@@ -289,6 +327,19 @@ erDiagram
         int media_id
         int position
     }
+    SMART_LISTS {
+        string uuid PK
+        string profile_id FK
+        string name
+        string rules
+    }
+    SAVED_FILTERS {
+        string uuid PK
+        string profile_id FK
+        string page
+        string name
+        string filters
+    }
     AVAILABILITY_ALERTS {
         string uuid PK
         string profile_id FK
@@ -309,6 +360,8 @@ erDiagram
     PROFILES ||--o{ TRACKED_SERIES : tracks
     PROFILES ||--o{ ACTIVITY_LOG : logs
     PROFILES ||--o{ CUSTOM_LISTS : creates
+    PROFILES ||--o{ SMART_LISTS : creates
+    PROFILES ||--o{ SAVED_FILTERS : creates
     PROFILES ||--o{ AVAILABILITY_ALERTS : subscribes
     CUSTOM_LISTS ||--o{ CUSTOM_LIST_ITEMS : contains
 ```
@@ -319,4 +372,4 @@ erDiagram
 
 ---
 
-The 9 relations to `profiles`, plus the one from `custom_list_items` to `custom_lists`, are declared as `ON DELETE CASCADE` — deleting a profile or a list deletes everything that belongs to it, all the way down the chain. The `profiles.supabase_user_id` link conditions access to a profile on a Supabase sign-in.
+The 10 relations to `profiles`, plus the one from `custom_list_items` to `custom_lists`, are declared as `ON DELETE CASCADE` — deleting a profile or a list deletes everything that belongs to it, all the way down the chain. The `profiles.supabase_user_id` link conditions access to a profile on a Supabase sign-in.

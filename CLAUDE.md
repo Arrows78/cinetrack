@@ -15,7 +15,8 @@ pnpm test             # vitest run
 pnpm test:watch       # vitest
 pnpm test:coverage    # vitest run --coverage (see per-file thresholds in vitest.config.ts)
 pnpm contract:generate # regenerate src/generated/tauri-command-names.ts from lib.rs's tauri::generate_handler!
-pnpm contract:check   # contract:generate --check, plus scripts/check-contract-drift.mjs (Rust<->TS DTO field-name drift)
+pnpm contract:check   # contract:generate --check, plus check-contract-drift.mjs (DTO field-name drift) and check-tauri-command-signatures.mjs (Args/Result signature drift)
+pnpm architecture:check # scripts/check-feature-boundaries.mjs — enforces each feature's public surface (see docs/architecture.md's "Architecture boundaries")
 pnpm build            # pnpm typecheck && vite build
 
 pnpm cargo:check         # cargo check (src-tauri)
@@ -26,7 +27,7 @@ pnpm cargo:format:check  # cargo fmt -- --check (what CI runs)
 pnpm cargo:test          # cargo test
 pnpm cargo:coverage      # cargo +nightly llvm-cov --branch (see the Testing section below)
 
-pnpm validate:frontend # contract:check, lint, format:check, typecheck, test:coverage, build
+pnpm validate:frontend # contract:check, architecture:check, lint, format:check, typecheck, test:coverage, build
 pnpm validate:backend  # cargo:check, cargo:clippy, cargo:format:check, cargo:test
 pnpm validate           # validate:frontend && validate:backend — run before considering work done
 ```
