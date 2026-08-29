@@ -11,7 +11,10 @@ pub(super) async fn list_impl(
     profile_id: &str,
 ) -> Result<Vec<LibraryItem>, ApiError> {
     let rows: Vec<LibraryRow> = sqlx::query_as(
-        "SELECT * FROM library_items WHERE profile_id = $1 ORDER BY updated_at DESC LIMIT $2",
+        "SELECT * FROM library_items
+         WHERE profile_id = $1
+         ORDER BY updated_at DESC, media_id DESC, media_type DESC
+         LIMIT $2",
     )
     .bind(profile_id)
     .bind(LIST_SAFETY_LIMIT)

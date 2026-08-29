@@ -421,7 +421,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_impl_returns_only_the_requested_profiles_items_newest_first() {
+    async fn list_impl_returns_only_requested_profile_items_in_deterministic_newest_first_order() {
         let pool = migrated_pool().await;
         sqlx::query(
             "INSERT INTO profiles (uuid, name, created_at, updated_at)
@@ -441,12 +441,26 @@ mod tests {
             .await
             .unwrap();
 
+        // Force the two rows from the requested profile onto the exact same
+        // timestamp. `updated_at DESC` alone does not define an order for a
+        // tie, which made this test (and the production listing) dependent on
+        // SQLite's incidental row order on fast CI runners. The query's
+        // media_id/media_type tie-breakers must make this deterministic.
+        sqlx::query(
+            "UPDATE library_items
+             SET updated_at = '2026-02-01T00:00:00.000Z'
+             WHERE profile_id = 'default'",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
         let items = list_impl(&pool, "default").await.unwrap();
 
         assert_eq!(items.len(), 2);
         assert!(items.iter().all(|item| item.profile_id == "default"));
-        // Item 2 was upserted (and therefore updated_at-stamped) after item
-        // 1, so ORDER BY updated_at DESC should surface it first.
+        // Equal timestamps are broken by media_id DESC (then media_type DESC
+        // for the theoretical same-id/different-type case).
         assert_eq!(items[0].media_id, 2);
         assert_eq!(items[1].media_id, 1);
     }
