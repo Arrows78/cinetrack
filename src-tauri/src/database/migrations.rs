@@ -215,9 +215,11 @@ mod tests {
                 "index large-library stats queries",
             ]
         );
-        assert!(migrations
-            .iter()
-            .all(|migration| !migration.statements.is_empty()));
+        assert!(
+            migrations
+                .iter()
+                .all(|migration| !migration.statements.is_empty())
+        );
     }
 
     #[test]
@@ -252,7 +254,10 @@ mod tests {
         .await
         .unwrap();
         for table in expected_tables() {
-            assert!(existing.iter().any(|name| name == table), "missing table {table}");
+            assert!(
+                existing.iter().any(|name| name == table),
+                "missing table {table}"
+            );
         }
     }
 
@@ -360,12 +365,11 @@ mod tests {
 
         run_migrations(&pool).await.unwrap();
 
-        let existing: (String, String, bool) = sqlx::query_as(
-            "SELECT title, status, favourite FROM library_items WHERE media_id = 1",
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+        let existing: (String, String, bool) =
+            sqlx::query_as("SELECT title, status, favourite FROM library_items WHERE media_id = 1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(
             existing,
             ("Already tracked".to_string(), "watching".to_string(), true)
@@ -419,7 +423,10 @@ mod tests {
     async fn tolerates_a_duplicate_column_error_left_by_the_old_ts_runner() {
         let pool = in_memory_pool().await;
         let migrations = migrations().unwrap();
-        for migration in migrations.iter().filter(|migration| migration.version <= 10) {
+        for migration in migrations
+            .iter()
+            .filter(|migration| migration.version <= 10)
+        {
             for statement in &migration.statements {
                 sqlx::query(*statement).execute(&pool).await.unwrap();
             }

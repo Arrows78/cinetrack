@@ -3,8 +3,8 @@ use tauri::State;
 
 use super::service::StatsService;
 use super::{
-    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent,
-    ViewingEventNote, WatchMilestone, YearlyActivityBucket,
+    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent, ViewingEventNote,
+    WatchMilestone, YearlyActivityBucket,
 };
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -78,9 +78,7 @@ pub async fn get_stats_overview(
 pub async fn list_yearly_activity(
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-    StatsService::new(pool.inner())
-        .list_yearly_activity()
-        .await
+    StatsService::new(pool.inner()).list_yearly_activity().await
 }
 
 /// `month` is the "YYYY-MM" label to echo back; `range_start`/`range_end` are

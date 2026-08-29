@@ -17,7 +17,9 @@ pub async fn get_library_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<LibraryItem>, ApiError> {
-    LibraryService::new(pool.inner()).get(media_id, media_type).await
+    LibraryService::new(pool.inner())
+        .get(media_id, media_type)
+        .await
 }
 
 #[tauri::command]
@@ -26,7 +28,9 @@ pub async fn has_library_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<bool, ApiError> {
-    LibraryService::new(pool.inner()).has(media_id, media_type).await
+    LibraryService::new(pool.inner())
+        .has(media_id, media_type)
+        .await
 }
 
 #[tauri::command]
@@ -44,7 +48,9 @@ pub async fn remove_library_item(
     media_type: MediaType,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
-    LibraryService::new(pool.inner()).remove(media_id, media_type).await
+    LibraryService::new(pool.inner())
+        .remove(media_id, media_type)
+        .await
 }
 
 #[tauri::command]
