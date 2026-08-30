@@ -3,6 +3,7 @@ import i18n from "@/i18n";
 import { TmdbRequestError, mediaRepository } from "@/features/media/media-repository";
 import { libraryRepository } from "@/features/library/library-repository";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
+import { normalizeTitle } from "@/shared/utils/text";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { MediaSummary, Series } from "@/types/media";
 import {
@@ -138,20 +139,6 @@ const retryableWatchlistFrom = (entry: TvTimeWatchlistEntry): RetryableWatchlist
   searchYear: entry.year,
   entry,
 });
-
-// Loosens title comparison past exact-string equality — TV Time and TMDB
-// don't always agree on punctuation/diacritics/a leading article for the
-// same title ("Marvel's Daredevil" vs "Daredevil", "Cafe" vs "Café") — so a
-// search result that's really the same title wasn't being recognized as
-// one, and fell through to "unmatched" instead.
-const normalizeTitle = (value: string): string =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/^(the|an?)\s+/, "");
 
 // "Show Name: Subtitle" → "Show Name" — retried only when the exact title
 // returns zero TMDB results, never as the first attempt, so a title that
