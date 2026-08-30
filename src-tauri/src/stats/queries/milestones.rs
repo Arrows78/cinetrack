@@ -107,7 +107,33 @@ pub(in crate::stats) async fn get_watch_milestones_impl(
     pool: &SqlitePool,
     profile_id: &str,
 ) -> Result<Vec<WatchMilestone>, ApiError> {
-    let events = fetch_current_watch_events(pool, profile_id).await?;
+    let events = fetch_current_watch_events(pool, profile_id);
+
+    let completed_series_total = async {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM library_items
+             WHERE profile_id = $1 AND media_type = 'series' AND status = 'completed'",
+        )
+        .bind(profile_id)
+        .fetch_one(pool)
+        .await
+        .map_err(ApiError::from)
+    };
+
+    let completed_series_dates = async {
+        sqlx::query_scalar::<_, String>(
+            "SELECT completed_at FROM library_items
+             WHERE profile_id = $1 AND media_type = 'series' AND status = 'completed' AND completed_at IS NOT NULL
+             ORDER BY completed_at ASC",
+        )
+        .bind(profile_id)
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)
+    };
+
+    let (events, completed_series_total, completed_series_dates) =
+        tokio::try_join!(events, completed_series_total, completed_series_dates)?;
 
     let episode_dates: Vec<String> = events
         .iter()
@@ -119,25 +145,6 @@ pub(in crate::stats) async fn get_watch_milestones_impl(
         .filter(|row| row.media_type == "movie")
         .map(|row| row.watched_at.clone())
         .collect();
-
-    let completed_series_total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM library_items
-         WHERE profile_id = $1 AND media_type = 'series' AND status = 'completed'",
-    )
-    .bind(profile_id)
-    .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    let completed_series_dates: Vec<String> = sqlx::query_scalar(
-        "SELECT completed_at FROM library_items
-         WHERE profile_id = $1 AND media_type = 'series' AND status = 'completed' AND completed_at IS NOT NULL
-         ORDER BY completed_at ASC",
-    )
-    .bind(profile_id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
 
     let mut milestones = Vec::new();
     milestones.extend(milestones_from_dates(

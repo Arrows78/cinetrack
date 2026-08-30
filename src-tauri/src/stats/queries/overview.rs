@@ -26,7 +26,7 @@ pub(in crate::stats) async fn get_stats_overview_impl(
     window_start: &str,
     month_labels: &[String],
 ) -> Result<StatsOverview, ApiError> {
-    let event_totals: EventTotalsRow = sqlx::query_as(
+    let event_totals = sqlx::query_as::<_, EventTotalsRow>(
         "WITH latest_events AS (
            SELECT media_type, episode_id, event_type, duration_minutes,
                   ROW_NUMBER() OVER (
@@ -44,11 +44,9 @@ pub(in crate::stats) async fn get_stats_overview_impl(
          FROM latest_events",
     )
     .bind(profile_id)
-    .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .fetch_one(pool);
 
-    let library_totals: LibraryTotalsRow = sqlx::query_as(
+    let library_totals = sqlx::query_as::<_, LibraryTotalsRow>(
         "SELECT
            COUNT(*) AS total,
            COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed,
@@ -56,11 +54,9 @@ pub(in crate::stats) async fn get_stats_overview_impl(
          FROM library_items WHERE profile_id = $1",
     )
     .bind(profile_id)
-    .fetch_one(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .fetch_one(pool);
 
-    let monthly_rows: Vec<MonthlyActivityRow> = sqlx::query_as(
+    let monthly_rows = sqlx::query_as::<_, MonthlyActivityRow>(
         "SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS count, SUM(duration_minutes) AS minutes
          FROM viewing_events
          WHERE profile_id = $1 AND event_type IN ('watched','rewatched') AND watched_at >= $2
@@ -68,9 +64,13 @@ pub(in crate::stats) async fn get_stats_overview_impl(
     )
     .bind(profile_id)
     .bind(window_start)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .fetch_all(pool);
+
+    // These reads are independent and read-only. Let the SQLite pool service
+    // them concurrently instead of paying their wall-clock latencies serially.
+    let (event_totals, library_totals, monthly_rows) =
+        tokio::try_join!(event_totals, library_totals, monthly_rows)
+        .map_err(ApiError::from)?;
 
     let monthly_activity = monthly_activity::zero_fill(&monthly_rows, month_labels);
 

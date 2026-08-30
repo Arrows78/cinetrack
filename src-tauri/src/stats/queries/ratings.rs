@@ -21,7 +21,7 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
     profile_id: &str,
     window_start: &str,
 ) -> Result<RatingDistribution, ApiError> {
-    let distribution: Vec<RatingBucketRow> = sqlx::query_as(
+    let distribution = sqlx::query_as::<_, RatingBucketRow>(
         "SELECT user_rating AS rating, COUNT(*) AS count
          FROM library_items
          WHERE profile_id = $1 AND user_rating IS NOT NULL
@@ -29,11 +29,9 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
          ORDER BY user_rating ASC",
     )
     .bind(profile_id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .fetch_all(pool);
 
-    let average_by_month: Vec<RatingPeriodRow> = sqlx::query_as(
+    let average_by_month = sqlx::query_as::<_, RatingPeriodRow>(
         "WITH monthly_titles AS (
            SELECT DISTINCT strftime('%Y-%m', ve.watched_at) AS period, ve.media_id, ve.media_type
            FROM viewing_events ve
@@ -48,11 +46,9 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
     )
     .bind(profile_id)
     .bind(window_start)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .fetch_all(pool);
 
-    let average_by_year: Vec<RatingPeriodRow> = sqlx::query_as(
+    let average_by_year = sqlx::query_as::<_, RatingPeriodRow>(
         "WITH yearly_titles AS (
            SELECT DISTINCT strftime('%Y', ve.watched_at) AS period, ve.media_id, ve.media_type
            FROM viewing_events ve
@@ -66,9 +62,13 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
          ORDER BY yt.period ASC",
     )
     .bind(profile_id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    .fetch_all(pool);
+
+    // Distribution/month/year aggregates do not depend on one another.
+    // Execute them together so large profiles no longer pay three scans in series.
+    let (distribution, average_by_month, average_by_year) =
+        tokio::try_join!(distribution, average_by_month, average_by_year)
+        .map_err(ApiError::from)?;
 
     Ok(RatingDistribution {
         distribution: distribution
