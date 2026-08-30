@@ -51,6 +51,12 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build frontend
+        run: pnpm build
+
       - name: Test with coverage
         run: |
           mkdir -p test-results
@@ -70,12 +76,6 @@ jobs:
             coverage/
           if-no-files-found: ignore
           retention-days: 7
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Build frontend
-        run: pnpm build
 
   rust:
     strategy:

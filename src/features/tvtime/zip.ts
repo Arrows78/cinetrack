@@ -5,6 +5,11 @@ export interface ZipCsvEntry {
   text: string;
 }
 
+export interface ZipExtractionLimits {
+  maxEntryBytes: number;
+  maxTotalBytes: number;
+}
+
 // A TV Time GDPR export .zip contains far more than the 4 CSVs this feature
 // reads (account info, device data, images, ...) — filtering by extension
 // before decompressing skips wasting time/memory on everything else.
@@ -29,6 +34,11 @@ const isMacosArtifact = (name: string): boolean => {
 export const MAX_TVTIME_ZIP_ENTRY_BYTES = 50 * 1024 * 1024;
 export const MAX_TVTIME_ZIP_TOTAL_BYTES = 150 * 1024 * 1024;
 
+const DEFAULT_EXTRACTION_LIMITS: ZipExtractionLimits = {
+  maxEntryBytes: MAX_TVTIME_ZIP_ENTRY_BYTES,
+  maxTotalBytes: MAX_TVTIME_ZIP_TOTAL_BYTES,
+};
+
 export class ZipTooLargeError extends Error {
   constructor(public readonly entryName: string) {
     super(`Decompressed content of "${entryName}" exceeds the allowed size.`);
@@ -37,7 +47,10 @@ export class ZipTooLargeError extends Error {
 }
 
 /** Extracts every .csv entry from a .zip File, decoded as UTF-8 text. */
-export async function extractCsvEntries(file: File): Promise<ZipCsvEntry[]> {
+export async function extractCsvEntries(
+  file: File,
+  limits: ZipExtractionLimits = DEFAULT_EXTRACTION_LIMITS,
+): Promise<ZipCsvEntry[]> {
   const buffer = new Uint8Array(await file.arrayBuffer());
 
   // Rejecting on `entry.originalSize` — the decompressed size declared in
@@ -55,9 +68,9 @@ export async function extractCsvEntries(file: File): Promise<ZipCsvEntry[]> {
   const entries = unzipSync(buffer, {
     filter: (entry) => {
       if (!CSV_EXTENSION.test(entry.name) || isMacosArtifact(entry.name)) return false;
-      if (entry.originalSize > MAX_TVTIME_ZIP_ENTRY_BYTES) throw new ZipTooLargeError(entry.name);
+      if (entry.originalSize > limits.maxEntryBytes) throw new ZipTooLargeError(entry.name);
       runningTotal += entry.originalSize;
-      if (runningTotal > MAX_TVTIME_ZIP_TOTAL_BYTES) throw new ZipTooLargeError(entry.name);
+      if (runningTotal > limits.maxTotalBytes) throw new ZipTooLargeError(entry.name);
       return true;
     },
   });
