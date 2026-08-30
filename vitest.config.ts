@@ -38,7 +38,7 @@ export default defineConfig({
     pool: "threads",
     maxWorkers: 1,
     coverage: {
-      reporter: ["text", "html"],
+      reporter: ["text", "html", "json"],
       // Kept broad (rather than scoped to the tested files below) so
       // `pnpm test:coverage` still surfaces the real, large gap on
       // components/pages/hooks — narrowing `include` would hide it.

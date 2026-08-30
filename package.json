@@ -37,6 +37,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "coverage:changed": "node scripts/check-changed-coverage.mjs",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "contract:generate": "node scripts/generate-tauri-command-names.mjs",
