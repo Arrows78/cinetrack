@@ -1,11 +1,12 @@
 import { useEffect, type PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { authConfig } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/use-auth";
 import { CreateProfileScreen } from "@/features/auth/create-profile-screen";
-import { useProfileForSupabaseUser } from "@/features/profiles/use-profiles";
+import { cloudProfileRepository } from "@/features/auth/cloud-profile-repository";
+import { useCreateProfileForSupabaseUser, useProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { LoadingScreen } from "@/components/states/loading-screen";
@@ -30,9 +31,46 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
   const queryClient = useQueryClient();
   const profileQuery = useProfileForSupabaseUser(supabaseUserId);
   const preferencesQuery = usePreferences();
+  const createProfile = useCreateProfileForSupabaseUser();
+  const cloudProfileQuery = useQuery({
+    queryKey: ["remote", "accountProfile", supabaseUserId],
+    queryFn: () => cloudProfileRepository.get(),
+    enabled: profileQuery.isSuccess,
+    staleTime: 60_000,
+  });
 
   const resolvedProfileId = profileQuery.data?.id;
   const activeProfileId = preferencesQuery.data?.activeProfileId;
+
+  useEffect(() => {
+    if (!profileQuery.isSuccess || !cloudProfileQuery.isSuccess) return;
+
+    // New device: reconstruct the local partition from the private account
+    // profile before the sync coordinator pulls library/history data into it.
+    if (!profileQuery.data && cloudProfileQuery.data && !createProfile.isSaving) {
+      void createProfile.create({
+        name: cloudProfileQuery.data.displayName,
+        avatar: cloudProfileQuery.data.avatarPath,
+        supabaseUserId,
+      });
+      return;
+    }
+
+    // Existing install upgrading into cloud sync: seed the private remote
+    // identity once. This does not publish a community profile.
+    if (profileQuery.data && cloudProfileQuery.data === null) {
+      void cloudProfileRepository
+        .save(profileQuery.data.name, profileQuery.data.avatar)
+        .then(() => cloudProfileQuery.refetch());
+    }
+  }, [
+    cloudProfileQuery.data,
+    cloudProfileQuery.isSuccess,
+    createProfile,
+    profileQuery.data,
+    profileQuery.isSuccess,
+    supabaseUserId,
+  ]);
 
   useEffect(() => {
     if (!resolvedProfileId || activeProfileId === resolvedProfileId) return;
@@ -51,7 +89,7 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
     };
   }, [resolvedProfileId, activeProfileId, queryClient, supabaseUserId]);
 
-  if (profileQuery.isLoading || preferencesQuery.isLoading) {
+  if (profileQuery.isLoading || preferencesQuery.isLoading || cloudProfileQuery.isLoading || createProfile.isSaving) {
     return <LoadingScreen label={t("profileGate.resolving")} />;
   }
 
@@ -67,8 +105,12 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
   if (preferencesQuery.isError) {
     return <RemoteErrorState error={preferencesQuery.error} onRetry={() => void preferencesQuery.refetch()} />;
   }
+  if (cloudProfileQuery.isError) {
+    return <RemoteErrorState error={cloudProfileQuery.error} onRetry={() => void cloudProfileQuery.refetch()} />;
+  }
 
   if (!profileQuery.data) {
+    if (cloudProfileQuery.data) return <LoadingScreen label={t("profileGate.resolving")} />;
     return <CreateProfileScreen supabaseUserId={supabaseUserId} />;
   }
 
