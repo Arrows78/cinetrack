@@ -118,4 +118,131 @@ describe("statsRepository.getYearSummary", () => {
     expect(summary.movies).toBe(1);
     expect(summary.minutes).toBe(100);
   });
+
+  it("defaults a missing duration to zero and reports no favourite genre when no library item matches this year's events", async () => {
+    // mediaId 99 has no event below, so its genre must never be credited —
+    // genreCounts stays empty, which is what exercises the `?? null` fallback.
+    libraryListMock.mockResolvedValue([
+      libraryItem({ mediaId: 99, mediaType: "movie", title: "Unrelated", genres: ["Horreur"] }),
+    ]);
+    invokeCommandMock.mockResolvedValue([viewingEvent({ mediaId: 1, title: "Film A", durationMinutes: null })]);
+    const { statsRepository: repo } = await import("../stats-repository");
+
+    const summary = await repo.getYearSummary(2026);
+
+    expect(summary.minutes).toBe(0);
+    expect(summary.favouriteGenre).toBeNull();
+  });
+});
+
+describe("statsRepository.getStats", () => {
+  beforeEach(() => {
+    invokeCommandMock.mockReset();
+  });
+
+  it("assembles the overview, activity and library-extras commands into one LibraryStats", async () => {
+    invokeCommandMock.mockImplementation((commandName: string) => {
+      switch (commandName) {
+        case "get_stats_overview":
+          return Promise.resolve({
+            totals: {
+              moviesWatched: 12,
+              episodesWatched: 340,
+              minutesWatched: 5000,
+              movieMinutesWatched: 2000,
+              episodeMinutesWatched: 3000,
+              completedSeries: 4,
+              libraryCompletionPercent: 62,
+            },
+            monthlyActivity: [{ month: "2026-06", count: 7, minutes: 150 }],
+          });
+        case "get_activity_stats":
+          return Promise.resolve({
+            currentStreakDays: 3,
+            longestStreakDays: 9,
+            biggestBingeDay: null,
+            heatmap: [],
+          });
+        case "get_library_extras":
+          return Promise.resolve({
+            averageUserRating: 4.2,
+            favouriteGenres: [],
+            favouriteGenreByRating: "Drame",
+            mostRewatchedTitle: null,
+          });
+        default:
+          throw new Error(`unexpected command ${commandName}`);
+      }
+    });
+    const { statsRepository: repo } = await import("../stats-repository");
+
+    const stats = await repo.getStats();
+
+    expect(stats.moviesWatched).toBe(12);
+    expect(stats.libraryCompletionPercent).toBe(62);
+    expect(stats.currentStreakDays).toBe(3);
+    expect(stats.averageUserRating).toBe(4.2);
+    expect(stats.favouriteGenreByRating).toBe("Drame");
+    expect(invokeCommandMock).toHaveBeenCalledWith(
+      "get_stats_overview",
+      expect.objectContaining({ monthLabels: expect.any(Array) })
+    );
+    expect(invokeCommandMock).toHaveBeenCalledWith(
+      "get_activity_stats",
+      expect.objectContaining({
+        since: expect.any(String),
+        today: expect.any(String),
+        tzOffsetMinutes: expect.any(Number),
+      })
+    );
+    expect(invokeCommandMock).toHaveBeenCalledWith("get_library_extras");
+  });
+});
+
+describe("statsRepository.getForecast", () => {
+  beforeEach(() => {
+    invokeCommandMock.mockReset();
+  });
+
+  it("passes a recent-events window and a pace window to get_watch_forecast", async () => {
+    invokeCommandMock.mockResolvedValue({
+      backlogEpisodes: 8,
+      backlogMinutes: 320,
+      episodesPerWeek: 5,
+      catchUpDate: null,
+    });
+    const { statsRepository: repo } = await import("../stats-repository");
+
+    const forecast = await repo.getForecast();
+
+    expect(forecast.backlogMinutes).toBe(320);
+    expect(invokeCommandMock).toHaveBeenCalledWith(
+      "get_watch_forecast",
+      expect.objectContaining({
+        since: expect.any(String),
+        paceWindowStart: expect.any(String),
+        now: expect.any(String),
+      })
+    );
+  });
+});
+
+describe("statsRepository.getYearlyActivity", () => {
+  beforeEach(() => {
+    invokeCommandMock.mockReset();
+  });
+
+  it("returns the yearly activity buckets from list_yearly_activity", async () => {
+    invokeCommandMock.mockResolvedValue([
+      { year: 2025, moviesWatched: 20, episodesWatched: 300, minutesWatched: 4000 },
+      { year: 2026, moviesWatched: 12, episodesWatched: 340, minutesWatched: 5000 },
+    ]);
+    const { statsRepository: repo } = await import("../stats-repository");
+
+    const buckets = await repo.getYearlyActivity();
+
+    expect(buckets).toHaveLength(2);
+    expect(buckets[0]).toEqual({ year: 2025, moviesWatched: 20, episodesWatched: 300, minutesWatched: 4000 });
+    expect(invokeCommandMock).toHaveBeenCalledWith("list_yearly_activity");
+  });
 });
