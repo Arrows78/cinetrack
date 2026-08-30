@@ -169,5 +169,11 @@ export default tseslint.config(
       "i18next/no-literal-string": "off",
     },
   },
+  {
+    files: ["scripts/**/*.{js,mjs,cjs}"],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
   prettier
 );

@@ -38,6 +38,7 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
     enabled: profileQuery.isSuccess,
     staleTime: 60_000,
   });
+  const refetchCloudProfile = cloudProfileQuery.refetch;
 
   const resolvedProfileId = profileQuery.data?.id;
   const activeProfileId = preferencesQuery.data?.activeProfileId;
@@ -56,17 +57,18 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
       return;
     }
 
-    // Existing install upgrading into cloud sync: seed the private remote
+    /// Existing install upgrading into cloud sync: seed the private remote
     // identity once. This does not publish a community profile.
-    if (profileQuery.data && cloudProfileQuery.data === null) {
+    if (profileQuery.data?.name && cloudProfileQuery.data === null) {
       void cloudProfileRepository
         .save(profileQuery.data.name, profileQuery.data.avatar)
-        .then(() => cloudProfileQuery.refetch());
+        .then(() => refetchCloudProfile());
     }
   }, [
     cloudProfileQuery.data,
     cloudProfileQuery.isSuccess,
     createProfile,
+    refetchCloudProfile,
     profileQuery.data,
     profileQuery.isSuccess,
     supabaseUserId,

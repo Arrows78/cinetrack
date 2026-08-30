@@ -181,7 +181,7 @@ describe("communityRepository", () => {
     await communityRepository.report("review", "review-1", " spam ");
 
     const profileUpsert = builders.find(
-      ({ table, calls }) => table === "community_profiles" && calls.upsert.mock.calls.length > 0
+      ({ table, calls }) => table === "community_profiles" && (calls.upsert?.mock.calls.length ?? 0) > 0
     );
     expect(profileUpsert?.calls.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ handle: "alice", display_name: "Alice", bio: "Hello", is_private: true })

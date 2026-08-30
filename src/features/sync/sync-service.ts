@@ -143,7 +143,6 @@ export const syncService = {
     const auth = await requireSession();
     if (!auth) return undefined;
 
-    let timer: number | undefined;
     let debounce: number | undefined;
     const wake = () => {
       window.clearTimeout(debounce);
@@ -153,7 +152,7 @@ export const syncService = {
     };
 
     window.addEventListener("online", wake);
-    timer = window.setInterval(wake, PERIODIC_SYNC_MS);
+    const timer = window.setInterval(wake, PERIODIC_SYNC_MS);
 
     // Realtime is deliberately not the transport. Missing this notification
     // while the app sleeps/offline is harmless because pull_sync_changes is
