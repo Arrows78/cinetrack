@@ -15,6 +15,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/015-add-saved-filters.sql"),
     include_str!("migrations/016-index-large-library-stats.sql"),
     include_str!("migrations/017-library-cursor-pagination-indexes.sql"),
+    include_str!("migrations/018-add-sync-outbox.sql"),
 ];
 
 #[derive(Debug)]
@@ -104,6 +105,10 @@ fn expected_tables() -> Vec<&'static str> {
         "preferences",
         "profiles",
         "availability_snapshots",
+        "sync_control",
+        "sync_outbox",
+        "sync_entity_state",
+        "sync_metadata",
     ]);
     tables
 }
@@ -197,7 +202,7 @@ mod tests {
                 .iter()
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
-            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
         );
         assert_eq!(
             migrations
@@ -215,6 +220,7 @@ mod tests {
                 "add saved filters",
                 "index large-library stats queries",
                 "library cursor pagination indexes",
+                "add cloud sync outbox and change capture",
             ]
         );
         assert!(
@@ -272,7 +278,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 17);
+        assert_eq!(version.0, 18);
     }
 
     #[tokio::test]
@@ -292,7 +298,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 17);
+        assert_eq!(version.0, 18);
     }
 
     #[tokio::test]
