@@ -245,10 +245,15 @@ export function SettingsPage() {
   };
   return (
     <div className="space-y-10">
-      <SectionHeader title={t("nav.settings")} subtitle={t("settings.subtitleDesktop")} />
+      <SectionHeader title={t("nav.settings")} subtitle={t("settings.subtitleDesktop")} isPageTitle />
 
       <section>
-        <SectionHeader size="sub" title={t("settings.uiPreferences")} subtitle={t("settings.customizeDisplay")} />
+        <SectionHeader
+          size="sub"
+          headingLevel={2}
+          title={t("settings.uiPreferences")}
+          subtitle={t("settings.customizeDisplay")}
+        />
         <Card>
           <CardContent className="mt-0 space-y-6">
             <div>
@@ -361,6 +366,7 @@ export function SettingsPage() {
       <section>
         <SectionHeader
           size="sub"
+          headingLevel={2}
           title={t("settings.sections.streaming")}
           subtitle={t("settings.sections.streamingDesc")}
         />
@@ -374,6 +380,7 @@ export function SettingsPage() {
       <section>
         <SectionHeader
           size="sub"
+          headingLevel={2}
           title={t("settings.sections.account")}
           subtitle={t("settings.sections.accountDesc")}
         />
@@ -381,7 +388,12 @@ export function SettingsPage() {
       </section>
 
       <section>
-        <SectionHeader size="sub" title={t("settings.sections.data")} subtitle={t("settings.sections.dataDesc")} />
+        <SectionHeader
+          size="sub"
+          headingLevel={2}
+          title={t("settings.sections.data")}
+          subtitle={t("settings.sections.dataDesc")}
+        />
         <div className="grid gap-4 lg:grid-cols-2">
           <BackupTools />
           <TvTimeImportCard />
@@ -389,12 +401,22 @@ export function SettingsPage() {
       </section>
 
       <section>
-        <SectionHeader size="sub" title={t("settings.desktopSecurity")} subtitle={t("settings.desktopSecurityDesc")} />
+        <SectionHeader
+          size="sub"
+          headingLevel={2}
+          title={t("settings.desktopSecurity")}
+          subtitle={t("settings.desktopSecurityDesc")}
+        />
         <DesktopSettings />
       </section>
 
       <section>
-        <SectionHeader size="sub" title={t("settings.sections.about")} subtitle={t("settings.sections.aboutDesc")} />
+        <SectionHeader
+          size="sub"
+          headingLevel={2}
+          title={t("settings.sections.about")}
+          subtitle={t("settings.sections.aboutDesc")}
+        />
         <AboutSettings />
       </section>
     </div>

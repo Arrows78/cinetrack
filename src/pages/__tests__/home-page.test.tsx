@@ -243,7 +243,9 @@ describe("HomePage", () => {
 
     expect(screen.queryByText("Dune Part Two")).not.toBeInTheDocument();
     expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    // The page's own sr-only <h1> is unconditional (page identity, not
+    // loaded content) — it's the one heading that's expected here.
+    expect(screen.getByRole("heading", { name: "Home" })).toBeInTheDocument();
   });
 
   it("renders RemoteErrorState on a home-feed error, and retry calls refetch", () => {

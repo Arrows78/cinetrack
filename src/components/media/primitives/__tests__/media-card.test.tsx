@@ -127,4 +127,22 @@ describe("MediaCard", () => {
     expect(bar).toHaveAttribute("aria-valuenow", "100");
     expect(screen.queryByText("Seen")).not.toBeInTheDocument();
   });
+
+  it("reports raw watched/total counts (not a percentage) on a series' progress bar", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const Wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    render(
+      <MediaCard
+        media={makeMedia({ id: 10, mediaType: "series" })}
+        progress={{ watched: 8, total: 24, seriesStatus: "returning" }}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    const bar = await screen.findByRole("progressbar", { name: "Episodes" });
+    expect(bar).toHaveAttribute("aria-valuenow", "8");
+    expect(bar).toHaveAttribute("aria-valuemax", "24");
+  });
 });

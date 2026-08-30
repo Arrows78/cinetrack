@@ -53,7 +53,7 @@ export function AuthOtpStep({
         onChange={(event) => onTokenChange(event.target.value.replace(/\D/g, "").slice(0, authConfig.otpLength))}
         placeholder={"0".repeat(authConfig.otpLength)}
         aria-label={t("auth.otp.ariaLabel")}
-        className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-auth-foreground outline-none placeholder:text-auth-foreground/20 focus:border-primary"
+        className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-auth-foreground placeholder:text-auth-foreground/20 focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       />
 
       <Button

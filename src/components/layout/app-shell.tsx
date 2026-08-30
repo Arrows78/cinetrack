@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/shared/lib/cn";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CommandPalette } from "@/components/desktop/command-palette";
 import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -45,6 +46,16 @@ export function AppShell() {
 
   return (
     <div className="min-h-dvh text-foreground">
+      {/* First focusable element in the document — a sighted mouse user
+          never sees it (sr-only until focused), but a keyboard user
+          tabbing in otherwise has to step through the entire sidebar/back
+          button on every single page before reaching the content. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-panel focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+      >
+        {t("common.skipToContent")}
+      </a>
       <div
         className={cn(
           "mx-auto grid w-full max-w-[106.25rem] grid-cols-1 gap-6 p-4 lg:items-start lg:p-6",
@@ -62,24 +73,29 @@ export function AppShell() {
             just in pnpm dev's browser-preview surface. Primary navigation
             lives in MobileTabBar (fixed at the bottom, rendered below);
             this header is just the back button (when there's somewhere to
-            go back to) and the brand.
+            go back to) and the brand — a persistent brand mark, not page
+            content, so it's a <p> here exactly like the desktop sidebar's
+            own brand name below (SidebarNav): the page's own heading (see
+            each page component) is the document's real <h1>.
           */}
           <header className="surface sticky top-[calc(1rem+env(safe-area-inset-top))] z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
               {canGoBack && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleGoBack}
-                  className="-ml-1 h-9 w-9"
-                  aria-label={t("common.back")}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
+                <IconTooltip label={t("common.back")}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleGoBack}
+                    className="-ml-1 h-9 w-9"
+                    aria-label={t("common.back")}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </IconTooltip>
               )}
               <div>
                 <p className="text-overline uppercase text-muted-foreground">{t("sidebar.brand.tagline")}</p>
-                <h1 className="text-base font-semibold">{t("sidebar.brand.name")}</h1>
+                <p className="text-base font-semibold">{t("sidebar.brand.name")}</p>
               </div>
             </div>
             <ProfileSwitcher collapsed />
@@ -100,7 +116,7 @@ export function AppShell() {
           {/* pb-24 clears the fixed MobileTabBar (plus its own safe-area
               inset) below lg; above it the tab bar doesn't render, so pb-10
               matches the desktop back-button/content rhythm instead. */}
-          <main className="pb-24 lg:pb-10">
+          <main id="main-content" className="pb-24 lg:pb-10">
             {/* No `mode="wait"`: it holds the incoming page unmounted until
                 the outgoing one's exit animation resolves, and a lazy-loaded
                 route component (every page here is `lazyRouteComponent`) can

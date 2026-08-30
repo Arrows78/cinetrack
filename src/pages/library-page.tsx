@@ -6,7 +6,7 @@ export function LibraryPage() {
   const { t } = useTranslation();
   return (
     <div className="space-y-8">
-      <SectionHeader title={t("library.myLibrary")} subtitle={t("library.subtitle")} index={1} />
+      <SectionHeader title={t("library.myLibrary")} subtitle={t("library.subtitle")} index={1} isPageTitle />
       <LibraryExplorer />
     </div>
   );

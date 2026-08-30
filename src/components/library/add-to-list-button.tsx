@@ -6,6 +6,7 @@ import type { MediaSummary } from "@/types/media";
 import { useAddToCustomList, useCustomLists } from "@/features/custom-lists/use-custom-lists";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 
 export function AddToListButton({ media }: { media: MediaSummary }) {
@@ -40,22 +41,23 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
           </option>
         ))}
       </Select>
-      <Button
-        type="button"
-        size="icon"
-        variant="outline"
-        disabled={!selected || add.isSaving}
-        title={t("library.lists.addToList")}
-        aria-label={t("library.lists.addToList")}
-        onClick={() => {
-          void add
-            .add({ listId: selected, media })
-            .then(() => setSelected(""))
-            .catch(() => toast({ description: t("desktop.operationFailed"), variant: "error" }));
-        }}
-      >
-        <ListPlus className="size-4" />
-      </Button>
+      <IconTooltip label={t("library.lists.addToList")}>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          disabled={!selected || add.isSaving}
+          aria-label={t("library.lists.addToList")}
+          onClick={() => {
+            void add
+              .add({ listId: selected, media })
+              .then(() => setSelected(""))
+              .catch(() => toast({ description: t("desktop.operationFailed"), variant: "error" }));
+          }}
+        >
+          <ListPlus className="size-4" />
+        </Button>
+      </IconTooltip>
     </div>
   );
 }

@@ -159,6 +159,8 @@ function ListsAccordionContent({
                 <button
                   type="button"
                   className="min-w-0 flex-1 text-left text-sm font-medium"
+                  aria-expanded={openedList === list.id}
+                  aria-controls={`custom-list-items-${list.id}`}
                   onClick={() => setOpenedList((current) => (current === list.id ? null : list.id))}
                 >
                   {list.name}
@@ -179,7 +181,7 @@ function ListsAccordionContent({
                 </IconTooltip>
               </div>
               {openedList === list.id ? (
-                <div className="mt-3">
+                <div id={`custom-list-items-${list.id}`} className="mt-3">
                   <ListItemRow listId={list.id} />
                 </div>
               ) : null}

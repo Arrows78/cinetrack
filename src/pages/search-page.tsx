@@ -197,6 +197,7 @@ export function SearchPage() {
           title={t("search.globalSearch")}
           subtitle={hasFilters ? t("search.showingResults", { filters: filterTitle }) : t("search.subtitle")}
           index={1}
+          isPageTitle
         />
         <div className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

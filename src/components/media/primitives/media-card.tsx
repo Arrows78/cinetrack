@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Bookmark, BookmarkCheck, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Progress } from "@/components/ui/progress";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
@@ -120,7 +121,6 @@ function MediaCardInner({
   const srcSet = buildTmdbPosterSrcSet(media.posterPath);
   const showProgress = progress !== undefined && progress.total > 0;
   const tone = showProgress ? progressBarTone(progress.watched, progress.total, progress.seriesStatus) : null;
-  const barPercent = showProgress ? Math.min(100, Math.round((progress.watched / progress.total) * 100)) : 0;
   // A movie has no fractional progress to show (see MediaCardQuickActions'
   // comment: watched/unwatched is its whole state) — alreadySeen alone
   // gets it the same finished bar a fully-ended series would.
@@ -203,30 +203,22 @@ function MediaCardInner({
             instead of a separate color/badge — "done for now" without
             claiming the show itself is over. */}
         {showProgress ? (
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={progress.total}
-            aria-valuenow={progress.watched}
+          <Progress
+            value={progress.watched}
+            max={progress.total}
             aria-label={t("media.episodes")}
-            className="absolute inset-x-0 bottom-0 h-2 bg-black/40"
-          >
-            <div
-              className={cn(
-                "h-full shadow-sm transition-all duration-medium",
-                tone === "finished" ? "bg-success" : tone === "caughtUp" ? "bg-success/60" : "bg-primary"
-              )}
-              style={{ width: `${barPercent}%` }}
-            />
-          </div>
+            className="absolute inset-x-0 bottom-0 h-2 rounded-none bg-black/40"
+            indicatorClassName={cn(
+              "shadow-sm duration-medium",
+              tone === "finished" ? "bg-success" : tone === "caughtUp" ? "bg-success/60" : "bg-primary"
+            )}
+          />
         ) : showFinishedBar ? (
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={100}
+          <Progress
+            value={100}
             aria-label={t("media.alreadySeen")}
-            className="absolute inset-x-0 bottom-0 h-2 bg-success shadow-sm"
+            className="absolute inset-x-0 bottom-0 h-2 rounded-none bg-success shadow-sm"
+            indicatorClassName="bg-success"
           />
         ) : null}
       </div>

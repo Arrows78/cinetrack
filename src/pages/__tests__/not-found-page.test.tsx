@@ -17,7 +17,11 @@ describe("NotFoundPage", () => {
   it("renders the not-found message and a link back home", () => {
     render(<NotFoundPage />);
 
-    expect(screen.getByText("Page not found")).toBeInTheDocument();
+    // Both the page's own sr-only <h1> (the real document heading) and
+    // EmptyState's visible title carry the same text — checking the
+    // heading role also proves the visible text renders, without a
+    // duplicate-text ambiguity from asserting on the bare string twice.
+    expect(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
     expect(screen.getByText("This page doesn't exist.")).toBeInTheDocument();
 
     const link = screen.getByRole("link", { name: "Back to home" });

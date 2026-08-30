@@ -66,10 +66,11 @@ export function MediaDetailsHero({
               {media.status ? <span className="text-xs text-muted-foreground">{media.status}</span> : null}
             </div>
 
-            {/* Title */}
-            <h2 className="mt-3 line-clamp-3 font-display text-4xl font-bold leading-tight text-balance md:text-5xl">
+            {/* Title — the page's own <h1>: movie/series detail pages have
+                no other page-level heading above this one. */}
+            <h1 className="mt-3 line-clamp-3 font-display text-4xl font-bold leading-tight text-balance md:text-5xl">
               {media.title}
-            </h2>
+            </h1>
             {media.originalTitle && media.originalTitle !== media.title ? (
               <p className="mt-1.5 text-sm text-muted-foreground">{media.originalTitle}</p>
             ) : null}

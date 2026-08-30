@@ -7,6 +7,7 @@ import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-b
 import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -113,35 +114,46 @@ export function WatchTonightPage() {
         <p className="text-muted-foreground">{t("watchTonight.description")}</p>
       </header>
       <Panel className="grid gap-3 md:grid-cols-4 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
-        <Select aria-label={t("watchTonight.genre")} value={genreId} onChange={(e) => setGenreId(e.target.value)}>
-          <option value="">{t("watchTonight.allGenres")}</option>
-          {genres.map((genre) => (
-            <option key={genre.id} value={genre.id}>
-              {t(genre.labelKey)}
-            </option>
-          ))}
-        </Select>
-        <Select aria-label={t("watchTonight.platform")} value={provider} onChange={(e) => setProvider(e.target.value)}>
-          <option value="">{t("watchTonight.allPlatforms")}</option>
-          {preferredProviderIds.length > 0 ? (
-            <option value={MY_SERVICES_VALUE}>{t("watchTonight.myServices")}</option>
-          ) : null}
-          {PLATFORMS.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </Select>
-        <Input
-          size="sm"
-          type="number"
-          min="30"
-          step="15"
-          value={runtime}
-          onChange={(e) => setRuntime(e.target.value)}
-          aria-label={t("watchTonight.maxDuration")}
-        />
-        <Button type="button" onClick={() => setSeed((value) => value + 1)}>
+        <FormField label={t("watchTonight.genre")}>
+          {() => (
+            <Select value={genreId} onChange={(e) => setGenreId(e.target.value)}>
+              <option value="">{t("watchTonight.allGenres")}</option>
+              {genres.map((genre) => (
+                <option key={genre.id} value={genre.id}>
+                  {t(genre.labelKey)}
+                </option>
+              ))}
+            </Select>
+          )}
+        </FormField>
+        <FormField label={t("watchTonight.platform")}>
+          {() => (
+            <Select value={provider} onChange={(e) => setProvider(e.target.value)}>
+              <option value="">{t("watchTonight.allPlatforms")}</option>
+              {preferredProviderIds.length > 0 ? (
+                <option value={MY_SERVICES_VALUE}>{t("watchTonight.myServices")}</option>
+              ) : null}
+              {PLATFORMS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </FormField>
+        <FormField label={t("watchTonight.maxDuration")}>
+          {() => (
+            <Input
+              size="sm"
+              type="number"
+              min="30"
+              step="15"
+              value={runtime}
+              onChange={(e) => setRuntime(e.target.value)}
+            />
+          )}
+        </FormField>
+        <Button type="button" className="self-end" onClick={() => setSeed((value) => value + 1)}>
           <Dices className="mr-2 size-4" />
           {t("watchTonight.retry")}
         </Button>

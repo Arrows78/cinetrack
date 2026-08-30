@@ -21,14 +21,22 @@ export function EpisodeDots({ episodes, watchedSet }: { episodes: Season["episod
   const max = 40;
   const shown = episodes.slice(0, max);
   return (
-    <div className="inline-flex flex-wrap items-center gap-[0.1875rem] rounded-full bg-foreground/[0.06] px-2.5 py-1.5">
+    // Purely decorative: the adjacent ProgressBar already states the same
+    // watched/total count accessibly, so this doesn't need its own
+    // announcement. Watched vs. unwatched isn't color alone either — a
+    // "lit up" dot is also taller, not just a different hue, so the
+    // distinction survives a color-vision deficiency.
+    <div
+      aria-hidden="true"
+      className="inline-flex flex-wrap items-end gap-[0.1875rem] rounded-full bg-foreground/[0.06] px-2.5 py-1.5"
+    >
       {shown.map((ep) => (
         <motion.div
           key={ep.id}
           layout
           className={cn(
-            "h-2 w-1 rounded-[0.0625rem] transition-colors duration-base",
-            watchedSet.has(ep.id) ? "bg-primary" : "bg-foreground/20"
+            "w-1 rounded-[0.0625rem] transition-all duration-base",
+            watchedSet.has(ep.id) ? "h-2.5 bg-primary" : "h-1.5 bg-foreground/20"
           )}
         />
       ))}

@@ -29,7 +29,23 @@ import { WatchNextSection } from "@/components/media/tracking/watch-next-section
 import { WeeklyAgendaSection } from "@/components/media/tracking/weekly-agenda-section";
 import { OnThisDaySection } from "@/components/media/activity/on-this-day-section";
 
+// Home has no single static title to promote (its own visible "hero" title
+// is a specific trending movie's name, not the page's identity) — a
+// sr-only <h1> is the page's real heading instead, same text as the nav
+// label so a screen reader user hears exactly what a sighted user reads on
+// the (currently active) sidebar/tab-bar entry. Wrapping rather than
+// inlining into every one of HomePageContent's five early returns below.
 export function HomePage() {
+  const { t } = useTranslation();
+  return (
+    <>
+      <h1 className="sr-only">{t("nav.home")}</h1>
+      <HomePageContent />
+    </>
+  );
+}
+
+function HomePageContent() {
   const { t } = useTranslation();
   const [dismissedTokenPrompt, setDismissedTokenPrompt] = useState(false);
   const homeQuery = useHomeFeed();

@@ -131,6 +131,11 @@ export function HistoryPage() {
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
+      {/* No single section title matches "History" as a page label (the
+          page shows two co-equal sections, "Recent Activity" and "Series in
+          Progress") — a sr-only <h1> is the page's real heading instead,
+          same text as the nav label. */}
+      <h1 className="sr-only">{t("nav.history")}</h1>
       {/* Activity timeline */}
       <section>
         <SectionHeader

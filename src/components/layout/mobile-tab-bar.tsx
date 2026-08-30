@@ -74,7 +74,19 @@ export function MobileTabBar() {
             <span>{t("common.more")}</span>
           </button>
         </SheetTrigger>
-        <SheetContent side="bottom" size="xl" closeLabel={t("common.close")}>
+        <SheetContent
+          side="bottom"
+          size="xl"
+          closeLabel={t("common.close")}
+          // Radix's default auto-focus grabs the first focusable descendant
+          // in DOM order — inside SidebarNav (shared with the desktop
+          // <aside>) that's its "Collapse sidebar" button, which is
+          // `hidden lg:flex` (desktop-only) here and so isn't actually a
+          // sensible focus target for this mobile sheet. Preventing default
+          // leaves focus on the dialog content itself instead (Radix's own
+          // fallback), which is the more correct behavior either way.
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <SheetTitle className="sr-only">{t("sidebar.brand.name")}</SheetTitle>
           <SheetDescription className="sr-only">{t("sidebar.brand.tagline")}</SheetDescription>
           <SidebarNav collapsed={false} onToggleCollapse={() => {}} onNavigate={() => setMoreSheetOpen(false)} />

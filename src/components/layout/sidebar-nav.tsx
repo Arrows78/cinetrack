@@ -7,6 +7,7 @@ import { BrandMarkIcon } from "@/components/layout/brand-mark-icon";
 import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useAuth } from "@/features/auth/auth-context";
 
@@ -145,31 +146,33 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
               <p className="text-overline uppercase text-muted-foreground">{t("sidebar.brand.tagline")}</p>
               <p className="text-xl font-bold leading-tight">{t("sidebar.brand.name")}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleCollapse}
-              aria-label={t("sidebar.collapse")}
-              title={t("sidebar.collapse")}
-              className="h-8 w-8 shrink-0 hidden bg-foreground/5 hover:bg-foreground/10 lg:flex"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </Button>
+            <IconTooltip label={t("sidebar.collapse")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleCollapse}
+                aria-label={t("sidebar.collapse")}
+                className="h-8 w-8 shrink-0 hidden bg-foreground/5 hover:bg-foreground/10 lg:flex"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            </IconTooltip>
           </div>
         )}
       </div>
 
       {collapsed && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggleCollapse}
-          aria-label={t("sidebar.expand")}
-          title={t("sidebar.expand")}
-          className="mb-3 w-full h-8 justify-center rounded-xl bg-foreground/5 text-foreground hover:bg-foreground/10 hidden lg:flex"
-        >
-          <PanelLeft className="h-4 w-4" />
-        </Button>
+        <IconTooltip label={t("sidebar.expand")}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleCollapse}
+            aria-label={t("sidebar.expand")}
+            className="mb-3 w-full h-8 justify-center rounded-xl bg-foreground/5 text-foreground hover:bg-foreground/10 hidden lg:flex"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </Button>
+        </IconTooltip>
       )}
 
       {/* Navigation — flex-1 distributes space, account section pinned to bottom */}
@@ -228,21 +231,21 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
         ) : (
           <div className={cn(FOOTER_SURFACE_CLASS, "flex flex-col gap-1 p-1")}>
             {themeOptions.map(({ value, icon: Icon, labelKey }) => (
-              <Button
-                key={value}
-                variant="ghost"
-                size="icon"
-                aria-label={t(labelKey)}
-                aria-pressed={activeTheme === value}
-                title={t(labelKey)}
-                className={cn(
-                  "h-9 w-full rounded-xl",
-                  activeTheme === value && "bg-primary/15 text-primary shadow-glow"
-                )}
-                onClick={() => void updatePreference({ key: "theme", value })}
-              >
-                <Icon className="h-4 w-4" />
-              </Button>
+              <IconTooltip key={value} label={t(labelKey)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t(labelKey)}
+                  aria-pressed={activeTheme === value}
+                  className={cn(
+                    "h-9 w-full rounded-xl",
+                    activeTheme === value && "bg-primary/15 text-primary shadow-glow"
+                  )}
+                  onClick={() => void updatePreference({ key: "theme", value })}
+                >
+                  <Icon className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
             ))}
           </div>
         )}
@@ -278,18 +281,26 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 </div>
               </button>
             </ProfileSwitcher>
-            <button
-              type="button"
-              aria-label={t("sidebar.signOut")}
-              title={t("sidebar.signOut")}
-              onClick={() => void signOut()}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+            <IconTooltip label={t("sidebar.signOut")}>
+              <button
+                type="button"
+                aria-label={t("sidebar.signOut")}
+                onClick={() => void signOut()}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </IconTooltip>
           </div>
         ) : (
           <div className={cn(FOOTER_SURFACE_CLASS, "space-y-1 p-1")}>
+            {/* Not wrapped in IconTooltip: this button is itself the child
+                ProfileSwitcher passes to its own SheetTrigger asChild —
+                composing a second asChild layer here isn't a pattern proven
+                elsewhere in this codebase, and this trigger is important
+                enough not to risk breaking without being able to verify the
+                composition live. Keeps the native title as its (imperfect,
+                hover-only) fallback instead. */}
             <ProfileSwitcher>
               <button
                 type="button"
@@ -302,15 +313,16 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 </div>
               </button>
             </ProfileSwitcher>
-            <button
-              type="button"
-              aria-label={t("sidebar.signOut")}
-              title={t("sidebar.signOut")}
-              onClick={() => void signOut()}
-              className="flex h-8 w-full items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+            <IconTooltip label={t("sidebar.signOut")}>
+              <button
+                type="button"
+                aria-label={t("sidebar.signOut")}
+                onClick={() => void signOut()}
+                className="flex h-8 w-full items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </IconTooltip>
           </div>
         )}
       </div>

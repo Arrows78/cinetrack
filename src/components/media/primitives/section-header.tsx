@@ -8,6 +8,8 @@ export function SectionHeader({
   action,
   index,
   size = "default",
+  isPageTitle = false,
+  headingLevel,
   className,
 }: {
   title: string;
@@ -16,14 +18,26 @@ export function SectionHeader({
   index?: number;
   // "sub" is for a header nested inside a larger zone (e.g. the home
   // dashboard's "For You" panel grouping several personalized rails under
-  // one heading) — smaller type, no eyebrow rule, and an <h3> instead of an
-  // <h2> so the zone's own SectionHeader stays the real top-level heading.
+  // one heading) — smaller type, no eyebrow rule. Purely visual: see
+  // headingLevel below for the actual heading tag this renders.
   size?: "default" | "sub";
+  // Set when this is the page's own title (no other heading precedes it on
+  // the page) — renders <h1>, same visual size otherwise. Never combine
+  // with size="sub": a page title is never a nested zone.
+  isPageTitle?: boolean;
+  // Overrides the heading level size would otherwise imply (1 for
+  // isPageTitle, 3 for size="sub", 2 otherwise). Needed when a page's
+  // "sub"-styled sections sit directly under that same page's own <h1>
+  // with nothing at <h2> in between — e.g. Settings' UI Preferences/
+  // Streaming/Account/... sections, which want the smaller "sub" visual
+  // treatment but must render <h2> so the outline doesn't skip a level.
+  headingLevel?: 1 | 2 | 3;
   className?: string;
 }) {
   const sectionDelay = index !== undefined ? staggerDelayMs(index) : 0;
   const isSub = size === "sub";
-  const Heading = isSub ? "h3" : "h2";
+  const level = headingLevel ?? (isPageTitle ? 1 : isSub ? 3 : 2);
+  const Heading = `h${level}` as const;
 
   return (
     <div className={cn("group", isSub ? "mb-4" : "mb-6", className)}>
