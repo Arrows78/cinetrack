@@ -42,5 +42,9 @@ pub use crate::stats::{
     list_on_this_day_events, list_recent_viewing_events, list_viewing_events_for_media,
     list_viewing_events_for_year, list_yearly_activity,
 };
+pub use crate::sync::{
+    ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
+    get_sync_status, list_sync_outbox, prepare_sync, rebase_sync_conflicts,
+};
 pub use boot::get_boot_recovery;
 pub use updater::{has_updater_config, updater_is_configured};

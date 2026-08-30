@@ -13,6 +13,7 @@ mod preferences;
 mod profiles;
 mod progress;
 mod stats;
+mod sync;
 // tray::build uses tauri::tray/tauri::menu, which only exist on desktop —
 // the module itself must be gated, not just its (already-gated) call site:
 // Rust compiles every `mod`-included file regardless of whether anything
@@ -43,6 +44,10 @@ use commands::{
     save_availability_snapshot, save_library_item, set_active_profile, tmdb_request,
     toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen, update_preference,
     update_smart_list, updater_is_configured, write_backup_to_path,
+};
+use commands::{
+    ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
+    get_sync_status, list_sync_outbox, prepare_sync, rebase_sync_conflicts,
 };
 use commands::{create_saved_filter, list_saved_filters};
 use commands::{
@@ -189,6 +194,14 @@ pub fn run() {
             list_backup_directory,
             remove_backup_file,
             export_diagnostics_summary,
+            get_sync_device_id,
+            prepare_sync,
+            get_sync_status,
+            get_sync_cursor,
+            list_sync_outbox,
+            ack_sync_mutations,
+            rebase_sync_conflicts,
+            apply_remote_sync_changes,
         ])
         .setup(|app| {
             // Same BaseDirectory.AppData root src/shared/lib/logger.ts
