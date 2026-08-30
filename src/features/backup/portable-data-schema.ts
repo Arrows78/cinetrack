@@ -223,7 +223,7 @@ export const savedFilterSchema = z.object({
 // Generous upper bounds — far beyond anything a real single-user library
 // would ever contain — so a corrupted or hostile payload can't force an
 // unbounded insert loop against SQLite (each array is inserted row-by-row
-// inside one transaction; see src-tauri/src/commands/backup.rs).
+// inside one transaction; see src-tauri/src/backup/).
 export const MAX_LIST_ITEMS = 20_000;
 export const MAX_EVENT_ITEMS = 200_000;
 export const MAX_PROFILES = 50;

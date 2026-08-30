@@ -32,11 +32,9 @@ vi.mock("@/features/backup/maintenance-service", () => ({
 
 const getPreferencesMock = vi.fn();
 const updatePreferenceMock = vi.fn();
-// Partial mock (keeps preferencesSchema/defaultPreferences from the real
-// module, per the task brief's guidance to import real constants rather
-// than guessing) — portable-data.ts's backup-schema.ts imports
-// preferencesSchema from this same module, so a full replacement here
-// breaks that unrelated import chain, which BackupTools also pulls in.
+// Partial mock: backup-schema.ts imports preferencesSchema from this same
+// module, so a full replacement here breaks that unrelated import chain,
+// which BackupTools also pulls in.
 vi.mock("@/features/preferences/preferences-repository", async (importOriginal) => {
   const actual = await importOriginal<typeof PreferencesRepositoryModule>();
   return {
@@ -52,8 +50,7 @@ vi.mock("@/features/preferences/preferences-repository", async (importOriginal) 
 const openDialogMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: (...args: unknown[]) => openDialogMock(...args) }));
 
-// Imported after mocking so this is the real, un-mocked constant (per the
-// task brief: "import the real constant rather than guessing its value").
+// Imported after mocking so this is the real, un-mocked constant.
 const { MAX_BACKUP_FILE_BYTES } = await vi.importActual<typeof PortableDataModule>("@/features/backup/portable-data");
 
 const SAMPLE_BACKUP = { format: "cinetrack-backup", version: 1, exportedAt: "2026-08-01T00:00:00.000Z", data: {} };

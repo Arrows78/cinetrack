@@ -3,7 +3,7 @@
 // the same title ("Marvel's Daredevil" vs "Daredevil", accented vs plain
 // spellings of the same word). Shared by the TV Time import matcher
 // (tvtime-import-service.ts) and the Library Health Center's duplicate
-// detector (library-health-selectors.ts) so both treat "the same title"
+// detector (use-library-health-selectors.ts) so both treat "the same title"
 // identically instead of drifting apart.
 //
 // \p{Diacritic} (with the "u" flag) strips every combining mark the NFD

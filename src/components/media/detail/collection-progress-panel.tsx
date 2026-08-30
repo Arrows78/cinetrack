@@ -33,17 +33,16 @@ function CollectionBucket({ title, movies, alreadySeen }: { title: string; movie
 
 /**
  * Franchise/collection progress for a movie belonging to a TMDB collection
- * (e.g. "3 / 8 watched") — README's DISCOVERY roadmap item. Renders nothing
- * when the movie isn't part of a collection, or the "collection" is really
- * just this one movie on its own (TMDB creates a collection entry even for
- * some standalone films).
+ * (e.g. "3 / 8 watched"). Renders nothing when the movie isn't part of a
+ * collection, or the "collection" is really just this one movie on its own
+ * (TMDB creates a collection entry even for some standalone films).
  */
 export function CollectionProgressPanel({ movie }: { movie: Movie }) {
   const { t } = useTranslation();
   const collectionId = movie.collection?.id;
   const collectionQuery = useMovieCollection(collectionId);
   // Bounded to this collection's own parts (typically under a dozen movies)
-  // instead of a full library read — see get_library_items_by_keys_impl in
+  // instead of a full library read — see get_items_by_keys_impl in
   // src-tauri/src/library/queries.rs. Called unconditionally (before the
   // early returns below) with an empty array until the collection itself
   // resolves; useLibraryItemsByKeys no-ops on an empty key list.

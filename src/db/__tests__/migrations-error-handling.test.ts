@@ -1,6 +1,6 @@
 // Exercises runMigrations' error-recovery paths (the ALTER TABLE /
 // "duplicate column" swallow, and the rollback-and-rethrow branch) which the
-// real migration set in 001-initial-schema.ts can't reach on its own — it
+// real migration set in 001-initial-schema.sql can't reach on its own — it
 // has no ALTER TABLE statements and nothing in it fails. A single fake
 // migration with a controllable `execute` lets us drive both paths directly,
 // while migrations.integration.test.ts keeps covering the happy path against

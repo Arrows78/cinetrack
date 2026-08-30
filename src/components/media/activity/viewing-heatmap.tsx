@@ -10,9 +10,10 @@ export interface ViewingHeatmapBucket {
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
-// A Sunday-first reference week (matches JS's Date#getDay(), which
-// viewingHeatmap() buckets by) purely so Intl can derive a localized
-// weekday label per index — the actual date is otherwise meaningless.
+// A Sunday-first reference week (matches JS's Date#getDay()/SQLite's
+// strftime('%w', ...), which the backend heatmap query buckets by) purely
+// so Intl can derive a localized weekday label per index — the actual date
+// is otherwise meaningless.
 const REFERENCE_SUNDAY = new Date(2023, 0, 1);
 
 function intensityClass(count: number, max: number): string {

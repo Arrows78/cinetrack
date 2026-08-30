@@ -11,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { useCreateProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 
 // Shares AuthScreen's split stage/panel layout and input treatment (see
-// auth-email-step.tsx for the same underline-field/pill-button pattern) —
+// auth-email-step.tsx for the same underline-field/pill-button pattern):
 // this is the very next screen after sign-up, and a plain, neutral card
-// here used to break the cinematic scene AuthScreen had just set.
+// here would break the cinematic scene AuthScreen just set.
 export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string }) {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();

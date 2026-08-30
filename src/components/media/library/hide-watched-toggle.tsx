@@ -4,10 +4,10 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 
 /**
  * Persistent "Hide watched" toggle for Discover-style surfaces (home
- * catalogue rails) and Watch Tonight — README's DISCOVERY roadmap item.
- * Backed by the `hideWatchedInDiscovery` preference (survives reload,
- * unlike plain component state) so reused as-is on both surfaces instead of
- * each page wiring its own copy of the same preference read/write.
+ * catalogue rails) and Watch Tonight. Backed by the `hideWatchedInDiscovery`
+ * preference (survives reload, unlike plain component state) so reused
+ * as-is on both surfaces instead of each page wiring its own copy of the
+ * same preference read/write.
  */
 export function HideWatchedToggle() {
   const { t } = useTranslation();

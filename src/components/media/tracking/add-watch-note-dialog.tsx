@@ -10,7 +10,7 @@ import { DIALOG_OVERLAY_CLASSNAME } from "@/components/ui/sheet";
  * moment a movie or a single episode gets marked watched. The backend
  * writes `note` once, in the same transaction as the watched-state
  * transition (see toggle_movie_seen_with_note_impl /
- * apply_episodes_and_log_impl in src-tauri/src/commands/progress.rs) — a
+ * apply_episodes_and_log_impl in src-tauri/src/progress/repository.rs) — a
  * note can never be attached after the fact, so `onConfirm` here always
  * means "mark this watched, with this note", never an edit. Confirming
  * with an empty textarea is the same as marking watched without a note.

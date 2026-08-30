@@ -67,7 +67,6 @@ export function SeasonAccordion({
   const watchedSet = useMemo(() => new Set(watchedEpisodes.map((item) => item.episodeId)), [watchedEpisodes]);
   const progress = calculateSeriesProgress(series.id, seasons, watchedEpisodes);
 
-  /* Handler that detects season completion and fires confetti */
   const handleToggleEpisode = async (
     season: Season,
     episode: Season["episodes"][number],
@@ -84,7 +83,6 @@ export function SeasonAccordion({
 
   return (
     <div className="space-y-4">
-      {/* Seasons */}
       <Accordion type="multiple" className="space-y-3">
         {seasons.map((season) => {
           const seasonProgress = progress.seasons.find((item) => item.seasonNumber === season.seasonNumber);
@@ -115,16 +113,13 @@ export function SeasonAccordion({
                     </span>
                   </div>
 
-                  {/* Dots strip */}
                   <EpisodeDots episodes={season.episodes} watchedSet={watchedSet} />
 
-                  {/* Progress bar */}
                   <ProgressBar value={pct} size="sm" />
                 </div>
               </AccordionTrigger>
 
               <AccordionContent className="rounded-b-2xl border border-t-0 border-border bg-foreground/[0.02] px-4 pb-4">
-                {/* Season actions */}
                 <div className="flex flex-wrap items-center gap-2 py-3">
                   <Button
                     variant={pct === 100 ? "outline" : "secondary"}
@@ -150,7 +145,6 @@ export function SeasonAccordion({
                   </Button>
                 </div>
 
-                {/* Episode list */}
                 <div className="space-y-0.5">
                   {season.episodes.map((episode) => {
                     const isWatched = watchedSet.has(episode.id);

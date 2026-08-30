@@ -38,8 +38,7 @@ export function App() {
       // it in main.tsx) have let real content through — this is "the app
       // is up," not just "React committed something," which is the whole
       // point of this measurement. Covers JS boot only: startup.database
-      // (Rust-side pool init/migrations) isn't part of this number — see
-      // the P1.2 discussion in the session this was added.
+      // (Rust-side pool init/migrations) isn't part of this number.
       logger.info(`startup.total duration=${Math.round(performance.now() - appBootStartedAt)}ms`);
     }
 

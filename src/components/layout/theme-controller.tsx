@@ -61,8 +61,7 @@ export function ThemeController() {
     body.classList.toggle("dark", theme !== "light");
 
     // — Reduced motion / compact mode (see styles/index.css for the rules
-    // these classes key off). These preferences were previously stored and
-    // toggleable in Settings but never actually read anywhere else.
+    // these classes key off).
     root.classList.toggle("reduce-motion", preferences?.reduceMotion ?? false);
     root.classList.toggle("compact", preferences?.compactMode ?? false);
 

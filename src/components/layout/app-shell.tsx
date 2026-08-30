@@ -119,7 +119,7 @@ export function AppShell() {
           <main id="main-content" className="pb-24 lg:pb-10">
             {/* No `mode="wait"`: it holds the incoming page unmounted until
                 the outgoing one's exit animation resolves, and a lazy-loaded
-                route component (every page here is `lazyRouteComponent`) can
+                route component (most pages here are `lazyRouteComponent`) can
                 leave that exit promise unresolved on a fast series-to-series
                 navigation — the new page then never mounts, leaving the
                 content area permanently blank while the shell around it

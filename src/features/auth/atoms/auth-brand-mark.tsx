@@ -1,10 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { BrandMarkIcon } from "@/components/layout/brand-mark-icon";
 
-// Shared between AuthScreen and CreateProfileScreen so the sign-in flow
-// reads as one continuous scene instead of switching identities mid-flow —
-// and uses the same BrandMarkIcon as the signed-in app's own sidebar, so
-// the brand doesn't switch identity across the sign-in boundary either.
+// Uses the same BrandMarkIcon as the signed-in app's own sidebar, so the
+// brand doesn't switch identity across the sign-in boundary.
 export function AuthBrandMark() {
   const { t } = useTranslation();
 

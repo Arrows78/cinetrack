@@ -57,8 +57,8 @@ function parseBackup(value: unknown): CineTrackBackup {
   return { format: "cinetrack-backup", version: 1, exportedAt: result.data.exportedAt, data };
 }
 
-// The per-table reads/writes (exportDatabaseToStore/importStoreIntoDatabase)
-// now live in Rust (see src-tauri/src/commands/backup.rs) — this module
+// The per-table reads/writes (export_backup_data/import_backup_data) now
+// live in Rust (see src-tauri/src/backup/) — this module
 // keeps the Zod validation/normalization of untrusted backup JSON, which
 // isn't SQL and stays in TS where it's already tested.
 export const portableData = {

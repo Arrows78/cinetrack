@@ -45,7 +45,7 @@ const autoBackupFileName = (exportedAt: string) =>
 // Every read/write below first checks the user's `backupDirectory`
 // preference (see backup-tools.tsx's "Choose backup folder") and, when set,
 // routes through the Rust `*_backup_*`/`write_backup_to_path` commands in
-// src-tauri/src/commands/backup.rs instead of the `@tauri-apps/plugin-fs`
+// src-tauri/src/backup/commands.rs instead of the `@tauri-apps/plugin-fs`
 // calls used for the default `$APPDATA` location. That plugin's capability
 // scope (capabilities/default.json) is a static `$APPDATA/**`-shaped
 // allow-list and can't safely pre-allow-list an arbitrary, user-chosen
@@ -215,8 +215,8 @@ export const maintenanceService = {
 
   /**
    * For a visible "last backup" status in Settings — otherwise a failed
-   * automatic backup fails silently (see App.tsx's console.warn-only
-   * catch) and the user has no way to know their safety net is stale.
+   * automatic backup fails silently (see App.tsx's logger.warn-only catch)
+   * and the user has no way to know their safety net is stale.
    */
   async getLastBackupStatus(): Promise<{ exportedAt: string | null; failed: boolean }> {
     const info = await maintenanceService.getAutomaticBackupInfo();

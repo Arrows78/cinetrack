@@ -78,7 +78,7 @@ describe("desktop Tauri capabilities", () => {
     const fsPermissions = scoped.filter((entry) => entry.identifier.startsWith("fs:"));
 
     // The app only ever touches $APPDATA/backups (maintenance-service.ts)
-    // and $APPDATA/logs (diagnostics/logger.ts). These permissions must
+    // and $APPDATA/logs (shared/lib/logger.ts). These permissions must
     // never be granted as bare, unscoped strings again — that would allow
     // reading/writing any text file the OS user has access to.
     expect(fsPermissions.map((entry) => entry.identifier).sort()).toEqual(

@@ -14,10 +14,9 @@ interface OnboardingChoice {
 }
 
 // Destinations all already exist and already handle a brand-new, empty
-// profile — see the onboarding plan's "routing targets" section: /settings
-// hosts the TV Time import card, /search is the library's own existing
-// empty-state CTA target, and /watch-tonight's catalogue-discover fallback
-// works with nothing planned yet.
+// profile: /settings hosts the TV Time import card, /search is the
+// library's own existing empty-state CTA target, and /watch-tonight's
+// catalogue-discover fallback works with nothing planned yet.
 const CHOICES: OnboardingChoice[] = [
   {
     icon: Download,

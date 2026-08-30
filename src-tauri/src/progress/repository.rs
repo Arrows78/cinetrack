@@ -32,15 +32,11 @@ pub(crate) async fn toggle_movie_seen_impl(
     toggle_movie_seen_with_note_impl(pool, profile_id, movie, watched, watched_at, None).await
 }
 
-/// Unlike `apply_episodes_impl` below, this logs the history entry inside
-/// the same transaction as the seen-flag/viewing-event writes — matching
-/// progress-store-sql.ts's `toggleMovieSeen`, which committed history
-/// atomically for movies while episode-based actions logged it as a
-/// separate step one level up in progress-repository.ts.
+/// Unlike `apply_episodes_impl` below, this always logs the history entry
+/// itself, in the same transaction as the seen-flag/viewing-event writes.
 ///
 /// `note` is only ever persisted when `watched` is true — write-once, at
-/// the moment the watch is logged (see migration 13's comment for why this
-/// is a v1-simple decision rather than an editable-after-the-fact one). A
+/// the moment the watch is logged, with no way to edit it afterward. A
 /// caller that passes a note while unwatching has it silently ignored
 /// rather than stored against an "unwatched" event, which would never be
 /// shown anywhere.
@@ -143,10 +139,9 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
         episode_title: None,
         // `note` rides along in the free-form metadata bag rather than as a
         // dedicated ViewingHistoryItem field — that struct is also
-        // constructed (without a note) by library.rs and backup.rs, and
-        // giving it a new required field would force edits there too, for
-        // event kinds that never carry one. history-page.tsx / the history
-        // repository pull it back out of metadata on the way in.
+        // constructed (without a note) by library's and backup's own
+        // repositories, and giving it a new required field would force
+        // edits there too, for event kinds that never carry one.
         metadata: Some(json!({ "profileId": profile_id, "note": event_note })),
     };
     add_history_item_impl(&mut *tx, pool, history_item).await?;
@@ -377,7 +372,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
             episode_title: history.episode_title,
             // See toggle_movie_seen_with_note_impl's history_item comment:
             // `note` rides in metadata rather than as a dedicated field so
-            // library.rs/backup.rs's own ViewingHistoryItem literals (for
+            // library's and backup's own ViewingHistoryItem literals (for
             // history rows that never carry one) don't need touching.
             metadata: Some(
                 json!({ "profileId": profile_id, "episodeCount": changed_episodes.len(), "note": event_note }),
@@ -756,11 +751,9 @@ mod tests {
     #[tokio::test]
     async fn a_series_with_unknown_episode_count_never_auto_completes_from_watched_count_alone() {
         let pool = migrated_pool().await;
-        // number_of_episodes: None — the old code coalesced this to
-        // watched_episodes itself, so the very first episode watched read
-        // as "100% complete". Confirms the fix: status advances to
-        // Watching, never straight to Completed, regardless of how many
-        // episodes get marked watched.
+        // number_of_episodes: None — must never auto-complete purely from
+        // the watched count. Status advances to Watching, never straight to
+        // Completed, regardless of how many episodes get marked watched.
         let s = series(9, None);
 
         apply_episodes_impl(
@@ -826,10 +819,10 @@ mod tests {
         }
         seed_library_status(&pool, 9, "series", "planned").await;
 
-        // Unwatching one episode still leaves one watched — under the old
-        // unconditional auto-sync this recomputed target=Watching (rank 1 >
-        // Planned's rank 0) and silently advanced the status from an
-        // unwatch action. It must now stay untouched.
+        // Unwatching one episode still leaves one watched, which alone
+        // computes target=Watching (rank 1) — higher than the current
+        // Planned rank (0). This must not silently advance the status as a
+        // side effect of an unwatch action; it must stay untouched.
         apply_episodes_impl(
             &pool,
             "default",
@@ -1539,7 +1532,7 @@ mod tests {
 
     /// Every `_impl` fn in this file takes `profile_id` as a plain parameter
     /// with no further check of its own — the same pattern flagged in
-    /// custom_lists.rs's/availability.rs's own cross-profile tests. Unlike
+    /// lists::custom's/availability's own cross-profile tests. Unlike
     /// those two files, nothing in this one previously proved that marking a
     /// movie/episode watched for one profile is actually invisible to
     /// another, despite `seen_movies`/`episode_progress`/`tracked_series`

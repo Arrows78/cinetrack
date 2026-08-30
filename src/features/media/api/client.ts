@@ -58,8 +58,8 @@ const asTmdbError = (error: unknown): TmdbRequestError => {
 const isAuthenticationError = (error: TmdbRequestError): boolean => error.status === 401 || error.status === 403;
 
 // Matches the 20s total timeout the Rust native transport already enforces
-// (see src-tauri/src/lib.rs), so a hung TMDB request fails the same way
-// regardless of which transport handled it.
+// (see src-tauri/src/integrations/tmdb/client.rs), so a hung TMDB request
+// fails the same way regardless of which transport handled it.
 const WEBVIEW_REQUEST_TIMEOUT_MS = 20_000;
 
 const fetchFromWebview = async <T>(path: string, params: Record<string, string>, bearer: string): Promise<T> => {

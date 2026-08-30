@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 
-// The "go back a step" link at the top of the email/OTP steps — was
-// copy-pasted identically in both files.
 export function AuthBackLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button

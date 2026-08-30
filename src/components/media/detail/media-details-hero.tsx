@@ -41,7 +41,6 @@ export function MediaDetailsHero({
       )}
 
       <div className="relative grid gap-6 p-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:p-8">
-        {/* Poster */}
         <div className="hidden lg:block">
           <img
             src={poster ?? placeholderUrl(500, 750, "Poster")}
@@ -52,10 +51,8 @@ export function MediaDetailsHero({
           />
         </div>
 
-        {/* Content */}
         <div className="flex flex-col justify-between gap-5">
           <div>
-            {/* Badges */}
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant={media.mediaType === "movie" ? "movie" : "series"}
@@ -75,7 +72,6 @@ export function MediaDetailsHero({
               <p className="mt-1.5 text-sm text-muted-foreground">{media.originalTitle}</p>
             ) : null}
 
-            {/* Meta */}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
               <span
                 aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
@@ -93,12 +89,10 @@ export function MediaDetailsHero({
               ) : null}
             </div>
 
-            {/* Overview */}
             <p className="mt-4 max-w-2xl font-serif text-base leading-7 text-muted-foreground">
               {media.overview || t("media.noOverview")}
             </p>
 
-            {/* Genres */}
             {media.genres.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {media.genres.map((genre) => (
@@ -113,7 +107,6 @@ export function MediaDetailsHero({
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex flex-wrap items-center gap-3">
             {actions}
             {extra}

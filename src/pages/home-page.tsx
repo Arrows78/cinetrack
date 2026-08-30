@@ -43,10 +43,10 @@ function HomePageContent() {
   const { t } = useTranslation();
   const [dismissedTokenPrompt, setDismissedTokenPrompt] = useState(false);
   // The vault's own live "configured" flag, not a build-time env check —
-  // isTauriApp() used to be folded into this check (see git history), which
-  // made it permanently true in the real desktop app regardless of whether
-  // a token was actually saved, silently turning this whole no-token flow
-  // into dead code there.
+  // folding isTauriApp() into this check previously made it permanently
+  // true in the real desktop app regardless of whether a token was
+  // actually saved, silently turning this whole no-token flow into dead
+  // code there.
   const hasTmdbToken = useTokenVault().configured;
   const homeQuery = useHomeFeed();
   const libraryQuery = useLibrary();
@@ -188,16 +188,13 @@ function HomePageContent() {
 
   return (
     <div className="space-y-12">
-      {/* Cinematic hero */}
       {hero ? (
         <section className="relative overflow-hidden rounded-hero border border-border animate-in-up">
-          {/* Backdrop */}
           <img
             src={buildTmdbImageUrl(hero.backdropPath, "original")}
             alt={hero.title}
             className="absolute inset-0 h-full w-full object-cover scale-105"
           />
-          {/* Cinematic overlay */}
           <div
             className="absolute inset-0"
             style={{
@@ -205,27 +202,22 @@ function HomePageContent() {
                 "linear-gradient(108deg, hsl(var(--background)) 0%, hsl(var(--background)/0.93) 38%, hsl(var(--background)/0.55) 68%, hsl(var(--background)/0.15) 100%)",
             }}
           />
-          {/* Bottom fade */}
           <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background/60 to-transparent" />
 
           <div className="relative px-6 py-8 lg:px-8 lg:py-10">
-            {/* Trending badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-overline font-semibold text-primary uppercase animate-in delay-200">
               <Sparkles className="h-3 w-3" />
               {t("home.premiumSelection")}
             </div>
 
-            {/* Title */}
             <h2 className="mt-5 max-w-2xl font-display text-display-title text-balance text-card-foreground md:text-display-hero delay-300 hero-title-reveal">
               {hero.title}
             </h2>
 
-            {/* Overview */}
             <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground animate-in delay-500">
               {hero.overview}
             </p>
 
-            {/* Stats row */}
             <div className="mt-6 flex flex-wrap items-center gap-6 pt-5 animate-in delay-600">
               <StatCard
                 label={t("home.followedSeries")}
@@ -244,7 +236,6 @@ function HomePageContent() {
               />
             </div>
 
-            {/* Actions */}
             <div className="mt-7 flex flex-wrap gap-3 animate-in delay-700">
               <Button
                 asChild
@@ -277,10 +268,8 @@ function HomePageContent() {
 
       {/* Today Hub — the daily cockpit: continue watching, up next, new
           episodes, availability, alerts, a Watch Tonight teaser, a
-          personalized recommendation, and items needing action. Generalizes
-          the page's former "For You" panel (see git history) to the full
-          set of daily-relevant capabilities; self-contained, renders
-          nothing when every card is empty. */}
+          personalized recommendation, and items needing action.
+          Self-contained: renders nothing when every card is empty. */}
       <TodayHub index={++sectionIndex} />
 
       {/* Compact "this week" personal agenda — releases, new episodes, and
@@ -289,7 +278,6 @@ function HomePageContent() {
           there's nothing to show, same as the rails above. */}
       <WeeklyAgendaSection index={++sectionIndex} />
 
-      {/* Series and movies catalogue sections */}
       <div className="flex justify-end">
         <HideWatchedToggle />
       </div>

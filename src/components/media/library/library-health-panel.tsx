@@ -105,9 +105,10 @@ function DuplicateGroupRow({ group, onDismiss }: { group: DuplicateGroup; onDism
 /**
  * The Library page's health surface — probable duplicates, items missing
  * poster/genre metadata, and "planned" items forgotten for weeks, each with
- * a bulk action and a session-only undo toast (no persisted undo log — see
- * the Library Health Center plan). Self-fetches via useLibrary(); renders
- * nothing once every signal is empty, same convention as the Today Hub.
+ * a bulk action and a session-only undo toast (no persisted undo log — a
+ * page refresh loses the ability to undo). Self-fetches via useLibrary();
+ * renders nothing once every signal is empty, same convention as the Today
+ * Hub.
  */
 export function LibraryHealthPanel({ index }: { index: number }) {
   const { t } = useTranslation();

@@ -16,10 +16,10 @@ export function SectionHeader({
   subtitle?: string;
   action?: React.ReactNode;
   index?: number;
-  // "sub" is for a header nested inside a larger zone (e.g. the home
-  // dashboard's "For You" panel grouping several personalized rails under
-  // one heading) — smaller type, no eyebrow rule. Purely visual: see
-  // headingLevel below for the actual heading tag this renders.
+  // "sub" is for a header nested inside a larger zone (e.g. the Today Hub
+  // grouping several daily-relevant cards under one heading) — smaller
+  // type, no eyebrow rule. Purely visual: see headingLevel below for the
+  // actual heading tag this renders.
   size?: "default" | "sub";
   // Set when this is the page's own title (no other heading precedes it on
   // the page) — renders <h1>, same visual size otherwise. Never combine

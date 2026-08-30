@@ -10,8 +10,9 @@ export const DEFAULT_LANGUAGE = "en";
 
 // `label` is TMDB's own English genre name — kept as a stable identity used
 // internally (matching a movie genre to its series equivalent in
-// home-page.tsx, sorting, deduping), not for display. `labelKey` is the i18n
-// key actually rendered; see src/i18n/locales/{en,fr}.json's "genres" namespace.
+// use-merged-genres.ts, sorting, deduping), not for display. `labelKey` is
+// the i18n key actually rendered; see src/i18n/locales/{en,fr}.json's
+// "genres" namespace.
 export const GENRES = {
   movies: [
     { id: 28, label: "Action", labelKey: "genres.action", icon: "💥" },

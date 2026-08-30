@@ -150,14 +150,12 @@ struct ViewingEventRow {
 // in export_impl, "fetch every row of a table, mapped by sqlx::FromRow";
 // in import_impl, "chunk rows into IMPORT_BATCH_SIZE, build a multi-row
 // INSERT via QueryBuilder, execute". A declarative macro was chosen over
-// a trait + `Box<dyn Trait>` dispatch (the alternative this codebase
-// already uses for command-layer boilerplate, see macros.rs's
-// `profile_scoped_command!`) for the same reason it applied there: the
-// 13-table set is fixed at compile time, never an open set discovered at
-// runtime, so there's nothing to gain from erasing each table's concrete
-// Row/domain type behind a trait object — a macro expands to exactly the
-// hand-written fetch/insert code, just without retyping the surrounding
-// scaffolding for every table.
+// a trait + `Box<dyn Trait>` dispatch because the 13-table set is fixed
+// at compile time, never an open set discovered at runtime, so there's
+// nothing to gain from erasing each table's concrete Row/domain type
+// behind a trait object — a macro expands to exactly the hand-written
+// fetch/insert code, just without retyping the surrounding scaffolding
+// for every table.
 //
 // Per-table *conversion* logic (Row -> domain type) stays written out by
 // hand in export_impl, and per-table *bind order* stays written out by
@@ -169,10 +167,7 @@ struct ViewingEventRow {
 // correctness-sensitive path in the app.
 
 /// Fetches every row of `$table` into `Vec<$row_ty>` inside the caller's
-/// already-open transaction `$tx`. Mirrors the pre-refactor's repeated
-/// `sqlx::query_as("SELECT * FROM <table>").fetch_all(&mut *tx).await.map_err(ApiError::from)?`
-/// line exactly — same query, same error mapping, same "runs inside one
-/// shared transaction" behavior — just not retyped 13 times.
+/// already-open transaction `$tx`.
 macro_rules! export_table {
     ($tx:expr, $table:literal, $row_ty:ty) => {{
         let rows: Vec<$row_ty> = sqlx::query_as(concat!("SELECT * FROM ", $table))

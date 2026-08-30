@@ -53,11 +53,9 @@ pub(super) async fn upsert_impl(
     };
 
     let item = LibraryItem {
-        // Reusing the same fresh id for both the returned item and the
-        // persisted row on insert — the original TS generated two different
-        // uuids here (one for the returned object, a second, different one
-        // actually bound into the INSERT), so a newly-created item's
-        // reported `id` never matched its real stored `uuid`.
+        // Generate the id once and reuse it for both the returned item and
+        // the persisted row on insert, so a newly-created item's reported
+        // `id` always matches its real stored `uuid`.
         id: current.as_ref().map_or_else(new_uuid, |c| c.id.clone()),
         profile_id: profile_id.to_string(),
         media_id: media.id,
@@ -142,9 +140,8 @@ pub(super) async fn upsert_impl(
     .await
     .map_err(ApiError::from)?;
 
-    // Only the first time an item is created — matching the exact idempotent
-    // pattern used by the pre-merge watchlist feature (see git history),
-    // never on a plain status/rating/notes update.
+    // Only the first time an item is created, never on a plain
+    // status/rating/notes update.
     if is_new {
         let timestamp = now_iso(&mut *tx).await?;
         let history_item = ViewingHistoryItem {
@@ -166,10 +163,11 @@ pub(super) async fn upsert_impl(
     Ok(item)
 }
 
-/// Called from progress.rs/tvtime.rs, inside the same transaction as a "vu"
-/// toggle, to keep a library entry's status roughly in sync with actual
-/// viewing: watching a movie completes it, watching an episode starts a
-/// series, finishing every episode completes it.
+/// Called from progress::repository and integrations::tvtime::importer,
+/// inside the same transaction as a "vu" toggle, to keep a library entry's
+/// status roughly in sync with actual viewing: watching a movie completes
+/// it, watching an episode starts a series, finishing every episode
+/// completes it.
 ///
 /// Creates the library entry if none exists yet (status = `target`,
 /// logging a `LibraryAdd` history entry the same way a manual add does) —

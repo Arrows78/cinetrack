@@ -25,8 +25,7 @@ export function shouldShowOnboarding({
 }
 
 /**
- * Goal-oriented first-launch screen — see docs/architecture.md's
- * "Architecture boundaries" for why this sits in AuthRoot (auth-root.tsx)
+ * Goal-oriented first-launch screen — sits in AuthRoot (auth-root.tsx)
  * rather than as a router route: the router's single root wraps every route
  * in AppShell's persistent sidebar, which a genuine first-launch screen
  * shouldn't show, the same reason AuthScreen/CreateProfileScreen are gates

@@ -3,12 +3,10 @@ import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/shared/lib/cn";
 
-// The icon-prefixed underline field (email, profile name) — was
-// copy-pasted identically in both files. Not used by the OTP step, which
-// has its own boxed (not underlined) input design. The underline itself is
-// drawn by this row, not by the Input — the "underline" size just strips
-// Input's own box/ring so the row's border reads as one continuous line
-// under both the icon and the text.
+// Not used by the OTP step, which has its own boxed (not underlined) input
+// design. The underline itself is drawn by this row, not by the Input — the
+// "underline" size just strips Input's own box/ring so the row's border
+// reads as one continuous line under both the icon and the text.
 export function AuthTextField({
   icon: Icon,
   rowClassName,

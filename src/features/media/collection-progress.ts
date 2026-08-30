@@ -16,7 +16,7 @@ export interface CollectionProgress {
 // "watched" mirrors every other rail in this codebase (pickBestSeed,
 // filterAvailableItems, …): a library item's own `status === "completed"`
 // is the source of truth, kept in sync with the separate movie_seen table
-// by auto_sync_status_impl (see src-tauri/src/commands/progress.rs) rather
+// by auto_sync_status_impl (see src-tauri/src/library/repository.rs) rather
 // than re-querying is_movie_seen per collection part, which would be one
 // invoke() per movie in the franchise just to render this section.
 function statusFor(movie: Movie, library: LibraryItem[]): CollectionEntryStatus {
