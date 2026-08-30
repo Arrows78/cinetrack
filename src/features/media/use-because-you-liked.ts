@@ -1,51 +1,31 @@
 import { useMemo } from "react";
-import { useLibrary } from "@/features/library/use-library";
-import { EMPTY_LIBRARY, filterAvailableItems } from "@/shared/utils/library-set";
+import { useQuery } from "@tanstack/react-query";
+import { libraryRepository } from "@/features/library/library-repository";
+import { useLibraryMediaKeys } from "@/features/library/use-library";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { queryKeys } from "@/shared/constants/query-keys";
+import { buildKeySetFromMediaKeys, filterAvailableItemsByKeySet } from "@/shared/utils/library-set";
 import { useRecommendations } from "@/features/media/use-discovery";
-import type { LibraryItem, MediaSummary } from "@/types/media";
-
-const byMostRecent = (a: LibraryItem, b: LibraryItem) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "");
+import type { MediaSummary } from "@/types/media";
 
 // Picks the strongest positive signal available in the user's library,
 // falling back through weaker-but-still-real tiers instead of requiring the
-// single strongest one. A brand-new library is almost always "planned"
-// only — requiring an explicit rating on top of "completed" (the original,
-// stricter version of this function) meant the rail would stay hidden for
-// most real usage far longer than it needed to. Exported for isolated unit
-// testing.
-export function pickBestSeed(library: LibraryItem[]): LibraryItem | null {
-  // 1. An explicit rated opinion on a title actually finished — the
-  //    strongest possible signal.
-  const rated = library.filter((item) => item.status === "completed" && item.userRating != null);
-  if (rated.length > 0) {
-    return [...rated].sort((a, b) => {
-      const byRating = (b.userRating ?? 0) - (a.userRating ?? 0);
-      return byRating !== 0 ? byRating : (b.completedAt ?? "").localeCompare(a.completedAt ?? "");
-    })[0]!;
-  }
-
-  // 2. Explicitly favourited — a real taste signal even before (or without)
-  //    having watched it.
-  const favourited = library.filter((item) => item.favourite);
-  if (favourited.length > 0) return [...favourited].sort(byMostRecent)[0]!;
-
-  // 3. Completed but never rated — still a real "I finished this" signal.
-  const completed = library.filter((item) => item.status === "completed");
-  if (completed.length > 0) {
-    return [...completed].sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))[0]!;
-  }
-
-  // 4. Actively engaged with right now.
-  const inProgress = library.filter((item) => item.status === "watching");
-  if (inProgress.length > 0) return [...inProgress].sort(byMostRecent)[0]!;
-
-  return null;
+// single strongest one — computed server-side (see
+// get_best_recommendation_seed_impl in src-tauri/src/library/queries.rs)
+// instead of a full library read reduced to one row in JS.
+function useBestSeed() {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    queryKey: queryKeys.local.bestRecommendationSeed(profileId),
+    queryFn: () => libraryRepository.bestRecommendationSeed(),
+  });
 }
 
 export function useBecauseYouLiked() {
-  const libraryQuery = useLibrary();
-  const library = libraryQuery.data ?? EMPTY_LIBRARY;
-  const seed = useMemo(() => pickBestSeed(library), [library]);
+  const seedQuery = useBestSeed();
+  const seed = seedQuery.data ?? null;
+  const mediaKeysQuery = useLibraryMediaKeys();
+  const keySet = useMemo(() => buildKeySetFromMediaKeys(mediaKeysQuery.data ?? []), [mediaKeysQuery.data]);
 
   const recommendationsQuery = useRecommendations(seed?.mediaType ?? "movie", seed?.mediaId ?? Number.NaN);
 
@@ -54,8 +34,10 @@ export function useBecauseYouLiked() {
   // TMDB's full ~20-result page.
   const items = useMemo<MediaSummary[]>(() => {
     const results = recommendationsQuery.data?.results ?? [];
-    return filterAvailableItems(results, library);
-  }, [recommendationsQuery.data, library]);
+    return filterAvailableItemsByKeySet(results, keySet);
+  }, [recommendationsQuery.data, keySet]);
 
-  return { seedTitle: seed?.title ?? null, items, isLoading: Boolean(seed) && recommendationsQuery.isLoading };
+  const isLoading = seedQuery.isLoading || (Boolean(seed) && recommendationsQuery.isLoading);
+
+  return { seedTitle: seed?.title ?? null, items, isLoading };
 }

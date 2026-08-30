@@ -161,8 +161,21 @@ const libraryPageQueryMock = vi.fn(
     };
   }
 );
+// A membership-only view of the same libraryQueryMock() fixture — mirrors
+// how the real useLibraryMediaKeys derives from list_library_media_keys
+// (a lighter server-side query over the same table), not a second
+// independent test fixture to keep in sync.
+const libraryMediaKeysQueryMock = vi.fn(() => {
+  const source = libraryQueryMock();
+  if (source.isLoading || source.isError) return { data: undefined };
+  type SourceItem = { mediaId: number; mediaType: string };
+  return {
+    data: ((source.data ?? []) as SourceItem[]).map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType })),
+  };
+});
 vi.mock("@/features/library/use-library", () => ({
   useLibrary: () => libraryQueryMock(),
+  useLibraryMediaKeys: () => libraryMediaKeysQueryMock(),
   useLibraryPage: (filters: {
     mediaType?: string;
     status: string;
@@ -170,6 +183,11 @@ vi.mock("@/features/library/use-library", () => ({
     search: string;
     sort: string;
   }) => libraryPageQueryMock(filters),
+  // This suite never activates a smart list (smartListFilter stays "all"),
+  // but useSmartListMatches calls these unconditionally regardless — stub
+  // to an empty, always-settled result so the component doesn't crash.
+  useLibraryIdsMatchingFilters: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useLibraryItemsByKeys: () => ({ data: [], isPending: false, isError: false, error: null, refetch: vi.fn() }),
 }));
 
 vi.mock("@/features/progress/use-progress", () => ({

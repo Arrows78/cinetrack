@@ -3,7 +3,8 @@ use tauri::State;
 
 use super::domain::LibraryStatus;
 use super::models::{
-    LibraryItem, LibraryListParams, LibraryPage, LibraryPatch, LibrarySort, MediaSummaryInput,
+    LibraryFilterParams, LibraryItem, LibraryListParams, LibraryMediaKey, LibraryPage,
+    LibraryPatch, LibrarySort, LibraryStatusCounts, MediaSummaryInput,
 };
 use super::service::LibraryService;
 use crate::diagnostics::timed;
@@ -108,6 +109,92 @@ pub async fn remove_planned_library_item(
     timed("remove_planned_library_item", async {
         LibraryService::new(pool.inner())
             .remove_if_planned(media_id, media_type)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn list_library_media_keys(
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryMediaKey>, ApiError> {
+    timed("list_library_media_keys", async {
+        LibraryService::new(pool.inner()).list_media_keys().await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn get_library_items_by_keys(
+    keys: Vec<LibraryMediaKey>,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryItem>, ApiError> {
+    timed("get_library_items_by_keys", async {
+        LibraryService::new(pool.inner())
+            .get_items_by_keys(keys)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn get_library_status_counts(
+    pool: State<'_, SqlitePool>,
+) -> Result<LibraryStatusCounts, ApiError> {
+    timed("get_library_status_counts", async {
+        LibraryService::new(pool.inner()).status_counts().await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn list_planned_library_candidates(
+    media_type: MediaType,
+    limit: i64,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryItem>, ApiError> {
+    timed("list_planned_library_candidates", async {
+        LibraryService::new(pool.inner())
+            .planned_candidates(media_type, limit)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn list_completed_library_candidates(
+    media_type: Option<MediaType>,
+    limit: i64,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryItem>, ApiError> {
+    timed("list_completed_library_candidates", async {
+        LibraryService::new(pool.inner())
+            .completed_candidates(media_type, limit)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn get_best_recommendation_seed(
+    pool: State<'_, SqlitePool>,
+) -> Result<Option<LibraryItem>, ApiError> {
+    timed("get_best_recommendation_seed", async {
+        LibraryService::new(pool.inner())
+            .best_recommendation_seed()
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn list_library_ids_matching_filters(
+    filters: LibraryFilterParams,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryMediaKey>, ApiError> {
+    timed("list_library_ids_matching_filters", async {
+        LibraryService::new(pool.inner())
+            .ids_matching_filters(filters)
             .await
     })
     .await

@@ -130,6 +130,63 @@ async fn library_list_query_uses_profile_updated_index() {
 }
 
 #[tokio::test]
+async fn planned_library_candidates_query_stays_index_driven() {
+    let pool = migrated_pool().await;
+    let rows: Vec<QueryPlanRow> = sqlx::query_as(
+        "EXPLAIN QUERY PLAN
+         SELECT * FROM library_items
+         WHERE profile_id = 'default' AND media_type = 'movie' AND status = 'planned'
+         ORDER BY updated_at DESC, media_id DESC
+         LIMIT 20",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let plan = joined_plan(&rows);
+
+    // SQLite prefers idx_library_profile_updated here over
+    // idx_library_profile_type_status_completed — it already satisfies the
+    // ORDER BY without a separate sort step, even though media_type/status
+    // then filter as a post-scan predicate rather than an index range. Both
+    // are legitimate, non-scanning choices; which one wins is the query
+    // planner's call, not a contract this test should pin.
+    assert!(
+        plan.contains("idx_library_profile_updated")
+            || plan.contains("idx_library_profile_type_status_completed"),
+        "expected planned-candidates to use an existing library index, got: {plan}"
+    );
+    assert!(
+        !plan.contains("SCAN library_items"),
+        "planned-candidates lookup should not scan the table: {plan}"
+    );
+}
+
+#[tokio::test]
+async fn completed_library_candidates_query_uses_the_type_status_completed_index() {
+    let pool = migrated_pool().await;
+    let rows: Vec<QueryPlanRow> = sqlx::query_as(
+        "EXPLAIN QUERY PLAN
+         SELECT * FROM library_items
+         WHERE profile_id = 'default' AND status = 'completed' AND media_type = 'series'
+         ORDER BY completed_at DESC, media_id DESC
+         LIMIT 20",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let plan = joined_plan(&rows);
+
+    assert!(
+        plan.contains("idx_library_profile_type_status_completed"),
+        "expected completed-candidates to use the type/status covering index, got: {plan}"
+    );
+    assert!(
+        !plan.contains("SCAN library_items"),
+        "completed-candidates lookup should not scan the table: {plan}"
+    );
+}
+
+#[tokio::test]
 async fn tracked_series_query_uses_profile_and_progress_indexes() {
     let pool = migrated_pool().await;
     let rows: Vec<QueryPlanRow> = sqlx::query_as(

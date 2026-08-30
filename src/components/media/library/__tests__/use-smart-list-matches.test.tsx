@@ -14,17 +14,23 @@ vi.mock("@/features/preferences/preferences-repository", () => ({
   preferencesRepository: { getPreferences: () => getPreferencesMock() },
 }));
 
+// The prefilter (idsMatchingFilters) and the full-row batch fetch
+// (getItemsByKeys) both stand in for Rust's own filtering — which is
+// tested directly against real SQL in src-tauri/src/library/repository.rs
+// — by returning the whole fixture unconditionally, regardless of the
+// filter params or keys actually passed. What these tests exercise is the
+// hook's own client-side post-filter (matchesSmartListRules), unchanged
+// and still real below.
 let libraryItems: LibraryItem[] = [];
-let libraryIsLoading = false;
 let libraryIsError = false;
-vi.mock("@/features/library/use-library", () => ({
-  useLibrary: () => ({
-    data: libraryItems,
-    isLoading: libraryIsLoading,
-    isError: libraryIsError,
-    error: libraryIsError ? new Error("boom") : null,
-    refetch: vi.fn(),
-  }),
+vi.mock("@/features/library/library-repository", () => ({
+  libraryRepository: {
+    idsMatchingFilters: () =>
+      libraryIsError
+        ? Promise.reject(new Error("boom"))
+        : Promise.resolve(libraryItems.map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType }))),
+    getItemsByKeys: () => Promise.resolve(libraryItems),
+  },
 }));
 
 let trackedSeriesData: TrackedSeriesItem[] = [];
@@ -65,7 +71,6 @@ beforeEach(() => {
   getPreferencesMock.mockClear();
   getMovieDetailsMock.mockReset();
   libraryItems = [];
-  libraryIsLoading = false;
   libraryIsError = false;
   trackedSeriesData = [];
   snapshotsData = [];

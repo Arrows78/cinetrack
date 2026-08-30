@@ -4,7 +4,7 @@ import type { AvailabilityAlert, AvailabilitySnapshot, CalendarEntry, LibraryIte
 
 const mocks = vi.hoisted(() => ({
   build: vi.fn(),
-  list: vi.fn(),
+  listMediaKeys: vi.fn(),
   listAlerts: vi.fn(),
   getSnapshot: vi.fn(),
 }));
@@ -14,7 +14,7 @@ vi.mock("@/features/calendar/calendar-service", () => ({
 }));
 
 vi.mock("@/features/library/library-repository", () => ({
-  libraryRepository: { list: mocks.list },
+  libraryRepository: { listMediaKeys: mocks.listMediaKeys },
 }));
 
 vi.mock("@/features/availability/availability-repository", () => ({
@@ -81,14 +81,14 @@ describe("trackingService.build", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.build.mockResolvedValue([]);
-    mocks.list.mockResolvedValue([]);
+    mocks.listMediaKeys.mockResolvedValue([]);
     mocks.listAlerts.mockResolvedValue([]);
     mocks.getSnapshot.mockResolvedValue(null);
   });
 
   it("tags a movie release as mine when the movie is already in the library", async () => {
     mocks.build.mockResolvedValue([calendarEntry({ mediaId: 1 })]);
-    mocks.list.mockResolvedValue([libraryItem(1)]);
+    mocks.listMediaKeys.mockResolvedValue([libraryItem(1)]);
 
     const entries = await trackingService.build();
 
@@ -98,7 +98,7 @@ describe("trackingService.build", () => {
 
   it("tags a movie release as discovery when it isn't in the library", async () => {
     mocks.build.mockResolvedValue([calendarEntry({ mediaId: 1 })]);
-    mocks.list.mockResolvedValue([]);
+    mocks.listMediaKeys.mockResolvedValue([]);
 
     const entries = await trackingService.build();
 
@@ -109,7 +109,7 @@ describe("trackingService.build", () => {
     mocks.build.mockResolvedValue([
       calendarEntry({ kind: "episode", mediaId: 10, mediaType: "series", id: "episode-1" }),
     ]);
-    mocks.list.mockResolvedValue([]);
+    mocks.listMediaKeys.mockResolvedValue([]);
 
     const entries = await trackingService.build();
 
@@ -172,7 +172,7 @@ describe("trackingService.buildNotifiableCalendarEntries", () => {
       calendarEntry({ mediaId: 2, id: "movie-2-2026-09-01" }),
       calendarEntry({ kind: "episode", mediaId: 10, mediaType: "series", id: "episode-1" }),
     ]);
-    mocks.list.mockResolvedValue([libraryItem(1)]);
+    mocks.listMediaKeys.mockResolvedValue([libraryItem(1)]);
 
     const entries = await trackingService.buildNotifiableCalendarEntries();
 

@@ -13,7 +13,7 @@ vi.mock("@/features/media/use-collection", () => ({
   useMovieCollection: (...args: unknown[]) => collectionQueryMock(...args),
 }));
 vi.mock("@/features/library/use-library", () => ({
-  useLibrary: () => ({ data: libraryDataMock() }),
+  useLibraryItemsByKeys: () => ({ data: libraryDataMock(), isPending: false }),
   useLibraryQuickToggle: () => ({ addPlanned: addPlannedMock, isSaving: false }),
 }));
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
@@ -51,6 +51,11 @@ describe("CollectionProgressPanel", () => {
 
   beforeEach(() => {
     collectionQueryMock.mockReset();
+    // A real useQuery() call always returns a query-shaped object, even
+    // when disabled (useMovieCollection is disabled until a collectionId
+    // exists) — this default matches that contract for tests that never
+    // override it (e.g. the "no collection" case below).
+    collectionQueryMock.mockReturnValue({ isLoading: false, isError: false, data: undefined });
     libraryDataMock.mockReset();
     addPlannedMock.mockReset();
     toastMock.mockReset();

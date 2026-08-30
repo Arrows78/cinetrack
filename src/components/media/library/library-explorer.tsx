@@ -22,7 +22,7 @@ import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useCustomListItems, useCustomLists } from "@/features/custom-lists/use-custom-lists";
-import { useLibrary, useLibraryPage } from "@/features/library/use-library";
+import { useLibrary, useLibraryMediaKeys, useLibraryPage } from "@/features/library/use-library";
 import { useSmartLists } from "@/features/smart-lists/use-smart-lists";
 import { useSmartListMatches } from "@/components/media/library/use-smart-list-matches";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -229,8 +229,7 @@ export function LibraryExplorer({
   browseAllLabel?: string;
 }) {
   const { t } = useTranslation();
-  const libraryQuery = useLibrary();
-  const { data: items } = libraryQuery;
+  const libraryMediaKeysQuery = useLibraryMediaKeys();
   const { data: trackedSeries } = useTrackedSeries();
   const lists = useCustomLists();
   const preferences = usePreferences();
@@ -266,6 +265,11 @@ export function LibraryExplorer({
   // which needs the whole set for that media type at once. Every one of
   // those modes keeps using the plain (safety-capped) useLibrary() below.
   const isServerPaginated = !lockedMediaType && listFilter === "all" && smartListFilter === "all";
+  // Not needed at all in server-paginated mode (the plain default browse
+  // view) — gated so that common case doesn't pay for a full library read
+  // it never renders.
+  const libraryQuery = useLibrary({ enabled: !isServerPaginated });
+  const { data: items } = libraryQuery;
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS);
   const libraryPageQuery = useLibraryPage(
     {
@@ -401,7 +405,11 @@ export function LibraryExplorer({
 
   const isFilteredToList = listFilter !== "all";
   const resetListFilter = () => setListFilter("all");
-  const hasAnyLibraryItems = (items?.length ?? 0) > 0;
+  // A membership-only check (not the full useLibrary() read, which is
+  // disabled in server-paginated mode) — needed in every mode to
+  // distinguish "the library is genuinely empty" from "no results match
+  // these filters."
+  const hasAnyLibraryItems = (libraryMediaKeysQuery.data?.length ?? 0) > 0;
   const clearFilters = () => {
     setTypeFilter(lockedMediaType ?? "all");
     setStatusFilter("all");

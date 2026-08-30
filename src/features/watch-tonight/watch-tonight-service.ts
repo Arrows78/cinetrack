@@ -1,5 +1,5 @@
 import { libraryRepository } from "@/features/library/library-repository";
-import { filterHiddenIfWatched } from "@/shared/utils/library-set";
+import { filterHiddenIfWatchedByKeySet, buildKeySetFromMediaKeys } from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { logger } from "@/shared/lib/logger";
 import type { LibraryItem, MediaSummary, MediaType, Movie, Series } from "@/types/media";
@@ -69,10 +69,13 @@ async function filterByProvider<T extends MediaSummary>(
   return candidates.filter((_item, index) => matches[index]);
 }
 
-async function pickMovies(filters: WatchTonightFilters, library: LibraryItem[]): Promise<Movie[]> {
-  const planned = library.filter((item) => item.mediaType === "movie" && item.status === "planned");
+async function pickMovies(
+  filters: WatchTonightFilters,
+  planned: LibraryItem[],
+  completedKeySet: Set<string>
+): Promise<Movie[]> {
   const detailed = await Promise.all(
-    planned.slice(0, PLANNED_CANDIDATE_CAP).map((item) =>
+    planned.map((item) =>
       mediaRepository.getMovieDetails(item.mediaId).catch((error) => {
         logger.warn(`Failed to fetch movie details for ${item.mediaId}: ${error}`);
         return null;
@@ -95,19 +98,22 @@ async function pickMovies(filters: WatchTonightFilters, library: LibraryItem[]):
     ).results;
   }
 
-  // Applied last, against the full library (not just the `planned` slice
-  // above) — the main place this actually removes anything is the
-  // catalogue fallback just above, since a `planned` item is never
-  // `completed` by definition.
-  candidates = filterHiddenIfWatched(candidates, library, Boolean(filters.hideWatched));
+  // Applied last, against the full completed-key set (not just the
+  // `planned` candidates above) — the main place this actually removes
+  // anything is the catalogue fallback just above, since a `planned` item
+  // is never `completed` by definition.
+  candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
 
   return shuffle(candidates).slice(0, PICKS_PER_TYPE);
 }
 
-async function pickSeries(filters: WatchTonightFilters, library: LibraryItem[]): Promise<Series[]> {
-  const planned = library.filter((item) => item.mediaType === "series" && item.status === "planned");
+async function pickSeries(
+  filters: WatchTonightFilters,
+  planned: LibraryItem[],
+  completedKeySet: Set<string>
+): Promise<Series[]> {
   const detailed = await Promise.all(
-    planned.slice(0, PLANNED_CANDIDATE_CAP).map((item) =>
+    planned.map((item) =>
       mediaRepository.getSeriesDetails(item.mediaId).catch((error) => {
         logger.warn(`Failed to fetch series details for ${item.mediaId}: ${error}`);
         return null;
@@ -130,15 +136,27 @@ async function pickSeries(filters: WatchTonightFilters, library: LibraryItem[]):
     ).results;
   }
 
-  candidates = filterHiddenIfWatched(candidates, library, Boolean(filters.hideWatched));
+  candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
 
   return shuffle(candidates).slice(0, PICKS_PER_TYPE);
 }
 
 export const watchTonightService = {
   async pick(filters: WatchTonightFilters): Promise<WatchTonightPicks> {
-    const library = await libraryRepository.list();
-    const [movies, series] = await Promise.all([pickMovies(filters, library), pickSeries(filters, library)]);
+    const [plannedMovies, plannedSeries, completedKeys] = await Promise.all([
+      libraryRepository.plannedCandidates("movie", PLANNED_CANDIDATE_CAP),
+      libraryRepository.plannedCandidates("series", PLANNED_CANDIDATE_CAP),
+      // Only needed for the hide-watched pass — still fetched unconditionally
+      // rather than gated on filters.hideWatched, since this same result
+      // would otherwise need refetching the moment the user flips that
+      // preference mid-session.
+      libraryRepository.idsMatchingFilters({ status: "completed" }),
+    ]);
+    const completedKeySet = buildKeySetFromMediaKeys(completedKeys);
+    const [movies, series] = await Promise.all([
+      pickMovies(filters, plannedMovies, completedKeySet),
+      pickSeries(filters, plannedSeries, completedKeySet),
+    ]);
     return { movies, series };
   },
 };

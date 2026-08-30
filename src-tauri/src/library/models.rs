@@ -212,6 +212,53 @@ impl TryFrom<LibraryRow> for LibraryItem {
     }
 }
 
+/// A minimal `(media_id, media_type)` key — for commands that only need to
+/// know WHICH items are in the library (a membership set, a batch lookup by
+/// specific ids), not their full row. Much lighter over IPC than shipping
+/// whole `LibraryItem`s when the caller only ever reads the key.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct LibraryMediaKey {
+    pub media_id: i64,
+    pub media_type: MediaType,
+}
+
+/// One count per `LibraryStatus`, for a single round-trip status breakdown
+/// (e.g. the Home page's "planned" rail counter) instead of a full library
+/// read reduced to a count in JS.
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct LibraryStatusCounts {
+    pub planned: i64,
+    pub watching: i64,
+    pub paused: i64,
+    pub completed: i64,
+    pub dropped: i64,
+}
+
+/// Optional, purely-relational `library_items` filters (status/media
+/// type/genre/rating) — deliberately narrower than a full rule DSL. Rust
+/// never inspects or types a SmartList's actual rule shape (see
+/// `features/smart-lists/smart-list-evaluation.ts`'s own doc comment); a
+/// caller with a richer rule set (provider, episode-waiting, movie runtime)
+/// extracts just these plain-column values from it and applies the rest as
+/// a client-side post-filter over this command's (much smaller) result.
+#[derive(Debug, Clone, Default, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct LibraryFilterParams {
+    #[ts(optional)]
+    pub media_type: Option<MediaType>,
+    #[ts(optional)]
+    pub status: Option<LibraryStatus>,
+    #[ts(optional)]
+    pub genre: Option<String>,
+    #[ts(optional)]
+    pub min_rating: Option<f64>,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct AutoSyncMedia {
     pub media_id: i64,

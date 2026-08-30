@@ -72,5 +72,13 @@ export const queryKeys = {
     // profile-scoped library data, not a global catalogue query.
     peopleYouWatchCredits: (profileId: string, signature: string) =>
       ["local", "peopleYouWatchCredits", profileId, signature] as const,
+    // A membership-only view of the library (media_id/media_type pairs, no
+    // full rows) — shared by every "am I already tracking this" style
+    // filter (recommendation rails excluding owned titles, calendar
+    // mine-vs-discovery) instead of each deriving its own set from a full
+    // useLibrary() read.
+    libraryMediaKeys: (profileId: string) => ["local", "libraryMediaKeys", profileId] as const,
+    completedLibraryCandidates: (profileId: string) => ["local", "completedLibraryCandidates", profileId] as const,
+    bestRecommendationSeed: (profileId: string) => ["local", "bestRecommendationSeed", profileId] as const,
   },
 };

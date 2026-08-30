@@ -49,6 +49,11 @@ use commands::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
     get_rewatch_stats, get_watch_forecast, get_watch_milestones,
 };
+use commands::{
+    get_best_recommendation_seed, get_library_items_by_keys, get_library_status_counts,
+    list_completed_library_candidates, list_library_ids_matching_filters, list_library_media_keys,
+    list_planned_library_candidates,
+};
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
 // failures — see the `.setup()` closure below — surface here rather than
@@ -122,6 +127,13 @@ pub fn run() {
             save_library_item,
             remove_library_item,
             remove_planned_library_item,
+            list_library_media_keys,
+            get_library_items_by_keys,
+            get_library_status_counts,
+            list_planned_library_candidates,
+            list_completed_library_candidates,
+            get_best_recommendation_seed,
+            list_library_ids_matching_filters,
             is_movie_seen,
             toggle_movie_seen,
             get_episode_progress,

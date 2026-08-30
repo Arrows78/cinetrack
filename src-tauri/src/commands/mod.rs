@@ -13,8 +13,11 @@ pub use crate::backup::{
 pub use crate::history::list_history;
 pub use crate::integrations::{import_movie_seen, import_series_progress, tmdb_request};
 pub use crate::library::{
-    get_library_item, has_library_item, list_library, list_library_page, remove_library_item,
-    remove_planned_library_item, save_library_item,
+    get_best_recommendation_seed, get_library_item, get_library_items_by_keys,
+    get_library_status_counts, has_library_item, list_completed_library_candidates, list_library,
+    list_library_ids_matching_filters, list_library_media_keys, list_library_page,
+    list_planned_library_candidates, remove_library_item, remove_planned_library_item,
+    save_library_item,
 };
 pub use crate::lists::{
     add_custom_list_item, create_custom_list, create_saved_filter, create_smart_list,

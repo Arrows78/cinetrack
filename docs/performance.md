@@ -30,12 +30,20 @@ the Progress aggregation is exercised alongside Library and Stats. The Library
 command keeps its production `LIST_SAFETY_LIMIT` safety cap (`library/queries.rs`
 — a defensive backstop against pathological growth, not real pagination, sized
 well above any of these fixtures), so every tier here measures the real,
-untruncated full-library payload every non-`/library`-page consumer (recommendation
-rails, smart lists, custom lists, the /movies and /series "My list" tabs) actually
-reads. This is also why "Library list" latency now climbs noticeably at the
-50k tier instead of staying flat — that cost was previously invisible because
-the benchmark's own consumer read a 5,000-row truncation of it instead of the
-full set; see `docs/audit-findings.md`'s corresponding resolved entry.
+untruncated full-library payload the one remaining consumer still reads: the
+/movies and /series "My list" tabs' own watch-progress bucketing
+(`MovieLibrarySections`/`SeriesLibrarySections`, via `LibraryExplorer`'s
+non-server-paginated branch), which genuinely needs the complete profile-scoped
+set to group in-progress/not-started/finished at once. Recommendation rails,
+smart-list evaluation, Watch Tonight, and tracking/calendar enrichment each
+moved to their own targeted command (`list_library_media_keys`,
+`list_planned_library_candidates`, `list_completed_library_candidates`,
+`get_best_recommendation_seed`, `list_library_ids_matching_filters`,
+`get_library_items_by_keys` — all in `library/queries.rs`) instead of scanning
+this full list. This is also why "Library list" latency now climbs noticeably at
+the 50k tier instead of staying flat — that cost was previously invisible
+because the benchmark's own consumer read a 5,000-row truncation of it instead
+of the full set; see `docs/audit-findings.md`'s corresponding resolved entry.
 
 Each dataset gets 3 warmup iterations followed by 20 measured iterations. The
 warmups are excluded from the sample set. CineTrack records nearest-rank p50 and

@@ -868,6 +868,9 @@ describe("invalidateTvTimeImportQueries", () => {
       ["local", "tracking", "profile-1"],
       ["local", "calendar", "profile-1"],
       ["local", "watchTonight", "profile-1"],
+      ["local", "libraryMediaKeys", "profile-1"],
+      ["local", "completedLibraryCandidates", "profile-1"],
+      ["local", "bestRecommendationSeed", "profile-1"],
     ]);
     // Never the bare ["local"] prefix, which would also evict every other
     // profile's unrelated cached data.

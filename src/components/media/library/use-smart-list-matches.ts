@@ -1,6 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
 import type { MediaGridItem } from "@/components/media/primitives/media-grid";
-import { useLibrary } from "@/features/library/use-library";
+import { useLibraryIdsMatchingFilters, useLibraryItemsByKeys } from "@/features/library/use-library";
 import { buildSmartListEvalContext, matchesSmartListRules } from "@/features/smart-lists";
 import { useAvailabilitySnapshots } from "@/features/availability/use-availability-alerts";
 import { mediaRepository } from "@/features/media/media-repository";
@@ -8,7 +8,22 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_24_HOURS } from "@/shared/constants/query";
-import type { LibraryItem, SmartListRules } from "@/types/media";
+import type { LibraryFilterParams, LibraryItem, SmartListRules } from "@/types/media";
+
+// Extracts just the purely-relational dimensions of a SmartList's rules
+// (status/mediaType/genre/minRating are plain library_items columns) for
+// the server-side prefilter — provider/hasEpisodeWaiting/maxRuntimeMinutes
+// stay a client-side post-filter below, since Rust never inspects a
+// SmartList's actual rule shape (see smart-list-evaluation.ts's own doc
+// comment).
+function toLibraryFilterParams(rules: SmartListRules): LibraryFilterParams {
+  return {
+    mediaType: rules.mediaType === "any" ? undefined : rules.mediaType,
+    status: rules.status === "any" ? undefined : rules.status,
+    genre: rules.genre ?? undefined,
+    minRating: rules.minRating ?? undefined,
+  };
+}
 
 function toMediaGridItem(
   item: LibraryItem,
@@ -50,12 +65,17 @@ function toMediaGridItem(
  * `undefined`) without a separate early-return branch at every call site.
  */
 export function useSmartListMatches(rules: SmartListRules | undefined) {
-  const libraryQuery = useLibrary();
+  // Server-side prefilter on the plain-column dimensions, narrowing the
+  // candidate set before the full-row fetch below — replaces a full
+  // useLibrary() read reduced to a filter in JS.
+  const idsQuery = useLibraryIdsMatchingFilters(rules ? toLibraryFilterParams(rules) : {});
+  const candidateKeys = rules ? (idsQuery.data ?? []) : [];
+  const libraryItemsQuery = useLibraryItemsByKeys(candidateKeys);
   const trackedSeriesQuery = useTrackedSeries();
   const preferencesQuery = usePreferences();
   const snapshotsQuery = useAvailabilitySnapshots();
 
-  const library = libraryQuery.data ?? [];
+  const library = libraryItemsQuery.data ?? [];
   const trackedSeries = trackedSeriesQuery.data ?? [];
   const preferredProviderIds = preferencesQuery.data?.preferredProviderIds ?? [];
   const snapshots = snapshotsQuery.data ?? [];
@@ -103,13 +123,14 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     : [];
 
   const isLoading =
-    libraryQuery.isLoading ||
+    idsQuery.isLoading ||
+    (candidateKeys.length > 0 && libraryItemsQuery.isPending) ||
     trackedSeriesQuery.isLoading ||
     preferencesQuery.isLoading ||
     snapshotsQuery.isLoading ||
     (needsRuntime && runtimeQueries.some((query) => query.isLoading));
-  const isError = libraryQuery.isError || trackedSeriesQuery.isError || snapshotsQuery.isError;
-  const error = libraryQuery.error ?? trackedSeriesQuery.error ?? snapshotsQuery.error;
+  const isError = idsQuery.isError || libraryItemsQuery.isError || trackedSeriesQuery.isError || snapshotsQuery.isError;
+  const error = idsQuery.error ?? libraryItemsQuery.error ?? trackedSeriesQuery.error ?? snapshotsQuery.error;
 
   return {
     items,
@@ -117,7 +138,8 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     isError,
     error,
     refetch: () => {
-      void libraryQuery.refetch();
+      void idsQuery.refetch();
+      void libraryItemsQuery.refetch();
       void trackedSeriesQuery.refetch();
       void snapshotsQuery.refetch();
     },

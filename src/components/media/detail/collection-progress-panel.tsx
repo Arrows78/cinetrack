@@ -9,10 +9,9 @@ import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { computeCollectionProgress, type CollectionEntryStatus } from "@/features/media";
 import { useMovieCollection } from "@/features/media/use-collection";
-import { EMPTY_LIBRARY } from "@/shared/utils/library-set";
-import { useLibrary, useLibraryQuickToggle } from "@/features/library/use-library";
+import { useLibraryItemsByKeys, useLibraryQuickToggle } from "@/features/library/use-library";
 import { logger } from "@/shared/lib/logger";
-import type { Movie } from "@/types/media";
+import type { LibraryMediaKey, Movie } from "@/types/media";
 
 const BUCKET_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6";
 
@@ -43,13 +42,22 @@ export function CollectionProgressPanel({ movie }: { movie: Movie }) {
   const { t } = useTranslation();
   const collectionId = movie.collection?.id;
   const collectionQuery = useMovieCollection(collectionId);
-  const libraryQuery = useLibrary();
+  // Bounded to this collection's own parts (typically under a dozen movies)
+  // instead of a full library read — see get_library_items_by_keys_impl in
+  // src-tauri/src/library/queries.rs. Called unconditionally (before the
+  // early returns below) with an empty array until the collection itself
+  // resolves; useLibraryItemsByKeys no-ops on an empty key list.
+  const collectionKeys: LibraryMediaKey[] = (collectionQuery.data?.parts ?? []).map((part) => ({
+    mediaId: part.id,
+    mediaType: "movie",
+  }));
+  const libraryItemsQuery = useLibraryItemsByKeys(collectionKeys);
   const { addPlanned, isSaving } = useLibraryQuickToggle();
   const [isAddingMissing, setIsAddingMissing] = useState(false);
 
   if (!collectionId) return null;
 
-  if (collectionQuery.isLoading) {
+  if (collectionQuery.isLoading || (collectionKeys.length > 0 && libraryItemsQuery.isPending)) {
     return (
       <section>
         <SectionHeader title={movie.collection?.name ?? t("collection.title")} />
@@ -65,7 +73,7 @@ export function CollectionProgressPanel({ movie }: { movie: Movie }) {
   const collection = collectionQuery.data;
   if (!collection || collection.parts.length <= 1) return null;
 
-  const library = libraryQuery.data ?? EMPTY_LIBRARY;
+  const library = libraryItemsQuery.data ?? [];
   const progress = computeCollectionProgress(collection.parts, library);
   const byStatus = (status: CollectionEntryStatus) =>
     progress.entries.filter((entry) => entry.status === status).map((entry) => entry.movie);

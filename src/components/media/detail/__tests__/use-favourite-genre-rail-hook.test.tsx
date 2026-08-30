@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useFavouriteGenreRail } from "../use-favourite-genre-rail";
-import type { LibraryItem, MediaSummary } from "@/types/media";
+import type { LibraryMediaKey, MediaSummary } from "@/types/media";
 
 const statsDataMock = vi.fn<() => { favouriteGenres: { name: string; count: number }[] } | undefined>();
-const libraryDataMock = vi.fn<() => LibraryItem[] | undefined>();
+const mediaKeysMock = vi.fn<() => LibraryMediaKey[] | undefined>();
 const mergedGenresMock = vi.fn();
 const searchQueryMock = vi.fn<() => { items: MediaSummary[]; isLoading: boolean }>();
 
@@ -12,7 +12,7 @@ vi.mock("@/features/stats/use-stats", () => ({
   useStats: () => ({ data: statsDataMock() }),
 }));
 vi.mock("@/features/library/use-library", () => ({
-  useLibrary: () => ({ data: libraryDataMock() }),
+  useLibraryMediaKeys: () => ({ data: mediaKeysMock() }),
 }));
 vi.mock("@/features/media/use-merged-genres", () => ({
   useMergedGenres: () => mergedGenresMock(),
@@ -44,34 +44,10 @@ const media = (overrides: Partial<MediaSummary> = {}): MediaSummary => ({
   ...overrides,
 });
 
-const libraryItem = (overrides: Partial<LibraryItem> = {}): LibraryItem => ({
-  id: "item-1",
-  profileId: "profile-1",
-  mediaId: 1,
-  mediaType: "movie",
-  title: "Dune",
-  year: 2021,
-  rating: 8,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-  genres: [],
-  status: "completed",
-  favourite: false,
-  tags: [],
-  rewatchCount: 0,
-  posterPath: null,
-  backdropPath: null,
-  userRating: null,
-  notes: null,
-  startedAt: null,
-  completedAt: null,
-  ...overrides,
-});
-
 describe("useFavouriteGenreRail", () => {
   it("has no genre, empty items, and is not loading when there are no favourite genres yet", () => {
     statsDataMock.mockReturnValue({ favouriteGenres: [] });
-    libraryDataMock.mockReturnValue([]);
+    mediaKeysMock.mockReturnValue([]);
     mergedGenresMock.mockReturnValue([genre]);
     searchQueryMock.mockReturnValue({ items: [], isLoading: true });
 
@@ -86,7 +62,7 @@ describe("useFavouriteGenreRail", () => {
 
   it("resolves a top genre but keeps items empty while the search has no results yet", () => {
     statsDataMock.mockReturnValue({ favouriteGenres: [{ name: "Drama", count: 5 }] });
-    libraryDataMock.mockReturnValue([]);
+    mediaKeysMock.mockReturnValue([]);
     mergedGenresMock.mockReturnValue([genre]);
     searchQueryMock.mockReturnValue({ items: [], isLoading: false });
 
@@ -98,7 +74,7 @@ describe("useFavouriteGenreRail", () => {
 
   it("filters out items already in the library once a genre and search results exist", () => {
     statsDataMock.mockReturnValue({ favouriteGenres: [{ name: "Drama", count: 5 }] });
-    libraryDataMock.mockReturnValue([libraryItem({ mediaId: 1, mediaType: "movie" })]);
+    mediaKeysMock.mockReturnValue([{ mediaId: 1, mediaType: "movie" }]);
     mergedGenresMock.mockReturnValue([genre]);
     searchQueryMock.mockReturnValue({
       items: [media({ id: 1, mediaType: "movie" }), media({ id: 2, mediaType: "movie", title: "Arrival" })],
@@ -112,7 +88,7 @@ describe("useFavouriteGenreRail", () => {
 
   it("is loading only once a genre is resolved AND the search is loading", () => {
     statsDataMock.mockReturnValue({ favouriteGenres: [{ name: "Drama", count: 5 }] });
-    libraryDataMock.mockReturnValue([]);
+    mediaKeysMock.mockReturnValue([]);
     mergedGenresMock.mockReturnValue([genre]);
     searchQueryMock.mockReturnValue({ items: [], isLoading: true });
 
@@ -122,15 +98,15 @@ describe("useFavouriteGenreRail", () => {
     expect(result.current.isLoading).toBe(true);
   });
 
-  it("falls back to safe defaults while stats and library data are still undefined (initial load)", () => {
+  it("falls back to safe defaults while stats and library-keys data are still undefined (initial load)", () => {
     statsDataMock.mockReturnValue(undefined);
-    libraryDataMock.mockReturnValue(undefined);
+    mediaKeysMock.mockReturnValue(undefined);
     mergedGenresMock.mockReturnValue([genre]);
     searchQueryMock.mockReturnValue({ items: [], isLoading: false });
 
     const { result } = renderHook(() => useFavouriteGenreRail());
 
-    // statsQuery.data?.favouriteGenres ?? [] and libraryQuery.data ?? EMPTY_LIBRARY
+    // statsQuery.data?.favouriteGenres ?? [] and mediaKeysQuery.data ?? []
     // both take their fallback branch here, before either query has resolved.
     expect(result.current.genre).toBeNull();
     expect(result.current.items).toEqual([]);

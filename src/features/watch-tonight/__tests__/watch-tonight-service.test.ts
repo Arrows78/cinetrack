@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Movie, Series } from "@/types/media";
 
 const mocks = vi.hoisted(() => ({
-  listLibrary: vi.fn(),
+  plannedCandidates: vi.fn(),
+  idsMatchingFilters: vi.fn(),
   getMovieDetails: vi.fn(),
   getSeriesDetails: vi.fn(),
   getWatchAvailability: vi.fn(),
@@ -12,7 +13,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/library/library-repository", () => ({
-  libraryRepository: { list: mocks.listLibrary },
+  libraryRepository: {
+    plannedCandidates: mocks.plannedCandidates,
+    idsMatchingFilters: mocks.idsMatchingFilters,
+  },
 }));
 
 vi.mock("@/features/media/media-repository", () => ({
@@ -57,10 +61,37 @@ const series = (id: number, overrides: Partial<Series> = {}): Series => ({
   ...overrides,
 });
 
+interface LibraryFixtureItem {
+  mediaId: number;
+  mediaType: "movie" | "series";
+  status: "planned" | "completed";
+}
+
+// pickMovies/pickSeries now get their planned candidates from
+// list_planned_library_candidates_impl (pre-filtered/sorted server-side)
+// and their hide-watched check from a completed-only key set
+// (list_library_ids_matching_filters_impl) instead of a single full
+// libraryRepository.list() array filtered in JS — this stands in for both,
+// splitting one fixture array into the two shapes the real commands return.
+function seedLibrary(items: LibraryFixtureItem[]) {
+  mocks.plannedCandidates.mockImplementation((mediaType: "movie" | "series") =>
+    Promise.resolve(
+      items
+        .filter((item) => item.mediaType === mediaType && item.status === "planned")
+        .map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType }))
+    )
+  );
+  mocks.idsMatchingFilters.mockResolvedValue(
+    items
+      .filter((item) => item.status === "completed")
+      .map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType }))
+  );
+}
+
 describe("watchTonightService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.listLibrary.mockResolvedValue([]);
+    seedLibrary([]);
     mocks.discoverMovies.mockResolvedValue({
       page: 1,
       totalPages: 1,
@@ -85,7 +116,7 @@ describe("watchTonightService", () => {
   });
 
   it("keeps planned movies only when the selected provider is available", async () => {
-    mocks.listLibrary.mockResolvedValue([
+    seedLibrary([
       { mediaId: 10, mediaType: "movie", status: "planned" },
       { mediaId: 11, mediaType: "movie", status: "planned" },
     ]);
@@ -107,7 +138,7 @@ describe("watchTonightService", () => {
   });
 
   it("keeps planned series only when the selected provider is available", async () => {
-    mocks.listLibrary.mockResolvedValue([
+    seedLibrary([
       { mediaId: 20, mediaType: "series", status: "planned" },
       { mediaId: 21, mediaType: "series", status: "planned" },
     ]);
@@ -129,7 +160,7 @@ describe("watchTonightService", () => {
   });
 
   it("filters series candidates by the series-specific genre id and by episode runtime", async () => {
-    mocks.listLibrary.mockResolvedValue([
+    seedLibrary([
       { mediaId: 30, mediaType: "series", status: "planned" },
       { mediaId: 31, mediaType: "series", status: "planned" },
     ]);
@@ -143,7 +174,7 @@ describe("watchTonightService", () => {
   });
 
   it("logs a warning and drops the candidate when getMovieDetails rejects for one planned movie, without failing the whole pick", async () => {
-    mocks.listLibrary.mockResolvedValue([
+    seedLibrary([
       { mediaId: 40, mediaType: "movie", status: "planned" },
       { mediaId: 41, mediaType: "movie", status: "planned" },
     ]);
@@ -159,7 +190,7 @@ describe("watchTonightService", () => {
   });
 
   it("logs a warning and drops the candidate when getSeriesDetails rejects for one planned series, without failing the whole pick", async () => {
-    mocks.listLibrary.mockResolvedValue([
+    seedLibrary([
       { mediaId: 50, mediaType: "series", status: "planned" },
       { mediaId: 51, mediaType: "series", status: "planned" },
     ]);
@@ -175,7 +206,7 @@ describe("watchTonightService", () => {
   });
 
   it("keeps a planned candidate available on any of several preferred providers (OR match)", async () => {
-    mocks.listLibrary.mockResolvedValue([
+    seedLibrary([
       { mediaId: 10, mediaType: "movie", status: "planned" },
       { mediaId: 11, mediaType: "movie", status: "planned" },
       { mediaId: 12, mediaType: "movie", status: "planned" },
@@ -198,7 +229,7 @@ describe("watchTonightService", () => {
   });
 
   it("joins multiple provider ids with a pipe when falling back to catalogue discovery", async () => {
-    mocks.listLibrary.mockResolvedValue([]);
+    seedLibrary([]);
 
     await watchTonightService.pick({ provider: [8, 337] });
 
@@ -207,7 +238,7 @@ describe("watchTonightService", () => {
   });
 
   it("drops a catalogue-fallback movie already completed in the library when hideWatched is on", async () => {
-    mocks.listLibrary.mockResolvedValue([{ mediaId: 2, mediaType: "movie", status: "completed" }]);
+    seedLibrary([{ mediaId: 2, mediaType: "movie", status: "completed" }]);
 
     const result = await watchTonightService.pick({ hideWatched: true });
 
@@ -215,7 +246,7 @@ describe("watchTonightService", () => {
   });
 
   it("drops a catalogue-fallback series already completed in the library when hideWatched is on", async () => {
-    mocks.listLibrary.mockResolvedValue([{ mediaId: 2, mediaType: "series", status: "completed" }]);
+    seedLibrary([{ mediaId: 2, mediaType: "series", status: "completed" }]);
 
     const result = await watchTonightService.pick({ hideWatched: true });
 
@@ -223,7 +254,7 @@ describe("watchTonightService", () => {
   });
 
   it("keeps an already-completed catalogue-fallback title when hideWatched is off (the default)", async () => {
-    mocks.listLibrary.mockResolvedValue([{ mediaId: 2, mediaType: "movie", status: "completed" }]);
+    seedLibrary([{ mediaId: 2, mediaType: "movie", status: "completed" }]);
 
     const result = await watchTonightService.pick({});
 
@@ -231,7 +262,7 @@ describe("watchTonightService", () => {
   });
 
   it("caps picks at PICKS_PER_TYPE (4) when more planned candidates match than that, for both movies and series", async () => {
-    mocks.listLibrary.mockResolvedValue([
+    seedLibrary([
       { mediaId: 60, mediaType: "movie", status: "planned" },
       { mediaId: 61, mediaType: "movie", status: "planned" },
       { mediaId: 62, mediaType: "movie", status: "planned" },

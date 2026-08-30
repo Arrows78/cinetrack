@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/shared/lib/logger";
-import { useLibrary } from "@/features/library/use-library";
-import { EMPTY_LIBRARY, filterAvailableItems } from "@/shared/utils/library-set";
+import { libraryRepository } from "@/features/library/library-repository";
+import { useLibraryMediaKeys } from "@/features/library/use-library";
+import { buildKeySetFromMediaKeys, filterAvailableItemsByKeySet } from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -72,14 +73,6 @@ export function pickTopDirector(watchedItems: MediaSummary[]): PersonTally | nul
   return pickTop(tally(watchedItems, (item) => item.directors ?? []));
 }
 
-/** Exported for isolated unit testing. Most-recently-completed first, capped at COMPLETED_CANDIDATE_CAP. */
-export function pickCompletedCandidates(library: LibraryItem[]): LibraryItem[] {
-  return library
-    .filter((item) => item.status === "completed")
-    .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
-    .slice(0, COMPLETED_CANDIDATE_CAP);
-}
-
 // Fetches full details (cast + directors) for a capped set of the user's
 // completed library items — cast/directors aren't part of LibraryItem
 // itself, only of the full Movie/Series detail response, so this is the
@@ -110,7 +103,19 @@ function useWatchedCredits(candidates: LibraryItem[]) {
   });
 }
 
-function usePersonDiscoverRail(person: PersonTally | null, role: "cast" | "crew", library: LibraryItem[]) {
+// Most-recently-completed first, capped at COMPLETED_CANDIDATE_CAP —
+// computed server-side (see list_completed_candidates_impl in
+// src-tauri/src/library/queries.rs) instead of filtering a full library
+// read in JS.
+function useCompletedCandidates() {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    queryKey: queryKeys.local.completedLibraryCandidates(profileId),
+    queryFn: () => libraryRepository.completedCandidates(undefined, COMPLETED_CANDIDATE_CAP),
+  });
+}
+
+function usePersonDiscoverRail(person: PersonTally | null, role: "cast" | "crew", keySet: Set<string>) {
   const query = useQuery({
     queryKey: queryKeys.remote.discoverByPerson(role, person?.id ?? Number.NaN),
     queryFn: () =>
@@ -120,8 +125,8 @@ function usePersonDiscoverRail(person: PersonTally | null, role: "cast" | "crew"
 
   const items = useMemo<MediaSummary[]>(() => {
     if (!person) return [];
-    return filterAvailableItems(query.data?.results ?? [], library);
-  }, [person, query.data, library]);
+    return filterAvailableItemsByKeySet(query.data?.results ?? [], keySet);
+  }, [person, query.data, keySet]);
 
   return { items, isLoading: Boolean(person) && query.isLoading };
 }
@@ -136,19 +141,25 @@ function usePersonDiscoverRail(person: PersonTally | null, role: "cast" | "crew"
  * discover for more from whoever tops each tally.
  */
 export function usePeopleYouWatch() {
-  const libraryQuery = useLibrary();
-  const library = libraryQuery.data ?? EMPTY_LIBRARY;
-  const completedCandidates = useMemo(() => pickCompletedCandidates(library), [library]);
+  const completedCandidatesQuery = useCompletedCandidates();
+  const completedCandidates = completedCandidatesQuery.data ?? [];
+  const mediaKeysQuery = useLibraryMediaKeys();
+  const keySet = useMemo(() => buildKeySetFromMediaKeys(mediaKeysQuery.data ?? []), [mediaKeysQuery.data]);
   const creditsQuery = useWatchedCredits(completedCandidates);
   const watchedItems = useMemo(() => creditsQuery.data ?? [], [creditsQuery.data]);
 
   const topActor = useMemo(() => pickTopActor(watchedItems), [watchedItems]);
   const topDirector = useMemo(() => pickTopDirector(watchedItems), [watchedItems]);
 
-  const actorRail = usePersonDiscoverRail(topActor, "cast", library);
-  const directorRail = usePersonDiscoverRail(topDirector, "crew", library);
+  const actorRail = usePersonDiscoverRail(topActor, "cast", keySet);
+  const directorRail = usePersonDiscoverRail(topDirector, "crew", keySet);
 
-  const isCreditsLoading = completedCandidates.length > 0 && creditsQuery.isLoading;
+  // completedCandidatesQuery.isLoading must gate this too, not just
+  // creditsQuery: while the candidates themselves are still in flight,
+  // completedCandidates is an empty placeholder array, which would
+  // otherwise read as "no credits to fetch" instead of "don't know yet."
+  const isCreditsLoading =
+    completedCandidatesQuery.isLoading || (completedCandidates.length > 0 && creditsQuery.isLoading);
 
   return {
     topActor,

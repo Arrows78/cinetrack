@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useLibrary } from "@/features/library/use-library";
-import { EMPTY_LIBRARY, filterAvailableItems } from "@/shared/utils/library-set";
+import { useLibraryMediaKeys } from "@/features/library/use-library";
+import { buildKeySetFromMediaKeys, filterAvailableItemsByKeySet } from "@/shared/utils/library-set";
 import { useSearch } from "@/features/media/use-search";
 import { useMergedGenres, type MergedGenre } from "@/features/media/use-merged-genres";
 import { useStats } from "@/features/stats/use-stats";
@@ -20,9 +20,9 @@ export function pickTopGenre(
 
 export function useFavouriteGenreRail() {
   const statsQuery = useStats();
-  const libraryQuery = useLibrary();
+  const mediaKeysQuery = useLibraryMediaKeys();
   const mergedGenres = useMergedGenres();
-  const library = libraryQuery.data ?? EMPTY_LIBRARY;
+  const keySet = useMemo(() => buildKeySetFromMediaKeys(mediaKeysQuery.data ?? []), [mediaKeysQuery.data]);
 
   const genre = useMemo(
     () => pickTopGenre(statsQuery.data?.favouriteGenres ?? [], mergedGenres),
@@ -39,8 +39,8 @@ export function useFavouriteGenreRail() {
   // shouldn't render every paginated search result.
   const items = useMemo<MediaSummary[]>(() => {
     if (!genre || searchQuery.items.length === 0) return [];
-    return filterAvailableItems(searchQuery.items, library);
-  }, [genre, searchQuery.items, library]);
+    return filterAvailableItemsByKeySet(searchQuery.items, keySet);
+  }, [genre, searchQuery.items, keySet]);
 
   return { genre, items, isLoading: Boolean(genre) && searchQuery.isLoading };
 }

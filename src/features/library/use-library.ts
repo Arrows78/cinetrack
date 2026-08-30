@@ -3,11 +3,57 @@ import { libraryRepository, type LibraryPageSort, type LibraryPatch } from "@/fe
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
-import type { LibraryStatus, MediaSummary, MediaType } from "@/types/media";
+import type { LibraryFilterParams, LibraryMediaKey, LibraryStatus, MediaSummary, MediaType } from "@/types/media";
 
-export function useLibrary() {
+export function useLibrary(options?: { enabled?: boolean }) {
   const profileId = useActiveProfileId();
-  return useQuery({ queryKey: queryKeys.local.library(profileId), queryFn: () => libraryRepository.list() });
+  return useQuery({
+    queryKey: queryKeys.local.library(profileId),
+    queryFn: () => libraryRepository.list(),
+    enabled: options?.enabled ?? true,
+  });
+}
+
+// A membership set only — for "am I already tracking this" style filters
+// (recommendation rails excluding owned titles) that don't need full rows.
+export function useLibraryMediaKeys() {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    queryKey: queryKeys.local.libraryMediaKeys(profileId),
+    queryFn: () => libraryRepository.listMediaKeys(),
+  });
+}
+
+// Batch lookup for a caller-bounded set of specific keys (a TMDB
+// collection's parts, one custom list's items) — nested under the plain
+// library() key (like useIsInLibrary below) so it's invalidated for free
+// by every existing library-mutation site instead of needing its own
+// entry added to each one.
+export function useLibraryItemsByKeys(keys: LibraryMediaKey[]) {
+  const profileId = useActiveProfileId();
+  const signature = keys
+    .map((key) => `${key.mediaType}:${key.mediaId}`)
+    .sort()
+    .join(",");
+  return useQuery({
+    queryKey: [...queryKeys.local.library(profileId), "byKeys", signature],
+    queryFn: () => libraryRepository.getItemsByKeys(keys),
+    enabled: keys.length > 0,
+  });
+}
+
+// Ids matching a narrow set of purely-relational filters — see
+// LibraryFilterParams' own doc comment for why this stays narrow (a
+// SmartList's provider/episode-waiting/runtime rules are never among
+// them). Nested under the plain library() key for the same reason as
+// useLibraryItemsByKeys above.
+export function useLibraryIdsMatchingFilters(filters: LibraryFilterParams) {
+  const profileId = useActiveProfileId();
+  const signature = `${filters.mediaType ?? ""}:${filters.status ?? ""}:${filters.genre ?? ""}:${filters.minRating ?? ""}`;
+  return useQuery({
+    queryKey: [...queryKeys.local.library(profileId), "idsMatchingFilters", signature],
+    queryFn: () => libraryRepository.idsMatchingFilters(filters),
+  });
 }
 
 const LIBRARY_PAGE_SIZE = 60;
@@ -71,6 +117,9 @@ export function useLibraryItem(media: MediaSummary) {
         // Adding a movie to the library can flip its calendar entry from
         // "discovery" to "mine" on the tracking feed (see tracking-service.ts).
         queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryMediaKeys(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.completedLibraryCandidates(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.bestRecommendationSeed(profileId) }),
       ]);
     },
   });
@@ -84,6 +133,9 @@ export function useLibraryItem(media: MediaSummary) {
         queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryMediaKeys(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.completedLibraryCandidates(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.bestRecommendationSeed(profileId) }),
       ]);
     },
   });
@@ -111,6 +163,9 @@ export function useLibraryQuickToggle() {
     queryKeys.local.stats(profileId),
     queryKeys.local.watchTonight(profileId),
     queryKeys.local.tracking(profileId),
+    queryKeys.local.libraryMediaKeys(profileId),
+    queryKeys.local.completedLibraryCandidates(profileId),
+    queryKeys.local.bestRecommendationSeed(profileId),
   ];
 
   const addPlanned = useInvalidatingMutation(

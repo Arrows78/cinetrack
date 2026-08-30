@@ -3,15 +3,26 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { makeLibraryItem, makeMedia } from "@/shared/test-utils";
-import type { LibraryItem } from "@/types/media";
+import type { LibraryItem, LibraryMediaKey } from "@/types/media";
 
-const libraryDataMock = vi.fn<() => LibraryItem[] | undefined>();
+const completedCandidatesMock = vi.fn<() => LibraryItem[]>();
+const mediaKeysMock = vi.fn<() => LibraryMediaKey[]>();
 const getMovieDetailsMock = vi.fn();
 const getSeriesDetailsMock = vi.fn();
 const discoverMoviesMock = vi.fn();
 
+// The completed-candidates filtering/sorting and the membership-key set
+// both now come from Rust (list_completed_candidates_impl,
+// list_media_keys_impl) — these mocks stand in for that server-side
+// computation directly, rather than a full LibraryItem[] the hook used to
+// derive both from in JS.
+vi.mock("@/features/library/library-repository", () => ({
+  libraryRepository: {
+    completedCandidates: () => Promise.resolve(completedCandidatesMock()),
+  },
+}));
 vi.mock("@/features/library/use-library", () => ({
-  useLibrary: () => ({ data: libraryDataMock() }),
+  useLibraryMediaKeys: () => ({ data: mediaKeysMock() }),
 }));
 vi.mock("@/features/preferences/use-preferences", () => ({
   useActiveProfileId: () => "default",
@@ -31,17 +42,24 @@ function createWrapper() {
   };
 }
 
+const keyFor = (item: LibraryItem): LibraryMediaKey => ({ mediaId: item.mediaId, mediaType: item.mediaType });
+
 beforeEach(() => {
-  libraryDataMock.mockReset();
+  completedCandidatesMock.mockReset();
+  mediaKeysMock.mockReset();
   getMovieDetailsMock.mockReset();
   getSeriesDetailsMock.mockReset();
   discoverMoviesMock.mockReset();
+  completedCandidatesMock.mockReturnValue([]);
+  mediaKeysMock.mockReturnValue([]);
   discoverMoviesMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
 });
 
 describe("usePeopleYouWatch", () => {
   it("surfaces neither rail when the library has no completed titles", async () => {
-    libraryDataMock.mockReturnValue([makeLibraryItem({ status: "planned" })]);
+    const planned = makeLibraryItem({ status: "planned" });
+    completedCandidatesMock.mockReturnValue([]);
+    mediaKeysMock.mockReturnValue([keyFor(planned)]);
     const { usePeopleYouWatch } = await import("../use-people-you-watch");
 
     const { result } = renderHook(() => usePeopleYouWatch(), { wrapper: createWrapper() });
@@ -54,11 +72,13 @@ describe("usePeopleYouWatch", () => {
 
   it("fetches credits for completed titles, aggregates, and queries discover for the top director", async () => {
     const director = { id: 42, name: "Denis Villeneuve", job: "Director", profilePath: null };
-    libraryDataMock.mockReturnValue([
+    const completed = [
       makeLibraryItem({ id: "a", mediaId: 1, mediaType: "movie", status: "completed" }),
       makeLibraryItem({ id: "b", mediaId: 2, mediaType: "movie", status: "completed" }),
       makeLibraryItem({ id: "c", mediaId: 3, mediaType: "movie", status: "completed" }),
-    ]);
+    ];
+    completedCandidatesMock.mockReturnValue(completed);
+    mediaKeysMock.mockReturnValue(completed.map(keyFor));
     getMovieDetailsMock.mockImplementation((id: number) =>
       Promise.resolve(makeMedia({ id, mediaType: "movie", cast: [], directors: id === 3 ? [] : [director] }))
     );
@@ -79,11 +99,13 @@ describe("usePeopleYouWatch", () => {
 
   it("filters a discovered title out of the rail if it's already in the library", async () => {
     const director = { id: 42, name: "Denis Villeneuve", job: "Director", profilePath: null };
-    libraryDataMock.mockReturnValue([
+    const completed = [
       makeLibraryItem({ id: "a", mediaId: 1, mediaType: "movie", status: "completed" }),
       makeLibraryItem({ id: "b", mediaId: 2, mediaType: "movie", status: "completed" }),
-      makeLibraryItem({ id: "c", mediaId: 999, mediaType: "movie", status: "planned" }),
-    ]);
+    ];
+    const planned = makeLibraryItem({ id: "c", mediaId: 999, mediaType: "movie", status: "planned" });
+    completedCandidatesMock.mockReturnValue(completed);
+    mediaKeysMock.mockReturnValue([...completed, planned].map(keyFor));
     getMovieDetailsMock.mockImplementation((id: number) =>
       Promise.resolve(makeMedia({ id, mediaType: "movie", cast: [], directors: [director] }))
     );

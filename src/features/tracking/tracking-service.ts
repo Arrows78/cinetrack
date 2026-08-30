@@ -35,13 +35,13 @@ export const trackingService = {
   // dates, and availability-alert status, each tagged with a type and a
   // scope so the page can filter without needing three separate queries.
   async build(days = 60): Promise<TrackingEntry[]> {
-    const [calendarEntries, libraryItems, alerts] = await Promise.all([
+    const [calendarEntries, libraryKeys, alerts] = await Promise.all([
       calendarService.build(days),
-      libraryRepository.list(),
+      libraryRepository.listMediaKeys(),
       availabilityRepository.listAlerts(),
     ]);
 
-    const libraryMediaIds = new Set(libraryItems.map((item) => item.mediaId));
+    const libraryMediaIds = new Set(libraryKeys.map((key) => key.mediaId));
     const releaseEntries = calendarEntries.map((entry) => fromCalendarEntry(entry, libraryMediaIds));
 
     const availabilityEntries = await Promise.all(
@@ -77,8 +77,8 @@ export const trackingService = {
   // added to their library can never trigger a push notification just
   // because it happens to be releasing soon somewhere in TMDB's catalogue.
   async buildNotifiableCalendarEntries(days = 60): Promise<CalendarEntry[]> {
-    const [entries, libraryItems] = await Promise.all([calendarService.build(days), libraryRepository.list()]);
-    const libraryMediaIds = new Set(libraryItems.map((item) => item.mediaId));
+    const [entries, libraryKeys] = await Promise.all([calendarService.build(days), libraryRepository.listMediaKeys()]);
+    const libraryMediaIds = new Set(libraryKeys.map((key) => key.mediaId));
     return entries.filter((entry) => isCalendarEntryMine(entry, libraryMediaIds));
   },
 };

@@ -8,10 +8,14 @@ use super::commands::{get_library_item, list_library, remove_library_item, save_
 use super::domain::{LibraryStatus, auto_sync_rank};
 use super::models::{AutoSyncMedia, LibraryItem, LibraryPatch, LibraryRow, MediaSummaryInput};
 #[cfg(test)]
-use super::models::{LibraryListParams, LibrarySort};
+use super::models::{LibraryFilterParams, LibraryListParams, LibraryMediaKey, LibrarySort};
 use super::queries::get_impl;
 #[cfg(test)]
-use super::queries::{has_impl, list_impl, list_page_impl};
+use super::queries::{
+    get_best_recommendation_seed_impl, get_items_by_keys_impl, has_impl,
+    list_completed_candidates_impl, list_ids_matching_filters_impl, list_impl,
+    list_media_keys_impl, list_page_impl, list_planned_candidates_impl, list_status_counts_impl,
+};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
@@ -1233,5 +1237,487 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    async fn set_completed_at(pool: &SqlitePool, media_id: i64, completed_at: &str) {
+        sqlx::query("UPDATE library_items SET completed_at = $1 WHERE media_id = $2")
+            .bind(completed_at)
+            .bind(media_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    fn key(media_id: i64, media_type: MediaType) -> LibraryMediaKey {
+        LibraryMediaKey {
+            media_id,
+            media_type,
+        }
+    }
+
+    #[tokio::test]
+    async fn list_media_keys_impl_returns_only_the_requested_profiles_keys() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "other")
+            .await
+            .unwrap();
+
+        let keys = list_media_keys_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(keys.len(), 1);
+        assert_eq!(keys[0].media_id, 1);
+        assert_eq!(keys[0].media_type, MediaType::Movie);
+    }
+
+    #[tokio::test]
+    async fn get_items_by_keys_impl_returns_only_the_specific_keys_requested() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(3), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        let items = get_items_by_keys_impl(
+            &pool,
+            "default",
+            &[key(1, MediaType::Movie), key(3, MediaType::Movie)],
+        )
+        .await
+        .unwrap();
+
+        let mut ids: Vec<i64> = items.iter().map(|item| item.media_id).collect();
+        ids.sort();
+        assert_eq!(ids, vec![1, 3]);
+    }
+
+    #[tokio::test]
+    async fn get_items_by_keys_impl_returns_empty_for_an_empty_key_list() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        let items = get_items_by_keys_impl(&pool, "default", &[]).await.unwrap();
+
+        assert!(items.is_empty());
+    }
+
+    #[tokio::test]
+    async fn list_status_counts_impl_tallies_each_status_for_the_requested_profile_only() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(3),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(4),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "other",
+        )
+        .await
+        .unwrap();
+
+        let counts = list_status_counts_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(counts.planned, 2);
+        assert_eq!(counts.completed, 1);
+        assert_eq!(counts.watching, 0);
+        assert_eq!(counts.paused, 0);
+        assert_eq!(counts.dropped, 0);
+    }
+
+    #[tokio::test]
+    async fn list_planned_candidates_impl_returns_only_planned_items_of_the_requested_type_newest_first()
+     {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        // Not planned — must be excluded.
+        upsert_impl(
+            &pool,
+            media(3),
+            LibraryPatch {
+                status: Some(LibraryStatus::Watching),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        set_updated_at(&pool, 1, "2026-01-01T00:00:00.000Z").await;
+        set_updated_at(&pool, 2, "2026-01-02T00:00:00.000Z").await;
+
+        let candidates = list_planned_candidates_impl(&pool, "default", MediaType::Movie, 10)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            candidates.iter().map(|i| i.media_id).collect::<Vec<_>>(),
+            vec![2, 1]
+        );
+    }
+
+    #[tokio::test]
+    async fn list_completed_candidates_impl_orders_by_completed_at_descending_and_respects_the_media_type_filter()
+     {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        set_completed_at(&pool, 1, "2026-01-01T00:00:00.000Z").await;
+        set_completed_at(&pool, 2, "2026-02-01T00:00:00.000Z").await;
+
+        let candidates =
+            list_completed_candidates_impl(&pool, "default", Some(MediaType::Movie), 10)
+                .await
+                .unwrap();
+
+        assert_eq!(
+            candidates.iter().map(|i| i.media_id).collect::<Vec<_>>(),
+            vec![2, 1]
+        );
+    }
+
+    #[tokio::test]
+    async fn get_best_recommendation_seed_impl_prefers_a_rated_completed_title_over_a_favourite() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                user_rating: Some(Some(9.0)),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let seed = get_best_recommendation_seed_impl(&pool, "default")
+            .await
+            .unwrap();
+
+        assert_eq!(seed.map(|item| item.media_id), Some(2));
+    }
+
+    #[tokio::test]
+    async fn get_best_recommendation_seed_impl_breaks_a_rating_tie_by_the_most_recently_completed()
+    {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                user_rating: Some(Some(8.0)),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                user_rating: Some(Some(8.0)),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        set_completed_at(&pool, 1, "2026-01-01T00:00:00.000Z").await;
+        set_completed_at(&pool, 2, "2026-06-01T00:00:00.000Z").await;
+
+        let seed = get_best_recommendation_seed_impl(&pool, "default")
+            .await
+            .unwrap();
+
+        assert_eq!(seed.map(|item| item.media_id), Some(2));
+    }
+
+    #[tokio::test]
+    async fn get_best_recommendation_seed_impl_prefers_the_most_recently_updated_favourite() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        set_updated_at(&pool, 1, "2026-01-01T00:00:00.000Z").await;
+        set_updated_at(&pool, 2, "2026-06-01T00:00:00.000Z").await;
+
+        let seed = get_best_recommendation_seed_impl(&pool, "default")
+            .await
+            .unwrap();
+
+        assert_eq!(seed.map(|item| item.media_id), Some(2));
+    }
+
+    #[tokio::test]
+    async fn get_best_recommendation_seed_impl_falls_back_through_every_tier_to_a_watching_item() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Watching),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let seed = get_best_recommendation_seed_impl(&pool, "default")
+            .await
+            .unwrap();
+
+        assert_eq!(seed.map(|item| item.media_id), Some(1));
+    }
+
+    #[tokio::test]
+    async fn get_best_recommendation_seed_impl_returns_none_when_nothing_matches_any_tier() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let seed = get_best_recommendation_seed_impl(&pool, "default")
+            .await
+            .unwrap();
+
+        assert!(seed.is_none());
+    }
+
+    #[tokio::test]
+    async fn list_ids_matching_filters_impl_applies_every_filter_dimension_together() {
+        let pool = migrated_pool().await;
+        // Matches every filter below.
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                genres: vec!["Sci-Fi".to_string()],
+                ..media_titled(1, "Match", Some(8.0))
+            },
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        // Wrong genre.
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                genres: vec!["Comedy".to_string()],
+                ..media_titled(2, "Wrong genre", Some(8.0))
+            },
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        // Rating too low.
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                genres: vec!["Sci-Fi".to_string()],
+                ..media_titled(3, "Too low rated", Some(2.0))
+            },
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        // Wrong status.
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                genres: vec!["Sci-Fi".to_string()],
+                ..media_titled(4, "Wrong status", Some(8.0))
+            },
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let ids = list_ids_matching_filters_impl(
+            &pool,
+            "default",
+            LibraryFilterParams {
+                media_type: Some(MediaType::Movie),
+                status: Some(LibraryStatus::Completed),
+                genre: Some("Sci-Fi".to_string()),
+                min_rating: Some(5.0),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(ids.len(), 1);
+        assert_eq!(ids[0].media_id, 1);
+    }
+
+    #[tokio::test]
+    async fn list_ids_matching_filters_impl_returns_every_profile_item_when_no_filter_is_set() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        let ids = list_ids_matching_filters_impl(&pool, "default", LibraryFilterParams::default())
+            .await
+            .unwrap();
+
+        assert_eq!(ids.len(), 2);
     }
 }

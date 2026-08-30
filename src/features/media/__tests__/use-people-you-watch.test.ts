@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  COMPLETED_CANDIDATE_CAP,
-  pickCompletedCandidates,
-  pickTopActor,
-  pickTopDirector,
-} from "../use-people-you-watch";
-import { makeLibraryItem, makeMedia } from "@/shared/test-utils";
+import { pickTopActor, pickTopDirector } from "../use-people-you-watch";
+import { makeMedia } from "@/shared/test-utils";
 import type { CastMember, CrewMember, MediaSummary } from "@/types/media";
 
 const castMember = (id: number, name: string): CastMember => ({ id, name, order: 0 });
@@ -92,31 +87,5 @@ describe("pickTopDirector", () => {
     const top = pickTopDirector(items);
     expect(top?.id).toBe(1);
     expect(top?.count).toBe(2);
-  });
-});
-
-describe("pickCompletedCandidates", () => {
-  it("excludes anything that isn't completed", () => {
-    const library = [
-      makeLibraryItem({ id: "a", status: "completed" }),
-      makeLibraryItem({ id: "b", status: "watching" }),
-      makeLibraryItem({ id: "c", status: "planned" }),
-    ];
-    expect(pickCompletedCandidates(library).map((item) => item.id)).toEqual(["a"]);
-  });
-
-  it("sorts most-recently-completed first", () => {
-    const library = [
-      makeLibraryItem({ id: "older", status: "completed", completedAt: "2026-01-01T00:00:00.000Z" }),
-      makeLibraryItem({ id: "newer", status: "completed", completedAt: "2026-06-01T00:00:00.000Z" }),
-    ];
-    expect(pickCompletedCandidates(library).map((item) => item.id)).toEqual(["newer", "older"]);
-  });
-
-  it(`caps the candidate pool at ${COMPLETED_CANDIDATE_CAP}`, () => {
-    const library = Array.from({ length: COMPLETED_CANDIDATE_CAP + 10 }, (_, index) =>
-      makeLibraryItem({ id: `item-${index}`, mediaId: index, status: "completed" })
-    );
-    expect(pickCompletedCandidates(library)).toHaveLength(COMPLETED_CANDIDATE_CAP);
   });
 });

@@ -463,6 +463,9 @@ export async function invalidateTvTimeImportQueries(queryClient: QueryClient, pr
     queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(profileId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryMediaKeys(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.completedLibraryCandidates(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.bestRecommendationSeed(profileId) }),
   ]);
 }
 
