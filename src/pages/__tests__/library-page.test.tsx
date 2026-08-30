@@ -12,6 +12,13 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
 }));
 
+// Its own hooks (useLibraryHealthActions, duplicate/metadata/staleness
+// detection) and behavior are covered by library-health-panel.test.tsx —
+// this suite is about LibraryExplorer's filtering/list-management logic.
+vi.mock("@/components/media/library/library-health-panel", () => ({
+  LibraryHealthPanel: () => <div data-testid="library-health-panel" />,
+}));
+
 // Shallow stubs so lockedMediaType branches can be asserted on without
 // exercising these sections' own hooks (next-episode resolution, seen
 // toggles, ...) — that behavior belongs to library-sections.test.tsx.

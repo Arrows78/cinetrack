@@ -698,6 +698,31 @@
       "haventStarted": "Pas commencé",
       "haventStartedDesc": "Prêtes quand vous voulez",
       "episodeLoadError": "Impossible de charger les infos de l'épisode"
+    },
+    "health": {
+      "title": "Santé de la bibliothèque",
+      "subtitle": "Quelques points à vérifier avant qu'ils ne s'accumulent.",
+      "duplicatesTitle": "Doublons probables",
+      "duplicatesSubtitle": "Ces titres ressemblent au même ajouté deux fois.",
+      "duplicatesNotDuplicate": "Pas un doublon",
+      "missingMetadataTitle": "Métadonnées manquantes",
+      "missingMetadataSubtitle": "Aucune affiche ni genre — probablement une correspondance incomplète ou orpheline.",
+      "stalePlannedTitle": "Oubliés dans votre liste à voir",
+      "stalePlannedSubtitle": "Ajoutés il y a un moment, toujours pas commencés.",
+      "selectItem": "Sélectionner {{title}}",
+      "selectedCount_one": "{{count}} sélectionné",
+      "selectedCount_other": "{{count}} sélectionnés",
+      "removeSelected": "Retirer la sélection",
+      "removeConfirmTitle_one": "Retirer {{count}} élément de votre bibliothèque ?",
+      "removeConfirmTitle_other": "Retirer {{count}} éléments de votre bibliothèque ?",
+      "removeConfirmDescription": "Cela supprime leur statut, note, notes personnelles et tags. Vous pourrez annuler juste après.",
+      "markAsDropped": "Marquer comme abandonné",
+      "undoCta": "Annuler",
+      "undoAltText": "Annuler cette action",
+      "undoRemovedDescription_one": "{{count}} élément retiré.",
+      "undoRemovedDescription_other": "{{count}} éléments retirés.",
+      "undoDroppedDescription_one": "{{count}} élément marqué comme abandonné.",
+      "undoDroppedDescription_other": "{{count}} éléments marqués comme abandonnés."
     }
   },
   "browserPreview": {

@@ -154,12 +154,11 @@ export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaTy
   });
 }
 
-// Backs the grid/detail-page quick "add to library" toggle — a lighter
-// weight pair than useLibraryItem (no full LibraryItem fetch) matching the
-// presence-only shape useIsInLibrary already provides for reads.
-export function useLibraryQuickToggle() {
-  const profileId = useActiveProfileId();
-  const invalidateKeys = [
+// Every query key a library mutation can move something out from under —
+// shared so a new mutation site (see useLibraryHealthActions) reaches for
+// this instead of retyping the list and risking it drifting from this one.
+export function libraryInvalidationKeys(profileId: string) {
+  return [
     queryKeys.local.library(profileId),
     queryKeys.local.libraryPage(profileId),
     queryKeys.local.history(profileId),
@@ -170,6 +169,14 @@ export function useLibraryQuickToggle() {
     queryKeys.local.completedLibraryCandidates(profileId),
     queryKeys.local.bestRecommendationSeed(profileId),
   ];
+}
+
+// Backs the grid/detail-page quick "add to library" toggle — a lighter
+// weight pair than useLibraryItem (no full LibraryItem fetch) matching the
+// presence-only shape useIsInLibrary already provides for reads.
+export function useLibraryQuickToggle() {
+  const profileId = useActiveProfileId();
+  const invalidateKeys = libraryInvalidationKeys(profileId);
 
   const addPlanned = useInvalidatingMutation(
     (media: MediaSummary) => libraryRepository.save(media, { status: "planned" }),

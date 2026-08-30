@@ -698,6 +698,31 @@
       "haventStarted": "Haven't started",
       "haventStartedDesc": "Ready whenever you are",
       "episodeLoadError": "Couldn't load episode info"
+    },
+    "health": {
+      "title": "Library health",
+      "subtitle": "A few things worth a quick look before they pile up.",
+      "duplicatesTitle": "Probable duplicates",
+      "duplicatesSubtitle": "These look like the same title added twice.",
+      "duplicatesNotDuplicate": "Not a duplicate",
+      "missingMetadataTitle": "Missing metadata",
+      "missingMetadataSubtitle": "No poster or genre information — likely a broken or orphaned match.",
+      "stalePlannedTitle": "Forgotten in your watchlist",
+      "stalePlannedSubtitle": "Added a while ago, still not started.",
+      "selectItem": "Select {{title}}",
+      "selectedCount_one": "{{count}} selected",
+      "selectedCount_other": "{{count}} selected",
+      "removeSelected": "Remove selected",
+      "removeConfirmTitle_one": "Remove {{count}} item from your library?",
+      "removeConfirmTitle_other": "Remove {{count}} items from your library?",
+      "removeConfirmDescription": "This deletes their status, rating, notes and tags. You can undo this right after.",
+      "markAsDropped": "Mark as dropped",
+      "undoCta": "Undo",
+      "undoAltText": "Undo this action",
+      "undoRemovedDescription_one": "{{count}} item removed.",
+      "undoRemovedDescription_other": "{{count}} items removed.",
+      "undoDroppedDescription_one": "{{count}} item marked as dropped.",
+      "undoDroppedDescription_other": "{{count}} items marked as dropped."
     }
   },
   "browserPreview": {

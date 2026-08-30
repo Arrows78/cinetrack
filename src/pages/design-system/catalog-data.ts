@@ -599,6 +599,14 @@ export const componentInventory = [
     "Shows the current filter conditions above Library/Search results, each removable on its own."
   ),
   component(
+    "BulkActionBar",
+    "components/media/library/bulk-action-bar.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Selected-count and action buttons row shared by the Library Health Center's bulk-select cards."
+  ),
+  component(
     "AvailabilityAlertButton",
     "components/media/detail/availability-alert-button.tsx",
     "Media",
@@ -725,6 +733,14 @@ export const componentInventory = [
     "feature",
     "reference",
     "Persistent toggle that filters already-watched titles out of Discover-style surfaces and Watch Tonight."
+  ),
+  component(
+    "LibraryHealthPanel",
+    "components/media/library/library-health-panel.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Surfaces probable duplicates, missing metadata and forgotten planned items on the Library page, with bulk actions and a session-only undo."
   ),
   component(
     "LibrarySections",
@@ -1149,6 +1165,14 @@ export const componentInventory = [
     "primitive",
     "live",
     "Groups independent content with a shared surface recipe."
+  ),
+  component(
+    "Checkbox",
+    "components/ui/checkbox.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Toggles one item into or out of a multi-select bulk-action set."
   ),
   component(
     "ConfirmDialog",
