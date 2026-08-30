@@ -461,7 +461,7 @@ mod tests {
         .await
         .unwrap();
 
-        let items = list_impl(&pool, "default").await.unwrap();
+        let items = list_impl(&pool, "default", None).await.unwrap();
 
         assert_eq!(items.len(), 2);
         assert!(items.iter().all(|item| item.profile_id == "default"));
@@ -1212,7 +1212,7 @@ mod tests {
             .await
             .unwrap();
 
-        let items = list_library(state).await.unwrap();
+        let items = list_library(None, state).await.unwrap();
         assert!(items.iter().any(|item| item.media_id == 7));
     }
 
