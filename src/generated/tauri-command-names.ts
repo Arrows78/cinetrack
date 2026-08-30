@@ -79,6 +79,14 @@ export const tauriCommandNames = [
   "list_backup_directory",
   "remove_backup_file",
   "export_diagnostics_summary",
+  "get_sync_device_id",
+  "prepare_sync",
+  "get_sync_status",
+  "get_sync_cursor",
+  "list_sync_outbox",
+  "ack_sync_mutations",
+  "rebase_sync_conflicts",
+  "apply_remote_sync_changes",
 ] as const;
 
 export type TauriCommandName = (typeof tauriCommandNames)[number];
