@@ -1,12 +1,6 @@
 import { defineCommand } from "@/shared/lib/invoke";
 
-import type {
-  RemoteSyncChange,
-  SyncConflict,
-  SyncMutationAck,
-  SyncOutboxMutation,
-  SyncStatus,
-} from "./sync-types";
+import type { RemoteSyncChange, SyncConflict, SyncMutationAck, SyncOutboxMutation, SyncStatus } from "./sync-types";
 
 type LimitArgs = { limit?: number };
 type AckArgs = { acks: SyncMutationAck[] };
