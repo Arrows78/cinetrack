@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
+import console from "node:console";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import process from "node:process";
 
 const DEFAULT_MIN_COVERAGE = 70;
 const COVERAGE_FILE = path.resolve("coverage/coverage-final.json");
@@ -74,11 +76,9 @@ const parseAddedLines = (diff) => {
   return files;
 };
 
-const diff = execFileSync(
-  "git",
-  ["diff", "--unified=0", "--diff-filter=ACMR", `${baseSha}...HEAD`, "--", "src"],
-  { encoding: "utf8" },
-);
+const diff = execFileSync("git", ["diff", "--unified=0", "--diff-filter=ACMR", `${baseSha}...HEAD`, "--", "src"], {
+  encoding: "utf8",
+});
 const changedLinesByFile = parseAddedLines(diff);
 
 if (changedLinesByFile.size === 0) {
@@ -91,7 +91,7 @@ const coverageByRepoPath = new Map(
   Object.entries(rawCoverage).map(([filePath, coverage]) => {
     const repoPath = path.isAbsolute(filePath) ? path.relative(process.cwd(), filePath) : filePath;
     return [normalizeRepoPath(repoPath), coverage];
-  }),
+  })
 );
 
 let totalChangedStatements = 0;
@@ -143,13 +143,13 @@ if (totalChangedStatements === 0) {
 
 for (const row of rows) {
   console.log(
-    `${row.filePath}: ${row.fileCovered}/${row.fileStatements} changed statements covered (${row.percent.toFixed(1)}%)`,
+    `${row.filePath}: ${row.fileCovered}/${row.fileStatements} changed statements covered (${row.percent.toFixed(1)}%)`
   );
 }
 
 const aggregate = (coveredChangedStatements / totalChangedStatements) * 100;
 console.log(
-  `Changed frontend coverage: ${coveredChangedStatements}/${totalChangedStatements} statements covered (${aggregate.toFixed(1)}%, minimum ${configuredMinimum}%).`,
+  `Changed frontend coverage: ${coveredChangedStatements}/${totalChangedStatements} statements covered (${aggregate.toFixed(1)}%, minimum ${configuredMinimum}%).`
 );
 
 if (aggregate + Number.EPSILON < configuredMinimum) {

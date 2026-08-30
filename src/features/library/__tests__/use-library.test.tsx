@@ -20,7 +20,7 @@ const media: MediaSummary = {
 
 let items: LibraryItem[];
 
-const listMock = vi.fn(async (_mediaType?: MediaSummary["mediaType"]) => items);
+const listMock = vi.fn(async () => items);
 const getMock = vi.fn(
   async (mediaId: number, mediaType: string) =>
     items.find((i) => i.mediaId === mediaId && i.mediaType === mediaType) ?? null
