@@ -27,9 +27,12 @@ impl<'a> LibraryService<'a> {
         current_profile_id(self.pool).await
     }
 
-    pub(super) async fn list(&self) -> Result<Vec<LibraryItem>, ApiError> {
+    pub(super) async fn list(
+        &self,
+        media_type: Option<MediaType>,
+    ) -> Result<Vec<LibraryItem>, ApiError> {
         let profile_id = self.profile_id().await?;
-        list_impl(self.pool, &profile_id).await
+        list_impl(self.pool, &profile_id, media_type).await
     }
 
     pub(super) async fn list_page(

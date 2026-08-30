@@ -5,11 +5,14 @@ import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { LibraryFilterParams, LibraryMediaKey, LibraryStatus, MediaSummary, MediaType } from "@/types/media";
 
-export function useLibrary(options?: { enabled?: boolean }) {
+export function useLibrary(options?: { enabled?: boolean; mediaType?: MediaType }) {
   const profileId = useActiveProfileId();
+  const mediaType = options?.mediaType;
   return useQuery({
-    queryKey: queryKeys.local.library(profileId),
-    queryFn: () => libraryRepository.list(),
+    queryKey: mediaType
+      ? [...queryKeys.local.library(profileId), "mediaType", mediaType]
+      : queryKeys.local.library(profileId),
+    queryFn: () => libraryRepository.list(mediaType),
     enabled: options?.enabled ?? true,
   });
 }

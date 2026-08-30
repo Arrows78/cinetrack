@@ -262,13 +262,14 @@ export function LibraryExplorer({
   // matches) that's cheaper to keep filtering client-side than to thread
   // through the server query, and lockedMediaType's "My list" tabs bucket by
   // watch progress up front (see MovieLibrarySections/SeriesLibrarySections),
-  // which needs the whole set for that media type at once. Every one of
-  // those modes keeps using the plain (safety-capped) useLibrary() below.
+  // which needs the whole set for that media type at once. The hook scopes
+  // that locked-hub read in SQLite; custom/smart-list modes keep the full
+  // fallback because they may intersect both media types.
   const isServerPaginated = !lockedMediaType && listFilter === "all" && smartListFilter === "all";
   // Not needed at all in server-paginated mode (the plain default browse
   // view) — gated so that common case doesn't pay for a full library read
   // it never renders.
-  const libraryQuery = useLibrary({ enabled: !isServerPaginated });
+  const libraryQuery = useLibrary({ enabled: !isServerPaginated, mediaType: lockedMediaType });
   const { data: items } = libraryQuery;
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS);
   const libraryPageQuery = useLibraryPage(

@@ -17,13 +17,22 @@ describe("libraryRepository", () => {
     invokeMock.mockReset();
   });
 
-  it("list() invokes list_library and returns its result", async () => {
+  it("list() invokes list_library with an unscoped media type by default", async () => {
     const items = [libraryItem()];
     invokeMock.mockResolvedValueOnce(items);
     const { libraryRepository } = await import("../library-repository");
 
     await expect(libraryRepository.list()).resolves.toEqual(items);
-    expect(invokeMock).toHaveBeenCalledWith("list_library", undefined);
+    expect(invokeMock).toHaveBeenCalledWith("list_library", { mediaType: null });
+  });
+
+  it("list() scopes list_library by media type when requested", async () => {
+    const items = [libraryItem()];
+    invokeMock.mockResolvedValueOnce(items);
+    const { libraryRepository } = await import("../library-repository");
+
+    await expect(libraryRepository.list("movie")).resolves.toEqual(items);
+    expect(invokeMock).toHaveBeenCalledWith("list_library", { mediaType: "movie" });
   });
 
   it("get() invokes get_library_item with mediaId/mediaType", async () => {

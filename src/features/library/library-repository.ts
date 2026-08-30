@@ -25,13 +25,11 @@ export type {
 // src-tauri/src/library/) — this repository is a thin invoke()
 // wrapper.
 export const libraryRepository = {
-  // Kept for the /movies and /series "My list" tabs' own watch-progress
-  // bucketing (in-progress/not-started/finished), which genuinely needs
-  // the complete profile-scoped set. Every other former full-read consumer
-  // (recommendation rails, smart-list evaluation, stats/tracking
-  // aggregates) now has its own targeted method below instead.
-  async list(): Promise<LibraryItem[]> {
-    return invokeTypedCommand(libraryCommands.list);
+  // The locked /movies and /series hubs pass their media type so SQLite
+  // filters before IPC. Callers that genuinely need both media types (for
+  // example custom/smart-list intersections) keep the full fallback.
+  async list(mediaType?: MediaSummary["mediaType"]): Promise<LibraryItem[]> {
+    return invokeTypedCommand(libraryCommands.list, { mediaType: mediaType ?? null });
   },
 
   // Cursor-paginated, server-filtered/sorted counterpart to list() — the

@@ -15,11 +15,11 @@ use crate::models::MediaType;
 /// own targeted commands below (`list_media_keys_impl`,
 /// `list_planned_candidates_impl`, `list_completed_candidates_impl`,
 /// `get_best_recommendation_seed_impl`, `list_ids_matching_filters_impl`,
-/// `get_items_by_keys_impl`) instead of scanning the whole table. What's
-/// left on `list_impl` is the /movies and /series "My list" tabs' own
-/// watch-progress bucketing, which genuinely needs the complete
-/// profile-scoped set (grouped client-side into in-progress/not-started/
-/// finished) rather than a bounded slice. This limit must stay comfortably
+/// `get_items_by_keys_impl`) instead of scanning the whole table. `list_impl`
+/// remains the fallback full read for LibraryExplorer modes that need it,
+/// while the locked /movies and /series "My list" tabs pass a media-type
+/// scope so they only transfer the complete movie or series set needed for
+/// client-side watch-progress bucketing. This limit must stay comfortably
 /// above any realistic single-profile library size rather than being tuned
 /// down for performance. `stats::performance`'s
 /// own benchmark seeds up to 50_000 library items and expects a full,
@@ -40,28 +40,34 @@ const MAX_BATCH_KEYS: usize = 500;
 pub(super) async fn list_impl(
     pool: &SqlitePool,
     profile_id: &str,
+    media_type: Option<MediaType>,
 ) -> Result<Vec<LibraryItem>, ApiError> {
-    let rows: Vec<LibraryRow> = sqlx::query_as(
-        "SELECT * FROM library_items
-         WHERE profile_id = $1
-         ORDER BY updated_at DESC, media_id DESC, media_type DESC
-         LIMIT $2",
-    )
-    .bind(profile_id)
-    .bind(LIST_SAFETY_LIMIT)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    let mut qb: QueryBuilder<Sqlite> =
+        QueryBuilder::new("SELECT * FROM library_items WHERE profile_id = ");
+    qb.push_bind(profile_id.to_string());
+
+    if let Some(media_type) = media_type {
+        qb.push(" AND media_type = ")
+            .push_bind(media_type.as_db_str());
+    }
+
+    qb.push(" ORDER BY updated_at DESC, media_id DESC, media_type DESC LIMIT ")
+        .push_bind(LIST_SAFETY_LIMIT);
+
+    let rows: Vec<LibraryRow> = qb
+        .build_query_as()
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)?;
     rows.into_iter().map(LibraryItem::try_from).collect()
 }
 
 /// Cursor-paginated, server-filtered/sorted counterpart to `list_impl`. Used
 /// by the Library page's own infinite-scroll grid/list, which is the one
 /// consumer that actually renders an unbounded, scrollable view of the whole
-/// library — every other `useLibrary()` caller (recommendation rails, smart
-/// lists, the /movies and /series "My list" tabs' own bucketing) does a
-/// bounded aggregate over the whole set and stays on `list_impl`'s existing
-/// `LIST_SAFETY_LIMIT`-capped full array, unchanged.
+/// library. The locked /movies and /series hubs use `list_impl` with a media
+/// type scope; custom/smart-list intersections can still use its full fallback
+/// when they genuinely need the complete profile set.
 ///
 /// Keyset (not OFFSET) pagination: the cursor encodes the sort column's
 /// value plus the `(media_id, media_type)` tiebreaker from the last row of

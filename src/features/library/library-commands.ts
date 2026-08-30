@@ -30,6 +30,7 @@ type SaveLibraryItemArgs = {
   patch?: LibraryPatch;
 };
 
+type ListLibraryArgs = { mediaType: MediaSummary["mediaType"] | null };
 type GetItemsByKeysArgs = { keys: LibraryMediaKey[] };
 type PlannedCandidatesArgs = { mediaType: MediaSummary["mediaType"]; limit: number };
 type CompletedCandidatesArgs = { mediaType?: MediaSummary["mediaType"]; limit: number };
@@ -39,7 +40,7 @@ export type { LibraryListParams, LibraryPage, LibrarySort, LibraryFilterParams, 
 export type LibraryPageSort = LibrarySort;
 
 export const libraryCommands = {
-  list: defineCommand<undefined, LibraryItem[]>("list_library"),
+  list: defineCommand<ListLibraryArgs, LibraryItem[]>("list_library"),
   listPage: defineCommand<LibraryListParams, LibraryPage>("list_library_page"),
   get: defineCommand<LibraryIdentityArgs, LibraryItem | null>("get_library_item"),
   save: defineCommand<SaveLibraryItemArgs, LibraryItem>("save_library_item"),

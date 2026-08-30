@@ -20,7 +20,7 @@ const media: MediaSummary = {
 
 let items: LibraryItem[];
 
-const listMock = vi.fn(async () => items);
+const listMock = vi.fn(async (_mediaType?: MediaSummary["mediaType"]) => items);
 const getMock = vi.fn(
   async (mediaId: number, mediaType: string) =>
     items.find((i) => i.mediaId === mediaId && i.mediaType === mediaType) ?? null
@@ -69,6 +69,18 @@ describe("useLibrary", () => {
     const { result } = renderHook(() => useLibrary(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.data).toHaveLength(1);
+  });
+
+  it("scopes a locked hub read to one media type", async () => {
+    items = [{ mediaId: 7, mediaType: "movie" } as LibraryItem];
+    const { useLibrary } = await import("../use-library");
+    const { result } = renderHook(() => useLibrary({ mediaType: "movie" }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(listMock).toHaveBeenCalledWith("movie");
     expect(result.current.data).toHaveLength(1);
   });
 });

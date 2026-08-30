@@ -198,7 +198,7 @@ async fn benchmark_iteration(pool: &SqlitePool) -> BenchmarkIteration {
 
     let started = Instant::now();
     let library_state: State<'_, SqlitePool> = app.state();
-    let library = list_library(library_state).await.unwrap();
+    let library = list_library(None, library_state).await.unwrap();
     let library_elapsed = started.elapsed();
 
     let (library_page_first, library_page_first_rows) =

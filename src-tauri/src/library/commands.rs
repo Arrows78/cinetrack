@@ -12,9 +12,12 @@ use crate::error::ApiError;
 use crate::models::MediaType;
 
 #[tauri::command]
-pub async fn list_library(pool: State<'_, SqlitePool>) -> Result<Vec<LibraryItem>, ApiError> {
+pub async fn list_library(
+    media_type: Option<MediaType>,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryItem>, ApiError> {
     timed("list_library", async {
-        LibraryService::new(pool.inner()).list().await
+        LibraryService::new(pool.inner()).list(media_type).await
     })
     .await
 }
