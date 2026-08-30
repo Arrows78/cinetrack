@@ -1,4 +1,4 @@
-import { unzipSync } from "fflate";
+import { unzip, type Unzipped } from "fflate";
 
 export interface ZipCsvEntry {
   name: string;
@@ -46,34 +46,42 @@ export class ZipTooLargeError extends Error {
   }
 }
 
+const unzipAsync = (buffer: Uint8Array, limits: ZipExtractionLimits): Promise<Unzipped> =>
+  new Promise((resolve, reject) => {
+    let runningTotal = 0;
+
+    // fflate's asynchronous unzip API performs DEFLATE work in workers, so a
+    // large but valid TV Time export no longer monopolizes the webview's UI
+    // thread. The filter still runs before each accepted entry is inflated,
+    // preserving the zip-bomb guard based on central-directory sizes.
+    unzip(
+      buffer,
+      {
+        filter: (entry) => {
+          if (!CSV_EXTENSION.test(entry.name) || isMacosArtifact(entry.name)) return false;
+          if (entry.originalSize > limits.maxEntryBytes) throw new ZipTooLargeError(entry.name);
+          runningTotal += entry.originalSize;
+          if (runningTotal > limits.maxTotalBytes) throw new ZipTooLargeError(entry.name);
+          return true;
+        },
+      },
+      (error, entries) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(entries);
+      },
+    );
+  });
+
 /** Extracts every .csv entry from a .zip File, decoded as UTF-8 text. */
 export async function extractCsvEntries(
   file: File,
   limits: ZipExtractionLimits = DEFAULT_EXTRACTION_LIMITS,
 ): Promise<ZipCsvEntry[]> {
   const buffer = new Uint8Array(await file.arrayBuffer());
-
-  // Rejecting on `entry.originalSize` — the decompressed size declared in
-  // the zip's central directory — inside the filter itself means an
-  // oversized entry is refused before fflate ever inflates its bytes into
-  // memory. Checking `bytes.byteLength` only after unzipSync returns (the
-  // previous approach) checked the size of something already fully
-  // decompressed: a small, highly-compressible .csv (a zip bomb) would
-  // already have blown up memory/the UI thread by the time that check ran.
-  // The filter is consulted once per entry, before that entry is
-  // decompressed, so this also lets `runningTotal` reject once the
-  // *declared* cumulative size would exceed the cap, without needing to
-  // have decompressed anything to know that.
-  let runningTotal = 0;
-  const entries = unzipSync(buffer, {
-    filter: (entry) => {
-      if (!CSV_EXTENSION.test(entry.name) || isMacosArtifact(entry.name)) return false;
-      if (entry.originalSize > limits.maxEntryBytes) throw new ZipTooLargeError(entry.name);
-      runningTotal += entry.originalSize;
-      if (runningTotal > limits.maxTotalBytes) throw new ZipTooLargeError(entry.name);
-      return true;
-    },
-  });
+  const entries = await unzipAsync(buffer, limits);
 
   const decoder = new TextDecoder("utf-8");
   const results: ZipCsvEntry[] = [];
