@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { Settings2 } from "lucide-react";
 import { AuthScreen } from "@/features/auth/auth-screen";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 import { LoadingScreen } from "@/components/states/loading-screen";
 
 export function AuthGate({ children }: PropsWithChildren) {

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { Episode, EpisodeProgress, Season, Series } from "@/types/media";
+import type * as UseProgressModule from "@/features/progress/use-progress";
 import { SeriesDetailPage } from "../series-detail-page";
 
 // Route param holder — mutable so a single test can override it to a
@@ -24,11 +25,15 @@ vi.mock("@/features/media/use-media", () => ({
 const episodeProgressMock = vi.fn();
 const trackedSeriesMock = vi.fn();
 const refreshTrackedSeriesStatusMock = vi.fn();
-vi.mock("@/features/progress/use-progress", () => ({
-  useEpisodeProgress: () => episodeProgressMock(),
-  useTrackedSeries: () => trackedSeriesMock(),
-  useRefreshTrackedSeriesStatus: () => refreshTrackedSeriesStatusMock,
-}));
+vi.mock("@/features/progress/use-progress", async (importOriginal) => {
+  const actual = await importOriginal<typeof UseProgressModule>();
+  return {
+    ...actual,
+    useEpisodeProgress: () => episodeProgressMock(),
+    useTrackedSeries: () => trackedSeriesMock(),
+    useRefreshTrackedSeriesStatus: () => refreshTrackedSeriesStatusMock,
+  };
+});
 
 // Irrelevant IPC prefetching for this page's own logic — no-op it out.
 vi.mock("@/features/media/use-image-cache", () => ({

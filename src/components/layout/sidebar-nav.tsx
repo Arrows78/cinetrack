@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 
 interface SidebarNavProps {
   collapsed: boolean;

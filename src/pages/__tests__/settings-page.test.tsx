@@ -10,10 +10,10 @@ vi.mock("@/components/settings/tvtime-import-card", () => ({ TvTimeImportCard: (
 vi.mock("@/components/settings/desktop-settings", () => ({ DesktopSettings: () => <div /> }));
 
 let currentUser: { email: string } | null = null;
-vi.mock("@/features/auth/auth-context", () => ({ useAuth: () => ({ user: currentUser }) }));
+vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
 let authRequired = false;
-vi.mock("@/features/auth/auth-client", () => ({
+vi.mock("@/features/auth", () => ({
   get authConfig() {
     return { required: authRequired };
   },

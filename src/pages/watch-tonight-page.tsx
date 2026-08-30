@@ -19,7 +19,7 @@ import { PLATFORMS } from "@/shared/constants/discover";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useActiveProfileId, usePreferences } from "@/features/preferences/use-preferences";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
-import { watchTonightService } from "@/features/watch-tonight/watch-tonight-service";
+import { watchTonightService } from "@/features/watch-tonight";
 import { staggerDelayMs } from "@/shared/utils/animation";
 import type { Movie, Series } from "@/types/media";
 

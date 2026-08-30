@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/shared/lib/logger";
-import { imageCache } from "@/features/media/image-cache";
+import { imageCache } from "@/features/media";
 import { errorMessage } from "@/shared/lib/errors";
 import { isTauriApp } from "@/shared/lib/platform";
 import { formatBytes } from "@/shared/utils/format";

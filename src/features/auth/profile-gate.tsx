@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { authConfig } from "@/features/auth/auth-client";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 import { CreateProfileScreen } from "@/features/auth/create-profile-screen";
 import { useProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 import { usePreferences } from "@/features/preferences/use-preferences";

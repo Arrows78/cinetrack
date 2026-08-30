@@ -18,7 +18,7 @@ import {
   resolveRetryableSeries,
   resolveRetryableWatchlist,
   type RetryableUnmatched,
-} from "@/features/tvtime/tvtime-import-service";
+} from "@/features/tvtime";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import type { MediaSummary, SearchScope } from "@/types/media";
 

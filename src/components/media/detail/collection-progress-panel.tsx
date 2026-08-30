@@ -7,12 +7,11 @@ import { PartialErrorState } from "@/components/states/partial-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { SectionHeader } from "@/components/media/primitives/section-header";
-import { computeCollectionProgress } from "@/features/media/collection-progress";
+import { computeCollectionProgress, type CollectionEntryStatus } from "@/features/media";
 import { useMovieCollection } from "@/features/media/use-collection";
 import { EMPTY_LIBRARY } from "@/shared/utils/library-set";
 import { useLibrary, useLibraryQuickToggle } from "@/features/library/use-library";
 import { logger } from "@/shared/lib/logger";
-import type { CollectionEntryStatus } from "@/features/media/collection-progress";
 import type { Movie } from "@/types/media";
 
 const BUCKET_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6";

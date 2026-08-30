@@ -5,6 +5,12 @@ import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { Episode, MediaSummary, MediaType, Season } from "@/types/media";
 
+// Pure display-progress math over already-fetched data — re-exported here
+// (rather than importing progress-utils.ts directly) so this feature's
+// public surface stays the repository/hook files, per the convention
+// check-feature-boundaries.mjs enforces.
+export { calculateSeriesProgress, getNextEpisode } from "@/features/progress/progress-utils";
+
 export function useMovieSeen(movieId: number) {
   const profileId = useActiveProfileId();
   const query = useQuery({

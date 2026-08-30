@@ -3,7 +3,7 @@ import { Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
 import { usePreferences } from "@/features/preferences/use-preferences";
-import { notificationService } from "@/features/desktop/notification-service";
+import { notificationService } from "@/features/desktop";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import type { MediaSummary } from "@/types/media";
 

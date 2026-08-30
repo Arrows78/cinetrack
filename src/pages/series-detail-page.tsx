@@ -24,9 +24,14 @@ import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { EmptyState } from "@/components/states/empty-state";
 import { useImageCache } from "@/features/media/use-image-cache";
-import { useEpisodeProgress, useRefreshTrackedSeriesStatus, useTrackedSeries } from "@/features/progress/use-progress";
+import {
+  calculateSeriesProgress,
+  getNextEpisode,
+  useEpisodeProgress,
+  useRefreshTrackedSeriesStatus,
+  useTrackedSeries,
+} from "@/features/progress/use-progress";
 import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
-import { calculateSeriesProgress, getNextEpisode } from "@/features/progress/progress-utils";
 
 export function SeriesDetailPage() {
   const { t } = useTranslation();

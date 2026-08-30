@@ -19,7 +19,7 @@ vi.mock("@tanstack/react-router", () => ({
     select({ location: { pathname: routerState.pathname } }),
 }));
 
-vi.mock("@/features/auth/auth-context", async (importOriginal) => ({
+vi.mock("@/features/auth/use-auth", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useAuth: () => ({
     configured: false,

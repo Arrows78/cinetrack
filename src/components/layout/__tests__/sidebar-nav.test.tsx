@@ -21,7 +21,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 let authUser: User | null = null;
 const signOutMock = vi.fn();
-vi.mock("@/features/auth/auth-context", async (importOriginal) => ({
+vi.mock("@/features/auth/use-auth", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useAuth: () => ({
     configured: false,

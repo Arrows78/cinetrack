@@ -24,7 +24,7 @@ import { useSearch } from "@/features/media/use-search";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
-import { notificationService } from "@/features/desktop/notification-service";
+import { notificationService } from "@/features/desktop";
 import { logger } from "@/shared/lib/logger";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";

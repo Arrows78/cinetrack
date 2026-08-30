@@ -8,17 +8,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/shared/lib/logger";
-import { parseTvTimeFiles, type TvTimeExport, type TvTimeFile } from "@/features/tvtime/parse-export";
 import {
   applyTvTimeImport,
+  extractCsvEntries,
   invalidateTvTimeImportQueries,
   MAX_TVTIME_FILE_BYTES,
   MAX_TVTIME_FILES,
   MAX_TVTIME_TOTAL_BYTES,
+  parseTvTimeFiles,
+  ZipTooLargeError,
   type RetryableUnmatched,
+  type TvTimeExport,
+  type TvTimeFile,
   type TvTimeImportProgress,
-} from "@/features/tvtime/tvtime-import-service";
-import { extractCsvEntries, ZipTooLargeError } from "@/features/tvtime/zip";
+} from "@/features/tvtime";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { TvTimeUnmatchedResolver } from "./tvtime-unmatched-resolver";
 

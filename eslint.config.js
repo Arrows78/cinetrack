@@ -45,9 +45,13 @@ export default tseslint.config(
       },
       // Only the layers with an actual rule below are modeled — deliberately
       // not a full classification of src/** (that would need `no-unknown`
-      // too, and pages/features have no existing internal-vs-public
-      // convention to check against yet; see the "Architecture boundaries"
-      // section of docs/architecture.md).
+      // too). components/pages -> feature-internal-module imports ARE
+      // enforced, just not here: scripts/check-feature-boundaries.mjs (run
+      // by `pnpm architecture:check`) walks components/ and pages/ the same
+      // way it walks feature-to-feature imports, since expressing "may only
+      // import index.ts/*-repository.ts/use-*.ts" isn't something
+      // eslint-plugin-boundaries' element/pattern model can say. See the
+      // "Architecture boundaries" section of docs/architecture.md.
       "boundaries/elements": [
         { type: "shared", pattern: "src/shared/**" },
         { type: "ui-primitives", pattern: "src/components/ui/**" },

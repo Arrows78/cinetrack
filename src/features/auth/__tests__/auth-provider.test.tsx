@@ -10,7 +10,7 @@ import i18next from "i18next";
 import "@/i18n";
 
 import { AuthProvider } from "../auth-provider";
-import { useAuth } from "../auth-context";
+import { useAuth } from "../use-auth";
 
 const onAuthStateChangeMock = vi.fn<
   (callback: (event: string, session: unknown) => void) => { data: { subscription: { unsubscribe: () => void } } }

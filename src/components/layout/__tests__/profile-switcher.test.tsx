@@ -5,10 +5,10 @@ import i18n from "@/i18n";
 import { ProfileSwitcher } from "../profile-switcher";
 
 let currentUser: { email: string } | null = null;
-vi.mock("@/features/auth/auth-context", () => ({ useAuth: () => ({ user: currentUser }) }));
+vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
 let authRequired = false;
-vi.mock("@/features/auth/auth-client", () => ({
+vi.mock("@/features/auth", () => ({
   get authConfig() {
     return { required: authRequired };
   },

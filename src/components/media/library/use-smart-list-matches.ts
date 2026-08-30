@@ -1,7 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import { useLibrary } from "@/features/library/use-library";
-import { buildSmartListEvalContext, matchesSmartListRules } from "@/features/smart-lists/smart-list-evaluation";
+import { buildSmartListEvalContext, matchesSmartListRules } from "@/features/smart-lists";
 import { useAvailabilitySnapshots } from "@/features/availability/use-availability-alerts";
 import { mediaRepository } from "@/features/media/media-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";

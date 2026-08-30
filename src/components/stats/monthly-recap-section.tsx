@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight, Clapperboard, Download, Film, Tv } from "lucide-react";
 import { useMonthlyRecap } from "@/features/stats/use-stats";
-import { ShareCancelledError, downloadMonthlyRecapCard, renderMonthlyRecapCard } from "@/features/stats/wrapped-export";
+import { ShareCancelledError, downloadMonthlyRecapCard, renderMonthlyRecapCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";

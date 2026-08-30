@@ -11,7 +11,7 @@ import {
   type AuthStatus,
   type EmailOtpRequest,
   type EmailOtpVerification,
-} from "@/features/auth/auth-context";
+} from "@/features/auth/use-auth";
 import { logger } from "@/shared/lib/logger";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 

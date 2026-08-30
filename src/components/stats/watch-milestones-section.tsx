@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Lock, Trophy } from "lucide-react";
 import { useWatchMilestones } from "@/features/stats/use-stats";
-import { ShareCancelledError, downloadMilestoneCard, renderMilestoneCard } from "@/features/stats/wrapped-export";
+import { ShareCancelledError, downloadMilestoneCard, renderMilestoneCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";

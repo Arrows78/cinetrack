@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "re
 import { useTranslation, Trans } from "react-i18next";
 
 import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 import { getEnabledSocialProviders } from "@/features/auth/provider-availability";
 import { AuthBackdrop } from "@/features/auth/atoms/auth-backdrop";
 import { AuthBrandMark } from "@/features/auth/atoms/auth-brand-mark";

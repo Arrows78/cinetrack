@@ -5,6 +5,8 @@ import ts from "typescript";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const featuresRoot = resolve(root, "src", "features");
+const componentsRoot = resolve(root, "src", "components");
+const pagesRoot = resolve(root, "src", "pages");
 
 const configPath = ts.findConfigFile(root, ts.sys.fileExists, "tsconfig.json");
 if (!configPath) throw new Error("Could not find tsconfig.json");
@@ -67,26 +69,36 @@ const failures = [];
 const graph = new Map();
 
 for (const sourceFile of program.getSourceFiles()) {
-  if (
-    sourceFile.isDeclarationFile ||
-    !sourceFile.fileName.startsWith(featuresRoot + sep) ||
-    sourceFile.fileName.includes(`${sep}__tests__${sep}`)
-  ) {
-    continue;
-  }
+  if (sourceFile.isDeclarationFile || sourceFile.fileName.includes(`${sep}__tests__${sep}`)) continue;
 
-  const sourceFeature = featureOf(sourceFile.fileName);
-  if (!sourceFeature) continue;
-  if (!graph.has(sourceFeature)) graph.set(sourceFeature, new Set());
+  const isFeatureFile = sourceFile.fileName.startsWith(featuresRoot + sep);
+  // components/ and pages/ consume features exactly like another feature
+  // would — they must go through the same public surface, not reach into a
+  // feature's private implementation modules. Unlike feature-to-feature
+  // imports, these don't participate in the cycle graph below: a feature
+  // is never expected to import components/pages back.
+  const isComponentsOrPagesFile =
+    sourceFile.fileName.startsWith(componentsRoot + sep) || sourceFile.fileName.startsWith(pagesRoot + sep);
+
+  if (!isFeatureFile && !isComponentsOrPagesFile) continue;
+
+  const sourceFeature = isFeatureFile ? featureOf(sourceFile.fileName) : null;
+  if (isFeatureFile) {
+    if (!sourceFeature) continue;
+    if (!graph.has(sourceFeature)) graph.set(sourceFeature, new Set());
+  }
 
   for (const specifier of importSpecifiers(sourceFile)) {
     const targetFile = resolveImport(specifier, sourceFile.fileName);
     if (!targetFile || !targetFile.startsWith(featuresRoot + sep)) continue;
 
     const targetFeature = featureOf(targetFile);
-    if (!targetFeature || targetFeature === sourceFeature) continue;
+    if (!targetFeature) continue;
 
-    graph.get(sourceFeature).add(targetFeature);
+    if (isFeatureFile) {
+      if (targetFeature === sourceFeature) continue;
+      graph.get(sourceFeature).add(targetFeature);
+    }
 
     if (!isPublicFeatureFile(targetFile)) {
       failures.push(

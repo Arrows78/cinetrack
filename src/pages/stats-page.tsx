@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { monthOverMonthComparison } from "@/features/stats/stats-repository";
 import { useStats, useWatchForecast, useWrapped, useYearlyActivity } from "@/features/stats/use-stats";
-import { ShareCancelledError, downloadWrappedCard, renderWrappedCard } from "@/features/stats/wrapped-export";
+import { ShareCancelledError, downloadWrappedCard, renderWrappedCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";

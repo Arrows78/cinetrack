@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 
-import { useAuth } from "../auth-context";
+import { useAuth } from "../use-auth";
 
 // auth-provider.test.tsx always renders useAuth() inside a real <AuthProvider>,
 // so the guard branch below — calling useAuth() with no provider ancestor —

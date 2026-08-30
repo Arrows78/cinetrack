@@ -6,7 +6,7 @@ import { AuthBackdrop } from "@/features/auth/atoms/auth-backdrop";
 import { AuthBrandMark } from "@/features/auth/atoms/auth-brand-mark";
 import { AuthStepIcon } from "@/features/auth/atoms/auth-step-icon";
 import { AuthTextField } from "@/features/auth/atoms/auth-text-field";
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import { useCreateProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 

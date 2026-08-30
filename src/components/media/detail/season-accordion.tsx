@@ -11,7 +11,7 @@ import { useConfetti } from "@/hooks/use-confetti";
 import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
 import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
-import { calculateSeriesProgress } from "@/features/progress/progress-utils";
+import { calculateSeriesProgress } from "@/features/progress/use-progress";
 
 /* Episode filmstrip — each episode is a sprocket-hole perforation; watched
    ones are "lit up" in the accent color, like exposed frames. Shows watch
