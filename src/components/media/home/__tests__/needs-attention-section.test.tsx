@@ -2,13 +2,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
-import {
-  BACKLOG_THRESHOLD,
-  NeedsAttentionSection,
-  STALE_PLANNED_DAYS,
-  selectBacklogSeries,
-  selectStalePlannedItems,
-} from "../needs-attention-section";
+import { BACKLOG_THRESHOLD, NeedsAttentionSection, selectBacklogSeries } from "../needs-attention-section";
 import type { LibraryItem, TrackedSeriesItem } from "@/types/media";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -70,25 +64,6 @@ describe("selectBacklogSeries", () => {
     expect(selectBacklogSeries([belowThreshold, atThreshold])).toEqual([
       { series: atThreshold, remaining: BACKLOG_THRESHOLD },
     ]);
-  });
-});
-
-describe("selectStalePlannedItems", () => {
-  const now = new Date("2026-06-15T00:00:00.000Z");
-  const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
-
-  it("keeps only planned items untouched for at least STALE_PLANNED_DAYS", () => {
-    const fresh = makeLibraryItem({ mediaId: 1, updatedAt: daysAgo(STALE_PLANNED_DAYS - 1) });
-    const stale = makeLibraryItem({ mediaId: 2, updatedAt: daysAgo(STALE_PLANNED_DAYS) });
-
-    const result = selectStalePlannedItems([fresh, stale], now);
-
-    expect(result).toEqual([{ item: stale, daysSinceUpdate: STALE_PLANNED_DAYS }]);
-  });
-
-  it("ignores non-planned items regardless of how stale they are", () => {
-    const watching = makeLibraryItem({ status: "watching", updatedAt: daysAgo(400) });
-    expect(selectStalePlannedItems([watching], now)).toEqual([]);
   });
 });
 

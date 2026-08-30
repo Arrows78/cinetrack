@@ -4,28 +4,17 @@ import { AlertCircle, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tile } from "@/components/ui/tile";
 import { SectionHeader } from "@/components/media/primitives/section-header";
-import type { LibraryItem, TrackedSeriesItem } from "@/types/media";
+import type { StaleLibraryItem } from "@/features/library/use-library-health-selectors";
+import type { TrackedSeriesItem } from "@/types/media";
 
 // A tracked series counts as "needs attention" once this many aired
 // episodes are waiting — fewer than this is just ordinary progress (already
 // covered by "Continuer à regarder"), not a pile-up worth flagging.
 export const BACKLOG_THRESHOLD = 3;
 
-// A "planned" library item counts as stale once it's sat untouched this
-// long — long enough that "still meaning to get to it" has likely become
-// "forgotten," short enough to still be a useful nudge rather than noise.
-export const STALE_PLANNED_DAYS = 30;
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export interface BacklogSeries {
   series: TrackedSeriesItem;
   remaining: number;
-}
-
-export interface StaleLibraryItem {
-  item: LibraryItem;
-  daysSinceUpdate: number;
 }
 
 /** Exported for isolated unit testing — series with a real pile-up of aired-but-unwatched episodes. */
@@ -33,17 +22,6 @@ export function selectBacklogSeries(trackedSeries: TrackedSeriesItem[]): Backlog
   return trackedSeries
     .map((series) => ({ series, remaining: series.totalEpisodes - series.watchedEpisodes }))
     .filter(({ remaining }) => remaining >= BACKLOG_THRESHOLD);
-}
-
-/** Exported for isolated unit testing — planned items with no activity in the last STALE_PLANNED_DAYS. */
-export function selectStalePlannedItems(libraryItems: LibraryItem[], now: Date): StaleLibraryItem[] {
-  return libraryItems
-    .filter((item) => item.status === "planned")
-    .map((item) => ({
-      item,
-      daysSinceUpdate: Math.floor((now.getTime() - new Date(item.updatedAt).getTime()) / DAY_MS),
-    }))
-    .filter(({ daysSinceUpdate }) => daysSinceUpdate >= STALE_PLANNED_DAYS);
 }
 
 /** Today Hub's "Éléments nécessitant une action" card — episode backlogs and forgotten planned items. */

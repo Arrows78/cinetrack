@@ -9,16 +9,13 @@ import { AvailableNowSection } from "@/components/media/home/available-now-secti
 import { AlertsSection } from "@/components/media/home/alerts-section";
 import { WatchTonightTeaserSection } from "@/components/media/home/watch-tonight-teaser-section";
 import { PersonalizedRecommendationSection } from "@/components/media/home/personalized-recommendation-section";
-import {
-  NeedsAttentionSection,
-  selectBacklogSeries,
-  selectStalePlannedItems,
-} from "@/components/media/home/needs-attention-section";
+import { NeedsAttentionSection, selectBacklogSeries } from "@/components/media/home/needs-attention-section";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useTodayHubEpisodes } from "@/features/progress/use-watch-next";
 import { useAvailabilityStatus } from "@/features/availability/use-availability-alerts";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
 import { useLibrary } from "@/features/library/use-library";
+import { selectStalePlannedItems } from "@/features/library/use-library-health-selectors";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useBecauseYouLiked } from "@/features/media/use-because-you-liked";
 import { useFavouriteGenreRail } from "@/components/media/detail/use-favourite-genre-rail";
