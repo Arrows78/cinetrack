@@ -10,18 +10,28 @@ mod repository;
 mod service;
 
 pub use commands::{
-    get_monthly_recap, get_rating_distribution, get_rewatch_stats, get_stats_overview,
-    get_watch_milestones, list_on_this_day_events, list_recent_viewing_events,
-    list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
+    get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
+    get_rewatch_stats, get_stats_overview, get_watch_forecast, get_watch_milestones,
+    list_on_this_day_events, list_recent_viewing_events, list_viewing_events_for_media,
+    list_viewing_events_for_year, list_yearly_activity,
 };
 use models::{
-    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, WatchMilestone,
-    YearlyActivityBucket,
+    ActivityStats, LibraryExtras, MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview,
+    WatchForecast, WatchMilestone, YearlyActivityBucket,
 };
 pub(crate) use queries::{ViewingEvent, ViewingEventNote, ViewingEventType};
 
-use queries::{milestones, overview, ratings, recap, rewatch, viewing_events};
+use queries::{
+    activity, forecast, library_extras, milestones, overview, ratings, recap, rewatch,
+    viewing_events,
+};
 
+#[cfg(test)]
+use activity::get_activity_stats_impl;
+#[cfg(test)]
+use forecast::get_watch_forecast_impl;
+#[cfg(test)]
+use library_extras::get_library_extras_impl;
 #[cfg(test)]
 use milestones::get_watch_milestones_impl;
 #[cfg(test)]
@@ -1661,5 +1671,810 @@ mod tests {
 
         assert!(!milestones.is_empty());
         assert!(milestones.iter().all(|m| !m.achieved));
+    }
+
+    // --- get_activity_stats_impl (streak / longest streak / binge day / heatmap) ---
+
+    #[tokio::test]
+    async fn current_streak_counts_consecutive_days_and_breaks_on_a_gap() {
+        let pool = migrated_pool().await;
+        insert_event(
+            &pool,
+            "a",
+            "2026-06-15T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "b",
+            "2026-06-14T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "c",
+            "2026-06-13T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T18:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.current_streak_days, 3);
+        assert_eq!(stats.longest_streak_days, 3);
+    }
+
+    #[tokio::test]
+    async fn current_streak_is_zero_with_a_gap_before_today() {
+        let pool = migrated_pool().await;
+        insert_event(
+            &pool,
+            "a",
+            "2026-06-15T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        // A gap on the 14th, then an older watch on the 13th — the run
+        // ending today is length 1; the older one doesn't touch it.
+        insert_event(
+            &pool,
+            "b",
+            "2026-06-13T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T18:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.current_streak_days, 1);
+    }
+
+    #[tokio::test]
+    async fn current_streak_is_zero_with_no_events() {
+        let pool = migrated_pool().await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T18:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.current_streak_days, 0);
+        assert_eq!(stats.longest_streak_days, 0);
+        assert!(stats.biggest_binge_day.is_none());
+    }
+
+    #[tokio::test]
+    async fn current_streak_ignores_unwatched_events() {
+        let pool = migrated_pool().await;
+        insert_event(
+            &pool,
+            "a",
+            "2026-06-15T12:00:00.000Z",
+            "unwatched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T18:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.current_streak_days, 0);
+    }
+
+    #[tokio::test]
+    async fn current_streak_still_counts_yesterday_when_nothing_watched_yet_today() {
+        let pool = migrated_pool().await;
+        insert_event(
+            &pool,
+            "a",
+            "2026-06-14T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "b",
+            "2026-06-13T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        // "today" (the client's reference instant) is the 15th, but nothing
+        // was watched yet that day — the streak shouldn't reset until a
+        // full day passes with no watch.
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T08:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.current_streak_days, 2);
+    }
+
+    #[tokio::test]
+    async fn longest_streak_finds_the_longest_run_not_just_the_trailing_one() {
+        let pool = migrated_pool().await;
+        for day in ["05", "06", "07", "08"] {
+            insert_event(
+                &pool,
+                &format!("long-{day}"),
+                &format!("2026-06-{day}T12:00:00.000Z"),
+                "watched",
+                "movie",
+                None,
+                None,
+            )
+            .await;
+        }
+        // Gap, then a shorter, more recent streak.
+        insert_event(
+            &pool,
+            "recent-1",
+            "2026-06-14T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "recent-2",
+            "2026-06-15T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T18:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.longest_streak_days, 4);
+        assert_eq!(stats.current_streak_days, 2);
+    }
+
+    #[tokio::test]
+    async fn biggest_binge_day_picks_the_day_with_the_most_watches_not_the_most_recent() {
+        let pool = migrated_pool().await;
+        insert_event(
+            &pool,
+            "old",
+            "2026-06-05T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "binge-1",
+            "2026-06-12T10:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "binge-2",
+            "2026-06-12T14:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "binge-3",
+            "2026-06-12T20:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "recent",
+            "2026-06-15T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T18:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        let binge = stats.biggest_binge_day.unwrap();
+        assert_eq!(binge.day, "2026-06-12");
+        assert_eq!(binge.count, 3);
+    }
+
+    #[tokio::test]
+    async fn heatmap_buckets_by_local_day_of_week_and_hour_zero_filling_the_rest() {
+        let pool = migrated_pool().await;
+        // 2026-06-15 is a Monday. 20:30 UTC, with a -120 (UTC+2) offset,
+        // lands at 22:30 local on the same calendar day.
+        insert_event(
+            &pool,
+            "a",
+            "2026-06-15T20:30:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "b",
+            "2026-06-15T20:45:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+        insert_event(
+            &pool,
+            "unwatched",
+            "2026-06-15T20:50:00.000Z",
+            "unwatched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-06-15T21:00:00.000Z",
+            -120,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.heatmap.len(), 7 * 24);
+        let populated: Vec<_> = stats
+            .heatmap
+            .iter()
+            .filter(|bucket| bucket.count > 0)
+            .collect();
+        assert_eq!(populated.len(), 1);
+        assert_eq!(populated[0].count, 2);
+        assert_eq!(populated[0].day, 1); // Monday, JS/SQLite Sunday-first 0-6
+        assert_eq!(populated[0].hour, 22);
+    }
+
+    // --- get_library_extras_impl ---
+
+    async fn insert_rated_library_item(
+        pool: &SqlitePool,
+        uuid: &str,
+        media_id: i64,
+        title: &str,
+        genres: &str,
+        user_rating: Option<f64>,
+        rewatch_count: i64,
+    ) {
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, genres, user_rating, rewatch_count, created_at, updated_at)
+             VALUES ($1, 'default', $2, 'movie', $3, $4, $5, $6, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .bind(uuid)
+        .bind(media_id)
+        .bind(title)
+        .bind(genres)
+        .bind(user_rating)
+        .bind(rewatch_count)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn library_extras_extracts_favourite_genres() {
+        let pool = migrated_pool().await;
+        insert_rated_library_item(&pool, "a", 1, "Test", "[\"Drama\"]", None, 0).await;
+
+        let extras = get_library_extras_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(extras.favourite_genres[0].name, "Drama");
+        assert_eq!(extras.favourite_genres[0].count, 1);
+    }
+
+    #[tokio::test]
+    async fn library_extras_averages_user_rating_across_rated_items_only() {
+        let pool = migrated_pool().await;
+        insert_rated_library_item(&pool, "a", 1, "A", "[]", Some(8.0), 0).await;
+        insert_rated_library_item(&pool, "b", 2, "B", "[]", Some(6.0), 0).await;
+        insert_rated_library_item(&pool, "c", 3, "C", "[]", None, 0).await;
+
+        let extras = get_library_extras_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(extras.average_user_rating, Some(7.0));
+    }
+
+    #[tokio::test]
+    async fn library_extras_average_user_rating_is_none_with_no_ratings() {
+        let pool = migrated_pool().await;
+
+        let extras = get_library_extras_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(extras.average_user_rating, None);
+    }
+
+    #[tokio::test]
+    async fn library_extras_picks_the_genre_with_the_highest_average_rating_not_the_most_items() {
+        let pool = migrated_pool().await;
+        // Drama averages 8 across two rated items; Comedy averages 8.5 from
+        // just one — Comedy should still win.
+        insert_rated_library_item(&pool, "a", 1, "A", "[\"Drama\"]", Some(9.0), 0).await;
+        insert_rated_library_item(&pool, "b", 2, "B", "[\"Drama\"]", Some(7.0), 0).await;
+        insert_rated_library_item(&pool, "c", 3, "C", "[\"Comedy\"]", Some(8.5), 0).await;
+        insert_rated_library_item(&pool, "d", 4, "D", "[\"Horror\"]", None, 0).await;
+
+        let extras = get_library_extras_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(extras.favourite_genre_by_rating.as_deref(), Some("Comedy"));
+    }
+
+    #[tokio::test]
+    async fn library_extras_finds_the_most_rewatched_title() {
+        let pool = migrated_pool().await;
+        insert_rated_library_item(&pool, "a", 1, "Once", "[]", None, 0).await;
+        insert_rated_library_item(&pool, "b", 2, "Thrice", "[]", None, 3).await;
+        insert_rated_library_item(&pool, "c", 3, "Twice", "[]", None, 2).await;
+
+        let extras = get_library_extras_impl(&pool, "default").await.unwrap();
+
+        let most_rewatched = extras.most_rewatched_title.unwrap();
+        assert_eq!(most_rewatched.title, "Thrice");
+        assert_eq!(most_rewatched.count, 3);
+    }
+
+    #[tokio::test]
+    async fn library_extras_most_rewatched_title_is_none_with_no_rewatches() {
+        let pool = migrated_pool().await;
+        insert_rated_library_item(&pool, "a", 1, "A", "[]", None, 0).await;
+
+        let extras = get_library_extras_impl(&pool, "default").await.unwrap();
+
+        assert!(extras.most_rewatched_title.is_none());
+    }
+
+    // --- get_watch_forecast_impl ---
+
+    async fn insert_tracked_series(
+        pool: &SqlitePool,
+        uuid: &str,
+        series_id: i64,
+        total_episodes: i64,
+    ) {
+        sqlx::query(
+            "INSERT INTO tracked_series (uuid, profile_id, series_id, title, total_episodes, created_at, updated_at)
+             VALUES ($1, 'default', $2, 'Series', $3, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .bind(uuid)
+        .bind(series_id)
+        .bind(total_episodes)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn insert_watched_episode(
+        pool: &SqlitePool,
+        uuid: &str,
+        series_id: i64,
+        episode_id: i64,
+    ) {
+        sqlx::query(
+            "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at)
+             VALUES ($1, 'default', $2, $3, 1, 1, 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .bind(uuid)
+        .bind(series_id)
+        .bind(episode_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn forecast_has_no_backlog_and_a_null_catch_up_date_with_nothing_tracked() {
+        let pool = migrated_pool().await;
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(forecast.backlog_episodes, 0);
+        assert_eq!(forecast.backlog_minutes, 0);
+        assert_eq!(forecast.episodes_per_week, 0.0);
+        assert!(forecast.catch_up_date.is_none());
+    }
+
+    #[tokio::test]
+    async fn forecast_sums_backlog_across_series_clamping_a_series_with_more_watched_than_total_to_zero()
+     {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await; // 6 left, once 4 watched below
+        insert_watched_episode(&pool, "e1", 1, 1).await;
+        insert_watched_episode(&pool, "e2", 1, 2).await;
+        insert_watched_episode(&pool, "e3", 1, 3).await;
+        insert_watched_episode(&pool, "e4", 1, 4).await;
+        insert_tracked_series(&pool, "s2", 2, 5).await; // fully watched, 0 left
+        for episode_id in 1..=5 {
+            insert_watched_episode(&pool, &format!("s2-e{episode_id}"), 2, episode_id + 100).await;
+        }
+        insert_tracked_series(&pool, "s3", 3, 3).await; // over-watched (import artifact) -> 0, not negative
+        for episode_id in 1..=8 {
+            insert_watched_episode(&pool, &format!("s3-e{episode_id}"), 3, episode_id + 200).await;
+        }
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(forecast.backlog_episodes, 6);
+    }
+
+    #[tokio::test]
+    async fn forecast_falls_back_to_the_default_episode_runtime_when_no_episode_event_carries_a_duration()
+     {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await;
+        insert_watched_episode(&pool, "e1", 1, 1).await;
+        insert_watched_episode(&pool, "e2", 1, 2).await; // 8 left
+        insert_event(
+            &pool,
+            "ev1",
+            "2026-06-15T00:00:00.000Z",
+            "watched",
+            "series",
+            None,
+            Some(1),
+        )
+        .await;
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        // 8 left * FALLBACK_EPISODE_MINUTES (40)
+        assert_eq!(forecast.backlog_minutes, 320);
+    }
+
+    #[tokio::test]
+    async fn forecast_averages_the_viewers_own_recorded_episode_runtimes_instead_of_the_fallback() {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await;
+        insert_watched_episode(&pool, "e1", 1, 1).await; // 9 left
+        insert_event(
+            &pool,
+            "ev1",
+            "2026-06-15T00:00:00.000Z",
+            "watched",
+            "series",
+            Some(20),
+            Some(1),
+        )
+        .await;
+        insert_event(
+            &pool,
+            "ev2",
+            "2026-06-15T00:00:00.000Z",
+            "watched",
+            "series",
+            Some(30),
+            Some(2),
+        )
+        .await;
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        // average = 25 minutes/episode * 9 backlog episodes
+        assert_eq!(forecast.backlog_minutes, 225);
+    }
+
+    #[tokio::test]
+    async fn forecast_ignores_movie_events_and_unwatched_rollbacks_when_averaging_runtime() {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await; // 10 left, nothing watched
+        insert_event(
+            &pool,
+            "ev1",
+            "2026-06-15T00:00:00.000Z",
+            "watched",
+            "movie",
+            Some(200),
+            None,
+        )
+        .await; // not an episode
+        insert_event(
+            &pool,
+            "ev2",
+            "2026-06-15T00:00:00.000Z",
+            "unwatched",
+            "series",
+            Some(15),
+            Some(1),
+        )
+        .await;
+        // A stored duration_minutes of 0 can't happen — the column has a
+        // CHECK (duration_minutes IS NULL OR duration_minutes > 0)
+        // constraint — so the query's own `duration_minutes > 0` guard
+        // against a non-positive runtime is defensive/unreachable via real
+        // data, not something this test can exercise against the DB.
+        insert_event(
+            &pool,
+            "ev4",
+            "2026-06-15T00:00:00.000Z",
+            "watched",
+            "series",
+            Some(60),
+            Some(3),
+        )
+        .await;
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        // Only ev4's 60-minute runtime is usable; 10 backlog episodes.
+        assert_eq!(forecast.backlog_minutes, 600);
+    }
+
+    #[tokio::test]
+    async fn forecast_excludes_episode_events_older_than_the_pace_window() {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await;
+        insert_event(
+            &pool,
+            "old",
+            "2026-04-01T00:00:00.000Z",
+            "watched",
+            "series",
+            None,
+            Some(1),
+        )
+        .await;
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z", // pace window: last 60 days before "now" (2026-06-15)
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(forecast.episodes_per_week, 0.0);
+        assert!(forecast.catch_up_date.is_none());
+    }
+
+    #[tokio::test]
+    async fn forecast_projects_a_catch_up_date_from_backlog_and_recent_pace() {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await; // 10 left, nothing watched
+        insert_event(
+            &pool,
+            "ev1",
+            "2026-06-15T00:00:00.000Z",
+            "watched",
+            "series",
+            None,
+            Some(1),
+        )
+        .await;
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert!(forecast.catch_up_date.is_some());
+        let catch_up: chrono::DateTime<chrono::Utc> =
+            forecast.catch_up_date.unwrap().parse().unwrap();
+        assert!(
+            catch_up > chrono::DateTime::parse_from_rfc3339("2026-06-15T00:00:00.000Z").unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn forecast_omits_catch_up_date_once_there_is_no_backlog() {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 5).await;
+        insert_watched_episode(&pool, "e1", 1, 1).await;
+        insert_watched_episode(&pool, "e2", 1, 2).await;
+        insert_watched_episode(&pool, "e3", 1, 3).await;
+        insert_watched_episode(&pool, "e4", 1, 4).await;
+        insert_watched_episode(&pool, "e5", 1, 5).await; // fully watched
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert!(forecast.catch_up_date.is_none());
+    }
+
+    // --- Wrapper (command-level) smoke tests ---
+
+    #[tokio::test]
+    async fn get_activity_stats_command_returns_defaults_for_a_fresh_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let stats = get_activity_stats(
+            "2025-01-01T00:00:00.000Z".to_string(),
+            "2026-06-15T18:00:00.000Z".to_string(),
+            0,
+            state,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.current_streak_days, 0);
+        assert_eq!(stats.heatmap.len(), 7 * 24);
+    }
+
+    #[tokio::test]
+    async fn get_library_extras_command_returns_defaults_for_a_fresh_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let extras = get_library_extras(state).await.unwrap();
+
+        assert!(extras.favourite_genres.is_empty());
+        assert_eq!(extras.average_user_rating, None);
+    }
+
+    #[tokio::test]
+    async fn get_watch_forecast_command_returns_defaults_for_a_fresh_profile() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let forecast = get_watch_forecast(
+            "2025-01-01T00:00:00.000Z".to_string(),
+            "2026-04-16T00:00:00.000Z".to_string(),
+            "2026-06-15T00:00:00.000Z".to_string(),
+            state,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(forecast.backlog_episodes, 0);
+        assert!(forecast.catch_up_date.is_none());
     }
 }

@@ -373,6 +373,12 @@ export type { MilestoneCategory } from "@/generated/dto/MilestoneCategory";
 export type { WatchMilestone } from "@/generated/dto/WatchMilestone";
 export type { StatsOverview } from "@/generated/dto/StatsOverview";
 export type { YearlyActivityBucket } from "@/generated/dto/YearlyActivityBucket";
+export type { ActivityStats } from "@/generated/dto/ActivityStats";
+export type { HeatmapBucket } from "@/generated/dto/HeatmapBucket";
+export type { LibraryExtras } from "@/generated/dto/LibraryExtras";
+export type { FavouriteGenre } from "@/generated/dto/FavouriteGenre";
+export type { RewatchedTitle } from "@/generated/dto/RewatchedTitle";
+export type { WatchForecast } from "@/generated/dto/WatchForecast";
 
 export interface HomeFeed {
   trendingSeries: Series[];

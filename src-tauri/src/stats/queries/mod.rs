@@ -1,3 +1,6 @@
+pub(super) mod activity;
+pub(super) mod forecast;
+pub(super) mod library_extras;
 pub(super) mod milestones;
 pub(super) mod monthly_activity;
 pub(super) mod overview;

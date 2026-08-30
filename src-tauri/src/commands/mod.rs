@@ -34,9 +34,10 @@ pub use crate::progress::{
     toggle_episodes_watched, toggle_movie_seen,
 };
 pub use crate::stats::{
-    get_monthly_recap, get_rating_distribution, get_rewatch_stats, get_stats_overview,
-    get_watch_milestones, list_on_this_day_events, list_recent_viewing_events,
-    list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
+    get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
+    get_rewatch_stats, get_stats_overview, get_watch_forecast, get_watch_milestones,
+    list_on_this_day_events, list_recent_viewing_events, list_viewing_events_for_media,
+    list_viewing_events_for_year, list_yearly_activity,
 };
 pub use boot::get_boot_recovery;
 pub use updater::{has_updater_config, updater_is_configured};

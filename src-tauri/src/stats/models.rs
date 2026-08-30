@@ -59,6 +59,67 @@ pub struct BiggestBingeDay {
     pub count: i64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct HeatmapBucket {
+    /// JS's Sunday-first 0-6, matching SQLite's own `strftime('%w', ...)`.
+    pub day: i64,
+    pub hour: i64,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ActivityStats {
+    pub current_streak_days: i64,
+    pub longest_streak_days: i64,
+    pub biggest_binge_day: Option<BiggestBingeDay>,
+    /// Always 7 * 24 = 168 entries, one per (day, hour) pair, zero-filled.
+    pub heatmap: Vec<HeatmapBucket>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct FavouriteGenre {
+    pub name: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RewatchedTitle {
+    pub title: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct LibraryExtras {
+    pub favourite_genres: Vec<FavouriteGenre>,
+    pub average_user_rating: Option<f64>,
+    pub favourite_genre_by_rating: Option<String>,
+    pub most_rewatched_title: Option<RewatchedTitle>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct WatchForecast {
+    /// Unwatched episodes across all tracked series.
+    pub backlog_episodes: i64,
+    /// Estimated minutes to catch up, from the viewer's own average episode runtime.
+    pub backlog_minutes: i64,
+    /// Episodes watched per week over the last 60 days.
+    pub episodes_per_week: f64,
+    /// Projected catch-up date (ISO), or null when there is no backlog or no recent pace.
+    pub catch_up_date: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]

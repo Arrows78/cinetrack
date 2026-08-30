@@ -46,7 +46,8 @@ use commands::{
 };
 use commands::{create_saved_filter, list_saved_filters};
 use commands::{
-    get_monthly_recap, get_rating_distribution, get_rewatch_stats, get_watch_milestones,
+    get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
+    get_rewatch_stats, get_watch_forecast, get_watch_milestones,
 };
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
@@ -137,6 +138,9 @@ pub fn run() {
             get_rewatch_stats,
             get_rating_distribution,
             get_watch_milestones,
+            get_activity_stats,
+            get_library_extras,
+            get_watch_forecast,
             list_availability_alerts,
             get_availability_alert,
             toggle_availability_alert,

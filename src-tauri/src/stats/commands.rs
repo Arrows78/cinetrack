@@ -3,8 +3,8 @@ use tauri::State;
 
 use super::service::StatsService;
 use super::{
-    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent, ViewingEventNote,
-    WatchMilestone, YearlyActivityBucket,
+    ActivityStats, LibraryExtras, MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview,
+    ViewingEvent, ViewingEventNote, WatchForecast, WatchMilestone, YearlyActivityBucket,
 };
 use crate::diagnostics::timed;
 use crate::error::ApiError;
@@ -157,6 +157,55 @@ pub async fn get_watch_milestones(
 ) -> Result<Vec<WatchMilestone>, ApiError> {
     timed("get_watch_milestones", async {
         StatsService::new(pool.inner()).get_watch_milestones().await
+    })
+    .await
+}
+
+/// `since` bounds the window the same way `list_recent_viewing_events`
+/// does (the client never needs a streak/heatmap further back than that).
+/// `today` and `tz_offset_minutes` (JS's `Date.getTimezoneOffset()`) are
+/// client-computed so "current streak"/"biggest binge day"/heatmap bucket
+/// by the caller's own local calendar day and hour, not SQLite's.
+#[tauri::command]
+pub async fn get_activity_stats(
+    since: String,
+    today: String,
+    tz_offset_minutes: i64,
+    pool: State<'_, SqlitePool>,
+) -> Result<ActivityStats, ApiError> {
+    timed("get_activity_stats", async {
+        StatsService::new(pool.inner())
+            .get_activity_stats(&since, &today, tz_offset_minutes)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn get_library_extras(pool: State<'_, SqlitePool>) -> Result<LibraryExtras, ApiError> {
+    timed("get_library_extras", async {
+        StatsService::new(pool.inner()).get_library_extras().await
+    })
+    .await
+}
+
+/// `since` bounds the average-episode-runtime sample the same way it does
+/// for `get_activity_stats` above; `pace_window_start` (a narrower, more
+/// recent window) bounds only the episodes-per-week pace calculation —
+/// mirroring how the pre-migration TS implementation used two different
+/// window sizes for those two figures. `now` is the reference instant the
+/// catch-up date projects forward from.
+#[tauri::command]
+pub async fn get_watch_forecast(
+    since: String,
+    pace_window_start: String,
+    now: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<WatchForecast, ApiError> {
+    timed("get_watch_forecast", async {
+        StatsService::new(pool.inner())
+            .get_watch_forecast(&since, &pace_window_start, &now)
+            .await
     })
     .await
 }

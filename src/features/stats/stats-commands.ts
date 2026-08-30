@@ -1,10 +1,13 @@
 import { defineCommand } from "@/shared/lib/invoke";
 import type {
+  ActivityStats,
+  LibraryExtras,
   MonthlyRecap,
   RatingDistribution,
   RewatchStats,
   StatsOverview,
   ViewingEvent,
+  WatchForecast,
   WatchMilestone,
   YearlyActivityBucket,
 } from "@/types/media";
@@ -22,6 +25,8 @@ type MonthlyRecapArgs = {
 };
 type RewatchStatsArgs = { windowStart: string; monthLabels: string[] };
 type RatingDistributionArgs = { windowStart: string };
+type ActivityStatsArgs = { since: string; today: string; tzOffsetMinutes: number };
+type WatchForecastArgs = { since: string; paceWindowStart: string; now: string };
 
 export const statsCommands = {
   listRecentViewingEvents: defineCommand<SinceArgs, ViewingEvent[]>("list_recent_viewing_events"),
@@ -33,4 +38,7 @@ export const statsCommands = {
   getRewatchStats: defineCommand<RewatchStatsArgs, RewatchStats>("get_rewatch_stats"),
   getRatingDistribution: defineCommand<RatingDistributionArgs, RatingDistribution>("get_rating_distribution"),
   getWatchMilestones: defineCommand<undefined, WatchMilestone[]>("get_watch_milestones"),
+  getActivityStats: defineCommand<ActivityStatsArgs, ActivityStats>("get_activity_stats"),
+  getLibraryExtras: defineCommand<undefined, LibraryExtras>("get_library_extras"),
+  getWatchForecast: defineCommand<WatchForecastArgs, WatchForecast>("get_watch_forecast"),
 } as const;

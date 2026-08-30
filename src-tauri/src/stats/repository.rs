@@ -1,5 +1,8 @@
 use sqlx::SqlitePool;
 
+use super::activity::get_activity_stats_impl;
+use super::forecast::get_watch_forecast_impl;
+use super::library_extras::get_library_extras_impl;
 use super::milestones::get_watch_milestones_impl;
 use super::overview::{get_stats_overview_impl, list_yearly_activity_impl};
 use super::ratings::get_rating_distribution_impl;
@@ -10,8 +13,8 @@ use super::viewing_events::{
     list_viewing_events_for_year_impl, list_viewing_events_since_impl,
 };
 use super::{
-    MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview, ViewingEvent, ViewingEventNote,
-    WatchMilestone, YearlyActivityBucket,
+    ActivityStats, LibraryExtras, MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview,
+    ViewingEvent, ViewingEventNote, WatchForecast, WatchMilestone, YearlyActivityBucket,
 };
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -94,5 +97,27 @@ impl<'a> StatsRepository<'a> {
 
     pub(super) async fn get_watch_milestones(&self) -> Result<Vec<WatchMilestone>, ApiError> {
         get_watch_milestones_impl(self.pool, &self.profile_id).await
+    }
+
+    pub(super) async fn get_activity_stats(
+        &self,
+        since: &str,
+        today: &str,
+        tz_offset_minutes: i64,
+    ) -> Result<ActivityStats, ApiError> {
+        get_activity_stats_impl(self.pool, &self.profile_id, since, today, tz_offset_minutes).await
+    }
+
+    pub(super) async fn get_library_extras(&self) -> Result<LibraryExtras, ApiError> {
+        get_library_extras_impl(self.pool, &self.profile_id).await
+    }
+
+    pub(super) async fn get_watch_forecast(
+        &self,
+        since: &str,
+        pace_window_start: &str,
+        now: &str,
+    ) -> Result<WatchForecast, ApiError> {
+        get_watch_forecast_impl(self.pool, &self.profile_id, since, pace_window_start, now).await
     }
 }
