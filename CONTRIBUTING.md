@@ -1,5 +1,15 @@
 # Contributing
 
+## Read this first
+
+Before writing code, skim:
+
+- **`CLAUDE.md`** — the architecture summary, non-negotiables (i18n, design system, error handling, irreversible actions), and data-integrity patterns. This is the fastest path to understanding what "correct" looks like in this codebase.
+- **`docs/architecture.md`**'s "Architecture boundaries" section — the normative rules for where code goes and what a feature/page/shared module is allowed to import. These are enforced by `pnpm lint` (`eslint-plugin-boundaries`, for `shared`/`components/ui` never importing `features`/`pages`) and `pnpm architecture:check` (`scripts/check-feature-boundaries.mjs`, for feature-to-feature isolation) — a PR that violates one fails CI, not just review.
+- **`docs/testing.md`** — the full testing strategy, including when (and when not) to mock `invoke()` in a TS test, the `tauri::test::mock_app()` pattern for Rust command tests, and per-file coverage thresholds. Short version: Rust tests prove SQL/transaction/cascade behavior once against a real migrated pool; TS repository tests only assert that `invoke()` was called with the right command name and args, never a second reimplementation of Rust's logic.
+
+For accessibility guidance (focus trap, virtual-focus listbox, live regions, contrast), see the `/design-system` page's catalog and `docs/design-system.md` — there's no separate accessibility doc; that catalog is the source of truth for the patterns, and `docs/testing.md` covers how they get tested.
+
 ## Prerequisites
 
 - Node.js, version pinned in `.nvmrc` (currently 22)
@@ -31,13 +41,12 @@ Run the full validation chain:
 pnpm validate
 ```
 
-This runs, in order: `pnpm lint`, `pnpm format:check`, `pnpm typecheck`,
-`pnpm test:coverage`, `pnpm build`, `pnpm cargo:check`, `pnpm cargo:clippy`,
-and `pnpm cargo:test`. All of it should pass before you open a pull request.
+This runs `validate:frontend` then `validate:backend`:
 
-You can also run any of these steps individually — see `package.json`'s
-`scripts` section for the full list, including `pnpm test:watch` for
-iterating on tests.
+- **`validate:frontend`**: `contract:check` (generated Tauri command names/signatures, plus the smaller field-name drift check for DTOs that still opt out of `ts-rs` generation), `architecture:check` (feature-boundary isolation), `lint`, `format:check`, `typecheck`, `test:coverage`, `build`.
+- **`validate:backend`**: `cargo:check`, `cargo:clippy` (`-D warnings`), `cargo:format:check`, `cargo:test`, `contract:check-ts-bindings` (regenerates the `ts-rs`-derived TS DTOs and fails if that changes anything not already committed).
+
+All of it should pass before you open a pull request. While iterating, scope to the side you're touching (`pnpm validate:frontend` / `pnpm validate:backend`) and to specific test files — see `package.json`'s `scripts` section for the full list, including `pnpm test:watch` and `pnpm vitest run path/to/file.test.ts` for one file at a time. Run the full `pnpm validate` once, at the end: a change confined to one side can still break something the other side depends on.
 
 ## Commits
 

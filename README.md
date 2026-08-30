@@ -345,10 +345,10 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 - [ ] **`UX` — Add a “System” theme mode.**
       Add **System** alongside the existing Light and Dark modes and automatically follow operating-system appearance changes.
 
-- [ ] **`UX` — Show app version and build information.**
+- [x] **`UX` — Show app version and build information.**
       Display the CineTrack version and build number in Settings and make the information easy to copy for bug reports or diagnostics.
 
-- [ ] **`UX` — Expose image-cache maintenance in Settings.**
+- [x] **`UX` — Expose image-cache maintenance in Settings.**
       Show the current image-cache size and provide a **Clear image cache** action, including the amount of disk space that will be recovered.
 
 ### 🟡 P2 — Power features
@@ -411,7 +411,7 @@ P2 focuses on users with larger libraries and longer viewing histories, while ma
 #### Desktop experience
 
 - [ ] **`UX` — Add a keyboard-first Quick Log command.**
-      Provide a shortcut or command palette to search a title and immediately **Mark watched**, **Log watch**, **Add to library**, or **Open next episode** without navigating through multiple pages.
+      Provide a shortcut or command palette to search a title and immediately **Mark watched**, **Log watch**, **Add to library**, or **Open next episode** without navigating through multiple pages. _Partially done: the command palette already supports mark seen/unseen and add/remove-from-library, including a Quick Log affordance directly on a movie search result row. Still missing: a dedicated "log watch" action (with note/date, not just a binary toggle) and "open next episode."_
 
 - [ ] **`UX` — Add more translations.**
       Expand beyond English and French based on actual user and contributor demand.
