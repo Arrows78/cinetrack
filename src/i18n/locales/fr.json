@@ -516,6 +516,18 @@
     "createError": "Impossible de créer le profil. Réessayez.",
     "signOut": "Se déconnecter"
   },
+  "onboarding": {
+    "loading": "Préparation en cours…",
+    "title": "Bienvenue sur CineTrack",
+    "subtitle": "Commençons là où ça a du sens pour vous.",
+    "importTitle": "J'importe mon historique",
+    "importDescription": "Importez votre historique de visionnage depuis TV Time.",
+    "newLibraryTitle": "Je commence une nouvelle bibliothèque",
+    "newLibraryDescription": "Cherchez un film ou une série à ajouter en premier.",
+    "pickTonightTitle": "Aide-moi juste à choisir quelque chose ce soir",
+    "pickTonightDescription": "Répondez à quelques questions rapides et obtenez une suggestion.",
+    "error": "Une erreur est survenue en enregistrant votre choix. Réessayez."
+  },
   "tracking": {
     "title": "Suivi",
     "description": "Sorties, prochains épisodes et alertes de disponibilité pour ce que vous suivez.",

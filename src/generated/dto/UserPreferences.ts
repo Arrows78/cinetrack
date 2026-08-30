@@ -57,4 +57,15 @@ export type UserPreferences = {
    * in Settings, matching the literal "opt-in" ask.
    */
   onThisDayEnabled: boolean;
+  /**
+   * Whether the goal-oriented first-launch screen (OnboardingGate) has
+   * already run. Global rather than per-profile, like every other row in
+   * this table — it fires once for the install, not once per local
+   * profile a household creates. Defaults to `false` so it also covers
+   * an existing install upgrading into this field for the first time;
+   * OnboardingGate additionally checks whether the active profile's
+   * library is already non-empty before showing anything, so an
+   * established user doesn't see it just because this key was never set.
+   */
+  onboardingCompleted: boolean;
 };

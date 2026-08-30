@@ -131,6 +131,16 @@ pub struct UserPreferences {
     /// in Settings, matching the literal "opt-in" ask.
     #[serde(default)]
     pub on_this_day_enabled: bool,
+    /// Whether the goal-oriented first-launch screen (OnboardingGate) has
+    /// already run. Global rather than per-profile, like every other row in
+    /// this table — it fires once for the install, not once per local
+    /// profile a household creates. Defaults to `false` so it also covers
+    /// an existing install upgrading into this field for the first time;
+    /// OnboardingGate additionally checks whether the active profile's
+    /// library is already non-empty before showing anything, so an
+    /// established user doesn't see it just because this key was never set.
+    #[serde(default)]
+    pub onboarding_completed: bool,
 }
 
 impl Default for UserPreferences {
@@ -154,6 +164,7 @@ impl Default for UserPreferences {
             backup_directory: None,
             hide_watched_in_discovery: false,
             on_this_day_enabled: false,
+            onboarding_completed: false,
         }
     }
 }

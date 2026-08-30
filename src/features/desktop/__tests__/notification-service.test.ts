@@ -56,6 +56,7 @@ const basePreferences: UserPreferences = {
   backupDirectory: null,
   hideWatchedInDiscovery: false,
   onThisDayEnabled: false,
+  onboardingCompleted: false,
   userProfile: { id: "profile-1", name: "Profile" },
 };
 
