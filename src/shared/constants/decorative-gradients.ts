@@ -45,3 +45,26 @@ export const FILM_SPROCKET_PATTERN = "repeating-linear-gradient(to right, rgba(0
  */
 export const MEDIA_POSTER_SCRIM =
   "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.1) 70%, transparent 100%)";
+
+/**
+ * Media poster overlay chrome — the quick-action buttons, rating badge,
+ * caption text, and progress-bar track that float on top of a poster image
+ * (see media-card.tsx). Same reasoning as MEDIA_POSTER_SCRIM above: these
+ * composite over an external TMDB photograph, not a themed app surface, so
+ * they stay a fixed black/white pair in both light and dark mode instead of
+ * following semantic theme tokens.
+ */
+export const MEDIA_POSTER_OVERLAY_CLASSNAME = {
+  chip: "bg-black/60 text-white",
+  captionText: "text-white/60",
+  separatorDot: "bg-white/30",
+  progressTrack: "bg-black/40",
+} as const;
+
+/**
+ * Command palette backdrop scrim (see command-palette.tsx) — dims whatever
+ * screen happens to be open behind the modal. Always black regardless of
+ * theme: it's a transient dimming layer over arbitrary app content, not a
+ * themed app surface.
+ */
+export const COMMAND_PALETTE_BACKDROP_CLASSNAME = "bg-black/55";

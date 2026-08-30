@@ -97,7 +97,7 @@ export function MonthlyRecapSection() {
     <Panel>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h2 className="font-semibold">{t("stats.monthlyRecap.title")}</h2>
+          <h2 className="text-heading-sm">{t("stats.monthlyRecap.title")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{monthLabel}</p>
         </div>
         <div className="flex items-center gap-1">

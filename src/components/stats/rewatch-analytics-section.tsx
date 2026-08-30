@@ -33,7 +33,7 @@ export function RewatchAnalyticsSection() {
 
   return (
     <Panel>
-      <h2 className="font-semibold">{t("stats.rewatch.title")}</h2>
+      <h2 className="text-heading-sm">{t("stats.rewatch.title")}</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Tile className="p-3">
           <Repeat className="size-4 text-primary" aria-hidden="true" />

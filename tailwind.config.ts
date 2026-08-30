@@ -70,6 +70,7 @@ const config: Config = {
         rating: "hsl(var(--rating))",
         // Theme-invariant tokens for the always-dark auth screen — see
         // styles/index.css for why it can't use the regular light/dark tokens.
+        "auth-background": "hsl(var(--auth-background))",
         "auth-surface": "hsl(var(--auth-surface))",
         "auth-destructive": "hsl(var(--auth-destructive))",
         "auth-foreground": "hsl(var(--auth-foreground))",

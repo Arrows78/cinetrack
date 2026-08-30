@@ -146,7 +146,7 @@ export function StatsPage() {
   return (
     <div className="space-y-8">
       <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <h1 className="font-display text-3xl font-bold">{t("stats.title")}</h1>
+        <h1 className="font-display text-display-title">{t("stats.title")}</h1>
         <p className="mt-1 text-muted-foreground">{t("stats.description")}</p>
       </header>
       <section
@@ -165,7 +165,7 @@ export function StatsPage() {
       </section>
 
       <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
-        <h2 className="mb-3 font-semibold">{t("stats.records")}</h2>
+        <h2 className="mb-3 text-heading-sm">{t("stats.records")}</h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Panel asChild className="min-w-0">
             <article>
@@ -256,7 +256,7 @@ export function StatsPage() {
 
       {comparison ? (
         <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
-          <h2 className="mb-3 font-semibold">{t("stats.thisMonth")}</h2>
+          <h2 className="mb-3 text-heading-sm">{t("stats.thisMonth")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Panel asChild>
               <article>
@@ -278,7 +278,7 @@ export function StatsPage() {
 
       {forecast.data && forecast.data.backlogEpisodes > 0 ? (
         <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
-          <h2 className="mb-3 font-semibold">{t("stats.forecast")}</h2>
+          <h2 className="mb-3 text-heading-sm">{t("stats.forecast")}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <Panel asChild>
               <article>
@@ -313,7 +313,7 @@ export function StatsPage() {
       ) : null}
 
       <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(5)}ms` }}>
-        <h2 className="font-semibold">{t("stats.activity12Months")}</h2>
+        <h2 className="text-heading-sm">{t("stats.activity12Months")}</h2>
         <ActivityBarChart
           data={stats.data.monthlyActivity.map((month) => ({ label: month.month.slice(5), value: month.count }))}
           tooltipLabel={t("stats.watches")}
@@ -346,7 +346,7 @@ export function StatsPage() {
 
       {yearlyActivity.data && yearlyActivity.data.length ? (
         <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(6)}ms` }}>
-          <h2 className="font-semibold">{t("stats.activityByYear")}</h2>
+          <h2 className="text-heading-sm">{t("stats.activityByYear")}</h2>
           <ActivityBarChart
             data={yearlyActivity.data.map((bucket) => ({
               label: String(bucket.year),
@@ -378,7 +378,7 @@ export function StatsPage() {
       ) : null}
 
       <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(7)}ms` }}>
-        <h2 className="font-semibold">{t("stats.heatmap.title")}</h2>
+        <h2 className="text-heading-sm">{t("stats.heatmap.title")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("stats.heatmap.description")}</p>
         <ViewingHeatmap data={stats.data.heatmap} />
       </Panel>
@@ -394,7 +394,7 @@ export function StatsPage() {
       <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
         <Panel asChild className="min-w-0">
           <article>
-            <h2 className="font-semibold">{t("stats.favouriteGenres")}</h2>
+            <h2 className="text-heading-sm">{t("stats.favouriteGenres")}</h2>
             <div className="mt-4 grid gap-2">
               {stats.data.favouriteGenres.map((genre) => (
                 <Tile key={genre.name} className="flex justify-between gap-3 px-3 py-2 text-sm">

@@ -37,7 +37,7 @@ export function RatingDistributionSection() {
 
   return (
     <Panel>
-      <h2 className="font-semibold">{t("stats.ratingDistribution.title")}</h2>
+      <h2 className="text-heading-sm">{t("stats.ratingDistribution.title")}</h2>
       <ActivityBarChart
         data={data.distribution.map((bucket) => ({ label: bucket.rating.toString(), value: bucket.count }))}
         tooltipLabel={t("stats.ratingDistribution.titlesLabel")}

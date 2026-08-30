@@ -10,7 +10,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { cn } from "@/shared/lib/cn";
-import { MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
+import { MEDIA_POSTER_OVERLAY_CLASSNAME, MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating } from "@/shared/utils/format";
 import { progressBarTone } from "@/shared/utils/series-status";
 import type { MediaSummary } from "@/types/media";
@@ -31,8 +31,10 @@ function stopCardNavigation(event: MouseEvent): void {
   event.stopPropagation();
 }
 
-const quickActionButtonClassName =
-  "flex size-8 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-transform duration-base hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-default disabled:opacity-50";
+const quickActionButtonClassName = cn(
+  "flex size-8 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-transform duration-base hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-default disabled:opacity-50",
+  MEDIA_POSTER_OVERLAY_CLASSNAME.chip
+);
 
 function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
@@ -151,7 +153,10 @@ function MediaCardInner({
         {/* Top: rating badge */}
         <div
           aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
-          className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-md transition-transform duration-base group-hover:scale-110"
+          className={cn(
+            "absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-md transition-transform duration-base group-hover:scale-110",
+            MEDIA_POSTER_OVERLAY_CLASSNAME.chip
+          )}
         >
           <span className="text-rating" aria-hidden="true">
             ★
@@ -179,17 +184,21 @@ function MediaCardInner({
             {media.title}
           </p>
           <div className="mt-1.5 flex items-center gap-2">
-            <p className="text-caption font-medium text-white/60">{media.year ?? t("media.unknownYear")}</p>
+            <p className={cn("text-caption font-medium", MEDIA_POSTER_OVERLAY_CLASSNAME.captionText)}>
+              {media.year ?? t("media.unknownYear")}
+            </p>
             {media.genres[0] && (
               <>
-                <span className="h-1 w-1 rounded-full bg-white/30" />
-                <p className="truncate text-caption font-medium text-white/60">{media.genres[0]}</p>
+                <span className={cn("h-1 w-1 rounded-full", MEDIA_POSTER_OVERLAY_CLASSNAME.separatorDot)} />
+                <p className={cn("truncate text-caption font-medium", MEDIA_POSTER_OVERLAY_CLASSNAME.captionText)}>
+                  {media.genres[0]}
+                </p>
               </>
             )}
             {showProgress ? (
               <>
-                <span className="h-1 w-1 rounded-full bg-white/30" />
-                <p className="text-caption font-medium tabular-nums text-white/60">
+                <span className={cn("h-1 w-1 rounded-full", MEDIA_POSTER_OVERLAY_CLASSNAME.separatorDot)} />
+                <p className={cn("text-caption font-medium tabular-nums", MEDIA_POSTER_OVERLAY_CLASSNAME.captionText)}>
                   {progress.watched}/{progress.total}
                 </p>
               </>
@@ -207,7 +216,7 @@ function MediaCardInner({
             value={progress.watched}
             max={progress.total}
             aria-label={t("media.episodes")}
-            className="absolute inset-x-0 bottom-0 h-2 rounded-none bg-black/40"
+            className={cn("absolute inset-x-0 bottom-0 h-2 rounded-none", MEDIA_POSTER_OVERLAY_CLASSNAME.progressTrack)}
             indicatorClassName={cn(
               "shadow-sm duration-medium",
               tone === "finished" ? "bg-success" : tone === "caughtUp" ? "bg-success/60" : "bg-primary"

@@ -174,7 +174,7 @@ export const breakpoints = [
     name: "lg",
     value: "1024px",
     usage:
-      "The desktop/mobile split — AppShell swaps the sidebar for the mobile header here. Unreachable in the packaged app (tauri.conf.json sets minWidth: 1100, above this breakpoint) — only exercised via `pnpm dev` in a resized browser.",
+      "The desktop/mobile split — AppShell swaps the sidebar for the mobile header here. Reachable in the packaged app itself (tauri.conf.json's window minWidth is 360, well below this breakpoint), not just via `pnpm dev` in a resized browser — resizing the real desktop window crosses it too.",
   },
   { name: "xl", value: "1280px", usage: "Further grid reflow on wide layouts (e.g. the genre grid on Home)." },
   { name: "2xl", value: "1536px", usage: "Rare — used sparingly for grids that still have room to add a column." },

@@ -35,6 +35,7 @@ import { queryKeys } from "@/shared/constants/query-keys";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
+import { COMMAND_PALETTE_BACKDROP_CLASSNAME } from "@/shared/constants/decorative-gradients";
 import type { MediaSummary, Movie, Series } from "@/types/media";
 
 interface PaletteItem {
@@ -343,7 +344,10 @@ export function CommandPalette() {
         // exempt from needing its own keyboard handler.
         // eslint-disable-next-line jsx-a11y/no-static-element-interactions
         <div
-          className="fixed inset-0 z-command-palette grid place-items-start bg-black/55 p-4 pt-[12vh] backdrop-blur-sm"
+          className={cn(
+            "fixed inset-0 z-command-palette grid place-items-start p-4 pt-[12vh] backdrop-blur-sm",
+            COMMAND_PALETTE_BACKDROP_CLASSNAME
+          )}
           onMouseDown={() => setOpen(false)}
         >
           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions --

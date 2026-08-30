@@ -50,8 +50,8 @@ export function SectionHeader({
         <div className="animate-in" style={{ animationDelay: `${sectionDelay}ms` }}>
           <Heading
             className={cn(
-              "font-display font-bold leading-tight tracking-tight transition-all duration-base group-hover:text-primary/90",
-              isSub ? "text-lg md:text-xl" : "text-2xl md:text-[1.75rem]"
+              "font-display tracking-tight transition-all duration-base group-hover:text-primary/90",
+              isSub ? "text-heading-sm md:text-heading-md" : "text-heading-lg"
             )}
           >
             {title}

@@ -185,7 +185,7 @@ export function AuthScreen() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-black text-auth-foreground lg:flex-row">
+    <div className="relative flex min-h-screen flex-col bg-auth-background text-auth-foreground lg:flex-row">
       <div className="relative order-1 min-h-56 flex-1 sm:min-h-72 lg:h-auto lg:w-2/3 lg:flex-none">
         <AuthBackdrop />
       </div>
@@ -196,7 +196,7 @@ export function AuthScreen() {
         </div>
 
         <section>
-          <div className="mb-7 grid grid-cols-2 rounded-2xl bg-black/30 p-1">
+          <div className="mb-7 grid grid-cols-2 rounded-2xl bg-auth-background/30 p-1">
             {AUTH_MODES.map((option) => (
               <button
                 key={option}
@@ -204,7 +204,9 @@ export function AuthScreen() {
                 onClick={() => changeMode(option)}
                 className={cn(
                   "rounded-xl px-4 py-2.5 text-sm font-semibold transition",
-                  mode === option ? "bg-white text-black" : "text-auth-foreground/60 hover:text-auth-foreground"
+                  mode === option
+                    ? "bg-auth-foreground text-auth-background"
+                    : "text-auth-foreground/60 hover:text-auth-foreground"
                 )}
               >
                 {option === "signin" ? t("auth.tabs.signIn") : t("auth.tabs.signUp")}

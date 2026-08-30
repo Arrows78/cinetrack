@@ -68,7 +68,7 @@ export function MediaDetailsHero({
 
             {/* Title — the page's own <h1>: movie/series detail pages have
                 no other page-level heading above this one. */}
-            <h1 className="mt-3 line-clamp-3 font-display text-4xl font-bold leading-tight text-balance md:text-5xl">
+            <h1 className="mt-3 line-clamp-3 font-display text-display-title text-balance md:text-display-hero">
               {media.title}
             </h1>
             {media.originalTitle && media.originalTitle !== media.title ? (
