@@ -13,7 +13,7 @@ import { CatalogueSections, CATALOGUE_SECTIONS } from "@/components/media/discov
 import { BrowseByGenre, BrowseByPlatform } from "@/components/media/discover/catalogue-browse";
 import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
-import { hasTmdbToken } from "@/shared/config/env";
+import { useTokenVault } from "@/features/desktop/use-token-vault";
 import { useHistory } from "@/features/history/use-history";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
@@ -42,6 +42,12 @@ export function HomePage() {
 function HomePageContent() {
   const { t } = useTranslation();
   const [dismissedTokenPrompt, setDismissedTokenPrompt] = useState(false);
+  // The vault's own live "configured" flag, not a build-time env check —
+  // isTauriApp() used to be folded into this check (see git history), which
+  // made it permanently true in the real desktop app regardless of whether
+  // a token was actually saved, silently turning this whole no-token flow
+  // into dead code there.
+  const hasTmdbToken = useTokenVault().configured;
   const homeQuery = useHomeFeed();
   const libraryQuery = useLibrary();
   const plannedCount = useMemo(

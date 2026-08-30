@@ -6,14 +6,12 @@ import i18n from "@/i18n";
 import { HomePage } from "../home-page";
 import type { Movie, HomeFeed } from "@/types/media";
 
-// hasTmdbToken is a plain boolean export, evaluated once at module load in
-// the real module — a getter here lets each test flip it before rendering,
-// since the mocked module's property is re-read on every HomePage render.
+// useTokenVault().configured is the real vault ground truth (see
+// use-token-vault.ts) — mocked here the same way the rest of this suite
+// mocks hooks, so each test can flip it before rendering.
 let hasTmdbTokenValue = true;
-vi.mock("@/shared/config/env", () => ({
-  get hasTmdbToken() {
-    return hasTmdbTokenValue;
-  },
+vi.mock("@/features/desktop/use-token-vault", () => ({
+  useTokenVault: () => ({ configured: hasTmdbTokenValue }),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
