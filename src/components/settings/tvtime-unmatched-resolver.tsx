@@ -13,11 +13,13 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useSearch } from "@/features/media/use-search";
 import {
+  invalidateTvTimeImportQueries,
   resolveRetryableMovie,
   resolveRetryableSeries,
   resolveRetryableWatchlist,
   type RetryableUnmatched,
 } from "@/features/tvtime/tvtime-import-service";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import type { MediaSummary, SearchScope } from "@/types/media";
 
 const scopeFor = (item: RetryableUnmatched): SearchScope => {
@@ -29,6 +31,7 @@ const scopeFor = (item: RetryableUnmatched): SearchScope => {
 function UnmatchedItemRow({ item, onResolved }: { item: RetryableUnmatched; onResolved: () => void }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const profileId = useActiveProfileId();
   const [query, setQuery] = useState(item.searchTitle);
   const debouncedQuery = useDebouncedValue(query);
   // Search only runs once this row is expanded (Accordion doesn't mount
@@ -50,7 +53,7 @@ function UnmatchedItemRow({ item, onResolved }: { item: RetryableUnmatched; onRe
       } else {
         await resolveRetryableWatchlist(item, match);
       }
-      await queryClient.invalidateQueries({ queryKey: ["local"] });
+      await invalidateTvTimeImportQueries(queryClient, profileId);
       toast({ description: t("tvtimeImport.retry.resolved", { title: match.title }), variant: "success" });
       onResolved();
     } catch {

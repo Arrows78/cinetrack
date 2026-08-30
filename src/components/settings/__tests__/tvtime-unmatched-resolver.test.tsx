@@ -38,10 +38,12 @@ vi.mock("@/features/media/media-repository", () => ({
 const resolveRetryableSeriesMock = vi.fn();
 const resolveRetryableMovieMock = vi.fn();
 const resolveRetryableWatchlistMock = vi.fn();
+const invalidateTvTimeImportQueriesMock = vi.fn();
 vi.mock("@/features/tvtime/tvtime-import-service", () => ({
   resolveRetryableSeries: (...args: unknown[]) => resolveRetryableSeriesMock(...args),
   resolveRetryableMovie: (...args: unknown[]) => resolveRetryableMovieMock(...args),
   resolveRetryableWatchlist: (...args: unknown[]) => resolveRetryableWatchlistMock(...args),
+  invalidateTvTimeImportQueries: (...args: unknown[]) => invalidateTvTimeImportQueriesMock(...args),
 }));
 
 const seriesItem: RetryableUnmatched = {

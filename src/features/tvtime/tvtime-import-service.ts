@@ -1,7 +1,9 @@
+import type { QueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { TmdbRequestError, mediaRepository } from "@/features/media/media-repository";
 import { libraryRepository } from "@/features/library/library-repository";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
+import { queryKeys } from "@/shared/constants/query-keys";
 import type { MediaSummary, Series } from "@/types/media";
 import {
   emptyExport,
@@ -445,6 +447,24 @@ export async function applyTvTimeImport(
 
 export { parseTvTimeFiles };
 export type { ParsedTvTimeFiles, TvTimeFile };
+
+// A bulk import (or resolving one retryable/unmatched item afterwards) can
+// touch history, library, tracked series, stats, tracking/calendar and
+// watch-tonight for the active profile — but nothing else, so this stays
+// scoped instead of invalidating the entire ["local"] cache namespace
+// (which would also evict every OTHER profile's unrelated cached data).
+export async function invalidateTvTimeImportQueries(queryClient: QueryClient, profileId: string): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.history(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryPage(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(profileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
+  ]);
+}
 
 /** Back-compat convenience: parses raw file contents, then applies them. */
 export async function importTvTimeExport(

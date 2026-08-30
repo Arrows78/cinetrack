@@ -759,6 +759,14 @@ export const componentInventory = [
     "Interactive bar chart with hover tooltips for the Stats page's monthly/yearly activity panels."
   ),
   component(
+    "ActivityBarChartImpl",
+    "components/media/activity/activity-bar-chart-impl.tsx",
+    "Media",
+    "pattern",
+    "internal",
+    "The actual recharts-backed implementation, lazy-loaded behind ActivityBarChart so the Stats route doesn't block first paint on recharts' own chunk."
+  ),
+  component(
     "ProgressBar",
     "components/media/primitives/progress-bar.tsx",
     "Media",

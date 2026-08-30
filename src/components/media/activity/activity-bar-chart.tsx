@@ -1,43 +1,19 @@
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { cn } from "@/shared/lib/cn";
+import { lazy, Suspense } from "react";
+import type { ActivityBarChartDatum } from "@/components/media/activity/activity-bar-chart-impl";
 
-export interface ActivityBarChartDatum {
-  label: string;
-  value: number;
-}
+export type { ActivityBarChartDatum } from "@/components/media/activity/activity-bar-chart-impl";
 
-// Theme references, not copy — hoisted out of the JSX tree so
-// eslint-plugin-i18next's jsx-only literal-string check (which only scans
-// string literals written inline in JSX) doesn't flag them the way it would
-// an actual inline `contentStyle={{ ... }}` object.
-const MUTED_FOREGROUND = "hsl(var(--muted-foreground))";
-const CURSOR_FILL = "hsl(var(--foreground) / 0.06)";
-const PRIMARY = "hsl(var(--primary))";
-// The "current period" bar, everything else muted — same convention on
-// every Stats chart so "where am I right now" reads the same way everywhere.
-const HISTORY_FILL = "hsl(var(--foreground) / 0.12)";
-const TOOLTIP_CONTENT_STYLE = {
-  background: "hsl(var(--popover))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: "0.75rem",
-  color: "hsl(var(--popover-foreground))",
-  fontSize: "0.8125rem",
-};
+// recharts pulls in a sizeable d3 dependency graph regardless of which of
+// its components are used — lazy-loaded so the Stats route's other panels
+// (cards, records, heatmap) can paint before that chunk finishes fetching,
+// instead of every Stats chart blocking on it up front.
+const LazyActivityBarChart = lazy(() =>
+  import("@/components/media/activity/activity-bar-chart-impl").then((module) => ({
+    default: module.ActivityBarChart,
+  }))
+);
 
-/**
- * Shared bar chart for the Stats page's activity panels — interactive
- * (hover tooltips) in place of the hand-rolled `<div>`-height bars this
- * replaced. Marked `aria-hidden`: every caller renders an `sr-only` table
- * alongside it with the same data, so screen reader users get exact values
- * instead of an unlabeled chart.
- */
-export function ActivityBarChart({
-  data,
-  tooltipLabel,
-  height = 176,
-  className,
-  highlightLast = false,
-}: {
+export function ActivityBarChart(props: {
   data: ActivityBarChartDatum[];
   /** Series name shown in the tooltip, e.g. "watches". */
   tooltipLabel: string;
@@ -47,24 +23,8 @@ export function ActivityBarChart({
   highlightLast?: boolean;
 }) {
   return (
-    <div aria-hidden="true" className={cn("mt-5", className)} style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-          <XAxis dataKey="label" stroke={MUTED_FOREGROUND} fontSize={12} tickLine={false} axisLine={false} />
-          <Tooltip
-            cursor={{ fill: CURSOR_FILL }}
-            contentStyle={TOOLTIP_CONTENT_STYLE}
-            formatter={(value) => [value ?? 0, tooltipLabel]}
-          />
-          <Bar dataKey="value" fill={PRIMARY} fillOpacity={0.8} radius={[6, 6, 0, 0]} maxBarSize={40}>
-            {highlightLast
-              ? data.map((entry, index) => (
-                  <Cell key={entry.label} fill={index === data.length - 1 ? PRIMARY : HISTORY_FILL} />
-                ))
-              : null}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <Suspense fallback={<div aria-hidden="true" style={{ height: props.height ?? 176 }} />}>
+      <LazyActivityBarChart {...props} />
+    </Suspense>
   );
 }

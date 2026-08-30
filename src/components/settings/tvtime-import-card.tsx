@@ -11,6 +11,7 @@ import { logger } from "@/shared/lib/logger";
 import { parseTvTimeFiles, type TvTimeExport, type TvTimeFile } from "@/features/tvtime/parse-export";
 import {
   applyTvTimeImport,
+  invalidateTvTimeImportQueries,
   MAX_TVTIME_FILE_BYTES,
   MAX_TVTIME_FILES,
   MAX_TVTIME_TOTAL_BYTES,
@@ -18,6 +19,7 @@ import {
   type TvTimeImportProgress,
 } from "@/features/tvtime/tvtime-import-service";
 import { extractCsvEntries, ZipTooLargeError } from "@/features/tvtime/zip";
+import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { TvTimeUnmatchedResolver } from "./tvtime-unmatched-resolver";
 
 interface PendingImport {
@@ -33,6 +35,7 @@ const MAX_LISTED_UNRECOGNIZED_FILES = 4;
 export function TvTimeImportCard() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const profileId = useActiveProfileId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [pending, setPending] = useState<PendingImport | null>(null);
@@ -109,7 +112,7 @@ export function TvTimeImportCard() {
 
     try {
       const result = await applyTvTimeImport(data, setProgress);
-      await queryClient.invalidateQueries({ queryKey: ["local"] });
+      await invalidateTvTimeImportQueries(queryClient, profileId);
       setRetryableItems(result.retryable);
       toast({
         description: (

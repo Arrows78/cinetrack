@@ -96,7 +96,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const handleCallbackUrl = useCallback(async (callbackUrl: string) => {
-    const client = getAuthClient();
+    const client = await getAuthClient();
 
     if (!client || handledCallbackUrls.current.has(callbackUrl)) {
       return;
@@ -135,30 +135,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    const client = getAuthClient();
-
-    if (!client) {
-      // Deferred a microtask out: this branch's setStatus runs synchronously
-      // in the effect body otherwise, which react-hooks/set-state-in-effect
-      // flags — the async client-present branch below is exempt because its
-      // setStatus calls live inside the `initialize()` async function.
-      queueMicrotask(() => setStatus("ready"));
-      return;
-    }
-
-    const authClient = client;
     let disposed = false;
     let unlistenDeepLinks: (() => void) | undefined;
+    let authListener: { subscription: { unsubscribe: () => void } } | undefined;
 
-    const { data: authListener } = authClient.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, nextSession: Session | null) => {
+    async function initialize() {
+      const client = await getAuthClient();
+
+      if (!client || disposed) {
+        if (!disposed) setStatus("ready");
+        return;
+      }
+
+      authListener = client.auth.onAuthStateChange((_event: AuthChangeEvent, nextSession: Session | null) => {
         if (!disposed) {
           setSession(nextSession);
         }
-      }
-    );
+      }).data;
 
-    async function initialize() {
       try {
         if (isTauriApp()) {
           const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
@@ -178,7 +172,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           await handleCallbackUrl(window.location.href);
         }
 
-        const { data, error: sessionError } = await authClient.auth.getSession();
+        const { data, error: sessionError } = await client.auth.getSession();
 
         if (sessionError) {
           throw sessionError;
@@ -202,13 +196,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     return () => {
       disposed = true;
-      authListener.subscription.unsubscribe();
+      authListener?.subscription.unsubscribe();
       unlistenDeepLinks?.();
     };
   }, [handleCallbackUrl]);
 
   const signInWithProvider = useCallback(async (provider: SocialAuthProvider) => {
-    const client = getAuthClient();
+    const client = await getAuthClient();
 
     if (!client) {
       throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
@@ -251,7 +245,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const requestEmailOtp = useCallback(async ({ email, marketingOptIn, shouldCreateUser }: EmailOtpRequest) => {
-    const client = getAuthClient();
+    const client = await getAuthClient();
 
     if (!client) {
       throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
@@ -283,7 +277,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const verifyEmailOtp = useCallback(async ({ email, token }: EmailOtpVerification) => {
-    const client = getAuthClient();
+    const client = await getAuthClient();
 
     if (!client) {
       throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
@@ -310,7 +304,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const signOut = useCallback(async () => {
-    const client = getAuthClient();
+    const client = await getAuthClient();
 
     if (!client) return;
 

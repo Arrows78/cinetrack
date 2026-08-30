@@ -70,8 +70,15 @@ export default defineConfig(() => ({
           ) {
             return "vendor-ui";
           }
-          if (pkgPath.startsWith("@supabase/supabase-js/")) return "vendor-supabase";
           if (pkgPath.startsWith("i18next/") || pkgPath.startsWith("react-i18next/")) return "vendor-i18n";
+          // Deliberately no manual bucket for @supabase/supabase-js: it's
+          // only ever reached through auth-client.ts's dynamic import()
+          // (getAuthClient), gated on auth actually being configured.
+          // Assigning it a stable manualChunks name made Rollup statically
+          // link that chunk into the eager entry bundle regardless — giving
+          // it back to Rollup's automatic splitting keeps it a genuinely
+          // separate, lazily-fetched chunk (verified against the built
+          // dist/'s actual network requests, not just the chunk listing).
           return undefined;
         },
       },

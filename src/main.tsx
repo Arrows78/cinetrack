@@ -10,7 +10,7 @@ import { BootRecoveryGate } from "@/components/desktop/boot-recovery-gate";
 import { AuthRoot } from "@/features/auth/auth-root";
 import { RootErrorBoundary } from "@/components/layout/root-error-boundary";
 import { queryClient } from "@/app/query-client";
-import "@/i18n";
+import { i18nReady } from "@/i18n";
 // Self-hosted fonts (see src/styles/index.css's comment for why these are
 // imported here rather than via a CSS @import) — offline, no third-party
 // CDN, and no CSP allowance needed for fonts.googleapis.com/fontshare.com.
@@ -36,16 +36,21 @@ import "@/styles/index.css";
 // gone.
 window.localStorage.removeItem("cinetrack.query-cache.v1");
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <RootErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BootRecoveryGate>
-          <AuthRoot>
-            <App />
-          </AuthRoot>
-        </BootRecoveryGate>
-      </QueryClientProvider>
-    </RootErrorBoundary>
-  </React.StrictMode>
-);
+// Waits for the active language's locale chunk (see i18n/index.ts's
+// dynamically-imported backend) so first paint never briefly shows raw
+// translation keys instead of real copy.
+void i18nReady.then(() => {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <RootErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <BootRecoveryGate>
+            <AuthRoot>
+              <App />
+            </AuthRoot>
+          </BootRecoveryGate>
+        </QueryClientProvider>
+      </RootErrorBoundary>
+    </React.StrictMode>
+  );
+});

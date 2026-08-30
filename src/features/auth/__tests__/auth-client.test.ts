@@ -99,7 +99,7 @@ describe("auth-client", () => {
   describe("getAuthClient", () => {
     it("returns null when Supabase isn't configured", async () => {
       const { getAuthClient } = await importFresh();
-      expect(getAuthClient()).toBeNull();
+      await expect(getAuthClient()).resolves.toBeNull();
     });
 
     it("creates and memoizes a single client once configured", async () => {
@@ -108,8 +108,8 @@ describe("auth-client", () => {
       const { createClient } = await import("@supabase/supabase-js");
       const { getAuthClient } = await importFresh();
 
-      const first = getAuthClient();
-      const second = getAuthClient();
+      const first = await getAuthClient();
+      const second = await getAuthClient();
 
       expect(first).not.toBeNull();
       expect(first).toBe(second);

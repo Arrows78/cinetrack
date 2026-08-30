@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { isTauriApp } from "@/shared/lib/platform";
 
@@ -25,6 +25,7 @@ export const authConfig = {
 };
 
 let authClient: SupabaseClient | null = null;
+let authClientPromise: Promise<SupabaseClient | null> | null = null;
 
 export function getAuthRedirectUrl(): string {
   if (isTauriApp()) {
@@ -53,20 +54,28 @@ export function getAuthRedirectUrl(): string {
 // closes off the common classic-XSS path that this would defend against,
 // the risk doesn't currently justify that cost. Revisit if the CSP ever
 // loosens or this app starts rendering untrusted HTML/scripts.
-export function getAuthClient(): SupabaseClient | null {
+// Dynamically imported: @supabase/supabase-js is a ~200KB dependency that a
+// build with auth unconfigured or optional-and-unused should never have to
+// fetch at all. The promise is cached so concurrent/repeated calls share one
+// in-flight import instead of re-triggering it.
+export function getAuthClient(): Promise<SupabaseClient | null> {
   if (!authConfig.configured || !supabaseUrl || !supabasePublishableKey) {
-    return null;
+    return Promise.resolve(null);
   }
 
-  authClient ??= createClient(supabaseUrl, supabasePublishableKey, {
-    auth: {
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      flowType: "pkce",
-      persistSession: true,
-      storageKey: "cinetrack.auth.session",
-    },
+  authClientPromise ??= import("@supabase/supabase-js").then(({ createClient }) => {
+    authClient ??= createClient(supabaseUrl, supabasePublishableKey, {
+      auth: {
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        flowType: "pkce",
+        persistSession: true,
+        storageKey: "cinetrack.auth.session",
+      },
+    });
+
+    return authClient;
   });
 
-  return authClient;
+  return authClientPromise;
 }

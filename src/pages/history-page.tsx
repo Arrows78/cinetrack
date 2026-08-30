@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { Virtuoso } from "react-virtuoso";
 import {
   History,
   Clapperboard,
@@ -160,32 +161,45 @@ export function HistoryPage() {
         ) : historyQuery.isError ? (
           <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
         ) : filteredHistory.length ? (
-          <div className="relative">
-            {/* Vertical connector */}
-            <div className="absolute left-[1.1875rem] top-2 bottom-2 w-px bg-foreground/[0.07]" />
-
-            {filteredHistory.map((item, i) => {
+          <Virtuoso
+            useWindowScroll
+            data={filteredHistory}
+            initialItemCount={Math.min(filteredHistory.length, 20)}
+            // `item` can momentarily be undefined here — Virtuoso's internal
+            // index bookkeeping trails one render behind when `data` shrinks
+            // (e.g. switching the type filter to a shorter list), not just
+            // when it grows via pagination.
+            computeItemKey={(index, item) => item?.id ?? index}
+            itemContent={(i, item) => {
+              if (!item) return null;
               const action = item.action;
               const config = actionConfig[action];
               const Icon = config.icon;
+              const isLast = i === filteredHistory.length - 1;
 
               return (
                 <motion.div
-                  key={item.id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04, type: "spring", stiffness: 220, damping: 28 }}
-                  className="relative flex gap-4 pb-5 last:pb-0"
+                  transition={{ delay: Math.min(i, 20) * 0.04, type: "spring", stiffness: 220, damping: 28 }}
+                  className="relative flex gap-4 pb-5"
                 >
-                  {/* Icon dot */}
-                  <div
-                    className={cn(
-                      "relative z-raised flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-full border",
-                      config.dot,
-                      config.ring
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
+                  {/* Icon dot, with its own connector segment reaching down
+                      to the next row — each mounted row draws its own
+                      segment instead of one absolutely-positioned line
+                      spanning the whole (now virtualized, partially
+                      unmounted) list. */}
+                  <div className="relative shrink-0">
+                    {!isLast && <div className="absolute left-[1.1875rem] top-2 -bottom-5 w-px bg-foreground/[0.07]" />}
+                    <div
+                      className={cn(
+                        "relative z-raised flex h-[2.375rem] w-[2.375rem] items-center justify-center rounded-full border",
+                        config.dot,
+                        config.ring
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
                   </div>
 
                   {/* Content */}
@@ -209,8 +223,8 @@ export function HistoryPage() {
                   </div>
                 </motion.div>
               );
-            })}
-          </div>
+            }}
+          />
         ) : (
           <EmptyState icon={History} title={t("history.noActivity")} description={t("history.noActivityDesc")} />
         )}

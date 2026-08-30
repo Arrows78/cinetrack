@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { QueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { MediaSummary, Season, Series } from "@/types/media";
 import type { TvTimeExport } from "../parse-export";
@@ -47,8 +48,13 @@ vi.mock("../parse-export", () => ({
   normalizeExport: () => exportData,
 }));
 
-const { importTvTimeExport, resolveRetryableSeries, resolveRetryableMovie, resolveRetryableWatchlist } =
-  await import("../tvtime-import-service");
+const {
+  importTvTimeExport,
+  resolveRetryableSeries,
+  resolveRetryableMovie,
+  resolveRetryableWatchlist,
+  invalidateTvTimeImportQueries,
+} = await import("../tvtime-import-service");
 
 function media(overrides: Partial<MediaSummary> = {}): MediaSummary {
   return {
@@ -842,5 +848,29 @@ describe("importTvTimeExport", () => {
       expect(summary.unmatched).toEqual(["Inception"]);
       expect(searchMock).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("invalidateTvTimeImportQueries", () => {
+  it("scopes invalidation to the active profile's own entities, not the whole local cache", async () => {
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    const queryClient = { invalidateQueries } as unknown as QueryClient;
+
+    await invalidateTvTimeImportQueries(queryClient, "profile-1");
+
+    const invalidatedKeys = invalidateQueries.mock.calls.map(([arg]) => (arg as { queryKey: unknown[] }).queryKey);
+    expect(invalidatedKeys).toEqual([
+      ["local", "history", "profile-1"],
+      ["local", "library", "profile-1"],
+      ["local", "libraryPage", "profile-1"],
+      ["local", "trackedSeries", "profile-1"],
+      ["local", "stats", "profile-1"],
+      ["local", "tracking", "profile-1"],
+      ["local", "calendar", "profile-1"],
+      ["local", "watchTonight", "profile-1"],
+    ]);
+    // Never the bare ["local"] prefix, which would also evict every other
+    // profile's unrelated cached data.
+    expect(invalidatedKeys.some((key) => key.length === 1)).toBe(false);
   });
 });

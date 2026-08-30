@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
-import { ActivityBarChart, type ActivityBarChartDatum } from "../activity-bar-chart";
+import { ActivityBarChart, type ActivityBarChartDatum } from "../activity-bar-chart-impl";
 import { ViewingHeatmap, type ViewingHeatmapBucket } from "../viewing-heatmap";
 
 // recharts' ResponsiveContainer measures its parent via a ResizeObserver and
