@@ -16,6 +16,7 @@ import { logger } from "@/shared/lib/logger";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { trackingService } from "@/features/tracking/tracking-service";
 import { notificationService } from "@/features/desktop/notification-service";
+import { syncService } from "@/features/sync/sync-service";
 import type { BootRecovery } from "@/features/desktop/boot-recovery-repository";
 import { errorMessage } from "@/shared/lib/errors";
 import { isTauriApp } from "@/shared/lib/platform";
@@ -50,6 +51,7 @@ export function App() {
     if (!isTauriApp()) return;
 
     let cleanup: (() => void) | undefined;
+    let cleanupSync: (() => void) | undefined;
     let disposed = false;
 
     void desktopService
@@ -64,6 +66,16 @@ export function App() {
       })
       .catch((error: unknown) => {
         logger.warn(`Desktop initialization failed: ${errorMessage(error)}`);
+      });
+
+    void syncService
+      .initialize(queryClient)
+      .then((value) => {
+        if (disposed) value?.();
+        else cleanupSync = value;
+      })
+      .catch((error: unknown) => {
+        logger.warn(`Cloud sync initialization failed: ${errorMessage(error)}`);
       });
 
     const checkBackgroundNotifications = async () => {
@@ -112,6 +124,7 @@ export function App() {
     return () => {
       disposed = true;
       cleanup?.();
+      cleanupSync?.();
       window.clearInterval(interval);
     };
   }, [queryClient]);
