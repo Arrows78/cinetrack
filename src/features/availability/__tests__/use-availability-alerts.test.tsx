@@ -17,12 +17,15 @@ const media: MediaSummary = {
 
 const alert: AvailabilityAlert = {
   id: "alert-1",
+  profileId: DEFAULT_PROFILE_ID,
   mediaId: media.id,
   mediaType: media.mediaType,
   title: media.title,
   region: "FR",
   providerIds: [8],
-} as AvailabilityAlert;
+  enabled: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
 
 const listAlertsMock = vi.fn(async (): Promise<AvailabilityAlert[]> => [alert]);
 const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<AvailabilityAlert | null>>(async () => null);
@@ -149,6 +152,85 @@ describe("useAvailabilityAlert", () => {
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.availabilityAlerts(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+  });
+});
+
+// A snapshot for the same media the `alert` fixture watches — the shared
+// top-level `snapshot` fixture deliberately references a different,
+// unrelated media item (mediaId 1) for the useAvailabilitySnapshots suite
+// below, so the join tests here need their own matching one.
+const matchingSnapshot: AvailabilitySnapshot = {
+  mediaId: alert.mediaId,
+  mediaType: alert.mediaType,
+  region: alert.region,
+  providerIds: [8],
+  checkedAt: "2026-01-01T00:00:00.000Z",
+};
+
+describe("computeAlertStatuses", () => {
+  it("puts an enabled alert with a matching provider in the snapshot into availableNow", async () => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const groups = computeAlertStatuses([alert], [matchingSnapshot]);
+
+    expect(groups.availableNow).toEqual([{ alert, matchedProviderIds: [8], available: true }]);
+    expect(groups.pending).toEqual([]);
+  });
+
+  it("puts an enabled alert with no matching snapshot provider into pending", async () => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const otherSnapshot: AvailabilitySnapshot = { ...matchingSnapshot, providerIds: [337] };
+    const groups = computeAlertStatuses([alert], [otherSnapshot]);
+
+    expect(groups.pending).toEqual([{ alert, matchedProviderIds: [], available: false }]);
+    expect(groups.availableNow).toEqual([]);
+  });
+
+  it("puts an enabled alert with no snapshot at all into pending", async () => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const groups = computeAlertStatuses([alert], []);
+
+    expect(groups.pending).toEqual([{ alert, matchedProviderIds: [], available: false }]);
+  });
+
+  it("ignores disabled alerts entirely", async () => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const groups = computeAlertStatuses([{ ...alert, enabled: false }], [matchingSnapshot]);
+
+    expect(groups).toEqual({ availableNow: [], pending: [] });
+  });
+
+  it("treats an alert with no provider selection as matching any provider currently in the snapshot", async () => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const noProviderAlert = { ...alert, providerIds: [] };
+    const groups = computeAlertStatuses([noProviderAlert], [matchingSnapshot]);
+
+    expect(groups.availableNow).toEqual([{ alert: noProviderAlert, matchedProviderIds: [8], available: true }]);
+  });
+});
+
+describe("useAvailabilityStatus", () => {
+  it("joins alerts and snapshots into availableNow/pending groups", async () => {
+    listSnapshotsMock.mockResolvedValueOnce([matchingSnapshot]);
+
+    const { useAvailabilityStatus } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAvailabilityStatus(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.isError).toBe(false);
+    expect(result.current.availableNow).toEqual([{ alert, matchedProviderIds: [8], available: true }]);
+    expect(result.current.pending).toEqual([]);
+  });
+
+  it("reports an aggregate isError when either underlying query fails", async () => {
+    listSnapshotsMock.mockRejectedValueOnce(new Error("boom"));
+
+    const { useAvailabilityStatus } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAvailabilityStatus(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

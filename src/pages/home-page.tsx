@@ -7,25 +7,19 @@ import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
-import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { StatCard } from "@/components/media/primitives/stat-card";
 import { CatalogueSections, CATALOGUE_SECTIONS } from "@/components/media/discover/catalogue-sections";
 import { BrowseByGenre, BrowseByPlatform } from "@/components/media/discover/catalogue-browse";
 import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
-import { PeopleYouWatchRails } from "@/components/media/detail/people-you-watch-rails";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { hasTmdbToken } from "@/shared/config/env";
 import { useHistory } from "@/features/history/use-history";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
-import { useWatchNext } from "@/features/progress/use-watch-next";
 import { useLibrary } from "@/features/library/use-library";
 import { useHomeFeed } from "@/features/media/use-media";
-import { useBecauseYouLiked } from "@/features/media/use-because-you-liked";
-import { useFavouriteGenreRail } from "@/components/media/detail/use-favourite-genre-rail";
-import { usePeopleYouWatch } from "@/features/media/use-people-you-watch";
-import { WatchNextSection } from "@/components/media/tracking/watch-next-section";
+import { TodayHub } from "@/components/media/home/today-hub";
 import { WeeklyAgendaSection } from "@/components/media/tracking/weekly-agenda-section";
 import { OnThisDaySection } from "@/components/media/activity/on-this-day-section";
 
@@ -56,10 +50,6 @@ function HomePageContent() {
   );
   const trackedSeriesQuery = useTrackedSeries();
   const historyQuery = useHistory();
-  const watchNext = useWatchNext(trackedSeriesQuery.data ?? []);
-  const becauseYouLiked = useBecauseYouLiked();
-  const favouriteGenreRail = useFavouriteGenreRail();
-  const peopleYouWatch = usePeopleYouWatch();
   const preferences = usePreferences();
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
   const library = libraryQuery.data ?? [];
@@ -188,13 +178,6 @@ function HomePageContent() {
 
   const hero = homeQuery.data?.trendingMovies[0];
 
-  const hasForYouContent =
-    watchNext.entries.length > 0 ||
-    (Boolean(becauseYouLiked.seedTitle) && becauseYouLiked.items.length > 0) ||
-    (Boolean(favouriteGenreRail.genre) && favouriteGenreRail.items.length > 0) ||
-    (Boolean(peopleYouWatch.topDirector) && peopleYouWatch.directorItems.length > 0) ||
-    (Boolean(peopleYouWatch.topActor) && peopleYouWatch.actorItems.length > 0);
-
   let sectionIndex = 0;
 
   return (
@@ -286,49 +269,13 @@ function HomePageContent() {
           nothing at all when disabled or when there's no match for today. */}
       <OnThisDaySection />
 
-      {/* "For You" zone — groups every personalized rail under one heading and
-          a tinted panel, instead of four independent top-level sections, so
-          personal content reads as one distinct block against the generic
-          catalogue browsing below it. */}
-      {hasForYouContent ? (
-        <section>
-          <SectionHeader title={t("home.forYou")} subtitle={t("home.forYouSubtitle")} index={++sectionIndex} />
-          <Panel tone="highlight" className="space-y-8">
-            {watchNext.entries.length > 0 ? (
-              <WatchNextSection entries={watchNext.entries} index={0} size="sub" />
-            ) : null}
-
-            {becauseYouLiked.seedTitle && becauseYouLiked.items.length > 0 ? (
-              <div>
-                <SectionHeader
-                  title={t("home.becauseYouLiked", { title: becauseYouLiked.seedTitle })}
-                  subtitle={t("home.becauseYouLikedSubtitle")}
-                  size="sub"
-                />
-                <MediaGrid items={becauseYouLiked.items} />
-              </div>
-            ) : null}
-
-            {favouriteGenreRail.genre && favouriteGenreRail.items.length > 0 ? (
-              <div>
-                <SectionHeader
-                  title={t("home.becauseYouLoveGenre", { genre: t(favouriteGenreRail.genre.labelKey) })}
-                  subtitle={t("home.becauseYouLoveGenreSubtitle")}
-                  size="sub"
-                />
-                <MediaGrid items={favouriteGenreRail.items} />
-              </div>
-            ) : null}
-
-            <PeopleYouWatchRails
-              topDirector={peopleYouWatch.topDirector}
-              directorItems={peopleYouWatch.directorItems}
-              topActor={peopleYouWatch.topActor}
-              actorItems={peopleYouWatch.actorItems}
-            />
-          </Panel>
-        </section>
-      ) : null}
+      {/* Today Hub — the daily cockpit: continue watching, up next, new
+          episodes, availability, alerts, a Watch Tonight teaser, a
+          personalized recommendation, and items needing action. Generalizes
+          the page's former "For You" panel (see git history) to the full
+          set of daily-relevant capabilities; self-contained, renders
+          nothing when every card is empty. */}
+      <TodayHub index={++sectionIndex} />
 
       {/* Compact "this week" personal agenda — releases, new episodes, and
           availability changes for the active profile (see

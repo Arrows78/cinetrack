@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { episodeProgressKeys } from "@/features/progress/use-progress";
@@ -95,6 +96,59 @@ export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
     .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
     .slice(0, limit);
   return useNextEpisodes(inProgress);
+}
+
+// A tracked series' resolved next episode counts as "new" (rather than an
+// existing backlog) for this many days after it airs — long enough to cover
+// a viewer who doesn't open the app daily, short enough that a show they
+// simply haven't touched in months doesn't masquerade as a fresh release.
+export const NEW_EPISODE_WINDOW_DAYS = 14;
+
+export interface TodayHubEpisodeGroups {
+  /** In-progress series whose resolved next episode aired more than NEW_EPISODE_WINDOW_DAYS ago — an existing backlog, same set useWatchNext already resolves. */
+  continueWatching: WatchNextEntry[];
+  /** Tracked series never started (0 watched episodes) with a resolved, ready-to-watch next episode. */
+  upNext: WatchNextEntry[];
+  /** In-progress series whose resolved next episode aired within the last NEW_EPISODE_WINDOW_DAYS — a fresh drop, not backlog. */
+  newEpisodes: WatchNextEntry[];
+}
+
+/**
+ * Splits every tracked series' resolved next episode into the three Today
+ * Hub groups, mutually exclusive by construction. Exported separately from
+ * useTodayHubEpisodes so the grouping rules are unit-testable without
+ * mocking the react-query chain behind useNextEpisodes — same pattern as
+ * weekly-agenda-service.ts's selectWeeklyAgendaEntries.
+ */
+export function partitionNextEpisodes(results: NextEpisodeResult[], now: Date): TodayHubEpisodeGroups {
+  const windowMs = NEW_EPISODE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const groups: TodayHubEpisodeGroups = { continueWatching: [], upNext: [], newEpisodes: [] };
+
+  for (const { series, nextEpisode, remaining } of results) {
+    if (!nextEpisode) continue;
+    const entry: WatchNextEntry = { series, nextEpisode, remaining };
+
+    if (series.watchedEpisodes === 0) {
+      groups.upNext.push(entry);
+      continue;
+    }
+
+    const airedAt = nextEpisode.airDate ? new Date(nextEpisode.airDate).getTime() : null;
+    const recentlyAired = airedAt !== null && now.getTime() - airedAt <= windowMs;
+    if (recentlyAired) groups.newEpisodes.push(entry);
+    else groups.continueWatching.push(entry);
+  }
+
+  return groups;
+}
+
+/** The Today Hub's "Continuer à regarder" / "À regarder ensuite" / "Nouveaux épisodes" cards, from one shared resolution pass over every tracked series. */
+export function useTodayHubEpisodes(
+  trackedSeries: TrackedSeriesItem[]
+): TodayHubEpisodeGroups & { isLoading: boolean; isError: boolean } {
+  const { results, isLoading } = useNextEpisodes(trackedSeries);
+  const groups = useMemo(() => partitionNextEpisodes(results, new Date()), [results]);
+  return { ...groups, isLoading, isError: results.some((result) => result.isError) };
 }
 
 export function useMarkWatchNext() {

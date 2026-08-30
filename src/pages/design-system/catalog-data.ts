@@ -631,6 +631,70 @@ export const componentInventory = [
     "Renders the shared trending/top-rated/upcoming rows used by both the home dashboard and Search's default browse state."
   ),
   component(
+    "TodayHub",
+    "components/media/home/today-hub.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Composes the home dashboard's daily cockpit — continue watching, up next, new episodes, availability, alerts, a Watch Tonight teaser, a personalized recommendation, and items needing action."
+  ),
+  component(
+    "UpNextSection",
+    "components/media/home/up-next-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Today Hub card for tracked series never started but ready to begin."
+  ),
+  component(
+    "NewEpisodesSection",
+    "components/media/home/new-episodes-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Today Hub card for a fresh episode on a show the profile is otherwise caught up on."
+  ),
+  component(
+    "AvailableNowSection",
+    "components/media/home/available-now-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Today Hub card listing availability alerts that just matched one of the profile's services."
+  ),
+  component(
+    "AlertsSection",
+    "components/media/home/alerts-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Today Hub card listing availability alerts still waiting for a provider match."
+  ),
+  component(
+    "WatchTonightTeaserSection",
+    "components/media/home/watch-tonight-teaser-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Today Hub teaser with a couple of Watch Tonight picks and a link into the full decision flow."
+  ),
+  component(
+    "PersonalizedRecommendationSection",
+    "components/media/home/personalized-recommendation-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Today Hub card grouping the because-you-liked, favorite-genre, and people-you-watch signals under one card."
+  ),
+  component(
+    "NeedsAttentionSection",
+    "components/media/home/needs-attention-section.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Today Hub card surfacing episode backlogs and long-forgotten planned library items."
+  ),
+  component(
     "CollectionProgressPanel",
     "components/media/detail/collection-progress-panel.tsx",
     "Media",

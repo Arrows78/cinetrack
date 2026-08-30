@@ -229,6 +229,126 @@ describe("useWatchNext inProgress filter", () => {
   });
 });
 
+describe("partitionNextEpisodes", () => {
+  const now = new Date("2026-06-15T00:00:00.000Z");
+  const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  it("groups a never-started series into upNext regardless of its next episode's air date", async () => {
+    const { partitionNextEpisodes } = await import("../use-watch-next");
+    const result = {
+      series: notStartedSeries,
+      nextEpisode: { ...nextEpisode, airDate: daysAgo(400) },
+      remaining: 10,
+      isLoading: false,
+      isError: false,
+    };
+
+    const groups = partitionNextEpisodes([result], now);
+
+    expect(groups.upNext).toEqual([{ series: notStartedSeries, nextEpisode: result.nextEpisode, remaining: 10 }]);
+    expect(groups.continueWatching).toEqual([]);
+    expect(groups.newEpisodes).toEqual([]);
+  });
+
+  it("groups an in-progress series whose next episode aired within the window into newEpisodes", async () => {
+    const { partitionNextEpisodes, NEW_EPISODE_WINDOW_DAYS } = await import("../use-watch-next");
+    const result = {
+      series: inProgressSeries,
+      nextEpisode: { ...nextEpisode, airDate: daysAgo(NEW_EPISODE_WINDOW_DAYS - 1) },
+      remaining: 7,
+      isLoading: false,
+      isError: false,
+    };
+
+    const groups = partitionNextEpisodes([result], now);
+
+    expect(groups.newEpisodes).toEqual([{ series: inProgressSeries, nextEpisode: result.nextEpisode, remaining: 7 }]);
+    expect(groups.continueWatching).toEqual([]);
+  });
+
+  it("groups an in-progress series whose next episode aired outside the window into continueWatching", async () => {
+    const { partitionNextEpisodes, NEW_EPISODE_WINDOW_DAYS } = await import("../use-watch-next");
+    const result = {
+      series: inProgressSeries,
+      nextEpisode: { ...nextEpisode, airDate: daysAgo(NEW_EPISODE_WINDOW_DAYS + 1) },
+      remaining: 7,
+      isLoading: false,
+      isError: false,
+    };
+
+    const groups = partitionNextEpisodes([result], now);
+
+    expect(groups.continueWatching).toEqual([
+      { series: inProgressSeries, nextEpisode: result.nextEpisode, remaining: 7 },
+    ]);
+    expect(groups.newEpisodes).toEqual([]);
+  });
+
+  it("treats the window boundary as still recently aired (inclusive)", async () => {
+    const { partitionNextEpisodes, NEW_EPISODE_WINDOW_DAYS } = await import("../use-watch-next");
+    const result = {
+      series: inProgressSeries,
+      nextEpisode: { ...nextEpisode, airDate: daysAgo(NEW_EPISODE_WINDOW_DAYS) },
+      remaining: 7,
+      isLoading: false,
+      isError: false,
+    };
+
+    const groups = partitionNextEpisodes([result], now);
+
+    expect(groups.newEpisodes).toHaveLength(1);
+    expect(groups.continueWatching).toHaveLength(0);
+  });
+
+  it("treats a missing air date as not recently aired, falling back to continueWatching", async () => {
+    const { partitionNextEpisodes } = await import("../use-watch-next");
+    const result = {
+      series: inProgressSeries,
+      nextEpisode: { ...nextEpisode, airDate: null },
+      remaining: 7,
+      isLoading: false,
+      isError: false,
+    };
+
+    const groups = partitionNextEpisodes([result], now);
+
+    expect(groups.continueWatching).toHaveLength(1);
+    expect(groups.newEpisodes).toHaveLength(0);
+  });
+
+  it("excludes results with no resolved next episode from every group", async () => {
+    const { partitionNextEpisodes } = await import("../use-watch-next");
+    const result = { series: inProgressSeries, nextEpisode: null, remaining: 7, isLoading: false, isError: false };
+
+    const groups = partitionNextEpisodes([result], now);
+
+    expect(groups).toEqual({ continueWatching: [], upNext: [], newEpisodes: [] });
+  });
+});
+
+describe("useTodayHubEpisodes", () => {
+  it("resolves every tracked series once and reports an aggregate isError when any of them failed", async () => {
+    // seriesList order maps 1:1 to the resolveNextEpisode call order (see
+    // useNextEpisodes), so these Once-mocks are consumed in the same order
+    // as [inProgressSeries, notStartedSeries] below rather than leaking into
+    // later tests the way a persistent mockImplementation would.
+    getSeriesDetailsMock
+      .mockResolvedValueOnce({ seasons: [{ seasonNumber: 1 }] } as never)
+      .mockRejectedValueOnce(new Error("boom"));
+
+    const { useTodayHubEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useTodayHubEpisodes([inProgressSeries, notStartedSeries]), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.isError).toBe(true);
+    expect(result.current.continueWatching).toEqual([{ series: inProgressSeries, nextEpisode, remaining: 7 }]);
+    expect(result.current.upNext).toEqual([]);
+  });
+});
+
 describe("useMarkWatchNext", () => {
   it("marks the episode watched via progressRepository.toggleEpisodeSeen", async () => {
     const { useMarkWatchNext } = await import("../use-watch-next");

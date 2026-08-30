@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Dices, Popcorn } from "lucide-react";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
@@ -16,10 +15,9 @@ import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { PLATFORMS } from "@/shared/constants/discover";
-import { queryKeys } from "@/shared/constants/query-keys";
-import { useActiveProfileId, usePreferences } from "@/features/preferences/use-preferences";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
-import { watchTonightService } from "@/features/watch-tonight";
+import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
 import { staggerDelayMs } from "@/shared/utils/animation";
 import type { Movie, Series } from "@/types/media";
 
@@ -64,7 +62,6 @@ function WatchTonightHeroPick({ media }: { media: Movie | Series }) {
 
 export function WatchTonightPage() {
   const { t } = useTranslation();
-  const profileId = useActiveProfileId();
   const genres = useMergedGenres();
   const preferences = usePreferences();
   const [genreId, setGenreId] = useState("");
@@ -77,25 +74,16 @@ export function WatchTonightPage() {
     provider === MY_SERVICES_VALUE ? preferredProviderIds : provider ? Number(provider) : undefined;
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
 
-  const query = useQuery({
-    queryKey: [
-      ...queryKeys.local.watchTonight(profileId),
-      genreId,
-      provider,
-      runtime,
-      seed,
-      preferredProviderIds.join(","),
+  const query = useWatchTonightPicks(
+    {
+      genreMovie: selectedGenre?.movieId || undefined,
+      genreSeries: selectedGenre?.seriesId || undefined,
+      provider: resolvedProvider,
+      maxRuntime: runtime ? Number(runtime) : undefined,
       hideWatched,
-    ],
-    queryFn: () =>
-      watchTonightService.pick({
-        genreMovie: selectedGenre?.movieId || undefined,
-        genreSeries: selectedGenre?.seriesId || undefined,
-        provider: resolvedProvider,
-        maxRuntime: runtime ? Number(runtime) : undefined,
-        hideWatched,
-      }),
-  });
+    },
+    seed
+  );
 
   const combined: Array<Movie | Series> = [...(query.data?.movies ?? []), ...(query.data?.series ?? [])];
   const isEmpty = combined.length === 0;
