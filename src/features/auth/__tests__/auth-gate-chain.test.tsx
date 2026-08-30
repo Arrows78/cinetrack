@@ -70,6 +70,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   authConfigMock.required = false;
   setActiveProfileMock.mockResolvedValue(undefined);
+  useCreateProfileForSupabaseUserMock.mockReturnValue({
+    create: vi.fn().mockResolvedValue(undefined),
+    isSaving: false,
+    error: null,
+  });
 });
 
 function renderWithQueryClient(children: React.ReactNode) {
