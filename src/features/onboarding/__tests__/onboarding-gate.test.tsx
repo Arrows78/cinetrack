@@ -177,6 +177,45 @@ describe("OnboardingGate", () => {
     expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "onboardingCompleted", value: true });
   });
 
+  it("keeps the app displayed through a later background refetch, instead of flashing loading or onboarding again", () => {
+    preferencesMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("boom"),
+      refetch: refetchPreferencesMock,
+      updatePreference: updatePreferenceMock,
+    });
+    const { rerender } = render(
+      <OnboardingGate>
+        <div data-testid="app" />
+      </OnboardingGate>
+    );
+    expect(screen.getByTestId("app")).toBeInTheDocument();
+
+    // A query that's never succeeded goes back through TanStack Query's
+    // "pending" status on every background refetch (e.g. one triggered by
+    // children's own observers mounting) — neither loading nor error nor
+    // success until it resolves again. The gate must not react to this.
+    preferencesMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: refetchPreferencesMock,
+      updatePreference: updatePreferenceMock,
+    });
+    rerender(
+      <OnboardingGate>
+        <div data-testid="app" />
+      </OnboardingGate>
+    );
+
+    expect(screen.getByTestId("app")).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t("onboarding.loading"))).not.toBeInTheDocument();
+    expect(screen.queryByTestId("onboarding-screen")).not.toBeInTheDocument();
+  });
+
   it("does not fire the silent mark-complete write once onboarding is already completed", () => {
     preferencesMock.mockReturnValue({
       data: { onboardingCompleted: true },
