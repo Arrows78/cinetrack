@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useLibraryMediaKeys } from "@/features/library/use-library";
 import { LoadingScreen } from "@/components/states/loading-screen";
-import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { OnboardingScreen } from "@/features/onboarding/onboarding-screen";
 
 /**
@@ -51,12 +50,15 @@ export function OnboardingGate({ children }: PropsWithChildren) {
   if (preferencesQuery.isLoading || libraryKeysQuery.isLoading) {
     return <LoadingScreen label={t("onboarding.loading")} />;
   }
-  if (preferencesQuery.isError) {
-    return <RemoteErrorState error={preferencesQuery.error} onRetry={() => void preferencesQuery.refetch()} />;
-  }
-  if (libraryKeysQuery.isError) {
-    return <RemoteErrorState error={libraryKeysQuery.error} onRetry={() => void libraryKeysQuery.refetch()} />;
-  }
+
+  // Every other SQLite-backed page in the app degrades in place on a failed
+  // read (see CLAUDE.md's browser-preview note) rather than blocking
+  // rendering — this gate sits above AppShell for every route, so a full-page
+  // error here would take the sidebar and the rest of the app down with it
+  // just to answer a single yes/no onboarding question. Fall through instead;
+  // whichever page actually needs the failed data still surfaces its own,
+  // correctly-scoped error state.
+  if (preferencesQuery.isError || libraryKeysQuery.isError) return children;
 
   if (!shouldShowOnboarding({ onboardingCompleted, hasExistingLibrary })) return children;
 

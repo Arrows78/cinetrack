@@ -96,13 +96,12 @@ describe("OnboardingGate", () => {
     expect(screen.getByText(i18n.t("onboarding.loading"))).toBeInTheDocument();
   });
 
-  it("shows a remote error state with working retry when preferences fail to load", () => {
-    const error = new Error("boom");
+  it("renders children instead of blocking the whole app when preferences fail to load", () => {
     preferencesMock.mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
-      error,
+      error: new Error("boom"),
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
     });
@@ -111,11 +110,11 @@ describe("OnboardingGate", () => {
         <div data-testid="app" />
       </OnboardingGate>
     );
-    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
-    expect(refetchPreferencesMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("app")).toBeInTheDocument();
+    expect(screen.queryByTestId("onboarding-screen")).not.toBeInTheDocument();
   });
 
-  it("shows a remote error state with working retry when the library-keys check fails", () => {
+  it("renders children instead of blocking the whole app when the library-keys check fails", () => {
     libraryMediaKeysMock.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -128,8 +127,8 @@ describe("OnboardingGate", () => {
         <div data-testid="app" />
       </OnboardingGate>
     );
-    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
-    expect(refetchLibraryKeysMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("app")).toBeInTheDocument();
+    expect(screen.queryByTestId("onboarding-screen")).not.toBeInTheDocument();
   });
 
   it("renders children once onboarding is already completed", () => {
