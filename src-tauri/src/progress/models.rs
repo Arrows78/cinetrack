@@ -46,7 +46,7 @@ pub struct SeriesInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct EpisodeProgress {
     pub id: String,
     pub profile_id: Option<String>,
@@ -62,7 +62,7 @@ pub struct EpisodeProgress {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct TrackedSeriesItem {
     pub id: String,
     pub profile_id: Option<String>,

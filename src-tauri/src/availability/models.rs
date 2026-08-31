@@ -17,7 +17,7 @@ pub struct MediaSummaryInput {
 /// from `src/types/media.ts` — that file no longer hand-declares this interface.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct AvailabilityAlert {
     pub id: String,
     pub profile_id: String,
@@ -34,7 +34,7 @@ pub struct AvailabilityAlert {
 /// from `src/types/media.ts` — that file no longer hand-declares this interface.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct AvailabilitySnapshot {
     pub media_id: i64,
     pub media_type: MediaType,

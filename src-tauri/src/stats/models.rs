@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct StatsTotals {
     pub movies_watched: i64,
     pub episodes_watched: i64,
@@ -18,7 +18,7 @@ pub struct StatsTotals {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct MonthlyActivityBucket {
     pub month: String,
     pub count: i64,
@@ -27,7 +27,7 @@ pub struct MonthlyActivityBucket {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct StatsOverview {
     pub totals: StatsTotals,
     pub monthly_activity: Vec<MonthlyActivityBucket>,
@@ -35,7 +35,7 @@ pub struct StatsOverview {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct YearlyActivityBucket {
     pub year: i64,
     pub movies_watched: i64,
@@ -45,7 +45,7 @@ pub struct YearlyActivityBucket {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct TitleRating {
     pub title: String,
     pub rating: f64,
@@ -53,7 +53,7 @@ pub struct TitleRating {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct BiggestBingeDay {
     pub day: String,
     pub count: i64,
@@ -61,7 +61,7 @@ pub struct BiggestBingeDay {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct HeatmapBucket {
     /// JS's Sunday-first 0-6, matching SQLite's own `strftime('%w', ...)`.
     pub day: i64,
@@ -71,7 +71,7 @@ pub struct HeatmapBucket {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct ActivityStats {
     pub current_streak_days: i64,
     pub longest_streak_days: i64,
@@ -82,7 +82,7 @@ pub struct ActivityStats {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct FavouriteGenre {
     pub name: String,
     pub count: i64,
@@ -90,7 +90,7 @@ pub struct FavouriteGenre {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct RewatchedTitle {
     pub title: String,
     pub count: i64,
@@ -98,7 +98,7 @@ pub struct RewatchedTitle {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryExtras {
     pub favourite_genres: Vec<FavouriteGenre>,
     pub average_user_rating: Option<f64>,
@@ -108,7 +108,7 @@ pub struct LibraryExtras {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct WatchForecast {
     /// Unwatched episodes across all tracked series.
     pub backlog_episodes: i64,
@@ -122,7 +122,7 @@ pub struct WatchForecast {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct MonthlyRecap {
     pub month: String,
     // Historical breakdown: count every watched/rewatched event that fell in
@@ -137,7 +137,7 @@ pub struct MonthlyRecap {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct ComfortTitle {
     pub title: String,
     pub count: i64,
@@ -145,7 +145,7 @@ pub struct ComfortTitle {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct RewatchStats {
     pub total_rewatches: i64,
     /// Rewatches as a percentage of every watch event (`watched` +
@@ -157,7 +157,7 @@ pub struct RewatchStats {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct RatingBucket {
     pub rating: f64,
     pub count: i64,
@@ -165,7 +165,7 @@ pub struct RatingBucket {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct RatingPeriodAverage {
     pub period: String,
     pub average: f64,
@@ -174,7 +174,7 @@ pub struct RatingPeriodAverage {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct RatingDistribution {
     // Current-state: user_rating is one mutable value per title.
     pub distribution: Vec<RatingBucket>,
@@ -185,7 +185,7 @@ pub struct RatingDistribution {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum MilestoneCategory {
     Episodes,
     Movies,
@@ -195,7 +195,7 @@ pub enum MilestoneCategory {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct WatchMilestone {
     pub id: String,
     pub category: MilestoneCategory,

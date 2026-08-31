@@ -6,7 +6,7 @@ use crate::models::MediaType;
 /// `src/types/media.ts` — that file no longer hand-declares this interface.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct CustomList {
     pub id: String,
     pub profile_id: String,
@@ -54,7 +54,7 @@ pub struct MediaSummaryInput {
 /// from `src/types/media.ts` — that file no longer hand-declares this interface.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct CustomListItem {
     pub id: String,
     pub list_id: String,

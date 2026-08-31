@@ -8,7 +8,7 @@ use crate::models::MediaType;
 /// already used by the frontend's (now server-side) Library filters.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum LibrarySort {
     #[default]
     Recent,
@@ -21,7 +21,7 @@ pub enum LibrarySort {
 /// frontend sent verbatim.
 #[derive(Debug, Clone, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryListParams {
     #[ts(optional)]
     pub media_type: Option<MediaType>,
@@ -40,7 +40,7 @@ pub struct LibraryListParams {
 
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryPage {
     pub items: Vec<LibraryItem>,
     pub next_cursor: Option<String>,
@@ -134,7 +134,7 @@ pub struct MediaSummaryInput {
 /// — that file no longer hand-declares this interface.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryItem {
     pub id: String,
     pub profile_id: String,
@@ -218,7 +218,7 @@ impl TryFrom<LibraryRow> for LibraryItem {
 /// whole `LibraryItem`s when the caller only ever reads the key.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryMediaKey {
     pub media_id: i64,
     pub media_type: MediaType,
@@ -229,7 +229,7 @@ pub struct LibraryMediaKey {
 /// read reduced to a count in JS.
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryStatusCounts {
     pub planned: i64,
     pub watching: i64,
@@ -247,7 +247,7 @@ pub struct LibraryStatusCounts {
 /// a client-side post-filter over this command's (much smaller) result.
 #[derive(Debug, Clone, Default, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryFilterParams {
     #[ts(optional)]
     pub media_type: Option<MediaType>,

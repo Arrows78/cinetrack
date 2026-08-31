@@ -84,3 +84,14 @@ rfd = { version = "0.15", default-features = false }
 [dev-dependencies]
 tauri = { version = "2", features = ["tray-icon", "test"] }
 wiremock = "0.6"
+
+[features]
+# ts-rs's #[ts(export)] compiles to a real #[test] fn, so a plain `cargo
+# test` — CI's cargo:test, or any dev running tests directly — would
+# otherwise rewrite src/generated/dto on every run in ts-rs's raw,
+# unformatted style, fighting with contract:generate-ts-bindings's
+# prettier pass and making that directory look like it's constantly
+# drifting. Gating the attribute behind this feature means only
+# contract:generate-ts-bindings (which passes --features export-bindings)
+# ever touches those files.
+export-bindings = []

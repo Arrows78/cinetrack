@@ -7,7 +7,7 @@ use crate::error::ApiError;
 /// IPC boundary section), re-exported as `LibraryStatus` from `src/types/media.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum LibraryStatus {
     Planned,
     Watching,

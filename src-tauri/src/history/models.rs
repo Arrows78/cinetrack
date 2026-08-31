@@ -14,7 +14,7 @@ use crate::models::MediaType;
 /// Generates `src/generated/dto/HistoryAction.ts`, re-exported as
 /// `HistoryAction` from `src/types/media.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum HistoryAction {
     #[serde(rename = "movie:watched")]
     MovieWatched,
@@ -71,7 +71,7 @@ impl HistoryAction {
 /// hand-declares this interface.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct ViewingHistoryItem {
     pub id: String,
     pub media_id: i64,

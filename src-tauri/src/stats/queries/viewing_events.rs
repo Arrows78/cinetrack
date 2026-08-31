@@ -6,7 +6,7 @@ use crate::models::MediaType;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum ViewingEventType {
     Watched,
     Unwatched,
@@ -25,7 +25,7 @@ impl ViewingEventType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct ViewingEvent {
     pub id: String,
     pub profile_id: String,
@@ -182,7 +182,7 @@ pub(in crate::stats) async fn list_on_this_day_events_impl(
 /// my past watches", scoped to one (media_id, media_type).
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct ViewingEventNote {
     pub id: String,
     pub event_type: ViewingEventType,

@@ -102,7 +102,7 @@ fn append_line(level: &str, message: &str) {
 /// `DiagnosticsLayer` from `src/features/desktop/diagnostics-commands.ts`.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, PartialOrd, Ord, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum DiagnosticsLayer {
     Frontend,
     Backend,
@@ -143,7 +143,7 @@ where
 /// `CommandTimingSummary` from `src/features/desktop/diagnostics-commands.ts`.
 #[derive(Debug, Clone, Serialize, PartialEq, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct CommandTimingSummary {
     pub layer: DiagnosticsLayer,
     pub command: String,
@@ -158,7 +158,7 @@ pub struct CommandTimingSummary {
 /// `DiagnosticsSummary` from `src/features/desktop/diagnostics-commands.ts`.
 #[derive(Debug, Clone, Default, Serialize, PartialEq, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct DiagnosticsSummary {
     pub commands: Vec<CommandTimingSummary>,
     pub total_lines_parsed: usize,

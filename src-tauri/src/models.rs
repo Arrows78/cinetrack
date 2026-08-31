@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// `src/types/media.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum MediaType {
     Movie,
     Series,

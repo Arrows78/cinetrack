@@ -5,7 +5,7 @@ use crate::error::ApiError;
 /// Generates `src/generated/dto/Theme.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum Theme {
     Dark,
     Light,
@@ -15,7 +15,7 @@ pub enum Theme {
 /// from `src/shared/constants/colors.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum AccentColor {
     Violet,
     Blue,
@@ -30,7 +30,7 @@ pub enum AccentColor {
 /// Generates `src/generated/dto/Language.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum Language {
     En,
     Fr,
@@ -39,7 +39,7 @@ pub enum Language {
 /// Generates `src/generated/dto/SearchScope.ts`, re-exported as `SearchScope` from `src/types/media.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum SearchScope {
     All,
     Movie,
@@ -49,7 +49,7 @@ pub enum SearchScope {
 /// Generates `src/generated/dto/LibraryViewMode.ts`.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub enum LibraryViewMode {
     Grid,
     List,
@@ -61,7 +61,7 @@ pub enum LibraryViewMode {
 /// superset, so this generated file is NOT re-exported as `UserProfile`.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct UserProfile {
     pub id: String,
     pub name: Option<String>,
@@ -87,7 +87,7 @@ impl Default for UserProfile {
 /// from `src/types/media.ts` — that file no longer hand-declares this interface.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct UserPreferences {
     pub theme: Theme,
     pub accent_color: AccentColor,
