@@ -69,8 +69,7 @@ pub(in crate::stats) async fn get_stats_overview_impl(
     // These reads are independent and read-only. Let the SQLite pool service
     // them concurrently instead of paying their wall-clock latencies serially.
     let (event_totals, library_totals, monthly_rows) =
-        tokio::try_join!(event_totals, library_totals, monthly_rows)
-        .map_err(ApiError::from)?;
+        tokio::try_join!(event_totals, library_totals, monthly_rows).map_err(ApiError::from)?;
 
     let monthly_activity = monthly_activity::zero_fill(&monthly_rows, month_labels);
 

@@ -71,14 +71,14 @@ const unzipAsync = (buffer: Uint8Array, limits: ZipExtractionLimits): Promise<Un
           return;
         }
         resolve(entries);
-      },
+      }
     );
   });
 
 /** Extracts every .csv entry from a .zip File, decoded as UTF-8 text. */
 export async function extractCsvEntries(
   file: File,
-  limits: ZipExtractionLimits = DEFAULT_EXTRACTION_LIMITS,
+  limits: ZipExtractionLimits = DEFAULT_EXTRACTION_LIMITS
 ): Promise<ZipCsvEntry[]> {
   const buffer = new Uint8Array(await file.arrayBuffer());
   const entries = await unzipAsync(buffer, limits);

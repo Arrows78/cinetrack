@@ -68,7 +68,7 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
     // Execute them together so large profiles no longer pay three scans in series.
     let (distribution, average_by_month, average_by_year) =
         tokio::try_join!(distribution, average_by_month, average_by_year)
-        .map_err(ApiError::from)?;
+            .map_err(ApiError::from)?;
 
     Ok(RatingDistribution {
         distribution: distribution
