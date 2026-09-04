@@ -10,7 +10,7 @@
 
 <!-- How did you verify this works? `pnpm validate` runs everything below in one go. -->
 
-- [ ] `pnpm validate` (lint, format:check, typecheck, test, build, cargo check/clippy/test)
+- [ ] `pnpm validate` (contracts, architecture, lint, formatting, typecheck, coverage, build, bundle budget, cargo checks/tests)
 - [ ] Manually exercised the change in `pnpm tauri dev` or `pnpm dev`
 
 ## Screenshots

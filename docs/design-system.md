@@ -2,6 +2,12 @@
 
 The CineTrack design system is the shared language for building the desktop application. It combines implementation tokens, React primitives, product patterns, accessibility requirements, and contribution rules.
 
+Application UI should use semantic typography roles from `tailwind.config.ts`
+(`text-page-title`, `text-heading-lg`, `text-heading-md`, `text-body`,
+`text-caption`, and related roles). Raw Tailwind sizes remain available for
+editorial or data-dense exceptions, but new page and section headings should
+prefer the shared roles so hierarchy remains consistent across routes.
+
 The living visual catalog is available at `/design-system` in development builds. This document covers the durable architecture and governance that should remain readable outside the application.
 
 ## Goals
