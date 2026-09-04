@@ -2,6 +2,61 @@ use std::path::{Path, PathBuf};
 
 use crate::error::ApiError;
 
+fn validate_backup_file_path(path: &str) -> Result<PathBuf, ApiError> {
+    let candidate = PathBuf::from(path);
+    if !candidate.is_absolute() {
+        return Err(ApiError::bad_request("Backup paths must be absolute"));
+    }
+    if candidate
+        .components()
+        .any(|component| component == std::path::Component::ParentDir)
+    {
+        return Err(ApiError::bad_request(
+            "Backup paths cannot contain parent-directory segments",
+        ));
+    }
+    let file_name = candidate
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| ApiError::bad_request("Backup path must name a file"))?;
+    let allowed = file_name == "backup.json"
+        || file_name == "latest.json"
+        || file_name == "pre-restore.json"
+        || (file_name.starts_with("auto-") && file_name.ends_with(".json"))
+        || (file_name.ends_with(".json.tmp"));
+    if !allowed {
+        return Err(ApiError::bad_request("Path is not a CineTrack backup file"));
+    }
+    // Never follow a pre-existing symlink supplied by the frontend. This
+    // keeps the user-selected backup directory flexible while preventing a
+    // backup operation from unexpectedly reading, overwriting, or deleting a
+    // different file elsewhere on disk.
+    if let Ok(metadata) = std::fs::symlink_metadata(&candidate)
+        && metadata.file_type().is_symlink()
+    {
+        return Err(ApiError::bad_request(
+            "Backup file paths cannot be symbolic links",
+        ));
+    }
+    Ok(candidate)
+}
+
+fn validate_backup_directory_path(directory: &str) -> Result<PathBuf, ApiError> {
+    let candidate = PathBuf::from(directory);
+    if !candidate.is_absolute() {
+        return Err(ApiError::bad_request("Backup directories must be absolute"));
+    }
+    if candidate
+        .components()
+        .any(|component| component == std::path::Component::ParentDir)
+    {
+        return Err(ApiError::bad_request(
+            "Backup directories cannot contain parent-directory segments",
+        ));
+    }
+    Ok(candidate)
+}
+
 pub(super) fn write_backup_file_sync(path: &Path, contents: &str) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -52,7 +107,7 @@ fn io_error(context: &str, path: &str, error: std::io::Error) -> ApiError {
 }
 
 pub(super) async fn write(path: String, contents: String) -> Result<(), ApiError> {
-    let path_buf = PathBuf::from(&path);
+    let path_buf = validate_backup_file_path(&path)?;
     let path_for_error = path.clone();
     tokio::task::spawn_blocking(move || write_backup_file_sync(&path_buf, &contents))
         .await
@@ -61,7 +116,7 @@ pub(super) async fn write(path: String, contents: String) -> Result<(), ApiError
 }
 
 pub(super) async fn read(path: String) -> Result<Option<String>, ApiError> {
-    let path_buf = PathBuf::from(&path);
+    let path_buf = validate_backup_file_path(&path)?;
     let path_for_error = path.clone();
     tokio::task::spawn_blocking(move || read_backup_file_sync(&path_buf))
         .await
@@ -70,7 +125,7 @@ pub(super) async fn read(path: String) -> Result<Option<String>, ApiError> {
 }
 
 pub(super) async fn list(directory: String) -> Result<Vec<String>, ApiError> {
-    let dir_buf = PathBuf::from(&directory);
+    let dir_buf = validate_backup_directory_path(&directory)?;
     let dir_for_error = directory.clone();
     tokio::task::spawn_blocking(move || list_backup_directory_sync(&dir_buf))
         .await
@@ -79,7 +134,7 @@ pub(super) async fn list(directory: String) -> Result<Vec<String>, ApiError> {
 }
 
 pub(super) async fn remove(path: String) -> Result<(), ApiError> {
-    let path_buf = PathBuf::from(&path);
+    let path_buf = validate_backup_file_path(&path)?;
     let path_for_error = path.clone();
     tokio::task::spawn_blocking(move || remove_backup_file_sync(&path_buf))
         .await
