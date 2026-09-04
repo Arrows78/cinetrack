@@ -98,7 +98,7 @@ export function WatchTonightPage() {
   return (
     <div className="space-y-6">
       <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <h1 className="font-display text-3xl font-bold">{t("watchTonight.title")}</h1>
+        <h1 className="font-display text-page-title">{t("watchTonight.title")}</h1>
         <p className="text-muted-foreground">{t("watchTonight.description")}</p>
       </header>
       <Panel className="grid gap-3 md:grid-cols-4 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>

@@ -60,7 +60,7 @@ export function PeoplePage() {
   return (
     <div className="space-y-6">
       <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <h1 className="font-display text-3xl font-bold">{t("people.title")}</h1>
+        <h1 className="font-display text-page-title">{t("people.title")}</h1>
         <p className="text-muted-foreground">{t("people.description")}</p>
       </header>
       <Panel asChild tone="card" className="flex items-center gap-2 px-4 py-0 animate-in">
@@ -75,7 +75,7 @@ export function PeoplePage() {
           />
         </label>
       </Panel>
-      {!isSearching ? <h2 className="font-display text-xl font-semibold">{t("people.popularTitle")}</h2> : null}
+      {!isSearching ? <h2 className="font-display text-heading-md">{t("people.popularTitle")}</h2> : null}
       {active.isLoading ? <GridSkeleton count={8} /> : null}
       {active.isError ? <RemoteErrorState error={active.error} onRetry={() => void active.refetch()} /> : null}
       {showEmpty ? (

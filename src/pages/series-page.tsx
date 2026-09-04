@@ -18,7 +18,7 @@ export function SeriesPage() {
     <div className="space-y-6">
       <header className="flex items-center gap-3">
         <Tv className="size-7 text-primary" />
-        <h1 className="font-display text-3xl font-bold">{t("nav.series")}</h1>
+        <h1 className="font-display text-page-title">{t("nav.series")}</h1>
       </header>
 
       <FilterBar

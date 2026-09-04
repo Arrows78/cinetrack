@@ -18,7 +18,7 @@ export function MoviesPage() {
     <div className="space-y-6">
       <header className="flex items-center gap-3">
         <Film className="size-7 text-primary" />
-        <h1 className="font-display text-3xl font-bold">{t("nav.movies")}</h1>
+        <h1 className="font-display text-page-title">{t("nav.movies")}</h1>
       </header>
 
       <FilterBar

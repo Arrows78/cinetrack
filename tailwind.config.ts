@@ -15,13 +15,13 @@ const config: Config = {
         // note" register of a film synopsis, not a display face.
         serif: ["Playfair Display", "Georgia", "serif"],
       },
-      // Semantic type roles, additive to Tailwind's default text-xs..text-9xl
-      // scale (still available and still what every existing component
-      // uses). This is the target vocabulary for new/future UI — adopting it
-      // across existing components is a separate, larger follow-up.
+      // Semantic type roles. Keep raw text sizes available for exceptional
+      // editorial layouts, but use these roles for application UI so page
+      // hierarchy stays consistent across surfaces.
       fontSize: {
         "display-hero": ["3.5rem", { lineHeight: "1.05", letterSpacing: "-0.02em", fontWeight: "800" }],
         "display-title": ["2.25rem", { lineHeight: "1.15", letterSpacing: "-0.01em", fontWeight: "700" }],
+        "page-title": ["1.875rem", { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "700" }],
         "heading-lg": ["1.5rem", { lineHeight: "1.25", fontWeight: "600" }],
         "heading-md": ["1.25rem", { lineHeight: "1.3", fontWeight: "600" }],
         "heading-sm": ["1.125rem", { lineHeight: "1.35", fontWeight: "600" }],

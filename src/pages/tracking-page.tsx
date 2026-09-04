@@ -10,7 +10,7 @@ export function TrackingPage() {
       <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
         <div className="flex items-center gap-3">
           <CalendarDays className="size-7 text-primary" />
-          <h1 className="font-display text-3xl font-bold">{t("tracking.title")}</h1>
+          <h1 className="font-display text-page-title">{t("tracking.title")}</h1>
         </div>
         <p className="mt-1 text-muted-foreground">{t("tracking.description")}</p>
       </header>
