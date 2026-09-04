@@ -415,6 +415,15 @@ mod tests {
         .await
         .unwrap();
 
+        // The AFTER DELETE sync triggers (018-add-sync-outbox.sql) fire for
+        // every row this cascades into, and would otherwise try to queue an
+        // outbox row referencing the profile_id being deleted right now —
+        // failing the outbox row's own FK against `profiles`. Real callers
+        // suppress capture first (see profiles::repository::remove_impl).
+        sqlx::query("UPDATE sync_control SET suppress_outbox = 1 WHERE id = 1")
+            .execute(&pool)
+            .await
+            .unwrap();
         sqlx::query("DELETE FROM profiles WHERE uuid = 'default'")
             .execute(&pool)
             .await
@@ -454,6 +463,6 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 17);
+        assert_eq!(version.0, migrations.last().unwrap().version);
     }
 }
