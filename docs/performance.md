@@ -118,6 +118,12 @@ it's the same "informational, compare same-machine before/after" contract.
 
 ## Pull-request baseline
 
+Frontend bundles are also guarded in CI by `pnpm bundle:check`. The current
+budget is 4 MiB for the complete `dist/` directory and 450 KiB for any single
+JavaScript chunk. These are regression tripwires, not targets: when a feature
+legitimately needs more code, split it behind a route boundary or document the
+exception alongside the change.
+
 The Linux Rust CI job runs the same ignored benchmark after the full Rust test
 suite and uploads `database-benchmark.json` plus `database-benchmark.md` as the
 `database-performance-baseline` artifact. This records the p50/p95 baseline for

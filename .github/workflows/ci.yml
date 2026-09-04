@@ -67,6 +67,9 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
+      - name: Check bundle budget
+        run: pnpm bundle:check
+
       - name: Test with coverage
         run: |
           mkdir -p test-results
