@@ -1671,7 +1671,7 @@ mod tests {
     #[tokio::test]
     async fn read_backup_from_path_returns_none_for_a_missing_file() {
         let dir = temp_test_dir();
-        let path = dir.join("missing.json").to_str().unwrap().to_string();
+        let path = dir.join("backup.json").to_str().unwrap().to_string();
 
         let result = read_backup_from_path(path).await.unwrap();
         assert_eq!(result, None);
@@ -1715,7 +1715,7 @@ mod tests {
     #[tokio::test]
     async fn remove_backup_file_deletes_an_existing_file() {
         let dir = temp_test_dir();
-        let path = dir.join("to-remove.json");
+        let path = dir.join("backup.json");
         std::fs::write(&path, "{}").unwrap();
 
         remove_backup_file(path.to_str().unwrap().to_string())
@@ -1729,7 +1729,7 @@ mod tests {
     #[tokio::test]
     async fn remove_backup_file_is_a_no_op_for_a_file_that_is_already_gone() {
         let dir = temp_test_dir();
-        let path = dir.join("already-gone.json");
+        let path = dir.join("backup.json");
 
         // Never created — must not error, matching the idempotent-removal
         // contract callers (pruneOldAutoBackups) rely on.
