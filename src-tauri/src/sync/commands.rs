@@ -3,7 +3,9 @@ use tauri::State;
 
 use crate::error::ApiError;
 
-use super::models::{RemoteSyncChange, SyncConflict, SyncMutationAck, SyncOutboxMutation, SyncStatus};
+use super::models::{
+    RemoteSyncChange, SyncConflict, SyncMutationAck, SyncOutboxMutation, SyncStatus,
+};
 use super::service;
 
 #[tauri::command]
@@ -70,7 +72,9 @@ mod tests {
             .connect("sqlite::memory:")
             .await
             .unwrap();
-        crate::database::migrations::run_migrations(&pool).await.unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
         pool
     }
 
