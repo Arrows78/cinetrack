@@ -20,6 +20,7 @@ const {
   usePreferencesMock,
   setActiveProfileMock,
   useCreateProfileForSupabaseUserMock,
+  cloudProfileRepositoryMock,
 } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   authConfigMock: { required: false } as { required: boolean },
@@ -27,6 +28,7 @@ const {
   usePreferencesMock: vi.fn(),
   setActiveProfileMock: vi.fn(),
   useCreateProfileForSupabaseUserMock: vi.fn(),
+  cloudProfileRepositoryMock: { get: vi.fn(), save: vi.fn() },
 }));
 
 vi.mock("@/features/auth/use-auth", () => ({
@@ -62,6 +64,10 @@ vi.mock("@/features/preferences/preferences-repository", () => ({
   },
 }));
 
+vi.mock("@/features/auth/cloud-profile-repository", () => ({
+  cloudProfileRepository: cloudProfileRepositoryMock,
+}));
+
 beforeAll(async () => {
   await i18n.changeLanguage("en");
 });
@@ -75,6 +81,8 @@ beforeEach(() => {
     isSaving: false,
     error: null,
   });
+  cloudProfileRepositoryMock.get.mockResolvedValue(null);
+  cloudProfileRepositoryMock.save.mockResolvedValue(undefined);
 });
 
 function renderWithQueryClient(children: React.ReactNode) {
@@ -191,11 +199,18 @@ describe("ProfileGate", () => {
   const resolvedProfileId = "profile-1";
 
   function loadedProfileQuery(data: unknown) {
-    return { data, isLoading: false, isError: false, error: null, refetch: vi.fn() };
+    return { data, isLoading: false, isSuccess: true, isError: false, error: null, refetch: vi.fn() };
   }
 
   function loadedPreferencesQuery(activeProfileId: string) {
-    return { data: { activeProfileId }, isLoading: false, isError: false, error: null, refetch: vi.fn() };
+    return {
+      data: { activeProfileId },
+      isLoading: false,
+      isSuccess: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
   }
 
   it("renders children immediately without querying when auth is not required", () => {
@@ -234,6 +249,7 @@ describe("ProfileGate", () => {
     useProfileForSupabaseUserMock.mockReturnValue({
       data: undefined,
       isLoading: true,
+      isSuccess: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -257,6 +273,7 @@ describe("ProfileGate", () => {
     usePreferencesMock.mockReturnValue({
       data: undefined,
       isLoading: true,
+      isSuccess: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -279,6 +296,7 @@ describe("ProfileGate", () => {
     useProfileForSupabaseUserMock.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isSuccess: false,
       isError: true,
       error: new Error("profile lookup failed"),
       refetch,
@@ -304,6 +322,7 @@ describe("ProfileGate", () => {
     usePreferencesMock.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isSuccess: false,
       isError: true,
       error: new Error("preferences read failed"),
       refetch,
@@ -315,12 +334,12 @@ describe("ProfileGate", () => {
       </ProfileGate>
     );
 
-    expect(screen.getByText(i18n.t("errors.catalogUnavailable"))).toBeInTheDocument();
+    expect(await screen.findByText(i18n.t("errors.catalogUnavailable"))).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: i18n.t("errors.retry") }));
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it("renders CreateProfileScreen when there is no resolved profile", () => {
+  it("renders CreateProfileScreen when there is no resolved profile", async () => {
     authConfigMock.required = true;
     useAuthMock.mockReturnValue({ session: { user: { id: supabaseUserId } } });
     useProfileForSupabaseUserMock.mockReturnValue(loadedProfileQuery(undefined));
@@ -332,7 +351,7 @@ describe("ProfileGate", () => {
       </ProfileGate>
     );
 
-    expect(screen.getByTestId("mock-create-profile-screen")).toHaveTextContent(supabaseUserId);
+    expect(await screen.findByTestId("mock-create-profile-screen")).toHaveTextContent(supabaseUserId);
     expect(screen.queryByTestId("child")).not.toBeInTheDocument();
   });
 
@@ -354,7 +373,7 @@ describe("ProfileGate", () => {
     await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith(resolvedProfileId, supabaseUserId));
   });
 
-  it("renders children once the active profile matches the resolved profile", () => {
+  it("renders children once the active profile matches the resolved profile", async () => {
     authConfigMock.required = true;
     useAuthMock.mockReturnValue({ session: { user: { id: supabaseUserId } } });
     useProfileForSupabaseUserMock.mockReturnValue(loadedProfileQuery({ id: resolvedProfileId }));
@@ -366,7 +385,7 @@ describe("ProfileGate", () => {
       </ProfileGate>
     );
 
-    expect(screen.getByTestId("child")).toBeInTheDocument();
+    expect(await screen.findByTestId("child")).toBeInTheDocument();
     expect(setActiveProfileMock).not.toHaveBeenCalled();
   });
 });
