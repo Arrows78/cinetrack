@@ -13,15 +13,13 @@ describe("useImageCache", () => {
     prefetchMock.mockReset();
   });
 
-  it("filters out null/undefined paths and builds both w500 and original urls for each", () => {
+  it("filters out null/undefined paths and builds poster urls by default", () => {
     renderHook(() => useImageCache(["/poster-a.jpg", null, undefined, "/poster-b.jpg"]));
 
     expect(prefetchMock).toHaveBeenCalledTimes(1);
     expect(prefetchMock).toHaveBeenCalledWith([
       buildTmdbImageUrl("/poster-a.jpg", "w500"),
-      buildTmdbImageUrl("/poster-a.jpg", "original"),
       buildTmdbImageUrl("/poster-b.jpg", "w500"),
-      buildTmdbImageUrl("/poster-b.jpg", "original"),
     ]);
   });
 
@@ -49,9 +47,16 @@ describe("useImageCache", () => {
     expect(prefetchMock).toHaveBeenCalledTimes(2);
     expect(prefetchMock).toHaveBeenLastCalledWith([
       buildTmdbImageUrl("/poster-a.jpg", "w500"),
-      buildTmdbImageUrl("/poster-a.jpg", "original"),
       buildTmdbImageUrl("/poster-c.jpg", "w500"),
-      buildTmdbImageUrl("/poster-c.jpg", "original"),
+    ]);
+  });
+
+  it("supports explicit variants without prefetching unused sizes", () => {
+    renderHook(() => useImageCache(["/poster-a.jpg", "/backdrop-a.jpg"], ["w500", "original"]));
+
+    expect(prefetchMock).toHaveBeenCalledWith([
+      buildTmdbImageUrl("/poster-a.jpg", "w500"),
+      buildTmdbImageUrl("/backdrop-a.jpg", "original"),
     ]);
   });
 });
