@@ -1,5 +1,3 @@
-/* global console, process */
-
 import { readFile } from "node:fs/promises";
 
 const files = [
