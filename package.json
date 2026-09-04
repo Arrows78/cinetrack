@@ -43,6 +43,7 @@
     "contract:generate": "node scripts/generate-tauri-command-names.mjs",
     "contract:check": "node scripts/generate-tauri-command-names.mjs --check && node scripts/check-contract-drift.mjs && node scripts/check-tauri-command-signatures.mjs",
     "architecture:check": "node scripts/check-feature-boundaries.mjs",
+    "version:check": "node scripts/check-version-consistency.mjs",
     "cargo:check": "cargo check --locked --manifest-path src-tauri/Cargo.toml",
     "cargo:clippy": "cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "cargo:clippy:fix": "cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets --fix -- -D warnings",

@@ -49,6 +49,9 @@ jobs:
       - name: Check generated Tauri contracts
         run: pnpm contract:check
 
+      - name: Check version consistency
+        run: pnpm version:check
+
       - name: Check frontend architecture boundaries
         run: pnpm architecture:check
 
