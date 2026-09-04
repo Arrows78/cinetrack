@@ -3,16 +3,7 @@ import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { filterHiddenIfWatched } from "@/shared/utils/library-set";
 import type { HomeFeed, LibraryItem, MediaSummary } from "@/types/media";
-
-export const CATALOGUE_SECTIONS = [
-  { key: "trendingSeries", titleKey: "home.trendingSeries", subtitleKey: "home.trendingSeriesSubtitle" },
-  { key: "topRatedSeries", titleKey: "home.topRatedSeries", subtitleKey: "home.topRatedSeriesSubtitle" },
-  { key: "onTheAirSeries", titleKey: "home.onTheAirSeries", subtitleKey: "home.onTheAirSeriesSubtitle" },
-  { key: "trendingMovies", titleKey: "home.trendingMovies", subtitleKey: "home.trendingMoviesSubtitle" },
-  { key: "topRatedMovies", titleKey: "home.topRatedMovies", subtitleKey: "home.topRatedMoviesSubtitle" },
-  { key: "nowPlayingMovies", titleKey: "home.nowPlayingMovies", subtitleKey: "home.nowPlayingMoviesSubtitle" },
-  { key: "upcomingMovies", titleKey: "home.upcomingMovies", subtitleKey: "home.upcomingMoviesSubtitle" },
-] as const satisfies ReadonlyArray<{ key: keyof HomeFeed; titleKey: string; subtitleKey: string }>;
+import { CATALOGUE_SECTIONS } from "./catalogue-sections-data";
 
 // Shared between the home dashboard and Search's default (no-query) browse
 // state so both stay in lockstep — see CLAUDE.md's rule against

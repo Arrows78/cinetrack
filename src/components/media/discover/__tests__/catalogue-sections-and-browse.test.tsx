@@ -3,7 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
-import { CATALOGUE_SECTIONS, CatalogueSections } from "@/components/media/discover/catalogue-sections";
+import { CatalogueSections } from "@/components/media/discover/catalogue-sections";
+import { CATALOGUE_SECTIONS } from "@/components/media/discover/catalogue-sections-data";
 import { BrowseByGenre, BrowseByPlatform } from "@/components/media/discover/catalogue-browse";
 import { PLATFORMS } from "@/shared/constants/discover";
 import { staggerDelayMs } from "@/shared/utils/animation";

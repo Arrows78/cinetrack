@@ -55,8 +55,8 @@ vi.mock("@/components/media/discover/catalogue-sections", () => ({
   CatalogueSections: ({ startIndex }: { startIndex: number }) => (
     <div data-testid="catalogue-sections" data-start-index={startIndex} />
   ),
-  CATALOGUE_SECTIONS: [{}, {}],
 }));
+vi.mock("@/components/media/discover/catalogue-sections-data", () => ({ CATALOGUE_SECTIONS: [{}, {}] }));
 
 vi.mock("@/components/media/discover/catalogue-browse", () => ({
   BrowseByGenre: ({ startIndex }: { startIndex: number }) => (
