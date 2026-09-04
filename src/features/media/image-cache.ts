@@ -3,17 +3,38 @@ import { logger } from "@/shared/lib/logger";
 const CACHE_NAME = "cinetrack-images-v1";
 const META_KEY = "cinetrack.image-cache.meta.v1";
 const LIMIT = 250;
+const PREFETCH_CONCURRENCY = 6;
 export const imageCache = {
   async prefetch(urls: Array<string | null | undefined>) {
     if (!("caches" in window)) return;
     const cache = await caches.open(CACHE_NAME);
-    const meta = JSON.parse(localStorage.getItem(META_KEY) ?? "{}") as Record<string, number>;
-    for (const url of [...new Set(urls.filter((url): url is string => Boolean(url)))]) {
-      if (!(await cache.match(url)))
-        await cache.add(url).catch((error) => {
-          logger.warn(`Failed to cache image ${url}: ${error}`);
-        });
-      meta[url] = Date.now();
+    let meta: Record<string, number> = {};
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(META_KEY) ?? "{}");
+      if (parsed && typeof parsed === "object") {
+        meta = Object.fromEntries(
+          Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === "number")
+        );
+      }
+    } catch {
+      logger.warn("Image cache metadata was invalid and has been reset");
+    }
+    const uniqueUrls = [...new Set(urls.filter((url): url is string => Boolean(url)))];
+    for (let index = 0; index < uniqueUrls.length; index += PREFETCH_CONCURRENCY) {
+      const batch = uniqueUrls.slice(index, index + PREFETCH_CONCURRENCY);
+      await Promise.all(
+        batch.map(async (url) => {
+          if (!(await cache.match(url))) {
+            try {
+              await cache.add(url);
+            } catch (error) {
+              logger.warn(`Failed to cache image ${url}: ${error}`);
+              return;
+            }
+          }
+          meta[url] = Date.now();
+        })
+      );
     }
     const sorted = Object.entries(meta).sort((a, b) => b[1] - a[1]);
     for (const [url] of sorted.slice(LIMIT)) {
