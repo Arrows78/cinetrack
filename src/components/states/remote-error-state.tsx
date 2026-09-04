@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
 import { logger } from "@/shared/lib/logger";
-import { errorMessage } from "@/shared/lib/errors";
+import { errorCategory, errorMessage } from "@/shared/lib/errors";
 
 interface RemoteErrorStateProps {
   error: unknown;
@@ -15,8 +15,9 @@ interface RemoteErrorStateProps {
 export function RemoteErrorState({ error, onRetry }: RemoteErrorStateProps) {
   const { t } = useTranslation();
   const message = errorMessage(error);
-  const authenticationError = /TMDB\s+(401|403)|token/i.test(message);
-  const localDatabaseError = /sql\.(execute|select|load|close) not allowed|plugin:sql|sqlite|database/i.test(message);
+  const category = errorCategory(error);
+  const authenticationError = category === "authentication";
+  const localDatabaseError = category === "localDatabase";
 
   useEffect(() => {
     if (message) logger.error(`Remote error state: ${message}`);
