@@ -67,7 +67,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 | Validation             | Zod                                                                    |
 | Internationalisation   | i18next, react-i18next (English, French)                               |
 | Animation and icons    | Framer Motion, Lucide React                                            |
-| Testing                | Vitest, Testing Library, `cargo test`, Playwright visual regression       |
+| Testing                | Vitest, Testing Library, `cargo test`, Playwright visual regression    |
 
 ## 🏗️ Architecture
 
@@ -187,8 +187,8 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 | `pnpm cargo:coverage`     | Runs `cargo llvm-cov --branch` for per-file Rust coverage (needs a `nightly` toolchain — see `CLAUDE.md`; not run in CI). |
 | `pnpm validate:frontend`  | Runs `lint`, `format:check`, `typecheck`, `test:coverage`, and `build`.                                                   |
 | `pnpm validate:backend`   | Runs `cargo:check`, `cargo:clippy`, `cargo:format:check`, and `cargo:test`.                                               |
-| `pnpm version:check`      | Ensures frontend, Cargo and Tauri manifest versions stay aligned.                                                  |
-| `pnpm bundle:check`       | Enforces the frontend `dist/` and JavaScript chunk size budgets.                                                  |
+| `pnpm version:check`      | Ensures frontend, Cargo and Tauri manifest versions stay aligned.                                                         |
+| `pnpm bundle:check`       | Enforces the frontend `dist/` and JavaScript chunk size budgets.                                                          |
 | `pnpm validate`           | Runs `validate:frontend` then `validate:backend` — the full chain, and the same checks CI runs.                           |
 | `pnpm tauri dev`          | Starts the desktop application in development mode.                                                                       |
 | `pnpm tauri build`        | Creates desktop bundles for the current platform.                                                                         |
