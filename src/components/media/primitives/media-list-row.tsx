@@ -63,8 +63,9 @@ export function MediaListRow({
   const showFinishedBar = !showProgress && alreadySeen;
 
   return (
-    <Tile asChild className="mb-2 flex items-center gap-3 p-2.5 transition-colors hover:bg-foreground/[0.03] sm:p-3">
+    <Tile className="mb-2 flex items-center gap-3 p-2.5 transition-colors hover:bg-foreground/[0.03] sm:p-3">
       <Link
+        className="flex min-w-0 flex-1 items-center gap-3"
         to={media.mediaType === "movie" ? "/movies/$movieId" : "/series/$seriesId"}
         params={media.mediaType === "movie" ? { movieId: String(media.id) } : { seriesId: String(media.id) }}
       >
@@ -109,13 +110,12 @@ export function MediaListRow({
             </div>
           ) : null}
         </div>
-
-        {media.mediaType === "movie" ? (
-          <SeenToggle media={media} />
-        ) : (
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        )}
       </Link>
+      {media.mediaType === "movie" ? (
+        <SeenToggle media={media} />
+      ) : (
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      )}
     </Tile>
   );
 }

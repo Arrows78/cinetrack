@@ -29,7 +29,7 @@ export function AppShell() {
   const location = useRouterState({ select: (state) => state.location });
   const { data: preferences, updatePreference } = usePreferences();
 
-  const canGoBack = location.pathname !== "/";
+  const canGoBack = /^\/(movies|series|people)\/[^/]+/.test(location.pathname);
   const sidebarCollapsed = preferences?.sidebarCollapsed ?? false;
 
   const handleToggleSidebar = async () => {

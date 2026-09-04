@@ -1,4 +1,3 @@
-import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -23,14 +22,6 @@ export interface MediaCardProgress {
   seriesStatus?: string | null;
 }
 
-// Stop the click from also activating the card's wrapping <Link> — these
-// buttons live inside it so they can overlay the poster, not so navigating
-// away is also part of "toggle library"/"toggle seen".
-function stopCardNavigation(event: MouseEvent): void {
-  event.preventDefault();
-  event.stopPropagation();
-}
-
 const quickActionButtonClassName = cn(
   "flex size-8 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-transform duration-base hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-default disabled:opacity-50",
   MEDIA_POSTER_OVERLAY_CLASSNAME.chip
@@ -50,8 +41,7 @@ function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
           aria-label={label}
           aria-pressed={isInLibrary}
           disabled={isSaving}
-          onClick={(event) => {
-            stopCardNavigation(event);
+          onClick={() => {
             void toggle();
           }}
           className={quickActionButtonClassName}
@@ -84,8 +74,7 @@ function SeenQuickAction({ media }: { media: MediaSummary }) {
         aria-label={label}
         aria-pressed={Boolean(seenQuery.data)}
         disabled={seenQuery.isSaving}
-        onClick={(event) => {
-          stopCardNavigation(event);
+        onClick={() => {
           void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
         }}
         className={cn(quickActionButtonClassName, seenQuery.data && "bg-success text-success-foreground")}
@@ -163,8 +152,6 @@ function MediaCardInner({
           </span>
           {formatRating(media.rating)}
         </div>
-
-        <MediaCardQuickActions media={media} />
 
         {/* Type chip — no separate "Seen" badge: the finished bottom bar
             (bg-success, full width) already says that, and showing both
@@ -251,23 +238,26 @@ export function MediaCard({
       whileTap={{ scale: 0.97 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
     >
-      {media.mediaType === "movie" ? (
-        <Link
-          to="/movies/$movieId"
-          params={{ movieId: String(media.id) }}
-          className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <MediaCardInner media={media} progress={progress} alreadySeen={alreadySeen} />
-        </Link>
-      ) : (
-        <Link
-          to="/series/$seriesId"
-          params={{ seriesId: String(media.id) }}
-          className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <MediaCardInner media={media} progress={progress} alreadySeen={alreadySeen} />
-        </Link>
-      )}
+      <div className="relative">
+        {media.mediaType === "movie" ? (
+          <Link
+            to="/movies/$movieId"
+            params={{ movieId: String(media.id) }}
+            className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <MediaCardInner media={media} progress={progress} alreadySeen={alreadySeen} />
+          </Link>
+        ) : (
+          <Link
+            to="/series/$seriesId"
+            params={{ seriesId: String(media.id) }}
+            className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <MediaCardInner media={media} progress={progress} alreadySeen={alreadySeen} />
+          </Link>
+        )}
+        <MediaCardQuickActions media={media} />
+      </div>
     </motion.div>
   );
 }
