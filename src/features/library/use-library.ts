@@ -151,6 +151,11 @@ export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaTy
     queryKey: [...queryKeys.local.library(profileId), "has", mediaId, mediaType],
     queryFn: () => libraryRepository.has(mediaId, mediaType),
     enabled: options?.enabled ?? true,
+    // Card quick actions are mounted by every visible grid item. Keep the
+    // presence check warm for a short window so virtualization and route
+    // transitions do not turn the same local lookup into repeated IPC calls.
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
   });
 }
 
