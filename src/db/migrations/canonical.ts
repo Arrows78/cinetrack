@@ -8,6 +8,7 @@ import m014 from "../../../src-tauri/src/database/migrations/014-add-smart-lists
 import m015 from "../../../src-tauri/src/database/migrations/015-add-saved-filters.sql?raw";
 import m016 from "../../../src-tauri/src/database/migrations/016-index-large-library-stats.sql?raw";
 import m017 from "../../../src-tauri/src/database/migrations/017-library-cursor-pagination-indexes.sql?raw";
+import m018 from "../../../src-tauri/src/database/migrations/018-add-sync-outbox.sql?raw";
 import type { Migration } from "./types";
 
 const statementMarker = "-- cinetrack:statement";
@@ -53,4 +54,16 @@ export function extractCanonicalMigrations(sources: readonly string[]): readonly
   return parsed;
 }
 
-export const migrations = extractCanonicalMigrations([m001, m009, m010, m011, m012, m013, m014, m015, m016, m017]);
+export const migrations = extractCanonicalMigrations([
+  m001,
+  m009,
+  m010,
+  m011,
+  m012,
+  m013,
+  m014,
+  m015,
+  m016,
+  m017,
+  m018,
+]);

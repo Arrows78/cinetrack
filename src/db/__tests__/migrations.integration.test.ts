@@ -41,6 +41,10 @@ describe("runMigrations against real SQLite", () => {
         "saved_filters",
         "seen_movies",
         "smart_lists",
+        "sync_control",
+        "sync_entity_state",
+        "sync_metadata",
+        "sync_outbox",
         "tracked_series",
         "viewing_events",
       ].sort()
@@ -167,6 +171,13 @@ describe("runMigrations against real SQLite", () => {
          VALUES ('sm1', 'alex', 'My Smart List', '{}', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
       );
 
+      // The AFTER DELETE sync triggers (018-add-sync-outbox.sql) fire for
+      // every row a profile delete cascades into, and would otherwise try to
+      // queue an outbox row referencing the profile_id being deleted right
+      // now — failing the outbox row's own FK against `profiles`. Real
+      // callers must suppress capture first (see
+      // profiles::repository::remove_impl in the Rust crate).
+      sqlite.exec("UPDATE sync_control SET suppress_outbox = 1 WHERE id = 1");
       sqlite.exec("DELETE FROM profiles WHERE uuid = 'alex'");
 
       expect(sqlite.prepare("SELECT * FROM library_items WHERE profile_id = 'alex'").all()).toHaveLength(0);
