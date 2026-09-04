@@ -36,7 +36,7 @@ function PersonCard({ person, index }: { person: PersonSummary; index: number })
           <img
             className="aspect-[2/3] w-full rounded-2xl object-cover"
             src={buildTmdbImageUrl(person.profilePath, "w500") ?? placeholderUrl(500, 750, "Portrait")}
-            alt={person.name}
+            alt=""
           />
           <h2 className="mt-3 font-semibold">{person.name}</h2>
           <p className="text-sm text-muted-foreground">{person.knownForDepartment ?? t("people.fallbackDepartment")}</p>

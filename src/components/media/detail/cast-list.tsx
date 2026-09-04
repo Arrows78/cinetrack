@@ -12,7 +12,7 @@ export function CastList({ cast }: { cast: CastMember[] }) {
         <Card key={member.id} className="flex items-center gap-3 rounded-3xl p-3">
           <img
             src={buildTmdbImageUrl(member.profilePath, "w185") ?? placeholderUrl(200, 300, "Cast")}
-            alt={member.name}
+            alt=""
             className="h-16 w-16 rounded-2xl object-cover"
           />
           <div className="min-w-0">

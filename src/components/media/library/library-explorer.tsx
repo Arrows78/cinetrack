@@ -526,6 +526,7 @@ export function LibraryExplorer({
             <FilterBar
               value={typeFilter}
               onChange={setTypeFilter}
+              groupLabel={t("library.filterType")}
               options={[
                 { value: "all", label: t("settings.all") },
                 { value: "series", label: t("nav.series") },
@@ -536,6 +537,7 @@ export function LibraryExplorer({
           <FilterBar
             value={statusFilter}
             onChange={setStatusFilter}
+            groupLabel={t("library.filterStatus")}
             options={statusOptions.map((status) => ({
               value: status,
               label: status === "all" ? t("settings.all") : t(`library.statuses.${status}`),
@@ -544,6 +546,7 @@ export function LibraryExplorer({
           <FilterBar
             value={sort}
             onChange={setSort}
+            groupLabel={t("library.sortBy")}
             options={[
               { value: "recent", label: t("library.recent") },
               { value: "title", label: t("library.title") },

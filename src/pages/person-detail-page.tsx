@@ -18,7 +18,7 @@ export function PersonDetailPage() {
         <img
           className="h-48 w-32 rounded-2xl object-cover"
           src={buildTmdbImageUrl(query.data.profilePath, "w500") ?? placeholderUrl(500, 750, "Portrait")}
-          alt={query.data.name}
+          alt=""
         />
         <div>
           <p className="text-sm text-primary">{query.data.knownForDepartment}</p>
