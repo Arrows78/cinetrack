@@ -67,7 +67,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 | Validation             | Zod                                                                    |
 | Internationalisation   | i18next, react-i18next (English, French)                               |
 | Animation and icons    | Framer Motion, Lucide React                                            |
-| Testing                | Vitest, Testing Library, `cargo test`                                  |
+| Testing                | Vitest, Testing Library, `cargo test`, Playwright visual regression       |
 
 ## 🏗️ Architecture
 
@@ -89,7 +89,7 @@ flowchart LR
 - Local repositories (one per domain: library, progress, history, preferences, profiles, collections, availability, stats, …) are thin `invoke()` wrappers; the actual SQL, transactions, and cascades live in Rust commands (`src-tauri/src/commands/`), all of it in SQLite (`sqlite:app.db`).
 - SQLite is only reachable from inside the Tauri webview — a plain browser tab has no access to Tauri's IPC bridge, even when it's pointed at the same dev server `pnpm tauri dev` uses. Every local-data hook already tolerates a failed query (none use React Query's suspense mode), so the UI still renders outside Tauri for layout/styling work; reads/writes to SQLite just fail silently. A small non-blocking banner flags this, see [`src/components/desktop/browser-preview-banner.tsx`](src/components/desktop/browser-preview-banner.tsx).
 
-See [`docs/architecture.md`](docs/architecture.md) for the full request-to-database walkthrough (the Rust command → repository → hook → page shape every domain follows), the error-handling contract, and how to add a new feature domain. See [`docs/design-system.md`](docs/design-system.md) for UI tokens and component rules, and [`docs/auth.md`](docs/auth.md) for the optional Supabase account-sync setup.
+See [`docs/architecture.md`](docs/architecture.md) for the full request-to-database walkthrough (the Rust command → repository → hook → page shape every domain follows), the error-handling contract, and how to add a new feature domain. See [`docs/design-system.md`](docs/design-system.md) for UI tokens and component rules, [`docs/ci.md`](docs/ci.md) for the CI gates and bundle budgets, and [`docs/auth.md`](docs/auth.md) for the optional Supabase account-sync setup.
 
 ## 📦 Prerequisites
 
@@ -187,6 +187,8 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 | `pnpm cargo:coverage`     | Runs `cargo llvm-cov --branch` for per-file Rust coverage (needs a `nightly` toolchain — see `CLAUDE.md`; not run in CI). |
 | `pnpm validate:frontend`  | Runs `lint`, `format:check`, `typecheck`, `test:coverage`, and `build`.                                                   |
 | `pnpm validate:backend`   | Runs `cargo:check`, `cargo:clippy`, `cargo:format:check`, and `cargo:test`.                                               |
+| `pnpm version:check`      | Ensures frontend, Cargo and Tauri manifest versions stay aligned.                                                  |
+| `pnpm bundle:check`       | Enforces the frontend `dist/` and JavaScript chunk size budgets.                                                  |
 | `pnpm validate`           | Runs `validate:frontend` then `validate:backend` — the full chain, and the same checks CI runs.                           |
 | `pnpm tauri dev`          | Starts the desktop application in development mode.                                                                       |
 | `pnpm tauri build`        | Creates desktop bundles for the current platform.                                                                         |
@@ -289,9 +291,6 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 - [ ] **`TRACKING` — Add historical watch-date backfilling.**
       When marking an older movie or episode as watched, offer **Watched now** and **Choose date**. For seasons, allow users to assign historical dates efficiently instead of opening every episode individually.
 
-- [x] **`TRACKING` — Add an explicit “Up to date” state for TV shows.**
-      Separate shows with an available unwatched episode from shows where every currently aired episode has been watched. Show the latter under **Up to date**, with the next known air date when available.
-
 - [ ] **`TRACKING` — Show watched date next to episode air date.**
       Build on the existing air-date display with information such as **Aired Mar 12 · Watched Mar 26 · 14 days later** to make catch-up gaps visible.
 
@@ -299,9 +298,6 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
       When marking a full season watched, allow choosing how dates are assigned: **Today**, **One selected date**, or individual dates afterwards. Keep episode-level corrections possible.
 
 #### Streaming services
-
-- [x] **`STREAMING` — Add profile-level “My streaming services”.**
-      Let each profile declare which services it subscribes to in Settings — Netflix, Prime Video, Disney+, Max, Apple TV+, etc. Use these preferences to prioritise **Watch Tonight**, Discover and **Where to watch** based on what is actually accessible to that profile.
 
 - [ ] **`STREAMING` — Add a provider-aware availability alert editor.**
       When enabling an availability alert, allow **Any streaming service**, **My streaming services**, or a custom selection of providers. Let users override the default on a per-title basis.
@@ -339,71 +335,17 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
 
 #### Onboarding & desktop experience
 
-- [x] **`UX` — Add onboarding for the no-token path.**
-      Now that local features work without a TMDB token, make this explicit during first run. Explain what works locally, what TMDB unlocks, and offer two clear actions: **Add a TMDB token now** and **Set it up later in Settings**.
-
 - [ ] **`UX` — Add a “System” theme mode.**
       Add **System** alongside the existing Light and Dark modes and automatically follow operating-system appearance changes.
-
-- [x] **`UX` — Show app version and build information.**
-      Display the CineTrack version and build number in Settings and make the information easy to copy for bug reports or diagnostics.
-
-- [x] **`UX` — Expose image-cache maintenance in Settings.**
-      Show the current image-cache size and provide a **Clear image cache** action, including the amount of disk space that will be recovered.
 
 ### 🟡 P2 — Power features
 
 P2 focuses on users with larger libraries and longer viewing histories, while making existing CineTrack data more useful.
 
-#### Library & lists
-
-- [x] **`LIBRARY` — Add smart lists.**
-      Create automatically updated lists from rules such as **Unwatched + Horror + under 100 min**, **My Services + rating ≥ 8**, or **Series with episodes waiting**.
-
-- [x] **`LIBRARY` — Add saved filters.**
-      Save reusable views such as **Short movies on my services**, **Paused shows**, or **Favourite sci-fi** and reopen them in one click.
-
-- [x] **`LIBRARY` — Add removable active-filter chips.**
-      Display active filters directly above filtered Library and Search results. Let users remove individual conditions without reopening the filter controls.
-
-#### Discovery
-
-- [x] **`DISCOVERY` — Add franchise and collection progress.**
-      For TMDB movie collections, show progress such as **3 / 8 watched** with watched, planned and missing entries. Add an action to **Add unwatched movies to library/list**.
-
-- [x] **`DISCOVERY` — Add people-based personal discovery.**
-      Use viewing history to surface recommendations such as **Movies from directors you watch most**, **More with actors you like**, and similar personalised rails.
-
-- [x] **`DISCOVERY` — Add “Hide watched” to discovery surfaces.**
-      Give users a persistent option to hide already watched titles from Discover and Watch Tonight when they specifically want something new.
-
-#### Calendar
-
-- [x] **`CALENDAR` — Add relative release countdowns.**
-      Display chips such as **Tomorrow**, **In 3 days**, or **In 2 weeks** alongside the exact release date in Calendar and Upcoming views.
-
-- [x] **`CALENDAR` — Add a weekly personal agenda.**
-      Provide a compact **This week** view containing tracked movie releases, season premieres, upcoming episodes and relevant availability changes for the active profile.
-
 #### Personal history & insights
-
-- [x] **`INSIGHTS` — Add “On this day”.**
-      Add a small, opt-in Home surface showing what the user watched on the same date in previous years, for example **On August 21, 2023 you watched Oppenheimer**. Reuse existing viewing-history data rather than introducing a new tracking mechanism.
-
-- [x] **`INSIGHTS` — Add a dedicated monthly recap.**
-      Build on existing statistics with a summary of movies watched, episodes watched, watch time, top-rated title, favourite genre and biggest binge for the month.
-
-- [x] **`INSIGHTS` — Expand rewatch analytics.**
-      Build beyond the existing most-rewatched record with total rewatches, rewatch share, favourite comfort titles and rewatch activity over time.
 
 - [ ] **`INSIGHTS` — Add director and actor statistics.**
       Show the directors and actors that appear most frequently across the user's viewing history. _Deferred: no credits data is cached client-side today, and fetching it for every watched title isn't cheap enough for a v1 — worth reconsidering alongside a proper credits cache._
-
-- [x] **`INSIGHTS` — Add rating distribution and evolution.**
-      Show personal rating distribution, average rating by month/year and how rating behaviour evolves over time.
-
-- [x] **`INSIGHTS` — Add watch milestones.**
-      Surface meaningful milestones such as **1,000 episodes watched**, **500 hours tracked**, **100 different directors**, or **50 completed series**. _Director-count milestones are on hold for the same reason as director/actor statistics above; episode, movie, hour, and completed-series milestones are live._
 
 - [ ] **`INSIGHTS` — Add shareable monthly and milestone cards.**
       Extend the existing Wrapped image-export system to monthly recaps and selected personal milestones without requiring a social account.
@@ -476,7 +418,10 @@ Before submitting a change, run:
 pnpm validate
 ```
 
-This chains lint, format:check, typecheck, test, build, and the Rust `cargo check`/`clippy`/`fmt:check`/`test` — the same checks CI runs.
+This chains contract and architecture checks, lint, formatting, typecheck,
+coverage, build, bundle budgets, and the Rust `cargo check`/`clippy`/`fmt:check`/
+`test`/contract checks — the same checks CI runs. Functional E2E coverage is
+not included yet; the current Playwright suite is visual-only by design.
 
 ## 🎞️ TMDB attribution
 

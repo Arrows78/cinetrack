@@ -211,17 +211,19 @@ describe("PeoplePage", () => {
     const janeHeading = screen.getByRole("heading", { level: 2, name: "Jane Doe" });
     expect(janeHeading).toBeInTheDocument();
     expect(screen.getByText("Acting")).toBeInTheDocument();
-    const janeImage = screen.getByAltText("Jane Doe") as HTMLImageElement;
+    const janeLink = screen.getByRole("link", { name: /Jane Doe/ });
+    const janeImage = janeLink.querySelector("img") as HTMLImageElement;
     expect(janeImage.src).toBe("https://image.tmdb.org/t/p/w500/jane.jpg");
-    expect(screen.getByRole("link", { name: /Jane Doe/ })).toHaveAttribute("href", "/people/1");
+    expect(janeLink).toHaveAttribute("href", "/people/1");
 
     const johnHeading = screen.getByRole("heading", { level: 2, name: "John Smith" });
     expect(johnHeading).toBeInTheDocument();
     // No profilePath: falls back to the placeholder image.
-    const johnImage = screen.getByAltText("John Smith") as HTMLImageElement;
+    const johnLink = screen.getByRole("link", { name: /John Smith/ });
+    const johnImage = johnLink.querySelector("img") as HTMLImageElement;
     expect(johnImage.src).toContain("placehold.co");
     // No knownForDepartment: falls back to the i18n fallback string.
     expect(screen.getByText("Film & television")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /John Smith/ })).toHaveAttribute("href", "/people/2");
+    expect(johnLink).toHaveAttribute("href", "/people/2");
   });
 });

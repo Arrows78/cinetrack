@@ -154,13 +154,11 @@ describe("AppShell", () => {
       expect(navigateSpy).toHaveBeenCalledWith({ to: "/people" });
     });
 
-    it("falls back to / for any other unrecognized path", () => {
+    it("does not render a back button on a non-detail path", () => {
       routerState.pathname = "/settings";
       render(<AppShell />);
 
-      screen.getAllByRole("button", { name: i18n.t("common.back") })[0]!.click();
-
-      expect(navigateSpy).toHaveBeenCalledWith({ to: "/" });
+      expect(screen.queryByRole("button", { name: i18n.t("common.back") })).not.toBeInTheDocument();
     });
   });
 

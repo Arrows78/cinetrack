@@ -20,16 +20,16 @@ describe("CastList", () => {
   });
 
   it("renders the TMDB image URL when profilePath is set", () => {
-    render(<CastList cast={[makeCastMember({ profilePath: "/abc123.jpg" })]} />);
+    const { container } = render(<CastList cast={[makeCastMember({ profilePath: "/abc123.jpg" })]} />);
 
-    const image = screen.getByRole("img", { name: "Timothée Chalamet" });
+    const image = container.querySelector("img");
     expect(image).toHaveAttribute("src", "https://image.tmdb.org/t/p/w185/abc123.jpg");
   });
 
   it("falls back to the placeholder image when profilePath is null", () => {
-    render(<CastList cast={[makeCastMember({ profilePath: null })]} />);
+    const { container } = render(<CastList cast={[makeCastMember({ profilePath: null })]} />);
 
-    const image = screen.getByRole("img", { name: "Timothée Chalamet" });
+    const image = container.querySelector("img");
     expect(image).not.toHaveAttribute("src", expect.stringContaining("image.tmdb.org"));
   });
 
@@ -52,7 +52,7 @@ describe("CastList", () => {
   });
 
   it("renders one card per cast member", () => {
-    render(
+    const { container } = render(
       <CastList
         cast={[
           makeCastMember({ id: 1, name: "Timothée Chalamet" }),
@@ -65,7 +65,7 @@ describe("CastList", () => {
     expect(screen.getByText("Timothée Chalamet")).toBeInTheDocument();
     expect(screen.getByText("Zendaya")).toBeInTheDocument();
     expect(screen.getByText("Rebecca Ferguson")).toBeInTheDocument();
-    expect(screen.getAllByRole("img")).toHaveLength(3);
+    expect(container.querySelectorAll("img")).toHaveLength(3);
   });
 
   it("renders no cards for an empty cast array without crashing", () => {

@@ -1,6 +1,6 @@
 # Release signing
 
-`.github/workflows/release.yml` builds unsigned Linux/Windows/macOS installers on every manual run or `v*` tag push. A manual run (Actions tab → Release build → Run workflow) only uploads them as workflow artifacts. A `v*` tag push additionally publishes them to a **draft** GitHub Release attached to that tag — draft on purpose, so nothing goes out until you review it and click "Publish release" yourself (see "Publishing a release" below). It reads the signing secrets below via `${{ secrets.* }}`; none exist yet, so the Tauri CLI silently skips signing and notarization. Add a secret under **Settings → Secrets and variables → Actions → Repository secrets** and the corresponding step starts signing automatically — no workflow changes needed.
+`.github/workflows/release.yml` builds Linux/Windows/macOS installers on every manual run or `v*` tag push. A manual run (Actions tab → Release build → Run workflow) only uploads them as workflow artifacts. A `v*` tag push additionally publishes them to a **draft** GitHub Release attached to that tag — draft on purpose, so nothing goes out until you review it and click "Publish release" yourself (see "Publishing a release" below). Signing is intentionally opt-in until the repository owner provisions the platform certificates and secrets below; unsigned artifacts are suitable for development/testing only and will trigger OS trust warnings.
 
 ## macOS: code signing
 

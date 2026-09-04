@@ -19,6 +19,7 @@ describe("loading skeleton compositions", () => {
   it("renders the hero geometry", () => {
     const { container } = render(<HeroSkeleton />);
 
-    expect(container.firstElementChild).toHaveClass("h-[28.75rem]", "rounded-hero");
+    expect(container.firstElementChild).toHaveAttribute("role", "status");
+    expect(container.querySelector(".rounded-hero")).toHaveClass("h-[28.75rem]", "rounded-hero");
   });
 });
