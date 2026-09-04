@@ -2,7 +2,7 @@
   "name": "cinetrack",
   "private": true,
   "version": "0.3.0",
-  "description": "A desktop app to track movies, series, watchlists and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
+  "description": "A desktop app to track movies, series and episode progress, powered by TMDB and built with Tauri, React and SQLite.",
   "keywords": [
     "tauri",
     "react",

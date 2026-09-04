@@ -18,7 +18,7 @@ Please include:
 
 ## Scope and architecture notes
 
-CineTrack is local-first: watchlist, viewing progress, activity history, and preferences are stored on-device (SQLite in the desktop app, `localStorage` in the web preview) — there is no CineTrack server that holds user data.
+CineTrack is local-first: library, viewing progress, activity history, and preferences are stored on-device (SQLite in the desktop app). The browser preview is a development-only surface without the native SQLite backend; only its supported cache/preferences fallbacks use browser storage. There is no CineTrack server that holds user data.
 
 Two things are worth knowing when assessing impact:
 

@@ -88,7 +88,7 @@ Not bugs — findings that were looked at and had a real tradeoff, decided again
 
 Remove a line once it's actually fixed — don't let this turn into a second bug tracker.
 
-- [ ] No end-to-end test suite; 19/21 pages in `src/pages/` have no tests at all (down from 20/21 — `collections-page.test.tsx` added 2026-08-15). Out of scope for this pass (E2E excluded by explicit instruction).
+- [ ] No functional end-to-end test suite. The existing Playwright suite remains visual-only; adding Tauri/SQLite user-flow coverage is intentionally deferred for a separate pass.
 - [ ] Builds still unsigned (no `APPLE_CERTIFICATE`/`WINDOWS_CERTIFICATE`/etc. secrets) — needs an actual Apple Developer Program membership and a purchased Windows code-signing certificate, both of which require the repo owner's own account/payment action; `docs/release-signing.md` documents exactly which secret to add and where. Not something this pass could complete on its own.
 - [ ] TV Time import (`parse-export.ts`'s `normalizeExport`) keeps only the earliest watch date per title, silently dropping rewatches recorded in the source export — disclosed in the import UI (`tvtimeImport.rewatchNotice`), but not preserved; `viewing_events.event_type` already supports `'rewatched'` at the schema level if this is ever worth doing properly. Left as a product decision, not a mechanical fix — see proposals discussed with the user 2026-08-15.
 
