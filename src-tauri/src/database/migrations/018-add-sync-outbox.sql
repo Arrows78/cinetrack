@@ -3,8 +3,11 @@
 --
 -- The outbox is populated by SQLite triggers. Because triggers run inside
 -- the caller's transaction, a business mutation and its sync mutation can
--- never commit independently. `sync_control.suppress_outbox` is enabled only
--- while applying trusted changes downloaded from Supabase.
+-- never commit independently. `sync_control.suppress_outbox` is enabled
+-- while applying trusted changes downloaded from Supabase, and while
+-- deleting a profile (see profiles::repository::remove_impl) — a cascade
+-- delete would otherwise fire these same triggers for a profile_id that no
+-- longer exists, failing the outbox row's own FK against `profiles`.
 
 -- cinetrack:statement
 CREATE TABLE sync_control (

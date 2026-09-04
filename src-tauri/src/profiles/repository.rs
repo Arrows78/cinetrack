@@ -139,6 +139,18 @@ pub(super) async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(
 
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
+    // The cascade below fires every table's AFTER DELETE sync trigger (see
+    // migrations/018-add-sync-outbox.sql), which would otherwise try to
+    // queue an outbox row referencing the very profile row being deleted —
+    // failing the FK the outbox row itself declares against `profiles`.
+    // Suppressing capture here mirrors how inbound remote changes are
+    // applied (sync::service::apply_remote_changes): removing a local
+    // profile is not itself a mutation to push back to the cloud.
+    sqlx::query("UPDATE sync_control SET suppress_outbox = 1 WHERE id = 1")
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+
     // No manual per-table cleanup needed here: every table in
     // `database::PROFILE_SCOPED_TABLES` declares
     // `profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE`
@@ -150,6 +162,11 @@ pub(super) async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(
     // for every one of those tables, `custom_list_items` included.
     sqlx::query("DELETE FROM profiles WHERE uuid = $1")
         .bind(profile_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+
+    sqlx::query("UPDATE sync_control SET suppress_outbox = 0 WHERE id = 1")
         .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
