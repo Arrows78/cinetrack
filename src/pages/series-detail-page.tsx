@@ -39,7 +39,7 @@ export function SeriesDetailPage() {
   const id = Number(seriesId);
   const seriesQuery = useSeriesDetails(id);
   const progressQuery = useEpisodeProgress(id);
-  useImageCache([seriesQuery.data?.posterPath, seriesQuery.data?.backdropPath]);
+  useImageCache([seriesQuery.data?.posterPath, seriesQuery.data?.backdropPath], ["w500", "original"]);
   const seasonNumbers = useMemo(
     () => (seriesQuery.data?.seasons ?? []).map((season) => season.seasonNumber).filter((number) => number > 0),
     [seriesQuery.data?.seasons]

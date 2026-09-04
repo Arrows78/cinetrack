@@ -34,7 +34,7 @@ export function MovieDetailPage() {
   const movieQuery = useMovieDetails(id);
   const seenQuery = useMovieSeen(id);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-  useImageCache([movieQuery.data?.posterPath, movieQuery.data?.backdropPath]);
+  useImageCache([movieQuery.data?.posterPath, movieQuery.data?.backdropPath], ["w500", "original"]);
   // See series-detail-page.tsx's equivalent guard for why: a non-numeric id
   // and isPending-vs-isLoading both used to fall through to a bare `return
   // null` — a permanently blank page instead of a skeleton or an error.
