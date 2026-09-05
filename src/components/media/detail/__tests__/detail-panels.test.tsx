@@ -138,7 +138,7 @@ describe("detail panels", () => {
 
       render(<ProviderAvailability media={buildMedia()} />);
 
-      expect(screen.getByText(`${i18n.t("media.availableStreaming")} · FR`)).toBeInTheDocument();
+      expect(screen.getByText(`${i18n.t("media.whereToWatch")} · FR`)).toBeInTheDocument();
       expect(screen.getByText("Netflix")).toBeInTheDocument();
       const netflixLogo = screen.getByAltText("");
       expect(netflixLogo).toHaveAttribute("src", buildTmdbImageUrl("/netflix-logo.jpg", "w92"));
@@ -160,8 +160,34 @@ describe("detail panels", () => {
 
       render(<ProviderAvailability media={buildMedia()} />);
 
-      expect(screen.getByText(`${i18n.t("media.availableStreaming")} · ${DEFAULT_TMDB_REGION}`)).toBeInTheDocument();
+      expect(screen.getByText(`${i18n.t("media.whereToWatch")} · ${DEFAULT_TMDB_REGION}`)).toBeInTheDocument();
       expect(availabilityMock).toHaveBeenCalledWith("movie", 1, DEFAULT_TMDB_REGION);
+    });
+
+    it("renders rent, buy, and free groups even when there's no flatrate offer", () => {
+      preferencesMock.mockReturnValue({ data: { region: "FR" } });
+      availabilityMock.mockReturnValue({
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+        data: {
+          region: "FR",
+          flatrate: [],
+          rent: [buildProvider({ id: 2, name: "Apple TV" })],
+          buy: [buildProvider({ id: 3, name: "Google Play" })],
+          free: [buildProvider({ id: 4, name: "Pluto TV" })],
+        },
+      });
+
+      render(<ProviderAvailability media={buildMedia()} />);
+
+      expect(screen.getByText(i18n.t("media.streamingRent"))).toBeInTheDocument();
+      expect(screen.getByText("Apple TV")).toBeInTheDocument();
+      expect(screen.getByText(i18n.t("media.streamingBuy"))).toBeInTheDocument();
+      expect(screen.getByText("Google Play")).toBeInTheDocument();
+      expect(screen.getByText(i18n.t("media.streamingFree"))).toBeInTheDocument();
+      expect(screen.getByText("Pluto TV")).toBeInTheDocument();
+      expect(screen.queryByText(i18n.t("media.streamingFlatrate"))).not.toBeInTheDocument();
     });
   });
 

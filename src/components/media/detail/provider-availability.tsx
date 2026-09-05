@@ -6,21 +6,14 @@ import { useAvailability } from "@/features/media/use-discovery";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
-import type { MediaSummary } from "@/types/media";
-export function ProviderAvailability({ media }: { media: MediaSummary }) {
-  const { t } = useTranslation();
-  const preferences = usePreferences();
-  const region = preferences.data?.region ?? DEFAULT_TMDB_REGION;
-  const query = useAvailability(media.mediaType, media.id, region);
-  const providers = query.data?.flatrate ?? [];
-  if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
+import type { MediaSummary, WatchProvider } from "@/types/media";
+
+function ProviderGroup({ label, providers }: { label: string; providers: WatchProvider[] }) {
   if (!providers.length) return null;
   return (
-    <Panel>
-      <h2 className="font-semibold">
-        {t("media.availableStreaming")} · {region}
-      </h2>
-      <div className="mt-4 flex flex-wrap gap-3">
+    <div>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <div className="mt-2 flex flex-wrap gap-3">
         {providers.map((provider) => (
           <Tile key={provider.id} className="flex items-center gap-2 px-3 py-2 text-sm">
             {provider.logoPath ? (
@@ -33,6 +26,30 @@ export function ProviderAvailability({ media }: { media: MediaSummary }) {
             <span>{provider.name}</span>
           </Tile>
         ))}
+      </div>
+    </div>
+  );
+}
+
+export function ProviderAvailability({ media }: { media: MediaSummary }) {
+  const { t } = useTranslation();
+  const preferences = usePreferences();
+  const region = preferences.data?.region ?? DEFAULT_TMDB_REGION;
+  const query = useAvailability(media.mediaType, media.id, region);
+  const data = query.data;
+  if (query.isError) return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
+  const hasAny = Boolean(data && (data.flatrate.length || data.free.length || data.rent.length || data.buy.length));
+  if (!data || !hasAny) return null;
+  return (
+    <Panel>
+      <h2 className="font-semibold">
+        {t("media.whereToWatch")} · {region}
+      </h2>
+      <div className="mt-4 space-y-4">
+        <ProviderGroup label={t("media.streamingFlatrate")} providers={data.flatrate} />
+        <ProviderGroup label={t("media.streamingFree")} providers={data.free} />
+        <ProviderGroup label={t("media.streamingRent")} providers={data.rent} />
+        <ProviderGroup label={t("media.streamingBuy")} providers={data.buy} />
       </div>
     </Panel>
   );
