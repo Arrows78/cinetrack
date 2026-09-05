@@ -10,6 +10,21 @@ export interface TmdbGenreDto {
   name: string;
 }
 
+export interface TmdbKeywordDto {
+  id: number;
+  name: string;
+}
+
+// TMDB's two keyword sub-resources don't share a field name: movies nest
+// theirs under `keywords`, TV under `results` — an inconsistency in TMDB's
+// own API, not something this app introduced.
+export interface TmdbMovieKeywordsDto {
+  keywords: TmdbKeywordDto[];
+}
+export interface TmdbTvKeywordsDto {
+  results: TmdbKeywordDto[];
+}
+
 export interface TmdbReleaseDateDto {
   certification: string;
   // TMDB's TheatricalLimited/Theatrical/Digital/Physical/TV release-type
@@ -90,6 +105,7 @@ export interface TmdbMovieDto {
   belongs_to_collection?: TmdbCollectionSummaryDto | null;
   external_ids?: TmdbExternalIdsDto;
   release_dates?: TmdbReleaseDatesDto;
+  keywords?: TmdbMovieKeywordsDto;
 }
 
 export interface TmdbSeasonPreviewDto {
@@ -123,6 +139,7 @@ export interface TmdbTvDto {
   credits?: TmdbCreditsDto;
   external_ids?: TmdbExternalIdsDto;
   content_ratings?: TmdbContentRatingsDto;
+  keywords?: TmdbTvKeywordsDto;
 }
 
 export interface TmdbEpisodeDto {

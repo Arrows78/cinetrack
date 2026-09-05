@@ -314,6 +314,21 @@ describe("SeriesDetailPage", () => {
     );
   });
 
+  it("shows the series' keyword chips when present", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({ keywords: ["anthology", "based on a podcast"] }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("anthology")).toBeInTheDocument();
+    expect(screen.getByText("based on a podcast")).toBeInTheDocument();
+  });
+
   it("shows the not-found empty state for a non-numeric seriesId, and nothing else", () => {
     params.seriesId = "abc";
     renderPage();

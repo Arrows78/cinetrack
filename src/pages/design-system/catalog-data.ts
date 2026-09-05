@@ -735,6 +735,14 @@ export const componentInventory = [
     "Links out to a title's or person's IMDb page; renders nothing without an IMDb id."
   ),
   component(
+    "KeywordChips",
+    "components/media/detail/keyword-chips.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Renders a title's TMDB keywords as a chip row; renders nothing without any."
+  ),
+  component(
     "LibrarySections",
     "components/media/library/library-sections.tsx",
     "Media",

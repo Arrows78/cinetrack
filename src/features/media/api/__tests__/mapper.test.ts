@@ -85,6 +85,13 @@ describe("mapMovieDto", () => {
     expect(mapMovieDto(movieDto(), "US").certification).toBeNull();
   });
 
+  it("maps keyword names from the movie keywords sub-resource, empty when absent", () => {
+    expect(mapMovieDto(movieDto({ keywords: { keywords: [{ id: 1, name: "time travel" }] } })).keywords).toEqual([
+      "time travel",
+    ]);
+    expect(mapMovieDto(movieDto()).keywords).toEqual([]);
+  });
+
   it("derives genreIds from genre_ids or from full genres", () => {
     expect(mapMovieDto(movieDto({ genre_ids: [18, 53] })).genreIds).toEqual([18, 53]);
     expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }] })).genreIds).toEqual([18]);
@@ -219,6 +226,13 @@ describe("mapSeriesDto", () => {
     expect(mapSeriesDto(dto, "FR").certification).toBe("16");
     expect(mapSeriesDto(dto, "DE").certification).toBe("TV-MA");
     expect(mapSeriesDto(tvDto(), "US").certification).toBeNull();
+  });
+
+  it("maps keyword names from the TV keywords sub-resource ('results', not 'keywords'), empty when absent", () => {
+    expect(mapSeriesDto(tvDto({ keywords: { results: [{ id: 1, name: "anthology" }] } })).keywords).toEqual([
+      "anthology",
+    ]);
+    expect(mapSeriesDto(tvDto()).keywords).toEqual([]);
   });
 
   it("maps runtime from episode_run_time and counts seasons", () => {

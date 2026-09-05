@@ -426,7 +426,7 @@ describe("TmdbMediaProvider", () => {
   });
 
   describe("getMovieDetails", () => {
-    it("fetches /movie/:id with credits/external_ids/release_dates appended, resolving the certification for the user's region", async () => {
+    it("fetches /movie/:id with credits/external_ids/release_dates/keywords appended, resolving the certification for the user's region", async () => {
       mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr", region: "FR" }));
       mocks.tmdbFetch.mockResolvedValue(
         movieDto({
@@ -438,6 +438,7 @@ describe("TmdbMediaProvider", () => {
               { iso_3166_1: "FR", release_dates: [{ certification: "12", type: 3, release_date: "1999-01-01" }] },
             ],
           },
+          keywords: { keywords: [{ id: 1, name: "heist" }] },
         })
       );
 
@@ -445,7 +446,10 @@ describe("TmdbMediaProvider", () => {
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/movie/77",
-        expect.objectContaining({ language: "fr-FR", append_to_response: "credits,external_ids,release_dates" })
+        expect.objectContaining({
+          language: "fr-FR",
+          append_to_response: "credits,external_ids,release_dates,keywords",
+        })
       );
       expect(result).toMatchObject({
         id: 77,
@@ -453,6 +457,7 @@ describe("TmdbMediaProvider", () => {
         title: "Details Movie",
         imdbId: "tt0000077",
         certification: "12",
+        keywords: ["heist"],
       });
     });
   });
@@ -478,7 +483,7 @@ describe("TmdbMediaProvider", () => {
   });
 
   describe("getSeriesDetails", () => {
-    it("fetches /tv/:id with credits/external_ids/content_ratings appended, resolving the certification for the user's region", async () => {
+    it("fetches /tv/:id with credits/external_ids/content_ratings/keywords appended, resolving the certification for the user's region", async () => {
       mocks.getPreferences.mockResolvedValue(basePreferences({ language: "en", region: "US" }));
       mocks.tmdbFetch.mockResolvedValue(
         tvDto({
@@ -486,6 +491,7 @@ describe("TmdbMediaProvider", () => {
           name: "Details Series",
           external_ids: { imdb_id: "tt0000088" },
           content_ratings: { results: [{ iso_3166_1: "US", rating: "TV-14" }] },
+          keywords: { results: [{ id: 1, name: "anthology" }] },
         })
       );
 
@@ -493,7 +499,10 @@ describe("TmdbMediaProvider", () => {
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/tv/88",
-        expect.objectContaining({ language: "en-US", append_to_response: "credits,external_ids,content_ratings" })
+        expect.objectContaining({
+          language: "en-US",
+          append_to_response: "credits,external_ids,content_ratings,keywords",
+        })
       );
       expect(result).toMatchObject({
         id: 88,
@@ -501,6 +510,7 @@ describe("TmdbMediaProvider", () => {
         title: "Details Series",
         imdbId: "tt0000088",
         certification: "TV-14",
+        keywords: ["anthology"],
       });
     });
   });

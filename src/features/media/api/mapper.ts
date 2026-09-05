@@ -125,6 +125,7 @@ export const mapMovieDto = (dto: TmdbMovieDto, region: string = DEFAULT_TMDB_REG
   collection: dto.belongs_to_collection ? mapCollectionSummary(dto.belongs_to_collection) : null,
   imdbId: dto.external_ids?.imdb_id ?? null,
   certification: resolveMovieCertification(dto.release_dates, region),
+  keywords: (dto.keywords?.keywords ?? []).map((keyword) => keyword.name),
 });
 
 export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
@@ -170,6 +171,7 @@ export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGIO
   numberOfEpisodes: dto.number_of_episodes,
   imdbId: dto.external_ids?.imdb_id ?? null,
   certification: resolveSeriesCertification(dto.content_ratings, region),
+  keywords: (dto.keywords?.results ?? []).map((keyword) => keyword.name),
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],
 });
 

@@ -203,7 +203,7 @@ export class TmdbMediaProvider implements MediaProvider {
     const { language, region } = await this.context();
     const response = await tmdbFetch<TmdbMovieDto>(`/movie/${movieId}`, {
       language,
-      append_to_response: "credits,external_ids,release_dates",
+      append_to_response: "credits,external_ids,release_dates,keywords",
     });
     return mapMovieDto(response, region);
   }
@@ -218,7 +218,7 @@ export class TmdbMediaProvider implements MediaProvider {
     const { language, region } = await this.context();
     const response = await tmdbFetch<TmdbTvDto>(`/tv/${seriesId}`, {
       language,
-      append_to_response: "credits,external_ids,content_ratings",
+      append_to_response: "credits,external_ids,content_ratings,keywords",
     });
     return mapSeriesDto(response, region);
   }

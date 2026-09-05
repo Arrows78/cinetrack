@@ -232,6 +232,21 @@ describe("MovieDetailPage", () => {
     );
   });
 
+  it("shows the movie's keyword chips when present", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie({ keywords: ["desert planet", "prophecy"] }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("desert planet")).toBeInTheDocument();
+    expect(screen.getByText("prophecy")).toBeInTheDocument();
+  });
+
   it("falls back to the no-overview message when the movie has none", () => {
     movieQueryMock.mockReturnValue({
       isPending: false,

@@ -72,6 +72,8 @@ export interface MediaSummary {
   imdbId?: string | null;
   /** Age-rating certification (e.g. "PG-13", "TV-MA") for the user's region, falling back to the US rating. Undefined/null unless fetched via a detail endpoint that appends release_dates (movies) or content_ratings (series). */
   certification?: string | null;
+  /** Thematic tags (e.g. "time travel", "based on video game") beyond genres. Undefined/empty unless fetched via a detail endpoint that appends keywords. */
+  keywords?: string[];
 }
 
 // The TMDB collection a movie belongs to, as embedded in `/movie/{id}`'s

@@ -11,6 +11,7 @@ import { TrailerPanel } from "@/components/media/detail/trailer-panel";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/detail/cast-list";
 import { ImdbLink } from "@/components/media/detail/imdb-link";
+import { KeywordChips } from "@/components/media/detail/keyword-chips";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
@@ -106,6 +107,7 @@ export function MovieDetailPage() {
           <p className="font-serif text-base leading-7 text-muted-foreground">
             {movie.overview || t("media.noOverview")}
           </p>
+          <KeywordChips keywords={movie.keywords} />
         </Panel>
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("movies.technicalSheet")} />
