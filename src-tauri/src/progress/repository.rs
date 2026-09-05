@@ -313,7 +313,16 @@ pub(crate) async fn apply_episodes_and_log_impl(
            title = excluded.title,
            poster_path = excluded.poster_path,
            backdrop_path = excluded.backdrop_path,
-           total_episodes = excluded.total_episodes,
+           -- MAX, not a plain overwrite: `series.number_of_episodes` is
+           -- whatever the calling client happened to have in hand for this
+           -- one toggle, and falls back to `watched_episodes` when absent
+           -- (e.g. a caller that never fetched full series details). Either
+           -- way it can be smaller than a total this row already recorded
+           -- correctly, and a plain overwrite would regress it — which
+           -- later lets watched_episodes exceed the stored total and show
+           -- as a >100% progress bar (see history-page.tsx's Series In
+           -- Progress list).
+           total_episodes = MAX(excluded.total_episodes, tracked_series.total_episodes),
            status = COALESCE(excluded.status, tracked_series.status),
            updated_at = excluded.updated_at",
     )
@@ -797,6 +806,44 @@ mod tests {
             library_status(&pool, 9, "series").await,
             Some("watching".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn a_later_call_with_a_smaller_or_unknown_episode_count_never_regresses_total_episodes() {
+        let pool = migrated_pool().await;
+        // First call reports the real total (20). A later call passing None
+        // (e.g. a caller that never fetched full series details) must not
+        // shrink total_episodes back down to whatever's watched so far —
+        // that previously let watched_episodes end up exceeding the stored
+        // total and show as a >100% progress bar.
+        let s20 = series(9, Some(20));
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s20,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        let s_unknown = series(9, None);
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s_unknown,
+            &[episode(3, 3)],
+            true,
+            "2026-01-02T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.watched_episodes, 3);
+        assert_eq!(entry.total_episodes, 20);
     }
 
     #[tokio::test]

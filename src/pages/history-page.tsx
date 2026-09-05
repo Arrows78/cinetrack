@@ -250,7 +250,14 @@ export function HistoryPage() {
         ) : (trackedSeriesQuery.data ?? []).length ? (
           <div className="space-y-3">
             {trackedSeriesQuery.data?.map((item, i) => {
-              const progress = percent(item.watchedEpisodes, item.totalEpisodes);
+              // total_episodes is a cache of TMDB's episode count, refreshed
+              // only as a side effect of toggling an episode (see
+              // apply_episodes_and_log_impl in src-tauri/src/progress/
+              // repository.rs) — it can still lag behind a real
+              // watchedEpisodes count for a show TMDB itself under-reports.
+              // Never show a >100% bar or an "8/6" fraction over it.
+              const displayTotal = Math.max(item.totalEpisodes, item.watchedEpisodes);
+              const progress = percent(item.watchedEpisodes, displayTotal);
               return (
                 <Tile
                   asChild
@@ -267,7 +274,7 @@ export function HistoryPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold leading-snug">{item.title}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          {item.watchedEpisodes}/{item.totalEpisodes} {t("history.episodesWatched")}
+                          {item.watchedEpisodes}/{displayTotal} {t("history.episodesWatched")}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
