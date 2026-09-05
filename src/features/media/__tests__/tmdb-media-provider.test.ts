@@ -465,6 +465,10 @@ describe("TmdbMediaProvider", () => {
             ],
           },
           keywords: { keywords: [{ id: 1, name: "heist" }] },
+          images: {
+            backdrops: [{ file_path: "/backdrop.jpg", width: 1920, height: 1080, vote_average: 5 }],
+            posters: [],
+          },
         })
       );
 
@@ -474,7 +478,8 @@ describe("TmdbMediaProvider", () => {
         "/movie/77",
         expect.objectContaining({
           language: "fr-FR",
-          append_to_response: "credits,external_ids,release_dates,keywords",
+          append_to_response: "credits,external_ids,release_dates,keywords,images",
+          include_image_language: "fr,null",
         })
       );
       expect(result).toMatchObject({
@@ -483,6 +488,7 @@ describe("TmdbMediaProvider", () => {
         title: "Details Movie",
         imdbId: "tt0000077",
         certification: "12",
+        backdropPaths: ["/backdrop.jpg"],
         keywords: ["heist"],
       });
     });
@@ -518,6 +524,10 @@ describe("TmdbMediaProvider", () => {
           external_ids: { imdb_id: "tt0000088" },
           content_ratings: { results: [{ iso_3166_1: "US", rating: "TV-14" }] },
           keywords: { results: [{ id: 1, name: "anthology" }] },
+          images: {
+            backdrops: [{ file_path: "/backdrop.jpg", width: 1920, height: 1080, vote_average: 5 }],
+            posters: [],
+          },
         })
       );
 
@@ -527,7 +537,8 @@ describe("TmdbMediaProvider", () => {
         "/tv/88",
         expect.objectContaining({
           language: "en-US",
-          append_to_response: "credits,external_ids,content_ratings,keywords",
+          append_to_response: "credits,external_ids,content_ratings,keywords,images",
+          include_image_language: "en,null",
         })
       );
       expect(result).toMatchObject({
@@ -537,6 +548,7 @@ describe("TmdbMediaProvider", () => {
         imdbId: "tt0000088",
         certification: "TV-14",
         keywords: ["anthology"],
+        backdropPaths: ["/backdrop.jpg"],
       });
     });
   });

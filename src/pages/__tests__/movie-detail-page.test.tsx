@@ -247,6 +247,21 @@ describe("MovieDetailPage", () => {
     expect(screen.getByText("prophecy")).toBeInTheDocument();
   });
 
+  it("shows a gallery thumbnail for each extra backdrop", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie({ backdropPaths: ["/b1.jpg", "/b2.jpg"] }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("Gallery")).toBeInTheDocument();
+    expect(document.querySelectorAll('img[src*="/b1.jpg"], img[src*="/b2.jpg"]')).toHaveLength(2);
+  });
+
   it("falls back to the no-overview message when the movie has none", () => {
     movieQueryMock.mockReturnValue({
       isPending: false,

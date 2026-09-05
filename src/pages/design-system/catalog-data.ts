@@ -775,6 +775,14 @@ export const componentInventory = [
     "Composes backdrop, title, synopsis and detail-page actions."
   ),
   component(
+    "MediaGallery",
+    "components/media/detail/media-gallery.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Backdrop thumbnail strip that opens a lightbox with prev/next navigation; renders nothing without any images."
+  ),
+  component(
     "MediaGrid",
     "components/media/primitives/media-grid.tsx",
     "Media",

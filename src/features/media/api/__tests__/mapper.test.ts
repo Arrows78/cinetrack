@@ -92,6 +92,21 @@ describe("mapMovieDto", () => {
     expect(mapMovieDto(movieDto()).keywords).toEqual([]);
   });
 
+  it("maps up to 12 backdrop paths from the images sub-resource, best-rated first, empty when absent", () => {
+    const backdrops = Array.from({ length: 15 }, (_, index) => ({
+      file_path: `/backdrop-${index}.jpg`,
+      width: 1920,
+      height: 1080,
+      vote_average: 15 - index,
+    }));
+
+    const movie = mapMovieDto(movieDto({ images: { backdrops, posters: [] } }));
+
+    expect(movie.backdropPaths).toHaveLength(12);
+    expect(movie.backdropPaths?.[0]).toBe("/backdrop-0.jpg");
+    expect(mapMovieDto(movieDto()).backdropPaths).toEqual([]);
+  });
+
   it("derives genreIds from genre_ids or from full genres", () => {
     expect(mapMovieDto(movieDto({ genre_ids: [18, 53] })).genreIds).toEqual([18, 53]);
     expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }] })).genreIds).toEqual([18]);
@@ -233,6 +248,20 @@ describe("mapSeriesDto", () => {
       "anthology",
     ]);
     expect(mapSeriesDto(tvDto()).keywords).toEqual([]);
+  });
+
+  it("maps backdrop paths from the images sub-resource, empty when absent", () => {
+    const series = mapSeriesDto(
+      tvDto({
+        images: {
+          backdrops: [{ file_path: "/backdrop.jpg", width: 1920, height: 1080, vote_average: 5 }],
+          posters: [],
+        },
+      })
+    );
+
+    expect(series.backdropPaths).toEqual(["/backdrop.jpg"]);
+    expect(mapSeriesDto(tvDto()).backdropPaths).toEqual([]);
   });
 
   it("maps runtime from episode_run_time and counts seasons", () => {

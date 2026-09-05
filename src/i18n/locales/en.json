@@ -15,6 +15,9 @@
   "media": {
     "overview": "Overview",
     "cast": "Cast",
+    "gallery": "Gallery",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
     "movie": "Movie",
     "series": "Series",
     "ratingLabel": "Rating: {{rating}} out of 10",

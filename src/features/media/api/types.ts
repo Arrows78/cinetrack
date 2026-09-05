@@ -106,6 +106,7 @@ export interface TmdbMovieDto {
   external_ids?: TmdbExternalIdsDto;
   release_dates?: TmdbReleaseDatesDto;
   keywords?: TmdbMovieKeywordsDto;
+  images?: TmdbImagesDto;
 }
 
 export interface TmdbSeasonPreviewDto {
@@ -140,6 +141,7 @@ export interface TmdbTvDto {
   external_ids?: TmdbExternalIdsDto;
   content_ratings?: TmdbContentRatingsDto;
   keywords?: TmdbTvKeywordsDto;
+  images?: TmdbImagesDto;
 }
 
 export interface TmdbEpisodeDto {
@@ -178,6 +180,17 @@ export interface TmdbWatchProviderListResponse {
 
 export type TmdbMultiSearchResultDto =
   (TmdbMovieDto & { media_type: "movie" }) | (TmdbTvDto & { media_type: "tv" }) | { media_type: "person" };
+
+export interface TmdbImageDto {
+  file_path: string;
+  width: number;
+  height: number;
+  vote_average: number;
+}
+export interface TmdbImagesDto {
+  backdrops: TmdbImageDto[];
+  posters: TmdbImageDto[];
+}
 
 export interface TmdbVideoDto {
   id: string;

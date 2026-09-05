@@ -329,6 +329,21 @@ describe("SeriesDetailPage", () => {
     expect(screen.getByText("based on a podcast")).toBeInTheDocument();
   });
 
+  it("shows a gallery thumbnail for each extra backdrop", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({ backdropPaths: ["/b1.jpg", "/b2.jpg"] }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("Gallery")).toBeInTheDocument();
+    expect(document.querySelectorAll('img[src*="/b1.jpg"], img[src*="/b2.jpg"]')).toHaveLength(2);
+  });
+
   it("shows the not-found empty state for a non-numeric seriesId, and nothing else", () => {
     params.seriesId = "abc";
     renderPage();

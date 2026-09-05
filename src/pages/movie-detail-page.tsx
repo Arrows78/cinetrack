@@ -12,6 +12,7 @@ import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/detail/cast-list";
 import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { KeywordChips } from "@/components/media/detail/keyword-chips";
+import { MediaGallery } from "@/components/media/detail/media-gallery";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
@@ -133,6 +134,7 @@ export function MovieDetailPage() {
         <SectionHeader title={t("media.cast")} subtitle={t("movies.castSubtitle")} />
         <CastList cast={movie.cast} />
       </section>
+      <MediaGallery backdropPaths={movie.backdropPaths} />
       <TrailerPanel mediaType="movie" mediaId={movie.id} />
       <ProviderAvailability media={movie} />
       <LibraryEditor media={movie} />

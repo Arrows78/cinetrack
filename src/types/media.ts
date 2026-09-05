@@ -74,6 +74,8 @@ export interface MediaSummary {
   certification?: string | null;
   /** Thematic tags (e.g. "time travel", "based on video game") beyond genres. Undefined/empty unless fetched via a detail endpoint that appends keywords. */
   keywords?: string[];
+  /** Extra backdrop images beyond `backdropPath`, best-rated first. Undefined/empty unless fetched via a detail endpoint that appends images. */
+  backdropPaths?: string[];
 }
 
 // The TMDB collection a movie belongs to, as embedded in `/movie/{id}`'s

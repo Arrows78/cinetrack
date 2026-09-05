@@ -25,6 +25,7 @@ import type {
   TmdbContentRatingsDto,
   TmdbCrewDto,
   TmdbEpisodeDto,
+  TmdbImagesDto,
   TmdbListResponse,
   TmdbMovieDto,
   TmdbReleaseDatesDto,
@@ -67,6 +68,12 @@ const resolveSeriesCertification = (dto: TmdbContentRatingsDto | undefined, regi
   const forRegion = (iso: string) => results.find((entry) => entry.iso_3166_1 === iso)?.rating;
   return forRegion(region) || forRegion(DEFAULT_TMDB_REGION) || null;
 };
+
+// Capped at 12 — TMDB already returns images best-rated first, and a detail
+// page's gallery has no use for the long tail of barely-voted-on backdrops.
+const MAX_GALLERY_BACKDROPS = 12;
+const mapBackdropPaths = (images?: TmdbImagesDto): string[] =>
+  (images?.backdrops ?? []).slice(0, MAX_GALLERY_BACKDROPS).map((image) => image.file_path);
 
 const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
   (cast ?? [])
@@ -126,6 +133,7 @@ export const mapMovieDto = (dto: TmdbMovieDto, region: string = DEFAULT_TMDB_REG
   imdbId: dto.external_ids?.imdb_id ?? null,
   certification: resolveMovieCertification(dto.release_dates, region),
   keywords: (dto.keywords?.keywords ?? []).map((keyword) => keyword.name),
+  backdropPaths: mapBackdropPaths(dto.images),
 });
 
 export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
@@ -172,6 +180,7 @@ export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGIO
   imdbId: dto.external_ids?.imdb_id ?? null,
   certification: resolveSeriesCertification(dto.content_ratings, region),
   keywords: (dto.keywords?.results ?? []).map((keyword) => keyword.name),
+  backdropPaths: mapBackdropPaths(dto.images),
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],
 });
 

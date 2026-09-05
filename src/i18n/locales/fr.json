@@ -15,6 +15,9 @@
   "media": {
     "overview": "Synopsis",
     "cast": "Distribution",
+    "gallery": "Galerie",
+    "previousImage": "Image précédente",
+    "nextImage": "Image suivante",
     "movie": "Film",
     "series": "Série",
     "ratingLabel": "Note : {{rating}} sur 10",
