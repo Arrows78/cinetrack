@@ -64,7 +64,7 @@ describe("WatchHistoryPanel", () => {
     render(<WatchHistoryPanel mediaId={7} mediaType="movie" />);
 
     expect(screen.getByText("Watch diary")).toBeInTheDocument();
-    const notes = screen.getAllByText(/watch/i, { selector: "p.font-serif" });
+    const notes = screen.getAllByText(/watch/i, { selector: "p.text-body-lg" });
     expect(notes.map((node) => node.textContent)).toEqual(["Second watch, even better", "First watch"]);
   });
 

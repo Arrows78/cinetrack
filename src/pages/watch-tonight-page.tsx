@@ -64,9 +64,7 @@ function WatchTonightHeroPick({ media }: { media: Movie | Series }) {
         }
       />
       <Panel tone="subtle" className="p-6">
-        <p className="font-serif text-base leading-7 text-muted-foreground">
-          {media.overview || t("media.noOverview")}
-        </p>
+        <p className="text-body-lg text-muted-foreground">{media.overview || t("media.noOverview")}</p>
       </Panel>
     </div>
   );

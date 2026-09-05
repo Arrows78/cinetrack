@@ -41,7 +41,7 @@ export function WatchHistoryPanel({ mediaId, mediaType }: { mediaId: number; med
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {formatFullDate(event.watchedAt)}
             </p>
-            <p className="mt-1 font-serif text-base leading-6 text-foreground">{event.note}</p>
+            <p className="mt-1 text-body-lg text-foreground">{event.note}</p>
           </li>
         ))}
       </ul>

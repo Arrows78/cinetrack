@@ -163,6 +163,21 @@ describe("PersonDetailPage", () => {
     );
   });
 
+  it("preserves paragraph breaks from TMDB's biography text instead of collapsing them", () => {
+    personQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: personDetail({ biography: "First paragraph.\n\nSecond paragraph." }),
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    const biography = screen.getByText(/First paragraph\./);
+    expect(biography).toHaveClass("whitespace-pre-line");
+    expect(biography.textContent).toBe("First paragraph.\n\nSecond paragraph.");
+  });
+
   it("falls back to the no-biography message when there is none", () => {
     personQueryMock.mockReturnValue({
       isPending: false,

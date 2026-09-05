@@ -73,8 +73,8 @@ Every solid semantic fill that contains text or icons has a paired `*-foreground
 CineTrack uses three font families with non-overlapping responsibilities:
 
 - **Syne** (`font-display`) for expressive display headings, hero titles, and large statistics.
-- **DM Sans** (`font-sans`) for interface text, controls, navigation, tables, and body copy.
-- **Playfair Display** (`font-serif`) for editorial synopsis text only.
+- **DM Sans** (`font-sans`) for interface text, controls, navigation, tables, and body copy — including synopsis, biography, and personal-note body text (see below).
+- **Playfair Display** (`font-serif`) is defined but not currently used anywhere in the product. It originally styled synopsis/biography text with an editorial serif treatment; that was replaced with `font-sans` at `text-body-lg` after user feedback that the serif face read poorly for that content. Kept as a token in case a genuinely editorial context (not general body copy) needs it later — don't reintroduce it for descriptive text.
 
 New interface hierarchy should use semantic roles from `tailwind.config.ts`: `display-hero`, `display-title`, `heading-lg`, `heading-md`, `heading-sm`, `body-lg`, `body`, `body-sm`, `caption`, and `overline`.
 

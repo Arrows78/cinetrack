@@ -125,9 +125,7 @@ export function SeriesDetailPage() {
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
-          <p className="font-serif text-base leading-7 text-muted-foreground">
-            {series.overview || t("media.noOverview")}
-          </p>
+          <p className="text-body-lg text-muted-foreground">{series.overview || t("media.noOverview")}</p>
           <KeywordChips keywords={series.keywords} />
         </Panel>
         <div className="space-y-4">
