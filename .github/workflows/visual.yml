@@ -55,7 +55,10 @@ jobs:
   # silently bake a broken/wrong rendering in as the new "correct" baseline.
   # To (re)bootstrap baselines: run this job from the Actions tab, download
   # the "visual-baselines" artifact, extract it into
-  # e2e/visual/__screenshots__/, review the images, then commit them.
+  # e2e/visual/__screenshots__/, review the images, then commit them. The
+  # refresh-baselines-pr job below automates this same download-review-commit
+  # loop for the common case (a UI change on main outdating the baselines);
+  # this manual path stays for bootstrapping from scratch or a PR branch.
   bootstrap-baselines:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -89,3 +92,66 @@ jobs:
           path: e2e/visual/__screenshots__/
           if-no-files-found: error
           retention-days: 30
+
+  # This is what keeps visual-regression from staying red for days after a
+  # legitimate UI change: previously nothing prompted anyone to re-run
+  # bootstrap-baselines above, so baselines committed once (see
+  # e2e/visual/README.md) silently went stale under every later UI commit and
+  # every subsequent push kept failing the same already-known way. Runs only
+  # after a real failure on main (never on a PR branch, which might fail for
+  # reasons that have nothing to do with baselines at all) and opens a PR
+  # with regenerated screenshots for a human to look at and merge — same
+  # "no unreviewed baseline ever gets committed automatically" rule as
+  # bootstrap-baselines, just without needing someone to remember to trigger
+  # it by hand.
+  refresh-baselines-pr:
+    needs: visual-regression
+    if: always() && needs.visual-regression.result == 'failure' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright's Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Regenerate baseline screenshots
+        run: pnpm test:visual:update
+
+      # A visual-regression failure isn't always a stale-baseline diff (a
+      # real crash/timeout in the suite fails it too, and re-running the same
+      # suite here would just reproduce that with no screenshot changes) —
+      # only open a PR when regenerating actually produced different pixels.
+      - name: Check for baseline changes
+        id: diff
+        run: echo "changed=$(git status --porcelain e2e/visual/__screenshots__ | wc -l)" >> "$GITHUB_OUTPUT"
+
+      - name: Open a PR with the refreshed baselines
+        if: steps.diff.outputs.changed != '0'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: "test(visual): refresh Linux baselines"
+          title: "test(visual): refresh Linux baselines"
+          body: >
+            Opened automatically because visual-regression failed on main
+            (run ${{ github.run_id }}). These are real Linux renders, not
+            verified as visually correct — review the diffs before merging.
+          branch: chore/refresh-visual-baselines
+          delete-branch: true
+          add-paths: e2e/visual/__screenshots__/

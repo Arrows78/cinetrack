@@ -45,6 +45,15 @@ container using the same base image CI uses. Do not generate them locally on
 macOS/Windows and commit them; they will permanently mismatch what CI
 renders.
 
+**Automatically, after the fact:** if `visual-regression` fails on a push to
+`main`, `visual.yml`'s `refresh-baselines-pr` job regenerates the screenshots
+and — only if that actually changed any pixels, not on a genuine test crash —
+opens a `chore/refresh-visual-baselines` PR with them for review. This is the
+common case (a UI change landed and nobody manually re-bootstrapped first);
+review the diffs like any other PR and merge. The steps below are for the two
+cases that job doesn't cover: bootstrapping from nothing, or refreshing
+baselines against a PR branch's own changes before merging it.
+
 **Via CI (no Docker required):**
 
 1. From the Actions tab, run the "Visual regression" workflow manually
