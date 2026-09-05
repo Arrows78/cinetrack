@@ -57,9 +57,9 @@ const markSeasonMock = vi.fn(async () => undefined);
 const markSeriesMock = vi.fn(async () => undefined);
 const listTrackedSeriesMock = vi.fn(async () => [] as TrackedSeriesItem[]);
 const listViewingEventsForMediaMock = vi.fn(async () => [] as never);
-const refreshTrackedSeriesStatusMock = vi.fn<(seriesId: number, status: string | null) => Promise<undefined>>(
-  async () => undefined
-);
+const refreshTrackedSeriesStatusMock = vi.fn<
+  (seriesId: number, status: string | null, totalEpisodes: number | null) => Promise<undefined>
+>(async () => undefined);
 // useActiveProfileId() (see use-preferences.ts) resolves to this via
 // preferencesRepository.getPreferences() — fixed to "default" so every key
 // assertion below is deterministic regardless of when it resolves (it
@@ -255,8 +255,20 @@ describe("useRefreshTrackedSeriesStatus", () => {
       await result.current({ seriesId: 9, status: "Ended" });
     });
 
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(9, "Ended");
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(9, "Ended", null);
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries(DEFAULT_PROFILE_ID));
+  });
+
+  it("passes totalEpisodes through when given", async () => {
+    const { useRefreshTrackedSeriesStatus } = await import("../use-progress");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useRefreshTrackedSeriesStatus(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current({ seriesId: 9, status: "Ended", totalEpisodes: 12 });
+    });
+
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(9, "Ended", 12);
   });
 });
