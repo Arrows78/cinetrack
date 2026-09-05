@@ -517,111 +517,109 @@ export function LibraryExplorer({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="w-full sm:w-64">
-            <SearchBar value={search} onChange={setSearch} placeholder={t("library.searchPlaceholder")} />
-          </div>
-          {lockedMediaType ? null : (
-            <FilterBar
-              value={typeFilter}
-              onChange={setTypeFilter}
-              groupLabel={t("library.filterType")}
-              options={[
-                { value: "all", label: t("settings.all") },
-                { value: "series", label: t("nav.series") },
-                { value: "movie", label: t("nav.movies") },
-              ]}
-            />
-          )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="w-full sm:w-64">
+          <SearchBar value={search} onChange={setSearch} placeholder={t("library.searchPlaceholder")} />
+        </div>
+        {lockedMediaType ? null : (
           <FilterBar
-            value={statusFilter}
-            onChange={setStatusFilter}
-            groupLabel={t("library.filterStatus")}
-            options={statusOptions.map((status) => ({
-              value: status,
-              label: status === "all" ? t("settings.all") : t(`library.statuses.${status}`),
-            }))}
-          />
-          <FilterBar
-            value={sort}
-            onChange={setSort}
-            groupLabel={t("library.sortBy")}
+            value={typeFilter}
+            onChange={setTypeFilter}
+            groupLabel={t("library.filterType")}
             options={[
-              { value: "recent", label: t("library.recent") },
-              { value: "title", label: t("library.title") },
-              { value: "rating", label: t("library.rating") },
+              { value: "all", label: t("settings.all") },
+              { value: "series", label: t("nav.series") },
+              { value: "movie", label: t("nav.movies") },
             ]}
           />
-          <Button
-            type="button"
-            variant={favouritesOnly ? "default" : "outline"}
-            size="sm"
-            aria-pressed={favouritesOnly}
-            onClick={() => setFavouritesOnly((value) => !value)}
-          >
-            <Heart className={favouritesOnly ? "mr-2 size-4 fill-current" : "mr-2 size-4"} />
-            {t("library.favouritesOnly")}
-          </Button>
-          <div className="flex items-center gap-1 rounded-full border border-border p-1">
-            <IconTooltip label={t("library.gridView")}>
-              <Button
-                type="button"
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="icon"
-                aria-label={t("library.gridView")}
-                aria-pressed={viewMode === "grid"}
-                onClick={() => setViewMode("grid")}
-                className="size-8 rounded-full"
-              >
-                <LayoutGrid className="size-4" />
-              </Button>
-            </IconTooltip>
-            <IconTooltip label={t("library.listView")}>
-              <Button
-                type="button"
-                variant={viewMode === "list" ? "default" : "ghost"}
-                size="icon"
-                aria-label={t("library.listView")}
-                aria-pressed={viewMode === "list"}
-                onClick={() => setViewMode("list")}
-                className="size-8 rounded-full"
-              >
-                <List className="size-4" />
-              </Button>
-            </IconTooltip>
-          </div>
-          {(lists.data?.length ?? 0) > 0 ? (
-            <Select
-              aria-label={t("library.lists.filterLabel")}
-              value={listFilter}
-              onChange={(event) => setListFilter(event.target.value)}
-              className="max-w-48"
+        )}
+        <FilterBar
+          value={statusFilter}
+          onChange={setStatusFilter}
+          groupLabel={t("library.filterStatus")}
+          options={statusOptions.map((status) => ({
+            value: status,
+            label: status === "all" ? t("settings.all") : t(`library.statuses.${status}`),
+          }))}
+        />
+        <FilterBar
+          value={sort}
+          onChange={setSort}
+          groupLabel={t("library.sortBy")}
+          options={[
+            { value: "recent", label: t("library.recent") },
+            { value: "title", label: t("library.title") },
+            { value: "rating", label: t("library.rating") },
+          ]}
+        />
+        <Button
+          type="button"
+          variant={favouritesOnly ? "default" : "outline"}
+          size="sm"
+          aria-pressed={favouritesOnly}
+          onClick={() => setFavouritesOnly((value) => !value)}
+        >
+          <Heart className={favouritesOnly ? "mr-2 size-4 fill-current" : "mr-2 size-4"} />
+          {t("library.favouritesOnly")}
+        </Button>
+        <div className="flex items-center gap-1 rounded-full border border-border p-1">
+          <IconTooltip label={t("library.gridView")}>
+            <Button
+              type="button"
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="icon"
+              aria-label={t("library.gridView")}
+              aria-pressed={viewMode === "grid"}
+              onClick={() => setViewMode("grid")}
+              className="size-8 rounded-full"
             >
-              <option value="all">{t("library.lists.allLists")}</option>
-              {lists.data?.map((list) => (
-                <option key={list.id} value={list.id}>
-                  {list.name}
-                </option>
-              ))}
-            </Select>
-          ) : null}
-          {(smartLists.data?.length ?? 0) > 0 ? (
-            <Select
-              aria-label={t("library.smartLists.filterLabel")}
-              value={smartListFilter}
-              onChange={(event) => setSmartListFilter(event.target.value)}
-              className="max-w-48"
+              <LayoutGrid className="size-4" />
+            </Button>
+          </IconTooltip>
+          <IconTooltip label={t("library.listView")}>
+            <Button
+              type="button"
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="icon"
+              aria-label={t("library.listView")}
+              aria-pressed={viewMode === "list"}
+              onClick={() => setViewMode("list")}
+              className="size-8 rounded-full"
             >
-              <option value="all">{t("library.smartLists.noFilter")}</option>
-              {smartLists.data?.map((list) => (
-                <option key={list.id} value={list.id}>
-                  {list.name}
-                </option>
-              ))}
-            </Select>
-          ) : null}
+              <List className="size-4" />
+            </Button>
+          </IconTooltip>
         </div>
+        {(lists.data?.length ?? 0) > 0 ? (
+          <Select
+            aria-label={t("library.lists.filterLabel")}
+            value={listFilter}
+            onChange={(event) => setListFilter(event.target.value)}
+            className="max-w-48"
+          >
+            <option value="all">{t("library.lists.allLists")}</option>
+            {lists.data?.map((list) => (
+              <option key={list.id} value={list.id}>
+                {list.name}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+        {(smartLists.data?.length ?? 0) > 0 ? (
+          <Select
+            aria-label={t("library.smartLists.filterLabel")}
+            value={smartListFilter}
+            onChange={(event) => setSmartListFilter(event.target.value)}
+            className="max-w-48"
+          >
+            <option value="all">{t("library.smartLists.noFilter")}</option>
+            {smartLists.data?.map((list) => (
+              <option key={list.id} value={list.id}>
+                {list.name}
+              </option>
+            ))}
+          </Select>
+        ) : null}
         <SavedFiltersBar page="library" currentFilters={currentFilters} onApply={applySavedFilters} />
       </div>
 

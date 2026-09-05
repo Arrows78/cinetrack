@@ -18,7 +18,7 @@ export function FilterBar<T extends string>({
     <div
       role="group"
       aria-label={groupLabel ?? t("filterBar.defaultLabel")}
-      className="flex max-w-full gap-0.5 overflow-x-auto rounded-2xl bg-foreground/[0.06] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex w-fit max-w-full gap-0.5 overflow-x-auto rounded-2xl bg-foreground/[0.06] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {options.map((option) => (
         <button
