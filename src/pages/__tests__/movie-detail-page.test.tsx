@@ -207,6 +207,20 @@ describe("MovieDetailPage", () => {
     expect(screen.getByTestId("hero-actions").querySelector('[data-testid="availability-alert-button"]')).toBeTruthy();
   });
 
+  it("falls back to the no-overview message when the movie has none", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie({ overview: "" }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("No overview available for this content.")).toBeInTheDocument();
+  });
+
   it("toggles seen status with the movie and the flipped watched flag", () => {
     seenQueryMock.mockReturnValue({
       data: false,

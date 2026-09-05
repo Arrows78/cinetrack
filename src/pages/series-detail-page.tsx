@@ -111,9 +111,6 @@ export function SeriesDetailPage() {
           </div>
         }
       />
-      <LibraryEditor media={series} />
-      <ProviderAvailability media={series} />
-      <TrailerPanel mediaType="series" mediaId={series.id} />
       <NextEpisodeCard
         episode={nextEpisode}
         isSaving={progressQuery.isSaving}
@@ -122,7 +119,9 @@ export function SeriesDetailPage() {
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
-          <p className="font-serif text-base leading-7 text-muted-foreground md:text-lg">{series.overview}</p>
+          <p className="font-serif text-base leading-7 text-muted-foreground md:text-lg">
+            {series.overview || t("media.noOverview")}
+          </p>
         </Panel>
         <div className="space-y-4">
           <Panel tone="subtle">
@@ -162,6 +161,13 @@ export function SeriesDetailPage() {
         </div>
       </section>
       <section>
+        <SectionHeader title={t("media.cast")} />
+        <CastList cast={series.cast} />
+      </section>
+      <TrailerPanel mediaType="series" mediaId={series.id} />
+      <ProviderAvailability media={series} />
+      <LibraryEditor media={series} />
+      <section>
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
         {failedSeasonQueries.length > 0 ? (
           <PartialErrorState
@@ -184,10 +190,6 @@ export function SeriesDetailPage() {
       </section>
       <WatchHistoryPanel mediaId={series.id} mediaType="series" />
       <RecommendationsPanel media={series} />
-      <section>
-        <SectionHeader title={t("media.cast")} />
-        <CastList cast={series.cast} />
-      </section>
     </div>
   );
 }

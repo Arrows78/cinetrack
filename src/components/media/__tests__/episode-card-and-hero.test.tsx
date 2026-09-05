@@ -206,11 +206,6 @@ describe("MediaDetailsHero", () => {
     expect(screen.queryByText("en")).not.toBeInTheDocument();
   });
 
-  it("falls back to the no-overview message when overview is empty", () => {
-    render(<MediaDetailsHero media={makeMedia({ overview: "" })} />);
-    expect(screen.getByText("No overview available for this content.")).toBeInTheDocument();
-  });
-
   it("renders the actions and extra render-prop content", () => {
     render(
       <MediaDetailsHero

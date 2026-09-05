@@ -97,13 +97,12 @@ export function MovieDetailPage() {
           });
         }}
       />
-      <LibraryEditor media={movie} />
-      <ProviderAvailability media={movie} />
-      <TrailerPanel mediaType="movie" mediaId={movie.id} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
-          <p className="font-serif text-base leading-7 text-muted-foreground md:text-lg">{movie.overview}</p>
+          <p className="font-serif text-base leading-7 text-muted-foreground md:text-lg">
+            {movie.overview || t("media.noOverview")}
+          </p>
         </Panel>
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("movies.technicalSheet")} />
@@ -122,13 +121,16 @@ export function MovieDetailPage() {
           </div>
         </Panel>
       </section>
-      <WatchHistoryPanel mediaId={movie.id} mediaType="movie" />
-      <CollectionProgressPanel movie={movie} />
-      <RecommendationsPanel media={movie} />
       <section>
         <SectionHeader title={t("media.cast")} subtitle={t("movies.castSubtitle")} />
         <CastList cast={movie.cast} />
       </section>
+      <TrailerPanel mediaType="movie" mediaId={movie.id} />
+      <ProviderAvailability media={movie} />
+      <LibraryEditor media={movie} />
+      <CollectionProgressPanel movie={movie} />
+      <WatchHistoryPanel mediaId={movie.id} mediaType="movie" />
+      <RecommendationsPanel media={movie} />
     </div>
   );
 }

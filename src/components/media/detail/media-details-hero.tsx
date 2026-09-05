@@ -89,10 +89,6 @@ export function MediaDetailsHero({
               ) : null}
             </div>
 
-            <p className="mt-4 max-w-2xl font-serif text-base leading-7 text-muted-foreground">
-              {media.overview || t("media.noOverview")}
-            </p>
-
             {media.genres.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {media.genres.map((genre) => (

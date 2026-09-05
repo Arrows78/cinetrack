@@ -267,6 +267,20 @@ describe("SeriesDetailPage", () => {
     nextEpisodeCardPropsMock.mockReset();
   });
 
+  it("falls back to the no-overview message when the series has none", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({ overview: "" }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("No overview available for this content.")).toBeInTheDocument();
+  });
+
   it("shows the not-found empty state for a non-numeric seriesId, and nothing else", () => {
     params.seriesId = "abc";
     renderPage();
