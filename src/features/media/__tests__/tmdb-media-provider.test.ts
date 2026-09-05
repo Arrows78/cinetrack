@@ -245,6 +245,13 @@ describe("TmdbMediaProvider", () => {
       expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ with_origin_country: "JP" });
     });
 
+    it("passes company through to with_companies (movies only)", async () => {
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.discoverMovies({ company: 420 });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ with_companies: 420 });
+    });
+
     it("applies the default vote-count floor unless the caller overrides it, and allows disabling it with 0", async () => {
       mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
 

@@ -130,6 +130,9 @@ vi.mock("@/components/media/discover/catalogue-browse", () => ({
   BrowseByPlatform: ({ startIndex }: { startIndex: number }) => (
     <div data-testid="browse-by-platform" data-start-index={startIndex} />
   ),
+  BrowseByStudio: ({ startIndex }: { startIndex: number }) => (
+    <div data-testid="browse-by-studio" data-start-index={startIndex} />
+  ),
 }));
 
 vi.mock("@/components/media/primitives/media-grid", () => ({
@@ -353,6 +356,14 @@ describe("SearchPage", () => {
 
     expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();
     expect(screen.getByText(i18n.t("search.showingResults", { filters: "Netflix" }))).toBeInTheDocument();
+  });
+
+  it("a URL company filter forces the results view, shows the studio's name, and is passed to useSearch", () => {
+    renderPage("?company=420");
+
+    expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();
+    expect(screen.getByText(i18n.t("search.showingResults", { filters: "Marvel Studios" }))).toBeInTheDocument();
+    expect(searchHookMock).toHaveBeenCalledWith("", "all", expect.objectContaining({ company: "420" }));
   });
 
   it("changing the scope filter navigates with the new scope reflected in the URL", async () => {

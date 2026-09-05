@@ -9,6 +9,8 @@ interface SearchOptions {
   genreMovie?: string;
   genreSeries?: string;
   provider?: string;
+  /** TMDB production-company id — movie discover only, see DiscoverArgs.company's doc comment. */
+  company?: string;
   region?: string;
 }
 
@@ -23,10 +25,18 @@ export function useSearch(query: string, scope: SearchScope, options?: SearchOpt
   const genreMovieOption = options?.genreMovie;
   const genreSeriesOption = options?.genreSeries;
   const providerOption = options?.provider;
-  const hasFilters = Boolean(genreMovieOption || genreSeriesOption || providerOption);
+  const companyOption = options?.company;
+  const hasFilters = Boolean(genreMovieOption || genreSeriesOption || providerOption || companyOption);
 
   const queryKey = hasFilters
-    ? queryKeys.remote.discover(genreMovieOption, genreSeriesOption, providerOption, scope, options?.region)
+    ? queryKeys.remote.discover(
+        genreMovieOption,
+        genreSeriesOption,
+        providerOption,
+        scope,
+        options?.region,
+        companyOption
+      )
     : queryKeys.remote.search(query, scope);
 
   const searchQuery = useInfiniteQuery({
@@ -38,11 +48,12 @@ export function useSearch(query: string, scope: SearchScope, options?: SearchOpt
       const genreMovie = genreMovieOption ? Number(genreMovieOption) : undefined;
       const genreSeries = genreSeriesOption ? Number(genreSeriesOption) : undefined;
       const provider = providerOption ? Number(providerOption) : undefined;
+      const company = companyOption ? Number(companyOption) : undefined;
       const common = { provider, page: pageParam, region: options?.region };
 
       if (scope === "movie") {
-        if (genreMovie === undefined && provider === undefined) return mergePages([]);
-        return mediaRepository.discoverMovies({ ...common, genre: genreMovie });
+        if (genreMovie === undefined && provider === undefined && company === undefined) return mergePages([]);
+        return mediaRepository.discoverMovies({ ...common, genre: genreMovie, company });
       }
 
       if (scope === "series") {
@@ -51,8 +62,8 @@ export function useSearch(query: string, scope: SearchScope, options?: SearchOpt
       }
 
       const requests: Array<Promise<PageResult<MediaSummary>>> = [];
-      if (genreMovie !== undefined || provider !== undefined) {
-        requests.push(mediaRepository.discoverMovies({ ...common, genre: genreMovie }));
+      if (genreMovie !== undefined || provider !== undefined || company !== undefined) {
+        requests.push(mediaRepository.discoverMovies({ ...common, genre: genreMovie, company }));
       }
       if (genreSeries !== undefined || provider !== undefined) {
         requests.push(mediaRepository.discoverSeries({ ...common, genre: genreSeries }));

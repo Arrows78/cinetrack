@@ -620,7 +620,7 @@ export const componentInventory = [
     "Media",
     "pattern",
     "live",
-    "Links out to genre- and platform-filtered search results."
+    "Links out to genre-, platform-, and studio-filtered search results."
   ),
   component(
     "CatalogueSections",

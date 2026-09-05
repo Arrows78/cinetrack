@@ -14,12 +14,12 @@ import { SearchBar } from "@/components/media/primitives/search-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { CatalogueSections } from "@/components/media/discover/catalogue-sections";
 import { CATALOGUE_SECTIONS } from "@/components/media/discover/catalogue-sections-data";
-import { BrowseByGenre, BrowseByPlatform } from "@/components/media/discover/catalogue-browse";
+import { BrowseByGenre, BrowseByPlatform, BrowseByStudio } from "@/components/media/discover/catalogue-browse";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSearch as useSearchHook } from "@/features/media/use-search";
 import { useHomeFeed } from "@/features/media/use-media";
-import { GENRES, PLATFORMS } from "@/shared/constants/discover";
+import { GENRES, PLATFORMS, STUDIOS } from "@/shared/constants/discover";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import type { MediaSummary, SearchFilterState, SearchScope } from "@/types/media";
 
@@ -27,6 +27,7 @@ const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
 const getGenreLabelKey = (id: string | undefined) =>
   id ? ALL_GENRES.find((genre) => String(genre.id) === id)?.labelKey : undefined;
 const getPlatformName = (id: string) => PLATFORMS.find((platform) => String(platform.id) === id)?.label ?? id;
+const getStudioName = (id: string) => STUDIOS.find((studio) => String(studio.id) === id)?.label ?? id;
 
 const VALID_SEARCH_SCOPES: readonly SearchScope[] = ["all", "movie", "series"];
 // A user can hand-edit the URL's ?scope= param — don't trust it as SearchScope
@@ -48,6 +49,7 @@ export function SearchPage() {
   const genreMovie = searchParams.get("genreMovie") || undefined;
   const genreSeries = searchParams.get("genreSeries") || undefined;
   const provider = searchParams.get("provider") || undefined;
+  const company = searchParams.get("company") || undefined;
   const urlQuery = searchParams.get("q") || "";
   const urlScope = parseSearchScope(searchParams.get("scope"));
 
@@ -92,10 +94,11 @@ export function SearchPage() {
     genreMovie,
     genreSeries,
     provider,
+    company,
     region: preferences?.region,
   });
 
-  const hasFilters = Boolean(genreMovie || genreSeries || provider);
+  const hasFilters = Boolean(genreMovie || genreSeries || provider || company);
   const showResults = hasFilters || debouncedQuery.trim().length >= MIN_SEARCH_QUERY_LENGTH;
   // No query typed yet and no filter applied: browse the same catalogue
   // sections as the home dashboard instead of an empty "start typing" state.
@@ -120,7 +123,7 @@ export function SearchPage() {
   // query is deliberately excluded, same as a smart list's rules: a saved
   // filter is a reusable *view* ("favourite sci-fi", "on my services"), not
   // a stored search term.
-  const currentFilters: SearchFilterState = { scope, genreMovie, genreSeries, provider };
+  const currentFilters: SearchFilterState = { scope, genreMovie, genreSeries, provider, company };
   const applySavedFilters = (filters: SearchFilterState) => {
     lastPushedScopeRef.current = filters.scope;
     setSelectedScope(filters.scope);
@@ -131,6 +134,7 @@ export function SearchPage() {
         genreMovie: filters.genreMovie,
         genreSeries: filters.genreSeries,
         provider: filters.provider,
+        company: filters.company,
       }),
       replace: true,
     });
@@ -141,6 +145,7 @@ export function SearchPage() {
   const removeGenreSeries = () =>
     void navigate({ search: (prev) => ({ ...prev, genreSeries: undefined }), replace: true });
   const removeProvider = () => void navigate({ search: (prev) => ({ ...prev, provider: undefined }), replace: true });
+  const removeCompany = () => void navigate({ search: (prev) => ({ ...prev, company: undefined }), replace: true });
   const removeScope = () => {
     lastPushedScopeRef.current = "all";
     setSelectedScope("all");
@@ -184,6 +189,15 @@ export function SearchPage() {
           },
         ]
       : []),
+    ...(company
+      ? [
+          {
+            key: "company",
+            label: t("filters.chips.studio", { value: getStudioName(company) }),
+            onRemove: removeCompany,
+          },
+        ]
+      : []),
   ];
 
   const filterTitle = hasFilters
@@ -191,6 +205,7 @@ export function SearchPage() {
         genreMovie ? genreName(genreMovie) : null,
         genreSeries ? genreName(genreSeries) : null,
         provider ? getPlatformName(provider) : null,
+        company ? getStudioName(company) : null,
       ]
         .filter(Boolean)
         .join(" • ")
@@ -237,6 +252,7 @@ export function SearchPage() {
               <CatalogueSections feed={homeFeedQuery.data} startIndex={2} />
               <BrowseByGenre startIndex={2 + CATALOGUE_SECTIONS.length} />
               <BrowseByPlatform startIndex={3 + CATALOGUE_SECTIONS.length} />
+              <BrowseByStudio startIndex={4 + CATALOGUE_SECTIONS.length} />
             </>
           ) : null}
         </>

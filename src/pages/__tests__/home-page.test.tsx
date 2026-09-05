@@ -65,6 +65,9 @@ vi.mock("@/components/media/discover/catalogue-browse", () => ({
   BrowseByPlatform: ({ startIndex }: { startIndex: number }) => (
     <div data-testid="browse-by-platform" data-start-index={startIndex} />
   ),
+  BrowseByStudio: ({ startIndex }: { startIndex: number }) => (
+    <div data-testid="browse-by-studio" data-start-index={startIndex} />
+  ),
 }));
 
 // Shallow-mocked for the same reason as the other presentational children

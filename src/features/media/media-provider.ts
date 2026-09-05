@@ -27,6 +27,8 @@ export interface DiscoverArgs {
   withCrew?: number;
   /** ISO 3166-1 country code (e.g. "KR", "JP") — only titles originating from that country. */
   originCountry?: string;
+  /** TMDB production-company id — only titles made by that company. Only wired into discoverMovies — Browse by Studio is movie-only in this app's UI. */
+  company?: number;
   /** Minimum vote count, filtering out low-sample titles a handful of votes could otherwise push to the top. Defaults to a small quality floor when omitted — pass 0 to disable it entirely. */
   voteCountGte?: number;
 }

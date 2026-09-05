@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/media/primitives/section-header";
-import { PLATFORMS } from "@/shared/constants/discover";
+import { PLATFORMS, STUDIOS } from "@/shared/constants/discover";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 
 // Shared between the home dashboard and Search's default (no-query) browse
@@ -75,6 +75,40 @@ export function BrowseByPlatform({ startIndex }: { startIndex: number }) {
                 {platform.initial}
               </div>
               <span className="text-sm font-medium">{platform.label}</span>
+            </Link>
+          </Panel>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Movie-only (with_companies isn't wired into discoverSeries — see
+// DiscoverArgs.company's doc comment), unlike BrowseByGenre/BrowseByPlatform
+// which both cover series too.
+export function BrowseByStudio({ startIndex }: { startIndex: number }) {
+  const { t } = useTranslation();
+
+  return (
+    <section>
+      <SectionHeader title={t("home.browseByStudio")} subtitle={t("home.browseByStudioSubtitle")} index={startIndex} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {STUDIOS.map((studio) => (
+          <Panel
+            asChild
+            tone="card"
+            key={studio.id}
+            className="p-4 transition-all duration-fast hover:scale-[1.02] hover:shadow-glow active:scale-[0.98]"
+          >
+            <Link
+              to="/search"
+              search={{ q: studio.label, scope: "movie", company: String(studio.id) }}
+              className="group flex items-center gap-3"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+                {studio.label[0]}
+              </div>
+              <span className="text-sm font-medium">{studio.label}</span>
             </Link>
           </Panel>
         ))}

@@ -88,3 +88,17 @@ export const PLATFORMS = [
   { id: 15, label: "Hulu", color: PLATFORM_BRAND_COLORS[15], initial: "H" },
   { id: 350, label: "Apple TV+", color: PLATFORM_BRAND_COLORS[350], initial: "A" },
 ] as const;
+
+// TMDB production-company ids — unlike PLATFORMS (where you can *stream*
+// something), this is about who *made* it, a distinct browse facet with no
+// brand colors on hand, so tiles use a plain semantic token instead.
+export const STUDIOS = [
+  { id: 3, label: "Pixar" },
+  { id: 420, label: "Marvel Studios" },
+  { id: 10342, label: "Studio Ghibli" },
+  { id: 41077, label: "A24" },
+  { id: 521, label: "DreamWorks Animation" },
+  { id: 6704, label: "Illumination" },
+  { id: 3172, label: "Blumhouse Productions" },
+  { id: 174, label: "Warner Bros. Pictures" },
+] as const;

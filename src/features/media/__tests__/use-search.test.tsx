@@ -134,4 +134,23 @@ describe("useSearch", () => {
     expect(discoverMoviesMock).not.toHaveBeenCalled();
     expect(result.current.items).toEqual([summary(3, "Discovered Series")]);
   });
+
+  it("routes to discoverMovies (only) when a company filter is set, even in 'all' scope", async () => {
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("", "all", { company: "420" }), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(discoverMoviesMock).toHaveBeenCalledWith(expect.objectContaining({ company: 420 }));
+    expect(discoverSeriesMock).not.toHaveBeenCalled();
+    expect(result.current.items).toEqual([summary(2, "Discovered Movie")]);
+  });
+
+  it("returns an empty page for a company filter in 'series' scope (company isn't wired into discoverSeries)", async () => {
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("", "series", { company: "420" }), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(discoverSeriesMock).not.toHaveBeenCalled();
+    expect(result.current.items).toEqual([]);
+  });
 });

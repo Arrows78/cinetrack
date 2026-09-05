@@ -11,7 +11,7 @@ import { SectionHeader } from "@/components/media/primitives/section-header";
 import { StatCard } from "@/components/media/primitives/stat-card";
 import { CatalogueSections } from "@/components/media/discover/catalogue-sections";
 import { CATALOGUE_SECTIONS } from "@/components/media/discover/catalogue-sections-data";
-import { BrowseByGenre, BrowseByPlatform } from "@/components/media/discover/catalogue-browse";
+import { BrowseByGenre, BrowseByPlatform, BrowseByStudio } from "@/components/media/discover/catalogue-browse";
 import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { useTokenVault } from "@/features/desktop/use-token-vault";
@@ -291,6 +291,7 @@ function HomePageContent() {
 
       <BrowseByGenre startIndex={sectionIndex + 1 + CATALOGUE_SECTIONS.length} />
       <BrowseByPlatform startIndex={sectionIndex + 2 + CATALOGUE_SECTIONS.length} />
+      <BrowseByStudio startIndex={sectionIndex + 3 + CATALOGUE_SECTIONS.length} />
     </div>
   );
 }

@@ -164,6 +164,7 @@ export class TmdbMediaProvider implements MediaProvider {
       with_cast: args.withCast,
       with_crew: args.withCrew,
       with_origin_country: args.originCountry,
+      with_companies: args.company,
       "vote_count.gte": args.voteCountGte ?? DEFAULT_DISCOVER_VOTE_COUNT_FLOOR,
     });
     return mapPage(response, mapMovieDto);

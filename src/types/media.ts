@@ -278,6 +278,7 @@ export interface SearchFilterState {
   genreMovie?: string;
   genreSeries?: string;
   provider?: string;
+  company?: string;
 }
 
 export type SavedFilterState = LibraryFilterState | SearchFilterState;
