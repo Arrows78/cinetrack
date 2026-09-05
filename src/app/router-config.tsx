@@ -1,4 +1,5 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent } from "@tanstack/react-router";
+import { z } from "zod";
 import { HomePage } from "@/pages/home-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { ErrorComponent, PendingComponent, RootLayout } from "./router-components";
@@ -33,6 +34,12 @@ const seriesRoute = createRoute({
 const seriesDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/series/$seriesId",
+  // `season`: an entry point (a home-dashboard rail, an availability alert)
+  // that already knows which season is relevant can open the full series
+  // page with that season's accordion pre-expanded, instead of dropping the
+  // user onto the isolated single-season route with no way back to the
+  // rest of the show.
+  validateSearch: z.object({ season: z.coerce.number().int().positive().optional() }),
   component: lazyRouteComponent(() => import("@/pages/series-detail-page"), "SeriesDetailPage"),
 });
 const seasonRoute = createRoute({

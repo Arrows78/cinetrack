@@ -34,12 +34,9 @@ function WeeklyAgendaRow({ entry }: { entry: TrackingEntry }) {
   return (
     <Tile asChild className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-foreground/[0.04]">
       <Link
-        to={entry.type === "episode" ? "/series/$seriesId/season/$seasonNumber" : "/movies/$movieId"}
-        params={
-          entry.type === "episode"
-            ? { seriesId: String(entry.mediaId), seasonNumber: String(entry.seasonNumber ?? 1) }
-            : { movieId: String(entry.mediaId) }
-        }
+        to={entry.type === "episode" ? "/series/$seriesId" : "/movies/$movieId"}
+        params={entry.type === "episode" ? { seriesId: String(entry.mediaId) } : { movieId: String(entry.mediaId) }}
+        search={entry.type === "episode" ? { season: entry.seasonNumber ?? 1 } : undefined}
       >
         {entry.type === "episode" ? (
           <Tv className="size-4 shrink-0 text-primary" />

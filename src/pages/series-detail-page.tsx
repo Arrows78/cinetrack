@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 import type { Season } from "@/types/media";
 import { AvailabilityAlertButton } from "@/components/media/detail/availability-alert-button";
@@ -36,6 +36,7 @@ import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
 export function SeriesDetailPage() {
   const { t } = useTranslation();
   const { seriesId } = useParams({ from: "/series/$seriesId" });
+  const { season: initialOpenSeason } = useSearch({ from: "/series/$seriesId" });
   const id = Number(seriesId);
   const seriesQuery = useSeriesDetails(id);
   const progressQuery = useEpisodeProgress(id);
@@ -176,7 +177,9 @@ export function SeriesDetailPage() {
           onToggleEpisode={(episode, watched, note) =>
             progressQuery.toggleEpisodeSeen({ series, episode, watched, note })
           }
+          onToggleEpisodes={(episodes, target) => progressQuery.markEpisodesSeen({ series, episodes, target })}
           onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })}
+          initialOpenSeason={initialOpenSeason}
         />
       </section>
       <WatchHistoryPanel mediaId={series.id} mediaType="series" />

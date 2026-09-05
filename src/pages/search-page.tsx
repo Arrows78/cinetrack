@@ -39,7 +39,12 @@ export function SearchPage() {
   const navigate = useNavigate({ from: "/search" });
   const { data: preferences } = usePreferences();
   const location = useRouterState({ select: (state) => state.location });
-  const searchParams = new URLSearchParams(location.search);
+  // `location.search`'s type is a union across every route's validateSearch
+  // schema (see router-config.tsx's seriesDetailRoute), which can include
+  // non-string fields URLSearchParams' Record<string, string> constructor
+  // overload rejects — but at runtime this page only ever navigates within
+  // /search's own string-valued params, so the cast is safe.
+  const searchParams = new URLSearchParams(location.search as Record<string, string>);
   const genreMovie = searchParams.get("genreMovie") || undefined;
   const genreSeries = searchParams.get("genreSeries") || undefined;
   const provider = searchParams.get("provider") || undefined;

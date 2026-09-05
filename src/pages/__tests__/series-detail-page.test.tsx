@@ -13,6 +13,7 @@ const params = { seriesId: "9" as string };
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children?: React.ReactNode; to?: string }) => <a href={to}>{children}</a>,
   useParams: () => params,
+  useSearch: () => ({}),
 }));
 
 const seriesQueryMock = vi.fn();
