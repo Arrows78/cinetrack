@@ -16,7 +16,11 @@ informational and is not a merge gate.
 
 Playwright currently covers responsive/theme visual shells only. It does not
 drive a Tauri window or a real SQLite database; functional end-to-end coverage
-is intentionally tracked as a separate future workstream.
+is intentionally tracked as a separate future workstream. If a UI change makes
+`visual-regression` fail on `main`, `refresh-baselines-pr` regenerates the
+Linux baselines and opens a PR with them automatically — see
+[`e2e/visual/README.md`](../e2e/visual/README.md) for that workflow and the
+manual `bootstrap-baselines` alternative.
 
 For local changes, run the narrowest relevant command while iterating and use
 `pnpm validate` before opening a pull request.

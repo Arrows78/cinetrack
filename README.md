@@ -1,3 +1,5 @@
+<div align="center">
+
 # 🎬 CineTrack
 
 **A local-first desktop application for discovering, organising, and tracking films and TV series.**
@@ -7,6 +9,14 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/home-light.png">
+  <img src="docs/screenshots/home-light.png" alt="CineTrack's home dashboard" width="820">
+</picture>
+
+</div>
 
 CineTrack is a local-first desktop application built with **Tauri**, **React**, **TypeScript**, and **SQLite**. It uses the [TMDB](https://www.themoviedb.org/) catalogue to explore films and TV series while keeping your library, viewing progress, and activity history on your device.
 
