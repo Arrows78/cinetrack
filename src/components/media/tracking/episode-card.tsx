@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, Check, Clock4, EyeOff, ImageOff, NotebookPen } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -14,11 +15,17 @@ export function EpisodeCard({
   onToggleSeen,
   disabled,
   isLastUnwatched,
+  seriesId,
+  seasonNumber,
 }: {
   episode: Episode;
   onToggleSeen: (note?: string) => void;
   disabled?: boolean;
   isLastUnwatched?: boolean;
+  // Optional: renders the still/title block as a link to this episode's own
+  // detail page. Omitted by callers that don't have both ids in scope.
+  seriesId?: number;
+  seasonNumber?: number;
 }) {
   const { t } = useTranslation();
   const preferences = usePreferences();
@@ -30,13 +37,9 @@ export function EpisodeCard({
   // must stay toggleable back off.
   const isUnreleased = !watched && !hasAired(episode);
   const stillUrl = buildTmdbImageUrl(episode.stillPath, "w342");
-  return (
-    <div
-      className={cn(
-        "group flex items-center gap-3 rounded-2xl p-3 transition",
-        watched ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.04]"
-      )}
-    >
+
+  const detailsBlock = (
+    <>
       <div className="relative aspect-video h-[3.875rem] w-[6.875rem] shrink-0 overflow-hidden rounded-xl bg-muted">
         {hidden ? (
           <div className="flex h-full items-center justify-center">
@@ -95,6 +98,31 @@ export function EpisodeCard({
           ) : null}
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center gap-3 rounded-2xl p-3 transition",
+        watched ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.04]"
+      )}
+    >
+      {seriesId !== undefined && seasonNumber !== undefined ? (
+        <Link
+          to="/series/$seriesId/season/$seasonNumber/episode/$episodeNumber"
+          params={{
+            seriesId: String(seriesId),
+            seasonNumber: String(seasonNumber),
+            episodeNumber: String(episode.episodeNumber),
+          }}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {detailsBlock}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-3">{detailsBlock}</div>
+      )}
       <div className="flex shrink-0 items-center gap-1">
         {!watched && !isUnreleased ? (
           <IconTooltip label={t("media.addWatchNoteAction")}>

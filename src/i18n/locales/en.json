@@ -59,6 +59,7 @@
     "markPreviousIncludeCta_other": "This one and the {{count}} previous ones",
     "markPreviousOnlyThisCta": "Only this one",
     "nextEpisode": "Next episode",
+    "previousEpisode": "Previous episode",
     "similarSuggestions": "Similar suggestions",
     "becauseWatching": "Because you're watching {{title}}",
     "disableAlert": "Disable alert",

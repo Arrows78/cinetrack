@@ -90,6 +90,8 @@ export function SeasonPage() {
               key={episode.id}
               episode={{ ...episode, watched: watchedSet.has(episode.id) }}
               disabled={progressQuery.isSaving}
+              seriesId={series.id}
+              seasonNumber={season.seasonNumber}
               onToggleSeen={(note) =>
                 backlog.requestToggle(
                   episode,

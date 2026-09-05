@@ -16,7 +16,19 @@ import type { MediaType } from "@/types/media";
 // nothing to show, rather than an empty-state panel — this is a secondary,
 // below-the-fold section, not a page a user navigates to specifically to
 // see their notes.
-export function WatchHistoryPanel({ mediaId, mediaType }: { mediaId: number; mediaType: MediaType }) {
+export function WatchHistoryPanel({
+  mediaId,
+  mediaType,
+  episodeId,
+}: {
+  mediaId: number;
+  mediaType: MediaType;
+  // Narrows the diary to a single episode's own notes (the episode detail
+  // page) instead of the whole series' — every event already carries its
+  // episodeId, so this is a client-side filter over the same query, no new
+  // Rust command needed.
+  episodeId?: number;
+}) {
   const { t } = useTranslation();
   const eventsQuery = useViewingEventsForMedia(mediaId, mediaType);
 
@@ -26,7 +38,9 @@ export function WatchHistoryPanel({ mediaId, mediaType }: { mediaId: number; med
     );
   }
 
-  const notedEvents = (eventsQuery.data ?? []).filter((event) => event.eventType === "watched" && event.note);
+  const notedEvents = (eventsQuery.data ?? []).filter(
+    (event) => event.eventType === "watched" && event.note && (episodeId === undefined || event.episodeId === episodeId)
+  );
   if (!notedEvents.length) return null;
 
   return (

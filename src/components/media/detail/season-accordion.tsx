@@ -204,6 +204,8 @@ export function SeasonAccordion({
                         episode={{ ...episode, watched: isWatched }}
                         disabled={isSaving}
                         isLastUnwatched={isLastUnwatched}
+                        seriesId={series.id}
+                        seasonNumber={season.seasonNumber}
                         onToggleSeen={(note) =>
                           backlog.requestToggle(episode, !isWatched, season.episodes, watchedSet, note, season)
                         }

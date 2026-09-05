@@ -47,6 +47,11 @@ const seasonRoute = createRoute({
   path: "/series/$seriesId/season/$seasonNumber",
   component: lazyRouteComponent(() => import("@/pages/season-page"), "SeasonPage"),
 });
+const episodeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/series/$seriesId/season/$seasonNumber/episode/$episodeNumber",
+  component: lazyRouteComponent(() => import("@/pages/episode-detail-page"), "EpisodeDetailPage"),
+});
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/search",
@@ -110,6 +115,7 @@ const routeTree = rootRoute.addChildren([
   seriesRoute,
   seriesDetailRoute,
   seasonRoute,
+  episodeRoute,
   searchRoute,
   libraryRoute,
   historyRoute,

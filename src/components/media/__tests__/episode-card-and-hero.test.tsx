@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { makeMedia } from "@/shared/test-utils";
 import type { Episode } from "@/types/media";
@@ -9,6 +10,19 @@ import { MediaDetailsHero } from "../detail/media-details-hero";
 let preferencesData: { spoilerProtection?: boolean } = {};
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({ data: preferencesData }),
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    to,
+    params,
+    ...rest
+  }: PropsWithChildren<{ to: string; params?: Record<string, string> }> & Record<string, unknown>) => (
+    <a href={params ? `${to}::${JSON.stringify(params)}` : to} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 function makeEpisode(overrides: Partial<Episode> = {}): Episode {
@@ -174,6 +188,22 @@ describe("EpisodeCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
 
     expect(onToggleSeen).toHaveBeenCalledWith(undefined);
+  });
+
+  it("links the still/title block to its own episode page when seriesId/seasonNumber are given", () => {
+    render(
+      <EpisodeCard episode={makeEpisode({ episodeNumber: 3 })} onToggleSeen={vi.fn()} seriesId={9} seasonNumber={1} />
+    );
+
+    expect(screen.getByRole("link", { name: /The Long Way Down/ })).toHaveAttribute(
+      "href",
+      '/series/$seriesId/season/$seasonNumber/episode/$episodeNumber::{"seriesId":"9","seasonNumber":"1","episodeNumber":"3"}'
+    );
+  });
+
+  it("renders no link when seriesId/seasonNumber are omitted", () => {
+    render(<EpisodeCard episode={makeEpisode()} onToggleSeen={vi.fn()} />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
 

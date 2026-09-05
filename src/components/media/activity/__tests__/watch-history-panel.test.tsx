@@ -68,6 +68,36 @@ describe("WatchHistoryPanel", () => {
     expect(notes.map((node) => node.textContent)).toEqual(["Second watch, even better", "First watch"]);
   });
 
+  it("narrows to a single episode's own notes when episodeId is given", () => {
+    eventsQueryMock.mockReturnValue({
+      isError: false,
+      data: [
+        makeEvent({ id: "evt-ep1", episodeId: 1, note: "Episode one note" }),
+        makeEvent({ id: "evt-ep2", episodeId: 2, note: "Episode two note" }),
+      ],
+      refetch: vi.fn(),
+    });
+    render(<WatchHistoryPanel mediaId={9} mediaType="series" episodeId={2} />);
+
+    expect(screen.queryByText("Episode one note")).not.toBeInTheDocument();
+    expect(screen.getByText("Episode two note")).toBeInTheDocument();
+  });
+
+  it("shows notes for every episode when episodeId is omitted", () => {
+    eventsQueryMock.mockReturnValue({
+      isError: false,
+      data: [
+        makeEvent({ id: "evt-ep1", episodeId: 1, note: "Episode one note" }),
+        makeEvent({ id: "evt-ep2", episodeId: 2, note: "Episode two note" }),
+      ],
+      refetch: vi.fn(),
+    });
+    render(<WatchHistoryPanel mediaId={9} mediaType="series" />);
+
+    expect(screen.getByText("Episode one note")).toBeInTheDocument();
+    expect(screen.getByText("Episode two note")).toBeInTheDocument();
+  });
+
   it("shows a retryable error state when the query fails", () => {
     const refetch = vi.fn();
     eventsQueryMock.mockReturnValue({ isError: true, data: undefined, refetch });
