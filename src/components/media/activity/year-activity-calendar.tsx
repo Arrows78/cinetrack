@@ -1,7 +1,15 @@
-import { eachDayOfInterval, endOfYear, format, getDay, isSameMonth, startOfYear } from "date-fns";
+import { Fragment } from "react";
+import { eachDayOfInterval, endOfYear, format, getDay, startOfYear } from "date-fns";
 import { enUS, fr } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/cn";
+
+const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+// A Sunday-first reference week (2023-01-01 was a Sunday) purely so Intl/
+// date-fns can derive a localized weekday label per index — matches
+// ViewingHeatmap's own REFERENCE_SUNDAY, so both grids label weekdays the
+// same way.
+const REFERENCE_SUNDAY = new Date(2023, 0, 1);
 
 function intensityClass(count: number, max: number): string {
   if (count === 0) return "bg-foreground/[0.04]";
@@ -14,9 +22,17 @@ function intensityClass(count: number, max: number): string {
 
 /**
  * GitHub/GitLab-style full-year contribution calendar: one column per week,
- * one row per weekday (Sunday first, matching ViewingHeatmap's convention),
- * colored by watch count that day. `dailyCounts` only needs entries for
- * days with at least one watch — see stats-repository.ts's getYearSummary.
+ * one row per weekday (Sunday first, matching ViewingHeatmap's own
+ * convention and visual language — same cell size/rounding/intensity scale,
+ * same leading label column/row structure, same legend), colored by watch
+ * count that day. `dailyCounts` only needs entries for days with at least
+ * one watch — see stats-repository.ts's getYearSummary.
+ *
+ * Weeks and weekdays share one CSS grid (not two separately-sized grids for
+ * cells vs. month labels) so a month label's column always lines up with
+ * the week column it actually labels — a `grid-auto-flow: column` layout
+ * split across two independently-sized `inline-grid` elements can't
+ * guarantee that.
  */
 export function YearActivityCalendar({
   year,
@@ -31,61 +47,67 @@ export function YearActivityCalendar({
   const locale = i18n.language.startsWith("fr") ? fr : enUS;
   const yearStart = startOfYear(new Date(year, 0, 1));
   const days = eachDayOfInterval({ start: yearStart, end: endOfYear(yearStart) });
-  // Sunday = 0, matching ViewingHeatmap's own day-of-week convention — blank
-  // cells so January 1st lands in its real weekday row, not always row 0.
+  // Sunday = 0 — days before the year's first weekday stay blank in week 0.
   const leadingBlanks = getDay(yearStart);
-  const cells: Array<Date | null> = [...Array<null>(leadingBlanks).fill(null), ...days];
-  const weekCount = Math.ceil(cells.length / 7);
-  const max = Math.max(1, ...Object.values(dailyCounts));
-  const countFor = (day: Date) => dailyCounts[format(day, "yyyy-MM-dd")] ?? 0;
+  const weekCount = Math.ceil((leadingBlanks + days.length) / 7);
 
-  // One label per month, placed above the week-column its 1st falls in.
-  const monthLabels = Array.from({ length: 12 }, (_, month) => {
-    const firstOfMonth = new Date(year, month, 1);
-    const dayIndex = days.findIndex((day) => isSameMonth(day, firstOfMonth));
-    return {
-      key: month,
-      label: format(firstOfMonth, "MMM", { locale }),
-      column: Math.floor((leadingBlanks + dayIndex) / 7) + 1,
-    };
+  // weeks[weekIndex][weekday] — a real Date, or null for a blank leading/
+  // trailing cell. Built once so weekday-rows and month-label lookups both
+  // read from the same week→weekday→date mapping the grid renders from.
+  const weeks: (Date | null)[][] = Array.from({ length: weekCount }, () => Array<Date | null>(7).fill(null));
+  days.forEach((day, index) => {
+    const cellIndex = leadingBlanks + index;
+    weeks[Math.floor(cellIndex / 7)]![cellIndex % 7] = day;
   });
 
+  const max = Math.max(1, ...Object.values(dailyCounts));
+  const countFor = (day: Date) => dailyCounts[format(day, "yyyy-MM-dd")] ?? 0;
+  // A week gets a month label only when it's the week containing that
+  // month's 1st — one label per month, never a repeat down the row.
+  const monthLabelForWeek = (weekIndex: number) => {
+    const firstOfMonth = weeks[weekIndex]!.find((day) => day?.getDate() === 1);
+    return firstOfMonth ? format(firstOfMonth, "MMM", { locale }) : "";
+  };
+  const weekdayLabel = (weekday: number) =>
+    new Intl.DateTimeFormat(i18n.language, { weekday: "short" }).format(
+      new Date(REFERENCE_SUNDAY.getFullYear(), REFERENCE_SUNDAY.getMonth(), REFERENCE_SUNDAY.getDate() + weekday)
+    );
+
   return (
-    <div className={cn("overflow-x-auto", className)}>
+    <div className={cn("mt-5 overflow-x-auto", className)}>
       <div
         aria-hidden="true"
-        className="inline-grid gap-1 text-[0.65rem] leading-none text-muted-foreground"
-        style={{ gridTemplateColumns: `repeat(${weekCount}, minmax(0.65rem, 1fr))` }}
+        className="inline-grid gap-1"
+        style={{ gridTemplateColumns: `2rem repeat(${weekCount}, minmax(0.65rem, 1fr))` }}
       >
-        {monthLabels.map(({ key, label, column }) => (
-          <div key={key} style={{ gridColumn: column, gridRow: 1 }}>
-            {label}
+        <div />
+        {weeks.map((_, weekIndex) => (
+          <div key={weekIndex} className="text-left text-[0.6rem] leading-none text-muted-foreground">
+            {monthLabelForWeek(weekIndex)}
           </div>
         ))}
-      </div>
-      <div
-        aria-hidden="true"
-        className="mt-1 inline-grid gap-1"
-        style={{
-          gridTemplateColumns: `repeat(${weekCount}, minmax(0.65rem, 1fr))`,
-          gridTemplateRows: "repeat(7, minmax(0.65rem, 1fr))",
-          gridAutoFlow: "column",
-        }}
-      >
-        {cells.map((day, index) =>
-          day ? (
-            <div
-              key={day.toISOString()}
-              title={t("stats.yearCalendar.cellTitle", { date: format(day, "PP", { locale }), count: countFor(day) })}
-              className={cn(
-                "aspect-square rounded-sm transition-shadow hover:ring-2 hover:ring-inset hover:ring-foreground/50",
-                intensityClass(countFor(day), max)
-              )}
-            />
-          ) : (
-            <div key={`blank-${index}`} />
-          )
-        )}
+        {WEEKDAYS.map((weekday) => (
+          <Fragment key={weekday}>
+            <div className="flex items-center pr-2 text-xs text-muted-foreground">{weekdayLabel(weekday)}</div>
+            {weeks.map((week, weekIndex) => {
+              const day = week[weekday];
+              if (!day) return <div key={weekIndex} />;
+              return (
+                <div
+                  key={weekIndex}
+                  title={t("stats.yearCalendar.cellTitle", {
+                    date: format(day, "PP", { locale }),
+                    count: countFor(day),
+                  })}
+                  className={cn(
+                    "aspect-square rounded-sm transition-shadow hover:ring-2 hover:ring-inset hover:ring-foreground/50",
+                    intensityClass(countFor(day), max)
+                  )}
+                />
+              );
+            })}
+          </Fragment>
+        ))}
       </div>
       <div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-muted-foreground" aria-hidden="true">
         <span>{t("stats.heatmap.less")}</span>

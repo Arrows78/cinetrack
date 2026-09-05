@@ -8,13 +8,23 @@ describe("YearActivityCalendar", () => {
     await i18n.changeLanguage("en");
   });
 
-  it("renders one visible cell per day of the year plus leading blanks for January 1st's weekday", () => {
-    // 2026-01-01 is a Thursday (weekday index 4) — 4 leading blank cells.
+  it("renders exactly one titled cell per day of the year", () => {
     const { container } = render(<YearActivityCalendar year={2026} dailyCounts={{}} />);
+    expect(container.querySelectorAll("[title]")).toHaveLength(365);
+  });
 
-    const grids = container.querySelectorAll(".inline-grid");
-    const cellsGrid = grids[1]!;
-    expect(cellsGrid.children).toHaveLength(4 + 365);
+  it("labels every weekday row, once each", () => {
+    render(<YearActivityCalendar year={2026} dailyCounts={{}} />);
+    for (const label of ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]) {
+      expect(screen.getAllByText(label)).toHaveLength(1);
+    }
+  });
+
+  it("labels the week containing each month's 1st, and no other week", () => {
+    render(<YearActivityCalendar year={2026} dailyCounts={{}} />);
+    for (const label of ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]) {
+      expect(screen.getAllByText(label)).toHaveLength(1);
+    }
   });
 
   it("gives every day of the year a row in the accessible fallback table", () => {
