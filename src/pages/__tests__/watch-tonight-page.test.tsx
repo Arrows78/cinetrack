@@ -160,6 +160,24 @@ describe("WatchTonightPage", () => {
     expect(grid).not.toHaveTextContent("Dune");
   });
 
+  it("shows the hero pick's own overview — MediaDetailsHero itself no longer renders one", async () => {
+    pickMock.mockResolvedValue({ movies: [movie({ overview: "A boy rises to fulfil a great destiny." })], series: [] });
+
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Dune" })).toBeInTheDocument();
+    expect(screen.getByText("A boy rises to fulfil a great destiny.")).toBeInTheDocument();
+  });
+
+  it("falls back to the no-overview message when the hero pick has none", async () => {
+    pickMock.mockResolvedValue({ movies: [movie({ overview: "" })], series: [] });
+
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Dune" })).toBeInTheDocument();
+    expect(screen.getByText("No overview available for this content.")).toBeInTheDocument();
+  });
+
   it("shows only the hero, with no alternates section, when the batch has a single item", async () => {
     pickMock.mockResolvedValue({ movies: [movie()], series: [] });
 

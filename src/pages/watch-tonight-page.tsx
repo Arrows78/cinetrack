@@ -44,19 +44,31 @@ function ViewDetailsButton({ media }: { media: Movie | Series }) {
 }
 
 // Featuring one large pick (instead of an equal-weight grid) is the point of
-// a "decide for me" feature — MediaDetailsHero already renders everything a
-// hero pick needs (backdrop, title, overview, genres) via its `actions` slot.
+// a "decide for me" feature — MediaDetailsHero renders everything else a
+// hero pick needs (backdrop, title, genres) via its `actions` slot. Overview
+// isn't one of them (MediaDetailsHero dropped it — see movie/series detail
+// pages, which have their own separate Overview panel instead): this is the
+// one surface with no such panel to fall back on, so it renders its own
+// copy directly, in the same style detail pages use for theirs.
 function WatchTonightHeroPick({ media }: { media: Movie | Series }) {
+  const { t } = useTranslation();
   return (
-    <MediaDetailsHero
-      media={media}
-      actions={
-        <>
-          <AddToLibraryButton media={media} />
-          <ViewDetailsButton media={media} />
-        </>
-      }
-    />
+    <div className="space-y-4">
+      <MediaDetailsHero
+        media={media}
+        actions={
+          <>
+            <AddToLibraryButton media={media} />
+            <ViewDetailsButton media={media} />
+          </>
+        }
+      />
+      <Panel tone="subtle" className="p-6">
+        <p className="font-serif text-base leading-7 text-muted-foreground">
+          {media.overview || t("media.noOverview")}
+        </p>
+      </Panel>
+    </div>
   );
 }
 
