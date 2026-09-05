@@ -60,13 +60,13 @@ describe("filterAvailableItems", () => {
     expect(result).toEqual([series]);
   });
 
-  it("caps the result at the default cap of 4, keeping input order", () => {
+  it("caps the result at the default cap of 5, keeping input order", () => {
     const results = Array.from({ length: 6 }, (_, index) => mediaSummary({ id: index + 1 }));
 
     const result = filterAvailableItems(results, []);
 
-    expect(result).toHaveLength(4);
-    expect(result).toEqual(results.slice(0, 4));
+    expect(result).toHaveLength(5);
+    expect(result).toEqual(results.slice(0, 5));
   });
 
   it("caps the result at a custom cap parameter", () => {

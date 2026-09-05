@@ -23,8 +23,13 @@ export function isInLibrary(item: { mediaId: number; mediaType: MediaType }, key
   return keySet.has(libraryKey(item.mediaId, item.mediaType));
 }
 
-/** Filter out items already in the user's library and cap the result set. */
-export function filterAvailableItems(results: MediaSummary[], library: LibraryItem[], cap = 4): MediaSummary[] {
+/**
+ * Filter out items already in the user's library and cap the result set.
+ * Defaults to 5 — one full row at MediaGrid's own xl:grid-cols-5 default
+ * (see media-grid.tsx's MEDIA_GRID_CLASS_NAME), so a "For You" rail never
+ * leaves a visibly half-empty last row on a wide window.
+ */
+export function filterAvailableItems(results: MediaSummary[], library: LibraryItem[], cap = 5): MediaSummary[] {
   return filterAvailableItemsByKeySet(results, buildLibraryKeySet(library), cap);
 }
 
@@ -33,7 +38,7 @@ export function filterAvailableItems(results: MediaSummary[], library: LibraryIt
  * membership key set (e.g. `libraryRepository.listMediaKeys()`) instead of
  * a full `LibraryItem[]`.
  */
-export function filterAvailableItemsByKeySet(results: MediaSummary[], keySet: Set<string>, cap = 4): MediaSummary[] {
+export function filterAvailableItemsByKeySet(results: MediaSummary[], keySet: Set<string>, cap = 5): MediaSummary[] {
   if (results.length === 0) return [];
   return results.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, keySet)).slice(0, cap);
 }
