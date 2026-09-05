@@ -9,7 +9,8 @@ import { AvailableNowSection } from "@/components/media/home/available-now-secti
 import { AlertsSection } from "@/components/media/home/alerts-section";
 import { WatchTonightTeaserSection } from "@/components/media/home/watch-tonight-teaser-section";
 import { PersonalizedRecommendationSection } from "@/components/media/home/personalized-recommendation-section";
-import { NeedsAttentionSection, selectBacklogSeries } from "@/components/media/home/needs-attention-section";
+import { NeedsAttentionSection } from "@/components/media/home/needs-attention-section";
+import { selectBacklogSeries } from "@/components/media/home/select-backlog-series";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useTodayHubEpisodes } from "@/features/progress/use-watch-next";
 import { useAvailabilityStatus } from "@/features/availability/use-availability-alerts";

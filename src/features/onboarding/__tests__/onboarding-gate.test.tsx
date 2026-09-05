@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
-import { OnboardingGate, shouldShowOnboarding } from "../onboarding-gate";
+import { OnboardingGate } from "../onboarding-gate";
 
 const preferencesMock = vi.fn();
 vi.mock("@/features/preferences/use-preferences", () => ({
@@ -16,21 +16,6 @@ vi.mock("@/features/library/use-library", () => ({
 vi.mock("@/features/onboarding/onboarding-screen", () => ({
   OnboardingScreen: () => <div data-testid="onboarding-screen" />,
 }));
-
-describe("shouldShowOnboarding", () => {
-  it("skips once onboarding is already completed, regardless of library state", () => {
-    expect(shouldShowOnboarding({ onboardingCompleted: true, hasExistingLibrary: false })).toBe(false);
-    expect(shouldShowOnboarding({ onboardingCompleted: true, hasExistingLibrary: true })).toBe(false);
-  });
-
-  it("shows onboarding when not completed and the library is empty", () => {
-    expect(shouldShowOnboarding({ onboardingCompleted: false, hasExistingLibrary: false })).toBe(true);
-  });
-
-  it("skips when not completed but the library already has items (an existing install)", () => {
-    expect(shouldShowOnboarding({ onboardingCompleted: false, hasExistingLibrary: true })).toBe(false);
-  });
-});
 
 describe("OnboardingGate", () => {
   const updatePreferenceMock = vi.fn();

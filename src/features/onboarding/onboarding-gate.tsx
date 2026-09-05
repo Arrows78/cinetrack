@@ -4,24 +4,7 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 import { useLibraryMediaKeys } from "@/features/library/use-library";
 import { LoadingScreen } from "@/components/states/loading-screen";
 import { OnboardingScreen } from "@/features/onboarding/onboarding-screen";
-
-/**
- * Exported for isolated unit testing — the actual decision behind
- * OnboardingGate. An existing install upgrading into the
- * `onboardingCompleted` preference for the first time has a non-empty
- * library, not an unset flag — treated the same as "already done" so
- * onboarding never resurfaces for an established user just because this
- * key happened to never be written for them.
- */
-export function shouldShowOnboarding({
-  onboardingCompleted,
-  hasExistingLibrary,
-}: {
-  onboardingCompleted: boolean;
-  hasExistingLibrary: boolean;
-}): boolean {
-  return !onboardingCompleted && !hasExistingLibrary;
-}
+import { shouldShowOnboarding } from "@/features/onboarding/should-show-onboarding";
 
 /**
  * Goal-oriented first-launch screen — sits in AuthRoot (auth-root.tsx)

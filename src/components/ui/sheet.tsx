@@ -28,9 +28,21 @@ const verticalSizeClasses: Record<SheetSize, string> = {
   xl: "h-[82vh] max-h-[60rem]",
 };
 
-export const Sheet = DialogPrimitive.Root;
-export const SheetTrigger = DialogPrimitive.Trigger;
-export const SheetClose = DialogPrimitive.Close;
+export function Sheet(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  return <DialogPrimitive.Root {...props} />;
+}
+
+export const SheetTrigger = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger>
+>((props, ref) => <DialogPrimitive.Trigger ref={ref} {...props} />);
+SheetTrigger.displayName = DialogPrimitive.Trigger.displayName;
+
+export const SheetClose = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Close>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close>
+>((props, ref) => <DialogPrimitive.Close ref={ref} {...props} />);
+SheetClose.displayName = DialogPrimitive.Close.displayName;
 
 // Shared with ConfirmDialog's own Radix overlay — the two aren't the same
 // component (ConfirmDialog doesn't use SheetOverlay), so this constant is

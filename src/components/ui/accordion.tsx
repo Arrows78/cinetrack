@@ -3,7 +3,11 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 
-export const Accordion = AccordionPrimitive.Root;
+export const Accordion = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Root>
+>((props, ref) => <AccordionPrimitive.Root ref={ref} {...props} />);
+Accordion.displayName = AccordionPrimitive.Root.displayName;
 
 export const AccordionItem = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Item>,
