@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -80,19 +81,40 @@ function SelectableItemRow({
   );
 }
 
-function DuplicateGroupRow({ group, onDismiss }: { group: DuplicateGroup; onDismiss: () => void }) {
+function DuplicateGroupRow({
+  group,
+  onDismiss,
+  onRemoveItem,
+}: {
+  group: DuplicateGroup;
+  onDismiss: () => void;
+  onRemoveItem: (item: LibraryItem) => void;
+}) {
   const { t } = useTranslation();
 
   return (
     <Tile className="space-y-2 p-3">
       <div className="flex flex-wrap gap-2">
         {group.items.map((item) => (
-          <ItemLink key={itemKey(item)} item={item}>
-            <span className="truncate rounded-lg border border-border px-2 py-1.5 text-sm font-medium hover:bg-foreground/[0.04]">
-              {item.title}
-              {item.year ? <span className="ml-1 text-xs text-muted-foreground">({item.year})</span> : null}
-            </span>
-          </ItemLink>
+          <div
+            key={itemKey(item)}
+            className="flex items-center rounded-lg border border-border pr-1 hover:bg-foreground/[0.04]"
+          >
+            <ItemLink item={item}>
+              <span className="truncate px-2 py-1.5 text-sm font-medium">
+                {item.title}
+                {item.year ? <span className="ml-1 text-xs text-muted-foreground">({item.year})</span> : null}
+              </span>
+            </ItemLink>
+            <button
+              type="button"
+              onClick={() => onRemoveItem(item)}
+              aria-label={t("library.health.duplicatesRemoveItem", { title: item.title })}
+              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
         ))}
       </div>
       <Button type="button" variant="ghost" size="sm" onClick={onDismiss}>
@@ -123,7 +145,10 @@ export function LibraryHealthPanel({ index }: { index: number }) {
   const [dismissedDuplicateKeys, setDismissedDuplicateKeys] = useState<Set<string>>(new Set());
   const [selectedMissingKeys, setSelectedMissingKeys] = useState<Set<string>>(new Set());
   const [selectedStaleKeys, setSelectedStaleKeys] = useState<Set<string>>(new Set());
-  const [pendingRemoveConfirm, setPendingRemoveConfirm] = useState(false);
+  // Shared by both the missing-metadata bulk button and a single duplicate's
+  // own remove button below — either way it's the same irreversible action
+  // on the same set of items, so one confirm dialog covers both.
+  const [pendingRemoval, setPendingRemoval] = useState<LibraryItem[] | null>(null);
 
   const visibleDuplicates = duplicates.filter((group) => !dismissedDuplicateKeys.has(group.key));
   const selectedMissingItems = missingMetadata.filter((item) => selectedMissingKeys.has(itemKey(item)));
@@ -140,8 +165,8 @@ export function LibraryHealthPanel({ index }: { index: number }) {
     });
 
   const runRemove = async () => {
-    setPendingRemoveConfirm(false);
-    const removed = selectedMissingItems;
+    const removed = pendingRemoval ?? [];
+    setPendingRemoval(null);
     setSelectedMissingKeys(new Set());
     await actions.remove(removed);
     toast({
@@ -188,6 +213,7 @@ export function LibraryHealthPanel({ index }: { index: number }) {
                   key={group.key}
                   group={group}
                   onDismiss={() => setDismissedDuplicateKeys((current) => new Set(current).add(group.key))}
+                  onRemoveItem={(item) => setPendingRemoval([item])}
                 />
               ))}
             </div>
@@ -218,7 +244,7 @@ export function LibraryHealthPanel({ index }: { index: number }) {
                   label: t("library.health.removeSelected"),
                   variant: "destructive",
                   disabled: actions.isApplying,
-                  onClick: () => setPendingRemoveConfirm(true),
+                  onClick: () => setPendingRemoval(selectedMissingItems),
                 },
               ]}
             />
@@ -260,9 +286,9 @@ export function LibraryHealthPanel({ index }: { index: number }) {
       </Panel>
 
       <ConfirmDialog
-        open={pendingRemoveConfirm}
-        onOpenChange={setPendingRemoveConfirm}
-        title={t("library.health.removeConfirmTitle", { count: selectedMissingItems.length })}
+        open={pendingRemoval !== null}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        title={t("library.health.removeConfirmTitle", { count: pendingRemoval?.length ?? 0 })}
         description={t("library.health.removeConfirmDescription")}
         confirmLabel={t("common.confirm")}
         cancelLabel={t("common.cancel")}
