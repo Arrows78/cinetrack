@@ -262,6 +262,34 @@ describe("MovieDetailPage", () => {
     expect(document.querySelectorAll('img[src*="/b1.jpg"], img[src*="/b2.jpg"]')).toHaveLength(2);
   });
 
+  it("shows the movie's reviews when present", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie({
+        reviews: [
+          {
+            id: "r1",
+            author: "Jane Critic",
+            avatarUrl: null,
+            rating: 9,
+            content: "A masterpiece.",
+            createdAt: "2020-01-01T00:00:00.000Z",
+            url: "https://www.themoviedb.org/review/r1",
+          },
+        ],
+      }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("Jane Critic")).toBeInTheDocument();
+    expect(screen.getByText("A masterpiece.")).toBeInTheDocument();
+  });
+
   it("falls back to the no-overview message when the movie has none", () => {
     movieQueryMock.mockReturnValue({
       isPending: false,

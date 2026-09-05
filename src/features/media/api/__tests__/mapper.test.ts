@@ -107,6 +107,80 @@ describe("mapMovieDto", () => {
     expect(mapMovieDto(movieDto()).backdropPaths).toEqual([]);
   });
 
+  it("maps reviews, preferring the reviewer's username, and resolves a TMDB-hosted avatar path to a full URL", () => {
+    const movie = mapMovieDto(
+      movieDto({
+        reviews: {
+          results: [
+            {
+              id: "r1",
+              author: "Real Name",
+              author_details: { username: "critic99", avatar_path: "/avatar.jpg", rating: 7 },
+              content: "Great film.",
+              created_at: "2020-01-01T00:00:00.000Z",
+              url: "https://www.themoviedb.org/review/r1",
+            },
+          ],
+        },
+      })
+    );
+
+    expect(movie.reviews).toEqual([
+      {
+        id: "r1",
+        author: "critic99",
+        avatarUrl: "https://image.tmdb.org/t/p/w92/avatar.jpg",
+        rating: 7,
+        content: "Great film.",
+        createdAt: "2020-01-01T00:00:00.000Z",
+        url: "https://www.themoviedb.org/review/r1",
+      },
+    ]);
+    expect(mapMovieDto(movieDto()).reviews).toEqual([]);
+  });
+
+  it("resolves a Gravatar avatar_path (absolute URL with a leading slash) without prepending TMDB's own host", () => {
+    const movie = mapMovieDto(
+      movieDto({
+        reviews: {
+          results: [
+            {
+              id: "r2",
+              author: "Anon",
+              author_details: { avatar_path: "/https://secure.gravatar.com/avatar/abc.jpg" },
+              content: "Fine.",
+              created_at: "2020-01-01T00:00:00.000Z",
+              url: "https://www.themoviedb.org/review/r2",
+            },
+          ],
+        },
+      })
+    );
+
+    expect(movie.reviews?.[0]?.avatarUrl).toBe("https://secure.gravatar.com/avatar/abc.jpg");
+  });
+
+  it("falls back to author (not username) and a null avatar when neither is present", () => {
+    const movie = mapMovieDto(
+      movieDto({
+        reviews: {
+          results: [
+            {
+              id: "r3",
+              author: "Real Name",
+              author_details: {},
+              content: "Meh.",
+              created_at: "2020-01-01T00:00:00.000Z",
+              url: "https://www.themoviedb.org/review/r3",
+            },
+          ],
+        },
+      })
+    );
+
+    expect(movie.reviews?.[0]).toMatchObject({ author: "Real Name", avatarUrl: null });
+  });
+
   it("derives genreIds from genre_ids or from full genres", () => {
     expect(mapMovieDto(movieDto({ genre_ids: [18, 53] })).genreIds).toEqual([18, 53]);
     expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }] })).genreIds).toEqual([18]);
@@ -262,6 +336,29 @@ describe("mapSeriesDto", () => {
 
     expect(series.backdropPaths).toEqual(["/backdrop.jpg"]);
     expect(mapSeriesDto(tvDto()).backdropPaths).toEqual([]);
+  });
+
+  it("maps reviews from the reviews sub-resource, empty when absent", () => {
+    const series = mapSeriesDto(
+      tvDto({
+        reviews: {
+          results: [
+            {
+              id: "r1",
+              author: "Jane",
+              author_details: {},
+              content: "Loved it.",
+              created_at: "2020-01-01T00:00:00.000Z",
+              url: "https://www.themoviedb.org/review/r1",
+            },
+          ],
+        },
+      })
+    );
+
+    expect(series.reviews).toHaveLength(1);
+    expect(series.reviews?.[0]).toMatchObject({ author: "Jane", content: "Loved it." });
+    expect(mapSeriesDto(tvDto()).reviews).toEqual([]);
   });
 
   it("maps runtime from episode_run_time and counts seasons", () => {

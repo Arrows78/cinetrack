@@ -18,6 +18,8 @@
     "gallery": "Gallery",
     "previousImage": "Previous image",
     "nextImage": "Next image",
+    "reviews": "Reviews",
+    "readFullReview": "Read full review",
     "movie": "Movie",
     "series": "Series",
     "ratingLabel": "Rating: {{rating}} out of 10",

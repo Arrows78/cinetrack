@@ -478,7 +478,7 @@ describe("TmdbMediaProvider", () => {
         "/movie/77",
         expect.objectContaining({
           language: "fr-FR",
-          append_to_response: "credits,external_ids,release_dates,keywords,images",
+          append_to_response: "credits,external_ids,release_dates,keywords,images,reviews",
           include_image_language: "fr,null",
         })
       );
@@ -537,7 +537,7 @@ describe("TmdbMediaProvider", () => {
         "/tv/88",
         expect.objectContaining({
           language: "en-US",
-          append_to_response: "credits,external_ids,content_ratings,keywords,images",
+          append_to_response: "credits,external_ids,content_ratings,keywords,images,reviews",
           include_image_language: "en,null",
         })
       );

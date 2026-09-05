@@ -12,6 +12,7 @@ import type {
   Series,
   WatchProvider,
   MediaVideo,
+  MediaReview,
   PersonSummary,
   PersonCreditItem,
   PersonDetail,
@@ -29,6 +30,7 @@ import type {
   TmdbListResponse,
   TmdbMovieDto,
   TmdbReleaseDatesDto,
+  TmdbReviewsDto,
   TmdbSeasonDetailsDto,
   TmdbSeasonPreviewDto,
   TmdbTvDto,
@@ -74,6 +76,28 @@ const resolveSeriesCertification = (dto: TmdbContentRatingsDto | undefined, regi
 const MAX_GALLERY_BACKDROPS = 12;
 const mapBackdropPaths = (images?: TmdbImagesDto): string[] =>
   (images?.backdrops ?? []).slice(0, MAX_GALLERY_BACKDROPS).map((image) => image.file_path);
+
+// TMDB's author_details.avatar_path is either a TMDB-hosted image path
+// ("/abc.jpg") or an absolute Gravatar URL stored with a leading slash
+// ("/https://secure.gravatar.com/..."), never plain "https://..." — resolved
+// to one ready-to-use URL here instead of leaking that quirk to the UI.
+const resolveAvatarUrl = (avatarPath?: string | null): string | null => {
+  if (!avatarPath) return null;
+  return avatarPath.startsWith("/http") ? avatarPath.slice(1) : `https://image.tmdb.org/t/p/w92${avatarPath}`;
+};
+
+// Capped at 5 — a detail page section, not a paginated review browser.
+const MAX_REVIEWS = 5;
+const mapReviews = (reviews?: TmdbReviewsDto): MediaReview[] =>
+  (reviews?.results ?? []).slice(0, MAX_REVIEWS).map((review) => ({
+    id: review.id,
+    author: review.author_details.username || review.author,
+    avatarUrl: resolveAvatarUrl(review.author_details.avatar_path),
+    rating: review.author_details.rating,
+    content: review.content,
+    createdAt: review.created_at,
+    url: review.url,
+  }));
 
 const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
   (cast ?? [])
@@ -134,6 +158,7 @@ export const mapMovieDto = (dto: TmdbMovieDto, region: string = DEFAULT_TMDB_REG
   certification: resolveMovieCertification(dto.release_dates, region),
   keywords: (dto.keywords?.keywords ?? []).map((keyword) => keyword.name),
   backdropPaths: mapBackdropPaths(dto.images),
+  reviews: mapReviews(dto.reviews),
 });
 
 export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
@@ -181,6 +206,7 @@ export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGIO
   certification: resolveSeriesCertification(dto.content_ratings, region),
   keywords: (dto.keywords?.results ?? []).map((keyword) => keyword.name),
   backdropPaths: mapBackdropPaths(dto.images),
+  reviews: mapReviews(dto.reviews),
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],
 });
 

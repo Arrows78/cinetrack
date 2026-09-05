@@ -12,6 +12,7 @@ import { CastList } from "@/components/media/detail/cast-list";
 import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { KeywordChips } from "@/components/media/detail/keyword-chips";
 import { MediaGallery } from "@/components/media/detail/media-gallery";
+import { ReviewsPanel } from "@/components/media/detail/reviews-panel";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/tracking/next-episode-card";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
@@ -199,6 +200,7 @@ export function SeriesDetailPage() {
         />
       </section>
       <WatchHistoryPanel mediaId={series.id} mediaType="series" />
+      <ReviewsPanel reviews={series.reviews} />
       <RecommendationsPanel media={series} />
     </div>
   );

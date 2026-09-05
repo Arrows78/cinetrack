@@ -13,6 +13,7 @@ import { CastList } from "@/components/media/detail/cast-list";
 import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { KeywordChips } from "@/components/media/detail/keyword-chips";
 import { MediaGallery } from "@/components/media/detail/media-gallery";
+import { ReviewsPanel } from "@/components/media/detail/reviews-panel";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
@@ -140,6 +141,7 @@ export function MovieDetailPage() {
       <LibraryEditor media={movie} />
       <CollectionProgressPanel movie={movie} />
       <WatchHistoryPanel mediaId={movie.id} mediaType="movie" />
+      <ReviewsPanel reviews={movie.reviews} />
       <RecommendationsPanel media={movie} />
     </div>
   );

@@ -344,6 +344,34 @@ describe("SeriesDetailPage", () => {
     expect(document.querySelectorAll('img[src*="/b1.jpg"], img[src*="/b2.jpg"]')).toHaveLength(2);
   });
 
+  it("shows the series' reviews when present", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({
+        reviews: [
+          {
+            id: "r1",
+            author: "Jane Critic",
+            avatarUrl: null,
+            rating: 9,
+            content: "A masterpiece.",
+            createdAt: "2020-01-01T00:00:00.000Z",
+            url: "https://www.themoviedb.org/review/r1",
+          },
+        ],
+      }),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("Jane Critic")).toBeInTheDocument();
+    expect(screen.getByText("A masterpiece.")).toBeInTheDocument();
+  });
+
   it("shows the not-found empty state for a non-numeric seriesId, and nothing else", () => {
     params.seriesId = "abc";
     renderPage();

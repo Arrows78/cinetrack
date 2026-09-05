@@ -107,6 +107,7 @@ export interface TmdbMovieDto {
   release_dates?: TmdbReleaseDatesDto;
   keywords?: TmdbMovieKeywordsDto;
   images?: TmdbImagesDto;
+  reviews?: TmdbReviewsDto;
 }
 
 export interface TmdbSeasonPreviewDto {
@@ -142,6 +143,7 @@ export interface TmdbTvDto {
   content_ratings?: TmdbContentRatingsDto;
   keywords?: TmdbTvKeywordsDto;
   images?: TmdbImagesDto;
+  reviews?: TmdbReviewsDto;
 }
 
 export interface TmdbEpisodeDto {
@@ -190,6 +192,22 @@ export interface TmdbImageDto {
 export interface TmdbImagesDto {
   backdrops: TmdbImageDto[];
   posters: TmdbImageDto[];
+}
+
+export interface TmdbReviewDto {
+  id: string;
+  author: string;
+  author_details: {
+    username?: string;
+    avatar_path?: string | null;
+    rating?: number | null;
+  };
+  content: string;
+  created_at: string;
+  url: string;
+}
+export interface TmdbReviewsDto {
+  results: TmdbReviewDto[];
 }
 
 export interface TmdbVideoDto {

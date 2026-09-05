@@ -879,6 +879,14 @@ export const componentInventory = [
     "Displays related titles and discovery recommendations."
   ),
   component(
+    "ReviewsPanel",
+    "components/media/detail/reviews-panel.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Shows a title's TMDB user reviews with author, rating, and a link to the full review; renders nothing without any."
+  ),
+  component(
     "SavedFiltersBar",
     "components/media/library/saved-filters-bar.tsx",
     "Media",

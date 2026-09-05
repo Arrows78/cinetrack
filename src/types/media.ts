@@ -76,6 +76,20 @@ export interface MediaSummary {
   keywords?: string[];
   /** Extra backdrop images beyond `backdropPath`, best-rated first. Undefined/empty unless fetched via a detail endpoint that appends images. */
   backdropPaths?: string[];
+  /** User reviews from TMDB. Undefined/empty unless fetched via a detail endpoint that appends reviews. */
+  reviews?: MediaReview[];
+}
+
+export interface MediaReview {
+  id: string;
+  author: string;
+  /** Already a full, ready-to-use image URL (or null) — TMDB's own avatar_path is either a TMDB-hosted path or an absolute Gravatar URL, resolved to one shape in the mapper rather than at render time. */
+  avatarUrl?: string | null;
+  /** The reviewer's own 0-10 rating, if they gave one. */
+  rating?: number | null;
+  content: string;
+  createdAt: string;
+  url: string;
 }
 
 // The TMDB collection a movie belongs to, as embedded in `/movie/{id}`'s
