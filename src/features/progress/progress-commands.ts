@@ -44,6 +44,7 @@ type ToggleEpisodesWatchedArgs = {
 
 type RefreshTrackedSeriesStatusArgs = SeriesIdArgs & {
   status: string | null;
+  totalEpisodes: number | null;
 };
 
 type ViewingEventsForMediaArgs = {

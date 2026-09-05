@@ -234,12 +234,28 @@ describe("progressRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("list_tracked_series", undefined);
   });
 
-  it("refreshTrackedSeriesStatus() invokes refresh_tracked_series_status with seriesId/status", async () => {
+  it("refreshTrackedSeriesStatus() invokes refresh_tracked_series_status with seriesId/status, defaulting totalEpisodes to null", async () => {
     invokeMock.mockResolvedValueOnce(undefined);
     const { progressRepository } = await import("../progress-repository");
 
     await progressRepository.refreshTrackedSeriesStatus(9, "Ended");
-    expect(invokeMock).toHaveBeenCalledWith("refresh_tracked_series_status", { seriesId: 9, status: "Ended" });
+    expect(invokeMock).toHaveBeenCalledWith("refresh_tracked_series_status", {
+      seriesId: 9,
+      status: "Ended",
+      totalEpisodes: null,
+    });
+  });
+
+  it("refreshTrackedSeriesStatus() passes totalEpisodes through when given", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    const { progressRepository } = await import("../progress-repository");
+
+    await progressRepository.refreshTrackedSeriesStatus(9, "Ended", 12);
+    expect(invokeMock).toHaveBeenCalledWith("refresh_tracked_series_status", {
+      seriesId: 9,
+      status: "Ended",
+      totalEpisodes: 12,
+    });
   });
 
   it("listViewingEventsForMedia() invokes list_viewing_events_for_media with mediaId/mediaType", async () => {

@@ -82,8 +82,16 @@ impl<'a> ProgressService<'a> {
         &self,
         series_id: i64,
         status: Option<String>,
+        total_episodes: Option<i64>,
     ) -> Result<(), ApiError> {
         let profile_id = self.profile_id().await?;
-        refresh_tracked_series_status_impl(self.pool, &profile_id, series_id, status).await
+        refresh_tracked_series_status_impl(
+            self.pool,
+            &profile_id,
+            series_id,
+            status,
+            total_episodes,
+        )
+        .await
     }
 }

@@ -51,21 +51,41 @@ export function SeriesDetailPage() {
     [seriesQuery.data?.seasons]
   );
   const seasonQueries = useSeriesSeasons(id, seasonNumbers);
-  // The card/row progress-bar color reads tracked_series.status, a local
-  // cache that's only ever written as a side effect of toggling an episode
-  // — a show nobody re-toggles after it airs its finale keeps a stale
-  // status forever otherwise. This page always has TMDB's current status
-  // in hand (a fresh fetch, never cached locally), so it's the natural
-  // place to opportunistically write it back; refreshTrackedSeriesStatus is
-  // a no-op in Rust when the status hasn't actually changed.
+  const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));
+  const allSeasonsLoaded =
+    seasonNumbers.length > 0 &&
+    seasons.length === seasonNumbers.length &&
+    seasonQueries.every((query) => !query.isPending && !query.isError);
+  const progress = calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
+  // The card/row progress-bar color and episode count both read
+  // tracked_series.status/total_episodes, a local cache that's only ever
+  // written as a side effect of toggling an episode — a show nobody
+  // re-toggles after it airs its finale (status) or after TMDB announces
+  // more episodes (total_episodes, which a toggle only ever ratchets up)
+  // keeps stale values forever otherwise. This page always has TMDB's
+  // current status and, once every season has loaded, a real aired-episode
+  // count in hand — the natural place to opportunistically write both
+  // back; refreshTrackedSeriesStatus is a no-op in Rust when neither value
+  // actually changed. total_episodes is withheld until allSeasonsLoaded so
+  // a page that's still mid-fetch never stamps in a too-low partial count.
   const trackedSeriesQuery = useTrackedSeries();
   const refreshTrackedSeriesStatus = useRefreshTrackedSeriesStatus();
   useEffect(() => {
     const freshStatus = seriesQuery.data?.status;
     const tracked = trackedSeriesQuery.data?.find((item) => item.seriesId === id);
-    if (!freshStatus || !tracked || tracked.status === freshStatus) return;
-    void refreshTrackedSeriesStatus({ seriesId: id, status: freshStatus });
-  }, [seriesQuery.data?.status, trackedSeriesQuery.data, id, refreshTrackedSeriesStatus]);
+    if (!freshStatus || !tracked) return;
+    const freshTotalEpisodes = allSeasonsLoaded ? progress.totalEpisodes : null;
+    if (tracked.status === freshStatus && (freshTotalEpisodes === null || tracked.totalEpisodes === freshTotalEpisodes))
+      return;
+    void refreshTrackedSeriesStatus({ seriesId: id, status: freshStatus, totalEpisodes: freshTotalEpisodes });
+  }, [
+    seriesQuery.data?.status,
+    trackedSeriesQuery.data,
+    id,
+    refreshTrackedSeriesStatus,
+    allSeasonsLoaded,
+    progress.totalEpisodes,
+  ]);
   // A malformed/non-numeric :seriesId never becomes a valid query (see
   // useSeriesDetails' `enabled: Number.isFinite(seriesId)`) — that used to
   // fall through every check below to a bare `return null`, a permanently
@@ -85,13 +105,7 @@ export function SeriesDetailPage() {
     return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
   }
   const series = seriesQuery.data;
-  const seasons = seasonQueries.map((query) => query.data).filter((season): season is Season => Boolean(season));
   const failedSeasonQueries = seasonQueries.filter((query) => query.isError);
-  const allSeasonsLoaded =
-    seasonNumbers.length > 0 &&
-    seasons.length === seasonNumbers.length &&
-    seasonQueries.every((query) => !query.isPending && !query.isError);
-  const progress = calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
   const nextEpisode = getNextEpisode(seasons, progressQuery.data ?? []);
 
   return (

@@ -173,8 +173,8 @@ export function useTrackedSeries() {
 export function useRefreshTrackedSeriesStatus() {
   const profileId = useActiveProfileId();
   const mutation = useInvalidatingMutation(
-    ({ seriesId, status }: { seriesId: number; status: string | null }) =>
-      progressRepository.refreshTrackedSeriesStatus(seriesId, status),
+    ({ seriesId, status, totalEpisodes }: { seriesId: number; status: string | null; totalEpisodes?: number | null }) =>
+      progressRepository.refreshTrackedSeriesStatus(seriesId, status, totalEpisodes ?? null),
     () => [queryKeys.local.trackedSeries(profileId)]
   );
   return mutation.mutateAsync;

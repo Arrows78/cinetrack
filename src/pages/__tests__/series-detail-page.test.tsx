@@ -478,7 +478,13 @@ describe("SeriesDetailPage", () => {
 
     renderPage();
 
-    await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({ seriesId: 9, status: "Ended" }));
+    await waitFor(() =>
+      expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({
+        seriesId: 9,
+        status: "Ended",
+        totalEpisodes: 3,
+      })
+    );
   });
 
   it("does not refresh tracked series status when it already matches TMDB's fresh status", () => {
@@ -507,6 +513,71 @@ describe("SeriesDetailPage", () => {
     renderPage();
 
     expect(refreshTrackedSeriesStatusMock).not.toHaveBeenCalled();
+  });
+
+  it("also refreshes total_episodes when the status already matches but the stored total is stale", async () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({ status: "Returning Series" }),
+    });
+    trackedSeriesMock.mockReturnValue({
+      data: [
+        {
+          id: "t1",
+          seriesId: 9,
+          title: "Test Series",
+          // Inflated by an earlier toggle-time ratchet — the real aired
+          // count from the season data below is 3.
+          totalEpisodes: 10,
+          watchedEpisodes: 2,
+          status: "Returning Series",
+          createdAt: "2024-01-01T00:00:00.000Z",
+          updatedAt: "2024-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({
+        seriesId: 9,
+        status: "Returning Series",
+        totalEpisodes: 3,
+      })
+    );
+  });
+
+  it("withholds the total_episodes correction (sends null) while a season is still loading", () => {
+    seasonQueriesMock.mockReturnValue([{ data: undefined, isPending: true, isError: false, refetch: vi.fn() }]);
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({ status: "Ended" }),
+    });
+    trackedSeriesMock.mockReturnValue({
+      data: [
+        {
+          id: "t1",
+          seriesId: 9,
+          title: "Test Series",
+          totalEpisodes: 3,
+          watchedEpisodes: 2,
+          status: "Returning Series",
+          createdAt: "2024-01-01T00:00:00.000Z",
+          updatedAt: "2024-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    renderPage();
+
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({ seriesId: 9, status: "Ended", totalEpisodes: null });
   });
 
   it("does not show the Up to date badge while an aired episode is still unwatched", () => {

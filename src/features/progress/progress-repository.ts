@@ -109,10 +109,18 @@ export const progressRepository = {
     return invokeTypedCommand(progressCommands.listTrackedSeries);
   },
 
-  // A no-op in Rust if the series isn't tracked yet or the status hasn't
-  // actually changed — see refresh_tracked_series_status_impl.
-  async refreshTrackedSeriesStatus(seriesId: number, status: string | null): Promise<void> {
-    await invokeTypedCommand(progressCommands.refreshTrackedSeriesStatus, { seriesId, status });
+  // A no-op in Rust if the series isn't tracked yet or neither value
+  // actually changed — see refresh_tracked_series_status_impl. Unlike a
+  // toggle's own total_episodes upsert, this one is a plain correction
+  // (can move the stored total down, not just up): the caller is expected
+  // to have a fresh, complete aired-episode count in hand, not a partial
+  // toggle-time snapshot.
+  async refreshTrackedSeriesStatus(
+    seriesId: number,
+    status: string | null,
+    totalEpisodes: number | null = null
+  ): Promise<void> {
+    await invokeTypedCommand(progressCommands.refreshTrackedSeriesStatus, { seriesId, status, totalEpisodes });
   },
 
   // One title's full watch history (every viewing_events row, most recent

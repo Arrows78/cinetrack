@@ -81,11 +81,12 @@ pub async fn list_tracked_series(
 pub async fn refresh_tracked_series_status(
     series_id: i64,
     status: Option<String>,
+    total_episodes: Option<i64>,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
     timed("refresh_tracked_series_status", async {
         ProgressService::new(pool.inner())
-            .refresh_tracked_series_status(series_id, status)
+            .refresh_tracked_series_status(series_id, status, total_episodes)
             .await
     })
     .await

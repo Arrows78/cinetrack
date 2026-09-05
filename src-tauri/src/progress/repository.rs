@@ -410,23 +410,30 @@ pub(crate) async fn apply_episodes_impl(
     .await
 }
 
-// tracked_series.status is a cache of TMDB's own production status,
-// written only as a side effect of toggling an episode (see
-// apply_episodes_and_log_impl's COALESCE upsert above) — a show nobody
-// re-toggles after it airs its finale keeps whatever status it had months
-// or years ago, which is why the progress-bar color can look "wrong" for a
-// show that's visibly "Ended" on its own detail page. That page always has
-// TMDB's current status in hand (a fresh fetch, not cached locally), so it
-// opportunistically writes it back here — a no-op if the series isn't
-// tracked yet, or if the status hasn't actually changed.
+// tracked_series.status/total_episodes are caches, written only as a side
+// effect of toggling an episode (see apply_episodes_and_log_impl's
+// COALESCE/MAX upsert above) — a show nobody re-toggles after it airs its
+// finale (status) or after TMDB announces more episodes (total_episodes,
+// which that upsert only ever ratchets up, on the assumption a smaller
+// value there is an incomplete toggle-time snapshot, not a correction)
+// keeps whatever it had at the last toggle, which is why the progress-bar
+// color and the card's episode count can both look "wrong" next to what the
+// series' own detail page shows. That page always has TMDB's current
+// status and an aired-episode count in hand (a fresh fetch, not cached
+// locally), so it opportunistically writes both back here — a no-op if the
+// series isn't tracked yet, or if neither value actually changed.
+// total_episodes is a plain overwrite (not MAX) here: unlike a toggle's
+// snapshot, this comes from a full, trusted recomputation over every known
+// episode, so a smaller value is a real correction, not regression.
 pub(super) async fn refresh_tracked_series_status_impl(
     pool: &SqlitePool,
     profile_id: &str,
     series_id: i64,
     status: Option<String>,
+    total_episodes: Option<i64>,
 ) -> Result<(), ApiError> {
-    let current: Option<(Option<String>,)> = sqlx::query_as(
-        "SELECT status FROM tracked_series WHERE profile_id = $1 AND series_id = $2",
+    let current: Option<(Option<String>, i64)> = sqlx::query_as(
+        "SELECT status, total_episodes FROM tracked_series WHERE profile_id = $1 AND series_id = $2",
     )
     .bind(profile_id)
     .bind(series_id)
@@ -434,20 +441,24 @@ pub(super) async fn refresh_tracked_series_status_impl(
     .await
     .map_err(ApiError::from)?;
 
-    let Some((current_status,)) = current else {
+    let Some((current_status, current_total_episodes)) = current else {
         return Ok(());
     };
-    if current_status == status {
+    let next_total_episodes = total_episodes.unwrap_or(current_total_episodes);
+    if current_status == status && current_total_episodes == next_total_episodes {
         return Ok(());
     }
 
-    sqlx::query("UPDATE tracked_series SET status = $1 WHERE profile_id = $2 AND series_id = $3")
-        .bind(&status)
-        .bind(profile_id)
-        .bind(series_id)
-        .execute(pool)
-        .await
-        .map_err(ApiError::from)?;
+    sqlx::query(
+        "UPDATE tracked_series SET status = $1, total_episodes = $2 WHERE profile_id = $3 AND series_id = $4",
+    )
+    .bind(&status)
+    .bind(next_total_episodes)
+    .bind(profile_id)
+    .bind(series_id)
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
     Ok(())
 }
 
@@ -1441,7 +1452,7 @@ mod tests {
         .await
         .unwrap();
 
-        refresh_tracked_series_status_impl(&pool, "default", 9, Some("Ended".to_string()))
+        refresh_tracked_series_status_impl(&pool, "default", 9, Some("Ended".to_string()), None)
             .await
             .unwrap();
 
@@ -1466,13 +1477,14 @@ mod tests {
         .await
         .unwrap();
 
-        // Same status passed again — should hit the early `current_status ==
-        // status` return rather than issuing a write.
+        // Same status passed again, no total_episodes correction — should
+        // hit the early "nothing changed" return rather than issuing a write.
         refresh_tracked_series_status_impl(
             &pool,
             "default",
             9,
             Some("Returning Series".to_string()),
+            None,
         )
         .await
         .unwrap();
@@ -1486,12 +1498,49 @@ mod tests {
     async fn refresh_tracked_series_status_is_a_no_op_for_an_untracked_series() {
         let pool = migrated_pool().await;
         // No tracked_series row exists for series 404 — must not create one.
-        refresh_tracked_series_status_impl(&pool, "default", 404, Some("Ended".to_string()))
+        refresh_tracked_series_status_impl(&pool, "default", 404, Some("Ended".to_string()), None)
             .await
             .unwrap();
 
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         assert!(tracked.iter().all(|item| item.series_id != 404));
+    }
+
+    #[tokio::test]
+    async fn refresh_tracked_series_status_corrects_total_episodes_downward_unlike_the_toggle_time_max_upsert()
+     {
+        let pool = migrated_pool().await;
+        // TMDB's number_of_episodes (10) inflates total_episodes even though
+        // only 1 episode is actually watched/aired so far.
+        let mut s = series(9, Some(10));
+        s.status = Some("Returning Series".to_string());
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        // The series detail page recomputed the real aired count (2) and
+        // writes it back — a plain correction, not blocked by the ratchet
+        // that ordinary toggles are subject to.
+        refresh_tracked_series_status_impl(
+            &pool,
+            "default",
+            9,
+            Some("Returning Series".to_string()),
+            Some(2),
+        )
+        .await
+        .unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.total_episodes, 2);
     }
 
     // --- tauri::command wrapper coverage -----------------------------
