@@ -133,4 +133,17 @@ describe("libraryRepository", () => {
     await expect(libraryRepository.idsMatchingFilters(filters)).resolves.toEqual(keys);
     expect(invokeMock).toHaveBeenCalledWith("list_library_ids_matching_filters", { filters });
   });
+
+  it("refreshCatalogMetadata() invokes refresh_library_catalog_metadata with mediaId/mediaType/year/rating", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    const { libraryRepository } = await import("../library-repository");
+
+    await libraryRepository.refreshCatalogMetadata(7, "movie", 2024, 7.5);
+    expect(invokeMock).toHaveBeenCalledWith("refresh_library_catalog_metadata", {
+      mediaId: 7,
+      mediaType: "movie",
+      year: 2024,
+      rating: 7.5,
+    });
+  });
 });

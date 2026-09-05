@@ -145,6 +145,29 @@ export function useLibraryItem(media: MediaSummary) {
   return { ...query, save: save.mutateAsync, remove: remove.mutateAsync, isSaving: save.isPending || remove.isPending };
 }
 
+// Opportunistic correction for a library entry whose cached year/rating
+// drifted from TMDB (e.g. it was first created by a codepath that only had
+// partial media info in hand — see use-watch-next.ts's useMarkWatchNext). A
+// detail page calls this once its own fresh TMDB fetch resolves; it's a
+// no-op server-side if the title isn't actually in the library.
+export function useRefreshLibraryCatalogMetadata() {
+  const profileId = useActiveProfileId();
+  const mutation = useInvalidatingMutation(
+    (variables: { mediaId: number; mediaType: MediaType; year: number | null; rating: number | null }) =>
+      libraryRepository.refreshCatalogMetadata(
+        variables.mediaId,
+        variables.mediaType,
+        variables.year,
+        variables.rating
+      ),
+    (_data, variables) => [
+      queryKeys.local.libraryItem(profileId, variables.mediaType, variables.mediaId),
+      ...libraryInvalidationKeys(profileId),
+    ]
+  );
+  return mutation.mutateAsync;
+}
+
 export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaType"], options?: { enabled?: boolean }) {
   const profileId = useActiveProfileId();
   return useQuery({

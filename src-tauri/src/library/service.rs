@@ -9,7 +9,9 @@ use super::queries::{
     list_completed_candidates_impl, list_ids_matching_filters_impl, list_impl,
     list_media_keys_impl, list_page_impl, list_planned_candidates_impl, list_status_counts_impl,
 };
-use super::repository::{remove_if_planned_impl, remove_impl, upsert_impl};
+use super::repository::{
+    refresh_catalog_metadata_impl, remove_if_planned_impl, remove_impl, upsert_impl,
+};
 use crate::database::current_profile_id;
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -64,6 +66,18 @@ impl<'a> LibraryService<'a> {
     ) -> Result<LibraryItem, ApiError> {
         let profile_id = self.profile_id().await?;
         upsert_impl(self.pool, media, patch.unwrap_or_default(), &profile_id).await
+    }
+
+    pub(super) async fn refresh_catalog_metadata(
+        &self,
+        media_id: i64,
+        media_type: MediaType,
+        year: Option<i64>,
+        rating: Option<f64>,
+    ) -> Result<(), ApiError> {
+        let profile_id = self.profile_id().await?;
+        refresh_catalog_metadata_impl(self.pool, &profile_id, media_id, media_type, year, rating)
+            .await
     }
 
     pub(super) async fn remove(

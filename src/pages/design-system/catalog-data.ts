@@ -615,6 +615,14 @@ export const componentInventory = [
     "Displays principal cast members and their character names."
   ),
   component(
+    "CatalogMetadataSync",
+    "components/media/detail/catalog-metadata-sync.tsx",
+    "Media",
+    "infrastructure",
+    "internal",
+    "Silently corrects a library entry's stale year/rating against this page's freshly-fetched TMDB data."
+  ),
+  component(
     "CatalogueBrowse",
     "components/media/discover/catalogue-browse.tsx",
     "Media",

@@ -106,4 +106,16 @@ export const libraryRepository = {
   async idsMatchingFilters(filters: LibraryFilterParams): Promise<LibraryMediaKey[]> {
     return invokeTypedCommand(libraryCommands.idsMatchingFilters, { filters });
   },
+
+  // Corrects an existing library entry's cached year/rating against fresh
+  // TMDB data — a no-op if this title isn't actually in the library, see
+  // refresh_catalog_metadata_impl in src-tauri/src/library/repository.rs.
+  async refreshCatalogMetadata(
+    mediaId: number,
+    mediaType: MediaSummary["mediaType"],
+    year: number | null,
+    rating: number | null
+  ): Promise<void> {
+    await invokeTypedCommand(libraryCommands.refreshCatalogMetadata, { mediaId, mediaType, year, rating });
+  },
 };

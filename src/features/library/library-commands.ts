@@ -35,6 +35,7 @@ type GetItemsByKeysArgs = { keys: LibraryMediaKey[] };
 type PlannedCandidatesArgs = { mediaType: MediaSummary["mediaType"]; limit: number };
 type CompletedCandidatesArgs = { mediaType?: MediaSummary["mediaType"]; limit: number };
 type IdsMatchingFiltersArgs = { filters: LibraryFilterParams };
+type RefreshCatalogMetadataArgs = LibraryIdentityArgs & { year: number | null; rating: number | null };
 
 export type { LibraryListParams, LibraryPage, LibrarySort, LibraryFilterParams, LibraryMediaKey, LibraryStatusCounts };
 export type LibraryPageSort = LibrarySort;
@@ -54,4 +55,5 @@ export const libraryCommands = {
   completedCandidates: defineCommand<CompletedCandidatesArgs, LibraryItem[]>("list_completed_library_candidates"),
   bestRecommendationSeed: defineCommand<undefined, LibraryItem | null>("get_best_recommendation_seed"),
   idsMatchingFilters: defineCommand<IdsMatchingFiltersArgs, LibraryMediaKey[]>("list_library_ids_matching_filters"),
+  refreshCatalogMetadata: defineCommand<RefreshCatalogMetadataArgs, void>("refresh_library_catalog_metadata"),
 } as const;

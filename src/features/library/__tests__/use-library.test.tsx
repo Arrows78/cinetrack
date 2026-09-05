@@ -37,6 +37,9 @@ const removeMock = vi.fn(async (mediaId: number, mediaType: string) => {
 const removeIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
 const hasMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => false);
 const listPageMock = vi.fn<(params: LibraryListParams) => Promise<LibraryPage>>();
+const refreshCatalogMetadataMock = vi.fn<
+  (mediaId: number, mediaType: string, year: number | null, rating: number | null) => Promise<undefined>
+>(async () => undefined);
 
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
@@ -47,6 +50,8 @@ vi.mock("@/features/library/library-repository", () => ({
     remove: removeMock,
     removeIfPlanned: (mediaId: number, mediaType: string) => removeIfPlannedMock(mediaId, mediaType),
     has: (mediaId: number, mediaType: string) => hasMock(mediaId, mediaType),
+    refreshCatalogMetadata: (mediaId: number, mediaType: string, year: number | null, rating: number | null) =>
+      refreshCatalogMetadataMock(mediaId, mediaType, year, rating),
   },
 }));
 
@@ -155,6 +160,23 @@ describe("useLibraryItem", () => {
     expect(removeMock).toHaveBeenCalledWith(7, "movie");
     await waitFor(() => expect(item.current.data).toBeNull());
     await waitFor(() => expect(library.current.data).toHaveLength(0));
+  });
+});
+
+describe("useRefreshLibraryCatalogMetadata", () => {
+  beforeEach(() => {
+    refreshCatalogMetadataMock.mockClear();
+  });
+
+  it("delegates to libraryRepository.refreshCatalogMetadata", async () => {
+    const { useRefreshLibraryCatalogMetadata } = await import("../use-library");
+    const { result } = renderHook(() => useRefreshLibraryCatalogMetadata(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await result.current({ mediaId: 7, mediaType: "movie", year: 2024, rating: 7.5 });
+    });
+
+    expect(refreshCatalogMetadataMock).toHaveBeenCalledWith(7, "movie", 2024, 7.5);
   });
 });
 

@@ -57,7 +57,7 @@ use commands::{
 use commands::{
     get_best_recommendation_seed, get_library_items_by_keys, get_library_status_counts,
     list_completed_library_candidates, list_library_ids_matching_filters, list_library_media_keys,
-    list_planned_library_candidates,
+    list_planned_library_candidates, refresh_library_catalog_metadata,
 };
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
@@ -139,6 +139,7 @@ pub fn run() {
             list_completed_library_candidates,
             get_best_recommendation_seed,
             list_library_ids_matching_filters,
+            refresh_library_catalog_metadata,
             is_movie_seen,
             toggle_movie_seen,
             get_episode_progress,

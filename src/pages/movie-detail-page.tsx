@@ -10,6 +10,7 @@ import { RecommendationsPanel } from "@/components/media/detail/recommendations-
 import { TrailerPanel } from "@/components/media/detail/trailer-panel";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/detail/cast-list";
+import { CatalogMetadataSync } from "@/components/media/detail/catalog-metadata-sync";
 import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { KeywordChips } from "@/components/media/detail/keyword-chips";
 import { MediaGallery } from "@/components/media/detail/media-gallery";
@@ -137,6 +138,7 @@ export function MovieDetailPage() {
       <TrailerPanel mediaType="movie" mediaId={movie.id} />
       <ProviderAvailability media={movie} />
       <LibraryEditor media={movie} />
+      <CatalogMetadataSync media={movie} />
       <CollectionProgressPanel movie={movie} />
       <WatchHistoryPanel mediaId={movie.id} mediaType="movie" />
       <ReviewsPanel reviews={movie.reviews} />

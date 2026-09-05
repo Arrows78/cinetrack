@@ -306,6 +306,40 @@ pub(super) async fn remove_impl(
     Ok(())
 }
 
+/// Corrects an existing library entry's cached year/rating against fresh
+/// TMDB data — deliberately UPDATE-only, never INSERT: a library row can end
+/// up with a stale or null year/rating when it was first created by a
+/// codepath that only had partial media info in hand (e.g. marking a "watch
+/// next" episode seen from the Home page, which synthesizes a MediaSummary
+/// with no year/rating for a series it never fetched full details for — see
+/// use-watch-next.ts's useMarkWatchNext). Safe to call for any title
+/// regardless of whether it's actually in the library: a non-matching WHERE
+/// clause just updates zero rows. Deliberately leaves `updated_at`
+/// untouched too — a library entry shouldn't jump to the top of "recently
+/// updated" sort purely as a side effect of viewing its detail page.
+pub(super) async fn refresh_catalog_metadata_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    media_id: i64,
+    media_type: MediaType,
+    year: Option<i64>,
+    rating: Option<f64>,
+) -> Result<(), ApiError> {
+    sqlx::query(
+        "UPDATE library_items SET year = $1, rating = $2
+         WHERE profile_id = $3 AND media_id = $4 AND media_type = $5",
+    )
+    .bind(year)
+    .bind(rating)
+    .bind(profile_id)
+    .bind(media_id)
+    .bind(media_type.as_db_str())
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(())
+}
+
 /// Backs the grid/detail quick "add to library" toggle, whose remove side
 /// must never destroy real progress: only removes (and logs) a row that's
 /// still in the default `planned` status, a no-op returning `false`
@@ -1040,6 +1074,76 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(still_there.status, LibraryStatus::Watching);
+    }
+
+    #[tokio::test]
+    async fn refresh_catalog_metadata_corrects_a_stale_year_and_rating_on_an_existing_item() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                year: None,
+                rating: None,
+                ..media(7)
+            },
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+
+        refresh_catalog_metadata_impl(&pool, "default", 7, MediaType::Movie, Some(2024), Some(7.5))
+            .await
+            .unwrap();
+
+        let item = get_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(item.year, Some(2024));
+        assert_eq!(item.rating, Some(7.5));
+    }
+
+    #[tokio::test]
+    async fn refresh_catalog_metadata_is_a_no_op_when_no_library_item_exists() {
+        let pool = migrated_pool().await;
+
+        refresh_catalog_metadata_impl(
+            &pool,
+            "default",
+            404,
+            MediaType::Movie,
+            Some(2024),
+            Some(7.5),
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            get_impl(&pool, "default", 404, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn refresh_catalog_metadata_does_not_touch_updated_at() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        set_updated_at(&pool, 7, "2026-01-01T00:00:00.000Z").await;
+
+        refresh_catalog_metadata_impl(&pool, "default", 7, MediaType::Movie, Some(2030), Some(9.0))
+            .await
+            .unwrap();
+
+        let item = get_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(item.updated_at, "2026-01-01T00:00:00.000Z");
     }
 
     #[tokio::test]

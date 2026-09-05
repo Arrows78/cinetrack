@@ -24,6 +24,7 @@ export const tauriCommandNames = [
   "list_completed_library_candidates",
   "get_best_recommendation_seed",
   "list_library_ids_matching_filters",
+  "refresh_library_catalog_metadata",
   "is_movie_seen",
   "toggle_movie_seen",
   "get_episode_progress",

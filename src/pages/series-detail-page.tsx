@@ -9,6 +9,7 @@ import { RecommendationsPanel } from "@/components/media/detail/recommendations-
 import { TrailerPanel } from "@/components/media/detail/trailer-panel";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/detail/cast-list";
+import { CatalogMetadataSync } from "@/components/media/detail/catalog-metadata-sync";
 import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { KeywordChips } from "@/components/media/detail/keyword-chips";
 import { MediaGallery } from "@/components/media/detail/media-gallery";
@@ -190,6 +191,7 @@ export function SeriesDetailPage() {
       <TrailerPanel mediaType="series" mediaId={series.id} />
       <ProviderAvailability media={series} />
       <LibraryEditor media={series} />
+      <CatalogMetadataSync media={series} />
       <section>
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
         {failedSeasonQueries.length > 0 ? (

@@ -90,6 +90,22 @@ pub async fn save_library_item(
 }
 
 #[tauri::command]
+pub async fn refresh_library_catalog_metadata(
+    media_id: i64,
+    media_type: MediaType,
+    year: Option<i64>,
+    rating: Option<f64>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
+    timed("refresh_library_catalog_metadata", async {
+        LibraryService::new(pool.inner())
+            .refresh_catalog_metadata(media_id, media_type, year, rating)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn remove_library_item(
     media_id: i64,
     media_type: MediaType,
