@@ -11,6 +11,7 @@ import type {
   WatchProvider,
   WatchProviderAvailability,
   MediaVideo,
+  PersonDetail,
   PersonSummary,
 } from "@/types/media";
 import type { DiscoverArgs, MediaProvider } from "./media-provider";
@@ -25,6 +26,7 @@ import {
   mapWatchProvider,
   mapVideo,
   mapPerson,
+  mapPersonDetail,
 } from "@/features/media/api/mapper";
 import type {
   TmdbCollectionDto,
@@ -318,12 +320,12 @@ export class TmdbMediaProvider implements MediaProvider {
     return mapPage(response, mapPerson);
   }
 
-  async getPerson(personId: number): Promise<PersonSummary> {
+  async getPerson(personId: number): Promise<PersonDetail> {
     const { language } = await this.context();
     const response = await tmdbFetch<TmdbPersonDto>(`/person/${personId}`, {
       language,
-      append_to_response: "combined_credits",
+      append_to_response: "combined_credits,external_ids",
     });
-    return mapPerson(response);
+    return mapPersonDetail(response);
   }
 }

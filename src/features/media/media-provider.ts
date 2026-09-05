@@ -6,6 +6,7 @@ import type {
   Movie,
   MovieCollection,
   PageResult,
+  PersonDetail,
   PersonSummary,
   SearchScope,
   Season,
@@ -49,5 +50,5 @@ export interface MediaProvider {
   getVideos(mediaType: MediaType, mediaId: number): Promise<MediaVideo[]>;
   searchPeople(query: string, page?: number): Promise<PageResult<PersonSummary>>;
   getPopularPeople(page?: number): Promise<PageResult<PersonSummary>>;
-  getPerson(personId: number): Promise<PersonSummary>;
+  getPerson(personId: number): Promise<PersonDetail>;
 }

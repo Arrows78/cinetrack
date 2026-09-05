@@ -576,8 +576,19 @@
     "noResultsDescription": "Essayez un autre nom, ou vérifiez l'orthographe."
   },
   "person": {
-    "loading": "Chargement…",
-    "knownFilmography": "Filmographie connue"
+    "knownFilmography": "Filmographie connue",
+    "fullFilmography": "Filmographie complète",
+    "uncredited": "Non crédité",
+    "episodeCount_one": "{{count}} épisode",
+    "episodeCount_other": "{{count}} épisodes",
+    "alsoKnownAs": "Également connu(e) sous le nom de :",
+    "born": "Né(e) le {{date}}",
+    "bornAndDied": "Né(e) le {{born}} — décédé(e) le {{died}}",
+    "ageYears_one": "{{count}} an",
+    "ageYears_other": "{{count}} ans",
+    "placeOfBirth": "Né(e) à {{place}}",
+    "noBiography": "Aucune biographie disponible.",
+    "viewOnImdb": "Voir sur IMDb"
   },
   "genres": {
     "action": "Action",

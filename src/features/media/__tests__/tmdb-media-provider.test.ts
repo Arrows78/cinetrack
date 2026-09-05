@@ -509,24 +509,59 @@ describe("TmdbMediaProvider", () => {
   });
 
   describe("getPerson", () => {
-    it("fetches /person/:id with combined_credits appended and maps the result", async () => {
+    it("fetches /person/:id with combined_credits and external_ids appended and maps the result", async () => {
       mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
       mocks.tmdbFetch.mockResolvedValue({
         id: 12,
         name: "Some Actor",
         profile_path: null,
-        combined_credits: { cast: [{ ...movieDto({ id: 300 }), media_type: "movie" }] },
+        biography: "A prolific actor.",
+        birthday: "1980-05-01",
+        deathday: null,
+        place_of_birth: "Paris, France",
+        also_known_as: ["Some A."],
+        external_ids: { imdb_id: "nm0000123" },
+        combined_credits: {
+          cast: [{ ...movieDto({ id: 300, release_date: "2020-01-01" }), media_type: "movie", character: "Hero" }],
+          crew: [
+            {
+              ...tvDto({ id: 301, first_air_date: "2022-01-01" }),
+              media_type: "tv",
+              job: "Director",
+              episode_count: 5,
+            },
+          ],
+        },
       });
 
       const result = await provider.getPerson(12);
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/person/12",
-        expect.objectContaining({ language: "fr-FR", append_to_response: "combined_credits" })
+        expect.objectContaining({ language: "fr-FR", append_to_response: "combined_credits,external_ids" })
       );
-      expect(result).toMatchObject({ id: 12, name: "Some Actor" });
+      expect(result).toMatchObject({
+        id: 12,
+        name: "Some Actor",
+        biography: "A prolific actor.",
+        birthday: "1980-05-01",
+        deathday: null,
+        placeOfBirth: "Paris, France",
+        alsoKnownAs: ["Some A."],
+        imdbId: "nm0000123",
+      });
       expect(result.knownFor).toHaveLength(1);
       expect(result.knownFor[0]).toMatchObject({ id: 300, mediaType: "movie" });
+      // Most recent credit first, cast and crew merged.
+      expect(result.filmography).toHaveLength(2);
+      expect(result.filmography[0]).toMatchObject({
+        id: 301,
+        mediaType: "series",
+        role: "Director",
+        department: "crew",
+        episodeCount: 5,
+      });
+      expect(result.filmography[1]).toMatchObject({ id: 300, mediaType: "movie", role: "Hero", department: "cast" });
     });
   });
 

@@ -2,6 +2,7 @@ import { addDays, format as formatDateFns } from "date-fns";
 import { beforeEach, describe, expect, it } from "vitest";
 import i18n from "@/i18n";
 import {
+  ageFromBirthday,
   buildTmdbImageUrl,
   formatDate,
   formatEpisodeCode,
@@ -26,6 +27,25 @@ describe("buildTmdbImageUrl", () => {
     expect(buildTmdbImageUrl(null)).toBeUndefined();
     expect(buildTmdbImageUrl(undefined)).toBeUndefined();
     expect(buildTmdbImageUrl("")).toBeUndefined();
+  });
+});
+
+describe("ageFromBirthday", () => {
+  it("returns null without a birthday", () => {
+    expect(ageFromBirthday(null)).toBeNull();
+    expect(ageFromBirthday(undefined)).toBeNull();
+  });
+
+  it("computes age as of today when no reference date is given", () => {
+    expect(ageFromBirthday("2000-01-01")).toBeGreaterThanOrEqual(25);
+  });
+
+  it("computes age as of the given date (age at death) rather than today", () => {
+    expect(ageFromBirthday("1963-12-18", "2020-09-27")).toBe(56);
+  });
+
+  it("returns null for an invalid birthday", () => {
+    expect(ageFromBirthday("not-a-date")).toBeNull();
   });
 });
 

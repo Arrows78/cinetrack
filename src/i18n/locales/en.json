@@ -576,8 +576,19 @@
     "noResultsDescription": "Try another name — or check the spelling."
   },
   "person": {
-    "loading": "Loading…",
-    "knownFilmography": "Known filmography"
+    "knownFilmography": "Known filmography",
+    "fullFilmography": "Full filmography",
+    "uncredited": "Uncredited",
+    "episodeCount_one": "{{count}} episode",
+    "episodeCount_other": "{{count}} episodes",
+    "alsoKnownAs": "Also known as:",
+    "born": "Born {{date}}",
+    "bornAndDied": "Born {{born}} — died {{died}}",
+    "ageYears_one": "{{count}} year old",
+    "ageYears_other": "{{count}} years old",
+    "placeOfBirth": "Born in {{place}}",
+    "noBiography": "No biography available.",
+    "viewOnImdb": "View on IMDb"
   },
   "genres": {
     "action": "Action",

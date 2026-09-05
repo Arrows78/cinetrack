@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, format, formatDistanceToNow, parseISO } from "date-fns";
+import { differenceInCalendarDays, differenceInYears, format, formatDistanceToNow, parseISO } from "date-fns";
 import { enUS, fr } from "date-fns/locale";
 import i18n from "@/i18n";
 
@@ -39,6 +39,15 @@ export const formatDate = (value?: string | null) => {
  * displayed locally. parseISO reads a date-only string as local midnight.
  */
 export const formatFullDate = (value: string) => format(parseISO(value), "EEEE d MMMM yyyy", { locale: dateLocale() });
+
+// Age at death for a deceased person (as of their deathday) rather than
+// their current age — TMDB's birthday/deathday pair is the only place that
+// distinction matters in this app.
+export const ageFromBirthday = (birthday?: string | null, asOf?: string | null): number | null => {
+  if (!birthday) return null;
+  const age = differenceInYears(asOf ? parseISO(asOf) : new Date(), parseISO(birthday));
+  return Number.isNaN(age) ? null : age;
+};
 
 export const formatRelativeDate = (value?: string | null) => {
   if (!value) return i18n.t("common.unknownDate");

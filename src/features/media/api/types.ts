@@ -149,13 +149,26 @@ export interface TmdbVideoResponse {
   results: TmdbVideoDto[];
 }
 
+export type TmdbPersonCreditDto = (TmdbMovieDto | TmdbTvDto) & {
+  media_type: "movie" | "tv";
+  character?: string;
+  job?: string;
+  episode_count?: number;
+};
+
 export interface TmdbPersonDto {
   id: number;
   name: string;
   profile_path: string | null;
   known_for_department?: string;
-  known_for?: Array<(TmdbMovieDto | TmdbTvDto) & { media_type: "movie" | "tv" }>;
-  combined_credits?: { cast: Array<(TmdbMovieDto | TmdbTvDto) & { media_type: "movie" | "tv" }> };
+  biography?: string;
+  birthday?: string | null;
+  deathday?: string | null;
+  place_of_birth?: string | null;
+  also_known_as?: string[];
+  known_for?: TmdbPersonCreditDto[];
+  combined_credits?: { cast?: TmdbPersonCreditDto[]; crew?: TmdbPersonCreditDto[] };
+  external_ids?: { imdb_id?: string | null };
 }
 
 export interface TmdbProviderRegionDto {

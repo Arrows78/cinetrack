@@ -13,6 +13,8 @@ import type {
   WatchProvider,
   MediaVideo,
   PersonSummary,
+  PersonCreditItem,
+  PersonDetail,
 } from "@/types/media";
 import { yearFromDate } from "@/shared/utils/format";
 import { GENRES } from "@/shared/constants/discover";
@@ -30,6 +32,7 @@ import type {
   TmdbWatchProviderDto,
   TmdbVideoDto,
   TmdbPersonDto,
+  TmdbPersonCreditDto,
 } from "./types";
 
 // TMDB's list/discover/trending/search endpoints only return `genre_ids`
@@ -203,3 +206,34 @@ export const mapPerson = (dto: TmdbPersonDto): PersonSummary => ({
     .slice(0, 20)
     .map((item) => mapSearchResult(item, item.media_type === "movie" ? "movie" : "series")),
 });
+
+const mapPersonCredit = (item: TmdbPersonCreditDto, department: "cast" | "crew"): PersonCreditItem => ({
+  ...mapSearchResult(item, item.media_type === "movie" ? "movie" : "series"),
+  role: (department === "cast" ? item.character : item.job) ?? "",
+  department,
+  episodeCount: item.episode_count,
+});
+
+// The full body of work (unlike PersonSummary.knownFor, which is a curated,
+// cast-only strip): cast and crew credits merged into one list, most recent
+// release/air date first, so the person's detail page can show everything
+// they've worked on rather than just what they're best known for.
+export const mapPersonDetail = (dto: TmdbPersonDto): PersonDetail => {
+  const isPlayable = (item: TmdbPersonCreditDto) => item.media_type === "movie" || item.media_type === "tv";
+  const credits = [
+    ...(dto.combined_credits?.cast ?? []).filter(isPlayable).map((item) => mapPersonCredit(item, "cast")),
+    ...(dto.combined_credits?.crew ?? []).filter(isPlayable).map((item) => mapPersonCredit(item, "crew")),
+  ];
+  const filmography = credits.sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
+
+  return {
+    ...mapPerson(dto),
+    biography: dto.biography ?? "",
+    birthday: dto.birthday ?? null,
+    deathday: dto.deathday ?? null,
+    placeOfBirth: dto.place_of_birth ?? null,
+    alsoKnownAs: dto.also_known_as ?? [],
+    imdbId: dto.external_ids?.imdb_id ?? null,
+    filmography,
+  };
+};

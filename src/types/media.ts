@@ -303,6 +303,26 @@ export interface PersonSummary {
   knownFor: MediaSummary[];
 }
 
+// A single cast or crew credit in a person's full filmography — unlike
+// PersonSummary.knownFor (a curated, cast-only strip), this merges acting and
+// crew work into one list so the detail page can show a person's complete
+// body of work, most recent first.
+export interface PersonCreditItem extends MediaSummary {
+  role: string;
+  department: "cast" | "crew";
+  episodeCount?: number;
+}
+
+export interface PersonDetail extends PersonSummary {
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  placeOfBirth: string | null;
+  alsoKnownAs: string[];
+  imdbId: string | null;
+  filmography: PersonCreditItem[];
+}
+
 export interface CalendarEntry {
   id: string;
   mediaId: number;

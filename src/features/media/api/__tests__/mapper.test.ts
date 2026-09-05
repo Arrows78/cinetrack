@@ -4,6 +4,7 @@ import {
   mapMovieDto,
   mapPage,
   mapPerson,
+  mapPersonDetail,
   mapSeasonDetailsDto,
   mapSeriesDto,
   mapWatchProvider,
@@ -290,5 +291,86 @@ describe("mapPerson", () => {
 
     expect(person.knownFor).toHaveLength(1);
     expect(person.knownFor[0]!.mediaType).toBe("series");
+  });
+});
+
+describe("mapPersonDetail", () => {
+  it("maps biography, dates and the IMDb id", () => {
+    const person = mapPersonDetail({
+      id: 287,
+      name: "Brad Pitt",
+      profile_path: null,
+      biography: "American actor.",
+      birthday: "1963-12-18",
+      deathday: null,
+      place_of_birth: "Shawnee, Oklahoma, USA",
+      also_known_as: ["William Bradley Pitt"],
+      external_ids: { imdb_id: "nm0000093" },
+    } as TmdbPersonDto);
+
+    expect(person).toMatchObject({
+      biography: "American actor.",
+      birthday: "1963-12-18",
+      deathday: null,
+      placeOfBirth: "Shawnee, Oklahoma, USA",
+      alsoKnownAs: ["William Bradley Pitt"],
+      imdbId: "nm0000093",
+    });
+  });
+
+  it("defaults missing biography/dates/ids to empty values rather than undefined", () => {
+    const person = mapPersonDetail({ id: 287, name: "Brad Pitt", profile_path: null } as TmdbPersonDto);
+
+    expect(person).toMatchObject({
+      biography: "",
+      birthday: null,
+      deathday: null,
+      placeOfBirth: null,
+      alsoKnownAs: [],
+      imdbId: null,
+      filmography: [],
+    });
+  });
+
+  it("merges cast and crew credits into one filmography, most recent release first", () => {
+    const person = mapPersonDetail({
+      id: 287,
+      name: "Brad Pitt",
+      profile_path: null,
+      combined_credits: {
+        cast: [{ ...movieDto({ id: 1, release_date: "2010-01-01" }), media_type: "movie", character: "Hero" }],
+        crew: [
+          {
+            ...tvDto({ id: 2, first_air_date: "2022-01-01" }),
+            media_type: "tv",
+            job: "Producer",
+            episode_count: 10,
+          },
+        ],
+      },
+    } as TmdbPersonDto);
+
+    expect(person.filmography).toHaveLength(2);
+    expect(person.filmography[0]).toMatchObject({
+      id: 2,
+      mediaType: "series",
+      role: "Producer",
+      department: "crew",
+      episodeCount: 10,
+    });
+    expect(person.filmography[1]).toMatchObject({ id: 1, mediaType: "movie", role: "Hero", department: "cast" });
+  });
+
+  it("filters out non movie/tv credits from the filmography", () => {
+    const person = mapPersonDetail({
+      id: 287,
+      name: "Brad Pitt",
+      profile_path: null,
+      combined_credits: {
+        cast: [{ ...movieDto({ id: 1 }), media_type: "person" } as never],
+      },
+    } as TmdbPersonDto);
+
+    expect(person.filmography).toHaveLength(0);
   });
 });
