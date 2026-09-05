@@ -131,7 +131,7 @@ export function SeriesDetailPage() {
           <KeywordChips keywords={series.keywords} />
         </Panel>
         <div className="space-y-4">
-          <Panel tone="subtle">
+          <Panel tone="subtle" className="p-6">
             <div className="flex items-center justify-between gap-2">
               <p className="text-overline font-bold uppercase text-muted-foreground">{t("series.currentProgress")}</p>
               {progress.isUpToDate ? <Badge variant="success">{t("media.upToDate")}</Badge> : null}
@@ -149,7 +149,7 @@ export function SeriesDetailPage() {
               <ProgressBar value={progress.progressPercent} />
             </div>
           </Panel>
-          <Panel tone="subtle">
+          <Panel tone="subtle" className="p-6">
             <SectionHeader title={t("series.seriesInfo")} />
             <div className="grid gap-2 text-sm">
               {[

@@ -22,8 +22,11 @@ export function SectionHeader({
   // actual heading tag this renders.
   size?: "default" | "sub";
   // Set when this is the page's own title (no other heading precedes it on
-  // the page) — renders <h1>, same visual size otherwise. Never combine
-  // with size="sub": a page title is never a nested zone.
+  // the page) — renders <h1> at text-page-title, the same size every page
+  // that hand-rolls its own <h1> (Movies, Series, People, Tracking, Watch
+  // Tonight, Stats) already uses, instead of the smaller text-heading-lg
+  // every other SectionHeader renders. Never combine with size="sub": a
+  // page title is never a nested zone.
   isPageTitle?: boolean;
   // Overrides the heading level size would otherwise imply (1 for
   // isPageTitle, 3 for size="sub", 2 otherwise). Needed when a page's
@@ -51,7 +54,7 @@ export function SectionHeader({
           <Heading
             className={cn(
               "font-display tracking-tight transition-all duration-base group-hover:text-primary/90",
-              isSub ? "text-heading-sm md:text-heading-md" : "text-heading-lg"
+              isSub ? "text-heading-sm md:text-heading-md" : isPageTitle ? "text-page-title" : "text-heading-lg"
             )}
           >
             {title}

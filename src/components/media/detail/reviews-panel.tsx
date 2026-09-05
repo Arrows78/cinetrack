@@ -9,7 +9,7 @@ import type { MediaReview } from "@/types/media";
 function ReviewCard({ review }: { review: MediaReview }) {
   const { t } = useTranslation();
   return (
-    <Panel tone="subtle" className="p-5">
+    <Panel tone="subtle" className="p-6">
       <div className="flex items-center gap-3">
         <img
           src={review.avatarUrl ?? placeholderUrl(92, 92, review.author)}

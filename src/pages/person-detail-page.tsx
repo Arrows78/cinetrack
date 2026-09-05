@@ -87,7 +87,7 @@ export function PersonDetailPage() {
         <div className="min-w-0 space-y-3">
           <div>
             {person.knownForDepartment ? <p className="text-sm text-primary">{person.knownForDepartment}</p> : null}
-            <h1 className="font-display text-4xl font-bold">{person.name}</h1>
+            <h1 className="font-display text-page-title">{person.name}</h1>
             {person.alsoKnownAs.length > 0 ? (
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("person.alsoKnownAs")} {person.alsoKnownAs.join(", ")}

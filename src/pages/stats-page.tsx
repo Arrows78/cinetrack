@@ -146,7 +146,7 @@ export function StatsPage() {
   return (
     <div className="space-y-8">
       <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <h1 className="font-display text-display-title">{t("stats.title")}</h1>
+        <h1 className="font-display text-page-title">{t("stats.title")}</h1>
         <p className="mt-1 text-muted-foreground">{t("stats.description")}</p>
       </header>
       <section

@@ -143,7 +143,7 @@ export function MonthlyRecapSection() {
           <Tile key={label} className="p-3">
             <Icon className="size-4 text-primary" aria-hidden="true" />
             <p className="mt-2 text-xs text-muted-foreground">{label}</p>
-            <p className="mt-1 truncate font-display text-xl font-bold">{value}</p>
+            <p className="mt-1 truncate font-display text-2xl font-bold">{value}</p>
           </Tile>
         ))}
       </div>
