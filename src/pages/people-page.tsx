@@ -5,11 +5,12 @@ import { motion } from "framer-motion";
 import { Search, UserX } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Panel } from "@/components/ui/panel";
+import { FilterBar } from "@/components/media/library/filter-bar";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { MEDIA_GRID_CLASS_NAME } from "@/components/media/primitives/media-grid";
-import { usePeopleSearch, usePopularPeople } from "@/features/media/use-discovery";
+import { usePeopleSearch, usePopularPeople, useTrendingPeople } from "@/features/media/use-discovery";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import { buildTmdbImageUrl, placeholderUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
@@ -56,14 +57,19 @@ function PersonCard({ person, index }: { person: PersonSummary; index: number })
   );
 }
 
+type BrowseMode = "popular" | "trending";
+
 export function PeoplePage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
+  const [mode, setMode] = useState<BrowseMode>("popular");
   const debounced = useDebouncedValue(query, DEBOUNCE_MS);
   const isSearching = debounced.trim().length >= MIN_SEARCH_QUERY_LENGTH;
   const search = usePeopleSearch(debounced);
   const popular = usePopularPeople();
-  const active = isSearching ? search : popular;
+  const trending = useTrendingPeople();
+  const browsing = mode === "trending" ? trending : popular;
+  const active = isSearching ? search : browsing;
   const results = active.data?.results ?? [];
   const showEmpty = isSearching && !active.isLoading && !active.isError && results.length === 0;
 
@@ -85,7 +91,22 @@ export function PeoplePage() {
           />
         </label>
       </Panel>
-      {!isSearching ? <h2 className="font-display text-heading-md">{t("people.popularTitle")}</h2> : null}
+      {!isSearching ? (
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-display text-heading-md">
+            {mode === "trending" ? t("people.trendingTitle") : t("people.popularTitle")}
+          </h2>
+          <FilterBar
+            value={mode}
+            onChange={setMode}
+            groupLabel={t("people.browseModeLabel")}
+            options={[
+              { value: "popular", label: t("people.popularTitle") },
+              { value: "trending", label: t("people.trendingTitle") },
+            ]}
+          />
+        </div>
+      ) : null}
       {active.isLoading ? <GridSkeleton count={8} /> : null}
       {active.isError ? <RemoteErrorState error={active.error} onRetry={() => void active.refetch()} /> : null}
       {showEmpty ? (

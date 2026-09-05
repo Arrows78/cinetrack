@@ -9,6 +9,7 @@ const getWatchAvailabilityMock = vi.fn(async () => ({ providers: [] }) as never)
 const searchPeopleMock = vi.fn(async () => ({ results: [] }) as never);
 const getPersonMock = vi.fn(async () => ({ id: 1 }) as never);
 const getPopularPeopleMock = vi.fn(async () => ({ results: [] }) as never);
+const getTrendingPeopleMock = vi.fn(async () => ({ results: [] }) as never);
 
 vi.mock("@/features/media/media-repository", () => ({
   mediaRepository: {
@@ -18,6 +19,7 @@ vi.mock("@/features/media/media-repository", () => ({
     searchPeople: searchPeopleMock,
     getPerson: getPersonMock,
     getPopularPeople: getPopularPeopleMock,
+    getTrendingPeople: getTrendingPeopleMock,
   },
 }));
 
@@ -35,6 +37,7 @@ beforeEach(() => {
   searchPeopleMock.mockClear();
   getPersonMock.mockClear();
   getPopularPeopleMock.mockClear();
+  getTrendingPeopleMock.mockClear();
 });
 
 describe("useRecommendations / useVideos", () => {
@@ -106,5 +109,15 @@ describe("usePopularPeople", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(getPopularPeopleMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useTrendingPeople", () => {
+  it("fetches the trending people list", async () => {
+    const { useTrendingPeople } = await import("../use-discovery");
+    const { result } = renderHook(() => useTrendingPeople(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getTrendingPeopleMock).toHaveBeenCalledTimes(1);
   });
 });

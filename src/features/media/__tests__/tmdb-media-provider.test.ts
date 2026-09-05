@@ -688,4 +688,30 @@ describe("TmdbMediaProvider", () => {
       expect(mocks.tmdbFetch).toHaveBeenCalledWith("/person/popular", expect.objectContaining({ page: 1 }));
     });
   });
+
+  describe("getTrendingPeople", () => {
+    it("fetches /trending/person/week with the resolved language and page, mapping the results", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+      mocks.tmdbFetch.mockResolvedValue({
+        ...emptyListResponse,
+        results: [{ id: 9, name: "A Trending Star", profile_path: null }],
+      });
+
+      const result = await provider.getTrendingPeople(2);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith(
+        "/trending/person/week",
+        expect.objectContaining({ language: "fr-FR", page: 2 })
+      );
+      expect(result.results[0]).toMatchObject({ id: 9, name: "A Trending Star" });
+    });
+
+    it("defaults to page 1 when no page is given", async () => {
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.getTrendingPeople();
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith("/trending/person/week", expect.objectContaining({ page: 1 }));
+    });
+  });
 });

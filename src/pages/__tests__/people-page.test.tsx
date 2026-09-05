@@ -9,10 +9,12 @@ import type { PersonSummary } from "@/types/media";
 
 const usePeopleSearchMock = vi.fn();
 const usePopularPeopleMock = vi.fn();
+const useTrendingPeopleMock = vi.fn();
 
 vi.mock("@/features/media/use-discovery", () => ({
   usePeopleSearch: (query: string) => usePeopleSearchMock(query),
   usePopularPeople: () => usePopularPeopleMock(),
+  useTrendingPeople: () => useTrendingPeopleMock(),
 }));
 
 // Person cards route through <Link>. No RouterProvider exists in this render,
@@ -73,6 +75,8 @@ describe("PeoplePage", () => {
     usePeopleSearchMock.mockReturnValue(idleResult());
     usePopularPeopleMock.mockReset();
     usePopularPeopleMock.mockReturnValue(idleResult());
+    useTrendingPeopleMock.mockReset();
+    useTrendingPeopleMock.mockReturnValue(idleResult());
   });
 
   afterEach(() => {
@@ -109,6 +113,27 @@ describe("PeoplePage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "John Smith" })).toBeInTheDocument();
     // The default view is driven by the popular-people query, not a search.
     expect(usePeopleSearchMock).toHaveBeenCalledWith("");
+  });
+
+  it("switches to the trending-people list when that mode is selected", () => {
+    usePopularPeopleMock.mockReturnValue({
+      ...idleResult(),
+      data: { results: [makePerson({ id: 1, name: "Popular Person" })] },
+    });
+    useTrendingPeopleMock.mockReturnValue({
+      ...idleResult(),
+      data: { results: [makePerson({ id: 2, name: "Trending Person" })] },
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("heading", { level: 2, name: "Popular Person" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trending this week" }));
+
+    expect(screen.getByRole("heading", { name: "Trending this week" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Trending Person" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: "Popular Person" })).not.toBeInTheDocument();
   });
 
   it("shows the grid skeleton and no person cards while the popular list is loading", () => {

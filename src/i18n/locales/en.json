@@ -582,6 +582,8 @@
     "searchPlaceholder": "Search for a person",
     "fallbackDepartment": "Film & television",
     "popularTitle": "Popular people",
+    "trendingTitle": "Trending this week",
+    "browseModeLabel": "Browse mode",
     "noResultsTitle": "No people found",
     "noResultsDescription": "Try another name — or check the spelling."
   },

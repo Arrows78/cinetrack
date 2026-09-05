@@ -582,6 +582,8 @@
     "searchPlaceholder": "Rechercher une personne",
     "fallbackDepartment": "Cinéma et télévision",
     "popularTitle": "Personnalités populaires",
+    "trendingTitle": "Tendances cette semaine",
+    "browseModeLabel": "Mode de navigation",
     "noResultsTitle": "Aucune personne trouvée",
     "noResultsDescription": "Essayez un autre nom, ou vérifiez l'orthographe."
   },

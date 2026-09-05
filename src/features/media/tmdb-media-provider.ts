@@ -333,6 +333,12 @@ export class TmdbMediaProvider implements MediaProvider {
     return mapPage(response, mapPerson);
   }
 
+  async getTrendingPeople(page = 1): Promise<PageResult<PersonSummary>> {
+    const { language } = await this.context();
+    const response = await tmdbFetch<TmdbListResponse<TmdbPersonDto>>("/trending/person/week", { language, page });
+    return mapPage(response, mapPerson);
+  }
+
   async getPerson(personId: number): Promise<PersonDetail> {
     const { language } = await this.context();
     const response = await tmdbFetch<TmdbPersonDto>(`/person/${personId}`, {

@@ -39,6 +39,12 @@ export function usePopularPeople() {
     queryFn: () => mediaRepository.getPopularPeople(),
   });
 }
+export function useTrendingPeople() {
+  return useQuery({
+    queryKey: queryKeys.remote.trendingPeople,
+    queryFn: () => mediaRepository.getTrendingPeople(),
+  });
+}
 export function usePerson(personId: number) {
   return useQuery({
     queryKey: queryKeys.remote.person(personId),

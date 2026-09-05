@@ -16,6 +16,7 @@ export const queryKeys = {
     person: (personId: number) => ["remote", "person", personId] as const,
     people: (query: string) => ["remote", "people", query] as const,
     popularPeople: ["remote", "people", "popular"] as const,
+    trendingPeople: ["remote", "people", "trending"] as const,
     availability: (mediaType: string, mediaId: number, region: string) =>
       ["remote", "availability", mediaType, mediaId, region] as const,
     collection: (collectionId: number) => ["remote", "collection", collectionId] as const,
