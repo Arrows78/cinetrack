@@ -24,6 +24,7 @@ vi.mock("@/components/media/primitives/media-grid", () => ({
       ))}
     </div>
   ),
+  MEDIA_GRID_CLASS_NAME: "grid",
 }));
 
 // AddToLibraryButton (rendered directly by the hero pick, not just inside

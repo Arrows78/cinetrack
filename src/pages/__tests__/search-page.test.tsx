@@ -143,6 +143,7 @@ vi.mock("@/components/media/primitives/media-grid", () => ({
       ))}
     </div>
   ),
+  MEDIA_GRID_CLASS_NAME: "grid",
 }));
 
 function buildSummary(overrides: Partial<MediaSummary> = {}): MediaSummary {

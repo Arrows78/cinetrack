@@ -15,7 +15,7 @@ export type MediaGridItem = MediaSummary & { progress?: MediaCardProgress; alrea
 // match these exact breakpoints — without it, cards of the same visual
 // intent end up different sizes on different pages purely because each grid
 // picked its own column counts.
-export const MEDIA_GRID_CLASS_NAME = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 2xl:grid-cols-5";
+export const MEDIA_GRID_CLASS_NAME = "grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4 xl:grid-cols-5 2xl:grid-cols-6";
 
 export function MediaGrid({
   items,

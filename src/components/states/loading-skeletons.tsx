@@ -1,15 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "react-i18next";
+import { MEDIA_GRID_CLASS_NAME } from "@/components/media/primitives/media-grid";
 
 export function GridSkeleton({ count = 10 }: { count?: number }) {
   const { t } = useTranslation();
   return (
-    <div
-      role="status"
-      aria-busy="true"
-      aria-label={t("common.loading")}
-      className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 2xl:grid-cols-5"
-    >
+    <div role="status" aria-busy="true" aria-label={t("common.loading")} className={MEDIA_GRID_CLASS_NAME}>
       {Array.from({ length: count }).map((_, index) => (
         <div key={index} className="space-y-2">
           <Skeleton className="aspect-[2/3] rounded-card" />
