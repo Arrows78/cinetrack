@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 import { EpisodeCard } from "@/components/media/tracking/episode-card";
+import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -11,6 +12,7 @@ import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Card } from "@/components/ui/card";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
+import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
 
 export function SeasonPage() {
@@ -21,6 +23,22 @@ export function SeasonPage() {
   const seriesQuery = useSeriesDetails(parsedSeriesId);
   const seasonQuery = useSeasonDetails(parsedSeriesId, parsedSeasonNumber);
   const progressQuery = useEpisodeProgress(parsedSeriesId);
+
+  // Called only from the interactive episode list below, which never
+  // renders before seriesQuery.data is loaded — the `if (!seriesQuery.data)`
+  // guards just satisfy the type checker, not a real runtime path. Defined
+  // above the early returns (rather than after, next to `series`/`season`)
+  // because hooks can't follow a conditional return.
+  const backlog = useEpisodeSeenBacklogPrompt({
+    onMarkOne: (episode, watched, note) => {
+      if (!seriesQuery.data) return;
+      void progressQuery.toggleEpisodeSeen({ series: seriesQuery.data, episode, watched, note });
+    },
+    onMarkMany: (episodes, target) => {
+      if (!seriesQuery.data) return;
+      void progressQuery.markEpisodesSeen({ series: seriesQuery.data, episodes, target });
+    },
+  });
 
   // See series-detail-page.tsx's equivalent guard for why: a non-numeric id
   // and isPending-vs-isLoading both used to fall through to a bare `return
@@ -71,18 +89,30 @@ export function SeasonPage() {
             <EpisodeCard
               key={episode.id}
               episode={{ ...episode, watched: watchedSet.has(episode.id) }}
+              disabled={progressQuery.isSaving}
               onToggleSeen={(note) =>
-                void progressQuery.toggleEpisodeSeen({
-                  series,
+                backlog.requestToggle(
                   episode,
-                  watched: !watchedSet.has(episode.id),
+                  !watchedSet.has(episode.id),
+                  season.episodes,
+                  watchedSet,
                   note,
-                })
+                  undefined
+                )
               }
             />
           ))}
         </div>
       </Card>
+
+      <MarkPreviousEpisodesDialog
+        open={backlog.prompt !== null}
+        onOpenChange={(open) => !open && backlog.dismiss()}
+        previousCount={backlog.prompt?.previousUnwatched.length ?? 0}
+        onOnlyThis={backlog.confirmOnlyThis}
+        onIncludePrevious={backlog.confirmIncludePrevious}
+        isApplying={progressQuery.isSaving}
+      />
     </div>
   );
 }

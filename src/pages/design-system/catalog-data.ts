@@ -999,6 +999,14 @@ export const componentInventory = [
     "Captures an optional per-watch note at the moment a movie or episode is marked watched."
   ),
   component(
+    "MarkPreviousEpisodesDialog",
+    "components/media/tracking/mark-previous-episodes-dialog.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Asks whether marking an episode watched should also catch up still-unwatched earlier episodes of the same season."
+  ),
+  component(
     "WatchHistoryPanel",
     "components/media/activity/watch-history-panel.tsx",
     "Media",

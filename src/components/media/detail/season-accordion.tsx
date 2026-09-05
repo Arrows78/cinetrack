@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -7,11 +7,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { EpisodeCard } from "@/components/media/tracking/episode-card";
+import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
 import { useConfetti } from "@/hooks/use-confetti";
 import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
-import type { EpisodeProgress, MediaSummary, Season } from "@/types/media";
+import type { Episode, EpisodeProgress, MediaSummary, Season } from "@/types/media";
 import { calculateSeriesProgress } from "@/features/progress/use-progress";
+import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 
 /* Episode filmstrip — each episode is a sprocket-hole perforation; watched
    ones are "lit up" in the accent color, like exposed frames. Shows watch
@@ -52,45 +54,83 @@ export function SeasonAccordion({
   seasons,
   watchedEpisodes,
   onToggleEpisode,
+  onToggleEpisodes,
   onToggleSeason,
   isSaving,
+  initialOpenSeason,
 }: {
   series: MediaSummary & { numberOfEpisodes?: number };
   seasons: Season[];
   watchedEpisodes: EpisodeProgress[];
   onToggleEpisode: (episode: Season["episodes"][number], watched: boolean, note?: string) => Promise<void>;
+  // Promise<unknown>, not Promise<void>: markEpisodesSeen (the only real
+  // caller) resolves to the changed-episode count from toggleEpisodesWatched
+  // — a value this component has no use for, but shouldn't have to discard
+  // just to satisfy the prop type.
+  onToggleEpisodes: (episodes: Episode[], target: Episode) => Promise<unknown>;
   onToggleSeason: (season: Season, watched: boolean) => Promise<void>;
   isSaving?: boolean;
+  // Pre-expands this season and scrolls it into view — a deep link from a
+  // "This week"/"Needs attention" home rail arrives here already knowing
+  // which season is relevant and shouldn't dump the user on the collapsed
+  // top of the full season list to go find it themselves.
+  initialOpenSeason?: number;
 }) {
   const { t } = useTranslation();
   const { celebrate } = useConfetti();
   const watchedSet = useMemo(() => new Set(watchedEpisodes.map((item) => item.episodeId)), [watchedEpisodes]);
   const progress = calculateSeriesProgress(series.id, seasons, watchedEpisodes);
 
-  const handleToggleEpisode = async (
-    season: Season,
-    episode: Season["episodes"][number],
-    watched: boolean,
-    note?: string
-  ) => {
-    if (watched) {
-      const seasonWatched = season.episodes.filter((ep) => watchedSet.has(ep.id)).length;
-      const willComplete = seasonWatched + 1 === season.episodes.length;
-      if (willComplete) setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
+  const initialOpenItemRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    initialOpenItemRef.current?.scrollIntoView({ block: "start" });
+    // Deliberately once-on-mount: this should only ever land the viewport on
+    // the deep-linked season right after arriving here, not on every later
+    // re-render this component's own state (watched episodes, isSaving...)
+    // produces.
+  }, []);
+
+  const celebrateIfSeasonCompletes = (season: Season, newlyWatchedCount: number) => {
+    const alreadyWatched = season.episodes.filter((ep) => watchedSet.has(ep.id)).length;
+    if (alreadyWatched + newlyWatchedCount === season.episodes.length) {
+      setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
     }
-    await onToggleEpisode(episode, watched, note);
   };
+
+  // Marking an episode watched can, via useEpisodeSeenBacklogPrompt, ask the
+  // user whether to also catch up still-unwatched earlier episodes of the
+  // same season — the season is threaded through as context so the
+  // season-complete celebration above still has it once the user answers
+  // that prompt, rather than reading it from a stale closure.
+  const backlog = useEpisodeSeenBacklogPrompt<Season>({
+    onMarkOne: (episode, watched, note, season) => {
+      if (watched) celebrateIfSeasonCompletes(season, 1);
+      void onToggleEpisode(episode, watched, note);
+    },
+    onMarkMany: (episodes, target, season) => {
+      celebrateIfSeasonCompletes(season, episodes.length);
+      void onToggleEpisodes(episodes, target);
+    },
+  });
 
   return (
     <div className="space-y-4">
-      <Accordion type="multiple" className="space-y-3">
+      <Accordion
+        type="multiple"
+        className="space-y-3"
+        defaultValue={initialOpenSeason != null ? [`season-${initialOpenSeason}`] : undefined}
+      >
         {seasons.map((season) => {
           const seasonProgress = progress.seasons.find((item) => item.seasonNumber === season.seasonNumber);
           const pct = seasonProgress?.progressPercent ?? 0;
           const isComplete = pct >= 100;
 
           return (
-            <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
+            <AccordionItem
+              key={season.seasonNumber}
+              value={`season-${season.seasonNumber}`}
+              ref={season.seasonNumber === initialOpenSeason ? initialOpenItemRef : undefined}
+            >
               <AccordionTrigger className="group rounded-2xl border border-border bg-foreground/[0.03] px-5 py-4 hover:bg-foreground/[0.06] data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
                 <div className="w-full space-y-3 text-left">
                   <div className="flex items-center justify-between gap-3">
@@ -157,7 +197,9 @@ export function SeasonAccordion({
                         episode={{ ...episode, watched: isWatched }}
                         disabled={isSaving}
                         isLastUnwatched={isLastUnwatched}
-                        onToggleSeen={(note) => void handleToggleEpisode(season, episode, !isWatched, note)}
+                        onToggleSeen={(note) =>
+                          backlog.requestToggle(episode, !isWatched, season.episodes, watchedSet, note, season)
+                        }
                       />
                     );
                   })}
@@ -167,6 +209,15 @@ export function SeasonAccordion({
           );
         })}
       </Accordion>
+
+      <MarkPreviousEpisodesDialog
+        open={backlog.prompt !== null}
+        onOpenChange={(open) => !open && backlog.dismiss()}
+        previousCount={backlog.prompt?.previousUnwatched.length ?? 0}
+        onOnlyThis={backlog.confirmOnlyThis}
+        onIncludePrevious={backlog.confirmIncludePrevious}
+        isApplying={isSaving}
+      />
     </div>
   );
 }

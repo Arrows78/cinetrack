@@ -90,6 +90,7 @@ const series = makeMedia({ id: 42, mediaType: "series", title: "Test Series" });
 
 function renderAccordion(overrides: Partial<Parameters<typeof SeasonAccordion>[0]> = {}) {
   const onToggleEpisode = vi.fn().mockResolvedValue(undefined);
+  const onToggleEpisodes = vi.fn().mockResolvedValue(undefined);
   const onToggleSeason = vi.fn().mockResolvedValue(undefined);
   const utils = render(
     <SeasonAccordion
@@ -97,11 +98,12 @@ function renderAccordion(overrides: Partial<Parameters<typeof SeasonAccordion>[0
       seasons={seasons}
       watchedEpisodes={watchedEpisodes}
       onToggleEpisode={onToggleEpisode}
+      onToggleEpisodes={onToggleEpisodes}
       onToggleSeason={onToggleSeason}
       {...overrides}
     />
   );
-  return { ...utils, onToggleEpisode, onToggleSeason };
+  return { ...utils, onToggleEpisode, onToggleEpisodes, onToggleSeason };
 }
 
 function openSeason(seasonLabel: string) {

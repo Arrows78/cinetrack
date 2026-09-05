@@ -81,6 +81,30 @@ export function useEpisodeProgress(seriesId: number) {
     (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
   );
 
+  // Catch-up path for useEpisodeSeenBacklogPrompt's "this one and the
+  // previous ones" choice — a bulk toggle-to-watched over an arbitrary
+  // episode subset, logged under the same history shape a single-episode
+  // toggle would use (see toggleEpisodeSeen above), just naming the
+  // triggering episode rather than every episode it caught up.
+  const markManyMutation = useInvalidatingMutation(
+    ({
+      series,
+      episodes,
+      target,
+    }: {
+      series: MediaSummary & { numberOfEpisodes?: number };
+      episodes: Episode[];
+      target: Episode;
+    }) =>
+      progressRepository.toggleEpisodesWatched(series, episodes, true, undefined, {
+        action: "episode:watched",
+        seasonNumber: target.seasonNumber,
+        episodeNumber: target.episodeNumber,
+        episodeTitle: target.title,
+      }),
+    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
+  );
+
   const seasonMutation = useInvalidatingMutation(
     ({
       series,
@@ -110,9 +134,11 @@ export function useEpisodeProgress(seriesId: number) {
   return {
     ...query,
     toggleEpisodeSeen: toggleMutation.mutateAsync,
+    markEpisodesSeen: markManyMutation.mutateAsync,
     markSeasonSeen: seasonMutation.mutateAsync,
     markSeriesSeen: seriesMutation.mutateAsync,
-    isSaving: toggleMutation.isPending || seasonMutation.isPending || seriesMutation.isPending,
+    isSaving:
+      toggleMutation.isPending || markManyMutation.isPending || seasonMutation.isPending || seriesMutation.isPending,
   };
 }
 
