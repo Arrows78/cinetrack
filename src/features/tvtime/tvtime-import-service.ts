@@ -101,7 +101,7 @@ export interface TvTimeImportSummary {
 
 const CONCURRENCY = 3;
 
-// A TV Time GDPR export is 4 CSVs at most (see tvtimeImport.hint). These
+// A TV Time GDPR export is 6 CSVs at most (see tvtimeImport.hint). These
 // ceilings are well above that — generous enough for legitimate re-exports —
 // but still catch an accidental folder-drop or a huge unrelated file before
 // any file.text() call, which is where an unbounded selection would freeze
@@ -269,6 +269,28 @@ async function attachEpisodesToSeries(
   return { episodesImported: inserted, unresolvedCount };
 }
 
+// Favourite/rating apply to the show itself, independent of whether any of
+// its specific episodes ended up matched on TMDB (e.g. a season TMDB has no
+// data for) — so this only needs `seriesName` to have resolved to a real
+// TMDB series at all, not a successful episode count. `undefined` fields are
+// omitted rather than sent as `false`/absent so a series with only a rating
+// (no favourite) never has its favourite flag reset by this patch — see
+// upsert_impl's per-field fallback-to-current semantics in
+// src-tauri/src/library/repository.rs.
+function libraryPatchFromTvTimeSignals(
+  seriesName: string,
+  data: TvTimeExport
+): { favourite?: boolean; userRating?: number } | null {
+  const key = seriesName.toLowerCase();
+  const favourite = data.favouriteSeriesNames.has(key);
+  const userRating = data.seriesRatingsByName.get(key);
+  if (!favourite && userRating === undefined) return null;
+  return {
+    ...(favourite ? { favourite: true } : {}),
+    ...(userRating !== undefined ? { userRating } : {}),
+  };
+}
+
 async function importOneSeries(
   seriesName: string,
   episodes: TvTimeEpisode[],
@@ -292,6 +314,18 @@ async function importOneSeries(
   if (episodesImported > 0) {
     summary.seriesImported += 1;
     summary.episodesImported += episodesImported;
+  }
+
+  // Best-effort, after the episode import: a failure here shouldn't undo
+  // progress that already succeeded, and this never blocks on it.
+  const patch = libraryPatchFromTvTimeSignals(seriesName, data);
+  if (patch) {
+    try {
+      await libraryRepository.save(resolved.series, patch);
+    } catch {
+      // Not worth its own summary line — the episode import (the part a
+      // user would actually notice missing) already succeeded above.
+    }
   }
 }
 

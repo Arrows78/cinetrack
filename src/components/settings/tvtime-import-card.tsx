@@ -202,6 +202,7 @@ export function TvTimeImportCard() {
         <CardContent>
           <p className="text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
           <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.rewatchNotice")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.favouritesNotice")}</p>
 
           <div className="mt-4 flex items-center gap-3">
             <Button

@@ -27,6 +27,16 @@ export interface TvTimeExport {
   watchlist: TvTimeWatchlistEntry[];
   /** TheTVDB ids keyed by lowercase series name (from followed_tv_show.csv). */
   tvdbIdsByName: Map<string, number>;
+  /** Lowercase series names TV Time has marked favourited (from user_tv_show_data.csv's is_favorited column). */
+  favouriteSeriesNames: Set<string>;
+  /**
+   * A series' rating, keyed by lowercase name (from tv_show_rate.csv),
+   * already converted from TV Time's 5-star scale to CineTrack's 0-10
+   * userRating scale (see convertStarRating below) — never TV Time's raw
+   * value, which would silently read as "rated 1/10" for a 5-star (i.e.
+   * maximum) rating.
+   */
+  seriesRatingsByName: Map<string, number>;
   /**
    * Otherwise-well-formed watch rows dropped because `created_at` was
    * missing or unparseable. Never backfilled with today's date — a fake
@@ -54,7 +64,20 @@ const secondsToMinutes = (value: string): number | null => {
   return Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds / 60) : null;
 };
 
-export type TvTimeFileKind = "records-v2" | "records-v1" | "followed" | "special-status" | "unknown";
+// TV Time rates shows out of 5 stars (half-stars included); CineTrack's own
+// userRating is out of 10 in 0.5 steps (see library-editor.tsx's rating
+// input) — a plain pass-through of TV Time's raw value would read as "rated
+// 1/10" for what was actually a perfect 5-star rating.
+const MAX_TVTIME_STARS = 5;
+const MAX_CINETRACK_RATING = 10;
+const convertStarRating = (value: string): number | null => {
+  const stars = Number.parseFloat(value);
+  if (!Number.isFinite(stars)) return null;
+  return Math.min(MAX_CINETRACK_RATING, Math.max(0, stars * (MAX_CINETRACK_RATING / MAX_TVTIME_STARS)));
+};
+
+export type TvTimeFileKind =
+  "records-v2" | "records-v1" | "followed" | "special-status" | "show-data" | "show-rating" | "unknown";
 
 /** Identifies a GDPR export file by its header row. */
 export function detectFileKind(text: string): TvTimeFileKind {
@@ -62,12 +85,26 @@ export function detectFileKind(text: string): TvTimeFileKind {
   if (header.includes("series_name") && header.includes("ep_no")) return "records-v2";
   if (header.includes("entity_type") && header.includes("movie_name")) return "records-v1";
   if (header.includes("tv_show_id") && header.includes("notification_type")) return "followed";
+  // Checked before "special-status" below: user_tv_show_data.csv also has a
+  // tv_show_id column, and is_favorited is the only header unique to it.
+  if (header.includes("is_favorited")) return "show-data";
+  if (header.includes("tv_show_id") && header.includes("rating") && header.includes("tv_show_name")) {
+    return "show-rating";
+  }
   if (header.includes("tv_show_id") && header.includes("status")) return "special-status";
   return "unknown";
 }
 
 export function emptyExport(): TvTimeExport {
-  return { episodes: [], movies: [], watchlist: [], tvdbIdsByName: new Map(), skippedRows: { episodes: 0, movies: 0 } };
+  return {
+    episodes: [],
+    movies: [],
+    watchlist: [],
+    tvdbIdsByName: new Map(),
+    favouriteSeriesNames: new Set(),
+    seriesRatingsByName: new Map(),
+    skippedRows: { episodes: 0, movies: 0 },
+  };
 }
 
 /**
@@ -143,6 +180,21 @@ export function parseTvTimeFile(text: string, into: TvTimeExport): TvTimeFileKin
     }
   }
 
+  if (kind === "show-data") {
+    for (const row of rows) {
+      const name = row.tv_show_name?.trim();
+      if (name && row.is_favorited === "1") into.favouriteSeriesNames.add(name.toLowerCase());
+    }
+  }
+
+  if (kind === "show-rating") {
+    for (const row of rows) {
+      const name = row.tv_show_name?.trim();
+      const rating = convertStarRating(row.rating ?? "");
+      if (name && rating !== null) into.seriesRatingsByName.set(name.toLowerCase(), rating);
+    }
+  }
+
   return kind;
 }
 
@@ -172,6 +224,8 @@ export function normalizeExport(data: TvTimeExport): TvTimeExport {
     movies: [...movieMap.values()],
     watchlist: [...watchlistMap.values()],
     tvdbIdsByName: data.tvdbIdsByName,
+    favouriteSeriesNames: data.favouriteSeriesNames,
+    seriesRatingsByName: data.seriesRatingsByName,
     skippedRows: data.skippedRows,
   };
 }
@@ -190,7 +244,7 @@ export interface ParsedTvTimeFiles {
 /**
  * Parses every selected/extracted file (in any order, any subset) into one
  * normalized export, tracking which ones weren't recognized at all — a
- * GDPR export .zip has far more files in it than the 4 this feature reads,
+ * GDPR export .zip has far more files in it than the 6 this feature reads,
  * and silently ignoring an unrecognized selection left users with no way to
  * tell why nothing happened for a given file.
  */

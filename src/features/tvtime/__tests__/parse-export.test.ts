@@ -19,6 +19,14 @@ const FOLLOWED = `user_id,active,notification_type,notification_offset,tv_show_i
 const SPECIAL = `created_at,updated_at,tv_show_name,user_id,tv_show_id,status
 2021-06-06 17:53:33,2021-06-06 17:53:33,Parks and Recreation,1,84912,for_later`;
 
+const SHOW_DATA = `user_id,tv_show_id,is_followed,is_favorited,nb_episodes_seen,tv_show_name
+1,70329,1,1,123,My Wife and Kids
+1,70626,1,0,178,Charmed`;
+
+const SHOW_RATING = `tv_show_id,rating,created_at,updated_at,tv_show_name,user_id
+257655,5,2015-09-17 09:24:46,2015-09-17 09:24:47,Arrow,1
+257656,2.5,2015-09-17 09:24:46,2015-09-17 09:24:47,The Flash,1`;
+
 describe("parseCsv", () => {
   it("handles quoted fields with commas and escaped quotes", () => {
     const rows = parseCsv('a,b\n"x, y","he said ""hi"""\n');
@@ -36,6 +44,8 @@ describe("detectFileKind", () => {
     expect(detectFileKind(RECORDS_V1)).toBe("records-v1");
     expect(detectFileKind(FOLLOWED)).toBe("followed");
     expect(detectFileKind(SPECIAL)).toBe("special-status");
+    expect(detectFileKind(SHOW_DATA)).toBe("show-data");
+    expect(detectFileKind(SHOW_RATING)).toBe("show-rating");
     expect(detectFileKind("foo,bar\n1,2")).toBe("unknown");
   });
 });
@@ -76,6 +86,24 @@ describe("parseTvTimeFile + normalizeExport", () => {
 
     expect(data.tvdbIdsByName.get("my wife and kids")).toBe(70329);
     expect(data.watchlist).toEqual([{ title: "Parks and Recreation", mediaType: "series", year: null }]);
+  });
+
+  it("collects favourited series, ignoring followed-but-not-favourited ones", () => {
+    const data = emptyExport();
+    parseTvTimeFile(SHOW_DATA, data);
+
+    expect(data.favouriteSeriesNames.has("my wife and kids")).toBe(true);
+    expect(data.favouriteSeriesNames.has("charmed")).toBe(false);
+  });
+
+  it("converts a show rating from TV Time's 5-star scale to CineTrack's 0-10 scale", () => {
+    const data = emptyExport();
+    parseTvTimeFile(SHOW_RATING, data);
+
+    // 5 stars (TV Time's max) -> 10 (CineTrack's max), never a pass-through
+    // that would misread a perfect rating as barely-above-average.
+    expect(data.seriesRatingsByName.get("arrow")).toBe(10);
+    expect(data.seriesRatingsByName.get("the flash")).toBe(5);
   });
 
   it("counts (rather than silently drops or backdates) rows missing a watch date", () => {

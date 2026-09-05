@@ -951,8 +951,9 @@
   },
   "tvtimeImport": {
     "title": "Import from TV Time",
-    "description": "Bring your TV Time history into CineTrack: watched episodes and movies with their original dates, plus your to-watch list.",
-    "hint": "Select the CSV files from your TV Time GDPR export, or the export .zip directly (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv).",
+    "description": "Bring your TV Time history into CineTrack: watched episodes and movies with their original dates, your to-watch list, favourited series and series ratings.",
+    "hint": "Select the CSV files from your TV Time GDPR export, or the export .zip directly (tracking-prod-records-v2.csv, tracking-prod-records.csv, followed_tv_show.csv, user_show_special_status.csv, user_tv_show_data.csv, tv_show_rate.csv).",
+    "favouritesNotice": "Movie favourites aren't imported — TV Time only exports those in a format this feature can't reliably read yet. Series favourites and ratings are.",
     "rewatchNotice": "If a title was watched more than once in your TV Time history, only the earliest watch date is imported — rewatches from before this import aren't preserved.",
     "selectFiles": "Select files or a .zip",
     "tooManyFiles": "Select at most {{max}} files.",

@@ -88,7 +88,15 @@ function season(episodeId: number, seasonNumber: number, episodeNumber: number, 
 }
 
 function emptyExportData(): TvTimeExport {
-  return { episodes: [], movies: [], watchlist: [], tvdbIdsByName: new Map(), skippedRows: { episodes: 0, movies: 0 } };
+  return {
+    episodes: [],
+    movies: [],
+    watchlist: [],
+    tvdbIdsByName: new Map(),
+    favouriteSeriesNames: new Set(),
+    seriesRatingsByName: new Map(),
+    skippedRows: { episodes: 0, movies: 0 },
+  };
 }
 
 describe("importTvTimeExport", () => {
@@ -136,6 +144,57 @@ describe("importTvTimeExport", () => {
       expect(summary.seriesImported).toBe(1);
       expect(summary.episodesImported).toBe(1);
       expect(summary.unmatched).toEqual([]);
+    });
+
+    it("applies a favourited/rated series' signals to its library entry after import", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Breaking Bad",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: 45,
+          },
+        ],
+        tvdbIdsByName: new Map([["breaking bad", 81189]]),
+        favouriteSeriesNames: new Set(["breaking bad"]),
+        // Already converted to CineTrack's 0-10 scale by parse-export.ts —
+        // this service just applies it, never re-scales it a second time.
+        seriesRatingsByName: new Map([["breaking bad", 9]]),
+      };
+      const matchedSeries = series({ id: 62 });
+      findSeriesByTvdbIdMock.mockResolvedValue(matchedSeries);
+      getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
+      importSeriesProgressMock.mockResolvedValue(1);
+
+      await importTvTimeExport(["irrelevant"]);
+
+      expect(librarySaveMock).toHaveBeenCalledWith(matchedSeries, { favourite: true, userRating: 9 });
+    });
+
+    it("never touches the library entry for a series with neither signal", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Breaking Bad",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: 45,
+          },
+        ],
+        tvdbIdsByName: new Map([["breaking bad", 81189]]),
+      };
+      findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
+      getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
+      importSeriesProgressMock.mockResolvedValue(1);
+
+      await importTvTimeExport(["irrelevant"]);
+
+      expect(librarySaveMock).not.toHaveBeenCalled();
     });
 
     it("falls back to a title/year search when there is no TVDB id", async () => {
@@ -756,6 +815,8 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [{ title: "Dune", mediaType: "movie", year: 2021 }],
         tvdbIdsByName: new Map([["breaking bad", 81189]]),
+        favouriteSeriesNames: new Set(),
+        seriesRatingsByName: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
@@ -794,6 +855,8 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [],
         tvdbIdsByName: new Map(),
+        favouriteSeriesNames: new Set(),
+        seriesRatingsByName: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValueOnce(new TmdbRequestError("rate limited", 429)).mockResolvedValueOnce({
@@ -821,6 +884,8 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [],
         tvdbIdsByName: new Map(),
+        favouriteSeriesNames: new Set(),
+        seriesRatingsByName: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValue(new TmdbRequestError("rate limited", 429));
@@ -839,6 +904,8 @@ describe("importTvTimeExport", () => {
         movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
         watchlist: [],
         tvdbIdsByName: new Map(),
+        favouriteSeriesNames: new Set(),
+        seriesRatingsByName: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValue(new Error("network down"));
