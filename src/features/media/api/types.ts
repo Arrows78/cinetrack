@@ -10,6 +10,23 @@ export interface TmdbGenreDto {
   name: string;
 }
 
+export interface TmdbReleaseDateDto {
+  certification: string;
+  // TMDB's TheatricalLimited/Theatrical/Digital/Physical/TV release-type
+  // enum — unused today (resolveCertification in mapper.ts just takes the
+  // first non-empty certification for the region) but kept typed since it's
+  // part of the real response shape.
+  type: number;
+  release_date: string;
+}
+export interface TmdbReleaseDatesDto {
+  results: Array<{ iso_3166_1: string; release_dates: TmdbReleaseDateDto[] }>;
+}
+
+export interface TmdbContentRatingsDto {
+  results: Array<{ iso_3166_1: string; rating: string }>;
+}
+
 export interface TmdbCastDto {
   id: number;
   name: string;
@@ -72,6 +89,7 @@ export interface TmdbMovieDto {
   credits?: TmdbCreditsDto;
   belongs_to_collection?: TmdbCollectionSummaryDto | null;
   external_ids?: TmdbExternalIdsDto;
+  release_dates?: TmdbReleaseDatesDto;
 }
 
 export interface TmdbSeasonPreviewDto {
@@ -104,6 +122,7 @@ export interface TmdbTvDto {
   seasons?: TmdbSeasonPreviewDto[];
   credits?: TmdbCreditsDto;
   external_ids?: TmdbExternalIdsDto;
+  content_ratings?: TmdbContentRatingsDto;
 }
 
 export interface TmdbEpisodeDto {

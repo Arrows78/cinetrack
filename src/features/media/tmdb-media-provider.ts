@@ -200,12 +200,12 @@ export class TmdbMediaProvider implements MediaProvider {
   }
 
   async getMovieDetails(movieId: number): Promise<Movie> {
-    const { language } = await this.context();
+    const { language, region } = await this.context();
     const response = await tmdbFetch<TmdbMovieDto>(`/movie/${movieId}`, {
       language,
-      append_to_response: "credits,external_ids",
+      append_to_response: "credits,external_ids,release_dates",
     });
-    return mapMovieDto(response);
+    return mapMovieDto(response, region);
   }
 
   async getCollection(collectionId: number): Promise<MovieCollection> {
@@ -215,12 +215,12 @@ export class TmdbMediaProvider implements MediaProvider {
   }
 
   async getSeriesDetails(seriesId: number): Promise<Series> {
-    const { language } = await this.context();
+    const { language, region } = await this.context();
     const response = await tmdbFetch<TmdbTvDto>(`/tv/${seriesId}`, {
       language,
-      append_to_response: "credits,external_ids",
+      append_to_response: "credits,external_ids,content_ratings",
     });
-    return mapSeriesDto(response);
+    return mapSeriesDto(response, region);
   }
 
   async getSeasonDetails(seriesId: number, seasonNumber: number): Promise<Season> {

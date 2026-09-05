@@ -82,6 +82,11 @@ export function MediaDetailsHero({
               </span>
               {media.year && <span className="text-muted-foreground">{media.year}</span>}
               {media.runtime ? <span className="text-muted-foreground">{formatRuntime(media.runtime)}</span> : null}
+              {media.certification ? (
+                <span className="rounded border border-border px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                  {media.certification}
+                </span>
+              ) : null}
               {media.language ? (
                 <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground uppercase">
                   {media.language}

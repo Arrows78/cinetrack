@@ -68,6 +68,23 @@ describe("mapMovieDto", () => {
     expect(mapMovieDto(movieDto()).imdbId).toBeNull();
   });
 
+  it("resolves the certification for the given region, from the first non-empty release_dates entry", () => {
+    const dto = movieDto({
+      release_dates: {
+        results: [
+          { iso_3166_1: "FR", release_dates: [{ certification: "", type: 3, release_date: "1999-01-01" }] },
+          { iso_3166_1: "US", release_dates: [{ certification: "R", type: 4, release_date: "1999-01-01" }] },
+        ],
+      },
+    });
+
+    expect(mapMovieDto(dto, "US").certification).toBe("R");
+    // FR's only entry has an empty certification -> falls back to US.
+    expect(mapMovieDto(dto, "FR").certification).toBe("R");
+    // No release_dates for a region with no matching entry at all either -> null.
+    expect(mapMovieDto(movieDto(), "US").certification).toBeNull();
+  });
+
   it("derives genreIds from genre_ids or from full genres", () => {
     expect(mapMovieDto(movieDto({ genre_ids: [18, 53] })).genreIds).toEqual([18, 53]);
     expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }] })).genreIds).toEqual([18]);
@@ -187,6 +204,21 @@ describe("mapSeriesDto", () => {
   it("maps the IMDb id when external_ids was appended, null otherwise", () => {
     expect(mapSeriesDto(tvDto({ external_ids: { imdb_id: "tt0903747" } })).imdbId).toBe("tt0903747");
     expect(mapSeriesDto(tvDto()).imdbId).toBeNull();
+  });
+
+  it("resolves the content rating for the given region, falling back to US", () => {
+    const dto = tvDto({
+      content_ratings: {
+        results: [
+          { iso_3166_1: "US", rating: "TV-MA" },
+          { iso_3166_1: "FR", rating: "16" },
+        ],
+      },
+    });
+
+    expect(mapSeriesDto(dto, "FR").certification).toBe("16");
+    expect(mapSeriesDto(dto, "DE").certification).toBe("TV-MA");
+    expect(mapSeriesDto(tvDto(), "US").certification).toBeNull();
   });
 
   it("maps runtime from episode_run_time and counts seasons", () => {

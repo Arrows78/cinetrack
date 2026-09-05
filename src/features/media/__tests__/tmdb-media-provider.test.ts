@@ -426,19 +426,34 @@ describe("TmdbMediaProvider", () => {
   });
 
   describe("getMovieDetails", () => {
-    it("fetches /movie/:id with credits and external_ids appended and maps the result", async () => {
-      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+    it("fetches /movie/:id with credits/external_ids/release_dates appended, resolving the certification for the user's region", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr", region: "FR" }));
       mocks.tmdbFetch.mockResolvedValue(
-        movieDto({ id: 77, title: "Details Movie", external_ids: { imdb_id: "tt0000077" } })
+        movieDto({
+          id: 77,
+          title: "Details Movie",
+          external_ids: { imdb_id: "tt0000077" },
+          release_dates: {
+            results: [
+              { iso_3166_1: "FR", release_dates: [{ certification: "12", type: 3, release_date: "1999-01-01" }] },
+            ],
+          },
+        })
       );
 
       const result = await provider.getMovieDetails(77);
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/movie/77",
-        expect.objectContaining({ language: "fr-FR", append_to_response: "credits,external_ids" })
+        expect.objectContaining({ language: "fr-FR", append_to_response: "credits,external_ids,release_dates" })
       );
-      expect(result).toMatchObject({ id: 77, mediaType: "movie", title: "Details Movie", imdbId: "tt0000077" });
+      expect(result).toMatchObject({
+        id: 77,
+        mediaType: "movie",
+        title: "Details Movie",
+        imdbId: "tt0000077",
+        certification: "12",
+      });
     });
   });
 
@@ -463,19 +478,30 @@ describe("TmdbMediaProvider", () => {
   });
 
   describe("getSeriesDetails", () => {
-    it("fetches /tv/:id with credits and external_ids appended and maps the result", async () => {
-      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "en" }));
+    it("fetches /tv/:id with credits/external_ids/content_ratings appended, resolving the certification for the user's region", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "en", region: "US" }));
       mocks.tmdbFetch.mockResolvedValue(
-        tvDto({ id: 88, name: "Details Series", external_ids: { imdb_id: "tt0000088" } })
+        tvDto({
+          id: 88,
+          name: "Details Series",
+          external_ids: { imdb_id: "tt0000088" },
+          content_ratings: { results: [{ iso_3166_1: "US", rating: "TV-14" }] },
+        })
       );
 
       const result = await provider.getSeriesDetails(88);
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/tv/88",
-        expect.objectContaining({ language: "en-US", append_to_response: "credits,external_ids" })
+        expect.objectContaining({ language: "en-US", append_to_response: "credits,external_ids,content_ratings" })
       );
-      expect(result).toMatchObject({ id: 88, mediaType: "series", title: "Details Series", imdbId: "tt0000088" });
+      expect(result).toMatchObject({
+        id: 88,
+        mediaType: "series",
+        title: "Details Series",
+        imdbId: "tt0000088",
+        certification: "TV-14",
+      });
     });
   });
 

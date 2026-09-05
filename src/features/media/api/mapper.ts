@@ -17,15 +17,17 @@ import type {
   PersonDetail,
 } from "@/types/media";
 import { yearFromDate } from "@/shared/utils/format";
-import { GENRES } from "@/shared/constants/discover";
+import { DEFAULT_TMDB_REGION, GENRES } from "@/shared/constants/discover";
 import type {
   TmdbCastDto,
   TmdbCollectionDto,
   TmdbCollectionSummaryDto,
+  TmdbContentRatingsDto,
   TmdbCrewDto,
   TmdbEpisodeDto,
   TmdbListResponse,
   TmdbMovieDto,
+  TmdbReleaseDatesDto,
   TmdbSeasonDetailsDto,
   TmdbSeasonPreviewDto,
   TmdbTvDto,
@@ -45,6 +47,26 @@ const resolveGenreNames = (ids: number[] | undefined, list: ReadonlyArray<{ id: 
   (ids ?? [])
     .map((id) => list.find((genre) => genre.id === id)?.label)
     .filter((label): label is string => Boolean(label));
+
+// TMDB's per-region certifications: a movie's release_dates can list the
+// same region more than once (one entry per release type — theatrical,
+// digital, ...), each with its own possibly-empty certification string, so
+// this takes the first non-empty one rather than just the first entry.
+// Falls back to the US rating (the one certification most likely to exist)
+// when the user's own region has no rated release at all.
+const resolveMovieCertification = (dto: TmdbReleaseDatesDto | undefined, region: string): string | null => {
+  const results = dto?.results ?? [];
+  const forRegion = (iso: string) =>
+    results.find((entry) => entry.iso_3166_1 === iso)?.release_dates.find((entry) => entry.certification)
+      ?.certification;
+  return forRegion(region) ?? forRegion(DEFAULT_TMDB_REGION) ?? null;
+};
+
+const resolveSeriesCertification = (dto: TmdbContentRatingsDto | undefined, region: string): string | null => {
+  const results = dto?.results ?? [];
+  const forRegion = (iso: string) => results.find((entry) => entry.iso_3166_1 === iso)?.rating;
+  return forRegion(region) || forRegion(DEFAULT_TMDB_REGION) || null;
+};
 
 const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
   (cast ?? [])
@@ -80,7 +102,7 @@ export const mapCollectionSummary = (dto: TmdbCollectionSummaryDto): CollectionS
   backdropPath: dto.backdrop_path,
 });
 
-export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
+export const mapMovieDto = (dto: TmdbMovieDto, region: string = DEFAULT_TMDB_REGION): Movie => ({
   id: dto.id,
   mediaType: "movie",
   title: dto.title,
@@ -102,6 +124,7 @@ export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   directors: mapCrew(dto.credits?.crew),
   collection: dto.belongs_to_collection ? mapCollectionSummary(dto.belongs_to_collection) : null,
   imdbId: dto.external_ids?.imdb_id ?? null,
+  certification: resolveMovieCertification(dto.release_dates, region),
 });
 
 export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
@@ -110,7 +133,7 @@ export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
   overview: dto.overview,
   posterPath: dto.poster_path,
   backdropPath: dto.backdrop_path,
-  parts: dto.parts.map(mapMovieDto),
+  parts: dto.parts.map((part) => mapMovieDto(part)),
 });
 
 const mapSeasonPreviewDto = (dto: TmdbSeasonPreviewDto): Season => ({
@@ -124,7 +147,7 @@ const mapSeasonPreviewDto = (dto: TmdbSeasonPreviewDto): Season => ({
   episodes: [],
 });
 
-export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
+export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGION): Series => ({
   id: dto.id,
   mediaType: "series",
   title: dto.name,
@@ -146,6 +169,7 @@ export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
   numberOfSeasons: dto.number_of_seasons ?? dto.seasons?.length ?? 0,
   numberOfEpisodes: dto.number_of_episodes,
   imdbId: dto.external_ids?.imdb_id ?? null,
+  certification: resolveSeriesCertification(dto.content_ratings, region),
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],
 });
 

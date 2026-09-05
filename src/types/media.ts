@@ -68,6 +68,10 @@ export interface MediaSummary {
   // care (people-you-watch.ts) treat a missing value the same as `[]`.
   /** Directors from this title's credits (job === "Director"). Undefined/empty unless fetched via a detail endpoint that appends credits. */
   directors?: CrewMember[];
+  /** TMDB's external_ids.imdb_id. Undefined/null unless fetched via a detail endpoint that appends external_ids. */
+  imdbId?: string | null;
+  /** Age-rating certification (e.g. "PG-13", "TV-MA") for the user's region, falling back to the US rating. Undefined/null unless fetched via a detail endpoint that appends release_dates (movies) or content_ratings (series). */
+  certification?: string | null;
 }
 
 // The TMDB collection a movie belongs to, as embedded in `/movie/{id}`'s
@@ -85,8 +89,6 @@ export interface Movie extends MediaSummary {
   duration?: number | null;
   /** The franchise/collection this movie belongs to on TMDB, or null/undefined if it isn't part of one. */
   collection?: CollectionSummary | null;
-  /** Undefined/null unless fetched via a detail endpoint that appends external_ids (see `directors`' doc comment). */
-  imdbId?: string | null;
 }
 
 // The full `/collection/{id}` response: a franchise's movies ("parts"),
@@ -135,8 +137,6 @@ export interface Series extends MediaSummary {
   numberOfSeasons: number;
   numberOfEpisodes?: number;
   seasons: Season[];
-  /** Undefined/null unless fetched via a detail endpoint that appends external_ids (see `directors`' doc comment). */
-  imdbId?: string | null;
 }
 
 export type { LibraryItem } from "@/generated/dto/LibraryItem";
