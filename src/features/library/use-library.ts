@@ -160,8 +160,9 @@ export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaTy
 }
 
 // Every query key a library mutation can move something out from under —
-// shared so a new mutation site (see useLibraryHealthActions) reaches for
-// this instead of retyping the list and risking it drifting from this one.
+// shared so a new mutation site reaches for this instead of retyping the
+// list and risking it drifting from this one (see use-progress.ts's
+// episode/movie toggle mutations for another caller of this same list).
 export function libraryInvalidationKeys(profileId: string) {
   return [
     queryKeys.local.library(profileId),

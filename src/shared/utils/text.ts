@@ -1,10 +1,9 @@
 // Loosens title comparison past exact-string equality -- different sources
 // don't always agree on punctuation, diacritics, or a leading article for
 // the same title ("Marvel's Daredevil" vs "Daredevil", accented vs plain
-// spellings of the same word). Shared by the TV Time import matcher
-// (tvtime-import-service.ts) and the Library Health Center's duplicate
-// detector (use-library-health-selectors.ts) so both treat "the same title"
-// identically instead of drifting apart.
+// spellings of the same word). Used by the TV Time import matcher
+// (tvtime-import-service.ts) to treat "the same title" identically across
+// TV Time's and TMDB's own spelling/punctuation quirks.
 //
 // \p{Diacritic} (with the "u" flag) strips every combining mark the NFD
 // decomposition below splits accented letters into.

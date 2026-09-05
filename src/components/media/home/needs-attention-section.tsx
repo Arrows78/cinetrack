@@ -4,7 +4,7 @@ import { AlertCircle, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tile } from "@/components/ui/tile";
 import { SectionHeader } from "@/components/media/primitives/section-header";
-import type { StaleLibraryItem } from "@/features/library/use-library-health-selectors";
+import type { StaleLibraryItem } from "@/features/library/use-stale-planned-items";
 import type { NextEpisodeResult } from "@/features/progress/use-watch-next";
 import type { TrackedSeriesItem } from "@/types/media";
 

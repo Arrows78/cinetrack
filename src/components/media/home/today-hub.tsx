@@ -15,7 +15,7 @@ import { useTodayHubEpisodes } from "@/features/progress/use-watch-next";
 import { useAvailabilityStatus } from "@/features/availability/use-availability-alerts";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
 import { useLibrary } from "@/features/library/use-library";
-import { selectStalePlannedItems } from "@/features/library/use-library-health-selectors";
+import { selectStalePlannedItems } from "@/features/library/use-stale-planned-items";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useBecauseYouLiked } from "@/features/media/use-because-you-liked";
 import { useFavouriteGenreRail } from "@/components/media/detail/use-favourite-genre-rail";
