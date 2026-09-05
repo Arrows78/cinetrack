@@ -73,6 +73,10 @@ vi.mock("@/components/media/tracking/add-to-library-button", () => ({
   AddToLibraryButton: () => <div data-testid="add-to-library-button" />,
 }));
 
+vi.mock("@/components/media/tracking/favourite-button", () => ({
+  FavouriteButton: () => <div data-testid="favourite-button" />,
+}));
+
 vi.mock("@/components/media/detail/availability-alert-button", () => ({
   AvailabilityAlertButton: () => <div data-testid="availability-alert-button" />,
 }));
@@ -204,6 +208,7 @@ describe("MovieDetailPage", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
 
     expect(screen.getByTestId("hero-actions").querySelector('[data-testid="add-to-library-button"]')).toBeTruthy();
+    expect(screen.getByTestId("hero-actions").querySelector('[data-testid="favourite-button"]')).toBeTruthy();
     expect(screen.getByTestId("hero-actions").querySelector('[data-testid="availability-alert-button"]')).toBeTruthy();
   });
 

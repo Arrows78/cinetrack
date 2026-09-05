@@ -19,6 +19,7 @@ import { Panel } from "@/components/ui/panel";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
+import { FavouriteButton } from "@/components/media/tracking/favourite-button";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
@@ -54,6 +55,7 @@ export function MovieDetailPage() {
         actions={
           <>
             <AddToLibraryButton media={movie} />
+            <FavouriteButton media={movie} />
             <AvailabilityAlertButton media={movie} />
           </>
         }
@@ -100,7 +102,7 @@ export function MovieDetailPage() {
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
-          <p className="font-serif text-base leading-7 text-muted-foreground md:text-lg">
+          <p className="font-serif text-base leading-7 text-muted-foreground">
             {movie.overview || t("media.noOverview")}
           </p>
         </Panel>

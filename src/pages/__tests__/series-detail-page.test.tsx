@@ -86,6 +86,10 @@ vi.mock("@/components/media/tracking/add-to-library-button", () => ({
   AddToLibraryButton: () => <div data-testid="add-to-library-button" />,
 }));
 
+vi.mock("@/components/media/tracking/favourite-button", () => ({
+  FavouriteButton: () => <div data-testid="favourite-button" />,
+}));
+
 vi.mock("@/components/media/detail/availability-alert-button", () => ({
   AvailabilityAlertButton: () => <div data-testid="availability-alert-button" />,
 }));

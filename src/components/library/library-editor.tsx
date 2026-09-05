@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Heart, Save, Trash2 } from "lucide-react";
+import { Save, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AddToListButton } from "@/components/library/add-to-list-button";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { IconTooltip } from "@/components/ui/tooltip";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { toast } from "@/components/ui/use-toast";
 import { useLibraryItem } from "@/features/library/use-library";
@@ -21,7 +20,6 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const library = useLibraryItem(media);
   const [status, setStatus] = useState<LibraryStatus>("planned");
-  const [favourite, setFavourite] = useState(false);
   const [userRating, setUserRating] = useState("");
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState("");
@@ -38,14 +36,13 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   if (library.data && library.data !== loadedLibraryData) {
     setLoadedLibraryData(library.data);
     setStatus(library.data.status);
-    setFavourite(library.data.favourite);
     setUserRating(library.data.userRating?.toString() ?? "");
     setNotes(library.data.notes ?? "");
     setTags(library.data.tags.join(", "));
     setRewatchCount(library.data.rewatchCount);
   }
 
-  // Saving always sends all 6 fields (see save() below), and upsert_impl on
+  // Saving always sends all 5 fields (see save() below), and upsert_impl on
   // the Rust side merges them in as the new source of truth — never a
   // partial patch. Rendering the editable form (and its Save button) before
   // we actually know the existing state — still loading, or the fetch
@@ -56,11 +53,9 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   if (library.isLoading) {
     return (
       <Panel>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="font-semibold">{t("library.myLibrary")}</p>
-            <p className="text-sm text-muted-foreground">{t("library.description")}</p>
-          </div>
+        <div className="mb-4">
+          <p className="font-semibold">{t("library.myLibrary")}</p>
+          <p className="text-sm text-muted-foreground">{t("library.description")}</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <Skeleton className="h-14" />
@@ -89,7 +84,10 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     library
       .save({
         status,
-        favourite,
+        // favourite is intentionally not part of this patch — FavouriteButton
+        // (in the page hero) owns it now, saving immediately on its own; see
+        // that component's doc comment for why splitting it out of this
+        // combined save avoids two components fighting over the same field.
         userRating: userRating ? Math.min(10, Math.max(0, Number(userRating))) : null,
         notes: notes.trim() || null,
         tags: tags
@@ -117,22 +115,9 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
 
   return (
     <Panel>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold">{t("library.myLibrary")}</p>
-          <p className="text-sm text-muted-foreground">{t("library.description")}</p>
-        </div>
-        <IconTooltip label={t("library.favourite")}>
-          <Button
-            type="button"
-            variant={favourite ? "default" : "outline"}
-            size="icon"
-            aria-label={t("library.favourite")}
-            onClick={() => setFavourite((value) => !value)}
-          >
-            <Heart className={favourite ? "size-4 fill-current" : "size-4"} />
-          </Button>
-        </IconTooltip>
+      <div className="mb-4">
+        <p className="font-semibold">{t("library.myLibrary")}</p>
+        <p className="text-sm text-muted-foreground">{t("library.description")}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

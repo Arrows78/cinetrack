@@ -19,6 +19,7 @@ import { SectionHeader } from "@/components/media/primitives/section-header";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
 import { WatchHistoryPanel } from "@/components/media/activity/watch-history-panel";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
+import { FavouriteButton } from "@/components/media/tracking/favourite-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -96,6 +97,7 @@ export function SeriesDetailPage() {
         actions={
           <>
             <AddToLibraryButton media={series} />
+            <FavouriteButton media={series} />
             <AvailabilityAlertButton media={series} />
           </>
         }
@@ -119,7 +121,7 @@ export function SeriesDetailPage() {
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
-          <p className="font-serif text-base leading-7 text-muted-foreground md:text-lg">
+          <p className="font-serif text-base leading-7 text-muted-foreground">
             {series.overview || t("media.noOverview")}
           </p>
         </Panel>

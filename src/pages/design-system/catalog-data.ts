@@ -959,6 +959,14 @@ export const componentInventory = [
     "Adds or removes a title from the library."
   ),
   component(
+    "FavouriteButton",
+    "components/media/tracking/favourite-button.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Toggles a title's favourite flag immediately, saving on its own outside LibraryEditor's form."
+  ),
+  component(
     "LibraryExplorer",
     "components/media/library/library-explorer.tsx",
     "Media",

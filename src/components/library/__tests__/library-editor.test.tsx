@@ -133,13 +133,16 @@ describe("LibraryEditor", () => {
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "watching",
-        favourite: true,
         userRating: 8,
         notes: "Great film",
         tags: ["favourite-director"],
         rewatchCount: 1,
       })
     );
+    // favourite is FavouriteButton's field now (see the page hero), not
+    // this form's — its save() payload should never carry it.
+    const [payload] = save.mock.calls[0] as unknown as [Record<string, unknown>];
+    expect(payload).not.toHaveProperty("favourite");
   });
 
   it("renders the add-to-list control inside the same library panel", () => {
@@ -217,24 +220,6 @@ describe("LibraryEditor", () => {
     await vi.waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith({ description: "Couldn't save. Please try again.", variant: "error" })
     );
-  });
-
-  it("toggles favourite and sends the new value on save", () => {
-    useLibraryItemMock.mockReturnValue({
-      data: libraryItem, // favourite: true
-      isLoading: false,
-      isError: false,
-      save,
-      remove: vi.fn(),
-      isSaving: false,
-      refetch,
-    });
-
-    renderLoaded();
-    fireEvent.click(screen.getByRole("button", { name: "Favourite" }));
-    fireEvent.click(screen.getByRole("button", { name: /save/i }));
-
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({ favourite: false }));
   });
 
   it("changes the status and sends the new value on save", () => {
