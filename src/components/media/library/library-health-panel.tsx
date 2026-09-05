@@ -19,6 +19,7 @@ import {
   selectMissingMetadataItems,
   selectProbableDuplicates,
   selectStalePlannedItems,
+  STALE_PLANNED_DAYS,
   type DuplicateGroup,
 } from "@/features/library/use-library-health-selectors";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
@@ -255,7 +256,7 @@ export function LibraryHealthPanel({ index }: { index: number }) {
           <div className="space-y-3">
             <SectionHeader
               title={t("library.health.stalePlannedTitle")}
-              subtitle={t("library.health.stalePlannedSubtitle")}
+              subtitle={t("library.health.stalePlannedSubtitle", { days: STALE_PLANNED_DAYS })}
               size="sub"
             />
             <div className="grid gap-2 lg:grid-cols-2">
