@@ -145,10 +145,14 @@ export function partitionNextEpisodes(results: NextEpisodeResult[], now: Date): 
 /** The Today Hub's "Continuer à regarder" / "À regarder ensuite" / "Nouveaux épisodes" cards, from one shared resolution pass over every tracked series. */
 export function useTodayHubEpisodes(
   trackedSeries: TrackedSeriesItem[]
-): TodayHubEpisodeGroups & { isLoading: boolean; isError: boolean } {
+): TodayHubEpisodeGroups & { isLoading: boolean; isError: boolean; results: NextEpisodeResult[] } {
   const { results, isLoading } = useNextEpisodes(trackedSeries);
   const groups = useMemo(() => partitionNextEpisodes(results, new Date()), [results]);
-  return { ...groups, isLoading, isError: results.some((result) => result.isError) };
+  // `results` (one entry per input series, resolved or not) is also what
+  // needs-attention-section.tsx's selectBacklogSeries needs to tell a real
+  // aired-episode backlog apart from TMDB's total just outrunning what's
+  // aired so far — reusing this same resolution pass instead of a second one.
+  return { ...groups, isLoading, isError: results.some((result) => result.isError), results };
 }
 
 export function useMarkWatchNext() {

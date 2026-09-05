@@ -3,7 +3,8 @@ import { render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { BACKLOG_THRESHOLD, NeedsAttentionSection, selectBacklogSeries } from "../needs-attention-section";
-import type { LibraryItem, TrackedSeriesItem } from "@/types/media";
+import type { NextEpisodeResult } from "@/features/progress/use-watch-next";
+import type { Episode, LibraryItem, TrackedSeriesItem } from "@/types/media";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, params }: PropsWithChildren<{ to: string; params?: Record<string, string> }>) => (
@@ -56,14 +57,30 @@ function makeLibraryItem(overrides: Partial<LibraryItem> = {}): LibraryItem {
   };
 }
 
+function makeEpisode(overrides: Partial<Episode> = {}): Episode {
+  return { id: 900, seasonNumber: 1, episodeNumber: 1, title: "Episode", overview: "", ...overrides };
+}
+
+function makeResult(series: TrackedSeriesItem, nextEpisode: Episode | null): NextEpisodeResult {
+  return { series, nextEpisode, remaining: 0, isLoading: false, isError: false };
+}
+
 describe("selectBacklogSeries", () => {
-  it("keeps only series with at least BACKLOG_THRESHOLD unwatched aired episodes", () => {
+  it("keeps only series with at least BACKLOG_THRESHOLD unwatched aired episodes that still have one resolved", () => {
     const belowThreshold = makeSeries({ seriesId: 1, watchedEpisodes: 10 - (BACKLOG_THRESHOLD - 1) });
     const atThreshold = makeSeries({ seriesId: 2, watchedEpisodes: 10 - BACKLOG_THRESHOLD });
+    const results = [makeResult(belowThreshold, makeEpisode()), makeResult(atThreshold, makeEpisode())];
 
-    expect(selectBacklogSeries([belowThreshold, atThreshold])).toEqual([
+    expect(selectBacklogSeries([belowThreshold, atThreshold], results)).toEqual([
       { series: atThreshold, remaining: BACKLOG_THRESHOLD },
     ]);
+  });
+
+  it("excludes a series past the threshold once its resolved next episode is null (nothing aired-and-unwatched left, just TMDB's total outrunning what's aired)", () => {
+    const caughtUp = makeSeries({ seriesId: 3, totalEpisodes: 20, watchedEpisodes: 10 });
+    const results = [makeResult(caughtUp, null)];
+
+    expect(selectBacklogSeries([caughtUp], results)).toEqual([]);
   });
 });
 

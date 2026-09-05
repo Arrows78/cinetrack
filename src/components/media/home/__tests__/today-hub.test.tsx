@@ -89,7 +89,7 @@ vi.mock("@/components/media/home/needs-attention-section", async () => {
 });
 
 function emptyEpisodes() {
-  return { continueWatching: [], upNext: [], newEpisodes: [], isLoading: false, isError: false };
+  return { continueWatching: [], upNext: [], newEpisodes: [], isLoading: false, isError: false, results: [] };
 }
 
 function emptyAvailability() {
@@ -169,7 +169,14 @@ describe("TodayHub", () => {
   });
 
   it("renders when only needs-attention has a backlog series", () => {
-    trackedSeriesMock.mockReturnValue({ data: [{ seriesId: 1, totalEpisodes: 10, watchedEpisodes: 5 }] });
+    const series = { seriesId: 1, totalEpisodes: 10, watchedEpisodes: 5 };
+    trackedSeriesMock.mockReturnValue({ data: [series] });
+    // selectBacklogSeries only counts a series once its resolved next
+    // episode is non-null — see needs-attention-section.test.tsx for why.
+    episodesMock.mockReturnValue({
+      ...emptyEpisodes(),
+      results: [{ series, nextEpisode: { id: 900 }, remaining: 5, isLoading: false, isError: false }],
+    });
     render(<TodayHub index={1} />);
 
     expect(screen.getByTestId("needs-attention")).toHaveAttribute("data-backlog", "1");

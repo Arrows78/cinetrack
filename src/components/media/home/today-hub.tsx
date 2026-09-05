@@ -54,7 +54,10 @@ export function TodayHub({ index }: { index: number }) {
   const favouriteGenreRail = useFavouriteGenreRail();
   const peopleYouWatch = usePeopleYouWatch();
 
-  const backlog = useMemo(() => selectBacklogSeries(trackedSeries), [trackedSeries]);
+  const backlog = useMemo(
+    () => selectBacklogSeries(trackedSeries, episodes.results),
+    [trackedSeries, episodes.results]
+  );
   const stale = useMemo(() => selectStalePlannedItems(libraryQuery.data ?? [], new Date()), [libraryQuery.data]);
 
   const teaserItems = useMemo<Array<Movie | Series>>(
