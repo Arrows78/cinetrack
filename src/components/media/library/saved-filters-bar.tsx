@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BookmarkPlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,24 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
   const { t } = useTranslation();
   const savedFilters = useSavedFilters<TState>(page);
   const [name, setName] = useState("");
+  // Collapsed to a single icon button by default — a persistently open
+  // name field + Save button ate a full row on every browse page even
+  // with zero saved views yet (the common case), which is exactly the
+  // "filters take too much space" complaint this addresses. Reopens
+  // automatically if a save attempt fails, so the typed name and error
+  // stay visible instead of silently collapsing on the user.
+  const [isCreating, setIsCreating] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ id: string; name: string } | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  // Focuses the name field the moment it appears — a plain `autoFocus`
+  // JSX prop would also fire on the page's *initial* render were this ever
+  // mounted already-open, which is exactly what jsx-a11y/no-autofocus
+  // guards against; this only ever runs off of the user's own click.
+  useEffect(() => {
+    if (isCreating) nameInputRef.current?.focus();
+  }, [isCreating]);
 
   const handleSave = () => {
     const trimmed = name.trim();
@@ -42,7 +57,10 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
     setSaveError(null);
     void savedFilters
       .create({ name: trimmed, filters: currentFilters })
-      .then(() => setName(""))
+      .then(() => {
+        setName("");
+        setIsCreating(false);
+      })
       .catch(() => setSaveError(t("filters.savedFilters.saveFailed")));
   };
 
@@ -72,22 +90,40 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
             </IconTooltip>
           </Tile>
         ))}
-        <Input
-          size="sm"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={t("filters.savedFilters.namePlaceholder")}
-          aria-label={t("filters.savedFilters.nameLabel")}
-          maxLength={MAX_SAVED_FILTER_NAME_LENGTH}
-          className="max-w-48"
-          onKeyDown={(event) => {
-            if (event.key === "Enter") handleSave();
-          }}
-        />
-        <Button type="button" size="sm" variant="outline" disabled={!name.trim()} onClick={handleSave}>
-          <BookmarkPlus className="mr-2 size-4" />
-          {t("filters.savedFilters.save")}
-        </Button>
+        {isCreating ? (
+          <>
+            <Input
+              ref={nameInputRef}
+              size="sm"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={t("filters.savedFilters.namePlaceholder")}
+              aria-label={t("filters.savedFilters.nameLabel")}
+              maxLength={MAX_SAVED_FILTER_NAME_LENGTH}
+              className="max-w-48"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleSave();
+              }}
+            />
+            <Button type="button" size="sm" variant="outline" disabled={!name.trim()} onClick={handleSave}>
+              <BookmarkPlus className="mr-2 size-4" />
+              {t("filters.savedFilters.save")}
+            </Button>
+          </>
+        ) : (
+          <IconTooltip label={t("filters.savedFilters.save")}>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              aria-label={t("filters.savedFilters.save")}
+              className="size-8 rounded-full"
+              onClick={() => setIsCreating(true)}
+            >
+              <BookmarkPlus className="size-4" />
+            </Button>
+          </IconTooltip>
+        )}
       </div>
       {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
       {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}

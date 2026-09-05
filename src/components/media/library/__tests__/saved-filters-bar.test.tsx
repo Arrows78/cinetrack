@@ -56,6 +56,7 @@ describe("SavedFiltersBar", () => {
     const currentFilters = { statusFilter: "watching" };
     render(<SavedFiltersBar page="library" currentFilters={currentFilters} onApply={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
     const input = screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.nameLabel") });
     fireEvent.change(input, { target: { value: "  Currently watching  " } });
     fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
@@ -63,12 +64,16 @@ describe("SavedFiltersBar", () => {
     await waitFor(() =>
       expect(createMock).toHaveBeenCalledWith({ name: "Currently watching", filters: currentFilters })
     );
-    // The name field clears once the save resolves, ready for the next one.
-    await waitFor(() => expect(input).toHaveValue(""));
+    // Collapses back to the icon trigger once the save resolves, so the
+    // name field (and its now-stale value) is gone rather than lingering.
+    await waitFor(() =>
+      expect(screen.queryByRole("textbox", { name: i18n.t("filters.savedFilters.nameLabel") })).not.toBeInTheDocument()
+    );
   });
 
   it("does not save an empty/whitespace-only name", () => {
     render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
     expect(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") })).toBeDisabled();
   });
 
@@ -76,6 +81,7 @@ describe("SavedFiltersBar", () => {
     createMock.mockRejectedValueOnce(new Error("boom"));
     render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
     const input = screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.nameLabel") });
     fireEvent.change(input, { target: { value: "My view" } });
     fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
