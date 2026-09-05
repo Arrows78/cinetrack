@@ -186,6 +186,46 @@ describe("progressRepository", () => {
     );
   });
 
+  it("markSeason() drops not-yet-aired episodes when marking watched, but not when unwatching", async () => {
+    invokeMock.mockResolvedValue(1);
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series" });
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const aired = episode({ id: 1, episodeNumber: 1 });
+    const unaired = episode({ id: 2, episodeNumber: 2, airDate: farFuture });
+    const mixedSeason = season([aired, unaired]);
+
+    await progressRepository.markSeason(series, mixedSeason, true);
+    expect(invokeMock).toHaveBeenCalledWith("toggle_episodes_watched", expect.objectContaining({ episodes: [aired] }));
+
+    invokeMock.mockClear();
+    await progressRepository.markSeason(series, mixedSeason, false);
+    expect(invokeMock).toHaveBeenCalledWith(
+      "toggle_episodes_watched",
+      expect.objectContaining({ episodes: [aired, unaired] })
+    );
+  });
+
+  it("markSeries() drops not-yet-aired episodes when marking watched, but not when unwatching", async () => {
+    invokeMock.mockResolvedValue(1);
+    const { progressRepository } = await import("../progress-repository");
+    const series = makeMedia({ id: 9, mediaType: "series" });
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const aired = episode({ id: 1, episodeNumber: 1 });
+    const unaired = episode({ id: 2, seasonNumber: 2, episodeNumber: 1, airDate: farFuture });
+    const seasons = [season([aired]), { ...season([unaired]), seasonNumber: 2 }];
+
+    await progressRepository.markSeries(series, seasons, true);
+    expect(invokeMock).toHaveBeenCalledWith("toggle_episodes_watched", expect.objectContaining({ episodes: [aired] }));
+
+    invokeMock.mockClear();
+    await progressRepository.markSeries(series, seasons, false);
+    expect(invokeMock).toHaveBeenCalledWith(
+      "toggle_episodes_watched",
+      expect.objectContaining({ episodes: [aired, unaired] })
+    );
+  });
+
   it("listTrackedSeries() invokes list_tracked_series with no args", async () => {
     invokeMock.mockResolvedValueOnce([]);
     const { progressRepository } = await import("../progress-repository");

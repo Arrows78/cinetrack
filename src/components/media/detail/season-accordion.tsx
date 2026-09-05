@@ -12,7 +12,7 @@ import { useConfetti } from "@/hooks/use-confetti";
 import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
 import type { Episode, EpisodeProgress, MediaSummary, Season } from "@/types/media";
-import { calculateSeriesProgress } from "@/features/progress/use-progress";
+import { calculateSeriesProgress, hasAired } from "@/features/progress/use-progress";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 
 /* Episode filmstrip — each episode is a sprocket-hole perforation; watched
@@ -91,8 +91,9 @@ export function SeasonAccordion({
   }, []);
 
   const celebrateIfSeasonCompletes = (season: Season, newlyWatchedCount: number) => {
-    const alreadyWatched = season.episodes.filter((ep) => watchedSet.has(ep.id)).length;
-    if (alreadyWatched + newlyWatchedCount === season.episodes.length) {
+    const airedEpisodes = season.episodes.filter(hasAired);
+    const alreadyWatched = airedEpisodes.filter((ep) => watchedSet.has(ep.id)).length;
+    if (alreadyWatched + newlyWatchedCount === airedEpisodes.length) {
       setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
     }
   };
@@ -149,7 +150,7 @@ export function SeasonAccordion({
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {seasonProgress?.watchedEpisodes ?? 0}/{season.episodes.length}
+                      {seasonProgress?.watchedEpisodes ?? 0}/{seasonProgress?.totalEpisodes ?? season.episodes.length}
                     </span>
                   </div>
 
@@ -188,7 +189,13 @@ export function SeasonAccordion({
                 <div className="space-y-0.5">
                   {season.episodes.map((episode) => {
                     const isWatched = watchedSet.has(episode.id);
-                    const unwatchedCount = season.episodes.filter((ep) => !watchedSet.has(ep.id)).length;
+                    // Aired only — otherwise an ongoing season with an
+                    // announced-but-unaired episode ahead could never reach
+                    // an unwatched count of 1 from aired progress alone, and
+                    // "Last one!" would never show.
+                    const unwatchedCount = season.episodes.filter(
+                      (ep) => hasAired(ep) && !watchedSet.has(ep.id)
+                    ).length;
                     const isLastUnwatched = !isWatched && unwatchedCount === 1;
 
                     return (

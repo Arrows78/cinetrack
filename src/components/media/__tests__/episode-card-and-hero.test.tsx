@@ -82,6 +82,30 @@ describe("EpisodeCard", () => {
     expect(screen.queryByText("Watched")).not.toBeInTheDocument();
   });
 
+  it("disables the mark-seen action and shows 'not yet aired' for a future air date", () => {
+    preferencesData = { spoilerProtection: false };
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    render(<EpisodeCard episode={makeEpisode({ watched: false, airDate: farFuture })} onToggleSeen={vi.fn()} />);
+
+    const button = screen.getByRole("button", { name: "Not yet aired" });
+    expect(button).toBeDisabled();
+  });
+
+  it("does not treat a missing air date as unreleased — the toggle stays enabled", () => {
+    preferencesData = { spoilerProtection: false };
+    render(<EpisodeCard episode={makeEpisode({ watched: false, airDate: null })} onToggleSeen={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Mark watched" })).toBeEnabled();
+  });
+
+  it("stays toggleable to unwatch a future-dated episode that was somehow already marked watched", () => {
+    preferencesData = { spoilerProtection: false };
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    render(<EpisodeCard episode={makeEpisode({ watched: true, airDate: farFuture })} onToggleSeen={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Mark unwatched" })).toBeEnabled();
+  });
+
   it("renders the runtime only when present", () => {
     preferencesData = { spoilerProtection: false };
     const { rerender } = render(<EpisodeCard episode={makeEpisode({ runtime: 42 })} onToggleSeen={vi.fn()} />);

@@ -1,4 +1,5 @@
 import { progressCommands, type EpisodeHistoryInput, type SeriesInput } from "@/features/progress/progress-commands";
+import { hasAired } from "@/features/progress/progress-utils";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type {
   Episode,
@@ -81,15 +82,24 @@ export const progressRepository = {
     });
   },
 
+  // Only ever marks already-aired episodes as watched — a bulk action has
+  // no per-episode confirmation step the way the single-episode toggle does
+  // (see episode-card.tsx's own isUnreleased guard), so without this an
+  // unaired episode could get silently marked "watched" before it exists.
+  // Unmarking isn't filtered: clearing a not-yet-aired episode that
+  // somehow got marked (e.g. from before this guard existed) should still
+  // work.
   async markSeason(series: SeriesInput, season: Season, watched: boolean): Promise<void> {
-    await this.toggleEpisodesWatched(series, season.episodes, watched, nowIso(), {
+    const episodes = watched ? season.episodes.filter(hasAired) : season.episodes;
+    await this.toggleEpisodesWatched(series, episodes, watched, nowIso(), {
       action: watched ? "season:watched" : "season:unwatched",
       seasonNumber: season.seasonNumber,
     });
   },
 
   async markSeries(series: SeriesInput, seasons: Season[], watched: boolean): Promise<void> {
-    const episodes = seasons.flatMap((season) => season.episodes);
+    const allEpisodes = seasons.flatMap((season) => season.episodes);
+    const episodes = watched ? allEpisodes.filter(hasAired) : allEpisodes;
     await this.toggleEpisodesWatched(series, episodes, watched, nowIso(), {
       action: watched ? "series:watched" : "series:unwatched",
     });

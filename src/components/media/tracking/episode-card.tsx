@@ -5,6 +5,7 @@ import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-d
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { hasAired } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
@@ -27,7 +28,7 @@ export function EpisodeCard({
   // A future/unannounced air date only blocks marking-as-watched, not the
   // reverse — an already-watched row (e.g. from a bad TMDB date correction)
   // must stay toggleable back off.
-  const isUnreleased = !watched && Boolean(episode.airDate) && new Date(episode.airDate!) > new Date();
+  const isUnreleased = !watched && !hasAired(episode);
   const stillUrl = buildTmdbImageUrl(episode.stillPath, "w342");
   return (
     <div

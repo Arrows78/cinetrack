@@ -130,6 +130,24 @@ describe("SeasonAccordion", () => {
     expect(bars.map((bar) => bar.getAttribute("aria-valuenow"))).toEqual(["67", "100", "33"]);
   });
 
+  it("excludes a not-yet-aired episode from the displayed fraction and the progress percentage", () => {
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const aired1 = makeEpisode(901, 9, 1, "S9E1");
+    const aired2 = makeEpisode(902, 9, 2, "S9E2");
+    const unaired = { ...makeEpisode(903, 9, 3, "S9E3"), airDate: farFuture };
+    const upcomingSeason = makeSeason(9, "Season Nine", [aired1, aired2, unaired]);
+
+    renderAccordion({
+      seasons: [upcomingSeason],
+      watchedEpisodes: [makeProgress(901, 9, 1), makeProgress(902, 9, 2)],
+    });
+
+    // 2/2 aired episodes watched -> 100%, not 2/3 (67%) counting the unaired one.
+    expect(screen.getByText("2/2")).toBeInTheDocument();
+    expect(screen.queryByText("2/3")).not.toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+  });
+
   it("falls back to '<season label> <number>' when the season has no name", () => {
     renderAccordion();
     expect(screen.getByText("Season 2")).toBeInTheDocument();

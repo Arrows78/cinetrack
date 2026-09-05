@@ -93,6 +93,37 @@ describe("progress-utils", () => {
     expect(progress.isUpToDate).toBe(false);
   });
 
+  it("excludes unaired episodes from totalEpisodes/progressPercent (both overall and per-season), but not from completed", () => {
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
+    const aired = episode({ id: 1, episodeNumber: 1, airDate: new Date(Date.now() - 1000).toISOString() });
+    const unaired = episode({ id: 2, episodeNumber: 2, airDate: farFuture });
+    const s = season([aired, unaired]);
+    const now = new Date().toISOString();
+    const watchedAired: EpisodeProgress = {
+      id: "1",
+      profileId: null,
+      seriesId: 9,
+      episodeId: 1,
+      seasonNumber: 1,
+      episodeNumber: 1,
+      watched: true,
+      watchedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const progress = calculateSeriesProgress(9, [s], [watchedAired]);
+
+    // 1/1 aired episodes watched -> 100%, not 1/2 (50%) counting the unaired one.
+    expect(progress.totalEpisodes).toBe(1);
+    expect(progress.watchedEpisodes).toBe(1);
+    expect(progress.progressPercent).toBe(100);
+    expect(progress.seasons[0]).toMatchObject({ totalEpisodes: 1, watchedEpisodes: 1, progressPercent: 100 });
+    // completed still requires the unaired episode too — distinct from the
+    // aired-only percentage above.
+    expect(progress.completed).toBe(false);
+  });
+
   it("is not up to date once completed (every known episode, including future ones, watched)", () => {
     const ep1 = episode({ id: 1, episodeNumber: 1 });
     const s = season([ep1]);

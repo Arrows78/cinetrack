@@ -173,10 +173,12 @@ export type { TrackedSeriesItem } from "@/generated/dto/TrackedSeriesItem";
 
 export interface SeriesProgress {
   seriesId: number;
+  /** Already-aired episodes only — not TMDB's full announced total, so an ongoing show's fraction/percentage never counts episodes that haven't come out yet as "missing". See `completed` below for the one place the full total (aired + unaired) still matters. */
   totalEpisodes: number;
   watchedEpisodes: number;
   seasons: Array<{
     seasonNumber: number;
+    /** Already-aired episodes only — see the top-level `totalEpisodes` doc comment. */
     totalEpisodes: number;
     watchedEpisodes: number;
     progressPercent: number;
