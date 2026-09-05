@@ -25,6 +25,10 @@ export interface DiscoverArgs {
   withCast?: number;
   /** TMDB person id — only titles with this person in the crew (e.g. as director). Movie discover only, same caveat as withCast. */
   withCrew?: number;
+  /** ISO 3166-1 country code (e.g. "KR", "JP") — only titles originating from that country. */
+  originCountry?: string;
+  /** Minimum vote count, filtering out low-sample titles a handful of votes could otherwise push to the top. Defaults to a small quality floor when omitted — pass 0 to disable it entirely. */
+  voteCountGte?: number;
 }
 export interface MediaProvider {
   getHomeFeed(): Promise<HomeFeed>;

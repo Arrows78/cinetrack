@@ -8,6 +8,27 @@ export const DEFAULT_TMDB_REGION = "US";
 // stored language preference hasn't loaded yet.
 export const DEFAULT_LANGUAGE = "en";
 
+// Applied to every discover call unless the caller overrides it — without
+// it, a title with a handful of votes and a fluke high rating can surface
+// in Watch Tonight's random catalogue fallback ahead of well-established
+// titles. Deliberately modest (not a "well-known titles only" filter).
+export const DEFAULT_DISCOVER_VOTE_COUNT_FLOOR = 20;
+
+// The regions Settings lets a user pick as their own (see settings-page.tsx)
+// — the only origin countries a "titles from this country" filter needs to
+// offer without a much larger searchable country list.
+export const ORIGIN_COUNTRIES = [
+  { code: "FR", labelKey: "watchTonight.originCountryOptions.france" },
+  { code: "GB", labelKey: "watchTonight.originCountryOptions.uk" },
+  { code: "US", labelKey: "watchTonight.originCountryOptions.us" },
+  { code: "KR", labelKey: "watchTonight.originCountryOptions.southKorea" },
+  { code: "JP", labelKey: "watchTonight.originCountryOptions.japan" },
+  { code: "DE", labelKey: "watchTonight.originCountryOptions.germany" },
+  { code: "IT", labelKey: "watchTonight.originCountryOptions.italy" },
+  { code: "ES", labelKey: "watchTonight.originCountryOptions.spain" },
+  { code: "IN", labelKey: "watchTonight.originCountryOptions.india" },
+] as const;
+
 // `label` is TMDB's own English genre name — kept as a stable identity used
 // internally (matching a movie genre to its series equivalent in
 // use-merged-genres.ts, sorting, deduping), not for display. `labelKey` is

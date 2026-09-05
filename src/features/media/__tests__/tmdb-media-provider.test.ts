@@ -233,6 +233,32 @@ describe("TmdbMediaProvider", () => {
       await provider.discoverMovies({ withCrew: 456 });
       expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ with_cast: undefined, with_crew: 456 });
     });
+
+    it("passes originCountry through to with_origin_country (movies and series)", async () => {
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.discoverMovies({ originCountry: "KR" });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ with_origin_country: "KR" });
+
+      mocks.tmdbFetch.mockClear();
+      await provider.discoverSeries({ originCountry: "JP" });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ with_origin_country: "JP" });
+    });
+
+    it("applies the default vote-count floor unless the caller overrides it, and allows disabling it with 0", async () => {
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.discoverMovies({});
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ "vote_count.gte": 20 });
+
+      mocks.tmdbFetch.mockClear();
+      await provider.discoverMovies({ voteCountGte: 100 });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ "vote_count.gte": 100 });
+
+      mocks.tmdbFetch.mockClear();
+      await provider.discoverSeries({ voteCountGte: 0 });
+      expect(mocks.tmdbFetch.mock.calls[0]![1]).toMatchObject({ "vote_count.gte": 0 });
+    });
   });
 
   describe("getWatchProviders", () => {

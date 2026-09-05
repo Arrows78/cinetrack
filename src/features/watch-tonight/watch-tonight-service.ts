@@ -12,6 +12,8 @@ export interface WatchTonightFilters {
   maxRuntime?: number;
   /** The persistent "Hide watched" preference — drops any candidate already `completed` in the library, most relevant to the catalogue fallback below (planned-item candidates are never `completed` by definition). */
   hideWatched?: boolean;
+  /** ISO 3166-1 country code — only titles originating from that country. */
+  originCountry?: string;
 }
 
 export interface WatchTonightPicks {
@@ -33,6 +35,10 @@ function matchesRuntime(item: MediaSummary, maxRuntime?: number): boolean {
 
 function matchesGenre(item: MediaSummary, genre?: number): boolean {
   return genre === undefined || Boolean(item.genreIds?.includes(genre));
+}
+
+function matchesOriginCountry(item: MediaSummary, originCountry?: string): boolean {
+  return !originCountry || Boolean(item.country?.includes(originCountry));
 }
 
 function normalizeProviderIds(provider?: number | number[]): number[] | undefined {
@@ -84,7 +90,12 @@ async function pickMovies(
   );
   let candidates = detailed
     .filter((item): item is Movie => Boolean(item))
-    .filter((movie) => matchesRuntime(movie, filters.maxRuntime) && matchesGenre(movie, filters.genreMovie));
+    .filter(
+      (movie) =>
+        matchesRuntime(movie, filters.maxRuntime) &&
+        matchesGenre(movie, filters.genreMovie) &&
+        matchesOriginCountry(movie, filters.originCountry)
+    );
 
   candidates = await filterByProvider(candidates, "movie", filters.provider);
 
@@ -94,6 +105,7 @@ async function pickMovies(
         genre: filters.genreMovie,
         provider: filters.provider,
         maxRuntime: filters.maxRuntime,
+        originCountry: filters.originCountry,
       })
     ).results;
   }
@@ -122,7 +134,12 @@ async function pickSeries(
   );
   let candidates = detailed
     .filter((item): item is Series => Boolean(item))
-    .filter((series) => matchesRuntime(series, filters.maxRuntime) && matchesGenre(series, filters.genreSeries));
+    .filter(
+      (series) =>
+        matchesRuntime(series, filters.maxRuntime) &&
+        matchesGenre(series, filters.genreSeries) &&
+        matchesOriginCountry(series, filters.originCountry)
+    );
 
   candidates = await filterByProvider(candidates, "series", filters.provider);
 
@@ -132,6 +149,7 @@ async function pickSeries(
         genre: filters.genreSeries,
         provider: filters.provider,
         maxRuntime: filters.maxRuntime,
+        originCountry: filters.originCountry,
       })
     ).results;
   }

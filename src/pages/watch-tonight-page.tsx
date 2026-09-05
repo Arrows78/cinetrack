@@ -14,7 +14,7 @@ import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
-import { PLATFORMS } from "@/shared/constants/discover";
+import { ORIGIN_COUNTRIES, PLATFORMS } from "@/shared/constants/discover";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
@@ -79,6 +79,7 @@ export function WatchTonightPage() {
   const [genreId, setGenreId] = useState("");
   const [provider, setProvider] = useState("");
   const [runtime, setRuntime] = useState("120");
+  const [originCountry, setOriginCountry] = useState("");
   const [seed, setSeed] = useState(0);
   const selectedGenre = genres.find((genre) => String(genre.id) === genreId);
   const preferredProviderIds = preferences.data?.preferredProviderIds ?? [];
@@ -93,6 +94,7 @@ export function WatchTonightPage() {
       provider: resolvedProvider,
       maxRuntime: runtime ? Number(runtime) : undefined,
       hideWatched,
+      originCountry: originCountry || undefined,
     },
     seed
   );
@@ -113,7 +115,7 @@ export function WatchTonightPage() {
         <h1 className="font-display text-page-title">{t("watchTonight.title")}</h1>
         <p className="text-muted-foreground">{t("watchTonight.description")}</p>
       </header>
-      <Panel className="grid gap-3 md:grid-cols-4 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
+      <Panel className="grid gap-3 md:grid-cols-5 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
         <FormField label={t("watchTonight.genre")}>
           {() => (
             <Select value={genreId} onChange={(e) => setGenreId(e.target.value)}>
@@ -151,6 +153,18 @@ export function WatchTonightPage() {
               value={runtime}
               onChange={(e) => setRuntime(e.target.value)}
             />
+          )}
+        </FormField>
+        <FormField label={t("watchTonight.originCountry")}>
+          {() => (
+            <Select value={originCountry} onChange={(e) => setOriginCountry(e.target.value)}>
+              <option value="">{t("watchTonight.allOriginCountries")}</option>
+              {ORIGIN_COUNTRIES.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {t(country.labelKey)}
+                </option>
+              ))}
+            </Select>
           )}
         </FormField>
         <Button type="button" className="self-end" onClick={() => setSeed((value) => value + 1)}>

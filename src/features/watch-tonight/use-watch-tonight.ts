@@ -26,6 +26,7 @@ export function useWatchTonightPicks(filters: WatchTonightFilters, seed = 0) {
       Array.isArray(filters.provider) ? filters.provider.join(",") : filters.provider,
       filters.maxRuntime,
       filters.hideWatched,
+      filters.originCountry,
       seed,
     ],
     queryFn: () => watchTonightService.pick(filters),

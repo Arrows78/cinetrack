@@ -198,6 +198,7 @@ describe("WatchTonightPage", () => {
       provider: undefined,
       maxRuntime: 120,
       hideWatched: false,
+      originCountry: undefined,
     });
 
     const genreSelect = screen.getByLabelText("Genre");
@@ -210,6 +211,7 @@ describe("WatchTonightPage", () => {
       provider: undefined,
       maxRuntime: 120,
       hideWatched: false,
+      originCountry: undefined,
     });
   });
 
@@ -228,6 +230,26 @@ describe("WatchTonightPage", () => {
       provider: 8,
       maxRuntime: 120,
       hideWatched: false,
+      originCountry: undefined,
+    });
+  });
+
+  it("re-fetches with the selected origin country when the origin filter changes", async () => {
+    renderPage();
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    const originSelect = screen.getByLabelText("Origin");
+    fireEvent.change(originSelect, { target: { value: "KR" } });
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
+    expect(pickMock).toHaveBeenLastCalledWith({
+      genreMovie: undefined,
+      genreSeries: undefined,
+      provider: undefined,
+      maxRuntime: 120,
+      hideWatched: false,
+      originCountry: "KR",
     });
   });
 
@@ -255,6 +277,7 @@ describe("WatchTonightPage", () => {
       provider: [8, 337],
       maxRuntime: 120,
       hideWatched: false,
+      originCountry: undefined,
     });
   });
 
@@ -273,6 +296,7 @@ describe("WatchTonightPage", () => {
       provider: undefined,
       maxRuntime: 45,
       hideWatched: false,
+      originCountry: undefined,
     });
   });
 
@@ -287,6 +311,7 @@ describe("WatchTonightPage", () => {
       provider: undefined,
       maxRuntime: 120,
       hideWatched: true,
+      originCountry: undefined,
     });
     expect(screen.getByRole("button", { name: "Hide watched" })).toHaveAttribute("aria-pressed", "true");
   });

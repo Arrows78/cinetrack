@@ -46,6 +46,19 @@ describe("useWatchTonightPicks", () => {
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
   });
 
+  it("re-fetches when only originCountry changes, with an otherwise identical filter set", async () => {
+    const { useWatchTonightPicks } = await import("../use-watch-tonight");
+    const { rerender } = renderHook(({ originCountry }) => useWatchTonightPicks({ originCountry }), {
+      wrapper: createWrapper(),
+      initialProps: { originCountry: undefined as string | undefined },
+    });
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    rerender({ originCountry: "KR" });
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
+  });
+
   it("does not re-fetch when filters and seed are both unchanged across a re-render", async () => {
     const { useWatchTonightPicks } = await import("../use-watch-tonight");
     const { rerender } = renderHook(() => useWatchTonightPicks({ maxRuntime: 90 }, 0), { wrapper: createWrapper() });

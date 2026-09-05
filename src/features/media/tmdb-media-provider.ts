@@ -41,6 +41,7 @@ import type {
   TmdbPersonDto,
 } from "@/features/media/api/types";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { DEFAULT_DISCOVER_VOTE_COUNT_FLOOR } from "@/shared/constants/discover";
 
 const languageTag = (language: "en" | "fr") => (language === "fr" ? "fr-FR" : "en-US");
 
@@ -162,6 +163,8 @@ export class TmdbMediaProvider implements MediaProvider {
       "with_runtime.lte": args.maxRuntime,
       with_cast: args.withCast,
       with_crew: args.withCrew,
+      with_origin_country: args.originCountry,
+      "vote_count.gte": args.voteCountGte ?? DEFAULT_DISCOVER_VOTE_COUNT_FLOOR,
     });
     return mapPage(response, mapMovieDto);
   }
@@ -177,6 +180,8 @@ export class TmdbMediaProvider implements MediaProvider {
       watch_region: provider ? region : undefined,
       with_watch_providers: provider,
       with_watch_monetization_types: provider ? "flatrate" : undefined,
+      with_origin_country: args.originCountry,
+      "vote_count.gte": args.voteCountGte ?? DEFAULT_DISCOVER_VOTE_COUNT_FLOOR,
     });
     return mapPage(response, mapSeriesDto);
   }

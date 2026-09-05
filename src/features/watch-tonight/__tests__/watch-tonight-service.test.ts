@@ -109,8 +109,18 @@ describe("watchTonightService", () => {
   it("falls back to catalogue discovery for both types for a new user without filters", async () => {
     const result = await watchTonightService.pick({});
 
-    expect(mocks.discoverMovies).toHaveBeenCalledWith({ genre: undefined, provider: undefined, maxRuntime: undefined });
-    expect(mocks.discoverSeries).toHaveBeenCalledWith({ genre: undefined, provider: undefined, maxRuntime: undefined });
+    expect(mocks.discoverMovies).toHaveBeenCalledWith({
+      genre: undefined,
+      provider: undefined,
+      maxRuntime: undefined,
+      originCountry: undefined,
+    });
+    expect(mocks.discoverSeries).toHaveBeenCalledWith({
+      genre: undefined,
+      provider: undefined,
+      maxRuntime: undefined,
+      originCountry: undefined,
+    });
     expect(result.movies).toHaveLength(4);
     expect(result.series).toHaveLength(4);
   });
@@ -173,6 +183,21 @@ describe("watchTonightService", () => {
     expect(result.series.map((item) => item.id)).toEqual([30]);
   });
 
+  it("filters planned candidates by origin country, and passes it through to the catalogue fallback", async () => {
+    seedLibrary([
+      { mediaId: 40, mediaType: "movie", status: "planned" },
+      { mediaId: 41, mediaType: "movie", status: "planned" },
+    ]);
+    mocks.getMovieDetails.mockImplementation((id: number) =>
+      Promise.resolve(movie(id, { country: id === 40 ? ["KR"] : ["US"] }))
+    );
+
+    const result = await watchTonightService.pick({ originCountry: "KR" });
+
+    expect(result.movies.map((item) => item.id)).toEqual([40]);
+    expect(mocks.discoverSeries).toHaveBeenCalledWith(expect.objectContaining({ originCountry: "KR" }));
+  });
+
   it("logs a warning and drops the candidate when getMovieDetails rejects for one planned movie, without failing the whole pick", async () => {
     seedLibrary([
       { mediaId: 40, mediaType: "movie", status: "planned" },
@@ -233,8 +258,18 @@ describe("watchTonightService", () => {
 
     await watchTonightService.pick({ provider: [8, 337] });
 
-    expect(mocks.discoverMovies).toHaveBeenCalledWith({ genre: undefined, provider: [8, 337], maxRuntime: undefined });
-    expect(mocks.discoverSeries).toHaveBeenCalledWith({ genre: undefined, provider: [8, 337], maxRuntime: undefined });
+    expect(mocks.discoverMovies).toHaveBeenCalledWith({
+      genre: undefined,
+      provider: [8, 337],
+      maxRuntime: undefined,
+      originCountry: undefined,
+    });
+    expect(mocks.discoverSeries).toHaveBeenCalledWith({
+      genre: undefined,
+      provider: [8, 337],
+      maxRuntime: undefined,
+      originCountry: undefined,
+    });
   });
 
   it("drops a catalogue-fallback movie already completed in the library when hideWatched is on", async () => {
