@@ -58,7 +58,12 @@ function PersonCard({ person, index }: { person: PersonSummary; index: number })
           />
           <div className="absolute inset-0" style={{ background: MEDIA_POSTER_SCRIM }} />
           <div className="absolute inset-x-0 bottom-0 p-4">
-            <p className="font-display line-clamp-2 text-base font-bold leading-tight text-card-foreground md:text-lg transition-all duration-base group-hover:text-primary/90">
+            <p
+              className={cn(
+                "font-display line-clamp-2 text-base font-bold leading-tight md:text-lg",
+                MEDIA_POSTER_OVERLAY_CLASSNAME.titleText
+              )}
+            >
               {person.name}
             </p>
             <p className={cn("mt-1.5 truncate text-caption font-medium", MEDIA_POSTER_OVERLAY_CLASSNAME.captionText)}>

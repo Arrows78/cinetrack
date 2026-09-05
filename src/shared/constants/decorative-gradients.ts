@@ -56,6 +56,12 @@ export const MEDIA_POSTER_SCRIM =
  */
 export const MEDIA_POSTER_OVERLAY_CLASSNAME = {
   chip: "bg-black/60 text-white",
+  // Deliberately a fixed white, not the theme-varying `text-card-foreground`:
+  // that token is only contrast-tested against the `card` background (see
+  // contrast.test.ts), not against this always-black scrim — on the light
+  // theme, `card-foreground` is a near-black color, which over
+  // MEDIA_POSTER_SCRIM would be almost illegible.
+  titleText: "text-white",
   captionText: "text-white/60",
   separatorDot: "bg-white/30",
   progressTrack: "bg-black/40",

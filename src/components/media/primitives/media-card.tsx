@@ -167,7 +167,12 @@ function MediaCardInner({
 
         {/* Bottom: title + year + genre */}
         <div className="absolute inset-x-0 bottom-0 p-4">
-          <p className="font-display line-clamp-2 text-base font-bold leading-tight text-card-foreground md:text-lg transition-all duration-base group-hover:text-primary/90">
+          <p
+            className={cn(
+              "font-display line-clamp-2 text-base font-bold leading-tight md:text-lg",
+              MEDIA_POSTER_OVERLAY_CLASSNAME.titleText
+            )}
+          >
             {media.title}
           </p>
           <div className="mt-1.5 flex items-center gap-2">
