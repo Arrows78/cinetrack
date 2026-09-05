@@ -11,7 +11,11 @@ export type MediaGridItem = MediaSummary & { progress?: MediaCardProgress; alrea
 // not just poster count). useWindowScroll — the page itself scrolls (see
 // AppShell; there's no separate inner scroll container) — lets Virtuoso
 // track the window's scroll position instead of wrapping its own.
-const DEFAULT_LIST_CLASS_NAME = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 2xl:grid-cols-5";
+// Exported so other card grids (e.g. people-page.tsx's PersonCard grid) can
+// match these exact breakpoints — without it, cards of the same visual
+// intent end up different sizes on different pages purely because each grid
+// picked its own column counts.
+export const MEDIA_GRID_CLASS_NAME = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 2xl:grid-cols-5";
 
 export function MediaGrid({
   items,
@@ -38,7 +42,7 @@ export function MediaGrid({
       // grid instead of a reasonable first screenful.
       initialItemCount={Math.min(items.length, 20)}
       computeItemKey={(_index, media) => `${media.mediaType}-${media.id}`}
-      listClassName={listClassName ?? DEFAULT_LIST_CLASS_NAME}
+      listClassName={listClassName ?? MEDIA_GRID_CLASS_NAME}
       endReached={onEndReached}
       itemContent={(_index, media) => (
         <MediaCard media={media} progress={media.progress} alreadySeen={media.alreadySeen} />

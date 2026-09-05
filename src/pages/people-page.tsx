@@ -8,6 +8,7 @@ import { Panel } from "@/components/ui/panel";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { MEDIA_GRID_CLASS_NAME } from "@/components/media/primitives/media-grid";
 import { usePeopleSearch, usePopularPeople } from "@/features/media/use-discovery";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import { buildTmdbImageUrl, placeholderUrl } from "@/shared/utils/format";
@@ -31,15 +32,24 @@ function PersonCard({ person, index }: { person: PersonSummary; index: number })
         delay: Math.min(index * 0.05, MAX_STAGGER_DELAY_S),
       }}
     >
-      <Panel asChild tone="card" className="block p-4 transition hover:border-primary/50">
-        <Link to="/people/$personId" params={{ personId: String(person.id) }}>
+      <Panel asChild tone="card" className="overflow-hidden p-0 transition hover:border-primary/50">
+        <Link to="/people/$personId" params={{ personId: String(person.id) }} className="block">
+          {/* No rounding of its own — the parent Panel's own rounded corners
+              clip it via overflow-hidden, same as MediaCard's poster, so the
+              image spans the full card edge-to-edge instead of sitting
+              inset within extra padding (which made person cards' posters
+              render smaller than movie/series posters at the same card width). */}
           <img
-            className="aspect-[2/3] w-full rounded-2xl object-cover"
+            className="aspect-[2/3] w-full object-cover"
             src={buildTmdbImageUrl(person.profilePath, "w500") ?? placeholderUrl(500, 750, "Portrait")}
             alt=""
           />
-          <h2 className="mt-3 font-semibold">{person.name}</h2>
-          <p className="text-sm text-muted-foreground">{person.knownForDepartment ?? t("people.fallbackDepartment")}</p>
+          <div className="p-4">
+            <h2 className="font-semibold">{person.name}</h2>
+            <p className="text-sm text-muted-foreground">
+              {person.knownForDepartment ?? t("people.fallbackDepartment")}
+            </p>
+          </div>
         </Link>
       </Panel>
     </motion.div>
@@ -81,7 +91,7 @@ export function PeoplePage() {
       {showEmpty ? (
         <EmptyState icon={UserX} title={t("people.noResultsTitle")} description={t("people.noResultsDescription")} />
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={MEDIA_GRID_CLASS_NAME}>
         {!active.isLoading && !active.isError
           ? results.map((person, index) => <PersonCard key={person.id} person={person} index={index} />)
           : null}
