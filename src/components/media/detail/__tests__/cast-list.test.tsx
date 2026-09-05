@@ -1,8 +1,22 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import type { CastMember } from "@/types/media";
 import { CastList } from "../cast-list";
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    to,
+    params,
+    className,
+  }: PropsWithChildren<{ to: string; params?: Record<string, string>; className?: string }>) => (
+    <a href={params ? `${to}::${JSON.stringify(params)}` : to} className={className}>
+      {children}
+    </a>
+  ),
+}));
 
 function makeCastMember(overrides: Partial<CastMember> = {}): CastMember {
   return {
@@ -66,6 +80,15 @@ describe("CastList", () => {
     expect(screen.getByText("Zendaya")).toBeInTheDocument();
     expect(screen.getByText("Rebecca Ferguson")).toBeInTheDocument();
     expect(container.querySelectorAll("img")).toHaveLength(3);
+  });
+
+  it("links each cast member's card to their people page", () => {
+    render(<CastList cast={[makeCastMember({ id: 42, name: "Timothée Chalamet" })]} />);
+
+    expect(screen.getByRole("link", { name: /Timothée Chalamet/ })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/people/$personId")
+    );
   });
 
   it("renders no cards for an empty cast array without crashing", () => {
