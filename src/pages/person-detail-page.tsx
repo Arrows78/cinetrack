@@ -11,9 +11,11 @@ import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { usePerson } from "@/features/media/use-discovery";
-import { ageFromBirthday, buildTmdbImageUrl, formatDate, placeholderUrl } from "@/shared/utils/format";
+import { ageFromBirthday, buildTmdbImageUrl, formatDate } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 import type { PersonCreditItem } from "@/types/media";
+import fallbackPoster from "@/assets/poster-placeholder.svg";
+import fallbackPortrait from "@/assets/person-placeholder.svg";
 
 // Two separate <Link> branches (rather than one with a conditional `to`) so
 // each Link's `to`/`params` pair stays a matched literal — same pattern
@@ -24,7 +26,7 @@ function FilmographyCard({ item }: { item: PersonCreditItem }) {
   const inner = (
     <>
       <img
-        src={buildTmdbImageUrl(item.posterPath, "w185") ?? placeholderUrl(200, 300, item.title)}
+        src={buildTmdbImageUrl(item.posterPath, "w185") ?? fallbackPoster}
         alt=""
         className="h-24 w-16 shrink-0 rounded-xl object-cover"
       />
@@ -81,7 +83,7 @@ export function PersonDetailPage() {
       >
         <img
           className="h-48 w-32 shrink-0 rounded-2xl object-cover"
-          src={buildTmdbImageUrl(person.profilePath, "w500") ?? placeholderUrl(500, 750, "Portrait")}
+          src={buildTmdbImageUrl(person.profilePath, "w500") ?? fallbackPortrait}
           alt=""
         />
         <div className="min-w-0 space-y-3">

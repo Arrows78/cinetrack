@@ -1,14 +1,9 @@
 import { useTranslation } from "react-i18next";
 import type * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import {
-  buildTmdbImageUrl,
-  buildTmdbPosterSrcSet,
-  formatRating,
-  formatRuntime,
-  placeholderUrl,
-} from "@/shared/utils/format";
+import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
+import fallbackPoster from "@/assets/poster-placeholder.svg";
 
 export function MediaDetailsHero({
   media,
@@ -43,7 +38,7 @@ export function MediaDetailsHero({
       <div className="relative grid gap-6 p-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:p-8">
         <div className="hidden lg:block">
           <img
-            src={poster ?? placeholderUrl(500, 750, "Poster")}
+            src={poster ?? fallbackPoster}
             srcSet={buildTmdbPosterSrcSet(media.posterPath)}
             sizes="220px"
             alt=""

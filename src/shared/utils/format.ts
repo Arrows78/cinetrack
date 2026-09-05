@@ -188,12 +188,3 @@ export const formatBytes = (bytes: number): string => {
   if (value < BYTES_PER_GB) return i18n.t("common.sizeMB", { value: (value / BYTES_PER_MB).toFixed(1) });
   return i18n.t("common.sizeGB", { value: (value / BYTES_PER_GB).toFixed(1) });
 };
-
-/**
- * Placeholder image URL via placehold.co. Centralizes the background/foreground
- * colors so every fallback image shares the same brand-aligned palette.
- */
-const PLACEHOLDER_BG = "111827";
-const PLACEHOLDER_FG = "374151";
-export const placeholderUrl = (width: number, height: number, text = "") =>
-  `https://placehold.co/${width}x${height}/${PLACEHOLDER_BG}/${PLACEHOLDER_FG}${text ? `?text=${encodeURIComponent(text)}` : ""}`;

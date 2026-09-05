@@ -109,8 +109,8 @@ describe("PeoplePage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Popular people" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Jane Doe" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "John Smith" })).toBeInTheDocument();
+    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+    expect(screen.getByText("John Smith")).toBeInTheDocument();
     // The default view is driven by the popular-people query, not a search.
     expect(usePeopleSearchMock).toHaveBeenCalledWith("");
   });
@@ -127,13 +127,13 @@ describe("PeoplePage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("heading", { level: 2, name: "Popular Person" })).toBeInTheDocument();
+    expect(screen.getByText("Popular Person")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Trending this week" }));
 
     expect(screen.getByRole("heading", { name: "Trending this week" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Trending Person" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 2, name: "Popular Person" })).not.toBeInTheDocument();
+    expect(screen.getByText("Trending Person")).toBeInTheDocument();
+    expect(screen.queryByText("Popular Person")).not.toBeInTheDocument();
   });
 
   it("shows the grid skeleton and no person cards while the popular list is loading", () => {
@@ -190,7 +190,7 @@ describe("PeoplePage", () => {
     await typeSearch("de");
 
     expect(document.querySelectorAll(".animate-shimmer").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("shows the remote error state with a working retry action for a failed search", async () => {
@@ -233,20 +233,19 @@ describe("PeoplePage", () => {
     renderPage();
     await typeSearch("jo");
 
-    const janeHeading = screen.getByRole("heading", { level: 2, name: "Jane Doe" });
-    expect(janeHeading).toBeInTheDocument();
+    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByText("Acting")).toBeInTheDocument();
     const janeLink = screen.getByRole("link", { name: /Jane Doe/ });
     const janeImage = janeLink.querySelector("img") as HTMLImageElement;
     expect(janeImage.src).toBe("https://image.tmdb.org/t/p/w500/jane.jpg");
     expect(janeLink).toHaveAttribute("href", "/people/1");
 
-    const johnHeading = screen.getByRole("heading", { level: 2, name: "John Smith" });
-    expect(johnHeading).toBeInTheDocument();
-    // No profilePath: falls back to the placeholder image.
+    expect(screen.getByText("John Smith")).toBeInTheDocument();
+    // No profilePath: falls back to the bundled placeholder illustration,
+    // not a TMDB URL.
     const johnLink = screen.getByRole("link", { name: /John Smith/ });
     const johnImage = johnLink.querySelector("img") as HTMLImageElement;
-    expect(johnImage.src).toContain("placehold.co");
+    expect(johnImage.src).not.toContain("image.tmdb.org");
     // No knownForDepartment: falls back to the i18n fallback string.
     expect(screen.getByText("Film & television")).toBeInTheDocument();
     expect(johnLink).toHaveAttribute("href", "/people/2");

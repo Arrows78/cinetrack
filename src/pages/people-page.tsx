@@ -12,20 +12,30 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { MEDIA_GRID_CLASS_NAME } from "@/components/media/primitives/media-grid";
 import { usePeopleSearch, usePopularPeople, useTrendingPeople } from "@/features/media/use-discovery";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
-import { buildTmdbImageUrl, placeholderUrl } from "@/shared/utils/format";
+import { MEDIA_POSTER_OVERLAY_CLASSNAME, MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
+import { cn } from "@/shared/lib/cn";
+import { buildTmdbImageUrl } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 import type { PersonSummary } from "@/types/media";
+import fallbackPortrait from "@/assets/person-placeholder.svg";
 
 // Matches MediaGrid's entrance cascade (see media-grid.tsx) so cards feel
 // consistent across the app, even though person cards have a different shape.
 const MAX_STAGGER_DELAY_S = 0.44;
 
+// Same poster-fills-the-card, name-overlaid-at-the-bottom treatment as
+// MediaCard (media-card.tsx) — a separate caption block below the poster
+// used to make person cards taller than movie/series cards at the same grid
+// column width, for no product reason.
 function PersonCard({ person, index }: { person: PersonSummary; index: number }) {
   const { t } = useTranslation();
   return (
     <motion.div
+      className="group"
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -5, scale: 1.01 }}
+      whileTap={{ scale: 0.97 }}
       transition={{
         type: "spring",
         stiffness: 200,
@@ -33,26 +43,30 @@ function PersonCard({ person, index }: { person: PersonSummary; index: number })
         delay: Math.min(index * 0.05, MAX_STAGGER_DELAY_S),
       }}
     >
-      <Panel asChild tone="card" className="overflow-hidden p-0 transition hover:border-primary/50">
-        <Link to="/people/$personId" params={{ personId: String(person.id) }} className="block">
-          {/* No rounding of its own — the parent Panel's own rounded corners
-              clip it via overflow-hidden, same as MediaCard's poster, so the
-              image spans the full card edge-to-edge instead of sitting
-              inset within extra padding (which made person cards' posters
-              render smaller than movie/series posters at the same card width). */}
+      <Link
+        to="/people/$personId"
+        params={{ personId: String(person.id) }}
+        className="block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="relative aspect-[2/3] overflow-hidden rounded-card">
           <img
-            className="aspect-[2/3] w-full object-cover"
-            src={buildTmdbImageUrl(person.profilePath, "w500") ?? placeholderUrl(500, 750, "Portrait")}
+            src={buildTmdbImageUrl(person.profilePath, "w500") ?? fallbackPortrait}
             alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-slower ease-out group-hover:scale-[1.07]"
           />
-          <div className="p-4">
-            <h2 className="font-semibold">{person.name}</h2>
-            <p className="text-sm text-muted-foreground">
+          <div className="absolute inset-0" style={{ background: MEDIA_POSTER_SCRIM }} />
+          <div className="absolute inset-x-0 bottom-0 p-4">
+            <p className="font-display line-clamp-2 text-base font-bold leading-tight text-card-foreground md:text-lg transition-all duration-base group-hover:text-primary/90">
+              {person.name}
+            </p>
+            <p className={cn("mt-1.5 truncate text-caption font-medium", MEDIA_POSTER_OVERLAY_CLASSNAME.captionText)}>
               {person.knownForDepartment ?? t("people.fallbackDepartment")}
             </p>
           </div>
-        </Link>
-      </Panel>
+        </div>
+      </Link>
     </motion.div>
   );
 }

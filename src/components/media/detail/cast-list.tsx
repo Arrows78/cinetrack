@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { buildTmdbImageUrl, placeholderUrl } from "@/shared/utils/format";
+import { buildTmdbImageUrl } from "@/shared/utils/format";
 import type { CastMember } from "@/types/media";
+import fallbackPortrait from "@/assets/person-placeholder.svg";
 
 export function CastList({ cast }: { cast: CastMember[] }) {
   const { t } = useTranslation();
@@ -13,7 +14,7 @@ export function CastList({ cast }: { cast: CastMember[] }) {
         <Card key={member.id} className="rounded-3xl p-3 transition hover:border-primary/50">
           <Link to="/people/$personId" params={{ personId: String(member.id) }} className="flex items-center gap-3">
             <img
-              src={buildTmdbImageUrl(member.profilePath, "w185") ?? placeholderUrl(200, 300, "Cast")}
+              src={buildTmdbImageUrl(member.profilePath, "w185") ?? fallbackPortrait}
               alt=""
               className="h-16 w-16 rounded-2xl object-cover"
             />

@@ -179,7 +179,9 @@ describe("MediaDetailsHero", () => {
     const { container } = render(<MediaDetailsHero media={makeMedia({ posterPath: null })} />);
     const images = container.querySelectorAll("img");
     const poster = Array.from(images).find((img) => img.getAttribute("sizes") === "220px");
-    expect(poster).toHaveAttribute("src", expect.stringContaining("placehold.co"));
+    // Vite inlines the placeholder SVG as a data: URI; the real point is
+    // that the src is not a TMDB URL (see media-card.test.tsx's equivalent).
+    expect(poster).not.toHaveAttribute("src", expect.stringContaining("image.tmdb.org"));
   });
 
   it("shows the original title only when it differs from the title", () => {

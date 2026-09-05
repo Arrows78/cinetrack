@@ -3,19 +3,16 @@ import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/media/primitives/section-header";
-import { formatDate, placeholderUrl } from "@/shared/utils/format";
+import { formatDate } from "@/shared/utils/format";
 import type { MediaReview } from "@/types/media";
+import fallbackAvatar from "@/assets/person-placeholder.svg";
 
 function ReviewCard({ review }: { review: MediaReview }) {
   const { t } = useTranslation();
   return (
     <Panel tone="subtle" className="p-6">
       <div className="flex items-center gap-3">
-        <img
-          src={review.avatarUrl ?? placeholderUrl(92, 92, review.author)}
-          alt=""
-          className="size-10 shrink-0 rounded-full object-cover"
-        />
+        <img src={review.avatarUrl ?? fallbackAvatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{review.author}</p>
           <p className="text-xs text-muted-foreground">{formatDate(review.createdAt)}</p>
