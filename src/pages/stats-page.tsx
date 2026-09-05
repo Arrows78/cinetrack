@@ -32,6 +32,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { ActivityBarChart } from "@/components/media/activity/activity-bar-chart";
 import { ViewingHeatmap } from "@/components/media/activity/viewing-heatmap";
+import { YearActivityCalendar } from "@/components/media/activity/year-activity-calendar";
 import { MonthlyRecapSection } from "@/components/stats/monthly-recap-section";
 import { RewatchAnalyticsSection } from "@/components/stats/rewatch-analytics-section";
 import { RatingDistributionSection } from "@/components/stats/rating-distribution-section";
@@ -381,6 +382,14 @@ export function StatsPage() {
         <h2 className="text-heading-sm">{t("stats.heatmap.title")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("stats.heatmap.description")}</p>
         <ViewingHeatmap data={stats.data.heatmap} />
+      </Panel>
+
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
+        <h2 className="text-heading-sm">{t("stats.yearCalendar.title", { year: wrapped.data.year })}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("stats.yearCalendar.description")}</p>
+        <div className="mt-4">
+          <YearActivityCalendar year={wrapped.data.year} dailyCounts={wrapped.data.dailyCounts} />
+        </div>
       </Panel>
 
       <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(10)}ms` }}>

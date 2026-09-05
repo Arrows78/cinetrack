@@ -473,6 +473,12 @@
       "less": "Moins",
       "more": "Plus"
     },
+    "yearCalendar": {
+      "title": "Activité {{year}}",
+      "description": "Chaque jour où vous avez regardé quelque chose cette année, en un coup d'œil.",
+      "cellTitle_one": "{{date}} : {{count}} visionnage",
+      "cellTitle_other": "{{date}} : {{count}} visionnages"
+    },
     "previousMonth": "Mois précédent",
     "nextMonth": "Mois suivant",
     "monthlyRecap": {

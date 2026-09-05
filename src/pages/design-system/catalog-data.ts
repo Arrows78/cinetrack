@@ -967,6 +967,14 @@ export const componentInventory = [
     "Day-of-week × hour grid of watch activity, horizontally scrollable on narrow windows."
   ),
   component(
+    "YearActivityCalendar",
+    "components/media/activity/year-activity-calendar.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "GitHub/GitLab-style full-year contribution calendar of watch activity, one column per week."
+  ),
+  component(
     "WatchNextSection",
     "components/media/tracking/watch-next-section.tsx",
     "Media",

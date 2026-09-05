@@ -104,6 +104,7 @@ function makeWrapped(year: number) {
     topTitles: [{ title: "Dune", count: 2 }],
     favouriteGenre: "Drama",
     activeDays: 50,
+    dailyCounts: { [`${year}-01-15`]: 3 },
   };
 }
 

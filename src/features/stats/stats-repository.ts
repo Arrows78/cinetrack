@@ -34,6 +34,8 @@ interface YearSummary {
   topTitles: Array<{ title: string; count: number }>;
   favouriteGenre: string | null;
   activeDays: number;
+  /** Watch count per calendar day ("yyyy-MM-dd" -> count), local-time bucketed — powers the year activity calendar. Only days with at least one watch are present. */
+  dailyCounts: Record<string, number>;
 }
 
 export type { YearlyActivityBucket } from "@/features/stats/stats-commands";
@@ -138,6 +140,11 @@ export const statsRepository = {
     for (const item of library)
       if (selected.some((event) => event.mediaId === item.mediaId && event.mediaType === item.mediaType))
         for (const genre of item.genres) genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
+    const dailyCounts: Record<string, number> = {};
+    for (const event of selected) {
+      const day = localDay(event.watchedAt);
+      dailyCounts[day] = (dailyCounts[day] ?? 0) + 1;
+    }
     return {
       year,
       movies: selected.filter((event) => event.mediaType === "movie").length,
@@ -149,6 +156,7 @@ export const statsRepository = {
         .map(([title, count]) => ({ title, count })),
       favouriteGenre: [...genreCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
       activeDays: new Set(selected.map((event) => localDay(event.watchedAt))).size,
+      dailyCounts,
     };
   },
   async getForecast(): Promise<WatchForecast> {

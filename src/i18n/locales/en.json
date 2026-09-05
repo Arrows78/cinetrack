@@ -473,6 +473,12 @@
       "less": "Less",
       "more": "More"
     },
+    "yearCalendar": {
+      "title": "{{year}} activity",
+      "description": "Every day you watched something this year, at a glance.",
+      "cellTitle_one": "{{date}}: {{count}} watch",
+      "cellTitle_other": "{{date}}: {{count}} watches"
+    },
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
     "monthlyRecap": {

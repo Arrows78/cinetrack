@@ -105,6 +105,25 @@ describe("statsRepository.getYearSummary", () => {
     expect(["Drame", "Comédie"]).toContain(summary.favouriteGenre);
   });
 
+  it("buckets watch counts per calendar day for the activity calendar", async () => {
+    // Kept safely mid-day UTC (not near a day boundary) so this doesn't
+    // depend on the test runner's local timezone — same reasoning as
+    // localDay's other callers (activeDays above).
+    libraryListMock.mockResolvedValue([]);
+    invokeCommandMock.mockResolvedValue([
+      viewingEvent({ mediaId: 1, watchedAt: "2026-02-01T12:00:00.000Z" }),
+      viewingEvent({ mediaId: 1, watchedAt: "2026-02-01T13:00:00.000Z" }),
+      viewingEvent({ mediaId: 1, watchedAt: "2026-02-02T12:00:00.000Z" }),
+      // An unwatched rollback on the same day must not inflate the count.
+      viewingEvent({ mediaId: 1, eventType: "unwatched", watchedAt: "2026-02-02T12:05:00.000Z" }),
+    ]);
+    const { statsRepository: repo } = await import("../stats-repository");
+
+    const summary = await repo.getYearSummary(2026);
+
+    expect(summary.dailyCounts).toEqual({ "2026-02-01": 2, "2026-02-02": 1 });
+  });
+
   it("excludes an unwatched rollback event from the aggregation", async () => {
     libraryListMock.mockResolvedValue([libraryItem({ mediaId: 1, mediaType: "movie", genres: ["Drame"] })]);
     invokeCommandMock.mockResolvedValue([
