@@ -727,6 +727,14 @@ export const componentInventory = [
     "Persistent toggle that filters already-watched titles out of Discover-style surfaces and Watch Tonight."
   ),
   component(
+    "ImdbLink",
+    "components/media/detail/imdb-link.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Links out to a title's or person's IMDb page; renders nothing without an IMDb id."
+  ),
+  component(
     "LibrarySections",
     "components/media/library/library-sections.tsx",
     "Media",

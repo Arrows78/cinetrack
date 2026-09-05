@@ -101,6 +101,7 @@ export const mapMovieDto = (dto: TmdbMovieDto): Movie => ({
   cast: mapCast(dto.credits?.cast),
   directors: mapCrew(dto.credits?.crew),
   collection: dto.belongs_to_collection ? mapCollectionSummary(dto.belongs_to_collection) : null,
+  imdbId: dto.external_ids?.imdb_id ?? null,
 });
 
 export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
@@ -144,6 +145,7 @@ export const mapSeriesDto = (dto: TmdbTvDto): Series => ({
   directors: mapCrew(dto.credits?.crew),
   numberOfSeasons: dto.number_of_seasons ?? dto.seasons?.length ?? 0,
   numberOfEpisodes: dto.number_of_episodes,
+  imdbId: dto.external_ids?.imdb_id ?? null,
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],
 });
 

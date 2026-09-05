@@ -50,6 +50,10 @@ export interface TmdbCollectionDto {
   parts: TmdbMovieDto[];
 }
 
+export interface TmdbExternalIdsDto {
+  imdb_id?: string | null;
+}
+
 export interface TmdbMovieDto {
   id: number;
   title: string;
@@ -67,6 +71,7 @@ export interface TmdbMovieDto {
   production_countries?: Array<{ iso_3166_1: string; name: string }>;
   credits?: TmdbCreditsDto;
   belongs_to_collection?: TmdbCollectionSummaryDto | null;
+  external_ids?: TmdbExternalIdsDto;
 }
 
 export interface TmdbSeasonPreviewDto {
@@ -98,6 +103,7 @@ export interface TmdbTvDto {
   number_of_episodes?: number;
   seasons?: TmdbSeasonPreviewDto[];
   credits?: TmdbCreditsDto;
+  external_ids?: TmdbExternalIdsDto;
 }
 
 export interface TmdbEpisodeDto {
@@ -168,7 +174,7 @@ export interface TmdbPersonDto {
   also_known_as?: string[];
   known_for?: TmdbPersonCreditDto[];
   combined_credits?: { cast?: TmdbPersonCreditDto[]; crew?: TmdbPersonCreditDto[] };
-  external_ids?: { imdb_id?: string | null };
+  external_ids?: TmdbExternalIdsDto;
 }
 
 export interface TmdbProviderRegionDto {

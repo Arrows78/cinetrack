@@ -207,9 +207,29 @@ describe("MovieDetailPage", () => {
     // language is missing on this movie -> falls back to the em dash.
     expect(screen.getByText("—")).toBeInTheDocument();
 
+    // No imdbId on this fixture -> no IMDb link.
+    expect(screen.queryByRole("link", { name: "View on IMDb" })).not.toBeInTheDocument();
+
     expect(screen.getByTestId("hero-actions").querySelector('[data-testid="add-to-library-button"]')).toBeTruthy();
     expect(screen.getByTestId("hero-actions").querySelector('[data-testid="favourite-button"]')).toBeTruthy();
     expect(screen.getByTestId("hero-actions").querySelector('[data-testid="availability-alert-button"]')).toBeTruthy();
+  });
+
+  it("links out to IMDb when the movie has an imdbId, and omits the link otherwise", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie({ imdbId: "tt1160419" }),
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("link", { name: "View on IMDb" })).toHaveAttribute(
+      "href",
+      "https://www.imdb.com/title/tt1160419/"
+    );
   });
 
   it("falls back to the no-overview message when the movie has none", () => {

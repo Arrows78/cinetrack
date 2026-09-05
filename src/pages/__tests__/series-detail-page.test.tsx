@@ -285,6 +285,35 @@ describe("SeriesDetailPage", () => {
     expect(screen.getByText("No overview available for this content.")).toBeInTheDocument();
   });
 
+  it("links out to IMDb when the series has an imdbId, and omits the link otherwise", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries(),
+    });
+
+    renderPage();
+
+    expect(screen.queryByRole("link", { name: "View on IMDb" })).not.toBeInTheDocument();
+
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({ imdbId: "tt0903747" }),
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("link", { name: "View on IMDb" })).toHaveAttribute(
+      "href",
+      "https://www.imdb.com/title/tt0903747/"
+    );
+  });
+
   it("shows the not-found empty state for a non-numeric seriesId, and nothing else", () => {
     params.seriesId = "abc";
     renderPage();

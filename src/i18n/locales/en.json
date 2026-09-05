@@ -60,6 +60,7 @@
     "availabilityAlert": "Availability alert",
     "trailer": "Trailer",
     "openOnYoutube": "Open on YouTube",
+    "viewOnImdb": "View on IMDb",
     "fallbackTitle": "Season {{number}}",
     "episodesAvailable_one": "{{count}} episode available in this season.",
     "episodesAvailable_other": "{{count}} episodes available in this season.",
@@ -591,8 +592,7 @@
     "ageYears_one": "{{count}} year old",
     "ageYears_other": "{{count}} years old",
     "placeOfBirth": "Born in {{place}}",
-    "noBiography": "No biography available.",
-    "viewOnImdb": "View on IMDb"
+    "noBiography": "No biography available."
   },
   "genres": {
     "action": "Action",

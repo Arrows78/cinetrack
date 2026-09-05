@@ -85,6 +85,8 @@ export interface Movie extends MediaSummary {
   duration?: number | null;
   /** The franchise/collection this movie belongs to on TMDB, or null/undefined if it isn't part of one. */
   collection?: CollectionSummary | null;
+  /** Undefined/null unless fetched via a detail endpoint that appends external_ids (see `directors`' doc comment). */
+  imdbId?: string | null;
 }
 
 // The full `/collection/{id}` response: a franchise's movies ("parts"),
@@ -133,6 +135,8 @@ export interface Series extends MediaSummary {
   numberOfSeasons: number;
   numberOfEpisodes?: number;
   seasons: Season[];
+  /** Undefined/null unless fetched via a detail endpoint that appends external_ids (see `directors`' doc comment). */
+  imdbId?: string | null;
 }
 
 export type { LibraryItem } from "@/generated/dto/LibraryItem";

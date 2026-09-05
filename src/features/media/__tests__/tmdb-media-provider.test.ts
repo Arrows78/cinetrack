@@ -426,17 +426,19 @@ describe("TmdbMediaProvider", () => {
   });
 
   describe("getMovieDetails", () => {
-    it("fetches /movie/:id with credits appended and maps the result", async () => {
+    it("fetches /movie/:id with credits and external_ids appended and maps the result", async () => {
       mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
-      mocks.tmdbFetch.mockResolvedValue(movieDto({ id: 77, title: "Details Movie" }));
+      mocks.tmdbFetch.mockResolvedValue(
+        movieDto({ id: 77, title: "Details Movie", external_ids: { imdb_id: "tt0000077" } })
+      );
 
       const result = await provider.getMovieDetails(77);
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/movie/77",
-        expect.objectContaining({ language: "fr-FR", append_to_response: "credits" })
+        expect.objectContaining({ language: "fr-FR", append_to_response: "credits,external_ids" })
       );
-      expect(result).toMatchObject({ id: 77, mediaType: "movie", title: "Details Movie" });
+      expect(result).toMatchObject({ id: 77, mediaType: "movie", title: "Details Movie", imdbId: "tt0000077" });
     });
   });
 
@@ -461,17 +463,19 @@ describe("TmdbMediaProvider", () => {
   });
 
   describe("getSeriesDetails", () => {
-    it("fetches /tv/:id with credits appended and maps the result", async () => {
+    it("fetches /tv/:id with credits and external_ids appended and maps the result", async () => {
       mocks.getPreferences.mockResolvedValue(basePreferences({ language: "en" }));
-      mocks.tmdbFetch.mockResolvedValue(tvDto({ id: 88, name: "Details Series" }));
+      mocks.tmdbFetch.mockResolvedValue(
+        tvDto({ id: 88, name: "Details Series", external_ids: { imdb_id: "tt0000088" } })
+      );
 
       const result = await provider.getSeriesDetails(88);
 
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/tv/88",
-        expect.objectContaining({ language: "en-US", append_to_response: "credits" })
+        expect.objectContaining({ language: "en-US", append_to_response: "credits,external_ids" })
       );
-      expect(result).toMatchObject({ id: 88, mediaType: "series", title: "Details Series" });
+      expect(result).toMatchObject({ id: 88, mediaType: "series", title: "Details Series", imdbId: "tt0000088" });
     });
   });
 

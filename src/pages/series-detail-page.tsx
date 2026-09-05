@@ -9,6 +9,7 @@ import { RecommendationsPanel } from "@/components/media/detail/recommendations-
 import { TrailerPanel } from "@/components/media/detail/trailer-panel";
 import { LibraryEditor } from "@/components/library/library-editor";
 import { CastList } from "@/components/media/detail/cast-list";
+import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/tracking/next-episode-card";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
@@ -158,6 +159,9 @@ export function SeriesDetailPage() {
                   <span className="font-medium">{value}</span>
                 </div>
               ))}
+            </div>
+            <div className="mt-4">
+              <ImdbLink imdbId={series.imdbId} />
             </div>
           </Panel>
         </div>

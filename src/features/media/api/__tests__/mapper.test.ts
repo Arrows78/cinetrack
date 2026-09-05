@@ -63,6 +63,11 @@ describe("mapMovieDto", () => {
     expect(movie).toMatchObject({ id: 550, mediaType: "movie", title: "Fight Club", year: 1999, rating: 8.4 });
   });
 
+  it("maps the IMDb id when external_ids was appended, null otherwise", () => {
+    expect(mapMovieDto(movieDto({ external_ids: { imdb_id: "tt0137523" } })).imdbId).toBe("tt0137523");
+    expect(mapMovieDto(movieDto()).imdbId).toBeNull();
+  });
+
   it("derives genreIds from genre_ids or from full genres", () => {
     expect(mapMovieDto(movieDto({ genre_ids: [18, 53] })).genreIds).toEqual([18, 53]);
     expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }] })).genreIds).toEqual([18]);
@@ -179,6 +184,11 @@ describe("mapCollectionDto", () => {
 });
 
 describe("mapSeriesDto", () => {
+  it("maps the IMDb id when external_ids was appended, null otherwise", () => {
+    expect(mapSeriesDto(tvDto({ external_ids: { imdb_id: "tt0903747" } })).imdbId).toBe("tt0903747");
+    expect(mapSeriesDto(tvDto()).imdbId).toBeNull();
+  });
+
   it("maps runtime from episode_run_time and counts seasons", () => {
     const series = mapSeriesDto(
       tvDto({

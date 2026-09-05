@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
-import { ExternalLink, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Panel } from "@/components/ui/panel";
 import { SectionHeader } from "@/components/media/primitives/section-header";
+import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -109,16 +110,7 @@ export function PersonDetailPage() {
           <p className="max-w-3xl font-serif text-base leading-7 text-muted-foreground">
             {person.biography || t("person.noBiography")}
           </p>
-          {person.imdbId ? (
-            <a
-              className="inline-flex items-center gap-1 text-sm text-primary"
-              href={`https://www.imdb.com/name/${person.imdbId}/`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t("person.viewOnImdb")} <ExternalLink className="size-3" />
-            </a>
-          ) : null}
+          <ImdbLink imdbId={person.imdbId} />
         </div>
       </Panel>
 
