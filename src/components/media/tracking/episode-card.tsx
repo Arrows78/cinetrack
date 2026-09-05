@@ -1,19 +1,12 @@
 import { useState } from "react";
-import { Calendar, Check, Clock4, EyeOff, NotebookPen } from "lucide-react";
+import { Calendar, Check, Clock4, EyeOff, ImageOff, NotebookPen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { cn } from "@/shared/lib/cn";
-import {
-  buildTmdbImageUrl,
-  formatDate,
-  formatEpisodeNumber,
-  formatRating,
-  formatRuntime,
-  placeholderUrl,
-} from "@/shared/utils/format";
+import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 export function EpisodeCard({
   episode,
@@ -31,6 +24,11 @@ export function EpisodeCard({
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const watched = Boolean(episode.watched);
   const hidden = Boolean(preferences.data?.spoilerProtection && !watched);
+  // A future/unannounced air date only blocks marking-as-watched, not the
+  // reverse — an already-watched row (e.g. from a bad TMDB date correction)
+  // must stay toggleable back off.
+  const isUnreleased = !watched && Boolean(episode.airDate) && new Date(episode.airDate!) > new Date();
+  const stillUrl = buildTmdbImageUrl(episode.stillPath, "w342");
   return (
     <div
       className={cn(
@@ -43,12 +41,12 @@ export function EpisodeCard({
           <div className="flex h-full items-center justify-center">
             <EyeOff className="size-5 text-muted-foreground" />
           </div>
+        ) : stillUrl ? (
+          <img src={stillUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <img
-            src={buildTmdbImageUrl(episode.stillPath, "w342") ?? placeholderUrl(320, 180)}
-            alt=""
-            className="h-full w-full object-cover"
-          />
+          <div className="flex h-full items-center justify-center">
+            <ImageOff className="size-5 text-muted-foreground" />
+          </div>
         )}
         {watched ? (
           <div className="absolute inset-0 flex items-center justify-center bg-primary/25">
@@ -62,7 +60,11 @@ export function EpisodeCard({
             {formatEpisodeNumber(episode.episodeNumber, { padded: true })}
           </span>
           {watched ? <span className="text-overline font-semibold text-primary">{t("media.seen")}</span> : null}
-          {!watched && isLastUnwatched ? (
+          {isUnreleased ? (
+            <Badge variant="outline" className="text-overline text-muted-foreground">
+              {t("media.notYetAired")}
+            </Badge>
+          ) : !watched && isLastUnwatched ? (
             <Badge variant="outline" className="text-overline text-accent">
               {t("media.lastUnwatchedEpisode")}
             </Badge>
@@ -93,7 +95,7 @@ export function EpisodeCard({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        {!watched ? (
+        {!watched && !isUnreleased ? (
           <IconTooltip label={t("media.addWatchNoteAction")}>
             <button
               type="button"
@@ -106,11 +108,13 @@ export function EpisodeCard({
             </button>
           </IconTooltip>
         ) : null}
-        <IconTooltip label={watched ? t("media.markUnseen") : t("media.markSeen")}>
+        <IconTooltip
+          label={isUnreleased ? t("media.notYetAired") : watched ? t("media.markUnseen") : t("media.markSeen")}
+        >
           <button
             type="button"
-            aria-label={watched ? t("media.markUnseen") : t("media.markSeen")}
-            disabled={disabled}
+            aria-label={isUnreleased ? t("media.notYetAired") : watched ? t("media.markUnseen") : t("media.markSeen")}
+            disabled={disabled || isUnreleased}
             onClick={() => onToggleSeen()}
             className={cn(
               "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",

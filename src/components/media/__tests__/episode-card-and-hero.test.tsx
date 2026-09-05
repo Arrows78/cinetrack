@@ -48,13 +48,13 @@ describe("EpisodeCard", () => {
     expect(screen.getByText("The Long Way Down")).toBeInTheDocument();
   });
 
-  it("falls back to the placeholder image when stillPath is null", () => {
+  it("falls back to a muted icon (not a placeholder image) when stillPath is null", () => {
     preferencesData = { spoilerProtection: false };
     const { container } = render(<EpisodeCard episode={makeEpisode({ stillPath: null })} onToggleSeen={vi.fn()} />);
 
-    const image = container.querySelector("img");
-    expect(image).toHaveAttribute("src", expect.stringContaining("placehold.co"));
-    expect(image).not.toHaveAttribute("src", expect.stringContaining("image.tmdb.org"));
+    const stillContainer = container.querySelector(".aspect-video");
+    expect(stillContainer?.querySelector("img")).not.toBeInTheDocument();
+    expect(stillContainer?.querySelector("svg")).toBeInTheDocument();
   });
 
   it("shows the real still and title even with spoiler protection on once the episode is watched", () => {
