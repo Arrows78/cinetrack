@@ -95,7 +95,7 @@ export function AboutSettings() {
         <CardContent>
           {versionInfo ? (
             <div className="flex flex-wrap items-center gap-2">
-              <p className="rounded-xl border border-border bg-card p-3 font-mono text-xs">
+              <p className="rounded-xl border border-border bg-card p-3 font-mono text-caption">
                 {t("settings.about.versionLine", {
                   version: versionInfo.appVersion,
                   tauriVersion: versionInfo.tauriVersion,
@@ -107,7 +107,7 @@ export function AboutSettings() {
               </Button>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">{t("settings.about.versionUnavailable")}</p>
+            <p className="text-caption text-muted-foreground">{t("settings.about.versionUnavailable")}</p>
           )}
         </CardContent>
       </Card>

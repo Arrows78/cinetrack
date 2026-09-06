@@ -65,7 +65,7 @@ export function OnThisDaySection() {
     <Panel tone="highlight" className="flex flex-col gap-4 animate-in-up">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <p className="font-display text-lg font-bold tracking-tight">{t("home.onThisDayTitle")}</p>
+        <p className="font-display text-heading-sm font-bold tracking-tight">{t("home.onThisDayTitle")}</p>
       </div>
       <ul className="flex flex-col gap-3">
         {entries.map(({ year, event }) => {
@@ -78,10 +78,10 @@ export function OnThisDaySection() {
                 }
                 className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <p className="text-sm font-medium">
+                <p className="text-body-sm font-medium">
                   {t("home.onThisDayEntry", { date: formatDate(event.watchedAt), title: event.title })}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-caption text-muted-foreground">
                   {t("home.onThisDayYearsAgo", { count: currentYear - year })}
                 </p>
               </Link>

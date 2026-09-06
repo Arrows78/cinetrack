@@ -376,7 +376,7 @@ export function CommandPalette() {
                 aria-activedescendant={results.length ? `${COMMAND_PALETTE_ROW_ID_PREFIX}-${selectedIndex}` : undefined}
                 className="h-14 rounded-none border-none bg-transparent pl-11 pr-16 ring-offset-0 focus-visible:ring-0"
               />
-              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 rounded border px-2 py-1 text-xs text-muted-foreground">
+              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 rounded border px-2 py-1 text-caption text-muted-foreground">
                 Esc
               </kbd>
             </div>
@@ -386,7 +386,7 @@ export function CommandPalette() {
               className="max-h-96 overflow-y-auto p-2 pb-3"
             >
               {contextualResults.length ? (
-                <p className="px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="px-3 pb-1 pt-2 text-caption font-medium uppercase tracking-wide text-muted-foreground">
                   {t("commandPalette.onThisPage")}
                 </p>
               ) : null}
@@ -419,7 +419,7 @@ export function CommandPalette() {
               })}
 
               {titleResultsOnly.length || isSearchingTitles ? (
-                <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="px-3 pb-1 pt-3 text-caption font-medium uppercase tracking-wide text-muted-foreground">
                   {isSearchingTitles ? t("commandPalette.searchingTitles") : t("commandPalette.titles")}
                 </p>
               ) : null}
@@ -508,7 +508,7 @@ function PaletteRow({
         {item.sublabel ? (
           <>
             {" "}
-            <span className="shrink-0 text-xs text-muted-foreground">{item.sublabel}</span>
+            <span className="shrink-0 text-caption text-muted-foreground">{item.sublabel}</span>
           </>
         ) : null}
       </div>

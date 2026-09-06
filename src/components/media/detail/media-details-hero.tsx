@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type * as React from "react";
 import { Badge } from "@/components/ui/badge";
+import { RatingStar } from "@/components/media/primitives/rating-star";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
@@ -55,7 +56,7 @@ export function MediaDetailsHero({
               >
                 {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
               </Badge>
-              {media.status ? <span className="text-xs text-muted-foreground">{media.status}</span> : null}
+              {media.status ? <span className="text-caption text-muted-foreground">{media.status}</span> : null}
             </div>
 
             {/* Title — the page's own <h1>: movie/series detail pages have
@@ -64,26 +65,25 @@ export function MediaDetailsHero({
               {media.title}
             </h1>
             {media.originalTitle && media.originalTitle !== media.title ? (
-              <p className="mt-1.5 text-sm text-muted-foreground">{media.originalTitle}</p>
+              <p className="mt-1.5 text-body-sm text-muted-foreground">{media.originalTitle}</p>
             ) : null}
 
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-body-sm">
               <span
                 aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
                 className="flex items-center gap-1 text-rating"
               >
-                <span aria-hidden="true">★</span>
-                <span className="font-semibold text-foreground">{formatRating(media.rating)}</span>
+                <RatingStar rating={media.rating} starClassName="" numberClassName="font-semibold text-foreground" />
               </span>
               {media.year && <span className="text-muted-foreground">{media.year}</span>}
               {media.runtime ? <span className="text-muted-foreground">{formatRuntime(media.runtime)}</span> : null}
               {media.certification ? (
-                <span className="rounded border border-border px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                <span className="rounded border border-border px-1.5 py-0.5 text-caption font-semibold text-muted-foreground">
                   {media.certification}
                 </span>
               ) : null}
               {media.language ? (
-                <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground uppercase">
+                <span className="rounded-full border border-border px-2 py-0.5 text-caption text-muted-foreground uppercase">
                   {media.language}
                 </span>
               ) : null}
@@ -94,7 +94,7 @@ export function MediaDetailsHero({
                 {media.genres.map((genre) => (
                   <span
                     key={genre}
-                    className="rounded-full border border-border bg-foreground/5 px-2.5 py-0.5 text-xs text-muted-foreground"
+                    className="rounded-full border border-border bg-foreground/5 px-2.5 py-0.5 text-caption text-muted-foreground"
                   >
                     {genre}
                   </span>

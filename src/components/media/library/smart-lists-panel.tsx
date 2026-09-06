@@ -237,14 +237,14 @@ export function SmartListsAccordionContent({
           void action.then(() => setEditingId(null)).catch(() => setActionError(t("desktop.operationFailed")));
         }}
       />
-      {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
+      {actionError ? <p className="text-body-sm text-destructive">{actionError}</p> : null}
 
       {smartLists.isLoading ? (
         <LoadingState />
       ) : smartLists.isError ? (
         <RemoteErrorState error={smartLists.error} onRetry={() => void smartLists.refetch()} />
       ) : !smartLists.data?.length ? (
-        <p className="text-sm text-muted-foreground">{t("library.smartLists.noLists")}</p>
+        <p className="text-body-sm text-muted-foreground">{t("library.smartLists.noLists")}</p>
       ) : (
         <div className="grid gap-2">
           {smartLists.data.map((list) => (

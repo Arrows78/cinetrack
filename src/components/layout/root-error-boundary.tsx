@@ -45,7 +45,7 @@ export class RootErrorBoundary extends Component<PropsWithChildren, RootErrorBou
               <RotateCcw className="mr-2 size-4" />
               {i18n.t("errors.reload")}
             </Button>
-            <details className="max-w-xl text-left text-xs text-muted-foreground">
+            <details className="max-w-xl text-left text-caption text-muted-foreground">
               <summary className="cursor-pointer text-center">{i18n.t("errors.technicalDetails")}</summary>
               <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">
                 {i18n.t("errors.technicalDetailsLogged")}

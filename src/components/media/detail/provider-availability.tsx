@@ -13,10 +13,10 @@ function ProviderGroup({ label, providers }: { label: string; providers: WatchPr
   if (!providers.length) return null;
   return (
     <div>
-      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-body-sm text-muted-foreground">{label}</p>
       <div className="mt-2 flex flex-wrap gap-3">
         {providers.map((provider) => (
-          <Tile key={provider.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+          <Tile key={provider.id} className="flex items-center gap-2 px-3 py-2 text-body-sm">
             {provider.logoPath ? (
               <img
                 className="size-7 rounded-lg"

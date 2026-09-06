@@ -139,8 +139,8 @@ export function BackupTools() {
         </div>
         <div className="border-t border-border pt-6">
           <p className="text-sm font-medium">{t("backup.locationTitle")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{t("backup.locationDescription")}</p>
-          <p className="mt-3 rounded-xl border border-border bg-card p-3 font-mono text-xs break-all">
+          <p className="mt-1 text-caption text-muted-foreground">{t("backup.locationDescription")}</p>
+          <p className="mt-3 rounded-xl border border-border bg-card p-3 font-mono text-caption break-all">
             {backupDirectory ? t("backup.currentLocation", { path: backupDirectory }) : t("backup.defaultLocation")}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Trash2, UserPlus } from "lucide-react";
+import { Check, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
@@ -92,13 +92,13 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                 {currentProfile.id === "default" ? t("settings.profiles.defaultName") : currentProfile.name}
               </p>
               {user?.email ? (
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-body-sm text-muted-foreground">
                   {t("settings.profiles.linkedTo", { email: user.email })}
                 </p>
               ) : null}
             </Tile>
           ) : (
-            <p className="text-sm text-muted-foreground">{t("settings.profiles.none")}</p>
+            <p className="text-body-sm text-muted-foreground">{t("settings.profiles.none")}</p>
           )
         ) : (
           // No Supabase account is in play at all offline — set_active_profile
@@ -251,8 +251,8 @@ export function SettingsPage() {
     await updatePreference({ key: "preferredProviderIds", value: next });
   };
   return (
-    <div className="space-y-10">
-      <SectionHeader title={t("nav.settings")} subtitle={t("settings.subtitleDesktop")} isPageTitle />
+    <div className="space-y-8">
+      <SectionHeader title={t("nav.settings")} subtitle={t("settings.subtitleDesktop")} icon={Settings} isPageTitle />
 
       <section>
         <SectionHeader

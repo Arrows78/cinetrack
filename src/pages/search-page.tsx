@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { SearchX } from "lucide-react";
+import { Search, SearchX } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -212,11 +212,12 @@ export function SearchPage() {
     : debouncedQuery;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <div className="space-y-5">
         <SectionHeader
           title={t("search.globalSearch")}
           subtitle={hasFilters ? t("search.showingResults", { filters: filterTitle }) : t("search.subtitle")}
+          icon={Search}
           isPageTitle
         />
         <div className="space-y-3">

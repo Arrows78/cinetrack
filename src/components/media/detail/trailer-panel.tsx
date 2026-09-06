@@ -26,7 +26,7 @@ export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; med
         />
       </div>
       <a
-        className="mt-3 inline-flex items-center gap-1 text-sm text-primary"
+        className="mt-3 inline-flex items-center gap-1 text-body-sm text-primary"
         href={`https://www.youtube.com/watch?v=${video.key}`}
         target="_blank"
         rel="noreferrer"

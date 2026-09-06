@@ -18,7 +18,7 @@ export function PartialErrorState({ message, onRetry, className }: PartialErrorS
   const { t } = useTranslation();
 
   if (!onRetry) {
-    return <p className={cn("text-xs text-destructive", className)}>{message}</p>;
+    return <p className={cn("text-caption text-destructive", className)}>{message}</p>;
   }
 
   return (

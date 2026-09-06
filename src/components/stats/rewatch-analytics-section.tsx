@@ -37,11 +37,11 @@ export function RewatchAnalyticsSection() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Tile className="p-3">
           <Repeat className="size-4 text-primary" aria-hidden="true" />
-          <p className="mt-2 text-xs text-muted-foreground">{t("stats.rewatch.totalRewatches")}</p>
+          <p className="mt-2 text-caption text-muted-foreground">{t("stats.rewatch.totalRewatches")}</p>
           <p className="mt-1 font-display text-2xl font-bold">{data.totalRewatches}</p>
         </Tile>
         <Tile className="p-3">
-          <p className="text-xs text-muted-foreground">{t("stats.rewatch.rewatchShare")}</p>
+          <p className="text-caption text-muted-foreground">{t("stats.rewatch.rewatchShare")}</p>
           <p className="mt-1 font-display text-2xl font-bold">{data.rewatchSharePercent}%</p>
         </Tile>
       </div>

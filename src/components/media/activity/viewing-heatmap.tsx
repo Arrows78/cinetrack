@@ -55,7 +55,7 @@ export function ViewingHeatmap({ data, className }: { data: ViewingHeatmapBucket
         ))}
         {DAYS.map((day) => (
           <Fragment key={day}>
-            <div className="flex items-center pr-2 text-xs text-muted-foreground">{dayLabel(day)}</div>
+            <div className="flex items-center pr-2 text-caption text-muted-foreground">{dayLabel(day)}</div>
             {HOURS.map((hour) => {
               const count = countFor(day, hour);
               return (
@@ -72,7 +72,7 @@ export function ViewingHeatmap({ data, className }: { data: ViewingHeatmapBucket
           </Fragment>
         ))}
       </div>
-      <div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-muted-foreground" aria-hidden="true">
+      <div className="mt-2 flex items-center justify-end gap-1.5 text-caption text-muted-foreground" aria-hidden="true">
         <span>{t("stats.heatmap.less")}</span>
         <div className="flex gap-1">
           <span className="size-3 rounded-sm bg-foreground/[0.04]" />

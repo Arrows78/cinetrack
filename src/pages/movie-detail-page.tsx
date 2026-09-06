@@ -109,7 +109,7 @@ export function MovieDetailPage() {
         </Panel>
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("movies.technicalSheet")} />
-          <div className="grid gap-2 text-sm">
+          <div className="grid gap-2 text-body-sm">
             {[
               { label: t("movies.country"), value: movie.country?.join(", ") || "—" },
               { label: t("movies.language"), value: movie.language || "—" },

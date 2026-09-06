@@ -253,11 +253,11 @@ export interface SmartList {
   updatedAt: string;
 }
 
-// Which page a saved filter belongs to — the two pages' filter-state shapes
-// below are unrelated, so a Library-saved filter must never show up in
-// Search's own saved-filters list or vice versa. Kept in sync with
+// Which page a saved filter belongs to — each page's filter-state shape
+// below is unrelated to the others, so a saved filter must never show up in
+// a different page's own saved-filters list. Kept in sync with
 // `VALID_PAGES` in src-tauri/src/lists/saved_filters/.
-export type SavedFilterPage = "library" | "search";
+export type SavedFilterPage = "library" | "search" | "tracking" | "history";
 
 // LibraryExplorer's own filter-control state (src/components/media/library-explorer.tsx),
 // captured verbatim — reopening a saved filter is just "set the page's state
@@ -283,7 +283,19 @@ export interface SearchFilterState {
   company?: string;
 }
 
-export type SavedFilterState = LibraryFilterState | SearchFilterState;
+// TrackingList's own filter-control state (src/components/media/tracking/tracking-list.tsx).
+export interface TrackingFilterState {
+  scopeFilter: TrackingScope | "all";
+  typeFilter: TrackingEntryType | "all";
+  sort: "date" | "title";
+}
+
+// HistoryPage's own filter-control state (src/pages/history-page.tsx).
+export interface HistoryFilterState {
+  typeFilter: "all" | MediaType;
+}
+
+export type SavedFilterState = LibraryFilterState | SearchFilterState | TrackingFilterState | HistoryFilterState;
 
 export interface SavedFilter<TState extends SavedFilterState = SavedFilterState> {
   id: string;

@@ -50,7 +50,7 @@ function DeltaBadge({ delta, formatValue }: { delta: number; formatValue: (value
   const { t } = useTranslation();
   if (delta === 0) {
     return (
-      <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <span className="mt-1 inline-flex items-center gap-1 text-caption text-muted-foreground">
         <Minus className="size-3.5" />
         {t("stats.deltaFlat")}
       </span>
@@ -58,7 +58,7 @@ function DeltaBadge({ delta, formatValue }: { delta: number; formatValue: (value
   }
   const isUp = delta > 0;
   return (
-    <span className={`mt-1 inline-flex items-center gap-1 text-xs ${isUp ? "text-success" : "text-destructive"}`}>
+    <span className={`mt-1 inline-flex items-center gap-1 text-caption ${isUp ? "text-success" : "text-destructive"}`}>
       {isUp ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
       {t(isUp ? "stats.deltaUp" : "stats.deltaDown", { value: formatValue(Math.abs(delta)) })}
     </span>
@@ -163,7 +163,7 @@ export function StatsPage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeader title={t("stats.title")} subtitle={t("stats.description")} isPageTitle />
+      <SectionHeader title={t("stats.title")} subtitle={t("stats.description")} icon={BarChart3} isPageTitle />
       <section
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 animate-in"
         style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
@@ -194,7 +194,7 @@ export function StatsPage() {
           <Panel asChild className="min-w-0">
             <article>
               <Repeat className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.mostRewatched")}</p>
+              <p className="mt-4 text-body-sm text-muted-foreground">{t("stats.mostRewatched")}</p>
               {stats.data.mostRewatchedTitle ? (
                 <>
                   <p
@@ -203,7 +203,7 @@ export function StatsPage() {
                   >
                     {stats.data.mostRewatchedTitle.title}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     {t("stats.rewatchCount", { count: stats.data.mostRewatchedTitle.count })}
                   </p>
                 </>
@@ -215,7 +215,7 @@ export function StatsPage() {
           <Panel asChild className="min-w-0">
             <article>
               <ThumbsUp className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.favouriteGenreByRating")}</p>
+              <p className="mt-4 text-body-sm text-muted-foreground">{t("stats.favouriteGenreByRating")}</p>
               <p
                 className="mt-1 truncate font-display text-3xl font-bold"
                 title={stats.data.favouriteGenreByRating ?? undefined}
@@ -227,7 +227,7 @@ export function StatsPage() {
           <Panel asChild className="min-w-0">
             <article>
               <PieChart className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.moviesVsSeries")}</p>
+              <p className="mt-4 text-body-sm text-muted-foreground">{t("stats.moviesVsSeries")}</p>
               <div
                 className="mt-4 flex h-2 w-full overflow-hidden rounded-full bg-foreground/[0.08]"
                 aria-hidden="true"
@@ -235,7 +235,7 @@ export function StatsPage() {
                 <div className="h-full bg-primary" style={{ width: `${moviesPercent}%` }} />
                 <div className="h-full bg-accent" style={{ width: `${100 - moviesPercent}%` }} />
               </div>
-              <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+              <div className="mt-2 flex justify-between text-caption text-muted-foreground">
                 <span>
                   {t("stats.moviesShare")} {moviesPercent}%
                 </span>
@@ -294,11 +294,11 @@ export function StatsPage() {
             <Panel asChild tone="highlight">
               <article>
                 <CalendarCheck className="size-5 text-primary" />
-                <p className="mt-4 text-sm text-muted-foreground">{t("stats.catchUpBy")}</p>
+                <p className="mt-4 text-body-sm text-muted-foreground">{t("stats.catchUpBy")}</p>
                 <p className="mt-1 font-display text-3xl font-bold">
                   {forecast.data.catchUpDate ? formatDate(forecast.data.catchUpDate) : "—"}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
+                <p className="mt-1 text-caption text-muted-foreground">{t("stats.paceBasis")}</p>
               </article>
             </Panel>
           </div>
@@ -406,7 +406,7 @@ export function StatsPage() {
             <SectionHeader title={t("stats.favouriteGenres")} size="sub" headingLevel={2} />
             <div className="mt-4 grid gap-2">
               {stats.data.favouriteGenres.map((genre) => (
-                <Tile key={genre.name} className="flex justify-between gap-3 px-3 py-2 text-sm">
+                <Tile key={genre.name} className="flex justify-between gap-3 px-3 py-2 text-body-sm">
                   <span className="min-w-0 flex-1 truncate">{genre.name}</span>
                   <strong className="shrink-0 text-muted-foreground">
                     {t("stats.genreTitleCount", { count: genre.count })}
@@ -419,7 +419,7 @@ export function StatsPage() {
         <Panel asChild tone="highlight" className="min-w-0">
           <article>
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+              <p className="text-caption font-semibold uppercase tracking-widest text-primary">
                 {t("stats.wrapped", { year: wrapped.data.year })}
               </p>
               <div className="flex items-center gap-1">
@@ -462,8 +462,10 @@ export function StatsPage() {
               </div>
             </div>
             <p className="mt-3 font-display text-4xl font-bold">{formatWatchDurationBreakdown(wrapped.data.minutes)}</p>
-            <p className="text-sm text-muted-foreground">{t("stats.activeDays", { count: wrapped.data.activeDays })}</p>
-            <div className="mt-4 grid gap-2 text-sm">
+            <p className="text-body-sm text-muted-foreground">
+              {t("stats.activeDays", { count: wrapped.data.activeDays })}
+            </p>
+            <div className="mt-4 grid gap-2 text-body-sm">
               <p>
                 {wrapped.data.movies} {t("stats.films")} · {wrapped.data.episodes} {t("stats.episodes")}
               </p>

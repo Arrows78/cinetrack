@@ -34,8 +34,8 @@ function FilmographyCard({ item }: { item: PersonCreditItem }) {
       />
       <div className="min-w-0">
         <p className="truncate font-medium">{item.title}</p>
-        <p className="truncate text-sm text-muted-foreground">{item.role || t("person.uncredited")}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="truncate text-body-sm text-muted-foreground">{item.role || t("person.uncredited")}</p>
+        <p className="mt-1 text-caption text-muted-foreground">
           {item.year ?? t("common.unknownDate")}
           {item.episodeCount ? ` · ${t("person.episodeCount", { count: item.episodeCount })}` : ""}
         </p>
@@ -90,13 +90,15 @@ export function PersonDetailPage() {
         />
         <div className="min-w-0 space-y-3">
           <div>
-            {person.knownForDepartment ? <p className="text-sm text-primary">{person.knownForDepartment}</p> : null}
+            {person.knownForDepartment ? (
+              <p className="text-body-sm text-primary">{person.knownForDepartment}</p>
+            ) : null}
             {/* Title — the page's own <h1>: same display-hero scale as
                 MediaDetailsHero's (movie/series detail pages), which this
                 page's own poster+bio hero layout otherwise mirrors. */}
             <h1 className="font-display text-display-title text-balance md:text-display-hero">{person.name}</h1>
             {person.alsoKnownAs.length > 0 ? (
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-body-sm text-muted-foreground">
                 {t("person.alsoKnownAs")} {person.alsoKnownAs.join(", ")}
               </p>
             ) : null}

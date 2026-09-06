@@ -132,7 +132,7 @@ export function SeasonAccordion({
               value={`season-${season.seasonNumber}`}
               ref={season.seasonNumber === initialOpenSeason ? initialOpenItemRef : undefined}
             >
-              <AccordionTrigger className="group rounded-2xl border border-border bg-foreground/[0.03] px-5 py-4 hover:bg-foreground/[0.06] data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
+              <AccordionTrigger className="group rounded-2xl border border-border bg-foreground/[0.03] px-5 py-4 hover:bg-foreground/[0.04] data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
                 <div className="w-full space-y-3 text-left">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -149,7 +149,7 @@ export function SeasonAccordion({
                         {season.name || `${t("media.season")} ${season.seasonNumber}`}
                       </p>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-caption text-muted-foreground">
                       {seasonProgress?.watchedEpisodes ?? 0}/{seasonProgress?.totalEpisodes ?? season.episodes.length}
                     </span>
                   </div>

@@ -54,7 +54,7 @@ export function AuthProvidersStep({
   return (
     <>
       <div className="text-center">
-        <h1 className="text-3xl font-black tracking-tight sm:text-4xl">{title}</h1>
+        <h1 className="text-page-title font-black tracking-tight sm:text-4xl">{title}</h1>
         <p className="mt-2 text-sm text-auth-foreground/55">{t("auth.continueWithProviderOrEmail")}</p>
       </div>
 
@@ -94,17 +94,17 @@ export function AuthProvidersStep({
       </div>
 
       {providerSettingsStatus === "loading" ? (
-        <p className="mt-4 text-center text-xs text-auth-foreground/45">{t("auth.status.checkingProviders")}</p>
+        <p className="mt-4 text-center text-caption text-auth-foreground/45">{t("auth.status.checkingProviders")}</p>
       ) : null}
 
       {providerSettingsStatus === "ready" && enabledSocialProviders.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-xs leading-5 text-auth-foreground/90">
+        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-caption leading-5 text-auth-foreground/90">
           {t("auth.status.noProvidersEnabled")}
         </p>
       ) : null}
 
       {providerSettingsStatus === "unavailable" ? (
-        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-xs leading-5 text-auth-foreground/90">
+        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-caption leading-5 text-auth-foreground/90">
           {t("auth.status.providerConfigError")}
         </p>
       ) : null}

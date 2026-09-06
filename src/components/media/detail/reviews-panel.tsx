@@ -2,8 +2,9 @@ import { useTranslation } from "react-i18next";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SectionHeader } from "@/components/media/primitives/section-header";
-import { formatDate } from "@/shared/utils/format";
+import { formatDate, formatRating } from "@/shared/utils/format";
 import type { MediaReview } from "@/types/media";
 import fallbackAvatar from "@/assets/person-placeholder.svg";
 
@@ -21,23 +22,24 @@ function ReviewCard({ review }: { review: MediaReview }) {
         />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{review.author}</p>
-          <p className="text-xs text-muted-foreground">{formatDate(review.createdAt)}</p>
+          <p className="text-caption text-muted-foreground">{formatDate(review.createdAt)}</p>
         </div>
         {review.rating ? (
-          <Badge variant="outline" className="shrink-0" aria-label={t("media.ratingLabel", { rating: review.rating })}>
-            <span className="text-rating" aria-hidden="true">
-              ★
-            </span>{" "}
-            {review.rating}/10
+          <Badge
+            variant="outline"
+            className="shrink-0 gap-1"
+            aria-label={t("media.ratingLabel", { rating: formatRating(review.rating) })}
+          >
+            <RatingStar rating={review.rating} suffix="/10" />
           </Badge>
         ) : null}
       </div>
-      <p className="mt-3 line-clamp-6 text-sm leading-6 text-muted-foreground">{review.content}</p>
+      <p className="mt-3 line-clamp-6 text-body-sm leading-6 text-muted-foreground">{review.content}</p>
       <a
         href={review.url}
         target="_blank"
         rel="noreferrer"
-        className="mt-3 inline-flex items-center gap-1 text-sm text-primary"
+        className="mt-3 inline-flex items-center gap-1 text-body-sm text-primary"
       >
         {t("media.readFullReview")} <ExternalLink className="size-3" />
       </a>

@@ -52,9 +52,23 @@ const episodeRoute = createRoute({
   path: "/series/$seriesId/season/$seasonNumber/episode/$episodeNumber",
   component: lazyRouteComponent(() => import("@/pages/episode-detail-page"), "EpisodeDetailPage"),
 });
+// All optional, page-side applies its own default when reading — same
+// convention as seriesDetailRoute's own `season` param above. Content
+// filters live in the URL (shareable, survive a reload, and — the actual
+// point — serializable enough for SavedFiltersBar to save/reopen a view),
+// as opposed to presentation state (grid/list, hide-watched) which stays in
+// preferences (see docs/design-system.md's "faux raccords" fix notes).
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/search",
+  validateSearch: z.object({
+    q: z.string().optional(),
+    scope: z.enum(["all", "movie", "series"]).optional(),
+    genreMovie: z.string().optional(),
+    genreSeries: z.string().optional(),
+    provider: z.string().optional(),
+    company: z.string().optional(),
+  }),
   component: lazyRouteComponent(() => import("@/pages/search-page"), "SearchPage"),
 });
 const libraryRoute = createRoute({
@@ -65,16 +79,32 @@ const libraryRoute = createRoute({
 const historyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/history",
+  validateSearch: z.object({
+    type: z.enum(["all", "movie", "series"]).optional(),
+  }),
   component: lazyRouteComponent(() => import("@/pages/history-page"), "HistoryPage"),
 });
 const trackingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tracking",
+  validateSearch: z.object({
+    scope: z.enum(["mine", "all"]).optional(),
+    type: z.enum(["all", "release", "episode", "availability"]).optional(),
+    // Tracking's own data is a fixed, non-paginated 60-day window already
+    // fully in memory (unlike History's cursor-paginated feed, which can't
+    // expose a sort without abandoning its cursor) — a real, cheap re-sort
+    // of what's already loaded, not a decorative control.
+    sort: z.enum(["date", "title"]).optional(),
+  }),
   component: lazyRouteComponent(() => import("@/pages/tracking-page"), "TrackingPage"),
 });
 const peopleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/people",
+  validateSearch: z.object({
+    mode: z.enum(["popular", "trending"]).optional(),
+    q: z.string().optional(),
+  }),
   component: lazyRouteComponent(() => import("@/pages/people-page"), "PeoplePage"),
 });
 const personDetailRoute = createRoute({
@@ -85,6 +115,14 @@ const personDetailRoute = createRoute({
 const watchTonightRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/watch-tonight",
+  validateSearch: z.object({
+    genreId: z.string().optional(),
+    provider: z.string().optional(),
+    runtime: z.coerce.number().int().positive().optional(),
+    originCountry: z.string().optional(),
+    // `seed` (the reroll driver) is deliberately NOT here — a reroll is
+    // ephemeral session state, not a filter worth sharing or saving.
+  }),
   component: lazyRouteComponent(() => import("@/pages/watch-tonight-page"), "WatchTonightPage"),
 });
 const statsRoute = createRoute({

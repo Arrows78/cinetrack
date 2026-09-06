@@ -63,7 +63,7 @@ function ListItemRow({ listId }: { listId: string }) {
   return (
     <div className="grid gap-2">
       {items.data.map((item) => (
-        <Tile key={`${item.mediaType}-${item.mediaId}`} className="flex items-center justify-between px-3 py-2 text-sm">
+        <Tile key={`${item.mediaType}-${item.mediaId}`} className="flex items-center justify-between px-3 py-2 text-body-sm">
           <span>
             {item.title} <span className="text-muted-foreground">· {t(`media.${item.mediaType}`)}</span>
           </span>
@@ -80,7 +80,7 @@ function ListItemRow({ listId }: { listId: string }) {
           </IconTooltip>
         </Tile>
       ))}
-      {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}
+      {removeError ? <p className="text-body-sm text-destructive">{removeError}</p> : null}
       <ConfirmDialog
         open={pendingRemoval !== null}
         onOpenChange={(open) => !open && !items.isSaving && setPendingRemoval(null)}
@@ -156,7 +156,7 @@ function ListsAccordionContent({
           {t("library.lists.create")}
         </Button>
       </div>
-      {listActionError ? <p className="mt-3 text-sm text-destructive">{listActionError}</p> : null}
+      {listActionError ? <p className="mt-3 text-body-sm text-destructive">{listActionError}</p> : null}
       {lists.isLoading ? (
         <LoadingState className="mt-4" />
       ) : lists.isError ? (

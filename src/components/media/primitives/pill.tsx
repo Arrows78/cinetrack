@@ -12,10 +12,10 @@ interface PillProps {
 export function Pill({ label, movieId, seriesId, providerId, className }: PillProps) {
   const search =
     providerId !== undefined
-      ? { q: label, scope: "all", provider: String(providerId) }
+      ? { q: label, scope: "all" as const, provider: String(providerId) }
       : {
           q: label,
-          scope: "all",
+          scope: "all" as const,
           genreMovie: movieId ? String(movieId) : undefined,
           genreSeries: seriesId ? String(seriesId) : undefined,
         };

@@ -35,7 +35,7 @@ export function AuthEmailStep({
     <form onSubmit={onSubmit}>
       <AuthBackLink onClick={onBack}>{t("auth.email.back")}</AuthBackLink>
 
-      <h1 className="text-3xl font-black">
+      <h1 className="text-page-title font-black">
         {mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}
       </h1>
       <p className="mt-2 text-sm text-auth-foreground/55">

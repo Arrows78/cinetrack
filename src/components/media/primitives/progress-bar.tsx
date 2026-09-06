@@ -38,9 +38,9 @@ export function ProgressBar({
     <div className={cn("space-y-1.5", className)}>
       {(label || showPercent) && (
         <div className="flex items-center justify-between">
-          {label && <span className="text-xs text-muted-foreground">{label}</span>}
+          {label && <span className="text-caption text-muted-foreground">{label}</span>}
           {showPercent && (
-            <span className={cn("text-xs font-semibold", isComplete ? "text-primary" : "text-muted-foreground")}>
+            <span className={cn("text-caption font-semibold", isComplete ? "text-primary" : "text-muted-foreground")}>
               {clampedValue}%
             </span>
           )}

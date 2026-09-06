@@ -156,7 +156,7 @@ export const typeRoles = [
   { name: "heading-sm", className: "text-heading-sm font-semibold", meta: "18px · 600 · 1.35" },
   { name: "body-lg", className: "text-body-lg", meta: "17px · 400 · 1.60" },
   { name: "body", className: "text-body", meta: "15px · 400 · 1.60" },
-  { name: "body-sm", className: "text-body-sm", meta: "13px · 400 · 1.50" },
+  { name: "body-sm", className: "text-body-sm", meta: "14px · 400 · 1.43" },
   { name: "caption", className: "text-caption text-muted-foreground", meta: "12px · 400 · 1.40" },
   { name: "overline", className: "text-overline uppercase text-muted-foreground", meta: "10px · 600 · 0.30em" },
 ] as const;
@@ -853,6 +853,14 @@ export const componentInventory = [
     "primitive",
     "live",
     "Displays compact media metadata or categorical labels."
+  ),
+  component(
+    "RatingStar",
+    "components/media/primitives/rating-star.tsx",
+    "Media",
+    "primitive",
+    "reference",
+    "Shared star+number rating atom — six call sites used to hand-write the same star glyph and formatted number."
   ),
   component(
     "ActivityBarChart",

@@ -69,12 +69,12 @@ export function BrowseByPlatform({ startIndex }: { startIndex: number }) {
               style={{ borderColor: `${platform.color}33` }}
             >
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-caption font-bold text-white"
                 style={{ backgroundColor: platform.color }}
               >
                 {platform.initial}
               </div>
-              <span className="text-sm font-medium">{platform.label}</span>
+              <span className="text-body-sm font-medium">{platform.label}</span>
             </Link>
           </Panel>
         ))}
@@ -108,7 +108,7 @@ export function BrowseByStudio({ startIndex }: { startIndex: number }) {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
                 {studio.label[0]}
               </div>
-              <span className="text-sm font-medium">{studio.label}</span>
+              <span className="text-body-sm font-medium">{studio.label}</span>
             </Link>
           </Panel>
         ))}

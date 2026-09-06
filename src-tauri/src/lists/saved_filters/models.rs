@@ -64,11 +64,11 @@ pub(super) const MAX_NAME_LENGTH: usize = 100;
 // fields per page) serializes to well under a kilobyte — this only guards
 // against a caller sending something pathological, not a real usage limit.
 pub(super) const MAX_FILTERS_JSON_LENGTH: usize = 10_000;
-// The only two pages that currently expose saved filters. Kept as a single
-// source of truth here (rather than re-typing the two literals in every
-// validation/query call) so a third page added later only has to change
-// this list.
-const VALID_PAGES: &[&str] = &["library", "search"];
+// The pages that currently expose saved filters. Kept as a single source of
+// truth here (rather than re-typing the literals in every validation/query
+// call) so a new page added later only has to change this list — see
+// SavedFilterPage in src/types/media.ts, which must stay in sync.
+const VALID_PAGES: &[&str] = &["library", "search", "tracking", "history"];
 
 pub(super) fn validate_name(name: &str) -> Result<String, ApiError> {
     let trimmed = name.trim();

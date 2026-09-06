@@ -24,7 +24,7 @@ export function NeedsAttentionSection({ backlog, stale }: { backlog: BacklogSeri
           >
             <Link to="/series/$seriesId" params={{ seriesId: String(series.seriesId) }}>
               <ListTodo className="size-4 shrink-0 text-primary" />
-              <p className="min-w-0 flex-1 truncate text-sm font-medium">{series.title}</p>
+              <p className="min-w-0 flex-1 truncate text-body-sm font-medium">{series.title}</p>
               <Badge variant="secondary">{t("home.needsAttentionBacklogBadge", { count: remaining })}</Badge>
             </Link>
           </Tile>
@@ -42,7 +42,7 @@ export function NeedsAttentionSection({ backlog, stale }: { backlog: BacklogSeri
               }
             >
               <AlertCircle className="size-4 shrink-0 text-muted-foreground" />
-              <p className="min-w-0 flex-1 truncate text-sm font-medium">{item.title}</p>
+              <p className="min-w-0 flex-1 truncate text-body-sm font-medium">{item.title}</p>
               <Badge variant="outline">{t("home.needsAttentionStaleBadge", { days: daysSinceUpdate })}</Badge>
             </Link>
           </Tile>

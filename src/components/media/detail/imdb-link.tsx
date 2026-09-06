@@ -10,7 +10,7 @@ export function ImdbLink({ imdbId }: { imdbId?: string | null }) {
   const segment = imdbId.startsWith("nm") ? "name" : "title";
   return (
     <a
-      className="inline-flex items-center gap-1 text-sm text-primary"
+      className="inline-flex items-center gap-1 text-body-sm text-primary"
       href={`https://www.imdb.com/${segment}/${imdbId}/`}
       target="_blank"
       rel="noreferrer"

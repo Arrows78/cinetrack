@@ -129,17 +129,17 @@ export function TvTimeImportCard() {
               })}
             </p>
             {result.ambiguous.length ? (
-              <p className="mt-1 text-xs opacity-90">
+              <p className="mt-1 text-caption opacity-90">
                 {t("tvtimeImport.ambiguous", { count: result.ambiguous.length })}
               </p>
             ) : null}
             {result.retryable.length ? (
-              <p className="mt-1 text-xs opacity-90">
+              <p className="mt-1 text-caption opacity-90">
                 {t("tvtimeImport.retry.pointer", { count: result.retryable.length })}
               </p>
             ) : null}
             {result.unmatched.length ? (
-              <details className="mt-2 text-xs opacity-90">
+              <details className="mt-2 text-caption opacity-90">
                 <summary className="cursor-pointer">
                   {t("tvtimeImport.unmatched", { count: result.unmatched.length })}
                 </summary>
@@ -200,9 +200,9 @@ export function TvTimeImportCard() {
           <CardDescription>{t("tvtimeImport.description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-muted-foreground">{t("tvtimeImport.hint")}</p>
-          <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.rewatchNotice")}</p>
-          <p className="mt-2 text-xs text-muted-foreground">{t("tvtimeImport.favouritesNotice")}</p>
+          <p className="text-caption text-muted-foreground">{t("tvtimeImport.hint")}</p>
+          <p className="mt-2 text-caption text-muted-foreground">{t("tvtimeImport.rewatchNotice")}</p>
+          <p className="mt-2 text-caption text-muted-foreground">{t("tvtimeImport.favouritesNotice")}</p>
 
           <div className="mt-4 flex items-center gap-3">
             <Button
@@ -236,7 +236,9 @@ export function TvTimeImportCard() {
                 label={`${t(`tvtimeImport.phase.${progress.phase}`)} · ${progress.done}/${progress.total}`}
                 showPercent
               />
-              {progress.label ? <p className="mt-1 truncate text-xs text-muted-foreground">{progress.label}</p> : null}
+              {progress.label ? (
+                <p className="mt-1 truncate text-caption text-muted-foreground">{progress.label}</p>
+              ) : null}
             </div>
           ) : null}
         </CardContent>

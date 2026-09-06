@@ -152,6 +152,44 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn accepts_tracking_and_history_as_valid_pages() {
+        let pool = migrated_pool().await;
+        create_impl(
+            &pool,
+            "default",
+            "tracking",
+            "Mine, upcoming",
+            json!({ "scopeFilter": "mine", "typeFilter": "all", "sort": "date" }),
+        )
+        .await
+        .unwrap();
+        create_impl(
+            &pool,
+            "default",
+            "history",
+            "Movies only",
+            json!({ "typeFilter": "movie" }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            list_impl(&pool, "default", "tracking".to_string())
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            list_impl(&pool, "default", "history".to_string())
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[tokio::test]
     async fn rejects_an_unknown_page() {
         let pool = migrated_pool().await;
         assert!(

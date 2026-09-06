@@ -36,7 +36,7 @@ describe("ReviewsPanel", () => {
     render(<ReviewsPanel reviews={[buildReview()]} />);
 
     expect(screen.getByText("Jane Critic")).toBeInTheDocument();
-    expect(screen.getByText("8/10")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rating: 8.0 out of 10")).toBeInTheDocument();
     expect(screen.getByText("A remarkable achievement in filmmaking.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Read full review/ })).toHaveAttribute(
       "href",

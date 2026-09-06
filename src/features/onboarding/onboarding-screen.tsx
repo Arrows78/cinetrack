@@ -67,7 +67,7 @@ export function OnboardingScreen() {
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-border bg-foreground/[0.04] text-muted-foreground/60">
           <Sparkles className="h-7 w-7" />
         </div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">{t("onboarding.title")}</h1>
+        <h1 className="font-display text-heading-lg font-bold tracking-tight">{t("onboarding.title")}</h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
           {t("onboarding.subtitle")}
         </p>
@@ -77,7 +77,7 @@ export function OnboardingScreen() {
             <Tile
               asChild
               key={choice.to}
-              className="bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.06]"
+              className="bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.04]"
             >
               <button
                 type="button"

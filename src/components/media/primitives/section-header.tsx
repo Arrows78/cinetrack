@@ -75,7 +75,7 @@ export function SectionHeader({
             <p
               className={cn(
                 "text-muted-foreground transition-colors duration-base group-hover:text-muted-foreground/80",
-                isSub ? "mt-1 text-caption" : "mt-1.5 text-sm"
+                isSub ? "mt-1 text-caption" : "mt-1.5 text-body-sm"
               )}
             >
               {subtitle}

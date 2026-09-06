@@ -72,7 +72,7 @@ function SeriesFallbackRow({ result }: { result: NextEpisodeResult }) {
       <span className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground">
         <span className="truncate">{result.series.title}</span>
       </span>
-      <p className="mt-1.5 truncate text-sm text-muted-foreground">{statusText}</p>
+      <p className="mt-1.5 truncate text-body-sm text-muted-foreground">{statusText}</p>
     </MediaProgressRow>
   );
 }
@@ -123,8 +123,8 @@ function MovieWatchNextRow({ media }: { media: MediaSummary }) {
         />
       }
     >
-      <p className="truncate font-display text-lg font-bold leading-tight">{media.title}</p>
-      <p className="mt-1 truncate text-sm text-muted-foreground">
+      <p className="truncate font-display text-heading-sm font-bold leading-tight">{media.title}</p>
+      <p className="mt-1 truncate text-body-sm text-muted-foreground">
         {media.year ?? t("media.unknownYear")}
         {media.genres[0] ? ` · ${media.genres[0]}` : ""}
       </p>
@@ -208,21 +208,21 @@ function RecentlyWatchedRow({ entry, media }: { entry: ViewingHistoryItem; media
       }
     >
       {isMovie ? (
-        <p className="truncate font-display text-lg font-bold leading-tight">{entry.title}</p>
+        <p className="truncate font-display text-heading-sm font-bold leading-tight">{entry.title}</p>
       ) : (
         <>
           <span className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground">
             <span className="truncate">{entry.title}</span>
           </span>
           {episode.episodeNumber !== undefined ? (
-            <p className="mt-1.5 truncate font-display text-lg font-bold leading-tight">
+            <p className="mt-1.5 truncate font-display text-heading-sm font-bold leading-tight">
               {formatEpisodeCode(episode.seasonNumber ?? 0, episode.episodeNumber, { padded: true })}
             </p>
           ) : episode.isLoading ? (
-            <p className="mt-1.5 truncate text-sm text-muted-foreground">{t("common.loading")}</p>
+            <p className="mt-1.5 truncate text-body-sm text-muted-foreground">{t("common.loading")}</p>
           ) : null}
           {episode.episodeTitle ? (
-            <p className="truncate text-sm text-muted-foreground">{episode.episodeTitle}</p>
+            <p className="truncate text-body-sm text-muted-foreground">{episode.episodeTitle}</p>
           ) : null}
         </>
       )}

@@ -5,6 +5,7 @@ import { Bookmark, BookmarkCheck, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Progress } from "@/components/ui/progress";
+import { RatingStar } from "@/components/media/primitives/rating-star";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
@@ -144,14 +145,11 @@ function MediaCardInner({
         <div
           aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
           className={cn(
-            "absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-md transition-transform duration-base group-hover:scale-110",
+            "absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-caption font-medium backdrop-blur-md transition-transform duration-base group-hover:scale-110",
             MEDIA_POSTER_OVERLAY_CLASSNAME.chip
           )}
         >
-          <span className="text-rating" aria-hidden="true">
-            ★
-          </span>
-          {formatRating(media.rating)}
+          <RatingStar rating={media.rating} />
         </div>
 
         {/* Type chip — no separate "Seen" badge: the finished bottom bar
@@ -160,7 +158,7 @@ function MediaCardInner({
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           <Badge
             variant={media.mediaType === "movie" ? "movie" : "series"}
-            className="px-2.5 py-1 text-xs font-semibold uppercase backdrop-blur-sm transition-all duration-base"
+            className="px-2.5 py-1 text-caption font-semibold uppercase backdrop-blur-sm transition-all duration-base"
           >
             {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
           </Badge>
@@ -170,7 +168,7 @@ function MediaCardInner({
         <div className="absolute inset-x-0 bottom-0 p-4">
           <p
             className={cn(
-              "font-display line-clamp-2 text-base font-bold leading-tight md:text-lg",
+              "font-display line-clamp-2 text-base font-bold leading-tight md:text-heading-sm",
               MEDIA_POSTER_OVERLAY_CLASSNAME.titleText
             )}
           >

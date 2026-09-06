@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { UserX } from "lucide-react";
+import { Users,UserX } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { SearchBar } from "@/components/media/primitives/search-bar";
@@ -61,7 +61,7 @@ function PersonCard({ person, index }: { person: PersonSummary; index: number })
           <div className="absolute inset-x-0 bottom-0 p-4">
             <p
               className={cn(
-                "font-display line-clamp-2 text-base font-bold leading-tight md:text-lg",
+                "font-display line-clamp-2 text-base font-bold leading-tight md:text-heading-sm",
                 MEDIA_POSTER_OVERLAY_CLASSNAME.titleText
               )}
             >
@@ -95,7 +95,7 @@ export function PeoplePage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeader title={t("people.title")} subtitle={t("people.description")} isPageTitle />
+      <SectionHeader title={t("people.title")} subtitle={t("people.description")} icon={Users} isPageTitle />
       <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
         <div className="w-full sm:w-64">
           <SearchBar value={query} onChange={setQuery} placeholder={t("people.searchPlaceholder")} />

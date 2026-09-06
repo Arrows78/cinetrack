@@ -23,13 +23,15 @@ export function WatchNextRow({ entry }: { entry: WatchNextEntry }) {
       <span className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground">
         <span className="truncate">{entry.series.title}</span>
       </span>
-      <p className="mt-1.5 font-display text-lg font-bold leading-tight">
+      <p className="mt-1.5 font-display text-heading-sm font-bold leading-tight">
         {formatEpisodeCode(entry.nextEpisode.seasonNumber, entry.nextEpisode.episodeNumber, { padded: true })}
         {entry.remaining > 1 ? (
-          <span className="ml-2 align-middle text-xs font-semibold text-muted-foreground">+{entry.remaining - 1}</span>
+          <span className="ml-2 align-middle text-caption font-semibold text-muted-foreground">
+            +{entry.remaining - 1}
+          </span>
         ) : null}
       </p>
-      <p className="truncate text-sm text-muted-foreground">{entry.nextEpisode.title}</p>
+      <p className="truncate text-body-sm text-muted-foreground">{entry.nextEpisode.title}</p>
     </MediaProgressRow>
   );
 }

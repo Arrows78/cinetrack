@@ -142,6 +142,7 @@ export function HistoryPage() {
         <SectionHeader
           title={t("history.recentActivity")}
           subtitle={t("history.recentActivitySubtitle")}
+          icon={History}
           index={1}
           action={
             <FilterBar
@@ -209,7 +210,7 @@ export function HistoryPage() {
                       <div className="min-w-0">
                         <p className="truncate font-semibold leading-snug">{item.title}</p>
                         {item.episodeTitle ? (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
+                          <p className="mt-0.5 text-caption text-muted-foreground">
                             {formatEpisodeCode(item.seasonNumber ?? 0, item.episodeNumber ?? 0)} • {item.episodeTitle}
                           </p>
                         ) : null}
@@ -263,7 +264,7 @@ export function HistoryPage() {
                 <Tile
                   asChild
                   key={item.seriesId}
-                  className="bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.06]"
+                  className="bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.04]"
                 >
                   <motion.div
                     className="group relative overflow-hidden"
@@ -274,7 +275,7 @@ export function HistoryPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold leading-snug">{item.title}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
+                        <p className="mt-0.5 text-caption text-muted-foreground">
                           {item.watchedEpisodes}/{displayTotal} {t("history.episodesWatched")}
                         </p>
                       </div>

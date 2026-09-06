@@ -110,11 +110,11 @@ function HomePageContent() {
           <div className="flex flex-col items-center gap-8">
             <div className="grid gap-4 text-left sm:grid-cols-2">
               <Panel tone="subtle" className="space-y-3">
-                <p className="text-sm font-semibold">{t("home.noTokenWorksTitle")}</p>
+                <p className="text-body-sm font-semibold">{t("home.noTokenWorksTitle")}</p>
                 <ul className="space-y-2">
                   {[t("home.noTokenWorksItem1"), t("home.noTokenWorksItem2"), t("home.noTokenWorksItem3")].map(
                     (item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <li key={item} className="flex items-start gap-2 text-body-sm text-muted-foreground">
                         <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                         {item}
                       </li>
@@ -123,11 +123,11 @@ function HomePageContent() {
                 </ul>
               </Panel>
               <Panel tone="highlight" className="space-y-3">
-                <p className="text-sm font-semibold">{t("home.noTokenUnlocksTitle")}</p>
+                <p className="text-body-sm font-semibold">{t("home.noTokenUnlocksTitle")}</p>
                 <ul className="space-y-2">
                   {[t("home.noTokenUnlocksItem1"), t("home.noTokenUnlocksItem2"), t("home.noTokenUnlocksItem3")].map(
                     (item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <li key={item} className="flex items-start gap-2 text-body-sm text-muted-foreground">
                         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                         {item}
                       </li>
@@ -156,7 +156,7 @@ function HomePageContent() {
         <Panel tone="highlight" className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-semibold">{t("home.noTokenBannerTitle")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("home.noTokenBannerDesc")}</p>
+            <p className="mt-1 text-body-sm text-muted-foreground">{t("home.noTokenBannerDesc")}</p>
           </div>
           <Button asChild variant="outline" size="sm">
             <Link to="/settings">{t("home.noTokenAddCta")}</Link>
@@ -189,11 +189,11 @@ function HomePageContent() {
               { to: "/stats", icon: BarChart3, label: t("nav.stats"), desc: t("home.offlineLinksStatsDesc") },
             ] as const
           ).map(({ to, icon: Icon, label, desc }) => (
-            <Tile asChild key={to} className="bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.06]">
+            <Tile asChild key={to} className="bg-foreground/[0.03] p-4 transition-colors hover:bg-foreground/[0.04]">
               <Link to={to}>
                 <Icon className="h-5 w-5 text-primary" />
                 <p className="mt-3 font-semibold">{label}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
+                <p className="mt-1 text-body-sm text-muted-foreground">{desc}</p>
               </Link>
             </Tile>
           ))}
@@ -247,7 +247,7 @@ function HomePageContent() {
               {hero.title}
             </h2>
 
-            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground animate-in delay-500">
+            <p className="mt-3 max-w-lg text-body-sm leading-6 text-muted-foreground animate-in delay-500">
               {hero.overview}
             </p>
 

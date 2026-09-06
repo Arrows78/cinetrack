@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
+import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
@@ -77,10 +78,7 @@ export function MediaListRow({
               aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
               className="ml-auto flex items-center gap-1 tabular-nums"
             >
-              <span className="text-rating" aria-hidden="true">
-                ★
-              </span>
-              {formatRating(media.rating)}
+              <RatingStar rating={media.rating} />
             </span>
           </div>
           {showProgress ? (

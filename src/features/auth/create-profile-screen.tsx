@@ -38,7 +38,7 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
         </div>
 
         <AuthStepIcon icon={UserPlus} />
-        <h1 className="mt-5 text-2xl font-black">{t("profileGate.createTitle")}</h1>
+        <h1 className="mt-5 text-heading-lg font-black">{t("profileGate.createTitle")}</h1>
         <p className="mt-3 text-sm leading-6 text-auth-foreground/55">
           {t("profileGate.createDescription", { email: user?.email ?? "" })}
         </p>

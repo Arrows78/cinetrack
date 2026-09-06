@@ -7,7 +7,7 @@ export function KeywordChips({ keywords }: { keywords?: string[] }) {
       {keywords.map((keyword) => (
         <span
           key={keyword}
-          className="rounded-full border border-border bg-foreground/5 px-2.5 py-0.5 text-xs text-muted-foreground"
+          className="rounded-full border border-border bg-foreground/5 px-2.5 py-0.5 text-caption text-muted-foreground"
         >
           {keyword}
         </span>

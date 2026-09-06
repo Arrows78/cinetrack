@@ -47,7 +47,7 @@ function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove:
             <p className="truncate font-medium">{entry.title}</p>
             {entry.available ? <Badge variant="success">{t("tracking.availableNow")}</Badge> : null}
           </div>
-          <p className="truncate text-sm text-muted-foreground">
+          <p className="truncate text-body-sm text-muted-foreground">
             {t("tracking.region", { region: entry.region })}
             {names.length ? ` · ${names.join(", ")}` : ""}
           </p>

@@ -100,7 +100,7 @@ export const ToastAction = React.forwardRef<
   <ToastPrimitive.Action
     ref={ref}
     className={cn(
-      "shrink-0 rounded-xl border border-border bg-transparent px-3 py-1.5 text-sm font-medium transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "shrink-0 rounded-xl border border-border bg-transparent px-3 py-1.5 text-sm font-medium transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       className
     )}
     {...props}

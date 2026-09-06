@@ -80,7 +80,7 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
         collapsed ? "h-8 w-8 justify-center" : "h-8 pl-1 pr-2.5"
       )}
     >
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-caption font-semibold text-primary">
         {profileInitial(currentLabel)}
       </span>
       {!collapsed && <span className="max-w-[6rem] truncate">{currentLabel}</span>}

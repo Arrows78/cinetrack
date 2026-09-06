@@ -59,7 +59,7 @@ function BlockedScreen({ originalError }: { originalError: string | null }) {
                 </AsyncActionFeedback>
               ) : null}
               {originalError ? (
-                <details className="mt-2 max-w-md text-left text-xs text-muted-foreground">
+                <details className="mt-2 max-w-md text-left text-caption text-muted-foreground">
                   <summary className="cursor-pointer text-center">{t("errors.technicalDetails")}</summary>
                   <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">
                     {t("errors.technicalDetailsLogged")}
@@ -119,7 +119,7 @@ export function BootRecoveryGate({ children }: { children: ReactNode }) {
                   {restoreError}
                 </AsyncActionFeedback>
               ) : null}
-              <details className="mt-2 max-w-md text-left text-xs text-muted-foreground">
+              <details className="mt-2 max-w-md text-left text-caption text-muted-foreground">
                 <summary className="cursor-pointer text-center">{t("errors.technicalDetails")}</summary>
                 <p className="mt-2 break-words rounded-xl border border-border bg-card p-3 font-mono">
                   {t("errors.technicalDetailsLogged")}

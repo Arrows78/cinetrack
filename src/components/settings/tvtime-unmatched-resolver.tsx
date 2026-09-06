@@ -68,7 +68,7 @@ function UnmatchedItemRow({ item, onResolved }: { item: RetryableUnmatched; onRe
         <span className="flex flex-col items-start text-left">
           <span>{item.label}</span>
           {item.kind === "series" ? (
-            <span className="text-xs font-normal text-muted-foreground">
+            <span className="text-caption font-normal text-muted-foreground">
               {t("tvtimeImport.retry.episodeCount", { count: item.episodes.length })}
             </span>
           ) : null}

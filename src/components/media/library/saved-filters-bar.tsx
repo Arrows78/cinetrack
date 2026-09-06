@@ -125,8 +125,8 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
           </IconTooltip>
         )}
       </div>
-      {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
-      {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}
+      {saveError ? <p className="text-body-sm text-destructive">{saveError}</p> : null}
+      {removeError ? <p className="text-body-sm text-destructive">{removeError}</p> : null}
       <ConfirmDialog
         open={pendingRemoval !== null}
         onOpenChange={(open) => !open && !savedFilters.isSaving && setPendingRemoval(null)}

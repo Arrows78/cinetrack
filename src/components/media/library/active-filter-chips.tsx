@@ -11,13 +11,17 @@ export interface ActiveFilterChip {
 
 /**
  * A row of removable chips, one per non-default filter condition currently
- * applied to a page (Library or Search) — sits directly above that page's
- * results. Each chip's own "x" clears just that one condition, leaving every
- * other filter untouched; callers compute `chips` from whatever filter
- * controls that page already has (see library-explorer.tsx/search-page.tsx),
- * so this component never invents new filter dimensions of its own.
+ * applied to a page (Library, Search, Tracking, ...) — sits directly above
+ * that page's results. Each chip's own "x" clears just that one condition,
+ * leaving every other filter untouched; callers compute `chips` from
+ * whatever filter controls that page already has (see
+ * library-explorer.tsx/search-page.tsx), so this component never invents new
+ * filter dimensions of its own. `onClearAll` is the one exception — it's not
+ * a new dimension, just a shortcut for "remove every chip already shown
+ * here" — previously only reachable once filtering had already emptied the
+ * results (each page's own empty-state action), never from this row itself.
  */
-export function ActiveFilterChips({ chips }: { chips: ActiveFilterChip[] }) {
+export function ActiveFilterChips({ chips, onClearAll }: { chips: ActiveFilterChip[]; onClearAll?: () => void }) {
   const { t } = useTranslation();
 
   if (!chips.length) return null;
@@ -37,6 +41,15 @@ export function ActiveFilterChips({ chips }: { chips: ActiveFilterChip[] }) {
           </button>
         </Badge>
       ))}
+      {onClearAll && chips.length > 1 ? (
+        <button
+          type="button"
+          onClick={onClearAll}
+          className="text-caption font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          {t("filters.clearAll")}
+        </button>
+      ) : null}
     </div>
   );
 }

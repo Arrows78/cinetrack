@@ -27,9 +27,9 @@ export function StatCard({
       <Panel asChild className="min-w-0">
         <article>
           {Icon ? <Icon className="size-5 text-primary" /> : null}
-          <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+          <p className="mt-4 text-body-sm text-muted-foreground">{label}</p>
           <p className="mt-1 font-display text-3xl font-bold">{value}</p>
-          {helper ? <p className="mt-1 text-xs text-muted-foreground">{helper}</p> : null}
+          {helper ? <p className="mt-1 text-caption text-muted-foreground">{helper}</p> : null}
         </article>
       </Panel>
     );

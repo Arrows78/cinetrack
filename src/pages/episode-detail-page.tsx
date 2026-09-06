@@ -8,6 +8,7 @@ import { SeenToggle } from "@/components/media/tracking/seen-toggle";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { WatchHistoryPanel } from "@/components/media/activity/watch-history-panel";
+import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -152,7 +153,7 @@ export function EpisodeDetailPage() {
             )}
           </div>
           <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-body-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <Calendar className="size-3.5" />
                 {formatDate(episode.airDate)}
@@ -168,8 +169,11 @@ export function EpisodeDetailPage() {
                   aria-label={t("media.ratingLabel", { rating: formatRating(episode.rating) })}
                   className="flex items-center gap-1 text-rating"
                 >
-                  <span aria-hidden="true">★</span>
-                  <span className="font-semibold text-foreground">{formatRating(episode.rating)}</span>
+                  <RatingStar
+                    rating={episode.rating}
+                    starClassName=""
+                    numberClassName="font-semibold text-foreground"
+                  />
                 </span>
               ) : null}
             </div>
@@ -186,7 +190,7 @@ export function EpisodeDetailPage() {
             to="/series/$seriesId/season/$seasonNumber/episode/$episodeNumber"
             params={episodeLinkParams(previousEpisode.episodeNumber)}
             aria-label={`${t("media.previousEpisode")}: ${previousEpisode.title}`}
-            className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate" aria-hidden="true">
@@ -201,7 +205,7 @@ export function EpisodeDetailPage() {
             to="/series/$seriesId/season/$seasonNumber/episode/$episodeNumber"
             params={episodeLinkParams(nextEpisode.episodeNumber)}
             aria-label={`${t("media.nextEpisode")}: ${nextEpisode.title}`}
-            className="flex min-w-0 items-center gap-1.5 text-right text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="flex min-w-0 items-center gap-1.5 text-right text-body-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <span className="truncate" aria-hidden="true">
               {nextEpisode.title}

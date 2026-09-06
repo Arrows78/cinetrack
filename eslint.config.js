@@ -104,6 +104,8 @@ export default tseslint.config(
               "itemClassName",
               "rowClassName",
               "indicatorClassName",
+              "starClassName",
+              "numberClassName",
               "styleName",
               "style",
               "type",

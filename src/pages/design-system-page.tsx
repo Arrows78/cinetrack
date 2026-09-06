@@ -229,7 +229,7 @@ export function DesignSystemPage() {
   const liveComponentCount = componentInventory.filter((item) => item.coverage === "live").length;
 
   return (
-    <div className="space-y-14 pb-20">
+    <div className="space-y-8 pb-20">
       <header className="relative overflow-hidden rounded-hero border border-border bg-card/60 p-6 shadow-elevation-sm sm:p-8 lg:p-10">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
         <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-primary/10 blur-3xl" />

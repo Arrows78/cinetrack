@@ -88,7 +88,7 @@ export function YearActivityCalendar({
         ))}
         {WEEKDAYS.map((weekday) => (
           <Fragment key={weekday}>
-            <div className="flex items-center pr-2 text-xs text-muted-foreground">{weekdayLabel(weekday)}</div>
+            <div className="flex items-center pr-2 text-caption text-muted-foreground">{weekdayLabel(weekday)}</div>
             {weeks.map((week, weekIndex) => {
               const day = week[weekday];
               if (!day) return <div key={weekIndex} />;
@@ -109,7 +109,7 @@ export function YearActivityCalendar({
           </Fragment>
         ))}
       </div>
-      <div className="mt-2 flex items-center justify-end gap-1.5 text-xs text-muted-foreground" aria-hidden="true">
+      <div className="mt-2 flex items-center justify-end gap-1.5 text-caption text-muted-foreground" aria-hidden="true">
         <span>{t("stats.heatmap.less")}</span>
         <div className="flex gap-1">
           <span className="size-3 rounded-sm bg-foreground/[0.04]" />

@@ -27,7 +27,13 @@ const config: Config = {
         "heading-sm": ["1.125rem", { lineHeight: "1.35", fontWeight: "600" }],
         "body-lg": ["1.0625rem", { lineHeight: "1.6" }],
         body: ["0.9375rem", { lineHeight: "1.6" }],
-        "body-sm": ["0.8125rem", { lineHeight: "1.5" }],
+        // Deliberately the same size as Tailwind's own `text-sm` (0.875rem) —
+        // this token used to sit at 0.8125rem, a size nobody ever adopted
+        // (0% usage against 157 raw `text-sm` sites) specifically because
+        // swapping to it would have visibly shrunk running text app-wide.
+        // Aliasing it to text-sm's own metrics lets call sites adopt the
+        // semantic name with zero visual change.
+        "body-sm": ["0.875rem", { lineHeight: "1.25rem" }],
         caption: ["0.75rem", { lineHeight: "1.4" }],
         overline: ["0.625rem", { lineHeight: "1.3", letterSpacing: "0.3em", fontWeight: "600" }],
       },

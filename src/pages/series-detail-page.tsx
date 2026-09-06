@@ -161,7 +161,7 @@ export function SeriesDetailPage() {
                 {progress.progressPercent}
                 <span className="text-xl font-normal text-muted-foreground">%</span>
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-body-sm text-muted-foreground">
                 {t("series.episodesFraction", { watched: progress.watchedEpisodes, total: progress.totalEpisodes })}
               </p>
             </div>
@@ -171,7 +171,7 @@ export function SeriesDetailPage() {
           </Panel>
           <Panel tone="subtle" className="p-6">
             <SectionHeader title={t("series.seriesInfo")} />
-            <div className="grid gap-2 text-sm">
+            <div className="grid gap-2 text-body-sm">
               {[
                 { label: t("media.seasons"), value: series.numberOfSeasons },
                 { label: t("media.episodes"), value: series.numberOfEpisodes ?? "—" },

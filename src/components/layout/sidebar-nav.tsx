@@ -217,7 +217,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 aria-pressed={activeTheme === value}
                 onClick={() => void updatePreference({ key: "theme", value })}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-medium transition-all duration-fast",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-caption font-medium transition-all duration-fast",
                   activeTheme === value
                     ? "bg-primary/15 text-primary shadow-glow"
                     : "text-muted-foreground hover:text-foreground"

@@ -142,24 +142,24 @@ export function MonthlyRecapSection() {
         {tiles.map(({ label, value, icon: Icon }) => (
           <Tile key={label} className="p-3">
             <Icon className="size-4 text-primary" aria-hidden="true" />
-            <p className="mt-2 text-xs text-muted-foreground">{label}</p>
+            <p className="mt-2 text-caption text-muted-foreground">{label}</p>
             <p className="mt-1 truncate font-display text-2xl font-bold">{value}</p>
           </Tile>
         ))}
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <Tile className="min-w-0 p-3">
-          <p className="text-xs text-muted-foreground">{t("stats.monthlyRecap.topRatedTitle")}</p>
+          <p className="text-caption text-muted-foreground">{t("stats.monthlyRecap.topRatedTitle")}</p>
           <p className="mt-1 truncate font-medium" title={data.topRatedTitle?.title}>
             {data.topRatedTitle ? `${data.topRatedTitle.title} · ${data.topRatedTitle.rating.toFixed(1)}` : "—"}
           </p>
         </Tile>
         <Tile className="min-w-0 p-3">
-          <p className="text-xs text-muted-foreground">{t("stats.monthlyRecap.favouriteGenre")}</p>
+          <p className="text-caption text-muted-foreground">{t("stats.monthlyRecap.favouriteGenre")}</p>
           <p className="mt-1 truncate font-medium">{data.favouriteGenre ?? "—"}</p>
         </Tile>
         <Tile className="min-w-0 p-3">
-          <p className="text-xs text-muted-foreground">{t("stats.biggestBinge")}</p>
+          <p className="text-caption text-muted-foreground">{t("stats.biggestBinge")}</p>
           <p className="mt-1 truncate font-medium">
             {data.biggestBingeDay
               ? `${t("stats.watchCount", { count: data.biggestBingeDay.count })} · ${formatDate(data.biggestBingeDay.day)}`

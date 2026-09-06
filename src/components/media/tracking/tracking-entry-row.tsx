@@ -28,7 +28,7 @@ function DatedRowBody({
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">{entry.title}</p>
+          <p className="truncate text-body-sm font-medium">{entry.title}</p>
           {showScopeBadge ? (
             entry.scope === "mine" ? (
               <Badge variant="default">{t("tracking.scopeMine")}</Badge>
@@ -37,7 +37,7 @@ function DatedRowBody({
             )
           ) : null}
         </div>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-caption text-muted-foreground">
           {entry.type === "episode"
             ? `${formatEpisodeCode(entry.seasonNumber ?? 0, entry.episodeNumber ?? 0)} · ${
                 entry.episodeTitle ?? t("tracking.newEpisodeFallback")
@@ -55,7 +55,7 @@ function AvailabilityRowBody({ entry }: { entry: TrackingEntry }) {
   return (
     <>
       <Bell className="size-4 shrink-0 text-primary" />
-      <p className="min-w-0 flex-1 truncate text-sm font-medium">{entry.title}</p>
+      <p className="min-w-0 flex-1 truncate text-body-sm font-medium">{entry.title}</p>
       <Badge variant="success">{t("tracking.availableNow")}</Badge>
     </>
   );

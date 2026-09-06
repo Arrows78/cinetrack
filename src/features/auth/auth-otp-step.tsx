@@ -35,7 +35,7 @@ export function AuthOtpStep({
       <AuthBackLink onClick={onBack}>{t("auth.email.changeEmail")}</AuthBackLink>
 
       <AuthStepIcon icon={ShieldCheck} />
-      <h1 className="mt-5 text-3xl font-black">{t("auth.otp.checkInbox")}</h1>
+      <h1 className="mt-5 text-page-title font-black">{t("auth.otp.checkInbox")}</h1>
       <p className="mt-2 text-sm text-auth-foreground/55">
         {t("auth.otp.enterCode", { length: authConfig.otpLength, email: email.trim() })}
       </p>

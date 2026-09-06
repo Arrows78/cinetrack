@@ -154,7 +154,7 @@ export function WatchTonightPage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeader title={t("watchTonight.title")} subtitle={t("watchTonight.description")} isPageTitle />
+      <SectionHeader title={t("watchTonight.title")} subtitle={t("watchTonight.description")} icon={Dices} isPageTitle />
       <div className="flex flex-col gap-3 animate-in sm:flex-row sm:flex-wrap sm:items-end">
         <FormField label={t("watchTonight.genre")}>
           {() => (

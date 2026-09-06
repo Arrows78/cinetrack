@@ -52,7 +52,7 @@ export function WatchHistoryPanel({
       <ul className="mt-4 space-y-4">
         {notedEvents.map((event) => (
           <li key={event.id} className="border-l-2 border-border pl-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               {formatFullDate(event.watchedAt)}
             </p>
             <p className="mt-1 text-body-lg text-foreground">{event.note}</p>

@@ -3,6 +3,7 @@ import { Calendar, Check, Clock4, EyeOff, ImageOff, NotebookPen } from "lucide-r
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
+import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -76,7 +77,7 @@ export function EpisodeCard({
             </Badge>
           ) : null}
         </div>
-        <p className="mt-0.5 line-clamp-1 text-sm font-semibold">{hidden ? t("media.hiddenTitle") : episode.title}</p>
+        <p className="mt-0.5 line-clamp-1 text-body-sm font-semibold">{hidden ? t("media.hiddenTitle") : episode.title}</p>
         <div className="mt-1 flex items-center gap-1.5 text-caption text-muted-foreground">
           <Calendar className="size-3" />
           <span>{formatDate(episode.airDate)}</span>
@@ -92,9 +93,9 @@ export function EpisodeCard({
               <span>•</span>
               <span
                 aria-label={t("media.ratingLabel", { rating: formatRating(episode.rating) })}
-                className="text-rating"
+                className="inline-flex items-center gap-1 text-rating"
               >
-                <span aria-hidden="true">★ {formatRating(episode.rating)}</span>
+                <RatingStar rating={episode.rating} starClassName="" />
               </span>
             </>
           ) : null}
@@ -133,7 +134,7 @@ export function EpisodeCard({
               aria-label={t("media.addWatchNoteAction")}
               disabled={disabled}
               onClick={() => setNoteDialogOpen(true)}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
             >
               <NotebookPen className="size-4" />
             </button>

@@ -132,10 +132,10 @@ describe("EpisodeCard", () => {
   it("renders the rating only when present, and hides it while spoiler-hidden", () => {
     preferencesData = { spoilerProtection: false };
     const { rerender } = render(<EpisodeCard episode={makeEpisode({ rating: 8.4 })} onToggleSeen={vi.fn()} />);
-    expect(screen.getByText("★ 8.4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rating: 8.4 out of 10")).toBeInTheDocument();
 
     rerender(<EpisodeCard episode={makeEpisode({ rating: undefined })} onToggleSeen={vi.fn()} />);
-    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Rating:/)).not.toBeInTheDocument();
   });
 
   it("calls onToggleSeen when the mark-seen button is clicked", () => {

@@ -271,7 +271,7 @@ export function AuthScreen() {
             </p>
           ) : null}
 
-          <p className="mt-8 text-center text-xs leading-5 text-auth-foreground/50">
+          <p className="mt-8 text-center text-caption leading-5 text-auth-foreground/50">
             <Trans
               i18nKey="auth.legal.agreeTo"
               components={{

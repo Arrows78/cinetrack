@@ -98,7 +98,7 @@ export function WatchMilestonesSection() {
                   {milestone.achievedAt ? formatDate(milestone.achievedAt) : t("stats.milestones.achieved")}
                 </Badge>
               ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-caption text-muted-foreground">
                   {t("stats.milestones.progress", { current: milestone.currentValue, target: milestone.threshold })}
                 </p>
               )}

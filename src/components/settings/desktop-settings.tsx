@@ -197,7 +197,9 @@ export function DesktopSettings() {
                   {t("desktop.checkDatabase")}
                 </Button>
               </div>
-              {isDesktopApp() ? <p className="mt-3 text-xs text-muted-foreground">{t("desktop.shortcuts")}</p> : null}
+              {isDesktopApp() ? (
+                <p className="mt-3 text-caption text-muted-foreground">{t("desktop.shortcuts")}</p>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -225,7 +227,9 @@ export function DesktopSettings() {
                 </Button>
               </div>
               {backupStatus ? (
-                <p className={`mt-2 text-xs ${backupStatus.failed ? "text-destructive" : "text-muted-foreground"}`}>
+                <p
+                  className={`mt-2 text-caption ${backupStatus.failed ? "text-destructive" : "text-muted-foreground"}`}
+                >
                   {backupStatus.failed
                     ? t("desktop.lastBackupFailed")
                     : backupStatus.exportedAt
@@ -264,11 +268,11 @@ export function DesktopSettings() {
                 </Button>
               </div>
               {logLines?.length ? (
-                <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-border bg-card p-3 font-mono text-xs whitespace-pre-wrap">
+                <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-border bg-card p-3 font-mono text-caption whitespace-pre-wrap">
                   {logLines.join("\n")}
                 </pre>
               ) : (
-                <p className="mt-3 text-xs text-muted-foreground">{t("desktop.diagnosticsEmpty")}</p>
+                <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsEmpty")}</p>
               )}
             </CardContent>
           </Card>
@@ -294,7 +298,7 @@ export function DesktopSettings() {
               </div>
               {timingSummary?.commands.length ? (
                 <div className="mt-3 overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-caption">
                     <thead className="bg-card text-muted-foreground">
                       <tr>
                         <th className="p-2 font-medium">{t("desktop.diagnosticsTimingLayer")}</th>
@@ -324,7 +328,7 @@ export function DesktopSettings() {
                   </table>
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-muted-foreground">{t("desktop.diagnosticsTimingEmpty")}</p>
+                <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsTimingEmpty")}</p>
               )}
             </CardContent>
           </Card>
