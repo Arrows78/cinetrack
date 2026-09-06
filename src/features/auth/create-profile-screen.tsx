@@ -39,7 +39,7 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
 
         <AuthStepIcon icon={UserPlus} />
         <h1 className="mt-5 text-heading-lg font-black">{t("profileGate.createTitle")}</h1>
-        <p className="mt-3 text-sm leading-6 text-auth-foreground/55">
+        <p className="mt-3 text-body-sm leading-6 text-auth-foreground/55">
           {t("profileGate.createDescription", { email: user?.email ?? "" })}
         </p>
 
@@ -74,7 +74,7 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
           <p
             role="alert"
             aria-live="polite"
-            className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-sm text-auth-foreground/90"
+            className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-body-sm text-auth-foreground/90"
           >
             {t("profileGate.createError")}
           </p>
@@ -82,7 +82,7 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
 
         <button
           type="button"
-          className="mt-6 text-sm text-auth-foreground/60 underline-offset-4 hover:text-auth-foreground hover:underline"
+          className="mt-6 text-body-sm text-auth-foreground/60 underline-offset-4 hover:text-auth-foreground hover:underline"
           onClick={() => void signOut()}
         >
           {t("profileGate.signOut")}

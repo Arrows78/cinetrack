@@ -10,7 +10,7 @@ interface LoadingStateProps {
 export function LoadingState({ label, className }: LoadingStateProps) {
   const { t } = useTranslation();
   return (
-    <p role="status" aria-live="polite" className={cn("text-sm text-muted-foreground", className)}>
+    <p role="status" aria-live="polite" className={cn("text-body-sm text-muted-foreground", className)}>
       {label ?? t("common.loading")}
     </p>
   );

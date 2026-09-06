@@ -258,7 +258,7 @@ export function SmartListsAccordionContent({
               <button
                 type="button"
                 aria-pressed={activeSmartListId === list.id}
-                className="min-w-0 flex-1 truncate text-left text-sm font-medium"
+                className="min-w-0 flex-1 truncate text-left text-body-sm font-medium"
                 onClick={() => onSelectSmartList(activeSmartListId === list.id ? NO_SMART_LIST_SELECTED : list.id)}
               >
                 {list.name}

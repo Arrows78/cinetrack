@@ -24,7 +24,7 @@ export function PartialErrorState({ message, onRetry, className }: PartialErrorS
   return (
     <div
       className={cn(
-        "mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive",
+        "mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-body-sm text-destructive",
         className
       )}
     >

@@ -98,7 +98,7 @@ export function MonthlyRecapSection() {
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-heading-sm">{t("stats.monthlyRecap.title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{monthLabel}</p>
+          <p className="mt-1 text-body-sm text-muted-foreground">{monthLabel}</p>
         </div>
         <div className="flex items-center gap-1">
           <IconTooltip label={t("stats.monthlyRecap.export")}>
@@ -143,7 +143,7 @@ export function MonthlyRecapSection() {
           <Tile key={label} className="p-3">
             <Icon className="size-4 text-primary" aria-hidden="true" />
             <p className="mt-2 text-caption text-muted-foreground">{label}</p>
-            <p className="mt-1 truncate font-display text-2xl font-bold">{value}</p>
+            <p className="mt-1 truncate font-display text-heading-lg font-bold">{value}</p>
           </Tile>
         ))}
       </div>

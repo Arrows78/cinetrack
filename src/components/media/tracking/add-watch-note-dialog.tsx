@@ -42,10 +42,10 @@ export function AddWatchNoteDialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
         <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME}>
-          <DialogPrimitive.Title className="shrink-0 font-display text-lg font-bold">
+          <DialogPrimitive.Title className="shrink-0 font-display text-heading-sm font-bold">
             {t("media.addWatchNoteTitle")}
           </DialogPrimitive.Title>
-          <DialogPrimitive.Description className="mt-1 shrink-0 text-sm leading-6 text-muted-foreground">
+          <DialogPrimitive.Description className="mt-1 shrink-0 text-body-sm leading-6 text-muted-foreground">
             {t("media.addWatchNoteDescription")}
           </DialogPrimitive.Description>
           <Textarea

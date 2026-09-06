@@ -68,7 +68,7 @@ export function OnboardingScreen() {
           <Sparkles className="h-7 w-7" />
         </div>
         <h1 className="font-display text-heading-lg font-bold tracking-tight">{t("onboarding.title")}</h1>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+        <p className="mx-auto mt-3 max-w-md text-body-sm leading-relaxed text-muted-foreground">
           {t("onboarding.subtitle")}
         </p>
 
@@ -87,14 +87,14 @@ export function OnboardingScreen() {
               >
                 <choice.icon className="h-5 w-5 text-primary" aria-hidden="true" />
                 <p className="mt-3 font-semibold">{t(choice.titleKey)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{t(choice.descriptionKey)}</p>
+                <p className="mt-1 text-body-sm text-muted-foreground">{t(choice.descriptionKey)}</p>
               </button>
             </Tile>
           ))}
         </div>
 
         {error ? (
-          <p role="alert" aria-live="polite" className="mt-6 text-sm text-destructive">
+          <p role="alert" aria-live="polite" className="mt-6 text-body-sm text-destructive">
             {t("onboarding.error")}
           </p>
         ) : null}

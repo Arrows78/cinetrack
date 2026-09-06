@@ -28,7 +28,14 @@ export function StatCard({
         <article>
           {Icon ? <Icon className="size-5 text-primary" /> : null}
           <p className="mt-4 text-body-sm text-muted-foreground">{label}</p>
-          <p className="mt-1 font-display text-3xl font-bold">{value}</p>
+          {/* `truncate` + `title` is a no-op for the usual short numeric
+              value, but keeps a longer one (a genre name, a title) from
+              wrapping and pushing the card's height out of line with its
+              siblings — the native title attribute is the same tooltip a
+              hand-rolled version of this card already had. */}
+          <p className="mt-1 truncate font-display text-page-title font-bold" title={value}>
+            {value}
+          </p>
           {helper ? <p className="mt-1 text-caption text-muted-foreground">{helper}</p> : null}
         </article>
       </Panel>
@@ -38,7 +45,7 @@ export function StatCard({
   return (
     <div className="flex flex-col gap-0.5 border-l-2 border-primary pl-4">
       <p className="text-overline font-semibold uppercase text-muted-foreground">{label}</p>
-      <p className="font-display text-3xl font-bold leading-none text-primary">{value}</p>
+      <p className="font-display text-page-title font-bold leading-none text-primary">{value}</p>
       {helper ? <p className="mt-1 text-caption text-muted-foreground">{helper}</p> : null}
     </div>
   );

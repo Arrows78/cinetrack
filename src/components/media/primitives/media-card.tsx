@@ -168,7 +168,7 @@ function MediaCardInner({
         <div className="absolute inset-x-0 bottom-0 p-4">
           <p
             className={cn(
-              "font-display line-clamp-2 text-base font-bold leading-tight md:text-heading-sm",
+              "font-display line-clamp-2 text-heading-xs font-bold leading-tight md:text-heading-sm",
               MEDIA_POSTER_OVERLAY_CLASSNAME.titleText
             )}
           >

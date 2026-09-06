@@ -77,7 +77,7 @@ export function WatchMilestonesSection() {
   return (
     <Panel>
       <h2 className="text-heading-sm">{t("stats.milestones.title")}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{t("stats.milestones.description")}</p>
+      <p className="mt-1 text-body-sm text-muted-foreground">{t("stats.milestones.description")}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {milestones.data.map((milestone) => (
           <Tile
@@ -90,7 +90,7 @@ export function WatchMilestonesSection() {
               <Lock className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">
+              <p className="text-body-sm font-medium">
                 {t(THRESHOLD_KEY[milestone.category], { count: milestone.threshold })}
               </p>
               {milestone.achieved ? (

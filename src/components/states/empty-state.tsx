@@ -18,7 +18,7 @@ export function EmptyState({ title, description, action, icon: Icon, className }
         </div>
       )}
       <p className="font-display text-heading-lg font-bold tracking-tight">{title}</p>
-      <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">{description}</p>
+      <p className="mx-auto mt-3 max-w-sm text-body-sm leading-relaxed text-muted-foreground">{description}</p>
       {action ? <div className="mt-8 flex justify-center">{action}</div> : null}
     </div>
   );

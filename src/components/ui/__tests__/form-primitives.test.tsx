@@ -20,7 +20,7 @@ describe("form primitives", () => {
     expect(alert).toHaveClass("border-destructive/25", "bg-destructive/10");
 
     rerender(<AsyncActionFeedback tone="plain">Plain message</AsyncActionFeedback>);
-    expect(screen.getByRole("status")).toHaveClass("text-sm", "text-muted-foreground");
+    expect(screen.getByRole("status")).toHaveClass("text-body-sm", "text-muted-foreground");
 
     rerender(<AsyncActionFeedback tone="success">Success message</AsyncActionFeedback>);
     expect(screen.getByRole("status")).toHaveClass("border-success/30", "bg-success/5");

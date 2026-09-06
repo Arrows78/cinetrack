@@ -157,9 +157,9 @@ export function SeriesDetailPage() {
               {progress.isUpToDate ? <Badge variant="success">{t("media.upToDate")}</Badge> : null}
             </div>
             <div className="mt-3 flex items-end justify-between gap-3">
-              <p className="font-display text-5xl font-bold leading-none">
+              <p className="font-display text-display-md font-bold leading-none">
                 {progress.progressPercent}
-                <span className="text-xl font-normal text-muted-foreground">%</span>
+                <span className="text-heading-md font-normal text-muted-foreground">%</span>
               </p>
               <p className="text-body-sm text-muted-foreground">
                 {t("series.episodesFraction", { watched: progress.watchedEpisodes, total: progress.totalEpisodes })}

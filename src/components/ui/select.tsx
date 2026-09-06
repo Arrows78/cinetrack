@@ -31,7 +31,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(({ className, si
   <div className={cn(selectVariants({ size }), className)}>
     <select
       ref={ref}
-      className="h-full w-full cursor-pointer appearance-none bg-transparent px-3 pr-9 text-sm text-foreground outline-none disabled:cursor-not-allowed"
+      className="h-full w-full cursor-pointer appearance-none bg-transparent px-3 pr-9 text-body-sm text-foreground outline-none disabled:cursor-not-allowed"
       {...props}
     />
     <ChevronDown

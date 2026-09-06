@@ -150,10 +150,12 @@ export const typeFamilies = [
 
 export const typeRoles = [
   { name: "display-hero", className: "text-display-hero", meta: "56px · 800 · 1.05 · -0.02em", display: true },
+  { name: "display-md", className: "text-display-md", meta: "48px · 700 · 1.10 · -0.015em", display: true },
   { name: "display-title", className: "text-display-title", meta: "36px · 700 · 1.15 · -0.01em", display: true },
   { name: "heading-lg", className: "text-heading-lg font-semibold", meta: "24px · 600 · 1.25" },
   { name: "heading-md", className: "text-heading-md font-semibold", meta: "20px · 600 · 1.30" },
   { name: "heading-sm", className: "text-heading-sm font-semibold", meta: "18px · 600 · 1.35" },
+  { name: "heading-xs", className: "text-heading-xs font-semibold", meta: "16px · 600 · 1.40" },
   { name: "body-lg", className: "text-body-lg", meta: "17px · 400 · 1.60" },
   { name: "body", className: "text-body", meta: "15px · 400 · 1.60" },
   { name: "body-sm", className: "text-body-sm", meta: "14px · 400 · 1.43" },

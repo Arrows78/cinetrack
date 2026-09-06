@@ -20,7 +20,7 @@ export function BrowserPreviewBanner() {
   return (
     // bottom-20 clears MobileTabBar (fixed at the very bottom below lg) —
     // lg:bottom-4 is back to the original offset once that tab bar is gone.
-    <div className="fixed bottom-20 left-1/2 z-overlay flex -translate-x-1/2 items-center gap-2 rounded-full border border-warning/30 bg-background px-4 py-2 text-sm shadow-xl lg:bottom-4">
+    <div className="fixed bottom-20 left-1/2 z-overlay flex -translate-x-1/2 items-center gap-2 rounded-full border border-warning/30 bg-background px-4 py-2 text-body-sm shadow-xl lg:bottom-4">
       <MonitorX className="size-4 text-warning" />
       {t("browserPreview.message")}
     </div>

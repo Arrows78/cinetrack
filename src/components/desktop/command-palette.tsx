@@ -438,7 +438,7 @@ export function CommandPalette() {
               })}
 
               {!results.length && !isSearchingTitles ? (
-                <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("pages.noResults")}</p>
+                <p className="px-3 py-6 text-center text-body-sm text-muted-foreground">{t("pages.noResults")}</p>
               ) : null}
             </div>
           </div>

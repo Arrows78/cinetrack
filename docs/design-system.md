@@ -2,11 +2,15 @@
 
 The CineTrack design system is the shared language for building the desktop application. It combines implementation tokens, React primitives, product patterns, accessibility requirements, and contribution rules.
 
-Application UI should use semantic typography roles from `tailwind.config.ts`
-(`text-page-title`, `text-heading-lg`, `text-heading-md`, `text-body`,
-`text-caption`, and related roles). Raw Tailwind sizes remain available for
-editorial or data-dense exceptions, but new page and section headings should
-prefer the shared roles so hierarchy remains consistent across routes.
+Application UI uses semantic typography roles from `tailwind.config.ts`
+exclusively — no raw Tailwind text-size utility (`text-xs`, `text-sm`,
+`text-lg`, `text-xl`, `text-2xl`, `text-3xl`, `text-4xl`, `text-5xl`, ...)
+appears anywhere in feature code, including inside `src/components/ui`'s own
+primitives. Every size in real use maps to a named role; the two rarest
+sizes (`display-md` at 3rem, `heading-xs` at 1rem) exist purely because a
+real call site needed exactly that pixel value and no other role matched —
+add a role rather than reach for a raw size when a new one comes up, the
+same way these two were added.
 
 The living visual catalog is available at `/design-system` in development builds. This document covers the durable architecture and governance that should remain readable outside the application.
 
@@ -85,7 +89,7 @@ CineTrack uses three font families with non-overlapping responsibilities:
 - **DM Sans** (`font-sans`) for interface text, controls, navigation, tables, and body copy — including synopsis, biography, and personal-note body text (see below).
 - **Playfair Display** (`font-serif`) is defined but not currently used anywhere in the product. It originally styled synopsis/biography text with an editorial serif treatment; that was replaced with `font-sans` at `text-body-lg` after user feedback that the serif face read poorly for that content. Kept as a token in case a genuinely editorial context (not general body copy) needs it later — don't reintroduce it for descriptive text.
 
-New interface hierarchy should use semantic roles from `tailwind.config.ts`: `display-hero`, `display-title`, `heading-lg`, `heading-md`, `heading-sm`, `body-lg`, `body`, `body-sm`, `caption`, and `overline`. `body-sm` is deliberately defined at the exact same size as Tailwind's own stock `text-sm` (0.875rem) — it used to sit at 0.8125rem, a size nobody ever adopted precisely because switching to it would have visibly shrunk running text app-wide. Aliasing its metrics to `text-sm` means `text-sm` → `text-body-sm` is a pure rename wherever the text is genuinely body copy, never a rendering change — it's still worth using the semantic name once you're touching a line anyway, so a future change to `body-sm` alone (not `text-sm` everywhere) is possible without hunting down every raw usage.
+New interface hierarchy should use semantic roles from `tailwind.config.ts`: `display-hero`, `display-md`, `display-title`, `page-title`, `heading-lg`, `heading-md`, `heading-sm`, `heading-xs`, `body-lg`, `body`, `body-sm`, `caption`, and `overline`. `body-sm` is deliberately defined at the exact same size as Tailwind's own stock `text-sm` (0.875rem) — it used to sit at 0.8125rem, a size nobody ever adopted precisely because switching to it would have visibly shrunk running text app-wide. Aliasing its metrics to `text-sm` means `text-sm` → `text-body-sm` is a pure rename wherever the text is genuinely body copy, never a rendering change — it's still worth using the semantic name once you're touching a line anyway, so a future change to `body-sm` alone (not `text-sm` everywhere) is possible without hunting down every raw usage.
 
 Use sentence case for interface labels. Keep normal reading lines around 55–75 characters. Do not use font family or size as the only hierarchy signal; combine role, weight, spacing, and content structure.
 

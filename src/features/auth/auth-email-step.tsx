@@ -38,7 +38,7 @@ export function AuthEmailStep({
       <h1 className="text-page-title font-black">
         {mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}
       </h1>
-      <p className="mt-2 text-sm text-auth-foreground/55">
+      <p className="mt-2 text-body-sm text-auth-foreground/55">
         {t("auth.email.sendCodeDescription", { length: authConfig.otpLength })}
       </p>
 
@@ -59,7 +59,7 @@ export function AuthEmailStep({
       />
 
       {mode === "signup" ? (
-        <label className="mt-7 flex cursor-pointer items-start gap-3 text-sm text-auth-foreground/75">
+        <label className="mt-7 flex cursor-pointer items-start gap-3 text-body-sm text-auth-foreground/75">
           <button
             type="button"
             role="checkbox"

@@ -71,7 +71,7 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
           <Tile key={saved.id} className="flex items-center gap-1 rounded-full py-1 pl-3 pr-1">
             <button
               type="button"
-              className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+              className="text-body-sm font-medium text-foreground transition-colors hover:text-primary"
               onClick={() => onApply(saved.filters)}
             >
               {saved.name}

@@ -280,9 +280,9 @@ export function HistoryPage() {
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
-                        <p className="font-display text-2xl font-bold text-primary leading-none">
+                        <p className="font-display text-heading-lg font-bold text-primary leading-none">
                           {progress}
-                          <span className="text-sm font-normal text-primary/60">%</span>
+                          <span className="text-body-sm font-normal text-primary/60">%</span>
                         </p>
                       </div>
                     </div>

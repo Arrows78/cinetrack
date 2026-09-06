@@ -76,7 +76,7 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
       aria-label={t("sidebar.switchProfile")}
       title={t("sidebar.switchProfile")}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.07] dark:border-white/5 bg-foreground/5 text-sm font-medium text-foreground transition-colors hover:bg-foreground/10",
+        "flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.07] dark:border-white/5 bg-foreground/5 text-body-sm font-medium text-foreground transition-colors hover:bg-foreground/10",
         collapsed ? "h-8 w-8 justify-center" : "h-8 pl-1 pr-2.5"
       )}
     >
@@ -117,13 +117,13 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
               <Tile className="px-3 py-3">
                 <p className="font-medium">{currentLabel}</p>
                 {user?.email ? (
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-body-sm text-muted-foreground">
                     {t("settings.profiles.linkedTo", { email: user.email })}
                   </p>
                 ) : null}
               </Tile>
             ) : (
-              <p className="text-sm text-muted-foreground">{t("settings.profiles.none")}</p>
+              <p className="text-body-sm text-muted-foreground">{t("settings.profiles.none")}</p>
             )
           ) : (
             (profiles.data ?? []).map((profile) => {
@@ -133,7 +133,7 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
                 <Tile key={profile.id} className="px-3 py-2.5">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-3 text-left text-sm font-medium disabled:cursor-default"
+                    className="flex w-full items-center justify-between gap-3 text-left text-body-sm font-medium disabled:cursor-default"
                     disabled={isActive || switchingProfileId !== null}
                     onClick={() => void switchToProfile(profile.id)}
                   >

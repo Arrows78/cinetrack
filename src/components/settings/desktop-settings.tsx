@@ -115,7 +115,7 @@ export function DesktopSettings() {
           <FormField label={t("desktop.newToken")} help={t("desktop.newTokenHint")}>
             {(describedBy) => (
               <Textarea
-                className="min-h-24 text-sm"
+                className="min-h-24 text-body-sm"
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
                 aria-describedby={describedBy}

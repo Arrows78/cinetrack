@@ -32,7 +32,7 @@ export function BrowseByGenre({ startIndex }: { startIndex: number }) {
               }}
               className="group"
             >
-              <span className="text-2xl leading-none">{genre.icon}</span>
+              <span className="text-heading-lg leading-none">{genre.icon}</span>
               <span className="text-caption font-medium leading-tight text-muted-foreground transition-colors group-hover:text-primary">
                 {t(genre.labelKey)}
               </span>
@@ -105,7 +105,7 @@ export function BrowseByStudio({ startIndex }: { startIndex: number }) {
               search={{ q: studio.label, scope: "movie", company: String(studio.id) }}
               className="group flex items-center gap-3"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-body-sm font-bold text-primary">
                 {studio.label[0]}
               </div>
               <span className="text-body-sm font-medium">{studio.label}</span>

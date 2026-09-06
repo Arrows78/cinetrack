@@ -87,7 +87,7 @@ function UnmatchedItemRow({ item, onResolved }: { item: RetryableUnmatched; onRe
             <LoadingState className="py-2" />
           ) : search.items.length ? (
             search.items.slice(0, 6).map((result) => (
-              <Tile key={result.id} className="flex items-center justify-between px-3 py-2 text-sm">
+              <Tile key={result.id} className="flex items-center justify-between px-3 py-2 text-body-sm">
                 <span className="min-w-0 truncate">
                   {result.title}
                   {result.year ? <span className="text-muted-foreground"> · {result.year}</span> : null}
@@ -105,10 +105,10 @@ function UnmatchedItemRow({ item, onResolved }: { item: RetryableUnmatched; onRe
               </Tile>
             ))
           ) : (
-            <p className="text-sm text-muted-foreground">{t("tvtimeImport.retry.noResults")}</p>
+            <p className="text-body-sm text-muted-foreground">{t("tvtimeImport.retry.noResults")}</p>
           )}
         </div>
-        {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
+        {error ? <p className="mt-2 text-body-sm text-destructive">{error}</p> : null}
       </AccordionContent>
     </AccordionItem>
   );

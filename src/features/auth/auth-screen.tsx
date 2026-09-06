@@ -203,7 +203,7 @@ export function AuthScreen() {
                 type="button"
                 onClick={() => changeMode(option)}
                 className={cn(
-                  "rounded-xl px-4 py-2.5 text-sm font-semibold transition",
+                  "rounded-xl px-4 py-2.5 text-body-sm font-semibold transition",
                   mode === option
                     ? "bg-auth-foreground text-auth-background"
                     : "text-auth-foreground/60 hover:text-auth-foreground"
@@ -265,7 +265,7 @@ export function AuthScreen() {
             <p
               role="alert"
               aria-live="polite"
-              className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-sm text-auth-foreground/90"
+              className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-body-sm text-auth-foreground/90"
             >
               {visibleError}
             </p>

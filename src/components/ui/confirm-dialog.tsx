@@ -38,7 +38,9 @@ export function ConfirmDialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
         <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME}>
-          <DialogPrimitive.Title className="shrink-0 font-display text-lg font-bold">{title}</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="shrink-0 font-display text-heading-sm font-bold">
+            {title}
+          </DialogPrimitive.Title>
           {description ? (
             // min-h-0 lets this shrink below its content's intrinsic height
             // (the flexbox default is min-height:auto, which would otherwise
@@ -47,7 +49,7 @@ export function ConfirmDialog({
             // names) grew the dialog past the viewport, and with a fixed
             // top-1/2/-translate-y-1/2 position that pushed the title and
             // buttons off-screen entirely instead of just looking cramped.
-            <DialogPrimitive.Description className="mt-2 min-h-0 overflow-y-auto text-sm leading-6 text-muted-foreground">
+            <DialogPrimitive.Description className="mt-2 min-h-0 overflow-y-auto text-body-sm leading-6 text-muted-foreground">
               {description}
             </DialogPrimitive.Description>
           ) : null}

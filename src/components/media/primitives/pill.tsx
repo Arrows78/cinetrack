@@ -25,7 +25,7 @@ export function Pill({ label, movieId, seriesId, providerId, className }: PillPr
       to="/search"
       search={search}
       className={cn(
-        "group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-border bg-card/60 px-4 py-2 text-sm font-medium transition-all",
+        "group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-border bg-card/60 px-4 py-2 text-body-sm font-medium transition-all",
         "hover:border-primary hover:bg-primary/10 hover:text-primary",
         "active:scale-[0.97]",
         className

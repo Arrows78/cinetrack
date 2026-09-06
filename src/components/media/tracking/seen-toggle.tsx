@@ -41,7 +41,7 @@ export function SeenToggle({
       disabled={disabled}
       whileTap={{ scale: 0.93 }}
       className={cn(
-        "group relative flex items-center gap-3 overflow-hidden rounded-full px-6 py-3 text-sm font-semibold transition-all duration-base disabled:cursor-not-allowed disabled:opacity-50",
+        "group relative flex items-center gap-3 overflow-hidden rounded-full px-6 py-3 text-body-sm font-semibold transition-all duration-base disabled:cursor-not-allowed disabled:opacity-50",
         seen
           ? "bg-primary text-primary-foreground shadow-glow"
           : "border border-foreground/20 bg-foreground/5 text-foreground hover:border-primary/40 hover:bg-primary/10"

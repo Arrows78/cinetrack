@@ -63,7 +63,10 @@ function ListItemRow({ listId }: { listId: string }) {
   return (
     <div className="grid gap-2">
       {items.data.map((item) => (
-        <Tile key={`${item.mediaType}-${item.mediaId}`} className="flex items-center justify-between px-3 py-2 text-body-sm">
+        <Tile
+          key={`${item.mediaType}-${item.mediaId}`}
+          className="flex items-center justify-between px-3 py-2 text-body-sm"
+        >
           <span>
             {item.title} <span className="text-muted-foreground">· {t(`media.${item.mediaType}`)}</span>
           </span>
@@ -182,7 +185,7 @@ function ListsAccordionContent({
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium"
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left text-body-sm font-medium"
                   aria-expanded={openedList === list.id}
                   aria-controls={`custom-list-items-${list.id}`}
                   onClick={() => setOpenedList((current) => (current === list.id ? null : list.id))}

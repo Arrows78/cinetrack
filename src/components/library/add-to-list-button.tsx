@@ -16,7 +16,7 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
 
   if (!lists.data?.length) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-sm text-muted-foreground">
         {t("library.lists.noneYetPrefix")}{" "}
         <Link to="/library" className="font-medium text-primary underline-offset-4 hover:underline">
           {t("library.lists.noneYetLink")}

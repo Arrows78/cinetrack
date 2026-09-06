@@ -113,7 +113,7 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                 <Tile key={profile.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                   <button
                     type="button"
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium disabled:cursor-default"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-body-sm font-medium disabled:cursor-default"
                     disabled={isActive || switchingProfileId !== null}
                     onClick={() => void switchToProfile(profile.id)}
                   >
@@ -264,7 +264,7 @@ export function SettingsPage() {
         <Card>
           <CardContent className="mt-0 space-y-6">
             <div>
-              <p className="mb-3 text-sm font-medium">{t("settings.accentColor")}</p>
+              <p className="mb-3 text-body-sm font-medium">{t("settings.accentColor")}</p>
               <div className="flex flex-wrap gap-3">
                 {(Object.entries(COLOR_PRESETS) as [AccentColor, (typeof COLOR_PRESETS)[AccentColor]][]).map(
                   ([key, preset]) => {
@@ -301,7 +301,7 @@ export function SettingsPage() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium">
+              <label className="grid gap-2 text-body-sm font-medium">
                 {t("settings.language")}
                 <Select
                   value={preferences?.language ?? DEFAULT_LANGUAGE}
@@ -311,7 +311,7 @@ export function SettingsPage() {
                   <option value="fr">{t("settings.languageOptions.french")}</option>
                 </Select>
               </label>
-              <label className="grid gap-2 text-sm font-medium">
+              <label className="grid gap-2 text-body-sm font-medium">
                 {t("settings.region")}
                 <Select
                   value={preferences?.region ?? DEFAULT_TMDB_REGION}
@@ -330,7 +330,7 @@ export function SettingsPage() {
               {/* The visible label doubles as FilterBar's accessible group
                   name (groupLabel) instead of a plain <p> with no
                   programmatic association to the control below it. */}
-              <p className="mb-3 text-sm font-medium">{t("settings.defaultSearch")}</p>
+              <p className="mb-3 text-body-sm font-medium">{t("settings.defaultSearch")}</p>
               <FilterBar
                 value={preferences?.defaultSearchType ?? "all"}
                 onChange={(value) => void updatePreference({ key: "defaultSearchType", value })}

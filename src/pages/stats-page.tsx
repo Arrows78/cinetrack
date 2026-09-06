@@ -198,7 +198,7 @@ export function StatsPage() {
               {stats.data.mostRewatchedTitle ? (
                 <>
                   <p
-                    className="mt-1 truncate font-display text-xl font-bold"
+                    className="mt-1 truncate font-display text-heading-md font-bold"
                     title={stats.data.mostRewatchedTitle.title}
                   >
                     {stats.data.mostRewatchedTitle.title}
@@ -208,22 +208,16 @@ export function StatsPage() {
                   </p>
                 </>
               ) : (
-                <p className="mt-1 font-display text-3xl font-bold">—</p>
+                <p className="mt-1 font-display text-page-title font-bold">—</p>
               )}
             </article>
           </Panel>
-          <Panel asChild className="min-w-0">
-            <article>
-              <ThumbsUp className="size-5 text-primary" />
-              <p className="mt-4 text-body-sm text-muted-foreground">{t("stats.favouriteGenreByRating")}</p>
-              <p
-                className="mt-1 truncate font-display text-3xl font-bold"
-                title={stats.data.favouriteGenreByRating ?? undefined}
-              >
-                {stats.data.favouriteGenreByRating ?? "—"}
-              </p>
-            </article>
-          </Panel>
+          <StatCard
+            boxed
+            icon={ThumbsUp}
+            label={t("stats.favouriteGenreByRating")}
+            value={stats.data.favouriteGenreByRating ?? "—"}
+          />
           <Panel asChild className="min-w-0">
             <article>
               <PieChart className="size-5 text-primary" />
@@ -295,7 +289,7 @@ export function StatsPage() {
               <article>
                 <CalendarCheck className="size-5 text-primary" />
                 <p className="mt-4 text-body-sm text-muted-foreground">{t("stats.catchUpBy")}</p>
-                <p className="mt-1 font-display text-3xl font-bold">
+                <p className="mt-1 font-display text-page-title font-bold">
                   {forecast.data.catchUpDate ? formatDate(forecast.data.catchUpDate) : "—"}
                 </p>
                 <p className="mt-1 text-caption text-muted-foreground">{t("stats.paceBasis")}</p>
@@ -461,7 +455,9 @@ export function StatsPage() {
                 </IconTooltip>
               </div>
             </div>
-            <p className="mt-3 font-display text-4xl font-bold">{formatWatchDurationBreakdown(wrapped.data.minutes)}</p>
+            <p className="mt-3 font-display text-display-title font-bold">
+              {formatWatchDurationBreakdown(wrapped.data.minutes)}
+            </p>
             <p className="text-body-sm text-muted-foreground">
               {t("stats.activeDays", { count: wrapped.data.activeDays })}
             </p>

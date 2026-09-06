@@ -32,10 +32,10 @@ export function MarkPreviousEpisodesDialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
         <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME}>
-          <DialogPrimitive.Title className="shrink-0 font-display text-lg font-bold">
+          <DialogPrimitive.Title className="shrink-0 font-display text-heading-sm font-bold">
             {t("media.markPreviousTitle")}
           </DialogPrimitive.Title>
-          <DialogPrimitive.Description className="mt-2 text-sm leading-6 text-muted-foreground">
+          <DialogPrimitive.Description className="mt-2 text-body-sm leading-6 text-muted-foreground">
             {t("media.markPreviousDescription", { count: previousCount })}
           </DialogPrimitive.Description>
           <div className="mt-5 flex shrink-0 flex-col gap-2">

@@ -8,10 +8,10 @@ interface AsyncActionFeedbackProps {
 }
 
 const toneClassName: Record<NonNullable<AsyncActionFeedbackProps["tone"]>, string> = {
-  plain: "text-sm text-muted-foreground",
-  neutral: "rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm",
-  success: "rounded-2xl border border-success/30 bg-success/5 px-4 py-3 text-sm",
-  error: "rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm",
+  plain: "text-body-sm text-muted-foreground",
+  neutral: "rounded-2xl border border-border bg-muted/40 px-4 py-3 text-body-sm",
+  success: "rounded-2xl border border-success/30 bg-success/5 px-4 py-3 text-body-sm",
+  error: "rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-body-sm",
 };
 
 /**

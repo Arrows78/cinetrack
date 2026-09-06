@@ -41,7 +41,7 @@ export function FilterBar<T extends string>({
             aria-pressed={isTabs ? undefined : selected}
             onClick={() => onChange(option.value)}
             className={cn(
-              "shrink-0 rounded-xl px-4 py-1.5 text-sm font-medium transition-all duration-fast",
+              "shrink-0 rounded-xl px-4 py-1.5 text-body-sm font-medium transition-all duration-fast",
               selected ? "bg-foreground/10 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/80"
             )}
           >

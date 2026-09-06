@@ -118,7 +118,7 @@ export function AboutSettings() {
           <CardDescription>{t("settings.about.cacheDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-sm text-muted-foreground">
             {isMeasuring
               ? t("settings.about.cacheMeasuring")
               : t("settings.about.cacheSize", { size: formatBytes(cacheSize ?? 0) })}

@@ -55,7 +55,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       <Panel>
         <div className="mb-4">
           <p className="font-semibold">{t("library.myLibrary")}</p>
-          <p className="text-sm text-muted-foreground">{t("library.description")}</p>
+          <p className="text-body-sm text-muted-foreground">{t("library.description")}</p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <Skeleton className="h-14" />
@@ -73,7 +73,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       <Panel>
         <div className="mb-4">
           <p className="font-semibold">{t("library.myLibrary")}</p>
-          <p className="text-sm text-muted-foreground">{t("library.description")}</p>
+          <p className="text-body-sm text-muted-foreground">{t("library.description")}</p>
         </div>
         <PartialErrorState message={t("library.loadError")} onRetry={() => void library.refetch()} />
       </Panel>
@@ -131,11 +131,11 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     <Panel>
       <div className="mb-4">
         <p className="font-semibold">{t("library.myLibrary")}</p>
-        <p className="text-sm text-muted-foreground">{t("library.description")}</p>
+        <p className="text-body-sm text-muted-foreground">{t("library.description")}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <label className="grid gap-1 text-sm">
+        <label className="grid gap-1 text-body-sm">
           <span className="text-muted-foreground">{t("library.status")}</span>
           <Select value={status} onChange={(event) => setStatus(event.target.value as LibraryStatus)}>
             {statuses.map((item) => (
@@ -145,7 +145,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
             ))}
           </Select>
         </label>
-        <label className="grid gap-1 text-sm">
+        <label className="grid gap-1 text-body-sm">
           <span className="text-muted-foreground">{t("library.myRating")}</span>
           <Input
             size="sm"
@@ -157,7 +157,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
             onChange={(event) => setUserRating(event.target.value)}
           />
         </label>
-        <label className="grid gap-1 text-sm">
+        <label className="grid gap-1 text-body-sm">
           <span className="text-muted-foreground">{t("library.rewatches")}</span>
           <Input
             size="sm"
@@ -182,7 +182,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
           )}
         </FormField>
       </div>
-      <label className="mt-4 grid gap-1 text-sm">
+      <label className="mt-4 grid gap-1 text-body-sm">
         <span className="text-muted-foreground">{t("library.privateNotes")}</span>
         <Textarea className="min-h-24" value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>

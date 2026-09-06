@@ -11,7 +11,7 @@ export function RootLayout() {
 
 export function PendingComponent() {
   const { t } = useTranslation();
-  return <div className="p-6 text-sm text-muted-foreground">{t("common.loading")}</div>;
+  return <div className="p-6 text-body-sm text-muted-foreground">{t("common.loading")}</div>;
 }
 
 export function ErrorComponent({ error }: ErrorComponentProps) {
@@ -23,9 +23,9 @@ export function ErrorComponent({ error }: ErrorComponentProps) {
 
   return (
     <div className="surface rounded-shell p-6">
-      <h2 className="text-xl font-semibold">{t("errors.unexpectedTitle")}</h2>
+      <h2 className="text-heading-md font-semibold">{t("errors.unexpectedTitle")}</h2>
 
-      <p className="mt-3 text-sm text-muted-foreground">{t("errors.unexpectedDescription")}</p>
+      <p className="mt-3 text-body-sm text-muted-foreground">{t("errors.unexpectedDescription")}</p>
     </div>
   );
 }

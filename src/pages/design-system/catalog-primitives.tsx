@@ -24,7 +24,9 @@ export function Section({
       <div className="max-w-4xl">
         {eyebrow ? <p className="text-overline uppercase text-primary/80">{eyebrow}</p> : null}
         <h2 className="mt-1 font-display text-heading-lg font-bold">{title}</h2>
-        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="mt-2 max-w-3xl text-body-sm leading-6 text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {children}
     </section>
@@ -43,8 +45,8 @@ export function Subsection({
   return (
     <div className="space-y-4">
       <div className="max-w-3xl">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">{title}</h3>
-        {description ? <p className="mt-1 text-xs leading-5 text-muted-foreground/80">{description}</p> : null}
+        <h3 className="text-body-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">{title}</h3>
+        {description ? <p className="mt-1 text-caption leading-5 text-muted-foreground/80">{description}</p> : null}
       </div>
       {children}
     </div>
@@ -56,8 +58,8 @@ export function TokenTile({ label, meta, children }: { label: string; meta?: str
     <div className="flex min-w-0 flex-col gap-2">
       {children}
       <div>
-        <p className="text-sm font-medium">{label}</p>
-        {meta ? <p className="break-words font-mono text-xs text-muted-foreground">{meta}</p> : null}
+        <p className="text-body-sm font-medium">{label}</p>
+        {meta ? <p className="break-words font-mono text-caption text-muted-foreground">{meta}</p> : null}
       </div>
     </div>
   );
@@ -117,11 +119,12 @@ export function ColorSwatch({
         className="flex h-24 items-center justify-center rounded-card border border-black/10"
         style={{ backgroundColor: `hsl(var(--${bg}))`, color: `hsl(var(--${fg}))` }}
       >
+        {/* Raw text-lg on purpose — a contrast-check swatch, not real UI copy. */}
         <span className="text-lg font-semibold">Aa</span>
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold">{label}</p>
-        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{usage}</p>
+        <p className="text-body-sm font-semibold">{label}</p>
+        <p className="mt-0.5 text-caption leading-5 text-muted-foreground">{usage}</p>
       </div>
       <div className="space-y-1 border-t border-border/60 pt-3">
         <p className="break-words font-mono text-caption text-muted-foreground">
@@ -162,7 +165,7 @@ export function AccentPresetCard({
     >
       <div className="mb-4 flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold">{t(`colors.${accent}`)}</p>
+          <p className="text-body-sm font-semibold">{t(`colors.${accent}`)}</p>
           <p className="font-mono text-caption text-muted-foreground">reference.accent.{accent}</p>
         </div>
         {selected ? (
@@ -180,6 +183,7 @@ export function AccentPresetCard({
 
           return (
             <div key={theme.key} className="space-y-2">
+              {/* Raw text-lg on purpose — a contrast-check swatch, not real UI copy. */}
               <div
                 className="flex h-20 items-center justify-center rounded-card border border-black/10 text-lg font-semibold"
                 style={{ backgroundColor: `hsl(${value})`, color: `hsl(${theme.foreground})` }}
@@ -203,9 +207,9 @@ export function AccentPresetCard({
 export function PrincipleCard({ index, title, children }: { index: string; title: string; children: ReactNode }) {
   return (
     <div className="rounded-panel border border-border bg-card/40 p-5">
-      <p className="font-mono text-xs text-primary">{index}</p>
-      <h3 className="mt-3 font-display text-lg font-bold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{children}</p>
+      <p className="font-mono text-caption text-primary">{index}</p>
+      <h3 className="mt-3 font-display text-heading-sm font-bold">{title}</h3>
+      <p className="mt-2 text-body-sm leading-6 text-muted-foreground">{children}</p>
     </div>
   );
 }
@@ -214,7 +218,7 @@ export function Guidance({ children, tone = "neutral" }: { children: ReactNode; 
   return (
     <div
       className={cn(
-        "rounded-card border p-4 text-sm leading-6",
+        "rounded-card border p-4 text-body-sm leading-6",
         tone === "neutral" && "border-border bg-foreground/[0.03] text-muted-foreground",
         tone === "good" && "border-success/30 bg-success/10 text-foreground",
         tone === "bad" && "border-destructive/30 bg-destructive/10 text-foreground"
@@ -301,14 +305,14 @@ export function ComponentSpec({
       <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="font-display text-heading-sm font-bold">{name}</h3>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+          <p className="mt-1 max-w-2xl text-body-sm leading-6 text-muted-foreground">{description}</p>
         </div>
         <code className="shrink-0 rounded-lg bg-foreground/5 px-2 py-1 font-mono text-caption text-muted-foreground">
           {source}
         </code>
       </div>
       {hasMetadata ? (
-        <div className="grid gap-4 border-b border-border/60 py-4 text-xs sm:grid-cols-2">
+        <div className="grid gap-4 border-b border-border/60 py-4 text-caption sm:grid-cols-2">
           {anatomy?.length ? <MetadataList label="Anatomy" values={anatomy} /> : null}
           {variants?.length ? <MetadataList label="Variants" values={variants} /> : null}
           {states?.length ? <MetadataList label="States" values={states} /> : null}

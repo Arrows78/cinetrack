@@ -100,7 +100,7 @@ export function AppShell() {
               )}
               <div>
                 <p className="text-overline uppercase text-muted-foreground">{t("sidebar.brand.tagline")}</p>
-                <p className="text-base font-semibold">{t("sidebar.brand.name")}</p>
+                <p className="text-heading-xs font-semibold">{t("sidebar.brand.name")}</p>
               </div>
             </div>
             <ProfileSwitcher collapsed />
@@ -111,7 +111,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={handleGoBack}
-              className="group mb-4 hidden items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-all hover:bg-card hover:text-foreground lg:flex"
+              className="group mb-4 hidden items-center gap-2 rounded-full px-3 py-1.5 text-body-sm font-medium text-muted-foreground transition-all hover:bg-card hover:text-foreground lg:flex"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
               <span>{t("common.back")}</span>

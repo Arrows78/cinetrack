@@ -14,15 +14,15 @@ export function FormField({ label, help, error, children }: FormFieldProps) {
   const describedBy = error ? errorId : help ? helpId : undefined;
 
   return (
-    <label className="grid gap-1.5 text-sm font-medium">
+    <label className="grid gap-1.5 text-body-sm font-medium">
       {label}
       {children(describedBy)}
       {error ? (
-        <span id={errorId} className="text-xs font-normal text-destructive">
+        <span id={errorId} className="text-caption font-normal text-destructive">
           {error}
         </span>
       ) : help ? (
-        <span id={helpId} className="text-xs font-normal text-muted-foreground">
+        <span id={helpId} className="text-caption font-normal text-muted-foreground">
           {help}
         </span>
       ) : null}

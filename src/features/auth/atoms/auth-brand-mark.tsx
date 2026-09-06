@@ -11,7 +11,7 @@ export function AuthBrandMark() {
       <BrandMarkIcon className="h-14 w-14 ring-1 ring-white/15" />
       <div>
         <p className="text-overline font-semibold uppercase text-auth-foreground/60">{t("sidebar.brand.tagline")}</p>
-        <p className="text-3xl font-black tracking-tight text-auth-foreground">{t("sidebar.brand.name")}</p>
+        <p className="text-page-title font-black tracking-tight text-auth-foreground">{t("sidebar.brand.name")}</p>
       </div>
     </div>
   );

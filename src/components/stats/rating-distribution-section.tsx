@@ -44,7 +44,7 @@ export function RatingDistributionSection() {
       />
       {data.averageByMonth.length ? (
         <div className="mt-6">
-          <p className="text-sm font-medium">{t("stats.ratingDistribution.byMonth")}</p>
+          <p className="text-body-sm font-medium">{t("stats.ratingDistribution.byMonth")}</p>
           <ActivityBarChart
             data={data.averageByMonth.map((row) => ({
               label: row.period.slice(5),
@@ -57,7 +57,7 @@ export function RatingDistributionSection() {
       ) : null}
       {data.averageByYear.length ? (
         <div className="mt-6">
-          <p className="text-sm font-medium">{t("stats.ratingDistribution.byYear")}</p>
+          <p className="text-body-sm font-medium">{t("stats.ratingDistribution.byYear")}</p>
           <ActivityBarChart
             data={data.averageByYear.map((row) => ({ label: row.period, value: roundToOneDecimal(row.average) }))}
             tooltipLabel={t("stats.averageRating")}

@@ -61,7 +61,7 @@ export const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Title>
 >(({ className, ...props }, ref) => (
-  <ToastPrimitive.Title ref={ref} className={cn("text-sm font-semibold", className)} {...props} />
+  <ToastPrimitive.Title ref={ref} className={cn("text-body-sm font-semibold", className)} {...props} />
 ));
 ToastTitle.displayName = ToastPrimitive.Title.displayName;
 
@@ -69,7 +69,7 @@ export const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Description>
 >(({ className, ...props }, ref) => (
-  <ToastPrimitive.Description ref={ref} className={cn("mt-1 text-sm opacity-90", className)} {...props} />
+  <ToastPrimitive.Description ref={ref} className={cn("mt-1 text-body-sm opacity-90", className)} {...props} />
 ));
 ToastDescription.displayName = ToastPrimitive.Description.displayName;
 
@@ -100,7 +100,7 @@ export const ToastAction = React.forwardRef<
   <ToastPrimitive.Action
     ref={ref}
     className={cn(
-      "shrink-0 rounded-xl border border-border bg-transparent px-3 py-1.5 text-sm font-medium transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "shrink-0 rounded-xl border border-border bg-transparent px-3 py-1.5 text-body-sm font-medium transition-colors hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       className
     )}
     {...props}

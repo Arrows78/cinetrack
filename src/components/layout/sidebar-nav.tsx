@@ -38,7 +38,7 @@ function NavLink({ item, collapsed, isActive, onNavigate }: NavLinkProps) {
       aria-label={collapsed ? item.label : undefined}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-fast",
+        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-body-sm font-medium transition-all duration-fast",
         isActive
           ? "bg-primary/15 text-primary shadow-glow"
           : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
@@ -144,7 +144,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
           <div className="flex flex-1 items-center justify-between min-w-0">
             <div className="min-w-0">
               <p className="text-overline uppercase text-muted-foreground">{t("sidebar.brand.tagline")}</p>
-              <p className="text-xl font-bold leading-tight">{t("sidebar.brand.name")}</p>
+              <p className="text-heading-md font-bold leading-tight">{t("sidebar.brand.name")}</p>
             </div>
             <IconTooltip label={t("sidebar.collapse")}>
               <Button
@@ -265,11 +265,11 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 title={t("sidebar.switchProfile")}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left transition-colors hover:bg-foreground/5"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-body-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
                   {getInitials(userName)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium">
+                  <p className="truncate text-body-sm font-medium">
                     {user?.user_metadata?.full_name ??
                       user?.user_metadata?.name ??
                       user?.email ??
@@ -308,7 +308,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 title={t("sidebar.switchProfile")}
                 className="flex h-9 w-full items-center justify-center rounded-xl transition-colors hover:bg-foreground/5"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-body-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
                   {getInitials(userName)}
                 </div>
               </button>

@@ -20,11 +20,20 @@ const config: Config = {
       // hierarchy stays consistent across surfaces.
       fontSize: {
         "display-hero": ["3.5rem", { lineHeight: "1.05", letterSpacing: "-0.02em", fontWeight: "800" }],
+        // Sits between display-title and display-hero — added for the one
+        // spot that needed exactly 3rem (Tailwind's own text-5xl) and had no
+        // matching role: series-detail-page's big progress percentage.
+        "display-md": ["3rem", { lineHeight: "1.1", letterSpacing: "-0.015em", fontWeight: "700" }],
         "display-title": ["2.25rem", { lineHeight: "1.15", letterSpacing: "-0.01em", fontWeight: "700" }],
         "page-title": ["1.875rem", { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "700" }],
         "heading-lg": ["1.5rem", { lineHeight: "1.25", fontWeight: "600" }],
         "heading-md": ["1.25rem", { lineHeight: "1.3", fontWeight: "600" }],
         "heading-sm": ["1.125rem", { lineHeight: "1.35", fontWeight: "600" }],
+        // Below heading-sm — added for the exactly-1rem (Tailwind's own
+        // text-base) sites that had no matching role: the sidebar's
+        // collapsed brand name and a media card's own title before its own
+        // md: breakpoint bumps it to heading-sm.
+        "heading-xs": ["1rem", { lineHeight: "1.4", fontWeight: "600" }],
         "body-lg": ["1.0625rem", { lineHeight: "1.6" }],
         body: ["0.9375rem", { lineHeight: "1.6" }],
         // Deliberately the same size as Tailwind's own `text-sm` (0.875rem) —

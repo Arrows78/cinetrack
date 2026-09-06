@@ -54,8 +54,8 @@ export function AuthProvidersStep({
   return (
     <>
       <div className="text-center">
-        <h1 className="text-page-title font-black tracking-tight sm:text-4xl">{title}</h1>
-        <p className="mt-2 text-sm text-auth-foreground/55">{t("auth.continueWithProviderOrEmail")}</p>
+        <h1 className="text-page-title font-black tracking-tight sm:text-display-title">{title}</h1>
+        <p className="mt-2 text-body-sm text-auth-foreground/55">{t("auth.continueWithProviderOrEmail")}</p>
       </div>
 
       <div className="mt-8 flex flex-wrap justify-center gap-4">

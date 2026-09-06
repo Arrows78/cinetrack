@@ -162,11 +162,11 @@ function useActiveSection(sectionIds: readonly string[]) {
 function RuleTable({ columns, rows }: { columns: string[]; rows: { key: string; cells: React.ReactNode[] }[] }) {
   return (
     <div className="overflow-x-auto rounded-panel border border-border">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[720px] text-body-sm">
         <thead className="bg-foreground/5">
           <tr>
             {columns.map((column) => (
-              <th key={column} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">
+              <th key={column} className="px-4 py-3 text-left text-caption font-semibold uppercase tracking-wide">
                 {column}
               </th>
             ))}
@@ -193,7 +193,7 @@ function RuleTable({ columns, rows }: { columns: string[]; rows: { key: string; 
 
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor: string }) {
   return (
-    <label htmlFor={htmlFor} className="text-xs font-semibold text-foreground">
+    <label htmlFor={htmlFor} className="text-caption font-semibold text-foreground">
       {children}
     </label>
   );
@@ -247,8 +247,8 @@ export function DesignSystemPage() {
 
           <dl className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
-              <dt className="text-xs text-muted-foreground">Theme</dt>
-              <dd className="mt-1 flex items-center gap-2 text-sm font-semibold capitalize">
+              <dt className="text-caption text-muted-foreground">Theme</dt>
+              <dd className="mt-1 flex items-center gap-2 text-body-sm font-semibold capitalize">
                 {theme === "dark" ? (
                   <Moon className="size-4" aria-hidden="true" />
                 ) : (
@@ -258,8 +258,8 @@ export function DesignSystemPage() {
               </dd>
             </div>
             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
-              <dt className="text-xs text-muted-foreground">Accent reference</dt>
-              <dd className="mt-1 flex items-center gap-2 text-sm font-semibold">
+              <dt className="text-caption text-muted-foreground">Accent reference</dt>
+              <dd className="mt-1 flex items-center gap-2 text-body-sm font-semibold">
                 <span
                   className="size-3 rounded-full"
                   style={{ backgroundColor: `hsl(${theme === "dark" ? activePreset.dark : activePreset.light})` }}
@@ -269,18 +269,18 @@ export function DesignSystemPage() {
               </dd>
             </div>
             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
-              <dt className="text-xs text-muted-foreground">Semantic pairs</dt>
-              <dd className="mt-1 text-sm font-semibold">{semanticPairCount} live contrast checks</dd>
+              <dt className="text-caption text-muted-foreground">Semantic pairs</dt>
+              <dd className="mt-1 text-body-sm font-semibold">{semanticPairCount} live contrast checks</dd>
             </div>
             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
-              <dt className="text-xs text-muted-foreground">Component coverage</dt>
-              <dd className="mt-1 text-sm font-semibold">
+              <dt className="text-caption text-muted-foreground">Component coverage</dt>
+              <dd className="mt-1 text-body-sm font-semibold">
                 {componentInventory.length} indexed · {liveComponentCount} live
               </dd>
             </div>
             <div className="rounded-card border border-border/70 bg-foreground/[0.03] p-4">
-              <dt className="text-xs text-muted-foreground">Documentation</dt>
-              <dd className="mt-1 font-mono text-xs font-semibold">docs/design-system.md</dd>
+              <dt className="text-caption text-muted-foreground">Documentation</dt>
+              <dd className="mt-1 font-mono text-caption font-semibold">docs/design-system.md</dd>
             </div>
           </dl>
         </div>
@@ -296,7 +296,7 @@ export function DesignSystemPage() {
             href={`#${item.id}`}
             aria-current={activeSection === item.id ? "location" : undefined}
             className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "shrink-0 rounded-full px-3 py-1.5 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               activeSection === item.id
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
@@ -319,8 +319,8 @@ export function DesignSystemPage() {
             to every screen.
           </PrincipleCard>
           <PrincipleCard index="02" title="Role before value">
-            Product code asks for <code className="font-mono text-xs">primary</code> or{" "}
-            <code className="font-mono text-xs">success</code>, never a remembered HSL value.
+            Product code asks for <code className="font-mono text-caption">primary</code> or{" "}
+            <code className="font-mono text-caption">success</code>, never a remembered HSL value.
           </PrincipleCard>
           <PrincipleCard index="03" title="Accessible by default">
             Contrast, focus, reduced motion and explicit feedback are component contracts rather than optional polish.
@@ -369,12 +369,12 @@ export function DesignSystemPage() {
                     aria-hidden="true"
                   />
                 ) : null}
-                <p className="font-mono text-xs text-primary">Layer {layer.step}</p>
-                <h3 className="mt-2 font-display text-lg font-bold">{layer.title}</h3>
+                <p className="font-mono text-caption text-primary">Layer {layer.step}</p>
+                <h3 className="mt-2 font-display text-heading-sm font-bold">{layer.title}</h3>
                 <code className="mt-3 block break-words rounded-lg bg-foreground/5 p-2 font-mono text-caption text-muted-foreground">
                   {layer.code}
                 </code>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">{layer.body}</p>
+                <p className="mt-3 text-body-sm leading-6 text-muted-foreground">{layer.body}</p>
               </div>
             ))}
           </div>
@@ -382,10 +382,10 @@ export function DesignSystemPage() {
 
         <Guidance>
           <strong className="text-foreground">Sources of truth:</strong> theme values live in{" "}
-          <code className="font-mono text-xs">src/styles/index.css</code>, Tailwind aliases in{" "}
-          <code className="font-mono text-xs">tailwind.config.ts</code>, accent references in{" "}
-          <code className="font-mono text-xs">src/shared/constants/colors.ts</code>, and component recipes in{" "}
-          <code className="font-mono text-xs">src/components/ui</code>.
+          <code className="font-mono text-caption">src/styles/index.css</code>, Tailwind aliases in{" "}
+          <code className="font-mono text-caption">tailwind.config.ts</code>, accent references in{" "}
+          <code className="font-mono text-caption">src/shared/constants/colors.ts</code>, and component recipes in{" "}
+          <code className="font-mono text-caption">src/components/ui</code>.
         </Guidance>
       </Section>
 
@@ -405,22 +405,22 @@ export function DesignSystemPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {signatureApplications.map((application) => (
             <div key={application.name} className="rounded-panel border border-border bg-card/40 p-5">
-              <p className="font-mono text-xs text-primary">{application.source}</p>
-              <h3 className="mt-2 font-display text-lg font-bold">{application.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{application.detail}</p>
+              <p className="font-mono text-caption text-primary">{application.source}</p>
+              <h3 className="mt-2 font-display text-heading-sm font-bold">{application.name}</h3>
+              <p className="mt-2 text-body-sm leading-6 text-muted-foreground">{application.detail}</p>
             </div>
           ))}
         </div>
 
         <div className="rounded-panel border border-border bg-card/30 p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">
             Live · season-accordion.tsx's EpisodeDots, 8 of 16 episodes watched
           </p>
           <div className="mt-4">
             <EpisodeDots episodes={catalogEpisodes} watchedSet={catalogWatchedEpisodeIds} />
           </div>
           <div className="mt-6 border-t border-border/60 pt-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">
               Live · .section-rule, the mark under every SectionHeader title
             </p>
             <div className="section-rule mt-4 max-w-sm" aria-hidden="true" />
@@ -443,11 +443,11 @@ export function DesignSystemPage() {
       >
         <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
           <Guidance tone="good">
-            <strong>Do:</strong> map <code className="font-mono text-xs">reference.accent.violet.dark</code> to the
-            semantic <code className="font-mono text-xs">--primary</code> role through the theme controller.
+            <strong>Do:</strong> map <code className="font-mono text-caption">reference.accent.violet.dark</code> to the
+            semantic <code className="font-mono text-caption">--primary</code> role through the theme controller.
           </Guidance>
           <Guidance tone="bad">
-            <strong>Avoid:</strong> copying <code className="font-mono text-xs">252 80% 70%</code> into a feature
+            <strong>Avoid:</strong> copying <code className="font-mono text-caption">252 80% 70%</code> into a feature
             component because it “looks primary.”
           </Guidance>
         </div>
@@ -509,7 +509,7 @@ export function DesignSystemPage() {
                       style={{ borderColor: `hsl(var(--${token.varName}))` }}
                     />
                   </div>
-                  <p className="text-xs leading-5 text-muted-foreground">{token.usage}</p>
+                  <p className="text-caption leading-5 text-muted-foreground">{token.usage}</p>
                 </TokenTile>
               ))}
             </div>
@@ -520,7 +520,7 @@ export function DesignSystemPage() {
               columns={["Token", "Use", "Avoid"]}
               rows={semanticColorUsage.map((row) => ({
                 key: row.token,
-                cells: [<code className="font-mono text-xs">{row.token}</code>, row.use, row.avoid],
+                cells: [<code className="font-mono text-caption">{row.token}</code>, row.use, row.avoid],
               }))}
             />
           </Subsection>
@@ -538,10 +538,13 @@ export function DesignSystemPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {typeFamilies.map((family) => (
             <div key={family.name} className="rounded-panel border border-border bg-card/40 p-5">
+              {/* Raw text-3xl on purpose — this specimen is about the
+                  typeface itself, not the type scale, so it stays off the
+                  semantic roles this same catalog documents below. */}
               <p className={cn("text-3xl", family.sampleClassName)}>Aa Bb Cc</p>
-              <p className="mt-4 text-sm font-semibold">{family.name}</p>
-              <p className="text-xs text-primary">{family.role}</p>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{family.usage}</p>
+              <p className="mt-4 text-body-sm font-semibold">{family.name}</p>
+              <p className="text-caption text-primary">{family.role}</p>
+              <p className="mt-2 text-caption leading-5 text-muted-foreground">{family.usage}</p>
             </div>
           ))}
         </div>
@@ -566,8 +569,8 @@ export function DesignSystemPage() {
                   The quick brown fox
                 </p>
                 <div className="shrink-0 sm:text-right">
-                  <p className="font-mono text-xs">text-{role.name}</p>
-                  <p className="text-xs text-muted-foreground">{role.meta}</p>
+                  <p className="font-mono text-caption">text-{role.name}</p>
+                  <p className="text-caption text-muted-foreground">{role.meta}</p>
                 </div>
               </div>
             ))}
@@ -598,7 +601,7 @@ export function DesignSystemPage() {
           <div className="space-y-2 rounded-panel border border-border bg-card/30 p-5">
             {spacingSteps.map((step) => (
               <div key={step} className="flex items-center gap-4">
-                <span className="w-48 shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="w-48 shrink-0 font-mono text-caption text-muted-foreground">
                   p-{step} · {step * 0.25}rem · {step * 4}px
                 </span>
                 <div className="h-3 rounded-full bg-primary/60" style={{ width: `${step * 0.25}rem` }} />
@@ -616,7 +619,7 @@ export function DesignSystemPage() {
             rows={breakpoints.map((breakpoint) => ({
               key: breakpoint.name,
               cells: [
-                <code className="font-mono text-xs">{breakpoint.name}:</code>,
+                <code className="font-mono text-caption">{breakpoint.name}:</code>,
                 breakpoint.value,
                 breakpoint.usage,
               ],
@@ -634,7 +637,7 @@ export function DesignSystemPage() {
             sections.
           </PrincipleCard>
           <PrincipleCard index="Density" title="Compact mode">
-            The <code className="font-mono text-xs">.compact</code> root scales rem-based spacing and type to 90%.
+            The <code className="font-mono text-caption">.compact</code> root scales rem-based spacing and type to 90%.
             Components should avoid pixel literals that bypass it.
           </PrincipleCard>
         </div>
@@ -653,7 +656,7 @@ export function DesignSystemPage() {
             {radii.map((radius) => (
               <TokenTile key={radius.name} label={radius.name} meta={`rounded-${radius.name}`}>
                 <div className={cn("h-24 w-full border border-primary/30 bg-primary/15", radius.className)} />
-                <p className="text-xs leading-5 text-muted-foreground">{radius.usage}</p>
+                <p className="text-caption leading-5 text-muted-foreground">{radius.usage}</p>
               </TokenTile>
             ))}
           </div>
@@ -667,7 +670,7 @@ export function DesignSystemPage() {
             columns={["Surface", "Recipe", "Use"]}
             rows={surfaceHierarchy.map((surface) => ({
               key: surface.name,
-              cells: [surface.name, <code className="font-mono text-xs">{surface.recipe}</code>, surface.usage],
+              cells: [surface.name, <code className="font-mono text-caption">{surface.recipe}</code>, surface.usage],
             }))}
           />
         </Subsection>
@@ -699,8 +702,8 @@ export function DesignSystemPage() {
             {tintScale.map((tier) => (
               <div key={tier.value} className="rounded-card border border-border p-3">
                 <div className={cn("h-16 rounded-xl border border-border", tintClasses[tier.value])} />
-                <p className="mt-3 font-mono text-xs">bg-foreground/{tier.value}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{tier.usage}</p>
+                <p className="mt-3 font-mono text-caption">bg-foreground/{tier.value}</p>
+                <p className="mt-1 text-caption leading-5 text-muted-foreground">{tier.usage}</p>
               </div>
             ))}
           </div>
@@ -711,7 +714,7 @@ export function DesignSystemPage() {
             columns={["Token", "Value", "Use"]}
             rows={zIndexScale.map((tier) => ({
               key: tier.name,
-              cells: [<code className="font-mono text-xs">z-{tier.name}</code>, tier.value, tier.usage],
+              cells: [<code className="font-mono text-caption">z-{tier.name}</code>, tier.value, tier.usage],
             }))}
           />
         </Subsection>
@@ -732,10 +735,10 @@ export function DesignSystemPage() {
               className="grid gap-3 rounded-card border border-border p-3 md:grid-cols-[9.375rem_1fr_17.5rem] md:items-center"
             >
               <div>
-                <p className="font-mono text-xs">
+                <p className="font-mono text-caption">
                   {token.name} · {token.value}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">{token.usage}</p>
+                <p className="mt-1 text-caption text-muted-foreground">{token.usage}</p>
               </div>
               <button
                 type="button"
@@ -782,10 +785,10 @@ export function DesignSystemPage() {
               <div className="flex h-20 items-center justify-center rounded-card bg-foreground/5 text-primary">
                 <Film className={icon.className} aria-hidden="true" />
               </div>
-              <p className="mt-3 font-mono text-xs">
+              <p className="mt-3 font-mono text-caption">
                 {icon.size}px · {icon.className}
               </p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{icon.usage}</p>
+              <p className="mt-1 text-caption leading-5 text-muted-foreground">{icon.usage}</p>
             </div>
           ))}
         </div>
@@ -822,21 +825,21 @@ export function DesignSystemPage() {
               <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-success text-success-foreground">
                 <CheckCircle2 className="size-4" aria-hidden="true" />
               </span>
-              <p className="text-sm leading-6 text-muted-foreground">{item}</p>
+              <p className="text-body-sm leading-6 text-muted-foreground">{item}</p>
             </div>
           ))}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <Panel tone="subtle">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Focus</p>
+            <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Focus</p>
             <Button className="mt-4" variant="outline">
               Tab to inspect focus
             </Button>
           </Panel>
           <Panel tone="subtle">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status + text</p>
-            <div className="mt-4 flex items-center gap-2 text-sm">
+            <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Status + text</p>
+            <div className="mt-4 flex items-center gap-2 text-body-sm">
               <span className="flex size-6 items-center justify-center rounded-full bg-warning text-warning-foreground">
                 <CircleAlert className="size-4" aria-hidden="true" />
               </span>
@@ -844,10 +847,10 @@ export function DesignSystemPage() {
             </div>
           </Panel>
           <Panel tone="subtle">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reduced motion</p>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Reduced motion</p>
+            <p className="mt-4 text-body-sm leading-6 text-muted-foreground">
               CSS and Framer Motion both consume the same preference; OS-level{" "}
-              <code className="font-mono text-xs">prefers-reduced-motion</code> remains honored.
+              <code className="font-mono text-caption">prefers-reduced-motion</code> remains honored.
             </p>
           </Panel>
         </div>
@@ -890,7 +893,7 @@ export function DesignSystemPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
           <span className="font-semibold text-foreground">{filteredInventory.length} components shown</span>
           <CoverageBadge coverage="live" />
           <CoverageBadge coverage="reference" />
@@ -994,7 +997,7 @@ export function DesignSystemPage() {
                   cells: [
                     <div key={`${variant.name}-label`}>
                       <p className="font-semibold text-foreground">{variant.name}</p>
-                      <p className="mt-1 max-w-48 text-xs leading-5 text-muted-foreground">{variant.use}</p>
+                      <p className="mt-1 max-w-48 text-caption leading-5 text-muted-foreground">{variant.use}</p>
                     </div>,
                     <Button key={`${variant.name}-sm`} variant={variant.name} size="sm">
                       Action
@@ -1021,7 +1024,7 @@ export function DesignSystemPage() {
                 columns={["Size", "Footprint", "Use"]}
                 rows={buttonSizes.map((size) => ({
                   key: size.name,
-                  cells: [<code className="font-mono text-xs">{size.name}</code>, size.meta, size.use],
+                  cells: [<code className="font-mono text-caption">{size.name}</code>, size.meta, size.use],
                 }))}
               />
 
@@ -1084,7 +1087,7 @@ export function DesignSystemPage() {
                 <div className="space-y-1.5">
                   <FieldLabel htmlFor="catalog-input-default">Default</FieldLabel>
                   <Input id="catalog-input-default" placeholder="Search your library" />
-                  <p className="text-xs text-muted-foreground">Prominent · 44px touch target</p>
+                  <p className="text-caption text-muted-foreground">Prominent · 44px touch target</p>
                 </div>
                 <div className="space-y-1.5">
                   <FieldLabel htmlFor="catalog-input-compact">Compact</FieldLabel>
@@ -1093,7 +1096,7 @@ export function DesignSystemPage() {
                 <div className="space-y-1.5">
                   <FieldLabel htmlFor="catalog-input-readonly">Read-only</FieldLabel>
                   <Input id="catalog-input-readonly" readOnly value="tt0133093" aria-describedby="readonly-help" />
-                  <p id="readonly-help" className="text-xs text-muted-foreground">
+                  <p id="readonly-help" className="text-caption text-muted-foreground">
                     Selectable and copyable; visually distinct from disabled.
                   </p>
                 </div>
@@ -1109,7 +1112,7 @@ export function DesignSystemPage() {
                     aria-describedby="catalog-input-error"
                     defaultValue="999"
                   />
-                  <p id="catalog-input-error" className="flex items-center gap-1 text-xs text-destructive">
+                  <p id="catalog-input-error" className="flex items-center gap-1 text-caption text-destructive">
                     <CircleAlert className="size-3" aria-hidden="true" /> Enter a year between 1888 and today.
                   </p>
                 </div>
@@ -1139,7 +1142,7 @@ export function DesignSystemPage() {
                   <Select id="catalog-select-disabled" disabled defaultValue="movies" className="w-full">
                     <option value="movies">Movies</option>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Explain why a disabled choice cannot be changed.</p>
+                  <p className="text-caption text-muted-foreground">Explain why a disabled choice cannot be changed.</p>
                 </div>
                 <div className="space-y-1.5">
                   <FieldLabel htmlFor="catalog-select-invalid">Invalid</FieldLabel>
@@ -1156,7 +1159,7 @@ export function DesignSystemPage() {
                     <option value="netflix">Netflix</option>
                     <option value="canal">Canal+</option>
                   </Select>
-                  <p id="catalog-select-error" className="flex items-center gap-1 text-xs text-destructive">
+                  <p id="catalog-select-error" className="flex items-center gap-1 text-caption text-destructive">
                     <CircleAlert className="size-3" aria-hidden="true" /> Select one provider.
                   </p>
                 </div>
@@ -1176,7 +1179,7 @@ export function DesignSystemPage() {
                 <div className="space-y-1.5">
                   <FieldLabel htmlFor="catalog-textarea-default">Default</FieldLabel>
                   <Textarea id="catalog-textarea-default" className="min-h-28" placeholder="Add private notes…" />
-                  <p className="text-xs text-muted-foreground">Keep helper copy actionable and concise.</p>
+                  <p className="text-caption text-muted-foreground">Keep helper copy actionable and concise.</p>
                 </div>
                 <div className="space-y-1.5">
                   <FieldLabel htmlFor="catalog-textarea-readonly">Read-only</FieldLabel>
@@ -1200,7 +1203,7 @@ export function DesignSystemPage() {
                     aria-describedby="catalog-textarea-error"
                     defaultValue="x"
                   />
-                  <p id="catalog-textarea-error" className="flex items-center gap-1 text-xs text-destructive">
+                  <p id="catalog-textarea-error" className="flex items-center gap-1 text-caption text-destructive">
                     <CircleAlert className="size-3" aria-hidden="true" /> Add at least ten characters.
                   </p>
                 </div>
@@ -1226,7 +1229,7 @@ export function DesignSystemPage() {
                   <CardDescription>Card header and supporting copy.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">Card content uses a default top margin.</p>
+                  <p className="text-body-sm text-muted-foreground">Card content uses a default top margin.</p>
                 </CardContent>
               </Card>
             </ComponentSpec>
@@ -1242,10 +1245,10 @@ export function DesignSystemPage() {
             >
               <div className="space-y-3">
                 <Panel>
-                  <p className="text-sm font-medium">tone="card"</p>
+                  <p className="text-body-sm font-medium">tone="card"</p>
                 </Panel>
                 <Panel tone="subtle">
-                  <p className="text-sm font-medium">tone="subtle"</p>
+                  <p className="text-body-sm font-medium">tone="subtle"</p>
                 </Panel>
               </div>
             </ComponentSpec>
@@ -1260,11 +1263,11 @@ export function DesignSystemPage() {
               accessibility="Tile is a visual recipe only. Use a link or button through asChild when the entire tile is interactive."
             >
               <div className="space-y-2">
-                <Tile className="flex items-center justify-between bg-foreground/[0.03] px-3 py-2 text-sm">
+                <Tile className="flex items-center justify-between bg-foreground/[0.03] px-3 py-2 text-body-sm">
                   <span>Episodes</span>
                   <strong>10</strong>
                 </Tile>
-                <Tile className="flex items-center justify-between px-3 py-2 text-sm">
+                <Tile className="flex items-center justify-between px-3 py-2 text-body-sm">
                   <span>Runtime</span>
                   <span className="text-muted-foreground">2h 17m</span>
                 </Tile>
@@ -1286,8 +1289,10 @@ export function DesignSystemPage() {
           >
             <div className="space-y-6">
               <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horizontal</p>
-                <div className="space-y-3 rounded-card border border-border bg-background/50 p-4 text-sm">
+                <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
+                  Horizontal
+                </p>
+                <div className="space-y-3 rounded-card border border-border bg-background/50 p-4 text-body-sm">
                   <span>Metadata</span>
                   <Separator />
                   <span>Availability</span>
@@ -1296,8 +1301,10 @@ export function DesignSystemPage() {
                 </div>
               </div>
               <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical</p>
-                <div className="flex h-12 items-center gap-4 rounded-card border border-border bg-background/50 p-4 text-sm">
+                <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
+                  Vertical
+                </p>
+                <div className="flex h-12 items-center gap-4 rounded-card border border-border bg-background/50 p-4 text-body-sm">
                   <span>Movie</span>
                   <Separator orientation="vertical" />
                   <span>2026</span>
@@ -1324,12 +1331,12 @@ export function DesignSystemPage() {
               <div className="space-y-5">
                 {[0, 25, 60, 90].map((value) => (
                   <div key={value} className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground">{value}%</p>
+                    <p className="text-caption text-muted-foreground">{value}%</p>
                     <Progress value={value} />
                   </div>
                 ))}
                 <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground">100% · semantic indicator (indicatorClassName)</p>
+                  <p className="text-caption text-muted-foreground">100% · semantic indicator (indicatorClassName)</p>
                   <Progress value={100} indicatorClassName="bg-success" />
                 </div>
               </div>
@@ -1371,7 +1378,7 @@ export function DesignSystemPage() {
             >
               <div className="grid gap-5 lg:grid-cols-2">
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">
                     Single · collapsible
                   </p>
                   <Accordion type="single" collapsible defaultValue="guidance" className="space-y-2">
@@ -1392,7 +1399,7 @@ export function DesignSystemPage() {
                   </Accordion>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Multiple</p>
+                  <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Multiple</p>
                   <Accordion type="multiple" defaultValue={["tokens", "testing"]} className="space-y-2">
                     <AccordionItem value="tokens">
                       <AccordionTrigger>Token contract</AccordionTrigger>
@@ -1434,7 +1441,7 @@ export function DesignSystemPage() {
             >
               <div className="space-y-7">
                 <div>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
                     Edge variants
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1455,8 +1462,8 @@ export function DesignSystemPage() {
                             </SheetHeader>
                             <div className="my-6 space-y-3">
                               <Panel tone="subtle">
-                                <p className="text-sm font-medium">Context-preserving content</p>
-                                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                <p className="text-body-sm font-medium">Context-preserving content</p>
+                                <p className="mt-1 text-caption leading-5 text-muted-foreground">
                                   Keep the task focused and the information hierarchy shallow.
                                 </p>
                               </Panel>
@@ -1481,12 +1488,12 @@ export function DesignSystemPage() {
                   columns={["Side", "Recommended use"]}
                   rows={sheetSides.map((side) => ({
                     key: side.name,
-                    cells: [<code className="font-mono text-xs">{side.name}</code>, side.use],
+                    cells: [<code className="font-mono text-caption">{side.name}</code>, side.use],
                   }))}
                 />
 
                 <div>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
                     Size variants · shown from the right edge
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1502,7 +1509,7 @@ export function DesignSystemPage() {
                             <SheetTitle>{size.name} sheet</SheetTitle>
                             <SheetDescription>{size.use}</SheetDescription>
                           </SheetHeader>
-                          <div className="my-6 flex-1 rounded-panel border border-dashed border-border p-4 text-sm text-muted-foreground">
+                          <div className="my-6 flex-1 rounded-panel border border-dashed border-border p-4 text-body-sm text-muted-foreground">
                             Available task area
                           </div>
                           <SheetFooter>
@@ -1520,7 +1527,7 @@ export function DesignSystemPage() {
                   columns={["Size", "Recommended use"]}
                   rows={sheetSizes.map((size) => ({
                     key: size.name,
-                    cells: [<code className="font-mono text-xs">{size.name}</code>, size.use],
+                    cells: [<code className="font-mono text-caption">{size.name}</code>, size.use],
                   }))}
                 />
               </div>
@@ -1665,7 +1672,7 @@ export function DesignSystemPage() {
                   { value: "series", label: "Series" },
                 ]}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-caption text-muted-foreground">
                 Current example: <strong className="text-foreground">{patternSearch || "empty query"}</strong> ·{" "}
                 {patternFilter}
               </p>
@@ -1684,11 +1691,11 @@ export function DesignSystemPage() {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <Panel tone="subtle">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Idle</p>
+                <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Idle</p>
                 <LoadMoreButton hasNextPage isFetchingNextPage={false} onClick={() => undefined} />
               </Panel>
               <Panel tone="subtle">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fetching</p>
+                <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Fetching</p>
                 <LoadMoreButton hasNextPage isFetchingNextPage onClick={() => undefined} />
               </Panel>
             </div>
@@ -1738,8 +1745,8 @@ export function DesignSystemPage() {
                   <CheckCircle2 className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold">Backup complete</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  <p className="text-body-sm font-semibold">Backup complete</p>
+                  <p className="mt-1 text-caption leading-5 text-muted-foreground">
                     Your local library was exported successfully.
                   </p>
                 </div>
@@ -1749,8 +1756,8 @@ export function DesignSystemPage() {
                   <AlertTriangle className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold">Connection interrupted</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  <p className="text-body-sm font-semibold">Connection interrupted</p>
+                  <p className="mt-1 text-caption leading-5 text-muted-foreground">
                     Local data is safe; remote metadata may be incomplete.
                   </p>
                 </div>
@@ -1760,8 +1767,10 @@ export function DesignSystemPage() {
                   <CircleAlert className="size-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold">Import failed</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Check the file format and try again.</p>
+                  <p className="text-body-sm font-semibold">Import failed</p>
+                  <p className="mt-1 text-caption leading-5 text-muted-foreground">
+                    Check the file format and try again.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1783,15 +1792,15 @@ export function DesignSystemPage() {
               <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-caption font-semibold text-primary">
                 {index + 1}
               </span>
-              <p className="text-sm leading-6 text-muted-foreground">{item}</p>
+              <p className="text-body-sm leading-6 text-muted-foreground">{item}</p>
             </div>
           ))}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <Guidance>
-            The durable written guide lives at <code className="font-mono text-xs">docs/design-system.md</code>. Keep it
-            aligned with this living catalog when architecture, naming or contribution rules change.
+            The durable written guide lives at <code className="font-mono text-caption">docs/design-system.md</code>.
+            Keep it aligned with this living catalog when architecture, naming or contribution rules change.
           </Guidance>
           <Button asChild>
             <a href="#overview">

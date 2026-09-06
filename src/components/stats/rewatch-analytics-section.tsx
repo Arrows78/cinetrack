@@ -38,19 +38,19 @@ export function RewatchAnalyticsSection() {
         <Tile className="p-3">
           <Repeat className="size-4 text-primary" aria-hidden="true" />
           <p className="mt-2 text-caption text-muted-foreground">{t("stats.rewatch.totalRewatches")}</p>
-          <p className="mt-1 font-display text-2xl font-bold">{data.totalRewatches}</p>
+          <p className="mt-1 font-display text-heading-lg font-bold">{data.totalRewatches}</p>
         </Tile>
         <Tile className="p-3">
           <p className="text-caption text-muted-foreground">{t("stats.rewatch.rewatchShare")}</p>
-          <p className="mt-1 font-display text-2xl font-bold">{data.rewatchSharePercent}%</p>
+          <p className="mt-1 font-display text-heading-lg font-bold">{data.rewatchSharePercent}%</p>
         </Tile>
       </div>
       {data.favouriteComfortTitles.length ? (
         <div className="mt-4">
-          <p className="text-sm font-medium">{t("stats.rewatch.comfortTitles")}</p>
+          <p className="text-body-sm font-medium">{t("stats.rewatch.comfortTitles")}</p>
           <div className="mt-2 grid gap-2">
             {data.favouriteComfortTitles.map((title) => (
-              <Tile key={title.title} className="flex justify-between gap-3 px-3 py-2 text-sm">
+              <Tile key={title.title} className="flex justify-between gap-3 px-3 py-2 text-body-sm">
                 <span className="min-w-0 flex-1 truncate">{title.title}</span>
                 <strong className="shrink-0 text-muted-foreground">
                   {t("stats.rewatchCount", { count: title.count })}
@@ -61,7 +61,7 @@ export function RewatchAnalyticsSection() {
         </div>
       ) : null}
       <div className="mt-4">
-        <p className="text-sm font-medium">{t("stats.rewatch.activityTitle")}</p>
+        <p className="text-body-sm font-medium">{t("stats.rewatch.activityTitle")}</p>
         <ActivityBarChart
           data={data.rewatchActivity.map((bucket) => ({ label: bucket.month.slice(5), value: bucket.count }))}
           tooltipLabel={t("stats.rewatch.rewatches")}
