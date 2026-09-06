@@ -89,7 +89,18 @@ export function WatchTonightPage() {
   const genreId = routeSearch.genreId ?? "";
   const provider = routeSearch.provider ?? "";
   const originCountry = routeSearch.originCountry ?? "";
-  const urlRuntime = routeSearch.runtime !== undefined ? String(routeSearch.runtime) : DEFAULT_RUNTIME;
+  // runtime=0 in the URL is the explicit "no cap" the duration chip's
+  // remove action writes; an absent param is the untouched 120 default.
+  // Compared numerically rather than against the literal 0 so a raw "0"
+  // (anything that hands this through without zod's coercion) can't slip
+  // past as a real 0-minute cap, which would filter every result away.
+  const runtimeParam = routeSearch.runtime === undefined ? undefined : Number(routeSearch.runtime);
+  const urlRuntime =
+    runtimeParam === undefined || Number.isNaN(runtimeParam)
+      ? DEFAULT_RUNTIME
+      : runtimeParam <= 0
+        ? ""
+        : String(runtimeParam);
 
   const setGenreId = (value: string) =>
     void navigate({ search: (prev) => ({ ...prev, genreId: value || undefined }), replace: true });
@@ -101,28 +112,22 @@ export function WatchTonightPage() {
   // Runtime is a free-text number input, not an atomic select change, so it
   // needs the same "buffer locally, debounce to the URL, don't let our own
   // round-trip clobber in-progress typing" guard as SearchPage's query field
-  // (search-page.tsx) — an empty value round-trips back as "no runtime cap"
-  // (the URL can't distinguish "cleared" from "the 120 default" since the
-  // schema only accepts a positive int), which matches this page's existing
-  // behavior of treating a cleared field as no cap.
-  const lastPushedRuntimeRef = useRef<string | undefined>(urlRuntime === DEFAULT_RUNTIME ? undefined : urlRuntime);
+  // (search-page.tsx). The local state is the raw field text ("" = no cap);
+  // toUrlRuntime maps it to the schema's three states.
+  const toUrlRuntime = (value: string) => (value === DEFAULT_RUNTIME ? undefined : value === "" ? 0 : Number(value));
+  const lastPushedRuntimeRef = useRef<number | undefined>(toUrlRuntime(urlRuntime));
   const [runtime, setRuntime] = useState(urlRuntime);
   const [prevUrlRuntime, setPrevUrlRuntime] = useState(urlRuntime);
   if (urlRuntime !== prevUrlRuntime) {
     setPrevUrlRuntime(urlRuntime);
-    if ((urlRuntime === DEFAULT_RUNTIME ? undefined : urlRuntime) !== lastPushedRuntimeRef.current) {
-      setRuntime(urlRuntime);
-    }
+    if (toUrlRuntime(urlRuntime) !== lastPushedRuntimeRef.current) setRuntime(urlRuntime);
   }
   const debouncedRuntime = useDebouncedValue(runtime, DEBOUNCE_MS);
   useEffect(() => {
-    const nextRuntime = !debouncedRuntime || debouncedRuntime === DEFAULT_RUNTIME ? undefined : debouncedRuntime;
+    const nextRuntime = toUrlRuntime(debouncedRuntime);
     if (nextRuntime === lastPushedRuntimeRef.current) return;
     lastPushedRuntimeRef.current = nextRuntime;
-    void navigate({
-      search: (prev) => ({ ...prev, runtime: nextRuntime ? Number(nextRuntime) : undefined }),
-      replace: true,
-    });
+    void navigate({ search: (prev) => ({ ...prev, runtime: nextRuntime }), replace: true });
   }, [debouncedRuntime, navigate]);
 
   const [seed, setSeed] = useState(0);
@@ -137,7 +142,8 @@ export function WatchTonightPage() {
       genreMovie: selectedGenre?.movieId || undefined,
       genreSeries: selectedGenre?.seriesId || undefined,
       provider: resolvedProvider,
-      maxRuntime: runtime ? Number(runtime) : undefined,
+      // A non-positive value means "no cap", never a real 0-minute filter.
+      maxRuntime: Number(runtime) > 0 ? Number(runtime) : undefined,
       hideWatched,
       originCountry: originCountry || undefined,
     },
@@ -179,11 +185,17 @@ export function WatchTonightPage() {
           onRemove: () => setProvider(""),
         }
       : null,
-    runtime !== DEFAULT_RUNTIME && runtime
+    // Shown for the 120-minute default too, not just an edited value: the
+    // default is a real, results-shrinking cap (it quietly excludes every
+    // long film), so leaving it off the chips row told the user they had no
+    // filters applied when they did. Removing it clears the cap outright
+    // rather than snapping back to 120 — otherwise the chip would be
+    // un-removable.
+    runtime
       ? {
           key: "duration",
           label: t("filters.chips.duration", { value: formatRuntime(Number(runtime)) }),
-          onRemove: () => setRuntime(DEFAULT_RUNTIME),
+          onRemove: () => setRuntime(""),
         }
       : null,
     selectedCountry
@@ -197,7 +209,9 @@ export function WatchTonightPage() {
   const clearAllFilters = () => {
     setGenreId("");
     setProvider("");
-    setRuntime(DEFAULT_RUNTIME);
+    // Clears the cap rather than restoring 120 — "clear all" has to agree
+    // with what removing the duration chip on its own does.
+    setRuntime("");
     setOriginCountry("");
   };
 

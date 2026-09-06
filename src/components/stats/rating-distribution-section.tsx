@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useRatingDistribution } from "@/features/stats/use-stats";
 import { Panel } from "@/components/ui/panel";
 import { ActivityBarChart } from "@/components/media/activity/activity-bar-chart";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { logger } from "@/shared/lib/logger";
 
 const roundToOneDecimal = (value: number) => Math.round(value * 10) / 10;
@@ -30,7 +31,22 @@ export function RatingDistributionSection() {
     }
   }, [distribution.isError, distribution.error]);
 
-  if (distribution.isError || !distribution.data) return null;
+  // Failure says so and offers a retry; a genuinely empty distribution
+  // (nothing rated yet) still hides the panel entirely — see the same split
+  // in RewatchAnalyticsSection.
+  if (distribution.isError) {
+    return (
+      <Panel>
+        <h2 className="text-heading-sm">{t("stats.ratingDistribution.title")}</h2>
+        <PartialErrorState
+          className="mt-4"
+          message={t("stats.sectionUnavailable", { section: t("stats.ratingDistribution.title") })}
+          onRetry={() => void distribution.refetch()}
+        />
+      </Panel>
+    );
+  }
+  if (!distribution.data) return null;
 
   const data = distribution.data;
   if (!data.distribution.length) return null;

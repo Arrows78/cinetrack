@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
+import i18n from "@/i18n";
 import { AppRouter } from "@/app/router";
 import { BrowserPreviewBanner } from "@/components/desktop/browser-preview-banner";
 import { Toaster } from "@/components/ui/toaster";
+import { toast } from "@/components/ui/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
@@ -80,7 +82,16 @@ export function App() {
 
     const checkBackgroundNotifications = async () => {
       const preferences = await preferencesRepository.getPreferences();
-      await availabilityMonitor.checkAll({ notificationsEnabled: preferences.notificationsEnabled });
+      const availabilityOutcome = await availabilityMonitor.checkAll({
+        notificationsEnabled: preferences.notificationsEnabled,
+      });
+      // Every single alert failing is a real outage (TMDB down, no network),
+      // not a quiet day — say so once, rather than letting the user believe
+      // their alerts are working. A partial failure stays log-only: the
+      // alerts that did succeed still did their job.
+      if (availabilityOutcome.checked > 0 && availabilityOutcome.failures === availabilityOutcome.checked) {
+        toast({ description: i18n.t("tracking.availabilityCheckFailed"), variant: "error" });
+      }
       if (!preferences.notificationsEnabled) return;
       // Only entries the user actually tracks (library movies, tracked-series
       // episodes) can reach a notification — see buildNotifiableCalendarEntries.

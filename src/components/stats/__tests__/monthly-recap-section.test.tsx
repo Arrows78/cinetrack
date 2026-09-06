@@ -60,10 +60,17 @@ describe("MonthlyRecapSection", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders nothing and logs a warning on error", () => {
-    useMonthlyRecapMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom") });
-    const { container } = render(<MonthlyRecapSection />);
-    expect(container).toBeEmptyDOMElement();
+  it("surfaces the failure with a retry instead of vanishing, and logs a warning", () => {
+    const refetch = vi.fn();
+    useMonthlyRecapMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom"), refetch });
+    render(<MonthlyRecapSection />);
+
+    // A hidden panel would read as "you have no data", not "this failed".
+    expect(
+      screen.getByText(i18n.t("stats.sectionUnavailable", { section: i18n.t("stats.monthlyRecap.title") }))
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("errors.retry") }));
+    expect(refetch).toHaveBeenCalledTimes(1);
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("boom"));
   });
 
@@ -74,9 +81,11 @@ describe("MonthlyRecapSection", () => {
       error: "backend unavailable",
     });
 
-    const { container } = render(<MonthlyRecapSection />);
+    render(<MonthlyRecapSection />);
 
-    expect(container).toBeEmptyDOMElement();
+    expect(
+      screen.getByText(i18n.t("stats.sectionUnavailable", { section: i18n.t("stats.monthlyRecap.title") }))
+    ).toBeInTheDocument();
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("backend unavailable"));
   });
 

@@ -5,6 +5,7 @@ import { useRewatchStats } from "@/features/stats/use-stats";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { ActivityBarChart } from "@/components/media/activity/activity-bar-chart";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { logger } from "@/shared/lib/logger";
 
 /**
@@ -27,7 +28,22 @@ export function RewatchAnalyticsSection() {
     }
   }, [rewatch.isError, rewatch.error]);
 
-  if (rewatch.isError || !rewatch.data) return null;
+  // A failed below-the-fold section says so and offers a retry, rather than
+  // vanishing: an absent panel is indistinguishable from "you have no
+  // rewatches yet", which is the opposite of what actually happened.
+  if (rewatch.isError) {
+    return (
+      <Panel>
+        <h2 className="text-heading-sm">{t("stats.rewatch.title")}</h2>
+        <PartialErrorState
+          className="mt-4"
+          message={t("stats.sectionUnavailable", { section: t("stats.rewatch.title") })}
+          onRetry={() => void rewatch.refetch()}
+        />
+      </Panel>
+    );
+  }
+  if (!rewatch.data) return null;
 
   const data = rewatch.data;
 

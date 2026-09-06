@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
+import { formatRuntime } from "@/shared/utils/format";
 import type { Movie, Series, UserPreferences } from "@/types/media";
 import { WatchTonightPage } from "../watch-tonight-page";
 
@@ -434,7 +435,32 @@ describe("WatchTonightPage", () => {
       expect(search).not.toContain("genreId");
       expect(search).not.toContain("provider");
       expect(search).not.toContain("originCountry");
-      expect(search).not.toContain("runtime");
+      // runtime=0 is "no cap", not a leftover filter: clearing has to remove
+      // the 120-minute default outright, and an absent param would mean
+      // exactly that default (see watchTonightRoute's schema comment).
+      expect(search).toContain("runtime=0");
     });
+    await waitFor(() => expect(pickMock).toHaveBeenLastCalledWith(expect.objectContaining({ maxRuntime: undefined })));
+  });
+
+  it("shows the default 120-minute cap as a removable chip, and removing it lifts the cap", async () => {
+    renderPage();
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+    // The default is a real, results-shrinking filter — it has to be visible
+    // rather than silently applied.
+    expect(pickMock).toHaveBeenLastCalledWith(expect.objectContaining({ maxRuntime: 120 }));
+
+    const chipLabel = i18n.t("filters.chips.duration", { value: formatRuntime(120) });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    await waitFor(() => expect(pickMock).toHaveBeenLastCalledWith(expect.objectContaining({ maxRuntime: undefined })));
+    await waitFor(() => expect(getRouterSearch()).toContain("runtime=0"));
+  });
+
+  it("restores an explicitly-lifted cap from the URL rather than snapping back to 120", async () => {
+    renderPage("?runtime=0");
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+    expect(pickMock).toHaveBeenLastCalledWith(expect.objectContaining({ maxRuntime: undefined }));
   });
 });

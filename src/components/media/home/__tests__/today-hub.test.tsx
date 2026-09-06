@@ -121,6 +121,27 @@ describe("TodayHub", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("tells the user when a secondary fetch failed, instead of only logging it", () => {
+    availabilityMock.mockReturnValue({ ...emptyAvailability(), isError: true });
+
+    render(<TodayHub index={1} />);
+
+    expect(screen.getByText(i18n.t("home.todayHubPartialError"))).toBeInTheDocument();
+  });
+
+  it("stays mounted for the failure note even when every card is empty", () => {
+    // Without this, a total secondary-fetch outage empties every card and
+    // takes the whole hub — note included — down with it, wordlessly.
+    episodesMock.mockReturnValue({ ...emptyEpisodes(), isError: true });
+    availabilityMock.mockReturnValue({ ...emptyAvailability(), isError: true });
+    watchTonightMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom") });
+
+    const { container } = render(<TodayHub index={1} />);
+
+    expect(container).not.toBeEmptyDOMElement();
+    expect(screen.getByText(i18n.t("home.todayHubPartialError"))).toBeInTheDocument();
+  });
+
   it("renders the hub heading with the given index once continueWatching has entries", () => {
     episodesMock.mockReturnValue({
       ...emptyEpisodes(),

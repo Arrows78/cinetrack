@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
 import { RewatchAnalyticsSection } from "../rewatch-analytics-section";
 import type { RewatchStats } from "@/types/media";
@@ -49,10 +49,17 @@ describe("RewatchAnalyticsSection", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders nothing and logs a warning on error", () => {
-    useRewatchStatsMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom") });
-    const { container } = render(<RewatchAnalyticsSection />);
-    expect(container).toBeEmptyDOMElement();
+  it("surfaces the failure with a retry instead of vanishing, and logs a warning", () => {
+    const refetch = vi.fn();
+    useRewatchStatsMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom"), refetch });
+    render(<RewatchAnalyticsSection />);
+
+    // A hidden panel would read as "you have no data", not "this failed".
+    expect(
+      screen.getByText(i18n.t("stats.sectionUnavailable", { section: i18n.t("stats.rewatch.title") }))
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("errors.retry") }));
+    expect(refetch).toHaveBeenCalledTimes(1);
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("boom"));
   });
 

@@ -37,8 +37,24 @@ export const formatDate = (value?: string | null) => {
  * dates are date-only ("2026-08-08"), which `new Date()` parses as UTC
  * midnight — shifted a day earlier in any negative-UTC-offset timezone once
  * displayed locally. parseISO reads a date-only string as local midnight.
+ *
+ * Degrades to "Unknown date" on empty/malformed input rather than throwing:
+ * callers group entries by a date that their own types say is always
+ * present (see TrackingList's `entry.date ?? ""` fallback), so a backend
+ * that ever violated that invariant would otherwise crash the whole list
+ * instead of showing one unplaceable row.
  */
-export const formatFullDate = (value: string) => format(parseISO(value), "EEEE d MMMM yyyy", { locale: dateLocale() });
+export const formatFullDate = (value: string) => {
+  if (!value) return i18n.t("common.unknownDate");
+
+  try {
+    const parsed = parseISO(value);
+    if (Number.isNaN(parsed.getTime())) return i18n.t("common.unknownDate");
+    return format(parsed, "EEEE d MMMM yyyy", { locale: dateLocale() });
+  } catch {
+    return i18n.t("common.unknownDate");
+  }
+};
 
 // Age at death for a deceased person (as of their deathday) rather than
 // their current age — TMDB's birthday/deathday pair is the only place that

@@ -118,10 +118,16 @@ export function AboutSettings() {
           <CardDescription>{t("settings.about.cacheDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* A failed measurement shows its own line rather than falling back
+              to formatBytes(0): "0 B" is indistinguishable from a genuinely
+              empty cache, which is exactly the wrong thing to tell someone
+              deciding whether clearing it is worth it. */}
           <p className="text-body-sm text-muted-foreground">
             {isMeasuring
               ? t("settings.about.cacheMeasuring")
-              : t("settings.about.cacheSize", { size: formatBytes(cacheSize ?? 0) })}
+              : cacheSize === null
+                ? t("settings.about.cacheSizeUnavailable")
+                : t("settings.about.cacheSize", { size: formatBytes(cacheSize) })}
           </p>
           <Button
             type="button"

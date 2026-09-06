@@ -9,6 +9,7 @@ import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
@@ -43,7 +44,22 @@ export function MonthlyRecapSection() {
     }
   }, [recap.isError, recap.error]);
 
-  if (recap.isError || !recap.data) return null;
+  // Failure says so and offers a retry rather than vanishing — an absent
+  // panel reads as "nothing watched that month", the opposite of what
+  // happened, and here it would also strand the month-navigation arrows.
+  if (recap.isError) {
+    return (
+      <Panel>
+        <h2 className="text-heading-sm">{t("stats.monthlyRecap.title")}</h2>
+        <PartialErrorState
+          className="mt-4"
+          message={t("stats.sectionUnavailable", { section: t("stats.monthlyRecap.title") })}
+          onRetry={() => void recap.refetch()}
+        />
+      </Panel>
+    );
+  }
+  if (!recap.data) return null;
 
   const data = recap.data;
   const monthLabel = new Intl.DateTimeFormat(i18n.language, { month: "long", year: "numeric" }).format(

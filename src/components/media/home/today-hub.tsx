@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "@/components/ui/panel";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { WatchNextSection } from "@/components/media/tracking/watch-next-section";
 import { UpNextSection } from "@/components/media/home/up-next-section";
@@ -81,6 +82,14 @@ export function TodayHub({ index }: { index: number }) {
       logger.warn(`[today-hub] Watch Tonight teaser failed: ${errorMessage(watchTonight.error)}`);
   }, [watchTonight.isError, watchTonight.error]);
 
+  // ...and the user gets told too, not just the log. Hiding a card on
+  // failure is fine; hiding it *silently* is what makes a partial outage
+  // read as "you have nothing today". One combined note rather than three:
+  // neither useTodayHubEpisodes nor useAvailabilityStatus exposes a
+  // refetch, so this is the plain inline variant with no retry action —
+  // the underlying queries retry on their own next invalidation.
+  const hasPartialFailure = episodes.isError || availability.isError || watchTonight.isError;
+
   const hasRecommendationContent =
     (Boolean(becauseYouLiked.seedTitle) && becauseYouLiked.items.length > 0) ||
     (Boolean(favouriteGenreRail.genre) && favouriteGenreRail.items.length > 0) ||
@@ -98,7 +107,10 @@ export function TodayHub({ index }: { index: number }) {
     backlog.length > 0 ||
     stale.length > 0;
 
-  if (!hasHubContent) return null;
+  // A total secondary-fetch outage would otherwise empty every card and
+  // take the whole hub down with it, wordlessly — keep it mounted so the
+  // note below is actually reachable.
+  if (!hasHubContent && !hasPartialFailure) return null;
 
   return (
     <section>
@@ -118,6 +130,7 @@ export function TodayHub({ index }: { index: number }) {
           peopleYouWatch={peopleYouWatch}
         />
         <NeedsAttentionSection backlog={backlog.slice(0, CARD_ROW_LIMIT)} stale={stale.slice(0, CARD_ROW_LIMIT)} />
+        {hasPartialFailure ? <PartialErrorState message={t("home.todayHubPartialError")} /> : null}
       </Panel>
     </section>
   );

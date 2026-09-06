@@ -9,6 +9,7 @@ import { Tile } from "@/components/ui/tile";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate } from "@/shared/utils/format";
@@ -45,7 +46,21 @@ export function WatchMilestonesSection() {
     }
   }, [milestones.isError, milestones.error]);
 
-  if (milestones.isError || !milestones.data) return null;
+  // Failure says so and offers a retry rather than vanishing — an absent
+  // panel reads as "no milestones yet", the opposite of what happened.
+  if (milestones.isError) {
+    return (
+      <Panel>
+        <h2 className="text-heading-sm">{t("stats.milestones.title")}</h2>
+        <PartialErrorState
+          className="mt-4"
+          message={t("stats.sectionUnavailable", { section: t("stats.milestones.title") })}
+          onRetry={() => void milestones.refetch()}
+        />
+      </Panel>
+    );
+  }
+  if (!milestones.data) return null;
 
   const exportMilestone = async (milestone: WatchMilestone) => {
     setExportingId(milestone.id);

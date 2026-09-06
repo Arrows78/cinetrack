@@ -63,8 +63,6 @@
     "previousEpisode": "Épisode précédent",
     "similarSuggestions": "Suggestions similaires",
     "becauseWatching": "Parce que vous consultez {{title}}",
-    "disableAlert": "Désactiver l'alerte",
-    "availabilityAlert": "Alerte de disponibilité",
     "trailer": "Bande-annonce",
     "openOnYoutube": "Ouvrir sur YouTube",
     "viewOnImdb": "Voir sur IMDb",
@@ -78,6 +76,10 @@
     "addWatchNotePlaceholder": "Qu'en avez-vous pensé ?",
     "watchHistoryTitle": "Journal de visionnage",
     "watchHistoryUnavailable": "Impossible de charger votre journal de visionnage — réessayez dans un instant."
+  },
+  "availability": {
+    "alert": "Alerte de disponibilité",
+    "disableAlert": "Désactiver l'alerte"
   },
   "pages": {
     "notFound": "Page introuvable",
@@ -193,6 +195,7 @@
     "becauseYouWatchActorSubtitle": "Sélectionnés d'après l'acteur le plus souvent au générique de votre bibliothèque terminée.",
     "todayHubTitle": "Aujourd'hui",
     "todayHubSubtitle": "Tout ce qui mérite votre attention aujourd'hui, au même endroit.",
+    "todayHubPartialError": "Certaines cartes du jour n'ont pas pu se charger. Elles reviendront au prochain rafraîchissement.",
     "upNext": "À regarder ensuite",
     "upNextSubtitle": "Des séries pas encore commencées, prêtes à démarrer.",
     "newEpisodes": "Nouveaux épisodes",
@@ -342,6 +345,7 @@
       "cacheDesc": "Les affiches et images téléchargées depuis TMDB sont mises en cache localement pour un chargement plus rapide.",
       "cacheMeasuring": "Calcul de la taille du cache…",
       "cacheSize": "Taille actuelle : {{size}}",
+      "cacheSizeUnavailable": "Impossible de mesurer la taille du cache. Le vidage fonctionne quand même.",
       "clearCache": "Vider le cache d'images",
       "clearCacheConfirmTitle": "Vider le cache d'images ?",
       "clearCacheConfirmDescription": "Cela libérera environ {{size}}. Les images seront retéléchargées depuis TMDB lorsque nécessaire.",
@@ -505,7 +509,8 @@
       "exportFailed": "Échec de l'export de l'image du jalon",
       "cardTitle": "Jalon débloqué",
       "achievedCardLabel": "Débloqué le :"
-    }
+    },
+    "sectionUnavailable": "Impossible de charger « {{section}} »."
   },
   "bootRecovery": {
     "checking": "Vérification de vos données locales…",
@@ -557,6 +562,7 @@
     "theatricalRelease": "Sortie cinéma",
     "availableNow": "Disponible maintenant",
     "awaitingAvailability": "En attente de disponibilité",
+    "availabilityCheckFailed": "Impossible de vérifier vos alertes de disponibilité — TMDB est injoignable. Une nouvelle tentative aura lieu automatiquement.",
     "region": "Région : {{region}}",
     "remove": "Supprimer l'alerte pour {{title}}",
     "removeConfirmTitle": "Supprimer l'alerte pour « {{title}} » ?",

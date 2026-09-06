@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
 import { RatingDistributionSection } from "../rating-distribution-section";
 import type { RatingDistribution } from "@/types/media";
@@ -48,10 +48,17 @@ describe("RatingDistributionSection", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders nothing and logs a warning on error", () => {
-    useRatingDistributionMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom") });
-    const { container } = render(<RatingDistributionSection />);
-    expect(container).toBeEmptyDOMElement();
+  it("surfaces the failure with a retry instead of vanishing, and logs a warning", () => {
+    const refetch = vi.fn();
+    useRatingDistributionMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom"), refetch });
+    render(<RatingDistributionSection />);
+
+    // A hidden panel would read as "you have no data", not "this failed".
+    expect(
+      screen.getByText(i18n.t("stats.sectionUnavailable", { section: i18n.t("stats.ratingDistribution.title") }))
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("errors.retry") }));
+    expect(refetch).toHaveBeenCalledTimes(1);
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("boom"));
   });
 

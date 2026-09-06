@@ -177,7 +177,7 @@ export function CommandPalette() {
     const hasAlert = Boolean(alertQuery.data);
     items.push({
       key: "context-toggle-alert",
-      label: t(hasAlert ? "media.disableAlert" : "media.availabilityAlert"),
+      label: t(hasAlert ? "availability.disableAlert" : "availability.alert"),
       icon: hasAlert ? BellOff : Bell,
       section: "contextual",
       run: () => {

@@ -118,7 +118,13 @@ const watchTonightRoute = createRoute({
   validateSearch: z.object({
     genreId: z.string().optional(),
     provider: z.string().optional(),
-    runtime: z.coerce.number().int().positive().optional(),
+    // Three distinct states, which is why 0 is allowed: absent means the
+    // page's own 120-minute default, a positive value is an explicit cap,
+    // and 0 means the user deliberately removed the cap (see the duration
+    // chip in watch-tonight-page.tsx). Without the 0, "no cap" would be
+    // indistinguishable from "never touched it" and silently snap back to
+    // 120 on the next reload.
+    runtime: z.coerce.number().int().nonnegative().optional(),
     originCountry: z.string().optional(),
     // `seed` (the reroll driver) is deliberately NOT here — a reroll is
     // ephemeral session state, not a filter worth sharing or saving.

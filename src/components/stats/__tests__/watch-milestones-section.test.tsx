@@ -59,10 +59,17 @@ describe("WatchMilestonesSection", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders nothing and logs a warning on error", () => {
-    useWatchMilestonesMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom") });
-    const { container } = render(<WatchMilestonesSection />);
-    expect(container).toBeEmptyDOMElement();
+  it("surfaces the failure with a retry instead of vanishing, and logs a warning", () => {
+    const refetch = vi.fn();
+    useWatchMilestonesMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom"), refetch });
+    render(<WatchMilestonesSection />);
+
+    // A hidden panel would read as "you have no data", not "this failed".
+    expect(
+      screen.getByText(i18n.t("stats.sectionUnavailable", { section: i18n.t("stats.milestones.title") }))
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("errors.retry") }));
+    expect(refetch).toHaveBeenCalledTimes(1);
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("boom"));
   });
 

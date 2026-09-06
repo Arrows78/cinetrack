@@ -28,7 +28,7 @@ export function AvailabilityAlertButton({ media }: { media: MediaSummary }) {
       onClick={() => void toggle()}
     >
       {alert.data ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
-      {alert.data ? t("media.disableAlert") : t("media.availabilityAlert")}
+      {alert.data ? t("availability.disableAlert") : t("availability.alert")}
     </Button>
   );
 }
