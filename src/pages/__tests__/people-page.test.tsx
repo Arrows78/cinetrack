@@ -47,6 +47,7 @@ function makePerson(overrides: Partial<PersonSummary> = {}): PersonSummary {
 
 const idleResult = () => ({
   isLoading: false,
+  isPending: false,
   isError: false,
   error: null,
   refetch: vi.fn(),
@@ -139,6 +140,7 @@ describe("PeoplePage", () => {
   it("shows the grid skeleton and no person cards while the popular list is loading", () => {
     usePopularPeopleMock.mockReturnValue({
       isLoading: true,
+      isPending: true,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -158,6 +160,7 @@ describe("PeoplePage", () => {
     const refetch = vi.fn();
     usePopularPeopleMock.mockReturnValue({
       isLoading: false,
+      isPending: false,
       isError: true,
       error: new Error("boom"),
       refetch,
@@ -180,6 +183,7 @@ describe("PeoplePage", () => {
   it("shows the grid skeleton and no result cards while a search is loading", async () => {
     usePeopleSearchMock.mockReturnValue({
       isLoading: true,
+      isPending: true,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -197,6 +201,7 @@ describe("PeoplePage", () => {
     const refetch = vi.fn();
     usePeopleSearchMock.mockReturnValue({
       isLoading: false,
+      isPending: false,
       isError: true,
       error: new Error("boom"),
       refetch,

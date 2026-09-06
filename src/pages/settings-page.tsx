@@ -66,7 +66,8 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
       await profiles.create(name);
       setNewProfileName("");
     } catch {
-      toast({ description: t("settings.profiles.createFailed"), variant: "error" });
+      // Failure toast is handled by the app-wide MutationCache error
+      // handler (see query-client.ts).
     }
   };
 
@@ -166,21 +167,27 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
 
       <ConfirmDialog
         open={pendingDeleteProfile !== null}
-        onOpenChange={(open) => !open && setPendingDeleteProfile(null)}
+        onOpenChange={(open) => !open && !profiles.isSaving && setPendingDeleteProfile(null)}
         title={t("settings.profiles.deleteConfirmTitle", {
           name:
             pendingDeleteProfile?.id === "default" ? t("settings.profiles.defaultName") : pendingDeleteProfile?.name,
         })}
         description={t("settings.profiles.deleteConfirmDescription")}
-        confirmLabel={t("common.confirm")}
+        confirmLabel={t("common.delete")}
         cancelLabel={t("common.cancel")}
+        isConfirming={profiles.isSaving}
         onConfirm={() => {
           if (!pendingDeleteProfile) return;
           const target = pendingDeleteProfile;
-          setPendingDeleteProfile(null);
-          void profiles.remove(target.id).catch(() => {
-            toast({ description: t("settings.profiles.deleteFailed"), variant: "error" });
-          });
+          // Failure toast is handled by the app-wide MutationCache error
+          // handler (see query-client.ts) — the dialog stays open (and
+          // isConfirming clears) so the user can retry instead of losing
+          // their place; the catch here only prevents an unhandled
+          // rejection, it doesn't need to do anything itself.
+          void profiles
+            .remove(target.id)
+            .then(() => setPendingDeleteProfile(null))
+            .catch(() => {});
         }}
       />
     </Card>
@@ -279,6 +286,11 @@ export function SettingsPage() {
                           )}
                           style={{ backgroundColor: preset.swatch, ["--tw-ring-color" as string]: preset.swatch }}
                         >
+                          {/* Fixed white, not a theme token: this sits on the preset's own
+                              arbitrary swatch color (backgroundColor above), which can be
+                              any hue — a semantic foreground token isn't contrast-tested
+                              against it. Same reasoning as MEDIA_POSTER_OVERLAY_CLASSNAME's
+                              own documented fixed white. */}
                           {selected ? <Check className="size-4 text-white" /> : null}
                         </div>
                         <span className="text-caption text-muted-foreground">{t(`colors.${key}`)}</span>
@@ -315,14 +327,18 @@ export function SettingsPage() {
               </label>
             </div>
             <div>
+              {/* The visible label doubles as FilterBar's accessible group
+                  name (groupLabel) instead of a plain <p> with no
+                  programmatic association to the control below it. */}
               <p className="mb-3 text-sm font-medium">{t("settings.defaultSearch")}</p>
               <FilterBar
                 value={preferences?.defaultSearchType ?? "all"}
                 onChange={(value) => void updatePreference({ key: "defaultSearchType", value })}
+                groupLabel={t("settings.defaultSearch")}
                 options={[
-                  { value: "all", label: t("settings.all") },
-                  { value: "series", label: t("settings.series") },
-                  { value: "movie", label: t("settings.movies") },
+                  { value: "all", label: t("filters.all") },
+                  { value: "series", label: t("filters.typeSeries") },
+                  { value: "movie", label: t("filters.typeMovies") },
                 ]}
               />
             </div>

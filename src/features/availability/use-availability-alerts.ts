@@ -16,7 +16,7 @@ export function useAvailabilityAlerts() {
     (id: string) => availabilityRepository.remove(id),
     [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
   );
-  return { ...query, remove: removeMutation.mutateAsync };
+  return { ...query, remove: removeMutation.mutateAsync, isRemoving: removeMutation.isPending };
 }
 
 // Not profile-scoped (see queryKeys.local.availabilitySnapshots's own

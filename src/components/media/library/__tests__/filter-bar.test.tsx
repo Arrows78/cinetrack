@@ -12,7 +12,7 @@ const options = [
 describe("FilterBar", () => {
   it("marks the current value and emits a selected option", () => {
     const onChange = vi.fn();
-    render(<FilterBar value="all" options={[...options]} onChange={onChange} />);
+    render(<FilterBar value="all" options={[...options]} onChange={onChange} groupLabel="Filter by type" />);
 
     expect(screen.getByRole("button", { name: "All" })).toHaveClass("text-foreground");
     expect(screen.getByRole("button", { name: "Movies" })).toHaveClass("text-muted-foreground");

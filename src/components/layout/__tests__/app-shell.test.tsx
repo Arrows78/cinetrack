@@ -127,6 +127,16 @@ describe("AppShell", () => {
       expect(navigateSpy).toHaveBeenCalledWith({ to: "/series/42" });
     });
 
+    it("falls back to the season route (not the series route) from an episode path", () => {
+      routerState.pathname = "/series/42/season/3/episode/7";
+      render(<AppShell />);
+
+      screen.getAllByRole("button", { name: i18n.t("common.back") })[0]!.click();
+
+      expect(historyBackSpy).not.toHaveBeenCalled();
+      expect(navigateSpy).toHaveBeenCalledWith({ to: "/series/42/season/3" });
+    });
+
     it("falls back to /series from a series detail path with no season segment", () => {
       routerState.pathname = "/series/42";
       render(<AppShell />);

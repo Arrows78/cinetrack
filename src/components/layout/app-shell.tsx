@@ -15,6 +15,11 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 // prior in-app navigation (a deep link, or a reload) — this maps a detail
 // route to its logical parent list for that case.
 function fallbackRouteFor(pathname: string): string {
+  // Most specific first: an episode route also matches /season/, so
+  // testing that pattern first would strand a deep-linked episode's
+  // fallback on the series page, skipping the season page in between.
+  const episodeMatch = /^(\/series\/[^/]+\/season\/[^/]+)\/episode\//.exec(pathname);
+  if (episodeMatch) return episodeMatch[1]!;
   const seasonMatch = /^(\/series\/[^/]+)\/season\//.exec(pathname);
   if (seasonMatch) return seasonMatch[1]!;
   if (pathname.startsWith("/series/")) return "/series";

@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -202,7 +202,12 @@ describe("LibraryEditor", () => {
     await vi.waitFor(() => expect(toastMock).toHaveBeenCalledWith({ description: "Saved.", variant: "success" }));
   });
 
-  it("shows an error toast, never the raw error message, when saving fails", async () => {
+  // The app-wide MutationCache.onError handler (see query-client.ts and its
+  // own test) is now the single place a save failure surfaces to the user —
+  // this component no longer shows its own error toast, which would
+  // otherwise double up with that global one. Covered here as "doesn't
+  // duplicate", not "shows an error toast".
+  it("does not show its own error toast when saving fails, leaving that to the app-wide mutation error handler", async () => {
     save.mockReset().mockRejectedValueOnce(new Error("sql.execute not allowed"));
     useLibraryItemMock.mockReturnValue({
       data: libraryItem,
@@ -217,9 +222,8 @@ describe("LibraryEditor", () => {
     renderLoaded();
     screen.getByRole("button", { name: /save/i }).click();
 
-    await vi.waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith({ description: "Couldn't save. Please try again.", variant: "error" })
-    );
+    await vi.waitFor(() => expect(save).toHaveBeenCalled());
+    expect(toastMock).not.toHaveBeenCalled();
   });
 
   it("changes the status and sends the new value on save", () => {
@@ -332,7 +336,7 @@ describe("LibraryEditor", () => {
   });
 
   it("removes the entry from the library once removal is confirmed", async () => {
-    const remove = vi.fn();
+    const remove = vi.fn(() => Promise.resolve());
     useLibraryItemMock.mockReturnValue({
       data: libraryItem,
       isLoading: false,
@@ -346,7 +350,11 @@ describe("LibraryEditor", () => {
     renderLoaded();
     screen.getByRole("button", { name: /remove/i }).click();
 
-    const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });
+    // Scoped to the dialog: the page's own "Remove" trigger stays mounted
+    // behind it and shares the exact same accessible name as the confirm
+    // button now that confirmLabel is "library.remove", not "common.confirm".
+    const dialog = await screen.findByRole("dialog");
+    const dialogConfirm = within(dialog).getByRole("button", { name: "Remove" });
     expect(remove).not.toHaveBeenCalled();
     dialogConfirm.click();
 

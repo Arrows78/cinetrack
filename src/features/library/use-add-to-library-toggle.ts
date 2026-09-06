@@ -23,9 +23,20 @@ export function useAddToLibraryToggle(media: MediaSummary, options?: { enabled?:
     await addPlanned(media);
   };
 
-  const confirmForceRemove = () => {
-    void forceRemove({ mediaId: media.id, mediaType: media.mediaType });
-    setConfirmingForceRemove(false);
+  // Awaited before closing (not "close, then fire and forget") so the
+  // dialog's own isConfirming can actually show while the removal is in
+  // flight, and so a double-click on the confirm button can't queue the
+  // same removal twice. On failure the dialog stays open so the user can
+  // retry — the app-wide MutationCache error handler (see query-client.ts)
+  // already surfaces the toast, so there's nothing left to do here besides
+  // not leaving the rejection unhandled.
+  const confirmForceRemove = async () => {
+    try {
+      await forceRemove({ mediaId: media.id, mediaType: media.mediaType });
+      setConfirmingForceRemove(false);
+    } catch {
+      // Handled above.
+    }
   };
 
   return {

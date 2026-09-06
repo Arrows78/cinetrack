@@ -2,6 +2,8 @@ import { useTranslation } from "react-i18next";
 import { ExternalLink, PlayCircle } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { useVideos } from "@/features/media/use-discovery";
+import { VIDEO_EMBED_BACKGROUND_CLASSNAME } from "@/shared/constants/decorative-gradients";
+import { cn } from "@/shared/lib/cn";
 import type { MediaType } from "@/types/media";
 export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; mediaId: number }) {
   const { t } = useTranslation();
@@ -14,7 +16,7 @@ export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; med
         <PlayCircle className="size-5 text-primary" />
         <h2 className="font-semibold">{t("media.trailer")}</h2>
       </div>
-      <div className="mt-4 aspect-video overflow-hidden rounded-2xl bg-black">
+      <div className={cn("mt-4 aspect-video overflow-hidden rounded-2xl", VIDEO_EMBED_BACKGROUND_CLASSNAME)}>
         <iframe
           className="h-full w-full"
           src={`https://www.youtube-nocookie.com/embed/${video.key}`}

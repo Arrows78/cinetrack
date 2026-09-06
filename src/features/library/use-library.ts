@@ -203,13 +203,14 @@ export function libraryInvalidationKeys(profileId: string) {
 // Backs the grid/detail-page quick "add to library" toggle — a lighter
 // weight pair than useLibraryItem (no full LibraryItem fetch) matching the
 // presence-only shape useIsInLibrary already provides for reads.
-export function useLibraryQuickToggle() {
+export function useLibraryQuickToggle(options?: { suppressErrorToast?: boolean }) {
   const profileId = useActiveProfileId();
   const invalidateKeys = libraryInvalidationKeys(profileId);
 
   const addPlanned = useInvalidatingMutation(
     (media: MediaSummary) => libraryRepository.save(media, { status: "planned" }),
-    invalidateKeys
+    invalidateKeys,
+    options
   );
   const removeIfPlanned = useInvalidatingMutation(
     ({ mediaId, mediaType }: { mediaId: number; mediaType: MediaSummary["mediaType"] }) =>

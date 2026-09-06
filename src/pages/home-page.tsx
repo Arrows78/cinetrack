@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
+import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -23,6 +24,43 @@ import { useHomeFeed } from "@/features/media/use-media";
 import { TodayHub } from "@/components/media/home/today-hub";
 import { WeeklyAgendaSection } from "@/components/media/tracking/weekly-agenda-section";
 import { OnThisDaySection } from "@/components/media/activity/on-this-day-section";
+
+// Shared by the hero (main feed loaded) and the offline-summary branch
+// below — both showed the exact same three cards as two independent,
+// hand-typed copies. A failed read now shows "—" rather than a bare "0",
+// which used to be indistinguishable from a genuinely empty library/history.
+function TrackingStatsTrio({
+  trackedSeriesQuery,
+  libraryQuery,
+  plannedCount,
+  historyQuery,
+}: {
+  trackedSeriesQuery: ReturnType<typeof useTrackedSeries>;
+  libraryQuery: ReturnType<typeof useLibrary>;
+  plannedCount: number;
+  historyQuery: ReturnType<typeof useHistory>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <StatCard
+        label={t("home.followedSeries")}
+        value={trackedSeriesQuery.isError ? "—" : String(trackedSeriesQuery.data?.length ?? 0)}
+        helper={t("home.trackedHelper")}
+      />
+      <StatCard
+        label={t("library.statuses.planned")}
+        value={libraryQuery.isError ? "—" : String(plannedCount)}
+        helper={t("home.plannedHelper")}
+      />
+      <StatCard
+        label={t("nav.history")}
+        value={historyQuery.isError ? "—" : String(historyQuery.data?.pages[0]?.length ?? 0)}
+        helper={t("home.activityHelper")}
+      />
+    </>
+  );
+}
 
 // Home has no single static title to promote (its own visible "hero" title
 // is a specific trending movie's name, not the page's identity) — a
@@ -63,55 +101,58 @@ function HomePageContent() {
 
   if (!hasTmdbToken && !dismissedTokenPrompt) {
     return (
-      <div className="mx-auto max-w-2xl px-6 py-16 text-center">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-border bg-foreground/[0.04] text-muted-foreground/60">
-          <Sparkles className="h-7 w-7" />
-        </div>
-        <p className="font-display text-2xl font-bold tracking-tight">{t("home.noTokenTitle")}</p>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">{t("home.noTokenDesc")}</p>
-
-        <div className="mt-8 grid gap-4 text-left sm:grid-cols-2">
-          <Panel tone="subtle" className="space-y-3">
-            <p className="text-sm font-semibold">{t("home.noTokenWorksTitle")}</p>
-            <ul className="space-y-2">
-              {[t("home.noTokenWorksItem1"), t("home.noTokenWorksItem2"), t("home.noTokenWorksItem3")].map((item) => (
-                <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </Panel>
-          <Panel tone="highlight" className="space-y-3">
-            <p className="text-sm font-semibold">{t("home.noTokenUnlocksTitle")}</p>
-            <ul className="space-y-2">
-              {[t("home.noTokenUnlocksItem1"), t("home.noTokenUnlocksItem2"), t("home.noTokenUnlocksItem3")].map(
-                (item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    {item}
-                  </li>
-                )
-              )}
-            </ul>
-          </Panel>
-        </div>
-
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button asChild>
-            <Link to="/settings">{t("home.noTokenAddCta")}</Link>
-          </Button>
-          <Button type="button" variant="outline" onClick={() => setDismissedTokenPrompt(true)}>
-            {t("home.noTokenContinueCta")}
-          </Button>
-        </div>
-      </div>
+      <EmptyState
+        className="mx-auto max-w-2xl"
+        icon={Sparkles}
+        title={t("home.noTokenTitle")}
+        description={t("home.noTokenDesc")}
+        action={
+          <div className="flex flex-col items-center gap-8">
+            <div className="grid gap-4 text-left sm:grid-cols-2">
+              <Panel tone="subtle" className="space-y-3">
+                <p className="text-sm font-semibold">{t("home.noTokenWorksTitle")}</p>
+                <ul className="space-y-2">
+                  {[t("home.noTokenWorksItem1"), t("home.noTokenWorksItem2"), t("home.noTokenWorksItem3")].map(
+                    (item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                        {item}
+                      </li>
+                    )
+                  )}
+                </ul>
+              </Panel>
+              <Panel tone="highlight" className="space-y-3">
+                <p className="text-sm font-semibold">{t("home.noTokenUnlocksTitle")}</p>
+                <ul className="space-y-2">
+                  {[t("home.noTokenUnlocksItem1"), t("home.noTokenUnlocksItem2"), t("home.noTokenUnlocksItem3")].map(
+                    (item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        {item}
+                      </li>
+                    )
+                  )}
+                </ul>
+              </Panel>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button asChild>
+                <Link to="/settings">{t("home.noTokenAddCta")}</Link>
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setDismissedTokenPrompt(true)}>
+                {t("home.noTokenContinueCta")}
+              </Button>
+            </div>
+          </div>
+        }
+      />
     );
   }
 
   if (!hasTmdbToken && dismissedTokenPrompt) {
     return (
-      <div className="space-y-10">
+      <div className="space-y-8">
         <Panel tone="highlight" className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-semibold">{t("home.noTokenBannerTitle")}</p>
@@ -125,20 +166,11 @@ function HomePageContent() {
         <section>
           <SectionHeader title={t("home.offlineSummaryTitle")} subtitle={t("home.offlineSummarySubtitle")} index={1} />
           <div className="flex flex-wrap items-center gap-6">
-            <StatCard
-              label={t("home.followedSeries")}
-              value={String(trackedSeriesQuery.data?.length ?? 0)}
-              helper={t("home.trackedHelper")}
-            />
-            <StatCard
-              label={t("library.statuses.planned")}
-              value={String(plannedCount)}
-              helper={t("home.plannedHelper")}
-            />
-            <StatCard
-              label={t("nav.history")}
-              value={String(historyQuery.data?.pages[0]?.length ?? 0)}
-              helper={t("home.activityHelper")}
+            <TrackingStatsTrio
+              trackedSeriesQuery={trackedSeriesQuery}
+              libraryQuery={libraryQuery}
+              plannedCount={plannedCount}
+              historyQuery={historyQuery}
             />
           </div>
         </section>
@@ -170,9 +202,9 @@ function HomePageContent() {
     );
   }
 
-  if (homeQuery.isLoading) {
+  if (homeQuery.isPending) {
     return (
-      <div className="space-y-10">
+      <div className="space-y-8">
         <HeroSkeleton />
         <GridSkeleton />
       </div>
@@ -188,7 +220,7 @@ function HomePageContent() {
   let sectionIndex = 0;
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       {hero ? (
         <section className="relative overflow-hidden rounded-hero border border-border animate-in-up">
           <img
@@ -220,20 +252,11 @@ function HomePageContent() {
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-6 pt-5 animate-in delay-600">
-              <StatCard
-                label={t("home.followedSeries")}
-                value={String(trackedSeriesQuery.data?.length ?? 0)}
-                helper={t("home.trackedHelper")}
-              />
-              <StatCard
-                label={t("library.statuses.planned")}
-                value={String(plannedCount)}
-                helper={t("home.plannedHelper")}
-              />
-              <StatCard
-                label={t("nav.history")}
-                value={String(historyQuery.data?.pages[0]?.length ?? 0)}
-                helper={t("home.activityHelper")}
+              <TrackingStatsTrio
+                trackedSeriesQuery={trackedSeriesQuery}
+                libraryQuery={libraryQuery}
+                plannedCount={plannedCount}
+                historyQuery={historyQuery}
               />
             </div>
 

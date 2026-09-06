@@ -9,6 +9,7 @@ import { SectionHeader } from "@/components/media/primitives/section-header";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Card } from "@/components/ui/card";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
@@ -70,12 +71,19 @@ export function SeasonPage() {
         media={series}
         actions={<AddToLibraryButton media={series} />}
         extra={
-          <SeenToggle
-            seen={allWatched}
-            disabled={progressQuery.isSaving}
-            onToggle={() => void progressQuery.markSeasonSeen({ series, season, watched: !allWatched })}
-            celebrateOnSeen
-          />
+          <div className="flex flex-col gap-2">
+            <SeenToggle
+              seen={allWatched}
+              disabled={progressQuery.isSaving || progressQuery.isError}
+              onToggle={() => void progressQuery.markSeasonSeen({ series, season, watched: !allWatched })}
+              celebrateOnSeen
+            />
+            {/* progressQuery failing falls back to an empty watched set below,
+                which would show every episode as unwatched — disabling the
+                bulk "mark whole season seen" toggle keeps that wrong read
+                from being written back as if it were real. */}
+            {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
+          </div>
         }
       />
 

@@ -217,7 +217,6 @@ export function SearchPage() {
         <SectionHeader
           title={t("search.globalSearch")}
           subtitle={hasFilters ? t("search.showingResults", { filters: filterTitle }) : t("search.subtitle")}
-          index={1}
           isPageTitle
         />
         <div className="space-y-3">
@@ -228,10 +227,11 @@ export function SearchPage() {
             <FilterBar
               value={scope}
               onChange={(value) => setSelectedScope(value as SearchScope)}
+              groupLabel={t("search.filterScope")}
               options={[
-                { value: "all", label: t("settings.all") },
-                { value: "series", label: t("nav.series") },
-                { value: "movie", label: t("nav.movies") },
+                { value: "all", label: t("filters.all") },
+                { value: "series", label: t("filters.typeSeries") },
+                { value: "movie", label: t("filters.typeMovies") },
               ]}
             />
           </div>

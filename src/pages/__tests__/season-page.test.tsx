@@ -231,6 +231,18 @@ describe("SeasonPage", () => {
     expect(screen.getByTestId("seen-toggle")).toHaveAttribute("aria-pressed", "false");
   });
 
+  // A failed progress read falls back to an empty watched set — every
+  // episode would render as unwatched. Disabling the bulk toggle (and
+  // saying so) keeps that wrong read from being written back as real.
+  it("disables the SeenToggle and surfaces a partial error when the progress query fails", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([], { isError: true, data: undefined }));
+    renderPage();
+
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+    expect(screen.getByText(i18n.t("media.seenStatusUnavailable"))).toBeInTheDocument();
+  });
+
   it("clicking SeenToggle calls markSeasonSeen with the flipped allWatched state", () => {
     const season = makeSeason("Season One", [episode1, episode2, episode3]);
     seasonQueryMock.mockReturnValue(makeQuery(season));

@@ -49,6 +49,14 @@ SheetClose.displayName = DialogPrimitive.Close.displayName;
 // the seam that keeps their backdrop treatment from drifting apart.
 export const DIALOG_OVERLAY_CLASSNAME = "fixed inset-0 z-overlay bg-background/80 backdrop-blur-sm";
 
+// Shared by every small, centered Radix Dialog in the app (ConfirmDialog,
+// AddWatchNoteDialog, MarkPreviousEpisodesDialog) — none of them build on
+// Sheet itself (they're centered modals, not edge-anchored sheets), but
+// without this constant their near-identical DialogPrimitive.Content
+// className had drifted into three separately hand-typed copies.
+export const DIALOG_CONTENT_CLASSNAME =
+  "fixed left-1/2 top-1/2 z-modal flex max-h-[85vh] w-[90%] max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col rounded-shell border border-border bg-background/95 p-5 shadow-2xl focus:outline-none";
+
 export const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>

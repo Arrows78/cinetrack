@@ -7,7 +7,6 @@ import { useAddToCustomList, useCustomLists } from "@/features/custom-lists/use-
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/use-toast";
 
 export function AddToListButton({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
@@ -49,10 +48,12 @@ export function AddToListButton({ media }: { media: MediaSummary }) {
           disabled={!selected || add.isSaving}
           aria-label={t("library.lists.addToList")}
           onClick={() => {
+            // Failure toast is handled by the app-wide MutationCache error
+            // handler (see query-client.ts).
             void add
               .add({ listId: selected, media })
               .then(() => setSelected(""))
-              .catch(() => toast({ description: t("desktop.operationFailed"), variant: "error" }));
+              .catch(() => {});
           }}
         >
           <ListPlus className="size-4" />

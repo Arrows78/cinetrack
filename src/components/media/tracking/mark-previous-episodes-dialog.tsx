@@ -1,7 +1,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { DIALOG_OVERLAY_CLASSNAME } from "@/components/ui/sheet";
+import { DIALOG_CONTENT_CLASSNAME, DIALOG_OVERLAY_CLASSNAME } from "@/components/ui/sheet";
 
 /**
  * Asks whether marking one episode watched should also catch up the
@@ -31,7 +31,7 @@ export function MarkPreviousEpisodesDialog({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-modal flex max-h-[85vh] w-[90%] max-w-sm -translate-x-1/2 -translate-y-1/2 flex-col rounded-shell border border-border bg-background/95 p-5 shadow-2xl focus:outline-none">
+        <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME}>
           <DialogPrimitive.Title className="shrink-0 font-display text-lg font-bold">
             {t("media.markPreviousTitle")}
           </DialogPrimitive.Title>

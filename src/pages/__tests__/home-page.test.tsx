@@ -136,6 +136,7 @@ describe("HomePage", () => {
 
     homeFeedMock.mockReset().mockReturnValue({
       isLoading: false,
+      isPending: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -190,9 +191,23 @@ describe("HomePage", () => {
     expect(screen.queryByText("Dune Part Two")).not.toBeInTheDocument();
   });
 
+  it("shows a dash rather than a misleading 0 when a stat card's own query failed", () => {
+    hasTmdbTokenValue = false;
+    trackedSeriesMock.mockReturnValue({ data: undefined, isError: true });
+    libraryMock.mockReturnValue({ data: [{ mediaId: 1, status: "planned" }] });
+    historyMock.mockReturnValue({ data: { pages: [[{ id: "h1" }]] } });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("home.noTokenContinueCta") }));
+
+    const followedLabel = screen.getByText(i18n.t("home.followedSeries"));
+    expect(followedLabel.nextElementSibling).toHaveTextContent("—");
+  });
+
   it("renders skeletons while the home feed is loading, without any real content", () => {
     homeFeedMock.mockReturnValue({
       isLoading: true,
+      isPending: true,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -211,6 +226,7 @@ describe("HomePage", () => {
     const refetch = vi.fn();
     homeFeedMock.mockReturnValue({
       isLoading: false,
+      isPending: false,
       isError: true,
       error: new Error("network down"),
       refetch,
@@ -257,6 +273,7 @@ describe("HomePage", () => {
   it("hides the hero section entirely when there is no trending movie", () => {
     homeFeedMock.mockReturnValue({
       isLoading: false,
+      isPending: false,
       isError: false,
       error: null,
       refetch: vi.fn(),

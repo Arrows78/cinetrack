@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Query } from "@tanstack/react-query";
-import { shouldDehydrateQuery } from "@/app/query-client";
+import { handleMutationError, shouldDehydrateQuery } from "@/app/query-client";
 import { queryKeys } from "@/shared/constants/query-keys";
+
+const toastMock = vi.fn();
+vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
+
+const loggerErrorMock = vi.fn();
+vi.mock("@/shared/lib/logger", () => ({ logger: { error: (...args: unknown[]) => loggerErrorMock(...args) } }));
 
 // shouldDehydrateQuery (and the defaultShouldDehydrateQuery it composes
 // with) only ever reads query.queryKey and query.state.status, so a plain
@@ -66,5 +72,42 @@ describe("shouldDehydrateQuery", () => {
   it("does not persist a remote.* query that failed or hasn't settled", () => {
     expect(shouldDehydrateQuery(makeQuery(queryKeys.remote.movies, "error"))).toBe(false);
     expect(shouldDehydrateQuery(makeQuery(queryKeys.remote.movies, "pending"))).toBe(false);
+  });
+});
+
+// Every useMutation()/useInvalidatingMutation() in the app is wired through
+// queryClient's MutationCache.onError to this function (see query-client.ts)
+// so a failed user-triggered action is never silent — this is the one place
+// that guarantee is actually implemented, so it's the one place to test it.
+describe("handleMutationError", () => {
+  beforeEach(() => {
+    toastMock.mockReset();
+    loggerErrorMock.mockReset();
+  });
+
+  function makeMutation(suppressErrorToast?: boolean) {
+    return { options: { meta: suppressErrorToast === undefined ? undefined : { suppressErrorToast } } };
+  }
+
+  it("logs the error and shows a translated error toast by default", () => {
+    handleMutationError(new Error("sql.execute not allowed"), makeMutation());
+
+    expect(loggerErrorMock).toHaveBeenCalledWith(expect.stringContaining("sql.execute not allowed"));
+    expect(toastMock).toHaveBeenCalledWith({ description: "That didn't work. Please try again.", variant: "error" });
+  });
+
+  it("never leaks a raw error message into the toast", () => {
+    handleMutationError(new Error("PGRST301: JWT expired"), makeMutation());
+
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.not.stringContaining("PGRST301") })
+    );
+  });
+
+  it("still logs, but skips the toast, when the mutation opts out via meta.suppressErrorToast", () => {
+    handleMutationError(new Error("boom"), makeMutation(true));
+
+    expect(loggerErrorMock).toHaveBeenCalledTimes(1);
+    expect(toastMock).not.toHaveBeenCalled();
   });
 });

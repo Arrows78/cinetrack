@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
+import { MediaProgressRow } from "@/components/media/primitives/media-progress-row";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { WatchNextRow } from "@/components/media/tracking/watch-next-section";
@@ -10,9 +10,8 @@ import { useSeasonDetails } from "@/features/media/use-media";
 import { useNextEpisodes, type NextEpisodeResult } from "@/features/progress/use-watch-next";
 import { useEpisodeProgress, useMovieSeen } from "@/features/progress/use-progress";
 import { useHistory } from "@/features/history/use-history";
-import { buildTmdbImageUrl, formatEpisodeCode, formatRelativeDate } from "@/shared/utils/format";
+import { formatEpisodeCode, formatRelativeDate } from "@/shared/utils/format";
 import type { HistoryAction, MediaSummary, MediaType, TrackedSeriesItem, ViewingHistoryItem } from "@/types/media";
-import fallbackPoster from "@/assets/poster-placeholder.svg";
 
 const WATCHED_ACTIONS = new Set<HistoryAction>([
   "movie:watched",
@@ -53,7 +52,6 @@ function toTrackedSeriesItem(item: MediaGridItem, tracked?: TrackedSeriesItem): 
 // question is right to catch.
 function SeriesFallbackRow({ result }: { result: NextEpisodeResult }) {
   const { t } = useTranslation();
-  const poster = buildTmdbImageUrl(result.series.posterPath, "w185") ?? fallbackPoster;
   const statusText = result.isLoading
     ? t("common.loading")
     : result.isError
@@ -61,22 +59,21 @@ function SeriesFallbackRow({ result }: { result: NextEpisodeResult }) {
       : t("media.noAiredEpisode");
 
   return (
-    <Link
-      to="/series/$seriesId"
-      params={{ seriesId: String(result.series.seriesId) }}
-      className="surface flex items-center gap-4 overflow-hidden rounded-card p-3 pr-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    <MediaProgressRow
+      mediaType="series"
+      mediaId={result.series.seriesId}
+      posterPath={result.series.posterPath}
+      meta={
+        result.isLoading ? (
+          <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+        ) : null
+      }
     >
-      <img src={poster} alt="" loading="lazy" className="h-20 w-14 shrink-0 rounded-lg object-cover" />
-      <div className="min-w-0 flex-1">
-        <span className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground">
-          <span className="truncate">{result.series.title}</span>
-        </span>
-        <p className="mt-1.5 truncate text-sm text-muted-foreground">{statusText}</p>
-      </div>
-      {result.isLoading ? (
-        <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
-      ) : null}
-    </Link>
+      <span className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground">
+        <span className="truncate">{result.series.title}</span>
+      </span>
+      <p className="mt-1.5 truncate text-sm text-muted-foreground">{statusText}</p>
+    </MediaProgressRow>
   );
 }
 
@@ -112,31 +109,26 @@ function EpisodeRowSection({
 function MovieWatchNextRow({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const seenQuery = useMovieSeen(media.id);
-  const poster = buildTmdbImageUrl(media.posterPath, "w185") ?? fallbackPoster;
 
   return (
-    <div className="surface flex items-center gap-4 overflow-hidden rounded-card p-3 pr-4">
-      <Link
-        to="/movies/$movieId"
-        params={{ movieId: String(media.id) }}
-        className="flex min-w-0 flex-1 items-center gap-4 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <img src={poster} alt="" loading="lazy" className="h-20 w-14 shrink-0 rounded-lg object-cover" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-lg font-bold leading-tight">{media.title}</p>
-          <p className="mt-1 truncate text-sm text-muted-foreground">
-            {media.year ?? t("media.unknownYear")}
-            {media.genres[0] ? ` · ${media.genres[0]}` : ""}
-          </p>
-        </div>
-      </Link>
-
-      <SeenToggleButton
-        isSaving={seenQuery.isSaving}
-        onToggle={() => seenQuery.toggleMovieSeen({ movie: media, watched: true })}
-        seen={Boolean(seenQuery.data)}
-      />
-    </div>
+    <MediaProgressRow
+      mediaType="movie"
+      mediaId={media.id}
+      posterPath={media.posterPath}
+      action={
+        <SeenToggleButton
+          isSaving={seenQuery.isSaving}
+          onToggle={() => seenQuery.toggleMovieSeen({ movie: media, watched: true })}
+          seen={Boolean(seenQuery.data)}
+        />
+      }
+    >
+      <p className="truncate font-display text-lg font-bold leading-tight">{media.title}</p>
+      <p className="mt-1 truncate text-sm text-muted-foreground">
+        {media.year ?? t("media.unknownYear")}
+        {media.genres[0] ? ` · ${media.genres[0]}` : ""}
+      </p>
+    </MediaProgressRow>
   );
 }
 
@@ -201,43 +193,40 @@ function useResolvedRecentEpisode(entry: ViewingHistoryItem) {
 function RecentlyWatchedRow({ entry, media }: { entry: ViewingHistoryItem; media?: MediaGridItem }) {
   const { t } = useTranslation();
   const isMovie = entry.mediaType === "movie";
-  const poster = buildTmdbImageUrl(media?.posterPath, "w185") ?? fallbackPoster;
   const episode = useResolvedRecentEpisode(entry);
 
   return (
-    <Link
-      to={isMovie ? "/movies/$movieId" : "/series/$seriesId"}
-      params={isMovie ? { movieId: String(entry.mediaId) } : { seriesId: String(entry.mediaId) }}
-      className="surface flex items-center gap-4 overflow-hidden rounded-card p-3 pr-4 opacity-60 transition-opacity duration-base hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    <MediaProgressRow
+      mediaType={isMovie ? "movie" : "series"}
+      mediaId={entry.mediaId}
+      posterPath={media?.posterPath}
+      dimmed
+      meta={
+        <time className="shrink-0 text-caption tabular-nums text-muted-foreground">
+          {formatRelativeDate(entry.timestamp)}
+        </time>
+      }
     >
-      <img src={poster} alt="" loading="lazy" className="h-20 w-14 shrink-0 rounded-lg object-cover" />
-
-      <div className="min-w-0 flex-1">
-        {isMovie ? (
-          <p className="truncate font-display text-lg font-bold leading-tight">{entry.title}</p>
-        ) : (
-          <>
-            <span className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground">
-              <span className="truncate">{entry.title}</span>
-            </span>
-            {episode.episodeNumber !== undefined ? (
-              <p className="mt-1.5 truncate font-display text-lg font-bold leading-tight">
-                {formatEpisodeCode(episode.seasonNumber ?? 0, episode.episodeNumber, { padded: true })}
-              </p>
-            ) : episode.isLoading ? (
-              <p className="mt-1.5 truncate text-sm text-muted-foreground">{t("common.loading")}</p>
-            ) : null}
-            {episode.episodeTitle ? (
-              <p className="truncate text-sm text-muted-foreground">{episode.episodeTitle}</p>
-            ) : null}
-          </>
-        )}
-      </div>
-
-      <time className="shrink-0 text-caption tabular-nums text-muted-foreground">
-        {formatRelativeDate(entry.timestamp)}
-      </time>
-    </Link>
+      {isMovie ? (
+        <p className="truncate font-display text-lg font-bold leading-tight">{entry.title}</p>
+      ) : (
+        <>
+          <span className="inline-flex max-w-full items-center rounded-full border border-border px-2.5 py-0.5 text-overline font-semibold uppercase text-muted-foreground">
+            <span className="truncate">{entry.title}</span>
+          </span>
+          {episode.episodeNumber !== undefined ? (
+            <p className="mt-1.5 truncate font-display text-lg font-bold leading-tight">
+              {formatEpisodeCode(episode.seasonNumber ?? 0, episode.episodeNumber, { padded: true })}
+            </p>
+          ) : episode.isLoading ? (
+            <p className="mt-1.5 truncate text-sm text-muted-foreground">{t("common.loading")}</p>
+          ) : null}
+          {episode.episodeTitle ? (
+            <p className="truncate text-sm text-muted-foreground">{episode.episodeTitle}</p>
+          ) : null}
+        </>
+      )}
+    </MediaProgressRow>
   );
 }
 

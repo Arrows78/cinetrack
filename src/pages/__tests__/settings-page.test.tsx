@@ -147,7 +147,7 @@ describe("SettingsPage — local profile management", () => {
 
     screen.getByRole("button", { name: "Delete profile Alex" }).click();
 
-    const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });
+    const dialogConfirm = await screen.findByRole("button", { name: "Delete" });
     expect(removeProfileMock).not.toHaveBeenCalled();
     dialogConfirm.click();
 
@@ -185,20 +185,20 @@ describe("SettingsPage — local profile management", () => {
     expect(removeProfileMock).not.toHaveBeenCalled();
   });
 
-  it("offline mode: shows an error toast when removing a profile fails", async () => {
+  // The app-wide MutationCache.onError handler (see query-client.ts and its
+  // own test) is now the single place this failure surfaces to the user —
+  // this page no longer shows its own error toast, which would otherwise
+  // double up with that global one.
+  it("offline mode: does not show its own error toast when removing a profile fails", async () => {
     removeProfileMock.mockReset().mockRejectedValueOnce(new Error("boom"));
     renderPage();
     await screen.findByText("Default profile");
 
     screen.getByRole("button", { name: "Delete profile Alex" }).click();
-    (await screen.findByRole("button", { name: "Confirm" })).click();
+    (await screen.findByRole("button", { name: "Delete" })).click();
 
-    await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith({
-        description: "Couldn't delete the profile. Please try again.",
-        variant: "error",
-      })
-    );
+    await waitFor(() => expect(removeProfileMock).toHaveBeenCalled());
+    expect(toastMock).not.toHaveBeenCalled();
   });
 
   it("offline mode: shows an error toast when switching profiles fails", async () => {
@@ -216,7 +216,7 @@ describe("SettingsPage — local profile management", () => {
     );
   });
 
-  it("offline mode: shows an error toast when creating a profile fails", async () => {
+  it("offline mode: does not show its own error toast when creating a profile fails", async () => {
     createProfileMock.mockReset().mockRejectedValueOnce(new Error("boom"));
     renderPage();
     await screen.findByText("Default profile");
@@ -227,12 +227,8 @@ describe("SettingsPage — local profile management", () => {
     await waitFor(() => expect(createButton).toBeEnabled());
     createButton.click();
 
-    await waitFor(() =>
-      expect(toastMock).toHaveBeenCalledWith({
-        description: "Couldn't create the profile. Please try again.",
-        variant: "error",
-      })
-    );
+    await waitFor(() => expect(createProfileMock).toHaveBeenCalled());
+    expect(toastMock).not.toHaveBeenCalled();
   });
 
   it("offline mode: shows a remote-error state with retry when profiles fail to load", async () => {
@@ -300,7 +296,7 @@ describe("SettingsPage — preferences", () => {
     renderPage();
     await screen.findByText("Default profile");
 
-    const regionSelect = screen.getByRole("combobox", { name: "TMDB Region" });
+    const regionSelect = screen.getByRole("combobox", { name: "TMDB region" });
     fireEvent.change(regionSelect, { target: { value: "US" } });
 
     await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("region", "US"));

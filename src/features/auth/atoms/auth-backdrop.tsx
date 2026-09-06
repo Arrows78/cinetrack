@@ -76,7 +76,7 @@ export function AuthBackdrop() {
     // with no explicit height set, which isn't always a "definite" size for
     // percentage-height children to resolve against. Absolute positioning
     // sidesteps that entirely.
-    <div className="absolute inset-0 overflow-hidden bg-black" aria-hidden="true">
+    <div className="absolute inset-0 overflow-hidden bg-auth-background" aria-hidden="true">
       <BulbRow side="top" className="lg:hidden" />
       <BulbRow side="bottom" className="lg:hidden" />
       <BulbColumn side="left" className="hidden lg:flex" />
@@ -88,20 +88,20 @@ export function AuthBackdrop() {
           return (
             <div
               key={tile.titleKey}
-              className="relative overflow-hidden rounded-sm border border-white/10"
+              className="relative overflow-hidden rounded-sm border border-auth-foreground/10"
               style={{ background: AUTH_BACKDROP_TILE_GRADIENTS[index] }}
             >
               <div className="absolute inset-x-0 top-0 h-2" style={{ backgroundImage: FILM_SPROCKET_PATTERN }} />
               <div className="absolute inset-x-0 bottom-0 h-2" style={{ backgroundImage: FILM_SPROCKET_PATTERN }} />
               <div className="absolute inset-0 flex items-center justify-center opacity-15">
-                <Icon className="h-7 w-7 text-white" />
+                <Icon className="h-7 w-7 text-auth-foreground" />
               </div>
               <div className="absolute inset-0" style={{ background: MEDIA_POSTER_SCRIM }} />
               <div className="absolute inset-x-2 bottom-3">
-                <p className="truncate text-overline font-semibold text-white/90">{t(tile.titleKey)}</p>
-                <div className="mt-1 flex items-center gap-1.5 text-overline text-white/60">
+                <p className="truncate text-overline font-semibold text-auth-foreground/90">{t(tile.titleKey)}</p>
+                <div className="mt-1 flex items-center gap-1.5 text-overline text-auth-foreground/60">
                   <span className="truncate">{t(tile.genreKey)}</span>
-                  <span className="h-1 w-1 shrink-0 rounded-full bg-white/40" />
+                  <span className="h-1 w-1 shrink-0 rounded-full bg-auth-foreground/40" />
                   <span className="flex shrink-0 items-center gap-0.5 text-rating">★ {formatRating(tile.rating)}</span>
                 </div>
               </div>

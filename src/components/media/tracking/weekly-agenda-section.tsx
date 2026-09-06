@@ -1,61 +1,10 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
-import { Bell, Film, Tv } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Tile } from "@/components/ui/tile";
 import { SectionHeader } from "@/components/media/primitives/section-header";
+import { TrackingEntryRow } from "@/components/media/tracking/tracking-entry-row";
 import { useWeeklyAgenda } from "@/features/tracking/use-weekly-agenda";
 import { logger } from "@/shared/lib/logger";
 import { errorMessage } from "@/shared/lib/errors";
-import { formatEpisodeCode, formatRelativeCountdown } from "@/shared/utils/format";
-import type { TrackingEntry } from "@/types/media";
-
-function WeeklyAgendaRow({ entry }: { entry: TrackingEntry }) {
-  const { t } = useTranslation();
-
-  if (entry.type === "availability") {
-    return (
-      <Tile asChild className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-foreground/[0.04]">
-        <Link
-          to={entry.mediaType === "movie" ? "/movies/$movieId" : "/series/$seriesId"}
-          params={
-            entry.mediaType === "movie" ? { movieId: String(entry.mediaId) } : { seriesId: String(entry.mediaId) }
-          }
-        >
-          <Bell className="size-4 shrink-0 text-primary" />
-          <p className="min-w-0 flex-1 truncate text-sm font-medium">{entry.title}</p>
-          <Badge variant="success">{t("tracking.availableNow")}</Badge>
-        </Link>
-      </Tile>
-    );
-  }
-
-  return (
-    <Tile asChild className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-foreground/[0.04]">
-      <Link
-        to={entry.type === "episode" ? "/series/$seriesId" : "/movies/$movieId"}
-        params={entry.type === "episode" ? { seriesId: String(entry.mediaId) } : { movieId: String(entry.mediaId) }}
-        search={entry.type === "episode" ? { season: entry.seasonNumber ?? 1 } : undefined}
-      >
-        {entry.type === "episode" ? (
-          <Tv className="size-4 shrink-0 text-primary" />
-        ) : (
-          <Film className="size-4 shrink-0 text-primary" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{entry.title}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {entry.type === "episode"
-              ? formatEpisodeCode(entry.seasonNumber ?? 0, entry.episodeNumber ?? 0)
-              : t("tracking.theatricalRelease")}
-          </p>
-        </div>
-        {entry.date ? <Badge variant="secondary">{formatRelativeCountdown(entry.date)}</Badge> : null}
-      </Link>
-    </Tile>
-  );
-}
 
 /**
  * Compact "This week" agenda for the active profile — tracked movie
@@ -87,7 +36,7 @@ export function WeeklyAgendaSection({ index }: { index: number }) {
       <SectionHeader title={t("home.thisWeekTitle")} subtitle={t("home.thisWeekSubtitle")} index={index} />
       <div className="grid gap-2 lg:grid-cols-2">
         {entries.map((entry) => (
-          <WeeklyAgendaRow key={entry.id} entry={entry} />
+          <TrackingEntryRow key={entry.id} entry={entry} showCountdown dashboardRail />
         ))}
       </div>
     </section>

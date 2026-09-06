@@ -79,7 +79,7 @@ describe("detail panels", () => {
   });
 
   describe("ProviderAvailability", () => {
-    it("renders RemoteErrorState on query error, and retry calls refetch", () => {
+    it("renders PartialErrorState on query error, and retry calls refetch", () => {
       const refetch = vi.fn();
       availabilityMock.mockReturnValue({
         isError: true,
@@ -90,7 +90,7 @@ describe("detail panels", () => {
 
       render(<ProviderAvailability media={buildMedia()} />);
 
-      expect(screen.getByText(i18n.t("errors.catalogUnavailable"))).toBeInTheDocument();
+      expect(screen.getByText(i18n.t("media.whereToWatchUnavailable"))).toBeInTheDocument();
       screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
       expect(refetch).toHaveBeenCalledTimes(1);
     });

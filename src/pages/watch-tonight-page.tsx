@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Dices, Popcorn } from "lucide-react";
+import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
 import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -18,8 +20,10 @@ import { ORIGIN_COUNTRIES, PLATFORMS } from "@/shared/constants/discover";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
-import { staggerDelayMs } from "@/shared/utils/animation";
+import { formatRuntime } from "@/shared/utils/format";
 import type { Movie, Series } from "@/types/media";
+
+const DEFAULT_RUNTIME = "120";
 
 const MY_SERVICES_VALUE = "mine";
 
@@ -76,7 +80,7 @@ export function WatchTonightPage() {
   const preferences = usePreferences();
   const [genreId, setGenreId] = useState("");
   const [provider, setProvider] = useState("");
-  const [runtime, setRuntime] = useState("120");
+  const [runtime, setRuntime] = useState(DEFAULT_RUNTIME);
   const [originCountry, setOriginCountry] = useState("");
   const [seed, setSeed] = useState(0);
   const selectedGenre = genres.find((genre) => String(genre.id) === genreId);
@@ -107,13 +111,51 @@ export function WatchTonightPage() {
   const hero = combined[heroIndex];
   const alternates = combined.filter((_item, index) => index !== heroIndex);
 
+  const selectedCountry = ORIGIN_COUNTRIES.find((country) => country.code === originCountry);
+  const selectedProviderLabel =
+    provider === MY_SERVICES_VALUE
+      ? t("watchTonight.myServices")
+      : PLATFORMS.find((item) => String(item.id) === provider)?.label;
+
+  // Only the two filters with an actual "no-op" value get a chip: genre and
+  // provider are both already unselected by an empty string, but duration
+  // defaults to 120 (a real, active filter) and country to "all countries" —
+  // both need their own default check instead.
+  const chips: ActiveFilterChip[] = [
+    selectedGenre
+      ? {
+          key: "genre",
+          label: t("filters.chips.genre", { value: t(selectedGenre.labelKey) }),
+          onRemove: () => setGenreId(""),
+        }
+      : null,
+    selectedProviderLabel
+      ? {
+          key: "provider",
+          label: t("filters.chips.provider", { value: selectedProviderLabel }),
+          onRemove: () => setProvider(""),
+        }
+      : null,
+    runtime !== DEFAULT_RUNTIME && runtime
+      ? {
+          key: "duration",
+          label: t("filters.chips.duration", { value: formatRuntime(Number(runtime)) }),
+          onRemove: () => setRuntime(DEFAULT_RUNTIME),
+        }
+      : null,
+    selectedCountry
+      ? {
+          key: "origin",
+          label: t("filters.chips.origin", { value: t(selectedCountry.labelKey) }),
+          onRemove: () => setOriginCountry(""),
+        }
+      : null,
+  ].filter((chip): chip is ActiveFilterChip => chip !== null);
+
   return (
-    <div className="space-y-6">
-      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <h1 className="font-display text-page-title">{t("watchTonight.title")}</h1>
-        <p className="text-muted-foreground">{t("watchTonight.description")}</p>
-      </header>
-      <Panel className="grid gap-3 md:grid-cols-5 animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
+    <div className="space-y-8">
+      <SectionHeader title={t("watchTonight.title")} subtitle={t("watchTonight.description")} isPageTitle />
+      <div className="flex flex-col gap-3 animate-in sm:flex-row sm:flex-wrap sm:items-end">
         <FormField label={t("watchTonight.genre")}>
           {() => (
             <Select value={genreId} onChange={(e) => setGenreId(e.target.value)}>
@@ -165,17 +207,18 @@ export function WatchTonightPage() {
             </Select>
           )}
         </FormField>
-        <Button type="button" className="self-end" onClick={() => setSeed((value) => value + 1)}>
+        <Button type="button" onClick={() => setSeed((value) => value + 1)}>
           <Dices className="mr-2 size-4" />
           {t("watchTonight.retry")}
         </Button>
-      </Panel>
+      </div>
+      <ActiveFilterChips chips={chips} />
       <div className="flex justify-end">
         <HideWatchedToggle />
       </div>
-      {query.isLoading ? <GridSkeleton count={8} /> : null}
+      {query.isPending ? <GridSkeleton count={8} /> : null}
       {query.isError ? <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} /> : null}
-      {!query.isLoading && !query.isError ? (
+      {!query.isPending && !query.isError ? (
         isEmpty ? (
           <EmptyState icon={Popcorn} title={t("watchTonight.emptyTitle")} description={t("watchTonight.emptyDesc")} />
         ) : (
@@ -183,7 +226,7 @@ export function WatchTonightPage() {
             {hero ? <WatchTonightHeroPick media={hero} /> : null}
             {alternates.length ? (
               <section>
-                <h2 className="mb-3 font-semibold">{t("watchTonight.alternatesTitle")}</h2>
+                <SectionHeader title={t("watchTonight.alternatesTitle")} size="sub" headingLevel={2} />
                 <MediaGrid items={alternates} listClassName="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4" />
               </section>
             ) : null}

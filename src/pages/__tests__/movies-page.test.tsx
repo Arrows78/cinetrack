@@ -83,7 +83,7 @@ describe("MoviesPage", () => {
   it("switches to TrackingList locked to movies when the Upcoming filter is clicked", () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Upcoming" }));
 
     const tracking = screen.getByTestId("tracking-list");
     expect(tracking).toHaveAttribute("data-locked-media-type", "movie");
@@ -107,7 +107,7 @@ describe("MoviesPage", () => {
   it("navigates to /search scoped to movies when TrackingList's onBrowseAll is invoked", () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Upcoming" }));
     fireEvent.click(screen.getByRole("button", { name: "tracking-list-browse-all" }));
 
     expect(navigateMock).toHaveBeenCalledWith({ to: "/search", search: { scope: "movie" } });

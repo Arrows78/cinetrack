@@ -80,6 +80,23 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     );
   }
 
+  // Trimmed, emptied entries dropped, and deduplicated case-insensitively
+  // (keeping the first-seen casing) — otherwise "Action" typed once and
+  // "action" typed later become two distinct tags that never match each
+  // other in a filter.
+  const normalizeTags = (raw: string): string[] => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const tag of raw.split(",").map((t) => t.trim())) {
+      if (!tag) continue;
+      const key = tag.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(tag);
+    }
+    return result;
+  };
+
   const save = () =>
     library
       .save({
@@ -90,19 +107,16 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         // combined save avoids two components fighting over the same field.
         userRating: userRating ? Math.min(10, Math.max(0, Number(userRating))) : null,
         notes: notes.trim() || null,
-        tags: tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+        tags: normalizeTags(tags),
         rewatchCount: Math.max(0, rewatchCount),
       })
       .then(() => {
         toast({ description: t("library.saved"), variant: "success" });
       })
       .catch(() => {
-        // Never surface error.message here — it's the raw ApiCommandError
-        // from invokeCommand()/Rust, not a translated, user-facing string.
-        toast({ description: t("library.saveFailed"), variant: "error" });
+        // Failure toast is handled by the app-wide MutationCache error
+        // handler (see query-client.ts) — nothing to do here beyond
+        // preventing an unhandled rejection.
       });
 
   const statuses: Array<{ value: LibraryStatus; label: string }> = [
@@ -195,14 +209,17 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
 
       <ConfirmDialog
         open={confirmingRemove}
-        onOpenChange={setConfirmingRemove}
+        onOpenChange={(open) => !open && !library.isSaving && setConfirmingRemove(open)}
         title={t("library.removeConfirmTitle")}
         description={t("library.removeConfirmDescription")}
-        confirmLabel={t("common.confirm")}
+        confirmLabel={t("library.remove")}
         cancelLabel={t("common.cancel")}
+        isConfirming={library.isSaving}
         onConfirm={() => {
-          void library.remove();
-          setConfirmingRemove(false);
+          void library
+            .remove()
+            .then(() => setConfirmingRemove(false))
+            .catch(() => {});
         }}
       />
     </Panel>

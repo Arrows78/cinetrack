@@ -9,6 +9,13 @@ import { OAUTH_BRAND_COLORS } from "@/shared/constants/colors";
 
 export type ProviderSettingsStatus = "loading" | "ready" | "unavailable";
 
+// Apple, Google and X's own sign-in button guidelines call for a plain
+// white (or black) button with the brand mark doing the identifying —
+// never a brand-colored fill. Facebook's guideline is the opposite: a
+// solid brand-blue button. Both are externally fixed by each platform, not
+// a CineTrack design choice (see CLAUDE.md's "reference colors" exception)
+// — the plain bg-white/text-black here isn't an inconsistency to unify
+// with OAUTH_BRAND_COLORS.facebook, it's a different provider's own rule.
 const providerIds: Array<{
   provider: SocialAuthProvider;
   className: string;

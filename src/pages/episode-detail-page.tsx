@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { hasAired, useEpisodeProgress } from "@/features/progress/use-progress";
@@ -99,27 +100,36 @@ export function EpisodeDetailPage() {
         media={series}
         actions={<AddToLibraryButton media={series} />}
         extra={
-          <div className="flex items-center gap-2">
-            <SeenToggle
-              seen={watched}
-              disabled={progressQuery.isSaving || isUnreleased}
-              onToggle={() => backlog.requestToggle(episode, !watched, season.episodes, watchedSet, undefined, season)}
-              celebrateOnSeen
-            />
-            {!watched && !isUnreleased ? (
-              <IconTooltip label={t("media.addWatchNoteAction")}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("media.addWatchNoteAction")}
-                  disabled={progressQuery.isSaving}
-                  onClick={() => setNoteDialogOpen(true)}
-                >
-                  <NotebookPen className="size-4" />
-                </Button>
-              </IconTooltip>
-            ) : null}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <SeenToggle
+                seen={watched}
+                disabled={progressQuery.isSaving || progressQuery.isError || isUnreleased}
+                onToggle={() =>
+                  backlog.requestToggle(episode, !watched, season.episodes, watchedSet, undefined, season)
+                }
+                celebrateOnSeen
+              />
+              {!watched && !isUnreleased ? (
+                <IconTooltip label={t("media.addWatchNoteAction")}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("media.addWatchNoteAction")}
+                    disabled={progressQuery.isSaving}
+                    onClick={() => setNoteDialogOpen(true)}
+                  >
+                    <NotebookPen className="size-4" />
+                  </Button>
+                </IconTooltip>
+              ) : null}
+            </div>
+            {/* progressQuery failing falls back to an empty watched set above,
+                which would show this episode as unwatched — disabling the
+                toggle keeps that wrong read from being written back as if it
+                were real. */}
+            {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
           </div>
         }
       />

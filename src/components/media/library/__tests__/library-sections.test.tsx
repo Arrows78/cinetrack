@@ -616,7 +616,7 @@ describe("SeriesLibrarySections / MovieLibrarySections", () => {
       const media = makeMediaItem({ id: 4, mediaType: "movie", title: "Clickable Movie", alreadySeen: false });
       render(<MovieLibrarySections items={[media]} viewMode="list" />);
 
-      fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markAsSeen") }));
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markSeen") }));
 
       expect(toggleMovieSeenMock).toHaveBeenCalledWith({ movie: media, watched: true });
     });
@@ -628,7 +628,7 @@ describe("SeriesLibrarySections / MovieLibrarySections", () => {
       render(<MovieLibrarySections items={movieItems} viewMode="grid" />);
 
       expect(screen.getByTestId("grid")).toHaveTextContent("Unseen Movie");
-      expect(screen.queryByRole("button", { name: i18n.t("media.markAsSeen") })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: i18n.t("media.markSeen") })).not.toBeInTheDocument();
     });
   });
 });

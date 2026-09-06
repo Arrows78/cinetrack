@@ -24,6 +24,7 @@ export function DesktopSettings() {
   const [busy, setBusy] = useState(false);
   const [pendingRestore, setPendingRestore] = useState<{ exportedAt: string } | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [pendingClearLogs, setPendingClearLogs] = useState(false);
   const [backupStatus, setBackupStatus] = useState<{ exportedAt: string | null; failed: boolean } | null>(null);
   const [logLines, setLogLines] = useState<string[] | null>(null);
   const [timingSummary, setTimingSummary] = useState<DiagnosticsSummary | null>(null);
@@ -257,17 +258,7 @@ export function DesktopSettings() {
                   variant="outline"
                   size="sm"
                   disabled={!logLines?.length || busy}
-                  onClick={() =>
-                    void run(async () => {
-                      try {
-                        await logger.clear();
-                        setLogLines(await logger.readRecent());
-                      } catch (error) {
-                        logger.error(`Failed to clear diagnostic logs: ${errorMessage(error)}`);
-                        throw error;
-                      }
-                    })
-                  }
+                  onClick={() => setPendingClearLogs(true)}
                 >
                   {t("desktop.diagnosticsClear")}
                 </Button>
@@ -351,6 +342,27 @@ export function DesktopSettings() {
         cancelLabel={t("common.cancel")}
         isConfirming={isRestoring}
         onConfirm={() => void confirmRestore()}
+      />
+      <ConfirmDialog
+        open={pendingClearLogs}
+        onOpenChange={(open) => !open && !busy && setPendingClearLogs(false)}
+        title={t("desktop.diagnosticsClearConfirmTitle")}
+        description={t("desktop.diagnosticsClearConfirmDescription")}
+        confirmLabel={t("desktop.diagnosticsClear")}
+        cancelLabel={t("common.cancel")}
+        isConfirming={busy}
+        onConfirm={() =>
+          void run(async () => {
+            try {
+              await logger.clear();
+              setLogLines(await logger.readRecent());
+              setPendingClearLogs(false);
+            } catch (error) {
+              logger.error(`Failed to clear diagnostic logs: ${errorMessage(error)}`);
+              throw error;
+            }
+          })
+        }
       />
     </div>
   );

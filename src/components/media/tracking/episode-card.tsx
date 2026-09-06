@@ -3,11 +3,13 @@ import { Calendar, Check, Clock4, EyeOff, ImageOff, NotebookPen } from "lucide-r
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
+import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { hasAired } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
+import { MEDIA_POSTER_OVERLAY_CLASSNAME } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 export function EpisodeCard({
@@ -54,7 +56,7 @@ export function EpisodeCard({
         )}
         {watched ? (
           <div className="absolute inset-0 flex items-center justify-center bg-primary/25">
-            <Check className="size-4 text-white" />
+            <Check className={cn("size-4", MEDIA_POSTER_OVERLAY_CLASSNAME.titleText)} />
           </div>
         ) : null}
       </div>
@@ -90,7 +92,7 @@ export function EpisodeCard({
               <span>•</span>
               <span
                 aria-label={t("media.ratingLabel", { rating: formatRating(episode.rating) })}
-                className="text-rating/80"
+                className="text-rating"
               >
                 <span aria-hidden="true">★ {formatRating(episode.rating)}</span>
               </span>
@@ -137,22 +139,14 @@ export function EpisodeCard({
             </button>
           </IconTooltip>
         ) : null}
-        <IconTooltip
-          label={isUnreleased ? t("media.notYetAired") : watched ? t("media.markUnseen") : t("media.markSeen")}
-        >
-          <button
-            type="button"
-            aria-label={isUnreleased ? t("media.notYetAired") : watched ? t("media.markUnseen") : t("media.markSeen")}
-            disabled={disabled || isUnreleased}
-            onClick={() => onToggleSeen()}
-            className={cn(
-              "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
-              watched ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary/50"
-            )}
-          >
-            {watched ? <Check className="size-5" /> : null}
-          </button>
-        </IconTooltip>
+        <SeenToggleButton
+          seen={watched}
+          isSaving={false}
+          disabled={disabled || isUnreleased}
+          disabledLabel={isUnreleased ? t("media.notYetAired") : undefined}
+          onToggle={() => onToggleSeen()}
+          size="lg"
+        />
       </div>
       <AddWatchNoteDialog
         open={noteDialogOpen}

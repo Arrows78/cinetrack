@@ -254,4 +254,15 @@ describe("EpisodeDetailPage", () => {
 
     expect(screen.queryByRole("button", { name: i18n.t("media.addWatchNoteAction") })).not.toBeInTheDocument();
   });
+
+  // A failed progress read falls back to an empty watched set — this
+  // episode would render as unwatched. Disabling the toggle (and saying so)
+  // keeps that wrong read from being written back as real.
+  it("disables the SeenToggle and surfaces a partial error when the progress query fails", () => {
+    progressQueryMock.mockReturnValue(makeProgressQuery([], { isError: true, data: undefined }));
+    renderPage();
+
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+    expect(screen.getByText(i18n.t("media.seenStatusUnavailable"))).toBeInTheDocument();
+  });
 });

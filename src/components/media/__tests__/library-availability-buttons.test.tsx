@@ -96,7 +96,7 @@ describe("AddToLibraryButton", () => {
     await waitFor(() => expect(removeIfPlannedMock).toHaveBeenCalledWith({ mediaId: 7, mediaType: "movie" }));
     expect(await screen.findByText("Remove this title from your library?")).toBeInTheDocument();
 
-    screen.getByRole("button", { name: "Confirm" }).click();
+    screen.getByRole("button", { name: "Remove" }).click();
 
     await waitFor(() => expect(forceRemoveMock).toHaveBeenCalledWith({ mediaId: 7, mediaType: "movie" }));
     expect(screen.queryByText("Remove this title from your library?")).not.toBeInTheDocument();

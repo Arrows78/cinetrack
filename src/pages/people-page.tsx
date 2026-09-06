@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Search, UserX } from "lucide-react";
+import { UserX } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { Panel } from "@/components/ui/panel";
 import { FilterBar } from "@/components/media/library/filter-bar";
+import { SearchBar } from "@/components/media/primitives/search-bar";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -90,49 +91,39 @@ export function PeoplePage() {
   const browsing = mode === "trending" ? trending : popular;
   const active = isSearching ? search : browsing;
   const results = active.data?.results ?? [];
-  const showEmpty = isSearching && !active.isLoading && !active.isError && results.length === 0;
+  const showEmpty = isSearching && !active.isPending && !active.isError && results.length === 0;
 
   return (
-    <div className="space-y-6">
-      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <h1 className="font-display text-page-title">{t("people.title")}</h1>
-        <p className="text-muted-foreground">{t("people.description")}</p>
-      </header>
-      <Panel asChild tone="card" className="flex items-center gap-2 px-4 py-0 animate-in">
-        <label style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
-          <Search className="size-4 text-muted-foreground" />
-          <input
-            className="h-12 flex-1 rounded-lg bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("people.searchPlaceholder")}
-            aria-label={t("people.searchPlaceholder")}
-          />
-        </label>
-      </Panel>
-      {!isSearching ? (
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="font-display text-heading-md">
-            {mode === "trending" ? t("people.trendingTitle") : t("people.popularTitle")}
-          </h2>
-          <FilterBar
-            value={mode}
-            onChange={setMode}
-            groupLabel={t("people.browseModeLabel")}
-            options={[
-              { value: "popular", label: t("people.popularTitle") },
-              { value: "trending", label: t("people.trendingTitle") },
-            ]}
-          />
+    <div className="space-y-8">
+      <SectionHeader title={t("people.title")} subtitle={t("people.description")} isPageTitle />
+      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
+        <div className="w-full sm:w-64">
+          <SearchBar value={query} onChange={setQuery} placeholder={t("people.searchPlaceholder")} />
         </div>
+      </div>
+      {!isSearching ? (
+        <SectionHeader
+          title={mode === "trending" ? t("people.trendingTitle") : t("people.popularTitle")}
+          action={
+            <FilterBar
+              value={mode}
+              onChange={setMode}
+              groupLabel={t("people.browseModeLabel")}
+              options={[
+                { value: "popular", label: t("people.popularTitle") },
+                { value: "trending", label: t("people.trendingTitle") },
+              ]}
+            />
+          }
+        />
       ) : null}
-      {active.isLoading ? <GridSkeleton count={8} /> : null}
+      {active.isPending ? <GridSkeleton count={8} /> : null}
       {active.isError ? <RemoteErrorState error={active.error} onRetry={() => void active.refetch()} /> : null}
       {showEmpty ? (
         <EmptyState icon={UserX} title={t("people.noResultsTitle")} description={t("people.noResultsDescription")} />
       ) : null}
       <div className={MEDIA_GRID_CLASS_NAME}>
-        {!active.isLoading && !active.isError
+        {!active.isPending && !active.isError
           ? results.map((person, index) => <PersonCard key={person.id} person={person} index={index} />)
           : null}
       </div>

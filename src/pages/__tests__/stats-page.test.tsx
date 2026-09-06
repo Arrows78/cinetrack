@@ -24,6 +24,12 @@ const statsState = {
   isError: false,
   error: null as unknown,
   refetch: vi.fn(),
+  // A real useQuery's isPending is "no data yet", which is exactly what
+  // this hand-mocked object's own `data` field already tracks — a getter
+  // keeps the two from drifting apart as tests reassign `.data` directly.
+  get isPending() {
+    return this.data === undefined;
+  },
 };
 const wrappedMock = vi.fn();
 const forecastState = {
@@ -31,6 +37,9 @@ const forecastState = {
   isError: false,
   error: null as unknown,
   refetch: vi.fn(),
+  get isPending() {
+    return this.data === undefined;
+  },
 };
 const yearlyActivityState = {
   data: undefined as YearlyActivityBucket[] | undefined,
@@ -128,6 +137,7 @@ describe("StatsPage", () => {
 
     wrappedMock.mockReset().mockImplementation((year: number) => ({
       data: makeWrapped(year),
+      isPending: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -150,7 +160,13 @@ describe("StatsPage", () => {
     statsState.isError = true;
     statsState.error = new Error("boom");
     const wrappedRefetch = vi.fn();
-    wrappedMock.mockReturnValue({ data: undefined, isError: false, error: null, refetch: wrappedRefetch });
+    wrappedMock.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: wrappedRefetch,
+    });
 
     renderPage();
 

@@ -129,17 +129,19 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
       {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}
       <ConfirmDialog
         open={pendingRemoval !== null}
-        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        onOpenChange={(open) => !open && !savedFilters.isSaving && setPendingRemoval(null)}
         title={t("filters.savedFilters.deleteConfirmTitle", { name: pendingRemoval?.name })}
-        confirmLabel={t("common.confirm")}
+        description={t("filters.savedFilters.deleteConfirmDescription")}
+        confirmLabel={t("common.delete")}
         cancelLabel={t("common.cancel")}
+        isConfirming={savedFilters.isSaving}
         onConfirm={() => {
           if (!pendingRemoval) return;
           setRemoveError(null);
           void savedFilters
             .remove(pendingRemoval.id)
+            .then(() => setPendingRemoval(null))
             .catch(() => setRemoveError(t("filters.savedFilters.deleteFailed")));
-          setPendingRemoval(null);
         }}
       />
     </div>

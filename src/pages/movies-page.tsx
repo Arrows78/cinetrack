@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { LibraryExplorer } from "@/components/media/library/library-explorer";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import { TrackingList } from "@/components/media/tracking/tracking-list";
 import type { MediaTab } from "@/components/media/library/media-hub-tab";
 
@@ -15,16 +16,14 @@ export function MoviesPage() {
   const browseAllMovies = () => void navigate({ to: "/search", search: { scope: "movie" } });
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center gap-3">
-        <Film className="size-7 text-primary" />
-        <h1 className="font-display text-page-title">{t("nav.movies")}</h1>
-      </header>
+    <div className="space-y-8">
+      <SectionHeader title={t("nav.movies")} subtitle={t("movies.subtitle")} icon={Film} isPageTitle />
 
       <FilterBar
         value={tab}
         onChange={setTab}
-        groupLabel={t("nav.movies")}
+        as="tabs"
+        groupLabel={t("mediaHub.viewTabs")}
         options={[
           { value: "list", label: t("mediaHub.myList") },
           { value: "upcoming", label: t("mediaHub.upcoming") },

@@ -165,7 +165,7 @@ describe("WatchNextRow / WatchNextSection", () => {
       const nextEpisode = makeEpisode({ id: 555 });
       render(<WatchNextRow entry={makeEntry({ series, nextEpisode })} />);
 
-      fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
+      fireEvent.click(screen.getByRole("button", { name: "Mark watched" }));
 
       expect(markWatchedMock).toHaveBeenCalledWith({ series, episode: nextEpisode });
     });
@@ -174,13 +174,13 @@ describe("WatchNextRow / WatchNextSection", () => {
       useMarkWatchNextMock.mockReturnValue({ markWatched: markWatchedMock, isSaving: true });
       render(<WatchNextRow entry={makeEntry()} />);
 
-      expect(screen.getByRole("button", { name: "Mark as watched" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Mark watched" })).toBeDisabled();
     });
 
     it("keeps the seen toggle enabled while isSaving is false", () => {
       render(<WatchNextRow entry={makeEntry()} />);
 
-      expect(screen.getByRole("button", { name: "Mark as watched" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Mark watched" })).toBeEnabled();
     });
   });
 });

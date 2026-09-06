@@ -31,7 +31,7 @@ export function NextEpisodeCard({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">{t("media.nextEpisode")}</p>
-          <h3 className="mt-1 font-display text-2xl font-bold">
+          <h3 className="mt-1 line-clamp-2 font-display text-2xl font-bold">
             {formatEpisodeCode(episode.seasonNumber, episode.episodeNumber, { padded: true })} · {episode.title}
           </h3>
           <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{episode.overview}</p>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BarChart3,
@@ -37,6 +37,8 @@ import { MonthlyRecapSection } from "@/components/stats/monthly-recap-section";
 import { RewatchAnalyticsSection } from "@/components/stats/rewatch-analytics-section";
 import { RatingDistributionSection } from "@/components/stats/rating-distribution-section";
 import { WatchMilestonesSection } from "@/components/stats/watch-milestones-section";
+import { SectionHeader } from "@/components/media/primitives/section-header";
+import { StatCard } from "@/components/media/primitives/stat-card";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { StatsSkeleton } from "@/components/states/loading-skeletons";
 import { logger } from "@/shared/lib/logger";
@@ -77,6 +79,18 @@ export function StatsPage() {
   const forecast = useWatchForecast();
   const yearlyActivity = useYearlyActivity();
 
+  // Both sections just disappear on failure (see the JSX below) rather than
+  // blocking a page whose main content already loaded — same "below the
+  // fold, best-effort" choice components/stats/* makes for their own
+  // sections. That choice still needs a log, or a silent disappearance
+  // reads identically to "nothing to show today".
+  useEffect(() => {
+    if (forecast.isError) logger.warn("Watch forecast failed to load — the forecast section will stay hidden.");
+  }, [forecast.isError]);
+  useEffect(() => {
+    if (yearlyActivity.isError) logger.warn("Yearly activity failed to load — that section will stay hidden.");
+  }, [yearlyActivity.isError]);
+
   const exportWrapped = async () => {
     if (!wrapped.data) return;
     setIsExportingWrapped(true);
@@ -108,6 +122,10 @@ export function StatsPage() {
     }
   };
 
+  // Pending before error, same order every other page's guard follows
+  // (season-page.tsx, movie-detail-page.tsx, …) — an in-flight refetch after
+  // a prior success should never flash the error branch.
+  if (stats.isPending || wrapped.isPending) return <StatsSkeleton />;
   if (stats.isError || wrapped.isError) {
     return (
       <RemoteErrorState
@@ -119,7 +137,6 @@ export function StatsPage() {
       />
     );
   }
-  if (!stats.data || !wrapped.data) return <StatsSkeleton />;
 
   const cards = [
     { label: t("stats.moviesWatched"), value: stats.data.moviesWatched, icon: Film },
@@ -146,53 +163,34 @@ export function StatsPage() {
 
   return (
     <div className="space-y-8">
-      <header className="animate-in" style={{ animationDelay: `${staggerDelayMs(0)}ms` }}>
-        <h1 className="font-display text-page-title">{t("stats.title")}</h1>
-        <p className="mt-1 text-muted-foreground">{t("stats.description")}</p>
-      </header>
+      <SectionHeader title={t("stats.title")} subtitle={t("stats.description")} isPageTitle />
       <section
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 animate-in"
         style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
       >
-        {cards.map(({ label, value, icon: Icon }) => (
-          <Panel asChild key={label}>
-            <article>
-              <Icon className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 font-display text-3xl font-bold">{value}</p>
-            </article>
-          </Panel>
+        {cards.map(({ label, value, icon }) => (
+          <StatCard key={label} boxed icon={icon} label={label} value={String(value)} />
         ))}
       </section>
 
       <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
-        <h2 className="mb-3 text-heading-sm">{t("stats.records")}</h2>
+        <SectionHeader title={t("stats.records")} size="sub" headingLevel={2} />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <Panel asChild className="min-w-0">
-            <article>
-              <Trophy className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.longestStreak")}</p>
-              <p className="mt-1 font-display text-3xl font-bold">
-                {t("stats.streakDays", { count: stats.data.longestStreakDays })}
-              </p>
-            </article>
-          </Panel>
-          <Panel asChild className="min-w-0">
-            <article>
-              <Popcorn className="size-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{t("stats.biggestBinge")}</p>
-              {stats.data.biggestBingeDay ? (
-                <>
-                  <p className="mt-1 font-display text-3xl font-bold">
-                    {t("stats.watchCount", { count: stats.data.biggestBingeDay.count })}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{formatDate(stats.data.biggestBingeDay.day)}</p>
-                </>
-              ) : (
-                <p className="mt-1 font-display text-3xl font-bold">—</p>
-              )}
-            </article>
-          </Panel>
+          <StatCard
+            boxed
+            icon={Trophy}
+            label={t("stats.longestStreak")}
+            value={t("stats.streakDays", { count: stats.data.longestStreakDays })}
+          />
+          <StatCard
+            boxed
+            icon={Popcorn}
+            label={t("stats.biggestBinge")}
+            value={
+              stats.data.biggestBingeDay ? t("stats.watchCount", { count: stats.data.biggestBingeDay.count }) : "—"
+            }
+            helper={stats.data.biggestBingeDay ? formatDate(stats.data.biggestBingeDay.day) : undefined}
+          />
           <Panel asChild className="min-w-0">
             <article>
               <Repeat className="size-5 text-primary" />
@@ -219,7 +217,7 @@ export function StatsPage() {
               <ThumbsUp className="size-5 text-primary" />
               <p className="mt-4 text-sm text-muted-foreground">{t("stats.favouriteGenreByRating")}</p>
               <p
-                className="mt-1 truncate font-display text-2xl font-bold"
+                className="mt-1 truncate font-display text-3xl font-bold"
                 title={stats.data.favouriteGenreByRating ?? undefined}
               >
                 {stats.data.favouriteGenreByRating ?? "—"}
@@ -250,55 +248,49 @@ export function StatsPage() {
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(9)}ms` }}>
+      <div className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
         <MonthlyRecapSection />
         <RewatchAnalyticsSection />
       </div>
 
       {comparison ? (
-        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
-          <h2 className="mb-3 text-heading-sm">{t("stats.thisMonth")}</h2>
+        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
+          <SectionHeader title={t("stats.thisMonth")} size="sub" headingLevel={2} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Panel asChild>
-              <article>
-                <p className="text-sm text-muted-foreground">{t("stats.watchesThisMonth")}</p>
-                <p className="mt-1 font-display text-3xl font-bold">{comparison.current.count}</p>
-                <DeltaBadge delta={comparison.countDelta} formatValue={(value) => String(value)} />
-              </article>
-            </Panel>
-            <Panel asChild>
-              <article>
-                <p className="text-sm text-muted-foreground">{t("stats.timeThisMonth")}</p>
-                <p className="mt-1 font-display text-3xl font-bold">{hours(comparison.current.minutes)}</p>
-                <DeltaBadge delta={comparison.minutesDelta} formatValue={hours} />
-              </article>
-            </Panel>
+            <StatCard
+              boxed
+              label={t("stats.watchesThisMonth")}
+              value={String(comparison.current.count)}
+              helper={<DeltaBadge delta={comparison.countDelta} formatValue={(value) => String(value)} />}
+            />
+            <StatCard
+              boxed
+              label={t("stats.timeThisMonth")}
+              value={hours(comparison.current.minutes)}
+              helper={<DeltaBadge delta={comparison.minutesDelta} formatValue={hours} />}
+            />
           </div>
         </section>
       ) : null}
 
       {forecast.data && forecast.data.backlogEpisodes > 0 ? (
-        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
-          <h2 className="mb-3 text-heading-sm">{t("stats.forecast")}</h2>
+        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(5)}ms` }}>
+          <SectionHeader title={t("stats.forecast")} size="sub" headingLevel={2} />
           <div className="grid gap-3 sm:grid-cols-3">
-            <Panel asChild>
-              <article>
-                <Hourglass className="size-5 text-primary" />
-                <p className="mt-4 text-sm text-muted-foreground">{t("stats.timeToWatch")}</p>
-                <p className="mt-1 font-display text-3xl font-bold">{hours(forecast.data.backlogMinutes)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("stats.backlogEpisodes", { count: forecast.data.backlogEpisodes })}
-                </p>
-              </article>
-            </Panel>
-            <Panel asChild>
-              <article>
-                <Gauge className="size-5 text-primary" />
-                <p className="mt-4 text-sm text-muted-foreground">{t("stats.pacePerWeek")}</p>
-                <p className="mt-1 font-display text-3xl font-bold">{forecast.data.episodesPerWeek}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("stats.paceBasis")}</p>
-              </article>
-            </Panel>
+            <StatCard
+              boxed
+              icon={Hourglass}
+              label={t("stats.timeToWatch")}
+              value={hours(forecast.data.backlogMinutes)}
+              helper={t("stats.backlogEpisodes", { count: forecast.data.backlogEpisodes })}
+            />
+            <StatCard
+              boxed
+              icon={Gauge}
+              label={t("stats.pacePerWeek")}
+              value={String(forecast.data.episodesPerWeek)}
+              helper={t("stats.paceBasis")}
+            />
             <Panel asChild tone="highlight">
               <article>
                 <CalendarCheck className="size-5 text-primary" />
@@ -313,8 +305,8 @@ export function StatsPage() {
         </section>
       ) : null}
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(5)}ms` }}>
-        <h2 className="text-heading-sm">{t("stats.activity12Months")}</h2>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(6)}ms` }}>
+        <SectionHeader title={t("stats.activity12Months")} size="sub" headingLevel={2} />
         <ActivityBarChart
           data={stats.data.monthlyActivity.map((month) => ({ label: month.month.slice(5), value: month.count }))}
           tooltipLabel={t("stats.watches")}
@@ -346,8 +338,8 @@ export function StatsPage() {
       </Panel>
 
       {yearlyActivity.data && yearlyActivity.data.length ? (
-        <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(6)}ms` }}>
-          <h2 className="text-heading-sm">{t("stats.activityByYear")}</h2>
+        <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(7)}ms` }}>
+          <SectionHeader title={t("stats.activityByYear")} size="sub" headingLevel={2} />
           <ActivityBarChart
             data={yearlyActivity.data.map((bucket) => ({
               label: String(bucket.year),
@@ -378,15 +370,23 @@ export function StatsPage() {
         </Panel>
       ) : null}
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(7)}ms` }}>
-        <h2 className="text-heading-sm">{t("stats.heatmap.title")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("stats.heatmap.description")}</p>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
+        <SectionHeader
+          title={t("stats.heatmap.title")}
+          subtitle={t("stats.heatmap.description")}
+          size="sub"
+          headingLevel={2}
+        />
         <ViewingHeatmap data={stats.data.heatmap} />
       </Panel>
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
-        <h2 className="text-heading-sm">{t("stats.yearCalendar.title", { year: wrapped.data.year })}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("stats.yearCalendar.description")}</p>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(9)}ms` }}>
+        <SectionHeader
+          title={t("stats.yearCalendar.title", { year: wrapped.data.year })}
+          subtitle={t("stats.yearCalendar.description")}
+          size="sub"
+          headingLevel={2}
+        />
         <div className="mt-4">
           <YearActivityCalendar year={wrapped.data.year} dailyCounts={wrapped.data.dailyCounts} />
         </div>
@@ -400,10 +400,10 @@ export function StatsPage() {
         <WatchMilestonesSection />
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
+      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(12)}ms` }}>
         <Panel asChild className="min-w-0">
           <article>
-            <h2 className="text-heading-sm">{t("stats.favouriteGenres")}</h2>
+            <SectionHeader title={t("stats.favouriteGenres")} size="sub" headingLevel={2} />
             <div className="mt-4 grid gap-2">
               {stats.data.favouriteGenres.map((genre) => (
                 <Tile key={genre.name} className="flex justify-between gap-3 px-3 py-2 text-sm">

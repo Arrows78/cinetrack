@@ -44,6 +44,7 @@
     "loading": "Chargement…",
     "loadMore": "Charger plus",
     "whereToWatch": "Où regarder",
+    "whereToWatchUnavailable": "Impossible de charger les plateformes disponibles — réessayez dans un instant.",
     "streamingFlatrate": "Streaming",
     "streamingFree": "Gratuit avec pub",
     "streamingRent": "Location",
@@ -75,7 +76,6 @@
     "addWatchNoteDescription": "Optionnel — écrivez quelque chose à propos de ce visionnage. Les notes ne sont pas modifiables ensuite.",
     "addWatchNoteLabel": "Votre note",
     "addWatchNotePlaceholder": "Qu'en avez-vous pensé ?",
-    "addWatchNoteFailed": "Impossible d'enregistrer votre note — réessayez.",
     "watchHistoryTitle": "Journal de visionnage",
     "watchHistoryUnavailable": "Impossible de charger votre journal de visionnage — réessayez dans un instant."
   },
@@ -91,7 +91,6 @@
     "close": "Fermer",
     "more": "Plus",
     "loading": "Chargement…",
-    "somethingWentWrong": "Une erreur est survenue",
     "unknownDate": "Date inconnue",
     "confirm": "Confirmer",
     "cancel": "Annuler",
@@ -107,7 +106,9 @@
     "sizeBytes": "{{count}} o",
     "sizeKB": "{{value}} Ko",
     "sizeMB": "{{value}} Mo",
-    "sizeGB": "{{value}} Go"
+    "sizeGB": "{{value}} Go",
+    "delete": "Supprimer",
+    "remove": "Retirer"
   },
   "theme": {
     "dark": "Sombre",
@@ -127,9 +128,6 @@
     "red": "Rouge"
   },
   "home": {
-    "configureTmdb": "Configurez votre accès TMDB",
-    "configureTmdbDesc": "Ajoutez ou déverrouillez votre token TMDB dans les paramètres pour charger le catalogue.",
-    "configureTmdbCta": "Aller aux réglages",
     "noTokenTitle": "Suivez vos contenus sans token TMDB",
     "noTokenDesc": "Un token TMDB n'est pas nécessaire pour utiliser CineTrack — il ne fait que déverrouiller la découverte de nouveaux titres.",
     "noTokenWorksTitle": "Fonctionne dès maintenant, hors ligne",
@@ -183,8 +181,6 @@
     "becauseYouLikedSubtitle": "D'autres titres proches de ce que vous avez déjà regardé.",
     "becauseYouLoveGenre": "Parce que vous aimez {{genre}}",
     "becauseYouLoveGenreSubtitle": "D'autres suggestions dans votre genre favori.",
-    "forYou": "Pour vous",
-    "forYouSubtitle": "Choisi à partir de votre bibliothèque et de votre historique.",
     "onThisDayTitle": "Ce jour-là",
     "onThisDayEntry": "Le {{date}}, vous avez regardé {{title}}",
     "onThisDayYearsAgo_one": "il y a {{count}} an",
@@ -219,6 +215,7 @@
   "history": {
     "recentActivity": "Activité récente",
     "recentActivitySubtitle": "Films vus, épisodes marqués et changements de bibliothèque.",
+    "filterType": "Filtrer par type",
     "seriesInProgress": "Séries en cours",
     "seriesInProgressSubtitle": "Votre progression locale.",
     "noActivity": "Aucune activité",
@@ -244,6 +241,7 @@
   },
   "search": {
     "globalSearch": "Recherche globale",
+    "filterScope": "Filtrer par type",
     "subtitle": "Recherchez des films et des séries.",
     "noResultsDesc": "Essayez un autre titre ou un autre filtre.",
     "resultsCount_one": "{{count}} résultat",
@@ -253,10 +251,11 @@
   "searchBar": {
     "placeholder": "Rechercher un film ou une série…"
   },
-  "filterBar": {
-    "defaultLabel": "Filtrer"
-  },
   "filters": {
+    "all": "Tout",
+    "typeSeries": "Séries",
+    "typeMovies": "Films",
+    "byType": "Filtrer par type",
     "activeFiltersLabel": "Filtres actifs",
     "removeFilter": "Retirer le filtre {{filter}}",
     "chips": {
@@ -268,7 +267,9 @@
       "search": "Recherche : « {{value}} »",
       "genre": "Genre : {{value}}",
       "provider": "Service : {{value}}",
-      "studio": "Studio : {{value}}"
+      "studio": "Studio : {{value}}",
+      "duration": "Durée max : {{value}}",
+      "origin": "Origine : {{value}}"
     },
     "savedFilters": {
       "namePlaceholder": "Nommer cette vue…",
@@ -277,26 +278,20 @@
       "saveFailed": "Impossible d'enregistrer cette vue. Veuillez réessayer.",
       "delete": "Supprimer la vue enregistrée « {{name}} »",
       "deleteConfirmTitle": "Supprimer la vue enregistrée « {{name}} » ?",
+      "deleteConfirmDescription": "Cette action supprime uniquement la vue enregistrée — vos filtres actuels et votre bibliothèque ne sont pas affectés.",
       "deleteFailed": "Impossible de supprimer cette vue. Veuillez réessayer."
     }
   },
   "settings": {
     "subtitleDesktop": "Interface, catalogue, confidentialité et intégration desktop.",
     "uiPreferences": "Préférences d'interface",
-    "uiPreferencesDesc": "Personnalisez votre expérience locale.",
     "customizeDisplay": "Personnalisez l'affichage et les valeurs par défaut.",
     "accentColor": "Couleur d'accent",
     "language": "Langue",
     "region": "Région TMDB",
     "defaultSearchType": "Type de recherche par défaut",
     "defaultSearch": "Recherche par défaut",
-    "all": "Tout",
-    "series": "Séries",
-    "movies": "Films",
     "reduceAnimations": "Animations réduites",
-    "reducedAnimationsOn": "Animations réduites activées",
-    "enableCompactMode": "Activer le mode compact",
-    "compactModeOn": "Mode compact activé",
     "compactMode": "Mode compact",
     "spoilerProtection": "Protection anti-spoiler",
     "calendarNotifications": "Notifications calendrier",
@@ -325,12 +320,10 @@
       "newNamePlaceholder": "Nom du nouveau profil",
       "newNameLabel": "Nom du nouveau profil",
       "create": "Créer le profil",
-      "createFailed": "Impossible de créer le profil. Réessayez.",
       "switchFailed": "Impossible de changer de profil. Réessayez.",
       "delete": "Supprimer le profil {{name}}",
       "deleteConfirmTitle": "Supprimer le profil « {{name}} » ?",
-      "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible.",
-      "deleteFailed": "Impossible de supprimer le profil. Réessayez."
+      "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible."
     },
     "streaming": {
       "title": "Mes services de streaming",
@@ -366,6 +359,7 @@
     }
   },
   "mediaHub": {
+    "viewTabs": "Affichage",
     "myList": "Ma liste",
     "upcoming": "À venir",
     "browseAllMovies": "Parcourir tous les films",
@@ -373,8 +367,6 @@
   },
   "movies": {
     "subtitle": "Affiches, filtres et fiches détaillées.",
-    "noMoviesAvailable": "Aucun film disponible",
-    "noMoviesAvailableDesc": "Vérifiez votre connexion ou la configuration TMDB.",
     "technicalSheet": "Fiche technique",
     "country": "Pays",
     "language": "Langue",
@@ -382,14 +374,11 @@
   },
   "series": {
     "subtitle": "Parcourez les saisons et suivez votre progression.",
-    "noSeriesAvailable": "Aucune série disponible",
-    "noSeriesAvailableDesc": "Vérifiez votre connexion ou la configuration TMDB.",
     "seriesInfo": "Informations",
     "currentProgress": "Progression actuelle",
     "episodesFraction": "{{watched}}/{{total}} ép.",
     "seasonsAndEpisodes": "Saisons et épisodes",
     "seasonsAndEpisodesDesc": "Chaque épisode peut être marqué vu ou non vu.",
-    "globalProgress": "Progression globale",
     "markSeasonSeen": "Marquer la saison comme vue",
     "markSeasonUnseen": "Marquer la saison comme non vue",
     "openSeasonPage": "Ouvrir la page de la saison",
@@ -446,12 +435,6 @@
     "previousYear": "Année précédente",
     "nextYear": "Année suivante",
     "records": "Records",
-    "tabs": {
-      "overview": "Aperçu",
-      "thisYear": "Cette année",
-      "history": "Historique",
-      "records": "Records"
-    },
     "longestStreak": "Plus longue série",
     "biggestBinge": "Plus grosse séance",
     "mostRewatched": "Le plus revu",
@@ -559,9 +542,9 @@
     "title": "Suivi",
     "description": "Sorties, prochains épisodes et alertes de disponibilité pour ce que vous suivez.",
     "loading": "Chargement du suivi…",
-    "filterScope": "Portée",
+    "filterScope": "Filtrer par portée",
     "scopeMine": "Mes titres",
-    "filterType": "Type",
+    "filterType": "Filtrer par type",
     "typeRelease": "Sorties",
     "typeEpisode": "Épisodes",
     "typeAvailability": "Disponibilité",
@@ -573,6 +556,7 @@
     "region": "Région : {{region}}",
     "remove": "Supprimer l'alerte pour {{title}}",
     "removeConfirmTitle": "Supprimer l'alerte pour « {{title}} » ?",
+    "removeConfirmDescription": "Vous ne serez plus averti·e lorsque ce titre sera disponible. Vous pourrez recréer une alerte à tout moment.",
     "noResultsTitle": "Rien à afficher",
     "noResults": "Rien ne correspond à ces filtres pour l'instant — élargissez-les, ou suivez un titre depuis sa fiche.",
     "clearFilters": "Réinitialiser les filtres",
@@ -673,7 +657,6 @@
     "description": "Statut, note, tags, avis privé et revisionnages.",
     "loadError": "Impossible de charger votre statut enregistré pour ce titre. Réessayez avant de modifier quoi que ce soit — enregistrer maintenant risquerait d'écraser ce qui est déjà stocké.",
     "saved": "Enregistré.",
-    "saveFailed": "Impossible d'enregistrer. Réessayez.",
     "subtitle": "Filtrez par type et statut, triez tout ce que vous suivez.",
     "filterType": "Filtrer par type",
     "filterStatus": "Filtrer par statut",
@@ -731,7 +714,11 @@
       "addToList": "Ajouter à la liste",
       "addToAListLabel": "Ajouter à une liste",
       "noneYetPrefix": "Vous n'avez pas encore de liste.",
-      "noneYetLink": "Créez-en une depuis votre bibliothèque."
+      "noneYetLink": "Créez-en une depuis votre bibliothèque.",
+      "removeItemConfirmDescription": "Cette action le retire uniquement de cette liste — votre entrée dans la bibliothèque n'est pas affectée.",
+      "noListsTitle": "Aucune liste pour l'instant",
+      "itemsEmptyTitle": "Aucun titre pour l'instant",
+      "createFirstList": "Créer votre première liste"
     },
     "smartLists": {
       "title": "Listes intelligentes",
@@ -755,7 +742,8 @@
       "edit": "Modifier la liste intelligente {{name}}",
       "delete": "Supprimer la liste intelligente {{name}}",
       "deleteConfirmTitle": "Supprimer la liste intelligente « {{name}} » ?",
-      "deleteConfirmDescription": "Seules les règles enregistrées sont supprimées — rien dans votre bibliothèque n'est affecté."
+      "deleteConfirmDescription": "Seules les règles enregistrées sont supprimées — rien dans votre bibliothèque n'est affecté.",
+      "noListsTitle": "Aucune liste intelligente pour l'instant"
     },
     "sections": {
       "recentlyWatched": "Vu récemment",
@@ -871,7 +859,9 @@
     "systemIntegrationDesc": "Comportement au démarrage, mises à jour natives et vérification d'intégrité de la base.",
     "automaticBackupTitle": "Sauvegarde automatique",
     "automaticBackupDesc": "Un instantané de secours local, distinct de l'export manuel ci-dessus.",
-    "diagnosticsDesc": "Journal local récent, pour diagnostiquer un problème."
+    "diagnosticsDesc": "Journal local récent, pour diagnostiquer un problème.",
+    "diagnosticsClearConfirmTitle": "Vider les journaux de diagnostic ?",
+    "diagnosticsClearConfirmDescription": "Cette action supprime définitivement l'historique des journaux. Elle est irréversible."
   },
   "sidebar": {
     "brand": {
@@ -990,6 +980,7 @@
     "tmdbTimeout": "TMDB n'a pas répondu dans le délai imparti ({{seconds}}s) pour {{path}}.",
     "tmdbUnreachable": "Impossible de joindre TMDB depuis la WebView : {{details}}",
     "tmdbNoToken": "Aucun token TMDB disponible. Déverrouillez le coffre TMDB dans les paramètres.",
+    "actionFailed": "Cette action a échoué. Veuillez réessayer.",
     "unexpectedTitle": "Une erreur est survenue",
     "unexpectedDescription": "CineTrack a rencontré une erreur inattendue et n'a pas pu continuer. Vos données locales sont intactes — recharger l'application devrait résoudre le problème.",
     "reload": "Recharger"

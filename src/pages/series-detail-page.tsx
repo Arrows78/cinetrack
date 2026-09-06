@@ -124,10 +124,17 @@ export function SeriesDetailPage() {
           <div className="flex flex-col gap-2">
             <SeenToggle
               seen={progress.completed}
-              disabled={progressQuery.isSaving || !allSeasonsLoaded}
+              disabled={progressQuery.isSaving || progressQuery.isError || !allSeasonsLoaded}
               onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })}
               celebrateOnSeen
             />
+            {/* progressQuery failing falls back to an empty watched list (see
+                `progress` above), which would otherwise show every episode as
+                unwatched — disabling the bulk "mark whole series seen" toggle
+                keeps that wrong read from being written back as if it were
+                real, same guard movie-detail-page.tsx applies to its own
+                single seen toggle. */}
+            {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
             {failedSeasonQueries.length > 0 ? <PartialErrorState message={t("series.someSeasonsUnavailable")} /> : null}
           </div>
         }

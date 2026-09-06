@@ -77,7 +77,7 @@ function SmartListForm({
             >
               {STATUS_OPTIONS.map((status) => (
                 <option key={status} value={status}>
-                  {status === "any" ? t("settings.all") : t(`library.statuses.${status}`)}
+                  {status === "any" ? t("filters.all") : t(`library.statuses.${status}`)}
                 </option>
               ))}
             </Select>
@@ -94,9 +94,9 @@ function SmartListForm({
                 }))
               }
             >
-              <option value="any">{t("settings.all")}</option>
-              <option value="movie">{t("nav.movies")}</option>
-              <option value="series">{t("nav.series")}</option>
+              <option value="any">{t("filters.all")}</option>
+              <option value="movie">{t("filters.typeMovies")}</option>
+              <option value="series">{t("filters.typeSeries")}</option>
             </Select>
           )}
         </FormField>
@@ -106,7 +106,7 @@ function SmartListForm({
               value={rules.genre ?? ""}
               onChange={(event) => setRules((current) => ({ ...current, genre: event.target.value || null }))}
             >
-              <option value="">{t("settings.all")}</option>
+              <option value="">{t("filters.all")}</option>
               {genres.map((genre) => (
                 <option key={genre.id} value={genre.label}>
                   {t(genre.labelKey)}
@@ -258,7 +258,7 @@ export function SmartListsAccordionContent({
               <button
                 type="button"
                 aria-pressed={activeSmartListId === list.id}
-                className="min-w-0 flex-1 text-left text-sm font-medium"
+                className="min-w-0 flex-1 truncate text-left text-sm font-medium"
                 onClick={() => onSelectSmartList(activeSmartListId === list.id ? NO_SMART_LIST_SELECTED : list.id)}
               >
                 {list.name}
@@ -293,11 +293,12 @@ export function SmartListsAccordionContent({
       )}
       <ConfirmDialog
         open={pendingDelete !== null}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
+        onOpenChange={(open) => !open && !smartLists.isSaving && setPendingDelete(null)}
         title={t("library.smartLists.deleteConfirmTitle", { name: pendingDelete?.name })}
         description={t("library.smartLists.deleteConfirmDescription")}
-        confirmLabel={t("common.confirm")}
+        confirmLabel={t("common.delete")}
         cancelLabel={t("common.cancel")}
+        isConfirming={smartLists.isSaving}
         onConfirm={() => {
           if (!pendingDelete) return;
           setActionError(null);
@@ -307,9 +308,9 @@ export function SmartListsAccordionContent({
             .then(() => {
               if (activeSmartListId === deletedId) onSelectSmartList(NO_SMART_LIST_SELECTED);
               if (editingId === deletedId) setEditingId(null);
+              setPendingDelete(null);
             })
             .catch(() => setActionError(t("desktop.operationFailed")));
-          setPendingDelete(null);
         }}
       />
     </div>

@@ -18,7 +18,7 @@ import {
   ListMinus,
 } from "lucide-react";
 import { EmptyState } from "@/components/states/empty-state";
-import { LoadingState } from "@/components/states/loading-state";
+import { TimelineSkeleton, TrackedSeriesSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Tile } from "@/components/ui/tile";
 import { FilterBar } from "@/components/media/library/filter-bar";
@@ -147,17 +147,18 @@ export function HistoryPage() {
             <FilterBar
               value={typeFilter}
               onChange={setTypeFilter}
+              groupLabel={t("history.filterType")}
               options={[
-                { value: "all", label: t("settings.all") },
-                { value: "series", label: t("nav.series") },
-                { value: "movie", label: t("nav.movies") },
+                { value: "all", label: t("filters.all") },
+                { value: "series", label: t("filters.typeSeries") },
+                { value: "movie", label: t("filters.typeMovies") },
               ]}
             />
           }
         />
 
         {historyQuery.isLoading ? (
-          <LoadingState />
+          <TimelineSkeleton />
         ) : historyQuery.isError ? (
           <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
         ) : filteredHistory.length ? (
@@ -244,7 +245,7 @@ export function HistoryPage() {
         />
 
         {trackedSeriesQuery.isLoading ? (
-          <LoadingState />
+          <TrackedSeriesSkeleton />
         ) : trackedSeriesQuery.isError ? (
           <RemoteErrorState error={trackedSeriesQuery.error} onRetry={() => void trackedSeriesQuery.refetch()} />
         ) : (trackedSeriesQuery.data ?? []).length ? (

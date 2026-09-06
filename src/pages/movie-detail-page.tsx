@@ -22,7 +22,6 @@ import { WatchHistoryPanel } from "@/components/media/activity/watch-history-pan
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/use-toast";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
 import { FavouriteButton } from "@/components/media/tracking/favourite-button";
 import { EmptyState } from "@/components/states/empty-state";
@@ -97,11 +96,9 @@ export function MovieDetailPage() {
         onOpenChange={setNoteDialogOpen}
         onConfirm={(note) => {
           setNoteDialogOpen(false);
-          seenQuery.toggleMovieSeen({ movie, watched: true, note: note || undefined }).catch(() => {
-            // Never surface error.message here — it's the raw ApiCommandError
-            // from invokeCommand()/Rust, not a translated, user-facing string.
-            toast({ description: t("media.addWatchNoteFailed"), variant: "error" });
-          });
+          // Failure toast is handled by the app-wide MutationCache error
+          // handler (see query-client.ts).
+          void seenQuery.toggleMovieSeen({ movie, watched: true, note: note || undefined }).catch(() => {});
         }}
       />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { FolderHeart, Heart, LayoutGrid, LibraryBig, List, ListPlus, SearchX, Sparkles, Trash2 } from "lucide-react";
+import { FolderHeart, Heart, LibraryBig, ListPlus, SearchX, Sparkles, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { FilterBar } from "@/components/media/library/filter-bar";
@@ -11,6 +11,7 @@ import { MovieLibrarySections, SeriesLibrarySections } from "@/components/media/
 import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
 import { SearchBar } from "@/components/media/primitives/search-bar";
 import { SmartListsAccordionContent } from "@/components/media/library/smart-lists-panel";
+import { ViewModeToggle } from "@/components/media/primitives/view-mode-toggle";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,16 @@ function ListItemRow({ listId }: { listId: string }) {
   if (items.isError) {
     return <RemoteErrorState error={items.error} onRetry={() => void items.refetch()} />;
   }
-  if (!items.data?.length) return <p className="text-sm text-muted-foreground">{t("library.lists.itemsEmpty")}</p>;
+  if (!items.data?.length) {
+    return (
+      <EmptyState
+        icon={ListPlus}
+        title={t("library.lists.itemsEmptyTitle")}
+        description={t("library.lists.itemsEmpty")}
+        className="py-8"
+      />
+    );
+  }
   return (
     <div className="grid gap-2">
       {items.data.map((item) => (
@@ -73,17 +83,19 @@ function ListItemRow({ listId }: { listId: string }) {
       {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}
       <ConfirmDialog
         open={pendingRemoval !== null}
-        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        onOpenChange={(open) => !open && !items.isSaving && setPendingRemoval(null)}
         title={t("library.lists.removeItemConfirmTitle", { title: pendingRemoval?.title })}
-        confirmLabel={t("common.confirm")}
+        description={t("library.lists.removeItemConfirmDescription")}
+        confirmLabel={t("common.remove")}
         cancelLabel={t("common.cancel")}
+        isConfirming={items.isSaving}
         onConfirm={() => {
           if (!pendingRemoval) return;
           setRemoveError(null);
           void items
             .remove({ mediaId: pendingRemoval.mediaId, mediaType: pendingRemoval.mediaType })
+            .then(() => setPendingRemoval(null))
             .catch(() => setRemoveError(t("desktop.operationFailed")));
-          setPendingRemoval(null);
         }}
       />
     </div>
@@ -105,11 +117,13 @@ function ListsAccordionContent({
   const [openedList, setOpenedList] = useState<string | null>(null);
   const [pendingDeleteList, setPendingDeleteList] = useState<{ id: string; name: string } | null>(null);
   const [listActionError, setListActionError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <>
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
         <Input
+          ref={nameInputRef}
           size="sm"
           value={listName}
           onChange={(event) => setListName(event.target.value)}
@@ -150,7 +164,17 @@ function ListsAccordionContent({
           <RemoteErrorState error={lists.error} onRetry={() => void lists.refetch()} />
         </div>
       ) : !lists.data?.length ? (
-        <p className="mt-4 text-sm text-muted-foreground">{t("library.lists.noLists")}</p>
+        <EmptyState
+          icon={ListPlus}
+          title={t("library.lists.noListsTitle")}
+          description={t("library.lists.noLists")}
+          className="py-8"
+          action={
+            <Button type="button" variant="outline" onClick={() => nameInputRef.current?.focus()}>
+              {t("library.lists.createFirstList")}
+            </Button>
+          }
+        />
       ) : (
         <div className="mt-4 grid gap-2">
           {lists.data.map((list) => (
@@ -158,14 +182,14 @@ function ListsAccordionContent({
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  className="min-w-0 flex-1 text-left text-sm font-medium"
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium"
                   aria-expanded={openedList === list.id}
                   aria-controls={`custom-list-items-${list.id}`}
                   onClick={() => setOpenedList((current) => (current === list.id ? null : list.id))}
                 >
-                  {list.name}
+                  <span className="min-w-0 truncate">{list.name}</span>
                   {list.description ? (
-                    <span className="ml-2 truncate text-muted-foreground">{list.description}</span>
+                    <span className="min-w-0 truncate text-muted-foreground">{list.description}</span>
                   ) : null}
                 </button>
                 <IconTooltip label={t("library.lists.deleteList", { name: list.name })}>
@@ -191,11 +215,12 @@ function ListsAccordionContent({
       )}
       <ConfirmDialog
         open={pendingDeleteList !== null}
-        onOpenChange={(open) => !open && setPendingDeleteList(null)}
+        onOpenChange={(open) => !open && !lists.isSaving && setPendingDeleteList(null)}
         title={t("library.lists.deleteListConfirmTitle", { name: pendingDeleteList?.name })}
         description={t("library.lists.deleteListConfirmDescription")}
-        confirmLabel={t("common.confirm")}
+        confirmLabel={t("common.delete")}
         cancelLabel={t("common.cancel")}
+        isConfirming={lists.isSaving}
         onConfirm={() => {
           if (!pendingDeleteList) return;
           setListActionError(null);
@@ -204,9 +229,9 @@ function ListsAccordionContent({
             .remove(deletedId)
             .then(() => {
               if (listFilter === deletedId) onListDeleted(deletedId);
+              setPendingDeleteList(null);
             })
             .catch(() => setListActionError(t("desktop.operationFailed")));
-          setPendingDeleteList(null);
         }}
       />
     </>
@@ -527,9 +552,9 @@ export function LibraryExplorer({
             onChange={setTypeFilter}
             groupLabel={t("library.filterType")}
             options={[
-              { value: "all", label: t("settings.all") },
-              { value: "series", label: t("nav.series") },
-              { value: "movie", label: t("nav.movies") },
+              { value: "all", label: t("filters.all") },
+              { value: "series", label: t("filters.typeSeries") },
+              { value: "movie", label: t("filters.typeMovies") },
             ]}
           />
         )}
@@ -539,7 +564,7 @@ export function LibraryExplorer({
           groupLabel={t("library.filterStatus")}
           options={statusOptions.map((status) => ({
             value: status,
-            label: status === "all" ? t("settings.all") : t(`library.statuses.${status}`),
+            label: status === "all" ? t("filters.all") : t(`library.statuses.${status}`),
           }))}
         />
         <FilterBar
@@ -562,34 +587,7 @@ export function LibraryExplorer({
           <Heart className={favouritesOnly ? "mr-2 size-4 fill-current" : "mr-2 size-4"} />
           {t("library.favouritesOnly")}
         </Button>
-        <div className="flex items-center gap-1 rounded-full border border-border p-1">
-          <IconTooltip label={t("library.gridView")}>
-            <Button
-              type="button"
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="icon"
-              aria-label={t("library.gridView")}
-              aria-pressed={viewMode === "grid"}
-              onClick={() => setViewMode("grid")}
-              className="size-8 rounded-full"
-            >
-              <LayoutGrid className="size-4" />
-            </Button>
-          </IconTooltip>
-          <IconTooltip label={t("library.listView")}>
-            <Button
-              type="button"
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="icon"
-              aria-label={t("library.listView")}
-              aria-pressed={viewMode === "list"}
-              onClick={() => setViewMode("list")}
-              className="size-8 rounded-full"
-            >
-              <List className="size-4" />
-            </Button>
-          </IconTooltip>
-        </div>
+        <ViewModeToggle value={viewMode} onChange={setViewMode} />
         {(lists.data?.length ?? 0) > 0 ? (
           <Select
             aria-label={t("library.lists.filterLabel")}

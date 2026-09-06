@@ -1658,6 +1658,7 @@ export function DesignSystemPage() {
               <FilterBar
                 value={patternFilter}
                 onChange={setPatternFilter}
+                groupLabel="Filter by type"
                 options={[
                   { value: "all", label: "All" },
                   { value: "movies", label: "Movies" },

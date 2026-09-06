@@ -288,6 +288,20 @@
     cursor: pointer;
   }
 
+  /* A handful of interactive rows/tiles across the app (home's "available
+     now"/"needs attention" tiles, tracking rows, the library list-row link)
+     never declared their own focus-visible ring, so keyboard navigation
+     landed on them with no visible indicator at all. One base rule closes
+     that gap for every link/button/role="button" at once; a component's own
+     focus-visible:ring-* utility (most already have one) still wins where
+     present since utility classes outrank this base-layer default. */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+  }
+
   html,
   body,
   #root {

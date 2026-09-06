@@ -1,12 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Check, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
-import { Tile } from "@/components/ui/tile";
-import { IconTooltip } from "@/components/ui/tooltip";
+import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { useMovieSeen } from "@/features/progress/use-progress";
-import { cn } from "@/shared/lib/cn";
 import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
 import { progressBarTone } from "@/shared/utils/series-status";
 import type { MediaSummary } from "@/types/media";
@@ -17,32 +15,16 @@ import type { MediaCardProgress } from "./media-card";
 // series "seen" means writing every episode across every season, too heavy
 // for an inline row action — series rows link through to the season/episode
 // list instead (the chevron below).
-function SeenToggle({ media }: { media: MediaSummary }) {
-  const { t } = useTranslation();
+function MovieSeenToggle({ media }: { media: MediaSummary }) {
   const seenQuery = useMovieSeen(media.id);
-  const label = seenQuery.data ? t("media.markUnseen") : t("media.markSeen");
 
   return (
-    <IconTooltip label={label}>
-      <button
-        type="button"
-        aria-label={label}
-        aria-pressed={Boolean(seenQuery.data)}
-        disabled={seenQuery.isSaving}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
-        }}
-        className={cn(
-          "flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border text-muted-foreground transition-colors",
-          "hover:border-primary hover:text-primary disabled:pointer-events-none disabled:cursor-default disabled:opacity-50",
-          seenQuery.data && "border-success bg-success/15 text-success hover:border-success hover:text-success"
-        )}
-      >
-        <Check className="size-4" />
-      </button>
-    </IconTooltip>
+    <SeenToggleButton
+      size="sm"
+      seen={Boolean(seenQuery.data)}
+      isSaving={seenQuery.isSaving}
+      onToggle={() => seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data })}
+    />
   );
 }
 
@@ -56,14 +38,21 @@ export function MediaListRow({
   alreadySeen?: boolean;
 }) {
   const { t } = useTranslation();
-  const image = buildTmdbImageUrl(media.posterPath, "w92") ?? fallbackPoster;
+  // w185, not w92: at this row's rendered size (56-64px CSS), w92 was
+  // sub-resolved on any 2x/Retina display — the only place in the app this
+  // gabarit asked for a logo-sized source rather than a real poster.
+  const image = buildTmdbImageUrl(media.posterPath, "w185") ?? fallbackPoster;
   const showProgress = progress !== undefined && progress.total > 0;
   const percent = showProgress ? Math.min(100, Math.round((progress.watched / progress.total) * 100)) : 0;
   const tone = showProgress ? progressBarTone(progress.watched, progress.total, progress.seriesStatus) : null;
   const showFinishedBar = !showProgress && alreadySeen;
 
   return (
-    <Tile className="mb-2 flex items-center gap-3 p-2.5 transition-colors hover:bg-foreground/[0.03] sm:p-3">
+    // A row carrying a real poster gets the richer `.surface` treatment
+    // (blurred fill, elevation) the other poster-bearing rows already use
+    // (WatchNextRow, RecentlyWatchedRow, …) — `Tile` stays reserved for
+    // compact, image-less rows (alerts, agenda entries).
+    <div className="surface mb-2 flex items-center gap-3 rounded-card p-2.5 transition-colors hover:bg-foreground/[0.04] sm:p-3">
       <Link
         className="flex min-w-0 flex-1 items-center gap-3"
         to={media.mediaType === "movie" ? "/movies/$movieId" : "/series/$seriesId"}
@@ -84,7 +73,10 @@ export function MediaListRow({
             </Badge>
             <span>{media.year ?? t("media.unknownYear")}</span>
             {media.genres[0] ? <span className="truncate">· {media.genres[0]}</span> : null}
-            <span className="ml-auto flex items-center gap-1 tabular-nums">
+            <span
+              aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
+              className="ml-auto flex items-center gap-1 tabular-nums"
+            >
               <span className="text-rating" aria-hidden="true">
                 ★
               </span>
@@ -112,10 +104,10 @@ export function MediaListRow({
         </div>
       </Link>
       {media.mediaType === "movie" ? (
-        <SeenToggle media={media} />
+        <MovieSeenToggle media={media} />
       ) : (
         <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       )}
-    </Tile>
+    </div>
   );
 }

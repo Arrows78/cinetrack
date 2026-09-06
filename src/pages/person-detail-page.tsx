@@ -28,6 +28,8 @@ function FilmographyCard({ item }: { item: PersonCreditItem }) {
       <img
         src={buildTmdbImageUrl(item.posterPath, "w185") ?? fallbackPoster}
         alt=""
+        loading="lazy"
+        decoding="async"
         className="h-24 w-16 shrink-0 rounded-xl object-cover"
       />
       <div className="min-w-0">
@@ -41,7 +43,7 @@ function FilmographyCard({ item }: { item: PersonCreditItem }) {
     </>
   );
   return (
-    <Card className="rounded-3xl p-3 transition hover:border-primary/50">
+    <Card className="rounded-card p-3 transition hover:border-primary/50">
       {item.mediaType === "movie" ? (
         <Link to="/movies/$movieId" params={{ movieId: String(item.id) }} className="flex items-start gap-3">
           {inner}
@@ -89,7 +91,10 @@ export function PersonDetailPage() {
         <div className="min-w-0 space-y-3">
           <div>
             {person.knownForDepartment ? <p className="text-sm text-primary">{person.knownForDepartment}</p> : null}
-            <h1 className="font-display text-page-title">{person.name}</h1>
+            {/* Title — the page's own <h1>: same display-hero scale as
+                MediaDetailsHero's (movie/series detail pages), which this
+                page's own poster+bio hero layout otherwise mirrors. */}
+            <h1 className="font-display text-display-title text-balance md:text-display-hero">{person.name}</h1>
             {person.alsoKnownAs.length > 0 ? (
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("person.alsoKnownAs")} {person.alsoKnownAs.join(", ")}
@@ -118,14 +123,18 @@ export function PersonDetailPage() {
 
       {person.knownFor.length > 0 ? (
         <section>
-          <SectionHeader title={t("person.knownFilmography")} index={1} />
+          {/* No index/eyebrow-rule: movie/series detail pages' own
+              SectionHeaders (Overview, Cast, ...) don't draw one either —
+              that decorative rule is reserved for dashboard-style pages
+              with multiple distinct zones, not a single item's detail page. */}
+          <SectionHeader title={t("person.knownFilmography")} />
           <MediaGrid items={person.knownFor} />
         </section>
       ) : null}
 
       {person.filmography.length > 0 ? (
         <section>
-          <SectionHeader title={t("person.fullFilmography")} index={2} />
+          <SectionHeader title={t("person.fullFilmography")} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {person.filmography.map((item, index) => (
               <FilmographyCard key={`${item.department}-${item.mediaType}-${item.id}-${index}`} item={item} />

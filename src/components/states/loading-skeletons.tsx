@@ -24,6 +24,50 @@ export function HeroSkeleton() {
   );
 }
 
+/** History page's activity timeline — one icon-dot + connector segment + two text lines per row, matching the real row's geometry (see history-page.tsx). */
+export function TimelineSkeleton({ count = 6 }: { count?: number }) {
+  const { t } = useTranslation();
+  return (
+    <div role="status" aria-busy="true" aria-label={t("common.loading")} className="space-y-5">
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index} className="relative flex gap-4">
+          <div className="relative shrink-0">
+            {index !== count - 1 && (
+              <div className="absolute left-[1.1875rem] top-2 -bottom-5 w-px bg-foreground/[0.07]" />
+            )}
+            <Skeleton className="h-[2.375rem] w-[2.375rem] rounded-full" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2 pt-1">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** History page's tracked-series list — a Tile row per item, matching the real title/progress-bar geometry (see history-page.tsx). */
+export function TrackedSeriesSkeleton({ count = 4 }: { count?: number }) {
+  const { t } = useTranslation();
+  return (
+    <div role="status" aria-busy="true" aria-label={t("common.loading")} className="space-y-3">
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index} className="rounded-xl bg-foreground/[0.03] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-3 w-1/4" />
+            </div>
+            <Skeleton className="h-6 w-10 shrink-0" />
+          </div>
+          <Skeleton className="mt-3 h-2 w-full rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function StatsSkeleton() {
   const { t } = useTranslation();
   return (

@@ -74,3 +74,10 @@ export const MEDIA_POSTER_OVERLAY_CLASSNAME = {
  * themed app surface.
  */
 export const COMMAND_PALETTE_BACKDROP_CLASSNAME = "bg-black/55";
+
+/**
+ * Letterboxing behind an embedded video player (see trailer-panel.tsx) —
+ * always black regardless of theme, same reasoning as a cinema's own
+ * letterboxing: it's the player's own frame, not a themed app surface.
+ */
+export const VIDEO_EMBED_BACKGROUND_CLASSNAME = "bg-black";

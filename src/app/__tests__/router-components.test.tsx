@@ -30,7 +30,7 @@ describe("router-components", () => {
   it("ErrorComponent logs the route error and renders a fallback message", () => {
     render(<ErrorComponent error={new Error("boom")} reset={() => undefined} info={undefined} />);
 
-    expect(screen.getByText(i18n.t("common.somethingWentWrong"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("errors.unexpectedTitle"))).toBeInTheDocument();
     expect(screen.getByText(i18n.t("errors.unexpectedDescription"))).toBeInTheDocument();
     expect(loggerErrorMock).toHaveBeenCalledWith("Route error: boom");
   });

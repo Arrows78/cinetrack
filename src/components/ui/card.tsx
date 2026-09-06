@@ -17,7 +17,7 @@ export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttribut
     // this static rule; every real call site passes translated text (see
     // card.test.tsx).
     // eslint-disable-next-line jsx-a11y/heading-has-content
-    <h3 ref={ref} className={cn("text-lg font-semibold tracking-tight", className)} {...props} />
+    <h3 ref={ref} className={cn("text-heading-sm tracking-tight", className)} {...props} />
   )
 );
 CardTitle.displayName = "CardTitle";

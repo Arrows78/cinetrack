@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Bell, BellRing, CalendarDays, Film, Trash2, Tv } from "lucide-react";
+import { Bell, BellRing, CalendarDays, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -12,11 +12,12 @@ import { FilterBar } from "@/components/media/library/filter-bar";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { TrackingEntryRow } from "@/components/media/tracking/tracking-entry-row";
 import { useAvailabilityAlerts } from "@/features/availability/use-availability-alerts";
 import { useTracking } from "@/features/tracking/use-tracking";
 import { PLATFORMS } from "@/shared/constants/discover";
 import { staggerDelayMs } from "@/shared/utils/animation";
-import { formatEpisodeCode, formatFullDate, formatRelativeCountdown } from "@/shared/utils/format";
+import { formatFullDate, formatRelativeCountdown } from "@/shared/utils/format";
 import type { TrackingEntry, TrackingEntryType, TrackingScope } from "@/types/media";
 
 type ScopeFilter = TrackingScope | "all";
@@ -24,47 +25,6 @@ type TypeFilter = TrackingEntryType | "all";
 
 function providerNames(providerIds: number[] = []): string[] {
   return providerIds.map((id) => PLATFORMS.find((platform) => platform.id === id)?.label ?? String(id));
-}
-
-function ReleaseTile({ entry, showScopeBadge }: { entry: TrackingEntry; showScopeBadge: boolean }) {
-  const { t } = useTranslation();
-  return (
-    <Tile asChild className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-foreground/[0.04]">
-      <Link
-        to={entry.type === "episode" ? "/series/$seriesId/season/$seasonNumber" : "/movies/$movieId"}
-        params={
-          entry.type === "episode"
-            ? { seriesId: String(entry.mediaId), seasonNumber: String(entry.seasonNumber ?? 1) }
-            : { movieId: String(entry.mediaId) }
-        }
-      >
-        {entry.type === "episode" ? (
-          <Tv className="size-4 shrink-0 text-primary" />
-        ) : (
-          <Film className="size-4 shrink-0 text-primary" />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate font-medium">{entry.title}</p>
-            {showScopeBadge ? (
-              entry.scope === "mine" ? (
-                <Badge variant="default">{t("tracking.scopeMine")}</Badge>
-              ) : (
-                <Badge variant="outline">{t("tracking.discoveryBadge")}</Badge>
-              )
-            ) : null}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {entry.type === "episode"
-              ? `${formatEpisodeCode(entry.seasonNumber ?? 0, entry.episodeNumber ?? 0)} · ${
-                  entry.episodeTitle ?? t("tracking.newEpisodeFallback")
-                }`
-              : t("tracking.theatricalRelease")}
-          </p>
-        </div>
-      </Link>
-    </Tile>
-  );
 }
 
 function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove: () => void }) {
@@ -162,7 +122,7 @@ export function TrackingList({
   // tagged "release" (see calendar-service.ts) — offering the other type's
   // filter here would just be a button that always empties the list.
   const typeFilterOptions: { value: TypeFilter; label: string }[] = [
-    { value: "all", label: t("settings.all") },
+    { value: "all", label: t("filters.all") },
     ...(lockedMediaType === "series" ? [] : [{ value: "release" as const, label: t("tracking.typeRelease") }]),
     ...(lockedMediaType === "movie" ? [] : [{ value: "episode" as const, label: t("tracking.typeEpisode") }]),
     { value: "availability", label: t("tracking.typeAvailability") },
@@ -177,7 +137,7 @@ export function TrackingList({
           groupLabel={t("tracking.filterScope")}
           options={[
             { value: "mine", label: t("tracking.scopeMine") },
-            { value: "all", label: t("settings.all") },
+            { value: "all", label: t("filters.all") },
           ]}
         />
         <FilterBar
@@ -210,7 +170,7 @@ export function TrackingList({
           </div>
           <div className="mt-3 grid gap-2">
             {entries.map((entry) => (
-              <ReleaseTile key={entry.id} entry={entry} showScopeBadge={showScopeBadge} />
+              <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} />
             ))}
           </div>
         </Panel>
@@ -263,14 +223,23 @@ export function TrackingList({
 
       <ConfirmDialog
         open={pendingRemoval !== null}
-        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        onOpenChange={(open) => !open && !alerts.isRemoving && setPendingRemoval(null)}
         title={t("tracking.removeConfirmTitle", { title: pendingRemoval?.title })}
-        confirmLabel={t("common.confirm")}
+        description={t("tracking.removeConfirmDescription")}
+        confirmLabel={t("common.remove")}
         cancelLabel={t("common.cancel")}
+        isConfirming={alerts.isRemoving}
         onConfirm={() => {
           if (!pendingRemoval?.alertId) return;
-          void alerts.remove(pendingRemoval.alertId);
-          setPendingRemoval(null);
+          // Failure toast is handled by the app-wide MutationCache error
+          // handler (see query-client.ts) — the dialog stays open (and
+          // isConfirming clears) so the user can retry; the catch here only
+          // prevents an unhandled rejection, it doesn't need to do anything
+          // itself.
+          void alerts
+            .remove(pendingRemoval.alertId)
+            .then(() => setPendingRemoval(null))
+            .catch(() => {});
         }}
       />
     </div>

@@ -51,12 +51,13 @@ function AddToLibraryQuickAction({ media }: { media: MediaSummary }) {
       </IconTooltip>
       <ConfirmDialog
         open={confirmingForceRemove}
-        onOpenChange={setConfirmingForceRemove}
+        onOpenChange={(open) => !open && !isSaving && setConfirmingForceRemove(open)}
         title={t("library.removeConfirmTitle")}
         description={t("library.removeConfirmDescription")}
-        confirmLabel={t("common.confirm")}
+        confirmLabel={t("library.remove")}
         cancelLabel={t("common.cancel")}
-        onConfirm={confirmForceRemove}
+        isConfirming={isSaving}
+        onConfirm={() => void confirmForceRemove()}
       />
     </>
   );

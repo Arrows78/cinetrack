@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, LoaderCircle } from "lucide-react";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/shared/lib/cn";
 
 interface SeenToggleButtonProps {
@@ -12,6 +13,12 @@ interface SeenToggleButtonProps {
   seen?: boolean;
   /** Button size variant. */
   size?: "sm" | "md" | "lg";
+  /** Structural reason the toggle can't be used right now (e.g. the episode
+   * hasn't aired yet) — distinct from `isSaving`'s transient in-flight
+   * state, and paired with `disabledLabel` below for why. */
+  disabled?: boolean;
+  /** Overrides the seen/unseen label while `disabled` is true. */
+  disabledLabel?: string;
 }
 
 const sizeClasses = {
@@ -31,9 +38,17 @@ const iconSizeClasses = {
  * watch-next rows, and list rows. Consolidates the three near-identical
  * inline button implementations that previously lived in separate files.
  */
-export function SeenToggleButton({ isSaving, onToggle, seen = false, size = "md" }: SeenToggleButtonProps) {
+export function SeenToggleButton({
+  isSaving,
+  onToggle,
+  seen = false,
+  size = "md",
+  disabled = false,
+  disabledLabel,
+}: SeenToggleButtonProps) {
   const { t } = useTranslation();
   const [justChecked, setJustChecked] = useState(false);
+  const label = disabled && disabledLabel ? disabledLabel : seen ? t("media.markUnseen") : t("media.markSeen");
 
   const handleClick = async () => {
     setJustChecked(true);
@@ -45,27 +60,29 @@ export function SeenToggleButton({ isSaving, onToggle, seen = false, size = "md"
   };
 
   return (
-    <button
-      type="button"
-      disabled={isSaving}
-      onClick={() => void handleClick()}
-      aria-label={t("media.markAsSeen")}
-      title={t("media.markAsSeen")}
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        sizeClasses[size],
-        seen
-          ? "border-success bg-success text-success-foreground"
-          : justChecked
+    <IconTooltip label={label}>
+      <button
+        type="button"
+        disabled={isSaving || disabled}
+        onClick={() => void handleClick()}
+        aria-label={label}
+        aria-pressed={seen}
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          sizeClasses[size],
+          seen
             ? "border-success bg-success text-success-foreground"
-            : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
-      )}
-    >
-      {isSaving ? (
-        <LoaderCircle className={cn("animate-spin", iconSizeClasses[size])} />
-      ) : (
-        <Check className={iconSizeClasses[size]} />
-      )}
-    </button>
+            : justChecked
+              ? "border-success bg-success text-success-foreground"
+              : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
+        )}
+      >
+        {isSaving ? (
+          <LoaderCircle className={cn("animate-spin", iconSizeClasses[size])} />
+        ) : (
+          <Check className={iconSizeClasses[size]} />
+        )}
+      </button>
+    </IconTooltip>
   );
 }

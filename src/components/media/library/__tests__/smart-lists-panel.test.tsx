@@ -250,7 +250,7 @@ describe("SmartListsAccordionContent", () => {
     );
     expect(remove).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.confirm") }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.delete") }));
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith("sl-1"));
     await waitFor(() => expect(onSelectSmartList).toHaveBeenCalledWith("all"));

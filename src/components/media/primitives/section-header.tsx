@@ -1,4 +1,5 @@
 import type * as React from "react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
@@ -10,6 +11,7 @@ export function SectionHeader({
   size = "default",
   isPageTitle = false,
   headingLevel,
+  icon: Icon,
   className,
 }: {
   title: string;
@@ -35,35 +37,45 @@ export function SectionHeader({
   // Streaming/Account/... sections, which want the smaller "sub" visual
   // treatment but must render <h2> so the outline doesn't skip a level.
   headingLevel?: 1 | 2 | 3;
+  // Only meaningful with isPageTitle — a handful of page titles (Series,
+  // Movies, Tracking) carry a leading glyph; every other page title omits
+  // it rather than half-adopting the pattern.
+  icon?: LucideIcon;
   className?: string;
 }) {
   const sectionDelay = index !== undefined ? staggerDelayMs(index) : 0;
   const isSub = size === "sub";
   const level = headingLevel ?? (isPageTitle ? 1 : isSub ? 3 : 2);
   const Heading = `h${level}` as const;
+  // A page title is never a nested zone, so it never draws the eyebrow
+  // rule — even if a caller mistakenly also passes `index`.
+  const showRule = !isSub && !isPageTitle && index !== undefined;
 
   return (
     <div className={cn("group", isSub ? "mb-4" : "mb-6", className)}>
-      {!isSub && index !== undefined && (
+      {showRule && (
         <div className="mb-3 flex items-center gap-3">
           <div className="section-rule w-10 transition-all duration-medium group-hover:w-16" />
         </div>
       )}
       <div className="flex items-end justify-between gap-4">
         <div className="animate-in" style={{ animationDelay: `${sectionDelay}ms` }}>
-          <Heading
-            className={cn(
-              "font-display tracking-tight transition-all duration-base group-hover:text-primary/90",
-              isSub ? "text-heading-sm md:text-heading-md" : isPageTitle ? "text-page-title" : "text-heading-lg"
-            )}
-          >
-            {title}
-          </Heading>
+          <div className="flex items-center gap-3">
+            {Icon ? <Icon className="size-7 shrink-0 text-primary" aria-hidden="true" /> : null}
+            <Heading
+              className={cn(
+                "font-display tracking-tight transition-all duration-base group-hover:text-primary/90",
+                isSub ? "text-heading-sm md:text-heading-md" : isPageTitle ? "text-page-title" : "text-heading-lg"
+              )}
+            >
+              {title}
+            </Heading>
+          </div>
           {subtitle ? (
             <p
               className={cn(
                 "text-muted-foreground transition-colors duration-base group-hover:text-muted-foreground/80",
-                isSub ? "mt-1 text-xs" : "mt-1.5 text-sm"
+                isSub ? "mt-1 text-caption" : "mt-1.5 text-sm"
               )}
             >
               {subtitle}

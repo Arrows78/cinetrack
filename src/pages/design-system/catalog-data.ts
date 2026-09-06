@@ -815,6 +815,14 @@ export const componentInventory = [
     "A single compact row: poster thumbnail, title/meta, progress, and a watched toggle."
   ),
   component(
+    "MediaProgressRow",
+    "components/media/primitives/media-progress-row.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Shared poster+content row for a tracked title, used by Watch Next and recently-watched rows."
+  ),
+  component(
     "NextEpisodeCard",
     "components/media/tracking/next-episode-card.tsx",
     "Media",
@@ -1021,6 +1029,22 @@ export const componentInventory = [
     "feature",
     "live",
     "Filterable, sortable library browser shared by /library and the /movies and /series 'My list' tab."
+  ),
+  component(
+    "ViewModeToggle",
+    "components/media/primitives/view-mode-toggle.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Switches LibraryExplorer between grid and list view, persisted via preferences."
+  ),
+  component(
+    "TrackingEntryRow",
+    "components/media/tracking/tracking-entry-row.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Shared release/episode/availability row for TrackingList and the Today Hub's dashboard rails."
   ),
   component(
     "TrackingList",

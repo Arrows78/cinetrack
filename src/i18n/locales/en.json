@@ -8,7 +8,7 @@
     "history": "Activity",
     "settings": "Settings",
     "people": "People",
-    "watchTonight": "Watch Tonight",
+    "watchTonight": "Watch tonight",
     "tracking": "Tracking",
     "stats": "Stats"
   },
@@ -44,6 +44,7 @@
     "loading": "Loading…",
     "loadMore": "Load more",
     "whereToWatch": "Where to watch",
+    "whereToWatchUnavailable": "Couldn't load streaming availability — try again in a moment.",
     "streamingFlatrate": "Streaming",
     "streamingFree": "Free with ads",
     "streamingRent": "Rent",
@@ -75,7 +76,6 @@
     "addWatchNoteDescription": "Optional — write something about this watch. Notes can't be edited afterward.",
     "addWatchNoteLabel": "Your note",
     "addWatchNotePlaceholder": "What did you think?",
-    "addWatchNoteFailed": "Couldn't save your note — try again.",
     "watchHistoryTitle": "Watch diary",
     "watchHistoryUnavailable": "Couldn't load your watch diary — try again in a moment."
   },
@@ -91,7 +91,6 @@
     "close": "Close",
     "more": "More",
     "loading": "Loading…",
-    "somethingWentWrong": "Something went wrong",
     "unknownDate": "Unknown date",
     "confirm": "Confirm",
     "cancel": "Cancel",
@@ -107,7 +106,9 @@
     "sizeBytes": "{{count}} B",
     "sizeKB": "{{value}} KB",
     "sizeMB": "{{value}} MB",
-    "sizeGB": "{{value}} GB"
+    "sizeGB": "{{value}} GB",
+    "delete": "Delete",
+    "remove": "Remove"
   },
   "theme": {
     "dark": "Dark",
@@ -127,9 +128,6 @@
     "red": "Red"
   },
   "home": {
-    "configureTmdb": "Configure your TMDB access",
-    "configureTmdbDesc": "Add or unlock your TMDB access token in Settings to load the catalog.",
-    "configureTmdbCta": "Go to Settings",
     "noTokenTitle": "Track without a TMDB token",
     "noTokenDesc": "A TMDB token isn't required to use CineTrack — it only unlocks browsing and discovering new titles.",
     "noTokenWorksTitle": "Works right now, offline",
@@ -156,26 +154,26 @@
     "plannedHelper": "Titles to watch later",
     "trackedHelper": "Local progressions",
     "activityHelper": "Latest recorded actions",
-    "followedSeries": "Followed Series",
-    "trendingMovies": "Trending Movies",
+    "followedSeries": "Followed series",
+    "trendingMovies": "Trending movies",
     "trendingMoviesSubtitle": "Discover the most trending movies of the week.",
-    "trendingSeries": "Trending Series",
+    "trendingSeries": "Trending series",
     "trendingSeriesSubtitle": "Discover the most trending series of the week.",
-    "topRatedSeries": "Top Rated Series",
+    "topRatedSeries": "Top rated series",
     "topRatedSeriesSubtitle": "The highest rated series of all time.",
-    "onTheAirSeries": "On The Air",
+    "onTheAirSeries": "On the air",
     "onTheAirSeriesSubtitle": "Series currently in production.",
-    "topRatedMovies": "Top Rated Movies",
+    "topRatedMovies": "Top rated movies",
     "topRatedMoviesSubtitle": "The highest rated movies of all time.",
-    "nowPlayingMovies": "Now Playing",
+    "nowPlayingMovies": "Now playing",
     "nowPlayingMoviesSubtitle": "Movies currently in theaters.",
-    "upcomingMovies": "Upcoming Movies",
+    "upcomingMovies": "Upcoming movies",
     "upcomingMoviesSubtitle": "Movies coming soon.",
-    "browseByGenre": "Browse by Genre",
+    "browseByGenre": "Browse by genre",
     "browseByGenreSubtitle": "Explore series and movies by category.",
-    "browseByPlatform": "Browse by Platform",
+    "browseByPlatform": "Browse by platform",
     "browseByPlatformSubtitle": "Find series and movies on your favorite streaming services.",
-    "browseByStudio": "Browse by Studio",
+    "browseByStudio": "Browse by studio",
     "browseByStudioSubtitle": "Explore movies from studios you love.",
     "watchNext": "Watch next",
     "watchNextSubtitle": "Pick up right where you left off",
@@ -183,8 +181,6 @@
     "becauseYouLikedSubtitle": "More titles similar to what you've already watched.",
     "becauseYouLoveGenre": "Because you love {{genre}}",
     "becauseYouLoveGenreSubtitle": "More picks in your favorite genre.",
-    "forYou": "For you",
-    "forYouSubtitle": "Picked from your library and watch history.",
     "onThisDayTitle": "On this day",
     "onThisDayEntry": "On {{date}}, you watched {{title}}",
     "onThisDayYearsAgo_one": "{{count}} year ago",
@@ -217,9 +213,10 @@
     "needsAttentionStaleBadge": "Added {{days}}d ago"
   },
   "history": {
-    "recentActivity": "Recent Activity",
+    "recentActivity": "Recent activity",
     "recentActivitySubtitle": "Films watched, episodes marked, and library changes.",
-    "seriesInProgress": "Series In Progress",
+    "filterType": "Filter by type",
+    "seriesInProgress": "Series in progress",
     "seriesInProgressSubtitle": "Your local progress on followed series.",
     "noActivity": "No activity yet",
     "noActivityDesc": "Start marking content as watched or add titles to your library to populate this section.",
@@ -243,7 +240,8 @@
     }
   },
   "search": {
-    "globalSearch": "Global Search",
+    "globalSearch": "Global search",
+    "filterScope": "Filter by type",
     "subtitle": "Search movies and series.",
     "noResultsDesc": "Try another title, different language, or a different filter.",
     "resultsCount_one": "{{count}} result",
@@ -253,10 +251,11 @@
   "searchBar": {
     "placeholder": "Search for a movie or series..."
   },
-  "filterBar": {
-    "defaultLabel": "Filter"
-  },
   "filters": {
+    "all": "All",
+    "typeSeries": "Series",
+    "typeMovies": "Movies",
+    "byType": "Filter by type",
     "activeFiltersLabel": "Active filters",
     "removeFilter": "Remove filter {{filter}}",
     "chips": {
@@ -268,7 +267,9 @@
       "search": "Search: \"{{value}}\"",
       "genre": "Genre: {{value}}",
       "provider": "Service: {{value}}",
-      "studio": "Studio: {{value}}"
+      "studio": "Studio: {{value}}",
+      "duration": "Max duration: {{value}}",
+      "origin": "Origin: {{value}}"
     },
     "savedFilters": {
       "namePlaceholder": "Name this view…",
@@ -277,26 +278,20 @@
       "saveFailed": "Couldn't save this view. Please try again.",
       "delete": "Delete the saved view \"{{name}}\"",
       "deleteConfirmTitle": "Delete the saved view \"{{name}}\"?",
+      "deleteConfirmDescription": "This only removes the saved view — your current filters and library are unaffected.",
       "deleteFailed": "Couldn't delete this view. Please try again."
     }
   },
   "settings": {
     "subtitleDesktop": "Interface, catalog, privacy and desktop integration.",
-    "uiPreferences": "UI Preferences",
-    "uiPreferencesDesc": "Customize your local experience.",
+    "uiPreferences": "UI preferences",
     "customizeDisplay": "Customize display and default values.",
     "accentColor": "Accent color",
     "language": "Language",
-    "region": "TMDB Region",
+    "region": "TMDB region",
     "defaultSearchType": "Default search type",
     "defaultSearch": "Default search",
-    "all": "All",
-    "series": "Series",
-    "movies": "Movies",
     "reduceAnimations": "Reduce animations",
-    "reducedAnimationsOn": "Reduced animations enabled",
-    "enableCompactMode": "Enable compact mode",
-    "compactModeOn": "Compact mode enabled",
     "compactMode": "Compact mode",
     "spoilerProtection": "Spoiler protection",
     "calendarNotifications": "Calendar notifications",
@@ -325,12 +320,10 @@
       "newNamePlaceholder": "New profile name",
       "newNameLabel": "New profile name",
       "create": "Create profile",
-      "createFailed": "Couldn't create the profile. Please try again.",
       "switchFailed": "Couldn't switch profiles. Please try again.",
       "delete": "Delete profile {{name}}",
       "deleteConfirmTitle": "Delete the profile \"{{name}}\"?",
-      "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone.",
-      "deleteFailed": "Couldn't delete the profile. Please try again."
+      "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone."
     },
     "streaming": {
       "title": "My streaming services",
@@ -366,6 +359,7 @@
     }
   },
   "mediaHub": {
+    "viewTabs": "View",
     "myList": "My list",
     "upcoming": "Upcoming",
     "browseAllMovies": "Browse all movies",
@@ -373,23 +367,18 @@
   },
   "movies": {
     "subtitle": "Posters, filters, and detailed pages.",
-    "noMoviesAvailable": "No movies available",
-    "noMoviesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
-    "technicalSheet": "Technical Sheet",
+    "technicalSheet": "Technical sheet",
     "country": "Country",
     "language": "Language",
     "castSubtitle": "The most visible faces from the TMDB page."
   },
   "series": {
     "subtitle": "Browse by season, track your progress and discover new series.",
-    "noSeriesAvailable": "No series available",
-    "noSeriesAvailableDesc": "The catalog could not be loaded at this time. Check your connection or TMDB configuration.",
-    "seriesInfo": "Series Info",
-    "currentProgress": "Current Progress",
+    "seriesInfo": "Series info",
+    "currentProgress": "Current progress",
     "episodesFraction": "{{watched}}/{{total}} ep.",
     "seasonsAndEpisodes": "Seasons & Episodes",
     "seasonsAndEpisodesDesc": "Each episode can be marked as watched or unwatched, with progress per season and overall.",
-    "globalProgress": "Global Progress",
     "markSeasonSeen": "Mark season as watched",
     "markSeasonUnseen": "Mark season as unwatched",
     "openSeasonPage": "Open season page",
@@ -446,12 +435,6 @@
     "previousYear": "Previous year",
     "nextYear": "Next year",
     "records": "Records",
-    "tabs": {
-      "overview": "Overview",
-      "thisYear": "This year",
-      "history": "History",
-      "records": "Records"
-    },
     "longestStreak": "Longest streak",
     "biggestBinge": "Biggest binge day",
     "mostRewatched": "Most rewatched",
@@ -559,9 +542,9 @@
     "title": "Tracking",
     "description": "Release dates, upcoming episodes, and availability alerts for what you're following.",
     "loading": "Loading tracking…",
-    "filterScope": "Scope",
+    "filterScope": "Filter by scope",
     "scopeMine": "My titles",
-    "filterType": "Type",
+    "filterType": "Filter by type",
     "typeRelease": "Releases",
     "typeEpisode": "Episodes",
     "typeAvailability": "Availability",
@@ -573,6 +556,7 @@
     "region": "Region: {{region}}",
     "remove": "Remove the alert for {{title}}",
     "removeConfirmTitle": "Remove the alert for \"{{title}}\"?",
+    "removeConfirmDescription": "You'll stop being notified when it becomes available. You can set up a new alert for it at any time.",
     "noResultsTitle": "Nothing to show",
     "noResults": "Nothing matches these filters yet — try widening them, or follow a title from its page.",
     "clearFilters": "Clear filters",
@@ -673,7 +657,6 @@
     "description": "Status, rating, tags, private notes and rewatches.",
     "loadError": "Couldn't load your saved status for this title. Try again before making changes — saving now could overwrite what's already stored.",
     "saved": "Saved.",
-    "saveFailed": "Couldn't save. Please try again.",
     "subtitle": "Filter by type and status, and sort everything you're tracking.",
     "filterType": "Filter by type",
     "filterStatus": "Filter by status",
@@ -731,7 +714,11 @@
       "addToList": "Add to the list",
       "addToAListLabel": "Add to a list",
       "noneYetPrefix": "You don't have any lists yet.",
-      "noneYetLink": "Create one from your library."
+      "noneYetLink": "Create one from your library.",
+      "removeItemConfirmDescription": "This only removes it from this list — your library entry for it is unaffected.",
+      "noListsTitle": "No lists yet",
+      "itemsEmptyTitle": "No titles yet",
+      "createFirstList": "Create your first list"
     },
     "smartLists": {
       "title": "Smart lists",
@@ -755,7 +742,8 @@
       "edit": "Edit smart list {{name}}",
       "delete": "Delete smart list {{name}}",
       "deleteConfirmTitle": "Delete the smart list \"{{name}}\"?",
-      "deleteConfirmDescription": "This only deletes the saved rules — nothing in your library is affected."
+      "deleteConfirmDescription": "This only deletes the saved rules — nothing in your library is affected.",
+      "noListsTitle": "No smart lists yet"
     },
     "sections": {
       "recentlyWatched": "Recently watched",
@@ -817,7 +805,7 @@
   "desktop": {
     "operationComplete": "Operation complete.",
     "operationFailed": "Operation failed.",
-    "tmdbVault": "TMDB Vault",
+    "tmdbVault": "TMDB vault",
     "vaultDesc": "The password is never stored. It derives the local vault key.",
     "vaultPassword": "Vault password",
     "vaultPasswordHint": "Choose a password you'll remember — losing it means losing access to the saved token.",
@@ -871,7 +859,9 @@
     "systemIntegrationDesc": "Startup behavior, native updates and a database integrity check.",
     "automaticBackupTitle": "Automatic backup",
     "automaticBackupDesc": "A local safety-net snapshot, separate from the manual export above.",
-    "diagnosticsDesc": "Recent local log entries, for troubleshooting a problem."
+    "diagnosticsDesc": "Recent local log entries, for troubleshooting a problem.",
+    "diagnosticsClearConfirmTitle": "Clear the diagnostic logs?",
+    "diagnosticsClearConfirmDescription": "This permanently deletes the stored log history. This can't be undone."
   },
   "sidebar": {
     "brand": {
@@ -890,7 +880,7 @@
     },
     "sections": {
       "discover": "Discover",
-      "library": "My Library",
+      "library": "My library",
       "insights": "Insights",
       "account": "Account"
     }
@@ -990,6 +980,7 @@
     "tmdbTimeout": "TMDB did not respond within {{seconds}}s for {{path}}.",
     "tmdbUnreachable": "Unable to reach TMDB from the WebView: {{details}}",
     "tmdbNoToken": "No TMDB token available. Unlock the TMDB vault in Settings.",
+    "actionFailed": "That didn't work. Please try again.",
     "unexpectedTitle": "Something went wrong",
     "unexpectedDescription": "CineTrack hit an unexpected error and couldn't continue. Your local data is untouched — reloading the app should fix it.",
     "reload": "Reload"

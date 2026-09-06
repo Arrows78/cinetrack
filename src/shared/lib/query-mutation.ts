@@ -16,12 +16,16 @@ type InvalidateKeys<TData, TVariables> = QueryKey[] | ((data: TData, variables: 
  */
 export function useInvalidatingMutation<TData, TVariables>(
   mutationFn: (variables: TVariables) => Promise<TData>,
-  invalidateKeys: InvalidateKeys<TData, TVariables>
+  invalidateKeys: InvalidateKeys<TData, TVariables>,
+  // Passed straight through as this mutation's `meta` — see query-client.ts's
+  // MutationCache.onError for what suppressErrorToast does.
+  options?: { suppressErrorToast?: boolean }
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn,
+    meta: options?.suppressErrorToast ? { suppressErrorToast: true } : undefined,
     onSuccess: async (data, variables) => {
       const keys = typeof invalidateKeys === "function" ? invalidateKeys(data, variables) : invalidateKeys;
       await Promise.all(keys.map((key) => queryClient.invalidateQueries({ queryKey: key })));

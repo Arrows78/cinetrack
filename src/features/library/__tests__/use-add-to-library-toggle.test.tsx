@@ -98,11 +98,13 @@ describe("useAddToLibraryToggle", () => {
     });
     expect(result.current.confirmingForceRemove).toBe(true);
 
-    act(() => {
-      result.current.confirmForceRemove();
+    // Awaited (not fire-and-forget) so isConfirming can stay true for the
+    // duration of the real delete — the dialog only closes once it settles.
+    await act(async () => {
+      await result.current.confirmForceRemove();
     });
 
+    expect(removeMock).toHaveBeenCalledWith(7, "movie");
     expect(result.current.confirmingForceRemove).toBe(false);
-    await waitFor(() => expect(removeMock).toHaveBeenCalledWith(7, "movie"));
   });
 });

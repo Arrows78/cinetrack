@@ -20,8 +20,17 @@ vi.mock("@/shared/lib/logger", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to, params }: PropsWithChildren<{ to: string; params?: Record<string, string> }>) => (
-    <a href={to} data-params={params ? JSON.stringify(params) : undefined}>
+  Link: ({
+    children,
+    to,
+    params,
+    search,
+  }: PropsWithChildren<{ to: string; params?: Record<string, string>; search?: Record<string, unknown> }>) => (
+    <a
+      href={to}
+      data-params={params ? JSON.stringify(params) : undefined}
+      data-search={search ? JSON.stringify(search) : undefined}
+    >
       {children}
     </a>
   ),
@@ -105,7 +114,14 @@ describe("WeeklyAgendaSection", () => {
     render(<WeeklyAgendaSection index={1} />);
 
     expect(screen.getByText("The Wire")).toBeInTheDocument();
-    expect(screen.getByText("S2E5")).toBeInTheDocument();
+    expect(screen.getByText("S2E5 · New episode")).toBeInTheDocument();
+    // Opens the full series page with the season pre-expanded (a search
+    // param), not the isolated season route — see TrackingEntryRow's own
+    // dashboardRail comment for why: a dashboard rail needs a way back to
+    // the rest of the show.
+    const link = screen.getByText("The Wire").closest("a");
+    expect(link).toHaveAttribute("href", "/series/$seriesId");
+    expect(link).toHaveAttribute("data-search", JSON.stringify({ season: 2 }));
   });
 
   it("renders an availability entry with the 'available now' badge instead of a countdown", () => {

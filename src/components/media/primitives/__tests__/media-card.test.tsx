@@ -100,7 +100,7 @@ describe("MediaCard", () => {
     await waitFor(() => expect(removeIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
     expect(await screen.findByText("Remove this title from your library?")).toBeInTheDocument();
 
-    screen.getByRole("button", { name: "Confirm" }).click();
+    screen.getByRole("button", { name: "Remove" }).click();
 
     await waitFor(() => expect(forceRemoveMock).toHaveBeenCalledWith(7, "movie"));
   });

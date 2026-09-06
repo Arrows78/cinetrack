@@ -358,7 +358,7 @@ export function CommandPalette() {
             role="dialog"
             aria-modal="true"
             aria-label={t("commandPalette.dialogLabel")}
-            className="mx-auto w-full max-w-xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+            className="mx-auto w-full max-w-xl overflow-hidden rounded-shell border border-border bg-card shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="relative flex items-center border-b border-border">
@@ -450,12 +450,13 @@ export function CommandPalette() {
           this is what surfaces the confirmation to finish the removal. */}
       <ConfirmDialog
         open={libraryToggle.confirmingForceRemove}
-        onOpenChange={libraryToggle.setConfirmingForceRemove}
+        onOpenChange={(open) => !open && !libraryToggle.isSaving && libraryToggle.setConfirmingForceRemove(open)}
         title={t("library.removeConfirmTitle")}
         description={t("library.removeConfirmDescription")}
-        confirmLabel={t("common.confirm")}
+        confirmLabel={t("library.remove")}
         cancelLabel={t("common.cancel")}
-        onConfirm={libraryToggle.confirmForceRemove}
+        isConfirming={libraryToggle.isSaving}
+        onConfirm={() => void libraryToggle.confirmForceRemove()}
       />
     </>
   );

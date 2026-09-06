@@ -599,7 +599,7 @@ describe("CommandPalette", () => {
       await waitFor(() => expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(7, "movie"));
       expect(await screen.findByText("Remove this title from your library?")).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+      fireEvent.click(screen.getByRole("button", { name: "Remove" }));
 
       await waitFor(() => expect(libraryRemoveMock).toHaveBeenCalledWith(7, "movie"));
     });

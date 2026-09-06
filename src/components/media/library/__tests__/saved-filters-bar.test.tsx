@@ -98,7 +98,7 @@ describe("SavedFiltersBar", () => {
     );
     expect(removeMock).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.confirm") }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.delete") }));
     await waitFor(() => expect(removeMock).toHaveBeenCalledWith("saved-a"));
   });
 

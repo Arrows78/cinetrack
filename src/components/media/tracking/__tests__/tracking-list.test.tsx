@@ -21,7 +21,11 @@ vi.mock("@/features/availability/use-availability-alerts", () => ({
 // Same pattern as design-system-page.test.tsx: no RouterProvider exists in
 // this render, so Link is stubbed down to a plain anchor.
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
+  Link: ({ children, to, params }: PropsWithChildren<{ to: string; params?: Record<string, string> }>) => (
+    <a href={to} data-params={params ? JSON.stringify(params) : undefined}>
+      {children}
+    </a>
+  ),
 }));
 
 function makeEntry(overrides: Partial<TrackingEntry>): TrackingEntry {
@@ -116,6 +120,7 @@ function mockAlerts(overrides: Partial<ReturnType<typeof useAvailabilityAlertsMo
     data: [],
     isLoading: false,
     remove: removeMock,
+    isRemoving: false,
     ...overrides,
   });
 }
@@ -159,7 +164,9 @@ describe("TrackingList", () => {
 
     // episodeDiscovery is scope "discovery"; switch to the "all" scope so
     // both dated entries are visible for this grouping-focused assertion.
-    fireEvent.click(within(screen.getByRole("group", { name: "Scope" })).getByRole("button", { name: "All" }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
+    );
 
     // Available-now panel.
     const availableHeading = screen.getByRole("heading", { name: "Available now" });
@@ -185,11 +192,26 @@ describe("TrackingList", () => {
     expect(within(sept2Panel).queryByText("Mine Movie")).not.toBeInTheDocument();
   });
 
+  it("opens an episode entry on the isolated season route, not the dashboard-rail search-param route", () => {
+    mockTracking({ data: [episodeDiscovery] });
+    render(<TrackingList lockedMediaType="series" />);
+
+    // episodeDiscovery is scope "discovery"; the default scope filter is
+    // "mine", so switch to "all" to see it.
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
+    );
+
+    const link = screen.getByText("Discovery Series").closest("a");
+    expect(link).toHaveAttribute("href", "/series/$seriesId/season/$seasonNumber");
+    expect(link).toHaveAttribute("data-params", JSON.stringify({ seriesId: "20", seasonNumber: "2" }));
+  });
+
   it("shows both release and episode type-filter options when no media type is locked", () => {
     mockTracking({ data: [] });
     render(<TrackingList />);
 
-    const typeGroup = screen.getByRole("group", { name: "Type" });
+    const typeGroup = screen.getByRole("group", { name: "Filter by type" });
     expect(within(typeGroup).getByRole("button", { name: "Releases" })).toBeInTheDocument();
     expect(within(typeGroup).getByRole("button", { name: "Episodes" })).toBeInTheDocument();
     expect(within(typeGroup).getByRole("button", { name: "Availability" })).toBeInTheDocument();
@@ -199,7 +221,7 @@ describe("TrackingList", () => {
     mockTracking({ data: [] });
     render(<TrackingList lockedMediaType="movie" />);
 
-    const typeGroup = screen.getByRole("group", { name: "Type" });
+    const typeGroup = screen.getByRole("group", { name: "Filter by type" });
     expect(within(typeGroup).getByRole("button", { name: "Releases" })).toBeInTheDocument();
     expect(within(typeGroup).queryByRole("button", { name: "Episodes" })).not.toBeInTheDocument();
   });
@@ -208,7 +230,7 @@ describe("TrackingList", () => {
     mockTracking({ data: [] });
     render(<TrackingList lockedMediaType="series" />);
 
-    const typeGroup = screen.getByRole("group", { name: "Type" });
+    const typeGroup = screen.getByRole("group", { name: "Filter by type" });
     expect(within(typeGroup).queryByRole("button", { name: "Releases" })).not.toBeInTheDocument();
     expect(within(typeGroup).getByRole("button", { name: "Episodes" })).toBeInTheDocument();
   });
@@ -232,7 +254,9 @@ describe("TrackingList", () => {
     expect(screen.getByText("Mine Movie")).toBeInTheDocument();
     expect(screen.queryByText("Discovery Series")).not.toBeInTheDocument();
 
-    fireEvent.click(within(screen.getByRole("group", { name: "Scope" })).getByRole("button", { name: "All" }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
+    );
 
     expect(screen.getByText("Mine Movie")).toBeInTheDocument();
     expect(screen.getByText("Discovery Series")).toBeInTheDocument();
@@ -247,7 +271,9 @@ describe("TrackingList", () => {
     expect(screen.queryByText("My titles", { selector: "div" })).not.toBeInTheDocument();
     expect(screen.queryByText("Discovery")).not.toBeInTheDocument();
 
-    fireEvent.click(within(screen.getByRole("group", { name: "Scope" })).getByRole("button", { name: "All" }));
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
+    );
 
     // Now scope badges appear: "mine" entry gets the scopeMine badge, the
     // discovery entry gets the discovery badge.
@@ -265,7 +291,7 @@ describe("TrackingList", () => {
 
     expect(screen.getByText('Remove the alert for "Available Movie"?')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
 
     expect(removeMock).toHaveBeenCalledExactlyOnceWith("alert-1");
   });
@@ -277,7 +303,7 @@ describe("TrackingList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove the alert for No Alert Series" }));
     expect(screen.getByText('Remove the alert for "No Alert Series"?')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
 
     expect(removeMock).not.toHaveBeenCalled();
   });

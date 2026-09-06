@@ -13,20 +13,22 @@ import { useLibraryItemsByKeys, useLibraryQuickToggle } from "@/features/library
 import { logger } from "@/shared/lib/logger";
 import type { LibraryMediaKey, Movie } from "@/types/media";
 
-const BUCKET_GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6";
-
 // Small, single-purpose so it's trivial to keep the three groups' markup
 // identical — only the (already-translated) title and the bucket differ.
 // Takes `title` rather than a translation key + count: passing a key as a
 // literal-string JSX prop trips eslint-plugin-i18next's no-literal-string
 // rule (it can't tell a translation key apart from real copy), so the
 // t(key, { count }) call happens at each call site below instead.
+// No listClassName override here — MediaGrid's own default keeps a
+// collection's posters the same size as every other MediaGrid in the app
+// (library, search, …); a bespoke column count made this specific grid's
+// posters noticeably smaller for no product reason.
 function CollectionBucket({ title, movies, alreadySeen }: { title: string; movies: Movie[]; alreadySeen: boolean }) {
   if (movies.length === 0) return null;
   return (
     <div>
       <SectionHeader title={title} size="sub" />
-      <MediaGrid items={movies.map((movie) => ({ ...movie, alreadySeen }))} listClassName={BUCKET_GRID_CLASS} />
+      <MediaGrid items={movies.map((movie) => ({ ...movie, alreadySeen }))} />
     </div>
   );
 }
@@ -51,7 +53,10 @@ export function CollectionProgressPanel({ movie }: { movie: Movie }) {
     mediaType: "movie",
   }));
   const libraryItemsQuery = useLibraryItemsByKeys(collectionKeys);
-  const { addPlanned, isSaving } = useLibraryQuickToggle();
+  // This panel already reports one aggregate success/failure toast below
+  // (batch-adding every missing entry) — suppressErrorToast keeps the
+  // app-wide mutation error handler from also firing once per failed item.
+  const { addPlanned, isSaving } = useLibraryQuickToggle({ suppressErrorToast: true });
   const [isAddingMissing, setIsAddingMissing] = useState(false);
 
   if (!collectionId) return null;

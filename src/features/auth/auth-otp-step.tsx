@@ -53,7 +53,7 @@ export function AuthOtpStep({
         onChange={(event) => onTokenChange(event.target.value.replace(/\D/g, "").slice(0, authConfig.otpLength))}
         placeholder={"0".repeat(authConfig.otpLength)}
         aria-label={t("auth.otp.ariaLabel")}
-        className="mt-7 h-16 w-full rounded-2xl border border-white/20 bg-black/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-auth-foreground placeholder:text-auth-foreground/20 focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="mt-7 h-16 w-full rounded-2xl border border-auth-foreground/20 bg-auth-background/30 px-4 text-center text-3xl font-black tracking-[0.3em] text-auth-foreground placeholder:text-auth-foreground/20 focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       />
 
       <Button
@@ -71,7 +71,7 @@ export function AuthOtpStep({
         type="button"
         disabled={pendingAction !== null || resendSeconds > 0}
         onClick={onResend}
-        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-auth-foreground/65 transition hover:bg-white/5 hover:text-auth-foreground disabled:cursor-not-allowed disabled:opacity-45"
+        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-auth-foreground/65 transition hover:bg-auth-foreground/5 hover:text-auth-foreground disabled:cursor-not-allowed disabled:opacity-45"
       >
         {pendingAction === "resend" ? (
           <LoaderCircle className="h-4 w-4 animate-spin" />

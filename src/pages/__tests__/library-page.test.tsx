@@ -454,7 +454,7 @@ describe("LibraryPage — lists", () => {
     screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Delete list Weekend" })).click();
 
-    const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });
+    const dialogConfirm = await screen.findByRole("button", { name: "Delete" });
     expect(customListsState.remove).not.toHaveBeenCalled();
     dialogConfirm.click();
 
@@ -486,11 +486,16 @@ describe("LibraryPage — lists", () => {
 
     screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Delete list Weekend" })).click();
-    (await screen.findByRole("button", { name: "Confirm" })).click();
+    (await screen.findByRole("button", { name: "Delete" })).click();
 
     expect(await screen.findByText("Operation failed.")).toBeInTheDocument();
     expect(customListsState.remove).toHaveBeenCalledWith("list-1");
-    expect(screen.getByRole("button", { name: "Weekend" })).toBeInTheDocument();
+
+    // The dialog stays open on failure so the user can retry (see
+    // library-explorer.tsx) — close it before checking the list is
+    // still there, since it's aria-hidden behind the open modal.
+    screen.getByRole("button", { name: "Cancel" }).click();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Weekend" })).toBeInTheDocument());
   });
 
   it("resets the active list filter back to All lists when the currently filtered-to list is deleted", async () => {
@@ -503,7 +508,7 @@ describe("LibraryPage — lists", () => {
 
     screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Delete list Weekend" })).click();
-    (await screen.findByRole("button", { name: "Confirm" })).click();
+    (await screen.findByRole("button", { name: "Delete" })).click();
 
     await waitFor(() => expect(customListsState.remove).toHaveBeenCalledWith("list-1"));
     await waitFor(() => expect(select.value).toBe("all"));
@@ -595,7 +600,7 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
 
-    const dialogConfirm = await screen.findByRole("button", { name: "Confirm" });
+    const dialogConfirm = await screen.findByRole("button", { name: "Remove" });
     expect(screen.getByText("Remove Only In List from this list?")).toBeInTheDocument();
     expect(listItemRemoveMock).not.toHaveBeenCalled();
     dialogConfirm.click();
@@ -613,7 +618,7 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
     await screen.findByText("Only In List");
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
-    (await screen.findByRole("button", { name: "Confirm" })).click();
+    (await screen.findByRole("button", { name: "Remove" })).click();
 
     expect(await screen.findByText("Operation failed.")).toBeInTheDocument();
   });

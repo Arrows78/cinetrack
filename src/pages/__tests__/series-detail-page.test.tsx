@@ -453,6 +453,25 @@ describe("SeriesDetailPage", () => {
     expect(screen.getByTestId("seen-toggle")).toBeDisabled();
   });
 
+  // A failed progress read falls back to an empty watched list — every
+  // episode would render as unwatched. Disabling the bulk toggle (and
+  // saying so) keeps that wrong read from being written back as real.
+  it("disables the SeenToggle and surfaces a partial error when the progress query fails", () => {
+    episodeProgressMock.mockReturnValue({
+      data: undefined,
+      isSaving: false,
+      isError: true,
+      toggleEpisodeSeen: toggleEpisodeSeenMock,
+      markSeasonSeen: markSeasonSeenMock,
+      markSeriesSeen: markSeriesSeenMock,
+    });
+
+    renderPage();
+
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+    expect(screen.getByText(i18n.t("media.seenStatusUnavailable"))).toBeInTheDocument();
+  });
+
   it("refreshes tracked series status when TMDB's fresh status differs from the locally tracked one", async () => {
     seriesQueryMock.mockReturnValue({
       isPending: false,

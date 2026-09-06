@@ -125,7 +125,7 @@ describe("SeenToggleButton", () => {
   it("shows the spinner and disables the button while isSaving", () => {
     const { container } = render(<SeenToggleButton isSaving onToggle={vi.fn()} seen={false} />);
 
-    const button = screen.getByRole("button", { name: "Mark as watched" });
+    const button = screen.getByRole("button", { name: "Mark watched" });
     expect(button).toBeDisabled();
     expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
@@ -133,7 +133,7 @@ describe("SeenToggleButton", () => {
   it("shows the check icon with seen styling when not saving and seen", () => {
     const { container } = render(<SeenToggleButton isSaving={false} onToggle={vi.fn()} seen />);
 
-    const button = screen.getByRole("button", { name: "Mark as watched" });
+    const button = screen.getByRole("button", { name: "Mark unwatched" });
     expect(button).not.toBeDisabled();
     expect(container.querySelector(".animate-spin")).toBeNull();
     expect(button.className).toContain("border-success");
@@ -143,7 +143,7 @@ describe("SeenToggleButton", () => {
   it("does not use seen styling when not saving and unseen", () => {
     render(<SeenToggleButton isSaving={false} onToggle={vi.fn()} seen={false} />);
 
-    const button = screen.getByRole("button", { name: "Mark as watched" });
+    const button = screen.getByRole("button", { name: "Mark watched" });
     expect(button.className).not.toContain("border-success");
   });
 
@@ -157,7 +157,7 @@ describe("SeenToggleButton", () => {
     );
 
     render(<SeenToggleButton isSaving={false} onToggle={onToggle} seen={false} />);
-    const button = screen.getByRole("button", { name: "Mark as watched" });
+    const button = screen.getByRole("button", { name: "Mark watched" });
 
     fireEvent.click(button);
 

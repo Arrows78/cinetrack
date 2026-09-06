@@ -44,10 +44,31 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 // this doesn't crash when unit-tested in isolation, without the full app
 // tree around it.
 export function IconTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  // buttonVariants applies `disabled:pointer-events-none`, so a disabled
+  // trigger never receives the hover (or focus) that would open this
+  // tooltip — precisely when it's most needed, to explain *why* the
+  // control is inactive. Wrapping only the disabled case in a focusable
+  // span (itself never pointer-events:none) gives Radix something to
+  // attach the hover/focus listeners to, without adding an extra tab stop
+  // to every other tooltip in the app.
+  const isDisabled = React.isValidElement(children) && Boolean((children.props as { disabled?: boolean }).disabled);
+
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          {isDisabled ? (
+            // Deliberately focusable: this span exists precisely so a
+            // keyboard/hover user can reach this tooltip when the real
+            // control inside it is disabled and therefore unfocusable.
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+            <span className="inline-flex" tabIndex={0}>
+              {children}
+            </span>
+          ) : (
+            children
+          )}
+        </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
     </TooltipProvider>

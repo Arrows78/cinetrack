@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import i18n from "@/i18n";
 import type * as FormatModule from "@/shared/utils/format";
 import { DesktopSettings } from "../desktop-settings";
@@ -129,7 +129,7 @@ describe("DesktopSettings", () => {
       isDesktopAppMock.mockReturnValue(false);
       render(<DesktopSettings />);
 
-      expect(screen.getByText("TMDB Vault")).toBeInTheDocument();
+      expect(screen.getByText("TMDB vault")).toBeInTheDocument();
       expect(screen.queryByText("System integration")).not.toBeInTheDocument();
       expect(screen.queryByText("Automatic backup")).not.toBeInTheDocument();
       expect(screen.queryByText("Diagnostics (local log)")).not.toBeInTheDocument();
@@ -544,6 +544,12 @@ describe("DesktopSettings", () => {
       readRecentMock.mockResolvedValueOnce([]);
       clearButton.click();
 
+      // Scoped to the dialog: the page's own "Clear" trigger stays mounted
+      // behind it and shares the exact same accessible name as the confirm
+      // button (both read desktop.diagnosticsClear).
+      const dialog = await screen.findByRole("dialog");
+      within(dialog).getByRole("button", { name: "Clear" }).click();
+
       await waitFor(() => expect(clearMock).toHaveBeenCalledTimes(1));
       await waitFor(() => expect(readRecentMock).toHaveBeenCalledTimes(2));
       await waitFor(() =>
@@ -561,11 +567,29 @@ describe("DesktopSettings", () => {
       clearMock.mockRejectedValueOnce(new Error("clear failed"));
       clearButton.click();
 
+      const dialog = await screen.findByRole("dialog");
+      within(dialog).getByRole("button", { name: "Clear" }).click();
+
       await waitFor(() => expect(loggerErrorMock).toHaveBeenCalledWith(expect.stringContaining("clear failed")));
       await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("clear failed")));
       await waitFor(() =>
         expect(toastMock).toHaveBeenCalledWith({ description: "Operation failed.", variant: "error" })
       );
+    });
+
+    it("canceling the clear-logs confirmation never calls clear()", async () => {
+      readRecentMock.mockResolvedValueOnce(["[info] one"]);
+      render(<DesktopSettings />);
+
+      const clearButton = await screen.findByRole("button", { name: "Clear" });
+      await waitFor(() => expect(clearButton).not.toBeDisabled());
+      clearButton.click();
+
+      const dialog = await screen.findByRole("dialog");
+      within(dialog).getByRole("button", { name: "Cancel" }).click();
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(clearMock).not.toHaveBeenCalled();
     });
 
     it("renders the log lines in a <pre> when present, and the empty placeholder otherwise", async () => {

@@ -12,13 +12,19 @@ function ReviewCard({ review }: { review: MediaReview }) {
   return (
     <Panel tone="subtle" className="p-6">
       <div className="flex items-center gap-3">
-        <img src={review.avatarUrl ?? fallbackAvatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+        <img
+          src={review.avatarUrl ?? fallbackAvatar}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="size-10 shrink-0 rounded-full object-cover"
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{review.author}</p>
           <p className="text-xs text-muted-foreground">{formatDate(review.createdAt)}</p>
         </div>
         {review.rating ? (
-          <Badge variant="outline" className="shrink-0">
+          <Badge variant="outline" className="shrink-0" aria-label={t("media.ratingLabel", { rating: review.rating })}>
             <span className="text-rating" aria-hidden="true">
               ★
             </span>{" "}
