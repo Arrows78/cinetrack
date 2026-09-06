@@ -371,7 +371,7 @@ export function DesignSystemPage() {
                 ) : null}
                 <p className="font-mono text-caption text-primary">Layer {layer.step}</p>
                 <h3 className="mt-2 font-display text-heading-sm font-bold">{layer.title}</h3>
-                <code className="mt-3 block break-words rounded-lg bg-foreground/5 p-2 font-mono text-caption text-muted-foreground">
+                <code className="mt-3 block break-words rounded-2xl bg-foreground/5 p-2 font-mono text-caption text-muted-foreground">
                   {layer.code}
                 </code>
                 <p className="mt-3 text-body-sm leading-6 text-muted-foreground">{layer.body}</p>
@@ -652,7 +652,7 @@ export function DesignSystemPage() {
         description="Radius communicates scale and nesting. Larger containers receive larger radii; nested controls should usually step down."
       >
         <Subsection title="Radius scale">
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
             {radii.map((radius) => (
               <TokenTile key={radius.name} label={radius.name} meta={`rounded-${radius.name}`}>
                 <div className={cn("h-24 w-full border border-primary/30 bg-primary/15", radius.className)} />

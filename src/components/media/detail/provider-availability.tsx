@@ -19,7 +19,7 @@ function ProviderGroup({ label, providers }: { label: string; providers: WatchPr
           <Tile key={provider.id} className="flex items-center gap-2 px-3 py-2 text-body-sm">
             {provider.logoPath ? (
               <img
-                className="size-7 rounded-lg"
+                className="size-7 rounded-2xl"
                 src={buildTmdbImageUrl(provider.logoPath, "w92") ?? undefined}
                 alt=""
               />

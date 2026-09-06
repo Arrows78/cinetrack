@@ -59,7 +59,7 @@ export function MediaListRow({
         to={media.mediaType === "movie" ? "/movies/$movieId" : "/series/$seriesId"}
         params={media.mediaType === "movie" ? { movieId: String(media.id) } : { seriesId: String(media.id) }}
       >
-        <div className="relative aspect-[2/3] w-12 shrink-0 overflow-hidden rounded-lg sm:w-14">
+        <div className="relative aspect-[2/3] w-12 shrink-0 overflow-hidden rounded-2xl sm:w-14">
           <img src={image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         </div>
 

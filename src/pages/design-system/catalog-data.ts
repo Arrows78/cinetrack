@@ -183,9 +183,18 @@ export const breakpoints = [
 ] as const;
 
 export const radii = [
-  { name: "sm", className: "rounded-sm", usage: "Tight internal details." },
+  { name: "sm", className: "rounded-sm", usage: "Tight internal details — calendar cells, decorative tiles." },
+  {
+    name: "xl",
+    className: "rounded-xl",
+    usage: "Compact rows and tiles (Tile itself). Same physical size as sm, different role.",
+  },
   { name: "md", className: "rounded-md", usage: "Compact controls." },
-  { name: "lg", className: "rounded-lg", usage: "Default control radius." },
+  {
+    name: "2xl",
+    className: "rounded-2xl",
+    usage: "Default control radius — Input, Select, Toast, nav rows. Same physical size as lg.",
+  },
   { name: "card", className: "rounded-card", usage: "Media cards and compact content blocks." },
   { name: "panel", className: "rounded-panel", usage: "Cards, panels and grouped sections." },
   { name: "shell", className: "rounded-shell", usage: "Navigation shells and page-level containers." },

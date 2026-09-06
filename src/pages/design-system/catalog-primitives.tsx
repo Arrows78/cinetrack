@@ -307,7 +307,7 @@ export function ComponentSpec({
           <h3 className="font-display text-heading-sm font-bold">{name}</h3>
           <p className="mt-1 max-w-2xl text-body-sm leading-6 text-muted-foreground">{description}</p>
         </div>
-        <code className="shrink-0 rounded-lg bg-foreground/5 px-2 py-1 font-mono text-caption text-muted-foreground">
+        <code className="shrink-0 rounded-2xl bg-foreground/5 px-2 py-1 font-mono text-caption text-muted-foreground">
           {source}
         </code>
       </div>

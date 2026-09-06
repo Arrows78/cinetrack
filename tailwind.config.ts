@@ -94,6 +94,13 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // Tailwind's own xl/2xl defaults (0.75rem/1rem) happen to equal
+        // sm/lg above at the app's current --radius — pinned to the same
+        // variables so the two control-tier radii actually in use across
+        // the app (Tile's rounded-xl, Input/Toast/nav's rounded-2xl) can't
+        // silently drift from sm/lg if --radius ever changes.
+        xl: "calc(var(--radius) - 4px)",
+        "2xl": "var(--radius)",
         // Surface scale (posters → hero panels). Single source of truth in
         // styles/index.css; use these instead of rounded-[Npx] literals.
         card: "var(--radius-card)",

@@ -33,7 +33,7 @@ export function MediaProgressRow({
   const poster = buildTmdbImageUrl(posterPath, "w185") ?? fallbackPoster;
   const linkContent = (
     <>
-      <img src={poster} alt="" loading="lazy" className="h-20 w-14 shrink-0 rounded-lg object-cover" />
+      <img src={poster} alt="" loading="lazy" className="h-20 w-14 shrink-0 rounded-2xl object-cover" />
       <div className="min-w-0 flex-1">{children}</div>
       {meta}
     </>
@@ -41,7 +41,7 @@ export function MediaProgressRow({
 
   if (action) {
     const linkClassName =
-      "flex min-w-0 flex-1 items-center gap-4 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+      "flex min-w-0 flex-1 items-center gap-4 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     return (
       <div className="surface flex items-center gap-4 overflow-hidden rounded-card p-3 pr-4">
         {mediaType === "movie" ? (

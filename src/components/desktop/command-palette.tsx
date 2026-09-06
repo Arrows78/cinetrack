@@ -549,7 +549,7 @@ function QuickLogButton({ media }: { media: MediaSummary }) {
         disabled={alreadyWatched || movieSeen.isSaving}
         onClick={handleClick}
         className={cn(
-          "mr-2 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+          "mr-2 flex size-8 shrink-0 items-center justify-center rounded-2xl transition-colors",
           alreadyWatched ? "text-success" : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >

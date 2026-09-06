@@ -76,7 +76,7 @@ export function OnThisDaySection() {
                 params={
                   event.mediaType === "movie" ? { movieId: String(event.mediaId) } : { seriesId: String(event.mediaId) }
                 }
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <p className="text-body-sm font-medium">
                   {t("home.onThisDayEntry", { date: formatDate(event.watchedAt), title: event.title })}

@@ -114,7 +114,7 @@ Radius communicates surface scale and nesting:
 - `rounded-shell`: navigation and page-level shells.
 - `rounded-hero`: the largest immersive regions.
 
-Nested controls should generally use a smaller radius than their parent surface.
+Nested controls should generally use a smaller radius than their parent surface. Below the surface scale, two control-tier radii are in active use: `rounded-xl` (`Tile` itself, badges, small thumbnails) and `rounded-2xl` (`Input`, `Select`, `Toast`, nav rows). Both are pinned to `var(--radius)` in `tailwind.config.ts` (same values as `rounded-sm`/`rounded-lg` respectively, by design) so a future `--radius` change can't leave one half of the app's controls behind — prefer `rounded-xl`/`rounded-2xl` for this tier since that's what the rest of the app already writes; `rounded-sm` stays reserved for genuinely tiny decorative detail (calendar cells, activity heatmap swatches) that isn't a control at all, even though it renders at the same size as `rounded-xl`.
 
 The surface hierarchy is:
 
