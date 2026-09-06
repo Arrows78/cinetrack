@@ -77,7 +77,9 @@ export function EpisodeCard({
             </Badge>
           ) : null}
         </div>
-        <p className="mt-0.5 line-clamp-1 text-body-sm font-semibold">{hidden ? t("media.hiddenTitle") : episode.title}</p>
+        <p className="mt-0.5 line-clamp-1 text-body-sm font-semibold">
+          {hidden ? t("media.hiddenTitle") : episode.title}
+        </p>
         <div className="mt-1 flex items-center gap-1.5 text-caption text-muted-foreground">
           <Calendar className="size-3" />
           <span>{formatDate(episode.airDate)}</span>

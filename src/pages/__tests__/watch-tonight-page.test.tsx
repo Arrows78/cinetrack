@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,10 +7,58 @@ import i18n from "@/i18n";
 import type { Movie, Series, UserPreferences } from "@/types/media";
 import { WatchTonightPage } from "../watch-tonight-page";
 
+// Same fake router as search-page.test.tsx/history-page.test.tsx: `mockNavigate`
+// mutates a shared "current URL search string" and `useSearch` polls it.
+const { getRouterSearch, setRouterSearch, mockNavigate } = vi.hoisted(() => {
+  let search = "";
+  const getRouterSearch = () => search;
+  const setRouterSearch = (next: string) => {
+    search = next;
+  };
+  const mockNavigate = vi.fn(
+    (opts: { search: (prev: Record<string, string | undefined>) => Record<string, string | undefined> }) => {
+      const prevParams = new URLSearchParams(search);
+      const prevObj: Record<string, string | undefined> = {};
+      prevParams.forEach((value, key) => {
+        prevObj[key] = value;
+      });
+      const nextObj = opts.search(prevObj);
+      const nextParams = new URLSearchParams();
+      Object.entries(nextObj).forEach(([key, value]) => {
+        if (value !== undefined && value !== "") nextParams.set(key, String(value));
+      });
+      const nextSearch = nextParams.toString();
+      setRouterSearch(nextSearch ? `?${nextSearch}` : "");
+    }
+  );
+  return { getRouterSearch, setRouterSearch, mockNavigate };
+});
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, params }: PropsWithChildren<{ to: string; params?: Record<string, string> }>) => (
     <a href={params ? `${to}::${JSON.stringify(params)}` : to}>{children}</a>
   ),
+  useNavigate: () => mockNavigate,
+  useSearch: () => {
+    const [, forceRender] = useState(0);
+    useEffect(() => {
+      let search = getRouterSearch();
+      const interval = window.setInterval(() => {
+        const current = getRouterSearch();
+        if (current !== search) {
+          search = current;
+          forceRender((tick) => tick + 1);
+        }
+      }, 10);
+      return () => window.clearInterval(interval);
+    }, []);
+    const params = new URLSearchParams(getRouterSearch());
+    const result: Record<string, string> = {};
+    params.forEach((value, key) => {
+      result[key] = value;
+    });
+    return result;
+  },
 }));
 
 // MediaGrid pulls in its own library/progress hooks (add-to-library toggle,
@@ -80,7 +129,8 @@ function series(overrides: Partial<Series> = {}): Series {
   };
 }
 
-function renderPage() {
+function renderPage(initialSearch = "") {
+  setRouterSearch(initialSearch);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<WatchTonightPage />, {
     wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
@@ -93,6 +143,8 @@ describe("WatchTonightPage", () => {
   });
 
   beforeEach(() => {
+    mockNavigate.mockClear();
+    setRouterSearch("");
     pickMock.mockReset().mockResolvedValue({ movies: [], series: [] });
     preferencesData = { preferredProviderIds: [] };
   });
@@ -325,5 +377,64 @@ describe("WatchTonightPage", () => {
     screen.getByRole("button", { name: "Pick again" }).click();
 
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("pushes genre/platform/origin filter changes into the URL, but never the reroll seed", async () => {
+    renderPage();
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Genre"), { target: { value: "28" } });
+    await waitFor(() => expect(getRouterSearch()).toContain("genreId=28"));
+
+    fireEvent.change(screen.getByLabelText("Platform"), { target: { value: "8" } });
+    await waitFor(() => expect(getRouterSearch()).toContain("provider=8"));
+
+    fireEvent.change(screen.getByLabelText("Origin"), { target: { value: "KR" } });
+    await waitFor(() => expect(getRouterSearch()).toContain("originCountry=KR"));
+
+    screen.getByRole("button", { name: "Pick again" }).click();
+    expect(getRouterSearch()).not.toContain("seed");
+  });
+
+  it("restores genre/platform/origin/runtime from the URL on a deep link", async () => {
+    renderPage("?genreId=28&provider=8&originCountry=KR&runtime=45");
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+    expect(pickMock).toHaveBeenLastCalledWith({
+      genreMovie: 28,
+      genreSeries: 10759,
+      provider: 8,
+      maxRuntime: 45,
+      hideWatched: false,
+      originCountry: "KR",
+    });
+    expect(screen.getByLabelText("Max duration")).toHaveValue(45);
+  });
+
+  it("debounces the runtime filter's push to the URL, without delaying the pick() re-fetch itself", async () => {
+    renderPage();
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Max duration"), { target: { value: "45" } });
+
+    // Same-tick re-fetch, unlike the URL push (see the assertion below).
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
+
+    await waitFor(() => expect(getRouterSearch()).toContain("runtime=45"));
+  });
+
+  it("clears every active filter at once from the chips row's own clear-all action", async () => {
+    renderPage("?genreId=28&provider=8&originCountry=KR&runtime=45");
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.clearAll") }));
+
+    await waitFor(() => {
+      const search = getRouterSearch();
+      expect(search).not.toContain("genreId");
+      expect(search).not.toContain("provider");
+      expect(search).not.toContain("originCountry");
+      expect(search).not.toContain("runtime");
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,15 +18,64 @@ vi.mock("@/features/media/use-discovery", () => ({
   useTrendingPeople: () => useTrendingPeopleMock(),
 }));
 
-// Person cards route through <Link>. No RouterProvider exists in this render,
-// same as design-system-page.test.tsx's own mock.
+// Same fake router as search-page.test.tsx/history-page.test.tsx: `mockNavigate`
+// mutates a shared "current URL search string" and `useSearch` polls it.
+// Person cards also route through <Link>, stubbed to a plain anchor same as
+// design-system-page.test.tsx's own mock (no RouterProvider exists here).
+const { getRouterSearch, setRouterSearch, mockNavigate } = vi.hoisted(() => {
+  let search = "";
+  const getRouterSearch = () => search;
+  const setRouterSearch = (next: string) => {
+    search = next;
+  };
+  const mockNavigate = vi.fn(
+    (opts: { search: (prev: Record<string, string | undefined>) => Record<string, string | undefined> }) => {
+      const prevParams = new URLSearchParams(search);
+      const prevObj: Record<string, string | undefined> = {};
+      prevParams.forEach((value, key) => {
+        prevObj[key] = value;
+      });
+      const nextObj = opts.search(prevObj);
+      const nextParams = new URLSearchParams();
+      Object.entries(nextObj).forEach(([key, value]) => {
+        if (value !== undefined && value !== "") nextParams.set(key, value);
+      });
+      const nextSearch = nextParams.toString();
+      setRouterSearch(nextSearch ? `?${nextSearch}` : "");
+    }
+  );
+  return { getRouterSearch, setRouterSearch, mockNavigate };
+});
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, params }: PropsWithChildren<{ to: string; params?: Record<string, string> }>) => (
     <a href={params ? to.replace(/\$([a-zA-Z]+)/g, (_, key: string) => params[key] ?? "") : to}>{children}</a>
   ),
+  useNavigate: () => mockNavigate,
+  useSearch: () => {
+    const [, forceRender] = useState(0);
+    useEffect(() => {
+      let search = getRouterSearch();
+      const interval = window.setInterval(() => {
+        const current = getRouterSearch();
+        if (current !== search) {
+          search = current;
+          forceRender((tick) => tick + 1);
+        }
+      }, 10);
+      return () => window.clearInterval(interval);
+    }, []);
+    const params = new URLSearchParams(getRouterSearch());
+    const result: Record<string, string> = {};
+    params.forEach((value, key) => {
+      result[key] = value;
+    });
+    return result;
+  },
 }));
 
-function renderPage() {
+function renderPage(initialSearch = "") {
+  setRouterSearch(initialSearch);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -72,6 +122,8 @@ describe("PeoplePage", () => {
   });
 
   beforeEach(() => {
+    mockNavigate.mockClear();
+    setRouterSearch("");
     usePeopleSearchMock.mockReset();
     usePeopleSearchMock.mockReturnValue(idleResult());
     usePopularPeopleMock.mockReset();
@@ -116,7 +168,7 @@ describe("PeoplePage", () => {
     expect(usePeopleSearchMock).toHaveBeenCalledWith("");
   });
 
-  it("switches to the trending-people list when that mode is selected", () => {
+  it("switches to the trending-people list when that mode is selected", async () => {
     usePopularPeopleMock.mockReturnValue({
       ...idleResult(),
       data: { results: [makePerson({ id: 1, name: "Popular Person" })] },
@@ -132,7 +184,9 @@ describe("PeoplePage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Trending this week" }));
 
-    expect(screen.getByRole("heading", { name: "Trending this week" })).toBeInTheDocument();
+    // Mode now round-trips through the URL (a real navigate + re-render),
+    // rather than updating synchronously from local state.
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Trending this week" })).toBeInTheDocument());
     expect(screen.getByText("Trending Person")).toBeInTheDocument();
     expect(screen.queryByText("Popular Person")).not.toBeInTheDocument();
   });
@@ -254,5 +308,46 @@ describe("PeoplePage", () => {
     // No knownForDepartment: falls back to the i18n fallback string.
     expect(screen.getByText("Film & television")).toBeInTheDocument();
     expect(johnLink).toHaveAttribute("href", "/people/2");
+  });
+
+  it("pushes the browse mode into the URL instead of only local state", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trending this week" }));
+
+    await waitFor(() => expect(getRouterSearch()).toContain("mode=trending"));
+  });
+
+  it("restores the browse mode from the URL on a deep link", () => {
+    usePopularPeopleMock.mockReturnValue({
+      ...idleResult(),
+      data: { results: [makePerson({ id: 1, name: "Popular Person" })] },
+    });
+    useTrendingPeopleMock.mockReturnValue({
+      ...idleResult(),
+      data: { results: [makePerson({ id: 2, name: "Trending Person" })] },
+    });
+
+    renderPage("?mode=trending");
+
+    expect(screen.getByRole("heading", { name: "Trending this week" })).toBeInTheDocument();
+    expect(screen.getByText("Trending Person")).toBeInTheDocument();
+  });
+
+  it("pushes the debounced search query into the URL", async () => {
+    renderPage();
+
+    await typeSearch("de");
+
+    await waitFor(() => expect(getRouterSearch()).toContain("q=de"));
+  });
+
+  it("restores the search query from the URL on a deep link", async () => {
+    usePeopleSearchMock.mockReturnValue({ ...idleResult(), data: { results: [makePerson({ name: "Jane Doe" })] } });
+
+    renderPage("?q=jane");
+
+    expect(await screen.findByDisplayValue("jane")).toBeInTheDocument();
+    expect(usePeopleSearchMock).toHaveBeenCalledWith("jane");
   });
 });

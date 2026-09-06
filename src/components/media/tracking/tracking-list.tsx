@@ -22,6 +22,7 @@ import type { TrackingEntry, TrackingEntryType, TrackingScope } from "@/types/me
 
 type ScopeFilter = TrackingScope | "all";
 type TypeFilter = TrackingEntryType | "all";
+type SortOption = "date" | "title";
 
 function providerNames(providerIds: number[] = []): string[] {
   return providerIds.map((id) => PLATFORMS.find((platform) => platform.id === id)?.label ?? String(id));
@@ -77,17 +78,42 @@ export function TrackingList({
   lockedMediaType,
   onBrowseAll,
   browseAllLabel,
+  scopeFilter: controlledScopeFilter,
+  onScopeFilterChange,
+  typeFilter: controlledTypeFilter,
+  onTypeFilterChange,
+  sort: controlledSort,
+  onSortChange,
 }: {
   lockedMediaType?: "movie" | "series";
   onBrowseAll?: () => void;
   browseAllLabel?: string;
+  // Controlled scope/type/sort are only ever passed by the standalone
+  // /tracking page (TrackingPage), which persists them to the URL — the
+  // /movies and /series "Upcoming" tab embeddings leave these unset and
+  // fall back to their own local, non-URL state, since they don't own that
+  // route.
+  scopeFilter?: ScopeFilter;
+  onScopeFilterChange?: (value: ScopeFilter) => void;
+  typeFilter?: TypeFilter;
+  onTypeFilterChange?: (value: TypeFilter) => void;
+  sort?: SortOption;
+  onSortChange?: (value: SortOption) => void;
 }) {
   const { t } = useTranslation();
   const tracking = useTracking();
   const alerts = useAvailabilityAlerts();
-  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("mine");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [localScopeFilter, setLocalScopeFilter] = useState<ScopeFilter>("mine");
+  const [localTypeFilter, setLocalTypeFilter] = useState<TypeFilter>("all");
+  const [localSort, setLocalSort] = useState<SortOption>("date");
   const [pendingRemoval, setPendingRemoval] = useState<TrackingEntry | null>(null);
+
+  const scopeFilter = controlledScopeFilter ?? localScopeFilter;
+  const setScopeFilter = onScopeFilterChange ?? setLocalScopeFilter;
+  const typeFilter = controlledTypeFilter ?? localTypeFilter;
+  const setTypeFilter = onTypeFilterChange ?? setLocalTypeFilter;
+  const sort = controlledSort ?? localSort;
+  const setSort = onSortChange ?? setLocalSort;
 
   const filtered = useMemo(
     () =>
@@ -108,15 +134,22 @@ export function TrackingList({
   const resetFilters = () => {
     setScopeFilter("all");
     setTypeFilter("all");
+    setSort("date");
   };
 
   const availableNow = filtered.filter((entry) => entry.type === "availability" && entry.available);
   const pending = filtered.filter((entry) => entry.type === "availability" && !entry.available);
   const dated = filtered.filter((entry) => entry.type !== "availability");
+  // "date" keeps the calendar's own ascending order (see calendar-service.ts)
+  // grouped under per-date panels; "title" drops the date grouping for one
+  // flat, alphabetical list — each row then shows its own countdown badge
+  // (showCountdown) since there's no date-group heading to carry that
+  // information anymore.
   const groups = dated.reduce<Record<string, TrackingEntry[]>>((acc, entry) => {
     (acc[entry.date ?? ""] ??= []).push(entry);
     return acc;
   }, {});
+  const sortedByTitle = [...dated].sort((a, b) => a.title.localeCompare(b.title));
   const showScopeBadge = scopeFilter === "all";
   // A movie entry is never tagged "episode" and a series entry is never
   // tagged "release" (see calendar-service.ts) — offering the other type's
@@ -146,6 +179,15 @@ export function TrackingList({
           groupLabel={t("tracking.filterType")}
           options={typeFilterOptions}
         />
+        <FilterBar
+          value={sort}
+          onChange={setSort}
+          groupLabel={t("tracking.sortBy")}
+          options={[
+            { value: "date", label: t("tracking.sortDate") },
+            { value: "title", label: t("tracking.sortTitle") },
+          ]}
+        />
       </div>
 
       {tracking.isLoading ? <LoadingState label={t("tracking.loading")} /> : null}
@@ -162,19 +204,29 @@ export function TrackingList({
         </Panel>
       ) : null}
 
-      {Object.entries(groups).map(([date, entries], index) => (
-        <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 2)}ms` }}>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
-            <Badge variant="secondary">{formatRelativeCountdown(date)}</Badge>
-          </div>
-          <div className="mt-3 grid gap-2">
-            {entries.map((entry) => (
-              <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} />
-            ))}
-          </div>
-        </Panel>
-      ))}
+      {sort === "date"
+        ? Object.entries(groups).map(([date, entries], index) => (
+            <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 2)}ms` }}>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
+                <Badge variant="secondary">{formatRelativeCountdown(date)}</Badge>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {entries.map((entry) => (
+                  <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} />
+                ))}
+              </div>
+            </Panel>
+          ))
+        : sortedByTitle.length > 0 && (
+            <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
+              <div className="grid gap-2">
+                {sortedByTitle.map((entry) => (
+                  <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} showCountdown />
+                ))}
+              </div>
+            </Panel>
+          )}
 
       {pending.length ? (
         <Panel className="animate-in">

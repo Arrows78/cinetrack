@@ -624,7 +624,7 @@ export function LibraryExplorer({
         <SavedFiltersBar page="library" currentFilters={currentFilters} onApply={applySavedFilters} />
       </div>
 
-      <ActiveFilterChips chips={chips} />
+      <ActiveFilterChips chips={chips} onClearAll={clearFilters} />
 
       {lockedMediaType ? null : (
         <Accordion type="single" collapsible className="space-y-3">

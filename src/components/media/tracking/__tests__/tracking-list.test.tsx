@@ -349,4 +349,47 @@ describe("TrackingList", () => {
 
     expect(screen.queryByRole("button", { name: "See all upcoming" })).not.toBeInTheDocument();
   });
+
+  it("switching sort to title drops the date-group panels for one flat, alphabetical list", () => {
+    mockTracking({ data: [releaseMine, episodeDiscovery] });
+    render(<TrackingList />);
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
+    );
+    fireEvent.click(within(screen.getByRole("group", { name: "Sort by" })).getByRole("button", { name: "Title" }));
+
+    expect(screen.queryByRole("heading", { name: /1 September 2026/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /2 September 2026/i })).not.toBeInTheDocument();
+
+    // Alphabetical: "Discovery Series" before "Mine Movie".
+    const titles = screen.getAllByText(/Discovery Series|Mine Movie/).map((el) => el.textContent);
+    expect(titles).toEqual(["Discovery Series", "Mine Movie"]);
+  });
+
+  it("defaults to controlled scope/type/sort when passed, instead of its own local state", () => {
+    const onScopeFilterChange = vi.fn();
+    mockTracking({ data: [releaseMine, episodeDiscovery] });
+    render(
+      <TrackingList
+        scopeFilter="all"
+        onScopeFilterChange={onScopeFilterChange}
+        typeFilter="all"
+        onTypeFilterChange={vi.fn()}
+        sort="date"
+        onSortChange={vi.fn()}
+      />
+    );
+
+    // Controlled scopeFilter="all" shows both entries immediately, without
+    // needing to click the scope filter button first (unlike the uncontrolled
+    // default of "mine" exercised by the other tests above).
+    expect(screen.getByText("Mine Movie")).toBeInTheDocument();
+    expect(screen.getByText("Discovery Series")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "My titles" })
+    );
+    expect(onScopeFilterChange).toHaveBeenCalledExactlyOnceWith("mine");
+  });
 });

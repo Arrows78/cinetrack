@@ -49,15 +49,15 @@ const { getRouterSearch, setRouterSearch, mockNavigate } = vi.hoisted(() => {
 vi.mock("@tanstack/react-router", () => {
   return {
     useNavigate: () => mockNavigate,
-    // Real @tanstack/react-router re-renders every `useRouterState` consumer
-    // when the location store changes (e.g. after a `navigate({ replace:
-    // true })`). `mockNavigate`'s implementation mutates the shared
+    // Real @tanstack/react-router re-renders every `useSearch` consumer when
+    // the location store changes (e.g. after a `navigate({ replace: true
+    // })`). `mockNavigate`'s implementation mutates the shared
     // `getRouterSearch`/`setRouterSearch` holder synchronously but can't
     // reach into this hook's own React state to force a re-render — so this
     // hook polls the holder on a short interval instead, which has the same
     // externally-observable effect (a subsequent render reflects the new
     // URL) without needing a pub/sub wire-up across the two closures.
-    useRouterState: (opts: { select: (state: { location: { pathname: string; search: string } }) => unknown }) => {
+    useSearch: () => {
       const [, forceRender] = useState(0);
       useEffect(() => {
         let search = getRouterSearch();
@@ -70,7 +70,15 @@ vi.mock("@tanstack/react-router", () => {
         }, 10);
         return () => window.clearInterval(interval);
       }, []);
-      return opts.select({ location: { pathname: "/search", search: getRouterSearch() } });
+      // Real searchRoute.validateSearch (a zod object schema) hands SearchPage
+      // a parsed object, not a raw query string — reproduce that here so this
+      // fake stays a faithful stand-in for the real hook's return shape.
+      const params = new URLSearchParams(getRouterSearch());
+      const result: Record<string, string> = {};
+      params.forEach((value, key) => {
+        result[key] = value;
+      });
+      return result;
     },
   };
 });
@@ -166,6 +174,7 @@ function defaultSearchResult() {
   return {
     items: [] as MediaSummary[],
     isLoading: false,
+    isPending: false,
     isError: false,
     error: null as unknown,
     refetch: vi.fn(),
@@ -198,6 +207,7 @@ describe("SearchPage", () => {
     searchHookMock.mockReset().mockReturnValue(defaultSearchResult());
     homeFeedMock.mockReset().mockReturnValue({
       isLoading: false,
+      isPending: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -267,7 +277,7 @@ describe("SearchPage", () => {
   });
 
   it("shows a loading skeleton while the search query is loading", () => {
-    searchHookMock.mockReturnValue({ ...defaultSearchResult(), isLoading: true });
+    searchHookMock.mockReturnValue({ ...defaultSearchResult(), isLoading: true, isPending: true });
     const { container } = renderPage("?q=movie");
 
     expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();
@@ -376,5 +386,16 @@ describe("SearchPage", () => {
     // not synchronously inside the click handler.
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
     expect(getRouterSearch()).toContain("scope=movie");
+  });
+
+  it("clears every active filter at once from the chips row's own clear-all action", () => {
+    renderPage("?q=movie&scope=movie&genreMovie=28&provider=8");
+
+    const clearAll = screen.getByRole("button", { name: i18n.t("filters.clearAll") });
+    fireEvent.click(clearAll);
+
+    expect(getRouterSearch()).not.toContain("genreMovie");
+    expect(getRouterSearch()).not.toContain("provider");
+    expect(getRouterSearch()).toContain("scope=all");
   });
 });

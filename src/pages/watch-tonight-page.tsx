@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { Dices, Popcorn } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
@@ -18,8 +18,10 @@ import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { ORIGIN_COUNTRIES, PLATFORMS } from "@/shared/constants/discover";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
+import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { formatRuntime } from "@/shared/utils/format";
 import type { Movie, Series } from "@/types/media";
 
@@ -78,10 +80,51 @@ export function WatchTonightPage() {
   const { t } = useTranslation();
   const genres = useMergedGenres();
   const preferences = usePreferences();
-  const [genreId, setGenreId] = useState("");
-  const [provider, setProvider] = useState("");
-  const [runtime, setRuntime] = useState(DEFAULT_RUNTIME);
-  const [originCountry, setOriginCountry] = useState("");
+  const navigate = useNavigate({ from: "/watch-tonight" });
+  // Typed against watchTonightRoute's own validateSearch (router-config.tsx).
+  // `seed` (the reroll driver) deliberately stays out of the URL — see that
+  // schema's own comment — since a shared/reopened link should re-roll, not
+  // pin the exact same pick forever.
+  const routeSearch = useRouteSearch({ from: "/watch-tonight" });
+  const genreId = routeSearch.genreId ?? "";
+  const provider = routeSearch.provider ?? "";
+  const originCountry = routeSearch.originCountry ?? "";
+  const urlRuntime = routeSearch.runtime !== undefined ? String(routeSearch.runtime) : DEFAULT_RUNTIME;
+
+  const setGenreId = (value: string) =>
+    void navigate({ search: (prev) => ({ ...prev, genreId: value || undefined }), replace: true });
+  const setProvider = (value: string) =>
+    void navigate({ search: (prev) => ({ ...prev, provider: value || undefined }), replace: true });
+  const setOriginCountry = (value: string) =>
+    void navigate({ search: (prev) => ({ ...prev, originCountry: value || undefined }), replace: true });
+
+  // Runtime is a free-text number input, not an atomic select change, so it
+  // needs the same "buffer locally, debounce to the URL, don't let our own
+  // round-trip clobber in-progress typing" guard as SearchPage's query field
+  // (search-page.tsx) — an empty value round-trips back as "no runtime cap"
+  // (the URL can't distinguish "cleared" from "the 120 default" since the
+  // schema only accepts a positive int), which matches this page's existing
+  // behavior of treating a cleared field as no cap.
+  const lastPushedRuntimeRef = useRef<string | undefined>(urlRuntime === DEFAULT_RUNTIME ? undefined : urlRuntime);
+  const [runtime, setRuntime] = useState(urlRuntime);
+  const [prevUrlRuntime, setPrevUrlRuntime] = useState(urlRuntime);
+  if (urlRuntime !== prevUrlRuntime) {
+    setPrevUrlRuntime(urlRuntime);
+    if ((urlRuntime === DEFAULT_RUNTIME ? undefined : urlRuntime) !== lastPushedRuntimeRef.current) {
+      setRuntime(urlRuntime);
+    }
+  }
+  const debouncedRuntime = useDebouncedValue(runtime, DEBOUNCE_MS);
+  useEffect(() => {
+    const nextRuntime = !debouncedRuntime || debouncedRuntime === DEFAULT_RUNTIME ? undefined : debouncedRuntime;
+    if (nextRuntime === lastPushedRuntimeRef.current) return;
+    lastPushedRuntimeRef.current = nextRuntime;
+    void navigate({
+      search: (prev) => ({ ...prev, runtime: nextRuntime ? Number(nextRuntime) : undefined }),
+      replace: true,
+    });
+  }, [debouncedRuntime, navigate]);
+
   const [seed, setSeed] = useState(0);
   const selectedGenre = genres.find((genre) => String(genre.id) === genreId);
   const preferredProviderIds = preferences.data?.preferredProviderIds ?? [];
@@ -151,10 +194,21 @@ export function WatchTonightPage() {
         }
       : null,
   ].filter((chip): chip is ActiveFilterChip => chip !== null);
+  const clearAllFilters = () => {
+    setGenreId("");
+    setProvider("");
+    setRuntime(DEFAULT_RUNTIME);
+    setOriginCountry("");
+  };
 
   return (
     <div className="space-y-8">
-      <SectionHeader title={t("watchTonight.title")} subtitle={t("watchTonight.description")} icon={Dices} isPageTitle />
+      <SectionHeader
+        title={t("watchTonight.title")}
+        subtitle={t("watchTonight.description")}
+        icon={Dices}
+        isPageTitle
+      />
       <div className="flex flex-col gap-3 animate-in sm:flex-row sm:flex-wrap sm:items-end">
         <FormField label={t("watchTonight.genre")}>
           {() => (
@@ -212,7 +266,7 @@ export function WatchTonightPage() {
           {t("watchTonight.retry")}
         </Button>
       </div>
-      <ActiveFilterChips chips={chips} />
+      <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
       <div className="flex justify-end">
         <HideWatchedToggle />
       </div>

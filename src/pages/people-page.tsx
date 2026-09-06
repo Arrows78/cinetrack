@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Users, UserX } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -81,9 +81,33 @@ type BrowseMode = "popular" | "trending";
 
 export function PeoplePage() {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<BrowseMode>("popular");
+  const navigate = useNavigate({ from: "/people" });
+  // Typed against peopleRoute's own validateSearch (router-config.tsx). Same
+  // "don't clobber what the user is typing with our own round-trip" guards
+  // as SearchPage's urlQuery/urlScope handling — see search-page.tsx.
+  const routeSearch = useRouteSearch({ from: "/people" });
+  const urlQuery = routeSearch.q ?? "";
+  const urlMode = routeSearch.mode ?? "popular";
+  const lastPushedQueryRef = useRef<string | undefined>(urlQuery || undefined);
+
+  const [query, setQuery] = useState(urlQuery);
+  const [prevUrlQuery, setPrevUrlQuery] = useState(urlQuery);
+  if (urlQuery !== prevUrlQuery) {
+    setPrevUrlQuery(urlQuery);
+    if ((urlQuery || undefined) !== lastPushedQueryRef.current) setQuery(urlQuery);
+  }
+
+  const mode = urlMode;
+  const setMode = (value: BrowseMode) =>
+    void navigate({ search: (prev) => ({ ...prev, mode: value === "popular" ? undefined : value }), replace: true });
+
   const debounced = useDebouncedValue(query, DEBOUNCE_MS);
+  useEffect(() => {
+    const nextQuery = debounced || undefined;
+    if (nextQuery === lastPushedQueryRef.current) return;
+    lastPushedQueryRef.current = nextQuery;
+    void navigate({ search: (prev) => ({ ...prev, q: nextQuery }), replace: true });
+  }, [debounced, navigate]);
   const isSearching = debounced.trim().length >= MIN_SEARCH_QUERY_LENGTH;
   const search = usePeopleSearch(debounced);
   const popular = usePopularPeople();

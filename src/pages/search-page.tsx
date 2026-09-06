@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { Search, SearchX } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { EmptyState } from "@/components/states/empty-state";
@@ -29,29 +29,20 @@ const getGenreLabelKey = (id: string | undefined) =>
 const getPlatformName = (id: string) => PLATFORMS.find((platform) => String(platform.id) === id)?.label ?? id;
 const getStudioName = (id: string) => STUDIOS.find((studio) => String(studio.id) === id)?.label ?? id;
 
-const VALID_SEARCH_SCOPES: readonly SearchScope[] = ["all", "movie", "series"];
-// A user can hand-edit the URL's ?scope= param — don't trust it as SearchScope
-// without checking it's actually one of the values that type allows.
-const parseSearchScope = (value: string | null): SearchScope | null =>
-  VALID_SEARCH_SCOPES.includes(value as SearchScope) ? (value as SearchScope) : null;
-
 export function SearchPage() {
   const { t } = useTranslation();
   const navigate = useNavigate({ from: "/search" });
   const { data: preferences } = usePreferences();
-  const location = useRouterState({ select: (state) => state.location });
-  // `location.search`'s type is a union across every route's validateSearch
-  // schema (see router-config.tsx's seriesDetailRoute), which can include
-  // non-string fields URLSearchParams' Record<string, string> constructor
-  // overload rejects — but at runtime this page only ever navigates within
-  // /search's own string-valued params, so the cast is safe.
-  const searchParams = new URLSearchParams(location.search as Record<string, string>);
-  const genreMovie = searchParams.get("genreMovie") || undefined;
-  const genreSeries = searchParams.get("genreSeries") || undefined;
-  const provider = searchParams.get("provider") || undefined;
-  const company = searchParams.get("company") || undefined;
-  const urlQuery = searchParams.get("q") || "";
-  const urlScope = parseSearchScope(searchParams.get("scope"));
+  // Typed against searchRoute's own validateSearch (router-config.tsx) —
+  // zod already guarantees `scope` is a real SearchScope, so there's no
+  // manual URLSearchParams parsing or runtime enum check to do here anymore.
+  const routeSearch = useRouteSearch({ from: "/search" });
+  const genreMovie = routeSearch.genreMovie;
+  const genreSeries = routeSearch.genreSeries;
+  const provider = routeSearch.provider;
+  const company = routeSearch.company;
+  const urlQuery = routeSearch.q ?? "";
+  const urlScope = routeSearch.scope ?? null;
 
   // Typing/scope changes push back into the URL (below, debounced for the
   // query) so a refresh or a shared link doesn't lose the in-progress
@@ -151,6 +142,21 @@ export function SearchPage() {
     setSelectedScope("all");
     void navigate({ search: (prev) => ({ ...prev, scope: "all" }), replace: true });
   };
+  const clearAllFilters = () => {
+    lastPushedScopeRef.current = "all";
+    setSelectedScope("all");
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        scope: "all",
+        genreMovie: undefined,
+        genreSeries: undefined,
+        provider: undefined,
+        company: undefined,
+      }),
+      replace: true,
+    });
+  };
 
   const chips: ActiveFilterChip[] = [
     ...(scope !== "all"
@@ -240,15 +246,15 @@ export function SearchPage() {
         </div>
       </div>
 
-      <ActiveFilterChips chips={chips} />
+      <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
 
       {!showResults ? (
         <>
-          {homeFeedQuery.isLoading ? <GridSkeleton count={8} /> : null}
+          {homeFeedQuery.isPending ? <GridSkeleton count={8} /> : null}
           {homeFeedQuery.isError ? (
             <RemoteErrorState error={homeFeedQuery.error} onRetry={() => void homeFeedQuery.refetch()} />
           ) : null}
-          {!homeFeedQuery.isLoading && !homeFeedQuery.isError ? (
+          {!homeFeedQuery.isPending && !homeFeedQuery.isError ? (
             <>
               <CatalogueSections feed={homeFeedQuery.data} startIndex={2} />
               <BrowseByGenre startIndex={2 + CATALOGUE_SECTIONS.length} />
@@ -259,11 +265,11 @@ export function SearchPage() {
         </>
       ) : (
         <>
-          {searchQuery.isLoading ? <GridSkeleton count={8} /> : null}
+          {searchQuery.isPending ? <GridSkeleton count={8} /> : null}
           {searchQuery.isError ? (
             <RemoteErrorState error={searchQuery.error} onRetry={() => void searchQuery.refetch()} />
           ) : null}
-          {!searchQuery.isLoading && !searchQuery.isError && !searchQuery.items.length ? (
+          {!searchQuery.isPending && !searchQuery.isError && !searchQuery.items.length ? (
             <EmptyState icon={SearchX} title={t("pages.noResults")} description={t("search.noResultsDesc")} />
           ) : null}
 

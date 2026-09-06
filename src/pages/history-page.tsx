@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Virtuoso } from "react-virtuoso";
 import {
@@ -17,6 +17,7 @@ import {
   ListPlus,
   ListMinus,
 } from "lucide-react";
+import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { EmptyState } from "@/components/states/empty-state";
 import { TimelineSkeleton, TrackedSeriesSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -24,12 +25,13 @@ import { Tile } from "@/components/ui/tile";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { LoadMoreButton } from "@/components/media/primitives/load-more-button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
+import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { formatEpisodeCode, formatRelativeDate, percent } from "@/shared/utils/format";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
-import type { HistoryAction } from "@/types/media";
+import type { HistoryAction, HistoryFilterState } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
 
 const labelByAction: Record<HistoryAction, string> = {
@@ -120,7 +122,27 @@ export function HistoryPage() {
   const { t } = useTranslation();
   const historyQuery = useHistory();
   const trackedSeriesQuery = useTrackedSeries();
-  const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">("all");
+  const navigate = useNavigate({ from: "/history" });
+  // Typed against historyRoute's own validateSearch (router-config.tsx) —
+  // a plain useState here would lose the filter on refresh and make it
+  // unshareable, unlike every other browse page's filter state.
+  const routeSearch = useRouteSearch({ from: "/history" });
+  const typeFilter = routeSearch.type ?? "all";
+  const setTypeFilter = (value: "all" | "movie" | "series") =>
+    void navigate({ search: (prev) => ({ ...prev, type: value === "all" ? undefined : value }), replace: true });
+
+  const currentFilters: HistoryFilterState = { typeFilter };
+  const applySavedFilters = (filters: HistoryFilterState) => setTypeFilter(filters.typeFilter);
+  const chips: ActiveFilterChip[] =
+    typeFilter === "all"
+      ? []
+      : [
+          {
+            key: "type",
+            label: t("filters.chips.type", { value: typeFilter === "movie" ? t("nav.movies") : t("nav.series") }),
+            onRemove: () => setTypeFilter("all"),
+          },
+        ];
 
   const filteredHistory = useMemo(
     () =>
@@ -157,6 +179,11 @@ export function HistoryPage() {
             />
           }
         />
+
+        <div className="mb-4 space-y-3">
+          <SavedFiltersBar page="history" currentFilters={currentFilters} onApply={applySavedFilters} />
+          <ActiveFilterChips chips={chips} onClearAll={() => setTypeFilter("all")} />
+        </div>
 
         {historyQuery.isLoading ? (
           <TimelineSkeleton />

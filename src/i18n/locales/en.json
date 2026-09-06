@@ -260,6 +260,7 @@
     "removeFilter": "Remove filter {{filter}}",
     "chips": {
       "type": "Type: {{value}}",
+      "scope": "Scope: {{value}}",
       "status": "Status: {{value}}",
       "favourites": "Favourites",
       "list": "List: {{value}}",
@@ -548,6 +549,9 @@
     "typeRelease": "Releases",
     "typeEpisode": "Episodes",
     "typeAvailability": "Availability",
+    "sortBy": "Sort by",
+    "sortDate": "Date",
+    "sortTitle": "Title",
     "discoveryBadge": "Discovery",
     "newEpisodeFallback": "New episode",
     "theatricalRelease": "Theatrical release",

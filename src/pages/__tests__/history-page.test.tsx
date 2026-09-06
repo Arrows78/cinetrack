@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -17,6 +18,35 @@ vi.mock("@/features/progress/use-progress", () => ({
   useTrackedSeries: vi.fn(),
 }));
 
+// Same fake router as search-page.test.tsx: `mockNavigate` mutates a shared
+// "current URL search string" and `useSearch` polls it, so HistoryPage's own
+// URL-sync behavior (SavedFiltersBar apply, chip removal, FilterBar clicks)
+// is exercised faithfully instead of against a stubbed-out no-op.
+const { getRouterSearch, setRouterSearch, mockNavigate } = vi.hoisted(() => {
+  let search = "";
+  const getRouterSearch = () => search;
+  const setRouterSearch = (next: string) => {
+    search = next;
+  };
+  const mockNavigate = vi.fn(
+    (opts: { search: (prev: Record<string, string | undefined>) => Record<string, string | undefined> }) => {
+      const prevParams = new URLSearchParams(search);
+      const prevObj: Record<string, string | undefined> = {};
+      prevParams.forEach((value, key) => {
+        prevObj[key] = value;
+      });
+      const nextObj = opts.search(prevObj);
+      const nextParams = new URLSearchParams();
+      Object.entries(nextObj).forEach(([key, value]) => {
+        if (value !== undefined && value !== "") nextParams.set(key, value);
+      });
+      const nextSearch = nextParams.toString();
+      setRouterSearch(nextSearch ? `?${nextSearch}` : "");
+    }
+  );
+  return { getRouterSearch, setRouterSearch, mockNavigate };
+});
+
 // Tracked-series tiles render a full-card <Link>. No RouterProvider exists in
 // this render, same as design-system-page.test.tsx's own mock.
 vi.mock("@tanstack/react-router", () => ({
@@ -25,6 +55,44 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
+  useNavigate: () => mockNavigate,
+  useSearch: () => {
+    const [, forceRender] = useState(0);
+    useEffect(() => {
+      let search = getRouterSearch();
+      const interval = window.setInterval(() => {
+        const current = getRouterSearch();
+        if (current !== search) {
+          search = current;
+          forceRender((tick) => tick + 1);
+        }
+      }, 10);
+      return () => window.clearInterval(interval);
+    }, []);
+    const params = new URLSearchParams(getRouterSearch());
+    const result: Record<string, string> = {};
+    params.forEach((value, key) => {
+      result[key] = value;
+    });
+    return result;
+  },
+}));
+
+// Rendered for real (its own save/apply/delete behavior is covered by
+// saved-filters-bar.test.tsx) but stubbed to a fixed, empty list here so this
+// suite's own filter/URL assertions don't also need a real invoke() round-trip.
+const savedFiltersState = {
+  data: [] as Array<{ id: string; name: string }>,
+  isLoading: false,
+  isError: false,
+  error: null as unknown,
+  refetch: vi.fn(),
+  create: vi.fn(),
+  remove: vi.fn(),
+  isSaving: false,
+};
+vi.mock("@/features/saved-filters/use-saved-filters", () => ({
+  useSavedFilters: () => savedFiltersState,
 }));
 
 const mockUseHistory = useHistory as unknown as ReturnType<typeof vi.fn>;
@@ -90,7 +158,8 @@ function makeTrackedSeries(overrides: Partial<TrackedSeriesItem>): TrackedSeries
   };
 }
 
-function renderPage() {
+function renderPage(initialSearch = "") {
+  setRouterSearch(initialSearch);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -106,6 +175,7 @@ describe("HistoryPage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    setRouterSearch("");
     mockUseHistory.mockReturnValue(historyQueryResult());
     mockUseTrackedSeries.mockReturnValue(trackedSeriesQueryResult());
   });
@@ -219,6 +289,32 @@ describe("HistoryPage", () => {
 
       await waitFor(() => expect(screen.queryByText("A Movie")).not.toBeInTheDocument());
       expect(screen.getByText("A Series")).toBeInTheDocument();
+    });
+
+    it("pushes the type filter into the URL instead of only local state", async () => {
+      mockedMixedHistory();
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "Movies" }));
+
+      await waitFor(() => expect(getRouterSearch()).toContain("type=movie"));
+    });
+
+    it("restores the type filter from the URL on a deep link, with a removable chip", async () => {
+      mockedMixedHistory();
+      renderPage("?type=series");
+
+      await waitFor(() => expect(screen.queryByText("A Movie")).not.toBeInTheDocument());
+      expect(screen.getByText("A Series")).toBeInTheDocument();
+
+      // Only asserts on the URL, not the list re-settling — Virtuoso's own
+      // re-render (see the "chaining successive filter clicks" comment above)
+      // isn't reliable across a second interaction within the same render.
+      const chipLabel = i18n.t("filters.chips.type", { value: "Series" });
+      const chip = screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) });
+      fireEvent.click(chip);
+
+      await waitFor(() => expect(getRouterSearch()).not.toContain("type"));
     });
 
     it("wires the load-more button to hasNextPage/isFetchingNextPage and fetchNextPage", () => {
