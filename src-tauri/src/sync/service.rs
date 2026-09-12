@@ -305,26 +305,40 @@ async fn upsert_entity(
 ) -> Result<(), ApiError> {
     let payload = serde_json::to_string(data)
         .map_err(|error| ApiError::bad_request(format!("Invalid remote payload: {error}")))?;
+    // library_item/seen_movie/episode_progress/tracked_series each have a
+    // UNIQUE business-key constraint alongside their uuid primary key (see
+    // 001-initial-schema.sql). The conflict target below is deliberately
+    // that business key, not uuid: two devices that each added the same
+    // title before ever syncing generate two different local uuids for it,
+    // and a remote change for "the other device's uuid" must land on this
+    // device's own existing row for the same (profile, media) pair instead
+    // of attempting a second INSERT — which would violate the UNIQUE
+    // constraint and abort the whole apply_remote_changes transaction.
+    // Deliberately never assigns `uuid` in the DO UPDATE SET list, so the
+    // pre-existing local row keeps its own identity; the two devices end up
+    // agreeing on field values without agreeing on a single canonical uuid
+    // for this entity server-side. Revisit only if that residual
+    // per-device uuid split turns out to matter in practice.
     let sql = match entity_type {
         "library_item" => {
             r#"INSERT INTO library_items(uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,genres,status,favourite,user_rating,notes,tags,started_at,completed_at,rewatch_count,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.backdropPath'),json_extract(?1,'$.year'),json_extract(?1,'$.rating'),coalesce(json_extract(?1,'$.genres'),'[]'),json_extract(?1,'$.status'),coalesce(json_extract(?1,'$.favourite'),0),json_extract(?1,'$.userRating'),json_extract(?1,'$.notes'),coalesce(json_extract(?1,'$.tags'),'[]'),json_extract(?1,'$.startedAt'),json_extract(?1,'$.completedAt'),coalesce(json_extract(?1,'$.rewatchCount'),0),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,year=excluded.year,rating=excluded.rating,genres=excluded.genres,status=excluded.status,favourite=excluded.favourite,user_rating=excluded.user_rating,notes=excluded.notes,tags=excluded.tags,started_at=excluded.started_at,completed_at=excluded.completed_at,rewatch_count=excluded.rewatch_count,updated_at=excluded.updated_at"#
+          ON CONFLICT(profile_id,media_id,media_type) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,year=excluded.year,rating=excluded.rating,genres=excluded.genres,status=excluded.status,favourite=excluded.favourite,user_rating=excluded.user_rating,notes=excluded.notes,tags=excluded.tags,started_at=excluded.started_at,completed_at=excluded.completed_at,rewatch_count=excluded.rewatch_count,updated_at=excluded.updated_at"#
         }
         "seen_movie" => {
             r#"INSERT INTO seen_movies(uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.movieId'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.backdropPath'),json_extract(?1,'$.watchedAt'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET movie_id=excluded.movie_id,title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,watched_at=excluded.watched_at,updated_at=excluded.updated_at"#
+          ON CONFLICT(profile_id,movie_id) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,watched_at=excluded.watched_at,updated_at=excluded.updated_at"#
         }
         "episode_progress" => {
             r#"INSERT INTO episode_progress(uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.seriesId'),json_extract(?1,'$.episodeId'),json_extract(?1,'$.seasonNumber'),json_extract(?1,'$.episodeNumber'),coalesce(json_extract(?1,'$.watched'),1),json_extract(?1,'$.watchedAt'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET series_id=excluded.series_id,episode_id=excluded.episode_id,season_number=excluded.season_number,episode_number=excluded.episode_number,watched=excluded.watched,watched_at=excluded.watched_at,updated_at=excluded.updated_at"#
+          ON CONFLICT(profile_id,series_id,episode_id) DO UPDATE SET season_number=excluded.season_number,episode_number=excluded.episode_number,watched=excluded.watched,watched_at=excluded.watched_at,updated_at=excluded.updated_at"#
         }
         "tracked_series" => {
             r#"INSERT INTO tracked_series(uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at,status)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.seriesId'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.backdropPath'),coalesce(json_extract(?1,'$.totalEpisodes'),0),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'),json_extract(?1,'$.status'))
-          ON CONFLICT(uuid) DO UPDATE SET series_id=excluded.series_id,title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,total_episodes=excluded.total_episodes,status=excluded.status,updated_at=excluded.updated_at"#
+          ON CONFLICT(profile_id,series_id) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,total_episodes=excluded.total_episodes,status=excluded.status,updated_at=excluded.updated_at"#
         }
         "viewing_event" => {
             r#"INSERT INTO viewing_events(uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at,note)
@@ -445,4 +459,237 @@ pub async fn apply_remote_changes(
         .await
         .map_err(ApiError::from)?;
     tx.commit().await.map_err(ApiError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn pool() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(2)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::database::migrations::run_migrations(&pool)
+            .await
+            .unwrap();
+        pool
+    }
+
+    fn upsert_change(
+        entity_id: &str,
+        sequence: i64,
+        version: i64,
+        data: serde_json::Value,
+    ) -> RemoteSyncChange {
+        RemoteSyncChange {
+            sequence,
+            entity_type: "library_item".to_string(),
+            entity_id: entity_id.to_string(),
+            operation: "upsert".to_string(),
+            version,
+            data: Some(data),
+        }
+    }
+
+    fn library_item_payload(uuid: &str, status: &str) -> serde_json::Value {
+        serde_json::json!({
+            "uuid": uuid,
+            "mediaId": 42,
+            "mediaType": "movie",
+            "title": "Remote Title",
+            "status": status,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "updatedAt": "2026-01-02T00:00:00.000Z",
+        })
+    }
+
+    async fn library_item_row(pool: &SqlitePool) -> (String, String) {
+        sqlx::query_as(
+            "SELECT uuid, status FROM library_items WHERE profile_id='default' AND media_id=42 AND media_type='movie'",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn library_item_count(pool: &SqlitePool) -> i64 {
+        let (count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM library_items WHERE profile_id='default' AND media_id=42 AND media_type='movie'",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        count
+    }
+
+    /// The core bug this module's `upsert_entity` conflict target fixes: two
+    /// devices that each added the same title before ever syncing generate
+    /// two different local uuids for it. A remote change carrying the OTHER
+    /// device's uuid must merge into this device's own existing row for the
+    /// same (profile, media) pair — never attempt a second INSERT, which
+    /// would violate library_items' own UNIQUE(profile_id, media_id,
+    /// media_type) constraint and abort the whole transaction.
+    #[tokio::test]
+    async fn a_remote_upsert_with_a_different_uuid_for_the_same_business_key_merges_into_the_existing_row()
+     {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at) \
+             VALUES ('local-1','default',42,'movie','Local Title','planned','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let change = upsert_change(
+            "remote-1",
+            1,
+            1,
+            library_item_payload("remote-1", "completed"),
+        );
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        assert_eq!(
+            library_item_count(&pool).await,
+            1,
+            "no duplicate row for the same business key"
+        );
+        let (uuid, status) = library_item_row(&pool).await;
+        assert_eq!(
+            uuid, "local-1",
+            "the pre-existing local uuid is preserved, not replaced by the remote one"
+        );
+        assert_eq!(
+            status, "completed",
+            "the remote field values are still applied"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_remote_upsert_for_a_genuinely_new_entity_still_inserts_normally() {
+        let pool = pool().await;
+
+        let change = upsert_change(
+            "remote-1",
+            1,
+            1,
+            library_item_payload("remote-1", "completed"),
+        );
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        assert_eq!(library_item_count(&pool).await, 1);
+        let (uuid, _) = library_item_row(&pool).await;
+        assert_eq!(uuid, "remote-1");
+    }
+
+    #[tokio::test]
+    async fn apply_remote_changes_is_idempotent_for_an_already_applied_sequence() {
+        let pool = pool().await;
+        let change = upsert_change(
+            "remote-1",
+            1,
+            1,
+            library_item_payload("remote-1", "completed"),
+        );
+        apply_remote_changes(&pool, std::slice::from_ref(&change))
+            .await
+            .unwrap();
+
+        // Re-applying the exact same sequence (e.g. a retried pull) must not
+        // error and must not change anything a second time.
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        assert_eq!(library_item_count(&pool).await, 1);
+        assert_eq!(cursor(&pool).await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn apply_remote_changes_does_not_repopulate_the_local_outbox() {
+        let pool = pool().await;
+        let change = upsert_change(
+            "remote-1",
+            1,
+            1,
+            library_item_payload("remote-1", "completed"),
+        );
+
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let outbox = list_outbox(&pool, 10).await.unwrap();
+        assert!(
+            outbox.is_empty(),
+            "applying a trusted remote change must not re-queue it as if it were a local mutation"
+        );
+    }
+
+    #[tokio::test]
+    async fn ack_mutations_advances_entity_state_and_clears_the_outbox() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at) \
+             VALUES ('local-1','default',42,'movie','Local Title','planned','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let pending = list_outbox(&pool, 10).await.unwrap();
+        assert_eq!(pending.len(), 1);
+
+        ack_mutations(
+            &pool,
+            &[SyncMutationAck {
+                mutation_id: pending[0].mutation_id.clone(),
+                entity_type: "library_item".to_string(),
+                entity_id: "local-1".to_string(),
+                version: 1,
+            }],
+        )
+        .await
+        .unwrap();
+
+        assert!(list_outbox(&pool, 10).await.unwrap().is_empty());
+        let (remote_version,): (i64,) = sqlx::query_as(
+            "SELECT remote_version FROM sync_entity_state WHERE profile_id='default' AND entity_type='library_item' AND entity_id='local-1'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(remote_version, 1);
+    }
+
+    #[tokio::test]
+    async fn rebase_conflicts_updates_base_version_without_dropping_the_pending_mutation() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at) \
+             VALUES ('local-1','default',42,'movie','Local Title','planned','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let pending = list_outbox(&pool, 10).await.unwrap();
+
+        rebase_conflicts(
+            &pool,
+            &[SyncConflict {
+                mutation_id: pending[0].mutation_id.clone(),
+                entity_type: "library_item".to_string(),
+                entity_id: "local-1".to_string(),
+                server_version: 7,
+            }],
+        )
+        .await
+        .unwrap();
+
+        let rebased = list_outbox(&pool, 10).await.unwrap();
+        assert_eq!(
+            rebased.len(),
+            1,
+            "a rebased mutation stays pending, ready for the next push round"
+        );
+        assert_eq!(rebased[0].base_version, 7);
+    }
 }
