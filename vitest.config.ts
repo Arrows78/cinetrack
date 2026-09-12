@@ -195,6 +195,14 @@ export default defineConfig({
         // a mocked mediaRepository/tvTimeImportRepository — parse-export.ts
         // (real CSV parsing) is tested separately.
         "src/features/tvtime/tvtime-import-service.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
+        // The 4 remaining uncovered branches are: getGenreLabelKey's/genreName's
+        // own `id` guard and `id ?? null` fallback, neither reachable in
+        // practice since every call site already guards on a truthy id before
+        // calling in; and the two URL-sync effects' "external change clears
+        // the param back to empty/null" outcome, one permutation past what's
+        // already covered (external change *to* a new value, and the
+        // round-trip-suppression path for our own pushes).
+        "src/pages/search-page.tsx": { statements: 100, branches: 95, functions: 100, lines: 100 },
       },
     },
   },
