@@ -2,6 +2,7 @@ use sqlx::{Sqlite, SqlitePool, Transaction};
 
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
+use crate::preferences::ACCOUNT_SCOPE_PREFERENCE_KEYS;
 
 use super::models::{
     RemoteSyncChange, SyncConflict, SyncMutationAck, SyncOutboxMutation, SyncStatus,
@@ -125,6 +126,32 @@ pub async fn prepare(pool: &SqlitePool) -> Result<(), ApiError> {
     .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
+
+    // Preferences have no profile_id column of their own (see
+    // upsert_entity's account_preferences arm) and no per-row identity
+    // beyond `key` — scope this bootstrap read to the account-scope keys
+    // only, via the same list `write_preference` gates new writes on, so a
+    // device-only setting (theme, backupDirectory, activeProfileId, ...)
+    // never leaves this install just because sync happened to be turned on.
+    let account_preference_keys = ACCOUNT_SCOPE_PREFERENCE_KEYS
+        .iter()
+        .map(|key| format!("'{key}'"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let account_preferences_query = format!(
+        "INSERT INTO sync_outbox(mutation_id,profile_id,entity_type,entity_id,operation,payload,base_version,created_at) \
+         SELECT lower(hex(randomblob(16))),?1,'account_preferences',key,'upsert', \
+           json_object('key',key,'value',value,'updatedAt',updated_at), \
+           COALESCE((SELECT remote_version FROM sync_entity_state s WHERE s.profile_id=?1 AND s.entity_type='account_preferences' AND s.entity_id=preferences.key),0), \
+           strftime('%Y-%m-%dT%H:%M:%f','now')||'Z' \
+         FROM preferences WHERE key IN ({account_preference_keys}) \
+         ON CONFLICT(profile_id,entity_type,entity_id) DO NOTHING"
+    );
+    sqlx::query(sqlx::AssertSqlSafe(account_preferences_query))
+        .bind(&profile_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
 
     let now = now_iso(&mut *tx).await?;
     sqlx::query("INSERT INTO sync_metadata(key,value,updated_at) VALUES (?1,'1',?2)")
@@ -305,6 +332,26 @@ async fn upsert_entity(
 ) -> Result<(), ApiError> {
     let payload = serde_json::to_string(data)
         .map_err(|error| ApiError::bad_request(format!("Invalid remote payload: {error}")))?;
+
+    // `preferences` has no profile_id column at all (it's a single global
+    // key/value table, not a per-profile one — see its own migration) and
+    // its natural identity is `key` itself, never a generated uuid, so it
+    // takes a one-bind-param statement of its own rather than the generic
+    // (payload, profile_id) execute path every other entity type shares
+    // below.
+    if entity_type == "account_preferences" {
+        sqlx::query(
+            "INSERT INTO preferences(key,value,updated_at) \
+             VALUES(json_extract(?1,'$.key'),json_extract(?1,'$.value'),json_extract(?1,'$.updatedAt')) \
+             ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
+        )
+        .bind(&payload)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+        return Ok(());
+    }
+
     // library_item/seen_movie/episode_progress/tracked_series each have a
     // UNIQUE business-key constraint alongside their uuid primary key (see
     // 001-initial-schema.sql). The conflict target below is deliberately
@@ -691,5 +738,65 @@ mod tests {
             "a rebased mutation stays pending, ready for the next push round"
         );
         assert_eq!(rebased[0].base_version, 7);
+    }
+
+    #[tokio::test]
+    async fn applies_a_remote_account_preference_change_by_key_not_by_a_generated_uuid() {
+        let pool = pool().await;
+        let change = RemoteSyncChange {
+            sequence: 1,
+            entity_type: "account_preferences".to_string(),
+            entity_id: "language".to_string(),
+            operation: "upsert".to_string(),
+            version: 1,
+            data: Some(serde_json::json!({
+                "key": "language",
+                "value": "\"fr\"",
+                "updatedAt": "2026-01-02T00:00:00.000Z",
+            })),
+        };
+
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let (value,): (String,) =
+            sqlx::query_as("SELECT value FROM preferences WHERE key='language'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            value, "\"fr\"",
+            "round-trips to the exact same quoted-string form preferences.value already uses"
+        );
+    }
+
+    #[tokio::test]
+    async fn prepare_seeds_only_account_scoped_preferences_into_the_outbox() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('language', '\"fr\"', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('theme', '\"light\"', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        prepare(&pool).await.unwrap();
+
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT entity_id FROM sync_outbox WHERE entity_type='account_preferences'",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            rows,
+            vec![("language".to_string(),)],
+            "theme is device-scoped and must not be bootstrapped"
+        );
     }
 }

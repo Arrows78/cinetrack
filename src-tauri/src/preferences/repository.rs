@@ -3,8 +3,8 @@ use std::sync::Mutex;
 use serde_json::{Map, Value};
 use sqlx::SqlitePool;
 
-use super::models::{UserPreferences, validate};
-use crate::database::now_iso;
+use super::models::{ACCOUNT_SCOPE_PREFERENCE_KEYS, UserPreferences, validate};
+use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
 
 /// State holding the in-memory preferences cache, mirroring the module-level
@@ -90,9 +90,17 @@ pub(super) async fn write_preference(
     };
     let stored_value = updated_json
         .get(&key)
-        .ok_or_else(|| ApiError::bad_request(format!("Unknown preference key: {key}")))?;
+        .ok_or_else(|| ApiError::bad_request(format!("Unknown preference key: {key}")))?
+        .to_string();
 
     let timestamp = now_iso(pool).await?;
+    // Read before opening the transaction below: current_profile_id only
+    // takes a pool, not a transaction, and this only needs to know which
+    // profile was active going into this write — not to see this write's
+    // own (not yet committed) effect on it.
+    let profile_id = current_profile_id(pool).await?;
+
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     sqlx::query(
         "INSERT INTO preferences (key, value, updated_at)
@@ -100,11 +108,44 @@ pub(super) async fn write_preference(
          ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
     )
     .bind(&key)
-    .bind(stored_value.to_string())
+    .bind(&stored_value)
     .bind(&timestamp)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
+
+    // Only account-scoped keys travel through cloud sync — see
+    // ACCOUNT_SCOPE_PREFERENCE_KEYS's own doc comment for why the rest
+    // (theme, backupDirectory, activeProfileId, ...) never do. Captured
+    // here explicitly (not via a SQLite trigger, unlike every other synced
+    // table) because `preferences` has no per-row identity beyond `key`
+    // itself and no `profile_id` column of its own — this is preferences'
+    // one and only write path, so there's nothing a trigger would need to
+    // catch that this call site doesn't already see directly.
+    if ACCOUNT_SCOPE_PREFERENCE_KEYS.contains(&key.as_str()) {
+        let payload =
+            serde_json::json!({ "key": key, "value": stored_value, "updatedAt": timestamp })
+                .to_string();
+        sqlx::query(
+            "INSERT INTO sync_outbox(mutation_id,profile_id,entity_type,entity_id,operation,payload,base_version,created_at) \
+             VALUES (?1,?2,'account_preferences',?3,'upsert',?4, \
+               COALESCE((SELECT remote_version FROM sync_entity_state WHERE profile_id=?2 AND entity_type='account_preferences' AND entity_id=?3),0), \
+               ?5) \
+             ON CONFLICT(profile_id,entity_type,entity_id) DO UPDATE SET \
+               mutation_id=excluded.mutation_id, operation='upsert', payload=excluded.payload, \
+               base_version=excluded.base_version, created_at=excluded.created_at, attempt_count=0, last_error=NULL",
+        )
+        .bind(new_uuid())
+        .bind(&profile_id)
+        .bind(&key)
+        .bind(payload)
+        .bind(&timestamp)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+    }
+
+    tx.commit().await.map_err(ApiError::from)?;
 
     *cache
         .0
@@ -243,6 +284,58 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(reset.backup_directory, None);
+    }
+
+    #[tokio::test]
+    async fn writing_an_account_scoped_key_queues_it_for_cloud_sync() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        write_preference(
+            "language".to_string(),
+            Value::String("fr".to_string()),
+            &pool,
+            &cache,
+        )
+        .await
+        .unwrap();
+
+        let row: (String, String, String) = sqlx::query_as(
+            "SELECT entity_type, entity_id, payload FROM sync_outbox WHERE entity_type='account_preferences'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(row.0, "account_preferences");
+        assert_eq!(row.1, "language");
+        // The payload's own `value` is the exact text stored in
+        // preferences.value (a JSON string, quotes included) — see
+        // upsert_entity's account_preferences arm for why.
+        assert!(row.2.contains(r#""value":"\"fr\"""#));
+    }
+
+    #[tokio::test]
+    async fn writing_a_device_scoped_key_never_touches_the_sync_outbox() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        write_preference(
+            "theme".to_string(),
+            Value::String("light".to_string()),
+            &pool,
+            &cache,
+        )
+        .await
+        .unwrap();
+
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM sync_outbox")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            count, 0,
+            "theme is device-scoped and must never be queued for cloud sync"
+        );
     }
 
     #[tokio::test]

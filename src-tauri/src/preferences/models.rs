@@ -143,6 +143,32 @@ pub struct UserPreferences {
     pub onboarding_completed: bool,
 }
 
+/// Which `preferences` keys travel through cloud sync (see
+/// preferences::repository::write_preference's outbox insert and
+/// sync::service::prepare's bootstrap seeding) versus stay strictly local to
+/// this installation. Kept as a single source of truth here rather than
+/// duplicated as a literal list in sync/service.rs, per the project's rule
+/// against hand-duplicated literal lists.
+///
+/// The split follows what actually describes *this person's* taste/settings
+/// (account-scoped) versus what describes *this device* (its window chrome,
+/// its OS-level notification permission, an arbitrary local filesystem path,
+/// which local profile happens to be active on it right now). Two entries
+/// worth calling out: `theme` stays device-scoped — a phone's own
+/// light/dark choice shouldn't be forced by the desktop's — and
+/// `onThisDayEnabled` is account-scoped despite being "just a toggle": it's
+/// a deliberate, content-sensitive choice about resurfacing personal
+/// history, tied to the person rather than the hardware.
+pub(crate) const ACCOUNT_SCOPE_PREFERENCE_KEYS: &[&str] = &[
+    "language",
+    "region",
+    "preferredProviderIds",
+    "spoilerProtection",
+    "hideWatchedInDiscovery",
+    "accentColor",
+    "onThisDayEnabled",
+];
+
 impl Default for UserPreferences {
     fn default() -> Self {
         Self {
