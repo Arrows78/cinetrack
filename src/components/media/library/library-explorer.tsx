@@ -1,16 +1,17 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { FolderHeart, Heart, LibraryBig, ListPlus, SearchX, Sparkles, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
+import { ActiveFilterChips } from "@/components/media/library/active-filter-chips";
 import { FilterBar } from "@/components/media/library/filter-bar";
-import { MediaGrid, type MediaGridItem } from "@/components/media/primitives/media-grid";
+import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { MediaList } from "@/components/media/primitives/media-list";
 import { MovieLibrarySections, SeriesLibrarySections } from "@/components/media/library/library-sections";
 import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
 import { SearchBar } from "@/components/media/primitives/search-bar";
 import { SmartListsAccordionContent } from "@/components/media/library/smart-lists-panel";
+import { useLibraryExplorer } from "@/components/media/library/use-library-explorer";
 import { ViewModeToggle } from "@/components/media/primitives/view-mode-toggle";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,19 +23,8 @@ import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
-import { useCustomListItems, useCustomLists } from "@/features/custom-lists/use-custom-lists";
-import { useLibrary, useLibraryMediaKeys, useLibraryPage } from "@/features/library/use-library";
-import { useSmartLists } from "@/features/smart-lists/use-smart-lists";
-import { useSmartListMatches } from "@/components/media/library/use-smart-list-matches";
-import { usePreferences } from "@/features/preferences/use-preferences";
-import { useTrackedSeries } from "@/features/progress/use-progress";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { DEBOUNCE_MS } from "@/shared/constants/query";
-import type { LibraryFilterState, LibraryStatus } from "@/types/media";
-
-type StatusFilter = LibraryStatus | "all";
-
-const statusOptions: StatusFilter[] = ["all", "planned", "watching", "paused", "completed", "dropped"];
+import { useCustomListItems } from "@/features/custom-lists/use-custom-lists";
+import type { useCustomLists } from "@/features/custom-lists/use-custom-lists";
 
 function ListItemRow({ listId }: { listId: string }) {
   const { t } = useTranslation();
@@ -257,263 +247,43 @@ export function LibraryExplorer({
   browseAllLabel?: string;
 }) {
   const { t } = useTranslation();
-  const libraryMediaKeysQuery = useLibraryMediaKeys();
-  const { data: trackedSeries } = useTrackedSeries();
-  const lists = useCustomLists();
-  const preferences = usePreferences();
-  const [typeFilter, setTypeFilter] = useState<"all" | "movie" | "series">(lockedMediaType ?? "all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [favouritesOnly, setFavouritesOnly] = useState(false);
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<"recent" | "title" | "rating">("recent");
-  // Persisted (not local state) — a user's grid/list choice should survive
-  // navigating away and back, and hold across /library, /movies and /series
-  // since they all render this same explorer.
-  const viewMode = preferences.data?.libraryViewMode ?? "grid";
-  const setViewMode = (mode: "grid" | "list") =>
-    void preferences.updatePreference({ key: "libraryViewMode", value: mode });
-  const [listFilter, setListFilter] = useState("all");
-  const listItems = useCustomListItems(listFilter === "all" ? "" : listFilter);
-  const smartLists = useSmartLists();
-  const [smartListFilter, setSmartListFilter] = useState("all");
-  const activeSmartList =
-    smartListFilter === "all" ? undefined : smartLists.data?.find((list) => list.id === smartListFilter);
-  // Evaluated live against the current library/tracked-series/preferences
-  // data every render — never a stored/cached set of matching ids (see
-  // smart-list-evaluation.ts) — then folded into `filtered` below the same
-  // way a selected custom list already restricts by media key.
-  const smartListMatches = useSmartListMatches(activeSmartList?.rules);
-
-  // Server-side cursor pagination only applies to the plain "browse
-  // everything" view: a custom-list or smart-list filter restricts to an
-  // already-bounded candidate set (the list's own items, or the smart list's
-  // matches) that's cheaper to keep filtering client-side than to thread
-  // through the server query, and lockedMediaType's "My list" tabs bucket by
-  // watch progress up front (see MovieLibrarySections/SeriesLibrarySections),
-  // which needs the whole set for that media type at once. The hook scopes
-  // that locked-hub read in SQLite; custom/smart-list modes keep the full
-  // fallback because they may intersect both media types.
-  const isServerPaginated = !lockedMediaType && listFilter === "all" && smartListFilter === "all";
-  // Not needed at all in server-paginated mode (the plain default browse
-  // view) — gated so that common case doesn't pay for a full library read
-  // it never renders.
-  const libraryQuery = useLibrary({ enabled: !isServerPaginated, mediaType: lockedMediaType });
-  const { data: items } = libraryQuery;
-  const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS);
-  const libraryPageQuery = useLibraryPage(
-    {
-      mediaType: typeFilter === "all" ? undefined : typeFilter,
-      status: statusFilter,
-      favouritesOnly,
-      search: debouncedSearch,
-      sort,
-    },
-    { enabled: isServerPaginated }
-  );
-
-  const progressBySeries = useMemo(
-    () =>
-      new Map(
-        (trackedSeries ?? []).map((series) => [
-          series.seriesId,
-          { watched: series.watchedEpisodes, total: series.totalEpisodes, seriesStatus: series.status },
-        ])
-      ),
-    [trackedSeries]
-  );
-
-  const serverItems = useMemo<MediaGridItem[]>(() => {
-    if (!isServerPaginated) return [];
-    return (libraryPageQuery.data?.pages ?? [])
-      .flatMap((page) => page.items)
-      .map((item) => ({
-        id: item.mediaId,
-        mediaType: item.mediaType,
-        title: item.title,
-        posterPath: item.posterPath,
-        backdropPath: item.backdropPath,
-        overview: "",
-        year: item.year,
-        rating: item.userRating ?? item.rating,
-        genres: item.genres,
-        cast: [],
-        progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
-        alreadySeen: item.mediaType === "movie" && item.status === "completed",
-      }));
-  }, [isServerPaginated, libraryPageQuery.data, progressBySeries]);
-
-  const loadNextServerPage = () => {
-    if (libraryPageQuery.hasNextPage && !libraryPageQuery.isFetchingNextPage) void libraryPageQuery.fetchNextPage();
-  };
-
-  const filtered = useMemo(() => {
-    const libraryByKey = new Map((items ?? []).map((item) => [`${item.mediaType}-${item.mediaId}`, item]));
-    const listMediaKeys =
-      listFilter === "all" ? null : new Set((listItems.data ?? []).map((li) => `${li.mediaType}-${li.mediaId}`));
-    // Only ever restricts library items (a smart list's rules — status,
-    // rating, ... — can't be evaluated against a custom-list-only item that
-    // was never added to the library), so `listOnly` below is skipped
-    // entirely whenever a smart list is active.
-    const smartListMediaKeys =
-      smartListFilter === "all"
-        ? null
-        : new Set(smartListMatches.items.map((media) => `${media.mediaType}-${media.id}`));
-    const normalizedSearch = search.trim().toLowerCase();
-    const matchesSearch = (title: string) => (normalizedSearch ? title.toLowerCase().includes(normalizedSearch) : true);
-
-    const fromLibrary = (items ?? [])
-      .filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter))
-      .filter((item) => (statusFilter === "all" ? true : item.status === statusFilter))
-      .filter((item) => (favouritesOnly ? item.favourite : true))
-      .filter((item) => (listMediaKeys ? listMediaKeys.has(`${item.mediaType}-${item.mediaId}`) : true))
-      .filter((item) => (smartListMediaKeys ? smartListMediaKeys.has(`${item.mediaType}-${item.mediaId}`) : true))
-      .filter((item) => matchesSearch(item.title))
-      .map((item) => ({
-        sortKey: item.updatedAt,
-        media: {
-          id: item.mediaId,
-          mediaType: item.mediaType,
-          title: item.title,
-          posterPath: item.posterPath,
-          backdropPath: item.backdropPath,
-          overview: "",
-          year: item.year,
-          rating: item.userRating ?? item.rating,
-          genres: item.genres,
-          cast: [],
-          progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
-          alreadySeen: item.mediaType === "movie" && item.status === "completed",
-        } as MediaGridItem,
-      }));
-
-    // custom_list_items has no dependency on library_items (see
-    // src-tauri/src/lists/custom/) — a list can hold media never
-    // added to the library, which still needs to render here, just without
-    // any status/rating/progress.
-    const listOnly =
-      listFilter === "all" || smartListFilter !== "all"
-        ? []
-        : (listItems.data ?? [])
-            .filter((li) => !libraryByKey.has(`${li.mediaType}-${li.mediaId}`))
-            .filter((li) => (typeFilter === "all" ? true : li.mediaType === typeFilter))
-            .filter(() => statusFilter === "all" && !favouritesOnly)
-            .filter((li) => matchesSearch(li.title))
-            .map((li) => ({
-              sortKey: li.addedAt,
-              media: {
-                id: li.mediaId,
-                mediaType: li.mediaType,
-                title: li.title,
-                posterPath: li.posterPath,
-                overview: "",
-                genres: [],
-                cast: [],
-              } as MediaGridItem,
-            }));
-
-    return [...fromLibrary, ...listOnly]
-      .sort((a, b) => {
-        if (sort === "title") return a.media.title.localeCompare(b.media.title);
-        if (sort === "rating") return (b.media.rating ?? 0) - (a.media.rating ?? 0);
-        return b.sortKey.localeCompare(a.sortKey);
-      })
-      .map((entry) => entry.media);
-  }, [
-    items,
-    progressBySeries,
+  const {
+    statusOptions,
+    lists,
+    smartLists,
+    trackedSeries,
     typeFilter,
+    setTypeFilter,
     statusFilter,
+    setStatusFilter,
     favouritesOnly,
+    setFavouritesOnly,
     search,
+    setSearch,
     sort,
+    setSort,
+    viewMode,
+    setViewMode,
     listFilter,
-    listItems.data,
+    setListFilter,
     smartListFilter,
-    smartListMatches.items,
-  ]);
-
-  const isFilteredToList = listFilter !== "all";
-  const resetListFilter = () => setListFilter("all");
-  // A membership-only check (not the full useLibrary() read, which is
-  // disabled in server-paginated mode) — needed in every mode to
-  // distinguish "the library is genuinely empty" from "no results match
-  // these filters."
-  const hasAnyLibraryItems = (libraryMediaKeysQuery.data?.length ?? 0) > 0;
-  const clearFilters = () => {
-    setTypeFilter(lockedMediaType ?? "all");
-    setStatusFilter("all");
-    setFavouritesOnly(false);
-    setListFilter("all");
-    setSmartListFilter("all");
-    setSearch("");
-  };
-
-  // Exactly the state a saved filter captures/restores (see
-  // src/types/media.ts's LibraryFilterState doc comment) — reused as-is
-  // rather than a parallel shape, so saving "the current filters" and
-  // reopening a saved one are both plain assignments, no translation layer.
-  const currentFilters: LibraryFilterState = { typeFilter, statusFilter, favouritesOnly, listFilter, sort, search };
-  const applySavedFilters = (saved: LibraryFilterState) => {
-    setTypeFilter(lockedMediaType ?? saved.typeFilter);
-    setStatusFilter(saved.statusFilter);
-    setFavouritesOnly(saved.favouritesOnly);
-    setListFilter(saved.listFilter);
-    setSort(saved.sort);
-    setSearch(saved.search);
-  };
-
-  // One removable chip per non-default filter condition currently applied —
-  // `lockedMediaType` pins typeFilter to a value the user never chose (the
-  // /movies and /series "My list" tabs), so that one dimension never shows
-  // as a removable chip there.
-  const chips: ActiveFilterChip[] = [
-    ...(!lockedMediaType && typeFilter !== "all"
-      ? [
-          {
-            key: "type",
-            label: t("filters.chips.type", { value: typeFilter === "movie" ? t("nav.movies") : t("nav.series") }),
-            onRemove: () => setTypeFilter("all"),
-          },
-        ]
-      : []),
-    ...(statusFilter !== "all"
-      ? [
-          {
-            key: "status",
-            label: t("filters.chips.status", { value: t(`library.statuses.${statusFilter}`) }),
-            onRemove: () => setStatusFilter("all"),
-          },
-        ]
-      : []),
-    ...(favouritesOnly
-      ? [{ key: "favourites", label: t("filters.chips.favourites"), onRemove: () => setFavouritesOnly(false) }]
-      : []),
-    ...(listFilter !== "all"
-      ? [
-          {
-            key: "list",
-            label: t("filters.chips.list", {
-              value: lists.data?.find((list) => list.id === listFilter)?.name ?? listFilter,
-            }),
-            onRemove: resetListFilter,
-          },
-        ]
-      : []),
-    ...(sort !== "recent"
-      ? [
-          {
-            key: "sort",
-            label: t("filters.chips.sort", {
-              value: sort === "title" ? t("library.title") : t("library.rating"),
-            }),
-            onRemove: () => setSort("recent"),
-          },
-        ]
-      : []),
-    ...(search.trim()
-      ? [{ key: "search", label: t("filters.chips.search", { value: search }), onRemove: () => setSearch("") }]
-      : []),
-  ];
+    setSmartListFilter,
+    isServerPaginated,
+    libraryQuery,
+    libraryPageQuery,
+    serverItems,
+    loadNextServerPage,
+    listItems,
+    smartListMatches,
+    filtered,
+    isFilteredToList,
+    resetListFilter,
+    hasAnyLibraryItems,
+    clearFilters,
+    currentFilters,
+    applySavedFilters,
+    chips,
+  } = useLibraryExplorer(lockedMediaType);
 
   // Shared between the server-paginated and client-filtered branches below —
   // "library has nothing at all" vs. "these filters just don't match" reads

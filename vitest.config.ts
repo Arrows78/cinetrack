@@ -122,6 +122,12 @@ export default defineConfig({
           functions: 100,
           lines: 100,
         },
+        "src/components/media/library/library-filtering.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
         "src/components/media/tracking/next-episode-card.tsx": {
           statements: 100,
           branches: 100,
