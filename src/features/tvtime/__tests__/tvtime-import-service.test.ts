@@ -806,14 +806,42 @@ describe("importTvTimeExport", () => {
       getSeasonDetailsMock.mockResolvedValue(season(500, 1, 1));
       importSeriesProgressMock.mockResolvedValue([500]);
 
-      const result = await resolveRetryableSeries(item, series({ id: 77 }));
+      const matchedSeries = series({ id: 77 });
+      const result = await resolveRetryableSeries(item, matchedSeries);
 
       expect(getSeasonDetailsMock).toHaveBeenCalledWith(77, 1);
       expect(importSeriesProgressMock).toHaveBeenCalledWith(
         expect.objectContaining({ id: 77 }),
         expect.arrayContaining([expect.objectContaining({ episodeId: 500 })])
       );
-      expect(result).toEqual({ episodesImported: 1 });
+      expect(result).toEqual({
+        episodesImported: 1,
+        undo: { series: matchedSeries, episodes: [{ id: 500, seasonNumber: 1, episodeNumber: 1 }] },
+      });
+    });
+
+    it("resolveRetryableSeries returns a null undo when every episode was already tracked", async () => {
+      const item = {
+        kind: "series" as const,
+        label: "Bodyguard (2018)",
+        searchTitle: "Bodyguard",
+        searchYear: 2018,
+        episodes: [
+          {
+            seriesName: "Bodyguard (2018)",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+      };
+      getSeasonDetailsMock.mockResolvedValue(season(500, 1, 1));
+      importSeriesProgressMock.mockResolvedValue([]);
+
+      const result = await resolveRetryableSeries(item, series({ id: 77 }));
+
+      expect(result).toEqual({ episodesImported: 0, undo: null });
     });
 
     it("resolveRetryableMovie writes a manually-picked movie match", async () => {
@@ -842,9 +870,26 @@ describe("importTvTimeExport", () => {
       };
       const match = media({ id: 8, title: "The Show" });
 
-      await resolveRetryableWatchlist(item, match);
+      const wasNewlyPlanned = await resolveRetryableWatchlist(item, match);
 
       expect(librarySaveMock).toHaveBeenCalledWith(match, { status: "planned" });
+      expect(wasNewlyPlanned).toBe(true);
+    });
+
+    it("resolveRetryableWatchlist returns false when the match was already in the library", async () => {
+      const item = {
+        kind: "watchlist" as const,
+        label: "Unknown Title",
+        searchTitle: "Unknown Title",
+        searchYear: null,
+        entry: { title: "Unknown Title", mediaType: "series" as const, year: null },
+      };
+      const match = media({ id: 8, title: "The Show" });
+      libraryHasMock.mockResolvedValue(true);
+
+      const wasNewlyPlanned = await resolveRetryableWatchlist(item, match);
+
+      expect(wasNewlyPlanned).toBe(false);
     });
   });
 

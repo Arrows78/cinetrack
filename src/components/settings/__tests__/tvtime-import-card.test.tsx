@@ -35,13 +35,24 @@ vi.mock("@/shared/lib/logger", () => ({ logger: { warn: (...args: unknown[]) => 
 
 const applyTvTimeImportMock = vi.fn();
 const undoTvTimeImportMock = vi.fn();
+const resolveRetryableMovieMock = vi.fn();
 vi.mock("@/features/tvtime/tvtime-import-service", async (importOriginal) => {
   const actual = await importOriginal<typeof TvTimeImportServiceModule>();
   return {
     ...actual,
     applyTvTimeImport: (...args: unknown[]) => applyTvTimeImportMock(...args),
     undoTvTimeImport: (...args: unknown[]) => undoTvTimeImportMock(...args),
+    resolveRetryableMovie: (...args: unknown[]) => resolveRetryableMovieMock(...args),
   };
+});
+
+// Only needed for the manual-resolution panel's own search field (see the
+// "resolving a manual item feeds undo" test below) — every other test in
+// this file never expands a retryable row far enough to trigger a search.
+const searchMock = vi.fn();
+vi.mock("@/features/media/media-repository", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, mediaRepository: { search: (...args: unknown[]) => searchMock(...args) } };
 });
 
 // Defaults to the real zip-extraction implementation; individual tests
@@ -88,6 +99,8 @@ describe("TvTimeImportCard", () => {
     loggerWarnMock.mockReset();
     applyTvTimeImportMock.mockReset().mockResolvedValue(summaryFixture());
     undoTvTimeImportMock.mockReset().mockResolvedValue(undefined);
+    resolveRetryableMovieMock.mockReset().mockResolvedValue(true);
+    searchMock.mockReset().mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
     const actualZip = await vi.importActual<typeof ZipModule>("@/features/tvtime/zip");
     extractCsvEntriesMock.mockReset().mockImplementation((file: File) => actualZip.extractCsvEntries(file));
   });
@@ -450,6 +463,55 @@ describe("TvTimeImportCard", () => {
 
       await waitFor(() => expect(screen.queryByText("Undo this import?")).not.toBeInTheDocument());
       expect(undoTvTimeImportMock).not.toHaveBeenCalled();
+    });
+
+    it("resolving a retryable item through the manual panel makes the undo button appear too", async () => {
+      const retryable: RetryableUnmatched[] = [
+        {
+          kind: "movie",
+          label: "Some Unresolved Movie",
+          searchTitle: "Some Unresolved Movie",
+          searchYear: null,
+          movie: {
+            title: "Some Unresolved Movie",
+            year: null,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        },
+      ];
+      applyTvTimeImportMock.mockResolvedValueOnce(
+        summaryFixture({ seriesImported: 0, episodesImported: 0, retryable })
+      );
+      const matchedMovie = {
+        id: 42,
+        mediaType: "movie" as const,
+        title: "The Real Movie",
+        overview: "",
+        genres: [],
+        cast: [],
+      };
+      searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 1, results: [matchedMovie] });
+      const { input } = renderCard();
+
+      fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+      (await screen.findByRole("button", { name: "Import" })).click();
+
+      // No undo button yet — this batch matched nothing automatically.
+      await screen.findByText("1 title needs your input");
+      expect(screen.queryByRole("button", { name: "Undo last import" })).not.toBeInTheDocument();
+
+      screen.getByRole("button", { name: "Some Unresolved Movie" }).click();
+      const result = await screen.findByText("The Real Movie", {}, { timeout: 2000 });
+      result.closest("div")!.querySelector("button")!.click();
+
+      await waitFor(() => expect(resolveRetryableMovieMock).toHaveBeenCalled());
+      fireEvent.click(await screen.findByRole("button", { name: "Undo last import" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Undo import" }));
+
+      await waitFor(() =>
+        expect(undoTvTimeImportMock).toHaveBeenCalledWith({ movies: [matchedMovie], series: [], planned: [] })
+      );
     });
   });
 });

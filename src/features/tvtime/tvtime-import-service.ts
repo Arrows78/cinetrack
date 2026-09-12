@@ -378,13 +378,23 @@ async function importOneSeries(
   }
 }
 
-/** Manual-panel entry point: attaches a user-picked series to a retryable item's episodes. */
+/** Manual-panel entry point: attaches a user-picked series to a retryable item's episodes. `undo` is `null` when every episode was already tracked — nothing this call did that undo would need to revert. */
 export async function resolveRetryableSeries(
   item: RetryableSeries,
   series: Series
-): Promise<{ episodesImported: number }> {
+): Promise<{ episodesImported: number; undo: TvTimeImportUndoSeries | null }> {
   const { insertedEpisodes } = await attachEpisodesToSeries(series, item.episodes);
-  return { episodesImported: insertedEpisodes.length };
+  const undo: TvTimeImportUndoSeries | null = insertedEpisodes.length
+    ? {
+        series,
+        episodes: insertedEpisodes.map((episode) => ({
+          id: episode.episodeId,
+          seasonNumber: episode.seasonNumber,
+          episodeNumber: episode.episodeNumber,
+        })),
+      }
+    : null;
+  return { episodesImported: insertedEpisodes.length, undo };
 }
 
 async function importMatchedMovie(movie: TvTimeMovie, match: MediaSummary): Promise<boolean> {
@@ -406,9 +416,11 @@ export async function resolveRetryableMovie(item: RetryableMovie, match: MediaSu
   return importMatchedMovie(item.movie, match);
 }
 
-/** Manual-panel entry point: adds a retryable watchlist item to the library once matched. */
-export async function resolveRetryableWatchlist(_item: RetryableWatchlistEntry, match: MediaSummary): Promise<void> {
+/** Manual-panel entry point: adds a retryable watchlist item to the library once matched. Returns whether this was a genuinely new addition — `false` when the title was already in the library in some status, so the caller (and undo) can tell that apart from a real write. */
+export async function resolveRetryableWatchlist(_item: RetryableWatchlistEntry, match: MediaSummary): Promise<boolean> {
+  const alreadyInLibrary = await libraryRepository.has(match.id, match.mediaType);
   await libraryRepository.save(match, { status: "planned" });
+  return !alreadyInLibrary;
 }
 
 /**

@@ -318,7 +318,21 @@ export function TvTimeImportCard() {
 
       <TvTimeUnmatchedResolver
         items={retryableItems}
-        onResolved={(item) => setRetryableItems((current) => current.filter((entry) => entry !== item))}
+        onResolved={(item, undo) => {
+          setRetryableItems((current) => current.filter((entry) => entry !== item));
+          const wroteSomething = undo.movies.length > 0 || undo.series.length > 0 || undo.planned.length > 0;
+          if (!wroteSomething) return;
+          // A manual resolution is undoable exactly like the batch import's
+          // own writes — merged into whatever's already pending rather than
+          // replacing it, so undo covers the whole session's worth of
+          // writes: the automatic pass and every title resolved by hand
+          // afterward.
+          setLastImportUndo((current) => ({
+            movies: [...(current?.movies ?? []), ...undo.movies],
+            series: [...(current?.series ?? []), ...undo.series],
+            planned: [...(current?.planned ?? []), ...undo.planned],
+          }));
+        }}
       />
     </>
   );
