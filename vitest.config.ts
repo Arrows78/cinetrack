@@ -203,6 +203,7 @@ export default defineConfig({
         // already covered (external change *to* a new value, and the
         // round-trip-suppression path for our own pushes).
         "src/pages/search-page.tsx": { statements: 100, branches: 95, functions: 100, lines: 100 },
+        "src/pages/tracking-page.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
       },
     },
   },
