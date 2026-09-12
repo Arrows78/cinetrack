@@ -660,7 +660,9 @@
     "emptyTitle": "No match for these filters",
     "emptyDesc": "Try a wider genre, platform or duration — or add more titles to your \"to watch\" library.",
     "viewDetails": "View details",
-    "alternatesTitle": "Or try one of these"
+    "alternatesTitle": "Or try one of these",
+    "reasonGenre": "Because you often watch {{genre}}",
+    "reasonHighlyRated": "Highly rated on TMDB"
   },
   "library": {
     "myLibrary": "My library",

@@ -7,6 +7,7 @@ import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-b
 import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SectionHeader } from "@/components/media/primitives/section-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -21,9 +22,12 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
+import type { WatchTonightReason } from "@/features/watch-tonight";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { formatRuntime } from "@/shared/utils/format";
 import type { Movie, Series } from "@/types/media";
+
+type WatchTonightMedia = (Movie | Series) & { watchTonightReason: WatchTonightReason | null };
 
 const DEFAULT_RUNTIME = "120";
 
@@ -56,7 +60,21 @@ function ViewDetailsButton({ media }: { media: Movie | Series }) {
 // pages, which have their own separate Overview panel instead): this is the
 // one surface with no such panel to fall back on, so it renders its own
 // copy directly, in the same style detail pages use for theirs.
-function WatchTonightHeroPick({ media }: { media: Movie | Series }) {
+function WatchTonightReasonBadge({ reason }: { reason: WatchTonightReason | null }) {
+  const { t } = useTranslation();
+  if (!reason) return null;
+  const label =
+    reason.kind === "genre"
+      ? t("watchTonight.reasonGenre", { genre: t(reason.genreLabelKey) })
+      : t("watchTonight.reasonHighlyRated");
+  return (
+    <Badge variant="outline" className="w-fit">
+      {label}
+    </Badge>
+  );
+}
+
+function WatchTonightHeroPick({ media }: { media: WatchTonightMedia }) {
   const { t } = useTranslation();
   return (
     <div className="space-y-4">
@@ -69,6 +87,7 @@ function WatchTonightHeroPick({ media }: { media: Movie | Series }) {
           </>
         }
       />
+      <WatchTonightReasonBadge reason={media.watchTonightReason} />
       <Panel tone="subtle" className="p-6">
         <p className="text-body-lg text-muted-foreground">{media.overview || t("media.noOverview")}</p>
       </Panel>
@@ -150,7 +169,7 @@ export function WatchTonightPage() {
     seed
   );
 
-  const combined: Array<Movie | Series> = [...(query.data?.movies ?? []), ...(query.data?.series ?? [])];
+  const combined: WatchTonightMedia[] = [...(query.data?.movies ?? []), ...(query.data?.series ?? [])];
   const isEmpty = combined.length === 0;
   // Deterministic on the current batch + seed (rather than a fresh random
   // draw on every render) so the featured pick doesn't jump around on

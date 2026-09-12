@@ -2,6 +2,7 @@ import { libraryRepository } from "@/features/library/library-repository";
 import { filterHiddenIfWatchedByKeySet, buildKeySetFromMediaKeys } from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { logger } from "@/shared/lib/logger";
+import { GENRES } from "@/shared/constants/discover";
 import type { LibraryItem, MediaSummary, MediaType, Movie, Series } from "@/types/media";
 
 export interface WatchTonightFilters {
@@ -16,13 +17,30 @@ export interface WatchTonightFilters {
   originCountry?: string;
 }
 
+/** Why a candidate was ranked highly — surfaced by the hero pick so "what to watch" reads as an explained suggestion, not a black box. `genreLabelKey` is a GENRES labelKey (e.g. "genres.drama"), translated by the caller. */
+export type WatchTonightReason = { kind: "genre"; genreLabelKey: string } | { kind: "highlyRated" };
+
 export interface WatchTonightPicks {
-  movies: Movie[];
-  series: Series[];
+  movies: Array<Movie & { watchTonightReason: WatchTonightReason | null }>;
+  series: Array<Series & { watchTonightReason: WatchTonightReason | null }>;
 }
 
 const PICKS_PER_TYPE = 4;
 const PLANNED_CANDIDATE_CAP = 20;
+// How many of the profile's most-recently-completed titles feed the genre
+// affinity signal below — same recency-biased pool size and rationale as
+// PLANNED_CANDIDATE_CAP and the "because you liked" rail's own candidate cap.
+const AFFINITY_CANDIDATE_CAP = 20;
+// A single completed title in a genre is too weak a signal to explain a pick
+// ("because you liked Horror" off of one rewatch would overclaim); this is
+// the minimum repeat count before a genre becomes the displayed reason. It
+// still counts toward ranking below this threshold — just not the sentence.
+const GENRE_REASON_MIN_COUNT = 2;
+const HIGH_RATING_THRESHOLD = 7.5;
+// Genre affinity is the primary ranking signal; a full TMDB rating (max 10)
+// only breaks ties within the same genre-match tier, never outranks a
+// stronger genre match — see rankCandidates.
+const GENRE_AFFINITY_SCORE_STEP = 100;
 
 // Movie.runtime is the film's own length; Series.runtime (inherited from
 // MediaSummary) is TMDB's average episode runtime — comparing both the same
@@ -65,6 +83,68 @@ function shuffle<T>(items: T[]): T[] {
     .map(({ item }) => item);
 }
 
+interface GenreRef {
+  label: string;
+  labelKey: string;
+}
+
+const MOVIE_GENRES_BY_ID = new Map<number, GenreRef>(GENRES.movies.map((genre) => [genre.id, genre]));
+const SERIES_GENRES_BY_ID = new Map<number, GenreRef>(GENRES.series.map((genre) => [genre.id, genre]));
+
+/** Frequency of each canonical genre label (LibraryItem.genres' own format) across a profile's most-recently-completed titles of one media type — this profile's actual taste, not a preference toggle. */
+function buildGenreAffinity(completed: LibraryItem[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of completed) for (const genre of item.genres) counts.set(genre, (counts.get(genre) ?? 0) + 1);
+  return counts;
+}
+
+function bestGenreMatch(
+  genreIds: number[] | undefined,
+  genresById: Map<number, GenreRef>,
+  affinity: Map<string, number>
+): { labelKey: string; count: number } | null {
+  let best: { labelKey: string; count: number } | null = null;
+  for (const id of genreIds ?? []) {
+    const genre = genresById.get(id);
+    if (!genre) continue;
+    const count = affinity.get(genre.label) ?? 0;
+    if (count > 0 && (!best || count > best.count)) best = { labelKey: genre.labelKey, count };
+  }
+  return best;
+}
+
+function reasonFor(
+  genreMatch: { labelKey: string; count: number } | null,
+  rating: number | null | undefined
+): WatchTonightReason | null {
+  if (genreMatch && genreMatch.count >= GENRE_REASON_MIN_COUNT)
+    return { kind: "genre", genreLabelKey: genreMatch.labelKey };
+  if ((rating ?? 0) >= HIGH_RATING_THRESHOLD) return { kind: "highlyRated" };
+  return null;
+}
+
+/**
+ * Ranks candidates by genre affinity first (how often the profile has
+ * completed something in this title's best-matching genre), TMDB rating as
+ * a tie-break within the same genre tier, and a random shuffle as the final
+ * tie-break — so a brand-new profile with no affinity signal at all (every
+ * candidate scores 0) still gets a varied pick instead of the same shuffle
+ * order every time. Attaches the reason that ranking is allowed to explain.
+ */
+function rankCandidates<T extends MediaSummary>(
+  candidates: T[],
+  affinity: Map<string, number>,
+  genresById: Map<number, GenreRef>
+): Array<T & { watchTonightReason: WatchTonightReason | null }> {
+  const scored = shuffle(candidates).map((item) => {
+    const genreMatch = bestGenreMatch(item.genreIds, genresById, affinity);
+    const score = (genreMatch?.count ?? 0) * GENRE_AFFINITY_SCORE_STEP + (item.rating ?? 0);
+    return { item, score, reason: reasonFor(genreMatch, item.rating) };
+  });
+  scored.sort((left, right) => right.score - left.score);
+  return scored.map(({ item, reason }) => ({ ...item, watchTonightReason: reason }));
+}
+
 async function filterByProvider<T extends MediaSummary>(
   candidates: T[],
   mediaType: MediaType,
@@ -78,8 +158,9 @@ async function filterByProvider<T extends MediaSummary>(
 async function pickMovies(
   filters: WatchTonightFilters,
   planned: LibraryItem[],
-  completedKeySet: Set<string>
-): Promise<Movie[]> {
+  completedKeySet: Set<string>,
+  genreAffinity: Map<string, number>
+): Promise<Array<Movie & { watchTonightReason: WatchTonightReason | null }>> {
   const detailed = await Promise.all(
     planned.map((item) =>
       mediaRepository.getMovieDetails(item.mediaId).catch((error) => {
@@ -116,14 +197,15 @@ async function pickMovies(
   // is never `completed` by definition.
   candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
 
-  return shuffle(candidates).slice(0, PICKS_PER_TYPE);
+  return rankCandidates(candidates, genreAffinity, MOVIE_GENRES_BY_ID).slice(0, PICKS_PER_TYPE);
 }
 
 async function pickSeries(
   filters: WatchTonightFilters,
   planned: LibraryItem[],
-  completedKeySet: Set<string>
-): Promise<Series[]> {
+  completedKeySet: Set<string>,
+  genreAffinity: Map<string, number>
+): Promise<Array<Series & { watchTonightReason: WatchTonightReason | null }>> {
   const detailed = await Promise.all(
     planned.map((item) =>
       mediaRepository.getSeriesDetails(item.mediaId).catch((error) => {
@@ -156,12 +238,12 @@ async function pickSeries(
 
   candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
 
-  return shuffle(candidates).slice(0, PICKS_PER_TYPE);
+  return rankCandidates(candidates, genreAffinity, SERIES_GENRES_BY_ID).slice(0, PICKS_PER_TYPE);
 }
 
 export const watchTonightService = {
   async pick(filters: WatchTonightFilters): Promise<WatchTonightPicks> {
-    const [plannedMovies, plannedSeries, completedKeys] = await Promise.all([
+    const [plannedMovies, plannedSeries, completedKeys, completedMovies, completedSeries] = await Promise.all([
       libraryRepository.plannedCandidates("movie", PLANNED_CANDIDATE_CAP),
       libraryRepository.plannedCandidates("series", PLANNED_CANDIDATE_CAP),
       // Only needed for the hide-watched pass — still fetched unconditionally
@@ -169,11 +251,19 @@ export const watchTonightService = {
       // would otherwise need refetching the moment the user flips that
       // preference mid-session.
       libraryRepository.idsMatchingFilters({ status: "completed" }),
+      // Feeds the genre-affinity ranking signal (rankCandidates) — the same
+      // recently-completed candidate pool the "because you liked" rail
+      // draws its own seed from, just aggregated across several titles
+      // instead of picking a single one.
+      libraryRepository.completedCandidates("movie", AFFINITY_CANDIDATE_CAP),
+      libraryRepository.completedCandidates("series", AFFINITY_CANDIDATE_CAP),
     ]);
     const completedKeySet = buildKeySetFromMediaKeys(completedKeys);
+    const movieAffinity = buildGenreAffinity(completedMovies);
+    const seriesAffinity = buildGenreAffinity(completedSeries);
     const [movies, series] = await Promise.all([
-      pickMovies(filters, plannedMovies, completedKeySet),
-      pickSeries(filters, plannedSeries, completedKeySet),
+      pickMovies(filters, plannedMovies, completedKeySet, movieAffinity),
+      pickSeries(filters, plannedSeries, completedKeySet, seriesAffinity),
     ]);
     return { movies, series };
   },
