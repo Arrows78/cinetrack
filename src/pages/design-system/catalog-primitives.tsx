@@ -4,6 +4,7 @@ import { Check, Moon, Sun } from "lucide-react";
 
 import type { AccentColor, ColorPreset } from "@/shared/constants/colors";
 import { cn } from "@/shared/lib/cn";
+import { hslVar } from "@/shared/lib/hsl-var";
 import { contrastRatio, wcagLevel } from "@/shared/utils/contrast";
 
 export function Section({
@@ -117,7 +118,7 @@ export function ColorSwatch({
     <div className="flex flex-col gap-3 rounded-panel border border-border/70 bg-card/30 p-3">
       <div
         className="flex h-24 items-center justify-center rounded-card border border-black/10"
-        style={{ backgroundColor: `hsl(var(--${bg}))`, color: `hsl(var(--${fg}))` }}
+        style={{ backgroundColor: hslVar(bg), color: hslVar(fg) }}
       >
         {/* Raw text-lg on purpose — a contrast-check swatch, not real UI copy. */}
         <span className="text-lg font-semibold">Aa</span>
