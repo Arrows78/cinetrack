@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { SeasonPage } from "../season-page";
@@ -99,6 +99,7 @@ const episode3: Episode = { id: 3, seasonNumber: 1, episodeNumber: 3, title: "In
 
 const toggleEpisodeSeenMock = vi.fn();
 const markSeasonSeenMock = vi.fn();
+const markEpisodesSeenMock = vi.fn();
 
 function makeProgressQuery(episodeIds: number[], overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -106,6 +107,7 @@ function makeProgressQuery(episodeIds: number[], overrides: Partial<Record<strin
     isSaving: false,
     toggleEpisodeSeen: toggleEpisodeSeenMock,
     markSeasonSeen: markSeasonSeenMock,
+    markEpisodesSeen: markEpisodesSeenMock,
     ...overrides,
   };
 }
@@ -129,6 +131,7 @@ describe("SeasonPage", () => {
     seasonQueryMock.mockReset().mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
     toggleEpisodeSeenMock.mockReset();
     markSeasonSeenMock.mockReset();
+    markEpisodesSeenMock.mockReset();
     progressQueryMock.mockReset().mockReturnValue(makeProgressQuery([]));
   });
 
@@ -272,5 +275,62 @@ describe("SeasonPage", () => {
       episode: episode2,
       watched: true,
     });
+  });
+
+  // Marking episode3 watched while episode1/episode2 are both still unwatched
+  // has real previous-unwatched siblings — this is the one path that opens
+  // MarkPreviousEpisodesDialog instead of calling toggleEpisodeSeen directly.
+  it("marking an episode watched with earlier unwatched siblings opens the mark-previous-episodes dialog", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(toggleEpisodeSeenMock).not.toHaveBeenCalled();
+  });
+
+  it("confirming 'include previous' calls markEpisodesSeen with every unwatched earlier episode plus this one", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markPreviousIncludeCta", { count: 2 }) }));
+
+    expect(markEpisodesSeenMock).toHaveBeenCalledWith({
+      series: defaultSeries,
+      episodes: [episode1, episode2, episode3],
+      target: episode3,
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("confirming 'only this' from the dialog calls toggleEpisodeSeen for just that episode", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markPreviousOnlyThisCta") }));
+
+    expect(toggleEpisodeSeenMock).toHaveBeenCalledWith({ series: defaultSeries, episode: episode3, watched: true });
+    expect(markEpisodesSeenMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("closing the mark-previous-episodes dialog without choosing dismisses it without calling either mutation", async () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(toggleEpisodeSeenMock).not.toHaveBeenCalled();
+    expect(markEpisodesSeenMock).not.toHaveBeenCalled();
   });
 });

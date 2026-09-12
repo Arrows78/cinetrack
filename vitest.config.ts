@@ -204,6 +204,17 @@ export default defineConfig({
         // round-trip-suppression path for our own pushes).
         "src/pages/search-page.tsx": { statements: 100, branches: 95, functions: 100, lines: 100 },
         "src/pages/tracking-page.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // The 2 uncovered statements are the `if (!seriesQuery.data) return;`
+        // guards inside onMarkOne/onMarkMany — the page already returns early
+        // on seriesQuery.isPending/isError, so seriesQuery.data is guaranteed
+        // defined by the time either callback can fire from a real user
+        // action; the guard exists only to satisfy the type checker.
+        "src/pages/episode-detail-page.tsx": { statements: 95, branches: 84, functions: 100, lines: 95 },
+        // Same unreachable-in-practice guard pattern as episode-detail-page.tsx
+        // (see its own comment above), for the identical onMarkOne/onMarkMany
+        // callbacks here.
+        "src/pages/season-page.tsx": { statements: 93, branches: 93, functions: 100, lines: 93 },
+        "src/pages/movie-detail-page.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
       },
     },
   },

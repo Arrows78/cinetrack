@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { Movie } from "@/types/media";
@@ -215,6 +215,20 @@ describe("MovieDetailPage", () => {
     expect(screen.getByTestId("hero-actions").querySelector('[data-testid="availability-alert-button"]')).toBeTruthy();
   });
 
+  it("falls back to an em dash for country, genres, and status when the movie has none", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie({ country: undefined, genres: [], status: undefined }),
+    });
+
+    renderPage();
+
+    expect(screen.getAllByText("—")).toHaveLength(3);
+  });
+
   it("links out to IMDb when the movie has an imdbId, and omits the link otherwise", () => {
     movieQueryMock.mockReturnValue({
       isPending: false,
@@ -340,5 +354,88 @@ describe("MovieDetailPage", () => {
     expect(screen.getByTestId("seen-toggle")).toBeInTheDocument();
     expect(screen.getByText("Couldn't load the watched status — try again in a moment.")).toBeInTheDocument();
     expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+  });
+
+  it("hides the add-watch-note button once the movie is already marked seen", () => {
+    seenQueryMock.mockReturnValue({
+      data: true,
+      isSaving: false,
+      isError: false,
+      toggleMovieSeen: toggleMovieSeenMock,
+    });
+
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: "Add a note" })).not.toBeInTheDocument();
+  });
+
+  it("opens the watch-note dialog, confirms with a note, and marks the movie seen with it", async () => {
+    const movie = buildMovie();
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: movie,
+    });
+
+    renderPage();
+
+    expect(screen.queryByText("Your note")).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "Add a note" }).click();
+
+    const textarea = await screen.findByLabelText("Your note");
+    fireEvent.change(textarea, { target: { value: "Watched with the family" } });
+    screen.getByRole("button", { name: "Mark as watched" }).click();
+
+    expect(toggleMovieSeenMock).toHaveBeenCalledWith({ movie, watched: true, note: "Watched with the family" });
+    await waitFor(() => expect(screen.queryByText("Your note")).not.toBeInTheDocument());
+  });
+
+  it("confirms with a blank note as no note at all, and closing without confirming doesn't call toggleMovieSeen", async () => {
+    const movie = buildMovie();
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: movie,
+    });
+
+    renderPage();
+
+    screen.getByRole("button", { name: "Add a note" }).click();
+    await screen.findByLabelText("Your note");
+
+    screen.getByRole("button", { name: "Cancel" }).click();
+    await waitFor(() => expect(screen.queryByText("Your note")).not.toBeInTheDocument());
+    expect(toggleMovieSeenMock).not.toHaveBeenCalled();
+
+    screen.getByRole("button", { name: "Add a note" }).click();
+    await screen.findByLabelText("Your note");
+    screen.getByRole("button", { name: "Mark as watched" }).click();
+
+    expect(toggleMovieSeenMock).toHaveBeenCalledWith({ movie, watched: true, note: undefined });
+  });
+
+  it("swallows a toggleMovieSeen failure from the watch-note confirm (handled by the global mutation error toast)", async () => {
+    toggleMovieSeenMock.mockRejectedValue(new Error("network down"));
+    const movie = buildMovie();
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: movie,
+    });
+
+    renderPage();
+
+    screen.getByRole("button", { name: "Add a note" }).click();
+    await screen.findByLabelText("Your note");
+    screen.getByRole("button", { name: "Mark as watched" }).click();
+
+    await waitFor(() => expect(toggleMovieSeenMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText("Your note")).not.toBeInTheDocument();
   });
 });

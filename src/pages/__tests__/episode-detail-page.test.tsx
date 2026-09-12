@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -264,5 +264,83 @@ describe("EpisodeDetailPage", () => {
 
     expect(screen.getByTestId("seen-toggle")).toBeDisabled();
     expect(screen.getByText(i18n.t("media.seenStatusUnavailable"))).toBeInTheDocument();
+  });
+
+  it("opens the add-watch-note dialog, and confirming it marks the episode seen with the typed note", async () => {
+    // episode1 (the only earlier episode) already watched, so this has no
+    // "catch up on previous episodes" gap to prompt — onConfirm goes
+    // straight to marking episode2 seen with the note.
+    progressQueryMock.mockReturnValue(makeProgressQuery([1]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.addWatchNoteAction") }));
+    const textarea = await screen.findByLabelText(i18n.t("media.addWatchNoteLabel"));
+    fireEvent.change(textarea, { target: { value: "Great episode" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markAsSeen") }));
+
+    await waitFor(() => {
+      expect(toggleEpisodeSeenMock).toHaveBeenCalledWith({
+        series: defaultSeries,
+        episode: episode2,
+        watched: true,
+        note: "Great episode",
+      });
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("prompts to catch up previous episodes, and confirming 'include previous' marks them all seen", async () => {
+    // episode1 is unwatched, so marking episode2 seen leaves a one-episode
+    // gap before it — the backlog prompt should appear instead of marking
+    // episode2 alone right away.
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("seen-toggle"));
+    await screen.findByText(i18n.t("media.markPreviousDescription", { count: 1 }));
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markPreviousIncludeCta", { count: 1 }) }));
+
+    await waitFor(() => {
+      expect(markEpisodesSeenMock).toHaveBeenCalledWith({
+        series: defaultSeries,
+        episodes: [episode1, episode2],
+        target: episode2,
+      });
+    });
+    expect(toggleEpisodeSeenMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("prompts to catch up previous episodes, and confirming 'only this one' marks just this episode seen", async () => {
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("seen-toggle"));
+    fireEvent.click(await screen.findByRole("button", { name: i18n.t("media.markPreviousOnlyThisCta") }));
+
+    await waitFor(() => {
+      expect(toggleEpisodeSeenMock).toHaveBeenCalledWith({
+        series: defaultSeries,
+        episode: episode2,
+        watched: true,
+        note: undefined,
+      });
+    });
+    expect(markEpisodesSeenMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("dismisses the catch-up-previous-episodes prompt without marking anything when closed", async () => {
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("seen-toggle"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(toggleEpisodeSeenMock).not.toHaveBeenCalled();
+    expect(markEpisodesSeenMock).not.toHaveBeenCalled();
   });
 });
