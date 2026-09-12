@@ -329,6 +329,17 @@
       "deleteConfirmTitle": "Supprimer le profil « {{name}} » ?",
       "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible."
     },
+    "sync": {
+      "title": "Synchronisation cloud",
+      "description": "Votre bibliothèque, votre historique et vos listes se synchronisent automatiquement entre tous les appareils connectés à ce compte.",
+      "checking": "Vérification de la synchronisation…",
+      "upToDate": "À jour.",
+      "pending_one": "{{count}} modification en cours de synchronisation…",
+      "pending_other": "{{count}} modifications en cours de synchronisation…",
+      "failed_one": "{{count}} modification n'a pas pu être synchronisée — réessayez.",
+      "failed_other": "{{count}} modifications n'ont pas pu être synchronisées — réessayez.",
+      "syncNow": "Synchroniser maintenant"
+    },
     "streaming": {
       "title": "Mes services de streaming",
       "description": "Choisissez les plateformes auxquelles vous êtes abonné·e — utilisé pour filtrer les alertes de disponibilité et les suggestions de « Ce soir »."

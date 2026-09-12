@@ -329,6 +329,17 @@
       "deleteConfirmTitle": "Delete the profile \"{{name}}\"?",
       "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone."
     },
+    "sync": {
+      "title": "Cloud sync",
+      "description": "Your library, history and lists sync automatically across every device signed in to this account.",
+      "checking": "Checking sync status…",
+      "upToDate": "Up to date.",
+      "pending_one": "{{count}} change syncing…",
+      "pending_other": "{{count}} changes syncing…",
+      "failed_one": "{{count}} change couldn't sync — try again.",
+      "failed_other": "{{count}} changes couldn't sync — try again.",
+      "syncNow": "Sync now"
+    },
     "streaming": {
       "title": "My streaming services",
       "description": "Pick the platforms you're subscribed to — used to filter availability alerts and Watch Tonight picks."

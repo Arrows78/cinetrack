@@ -1154,6 +1154,14 @@ export const componentInventory = [
     "Configures desktop integration and startup behavior."
   ),
   component(
+    "SyncStatusCard",
+    "components/settings/sync-status-card.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Read-only cloud-sync status (pending/failed counts) plus a manual sync-now action."
+  ),
+  component(
     "TvTimeImportCard",
     "components/settings/tvtime-import-card.tsx",
     "Settings",

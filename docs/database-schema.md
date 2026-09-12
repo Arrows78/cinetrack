@@ -4,9 +4,11 @@ The database is local SQLite, embedded in the app via Tauri — no server, every
 
 Every table's primary key is a `uuid TEXT PRIMARY KEY`, generated app-side in Rust (`new_uuid()`, a UUIDv7, in [`src-tauri/src/database/mod.rs`](../src-tauri/src/database/mod.rs)) — there is no separate internal integer id. Two tables deliberately don't follow this: `preferences` (`key` is already a stable natural primary key) and `availability_snapshots` (a pure cache keyed by `(media_id, media_type, region)`, with no row ever referenced individually).
 
-**14 active tables · 10 migrations · 1 database file per machine.**
+**18 active tables · 11 migrations · 1 database file per machine.**
 
-The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus nine follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql`, `017-library-cursor-pagination-indexes.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
+The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus ten follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql`, `017-library-cursor-pagination-indexes.sql`, `018-add-sync-outbox.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
+
+`supabase/migrations/` is a **separate** schema, in a separate Postgres database on Supabase, applied with `supabase db push` rather than by this app's own migration runner — it's the cloud-sync/community counterpart described in "Cloud sync" below, not part of the local SQLite file this document otherwise covers.
 
 ## Profiles & preferences
 
@@ -37,6 +39,8 @@ Application settings: theme, accent color, language, TMDB region, spoiler protec
 | `updated_at` | TEXT | ISO date                        |
 
 No declared relation — table intentionally independent from profiles. No `uuid`: `key` is already a stable natural key, and nothing references an individual preference row.
+
+Only some keys leave this device at all. `ACCOUNT_SCOPE_PREFERENCE_KEYS` (`src-tauri/src/preferences/models.rs`) — currently `language`, `region`, `preferredProviderIds`, `spoilerProtection`, `hideWatchedInDiscovery`, `accentColor`, `onThisDayEnabled` — are the only rows cloud sync ever queues; the rest (`theme`, `compactMode`, `sidebarCollapsed`, `notificationsEnabled`, `notifyHoursBefore`, `backupDirectory`, `activeProfileId`, ...) describe this specific installation and stay local. See "Cloud sync" below.
 
 ## Library & progress
 
@@ -262,6 +266,46 @@ The latest known list of platforms offering a title, per region — a property o
 
 No declared relation — table independent from profiles. No `uuid`: a pure cache, fully overwritten on every check, none of whose rows ever needs to be referenced individually.
 
+## Cloud sync
+
+Added by migration 18, purely local bookkeeping for the multi-device sync engine described in `docs/architecture.md`'s "Cloud sync" section — none of these four tables is itself pushed to Supabase; they only track what has been / still needs to be.
+
+### `sync_control`
+
+A single row (`id = 1`), toggling `suppress_outbox` while `apply_remote_changes` writes trusted data down from the server (or while a profile is being deleted), so those writes don't re-trigger the very triggers described below.
+
+### `sync_metadata`
+
+Generic key/value bookkeeping: this install's `deviceId` (a UUID, generated once), each profile's pull cursor (`cursor:<profile_id>`), and a one-time bootstrap marker (`bootstrap:<profile_id>`) recording that this profile's pre-existing rows have already been seeded into `sync_outbox`.
+
+### `sync_entity_state`
+
+| Column                                          | Type    | Notes                                      |
+| ----------------------------------------------- | ------- | ------------------------------------------ |
+| `profile_id`, `entity_type`, `entity_id` **PK** | TEXT    | which local row this tracks                |
+| `remote_version`                                | INTEGER | the last server-acknowledged version       |
+| `deleted`                                       | INTEGER | 0/1 — set when a remote delete was applied |
+| `updated_at`                                    | TEXT    | ISO date                                   |
+
+Lets a freshly-created local row start its very first push from `base_version = 0` (via `COALESCE(..., 0)` in every trigger) rather than guessing.
+
+### `sync_outbox`
+
+| Column                        | Type    | Notes                                                                                          |
+| ----------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `mutation_id` **PK**          | TEXT    | generated per queued change                                                                    |
+| `profile_id`                  | TEXT    | FK → `profiles.uuid`, cascades on profile delete                                               |
+| `entity_type`, `entity_id`    | TEXT    | e.g. `library_item` + that row's uuid; `account_preferences` + a preference `key`              |
+| `operation`                   | TEXT    | `upsert` or `delete`                                                                           |
+| `payload`                     | TEXT    | JSON snapshot of the row (`NULL` for a delete)                                                 |
+| `base_version`                | INTEGER | the version this change was made against — the server rejects it as a conflict if that's stale |
+| `created_at`                  | TEXT    | ISO date                                                                                       |
+| `attempt_count`, `last_error` |         | retry bookkeeping                                                                              |
+
+`UNIQUE(profile_id, entity_type, entity_id)`: a second local edit to the same row before the first has synced replaces the pending mutation in place rather than queuing two — only the latest value ever needs to reach the server. Populated by the `AFTER INSERT/UPDATE/DELETE` triggers migration 18 adds to `library_items`, `seen_movies`, `episode_progress`, `tracked_series`, `viewing_events`, `custom_lists`, `custom_list_items`, `smart_lists`, `saved_filters`, and `availability_alerts` — `account_preferences` is the one synced entity type with no trigger of its own, captured instead directly in `preferences::repository::write_preference` (see `preferences` above; `preferences` has no `profile_id` column to key a trigger's `sync_outbox` row off in the first place).
+
+Relations: a profile has `0..n` queued mutations; deleting the profile cascades.
+
 ## Conceptual model (ERD)
 
 The entities and their cardinalities — the full column lists are above. `||--o{` reads as "one, mandatory" on the double-bar side, "zero to many" on the open-crow's-foot side. Example — `PROFILES ||--o{ LIBRARY_ITEMS`: a profile has zero to many library records, a record belongs to exactly one profile.
@@ -352,6 +396,13 @@ erDiagram
         string region
         string checked_at
     }
+    SYNC_OUTBOX {
+        string mutation_id PK
+        string profile_id FK
+        string entity_type
+        string entity_id
+        string operation
+    }
 
     PROFILES ||--o{ LIBRARY_ITEMS : tracks
     PROFILES ||--o{ VIEWING_EVENTS : logs
@@ -363,13 +414,14 @@ erDiagram
     PROFILES ||--o{ SMART_LISTS : creates
     PROFILES ||--o{ SAVED_FILTERS : creates
     PROFILES ||--o{ AVAILABILITY_ALERTS : subscribes
+    PROFILES ||--o{ SYNC_OUTBOX : queues
     CUSTOM_LISTS ||--o{ CUSTOM_LIST_ITEMS : contains
 ```
 
-`PREFERENCES` and `AVAILABILITY_SNAPSHOTS` are deliberately isolated, with no FK to `PROFILES`.
+`PREFERENCES` and `AVAILABILITY_SNAPSHOTS` are deliberately isolated, with no FK to `PROFILES`. So are `sync_control`, `sync_metadata`, and `sync_entity_state` (omitted above for the same reason as `PREFERENCES`/indexes generally — pure bookkeeping, not a modeled business entity); `sync_metadata` in particular has no `profile_id` column at all.
 
 `PROFILES.supabase_user_id` deliberately has no relationship line in this diagram: its conceptual "parent", `auth.users`, lives in Supabase's own Postgres database — a separate SQLite file can neither reference nor join it. It's a correlation value, not a constraint enforced by the engine.
 
 ---
 
-The 10 relations to `profiles`, plus the one from `custom_list_items` to `custom_lists`, are declared as `ON DELETE CASCADE` — deleting a profile or a list deletes everything that belongs to it, all the way down the chain. The `profiles.supabase_user_id` link conditions access to a profile on a Supabase sign-in.
+The 11 relations to `profiles`, plus the one from `custom_list_items` to `custom_lists`, are declared as `ON DELETE CASCADE` — deleting a profile or a list deletes everything that belongs to it, all the way down the chain. The `profiles.supabase_user_id` link conditions access to a profile on a Supabase sign-in.

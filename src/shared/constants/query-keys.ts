@@ -87,5 +87,10 @@ export const queryKeys = {
     libraryMediaKeys: (profileId: string) => ["local", "libraryMediaKeys", profileId] as const,
     completedLibraryCandidates: (profileId: string) => ["local", "completedLibraryCandidates", profileId] as const,
     bestRecommendationSeed: (profileId: string) => ["local", "bestRecommendationSeed", profileId] as const,
+    // Cursor/pending/failed counts are scoped by the active local profile
+    // (see sync::service::status on the Rust side) — deviceId within the
+    // same result is the one exception, shared across every profile on this
+    // install.
+    sync: (profileId: string) => ["local", "sync", profileId] as const,
   },
 };
