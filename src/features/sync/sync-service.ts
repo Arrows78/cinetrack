@@ -152,6 +152,10 @@ export const syncService = {
     };
 
     window.addEventListener("online", wake);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") wake();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     const timer = window.setInterval(wake, PERIODIC_SYNC_MS);
 
     // Realtime is deliberately not the transport. Missing this notification
@@ -175,6 +179,7 @@ export const syncService = {
 
     return () => {
       window.removeEventListener("online", wake);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(timer);
       window.clearTimeout(debounce);
       void auth.client.removeChannel(channel);

@@ -141,9 +141,28 @@ Run the existing project checks plus these manual two-device scenarios:
 ## Mobile
 
 The sync engine itself is platform-neutral Tauri/Rust/SQLite and is suitable
-for the existing mobile-gated build. Remaining mobile release work is outside
-the sync protocol: generated iOS/Android projects, OAuth callback registration,
-CI signing, store credentials, lifecycle testing and push-notification tokens.
+for the existing mobile-gated build.
+
+Done, iOS (no Apple Developer account needed for any of this):
+
+- `src-tauri/tauri.ios.conf.json` registers the `cinetrack://` scheme under
+  `plugins.deep-link.mobile`, so `onOpenUrl`/`getCurrent`
+  (`src/features/auth/auth-provider.tsx`, `src/features/desktop/desktop-service.ts`)
+  work on iOS the same way they already do on desktop. It stays a plain custom
+  scheme (no `host`), so the deep-link plugin's `build.rs` never requests the
+  `associated-domains` entitlement — nothing to sign.
+- `syncService.initialize()` (`src/features/sync/sync-service.ts`) now also
+  wakes on `visibilitychange`, closing the gap where the periodic timer and
+  the Realtime channel both go quiet while the app is backgrounded on mobile.
+- CI builds the generated Xcode project for the iOS Simulator on every push/PR
+  (`pnpm ios:init && pnpm ios:build:sim`, `--no-sign`), catching iOS-specific
+  compile breaks with no signing identity at all.
+
+Still outside the sync protocol, and blocked on an Apple Developer account:
+real-device/TestFlight/App Store builds, CI signing secrets, store
+credentials, on-device lifecycle testing, and push-notification tokens (APNs
+requires the paid account). Android has no equivalent work yet — no
+`gen/android`, no Android CI job — by product decision, not an oversight.
 
 Do not live-sync `app.db` through Dropbox/iCloud/OneDrive. SQLite/WAL files are
 not a multi-writer cloud protocol; the outbox/change-log layer is.

@@ -242,6 +242,31 @@ describe("syncService.initialize", () => {
     expect(client.removeChannel).toHaveBeenCalledWith(channel);
   });
 
+  it("wakes on visibilitychange when the document becomes visible again", async () => {
+    vi.useFakeTimers();
+    const { client } = makeClient();
+    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    client.rpc.mockResolvedValue({ data: [], error: null });
+
+    const cleanup = await syncService.initialize(queryClientMock());
+    const callsBeforeResume = mocks.getDeviceId.mock.calls.length;
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(251);
+    expect(mocks.getDeviceId.mock.calls.length).toBe(callsBeforeResume);
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(251);
+    expect(mocks.getDeviceId.mock.calls.length).toBeGreaterThan(callsBeforeResume);
+
+    cleanup?.();
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(251);
+  });
+
   it("does not initialize outside Tauri or without an authenticated client", async () => {
     mocks.isTauriApp.mockReturnValue(false);
     await expect(syncService.initialize(queryClientMock())).resolves.toBeUndefined();

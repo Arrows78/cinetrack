@@ -125,6 +125,8 @@ CineTrack is local-first: SQLite stays the source of truth for the device it's o
 
 **What isn't built.** No UI for reviewing/resolving a conflict by hand (conflicts always auto-resolve: local-pending-wins, rebased onto the server's version for the next push round). No full cross-device identity merge for the four business-keyed entities above — the residual two-uuids-for-one-real-item split is accepted, not resolved. `src/components/settings/sync-status-card.tsx` (via `use-sync-status.ts`) is a read-only pending/failed-count surface plus a manual "sync now", not a conflict inbox.
 
+**Mobile (iOS only, no Android yet).** `src-tauri/tauri.ios.conf.json` is Tauri's platform-config-override mechanism, merged on top of `tauri.conf.json` only for iOS builds; it registers `cinetrack://` under `plugins.deep-link.mobile` so the existing `onOpenUrl`/`getCurrent` handlers work unchanged on iOS. `syncService.initialize()` also wakes on `visibilitychange`, since a backgrounded WKWebView pauses the periodic timer and Realtime channel alike. CI builds `gen/apple` (gitignored, regenerated per build) for the iOS Simulator with `--no-sign` (`pnpm ios:init` / `pnpm ios:build:sim`) — real-device/TestFlight/App Store signing waits on an Apple Developer account (see `docs/cloud-sync-community.md`'s "Mobile" section).
+
 ## Testing strategy
 
 - **Rust** (`cargo test`) exercises the crate-root domain slices directly against real, migrated SQLite pools — this is where service orchestration, cascades, transactions, query behavior, and multi-table invariants are proven, not just "does the call succeed."

@@ -29,6 +29,10 @@ pnpm cargo:format:check  # cargo fmt -- --check (what CI runs)
 pnpm cargo:test          # cargo test
 pnpm cargo:coverage      # cargo +nightly llvm-cov --branch (see the Testing section below)
 
+pnpm ios:init            # tauri ios init --ci — regenerates gen/apple (gitignored, no signing needed)
+pnpm ios:dev             # tauri ios dev — run on a simulator/device
+pnpm ios:build:sim       # tauri ios build --target aarch64-sim --no-sign --ci — unsigned simulator build, what CI runs
+
 pnpm validate:frontend # contract:check, architecture:check, lint, format:check, typecheck, test:coverage, build
 pnpm validate:backend  # cargo:check, cargo:clippy, cargo:format:check, cargo:test, contract:check-ts-bindings
 pnpm validate           # validate:frontend && validate:backend — run before considering work done
