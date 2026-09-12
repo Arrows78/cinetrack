@@ -8,7 +8,10 @@ export {
   resolveRetryableMovie,
   resolveRetryableSeries,
   resolveRetryableWatchlist,
+  undoTvTimeImport,
   type RetryableUnmatched,
   type TvTimeImportProgress,
+  type TvTimeImportSummary,
+  type TvTimeImportUndo,
 } from "./tvtime-import-service";
 export { extractCsvEntries, ZipTooLargeError } from "./zip";

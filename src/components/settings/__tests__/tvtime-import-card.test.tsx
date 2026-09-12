@@ -7,8 +7,25 @@ import i18n from "@/i18n";
 import type * as TvTimeImportServiceModule from "@/features/tvtime/tvtime-import-service";
 import type * as ZipModule from "@/features/tvtime/zip";
 import { ZipTooLargeError } from "@/features/tvtime/zip";
-import type { RetryableUnmatched } from "@/features/tvtime/tvtime-import-service";
+import type { RetryableUnmatched, TvTimeImportSummary } from "@/features/tvtime/tvtime-import-service";
 import { TvTimeImportCard } from "../tvtime-import-card";
+
+function summaryFixture(overrides: Partial<TvTimeImportSummary> = {}): TvTimeImportSummary {
+  return {
+    seriesImported: 1,
+    episodesImported: 1,
+    moviesImported: 0,
+    plannedImported: 0,
+    moviesAlreadyInLibrary: 0,
+    episodesAlreadyWatched: 0,
+    plannedAlreadyInLibrary: 0,
+    unmatched: [],
+    ambiguous: [],
+    retryable: [],
+    undo: { movies: [], series: [], planned: [] },
+    ...overrides,
+  };
+}
 
 const toastMock = vi.fn();
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
@@ -17,9 +34,14 @@ const loggerWarnMock = vi.fn();
 vi.mock("@/shared/lib/logger", () => ({ logger: { warn: (...args: unknown[]) => loggerWarnMock(...args) } }));
 
 const applyTvTimeImportMock = vi.fn();
+const undoTvTimeImportMock = vi.fn();
 vi.mock("@/features/tvtime/tvtime-import-service", async (importOriginal) => {
   const actual = await importOriginal<typeof TvTimeImportServiceModule>();
-  return { ...actual, applyTvTimeImport: (...args: unknown[]) => applyTvTimeImportMock(...args) };
+  return {
+    ...actual,
+    applyTvTimeImport: (...args: unknown[]) => applyTvTimeImportMock(...args),
+    undoTvTimeImport: (...args: unknown[]) => undoTvTimeImportMock(...args),
+  };
 });
 
 // Defaults to the real zip-extraction implementation; individual tests
@@ -64,15 +86,8 @@ describe("TvTimeImportCard", () => {
   beforeEach(async () => {
     toastMock.mockReset();
     loggerWarnMock.mockReset();
-    applyTvTimeImportMock.mockReset().mockResolvedValue({
-      seriesImported: 1,
-      episodesImported: 1,
-      moviesImported: 0,
-      plannedImported: 0,
-      unmatched: [],
-      ambiguous: [],
-      retryable: [],
-    });
+    applyTvTimeImportMock.mockReset().mockResolvedValue(summaryFixture());
+    undoTvTimeImportMock.mockReset().mockResolvedValue(undefined);
     const actualZip = await vi.importActual<typeof ZipModule>("@/features/tvtime/zip");
     extractCsvEntriesMock.mockReset().mockImplementation((file: File) => actualZip.extractCsvEntries(file));
   });
@@ -102,15 +117,7 @@ describe("TvTimeImportCard", () => {
   });
 
   it("shows a warning toast instead of success once the import reports unmatched titles", async () => {
-    applyTvTimeImportMock.mockResolvedValueOnce({
-      seriesImported: 1,
-      episodesImported: 1,
-      moviesImported: 0,
-      plannedImported: 0,
-      unmatched: ["Some Unmatched Show"],
-      ambiguous: [],
-      retryable: [],
-    });
+    applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ unmatched: ["Some Unmatched Show"] }));
     const { input } = renderCard();
 
     fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
@@ -142,15 +149,7 @@ describe("TvTimeImportCard", () => {
     const label = await screen.findByText(/A Very Long Series Title/);
     expect(label).toHaveClass("truncate");
 
-    resolveImport({
-      seriesImported: 1,
-      episodesImported: 1,
-      moviesImported: 0,
-      plannedImported: 0,
-      unmatched: [],
-      ambiguous: [],
-      retryable: [],
-    });
+    resolveImport(summaryFixture());
   });
 
   it("extracts the CSVs from a selected .zip and includes them in the pre-flight summary", async () => {
@@ -335,15 +334,7 @@ describe("TvTimeImportCard", () => {
   });
 
   it("warns instead of celebrating when the import reports ambiguous matches, and mentions the count", async () => {
-    applyTvTimeImportMock.mockResolvedValueOnce({
-      seriesImported: 1,
-      episodesImported: 1,
-      moviesImported: 0,
-      plannedImported: 0,
-      unmatched: [],
-      ambiguous: ["Guessed Title"],
-      retryable: [],
-    });
+    applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ ambiguous: ["Guessed Title"] }));
     const { input } = renderCard();
 
     fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
@@ -373,15 +364,7 @@ describe("TvTimeImportCard", () => {
         },
       },
     ];
-    applyTvTimeImportMock.mockResolvedValueOnce({
-      seriesImported: 0,
-      episodesImported: 0,
-      moviesImported: 0,
-      plannedImported: 0,
-      unmatched: [],
-      ambiguous: [],
-      retryable,
-    });
+    applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ seriesImported: 0, episodesImported: 0, retryable }));
     const { input } = renderCard();
 
     fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
@@ -393,5 +376,80 @@ describe("TvTimeImportCard", () => {
     // completion toast.
     expect(await screen.findByText("1 title needs your input")).toBeInTheDocument();
     expect(screen.getByText("Some Unresolved Movie")).toBeInTheDocument();
+  });
+
+  describe("undo last import", () => {
+    const undoDescriptor = {
+      movies: [{ id: 5, mediaType: "movie" as const, title: "Inception", overview: "", genres: [], cast: [] }],
+      series: [],
+      planned: [],
+    };
+
+    it("does not show an undo button when nothing was actually newly imported", async () => {
+      applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture());
+      const { input } = renderCard();
+
+      fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+      (await screen.findByRole("button", { name: "Import" })).click();
+
+      await waitFor(() => expect(applyTvTimeImportMock).toHaveBeenCalledTimes(1));
+      expect(screen.queryByRole("button", { name: "Undo last import" })).not.toBeInTheDocument();
+    });
+
+    it("shows an undo button after an import that wrote something, and undoes it after confirming", async () => {
+      applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ moviesImported: 1, undo: undoDescriptor }));
+      const { input } = renderCard();
+
+      fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+      (await screen.findByRole("button", { name: "Import" })).click();
+
+      const undoButton = await screen.findByRole("button", { name: "Undo last import" });
+      fireEvent.click(undoButton);
+
+      expect(await screen.findByText("Undo this import?")).toBeInTheDocument();
+      expect(undoTvTimeImportMock).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Undo import" }));
+
+      await waitFor(() => expect(undoTvTimeImportMock).toHaveBeenCalledWith(undoDescriptor));
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ description: "Import undone." }))
+      );
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Undo last import" })).not.toBeInTheDocument());
+    });
+
+    it("shows a failure toast and keeps the undo button when undoing rejects", async () => {
+      applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ moviesImported: 1, undo: undoDescriptor }));
+      undoTvTimeImportMock.mockRejectedValueOnce(new Error("undo failed"));
+      const { input } = renderCard();
+
+      fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+      (await screen.findByRole("button", { name: "Import" })).click();
+
+      fireEvent.click(await screen.findByRole("button", { name: "Undo last import" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Undo import" }));
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith(
+          expect.objectContaining({ description: "Couldn't undo the import. Try again.", variant: "error" })
+        )
+      );
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("undo failed"));
+      expect(screen.getByRole("button", { name: "Undo last import" })).toBeInTheDocument();
+    });
+
+    it("cancelling the undo ConfirmDialog closes it without calling undoTvTimeImport", async () => {
+      applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ moviesImported: 1, undo: undoDescriptor }));
+      const { input } = renderCard();
+
+      fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+      (await screen.findByRole("button", { name: "Import" })).click();
+
+      fireEvent.click(await screen.findByRole("button", { name: "Undo last import" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByText("Undo this import?")).not.toBeInTheDocument());
+      expect(undoTvTimeImportMock).not.toHaveBeenCalled();
+    });
   });
 });

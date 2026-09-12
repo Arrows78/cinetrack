@@ -14,7 +14,11 @@ export type { ImportableEpisode, ImportableMovie } from "@/features/tvtime/tvtim
 // wrapper. Active-profile resolution moved there too, so callers no longer
 // pass a profile explicitly.
 export const tvTimeImportRepository = {
-  async importSeriesProgress(series: Series, episodes: ImportableEpisode[]): Promise<number> {
+  // Returns the ids of the episodes this call actually inserted —
+  // already-watched ones are silently excluded (idempotent re-import), so
+  // callers can tell "newly imported" from "already tracked" instead of
+  // only getting a count back.
+  async importSeriesProgress(series: Series, episodes: ImportableEpisode[]): Promise<number[]> {
     return invokeTypedCommand(tvTimeImportCommands.importSeriesProgress, { series, episodes });
   },
 

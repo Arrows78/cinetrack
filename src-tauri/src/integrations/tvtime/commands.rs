@@ -14,7 +14,7 @@ pub async fn import_series_progress(
     series: SeriesInput,
     episodes: Vec<ImportableEpisode>,
     pool: State<'_, SqlitePool>,
-) -> Result<i64, ApiError> {
+) -> Result<Vec<i64>, ApiError> {
     timed("import_series_progress", async {
         let profile_id = current_profile_id(&pool).await?;
         import_series_progress_impl(&pool, &profile_id, series, episodes).await

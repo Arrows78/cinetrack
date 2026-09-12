@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::Deserialize;
 use sqlx::SqlitePool;
 
@@ -41,23 +43,49 @@ pub struct ImportableMovie {
 /// entry — that's a separate, genuine "added to library" event, not part of
 /// the watch history this comment is about.) Reuses
 /// `apply_episodes_impl` (same upsert/rollup logic as the interactive
-/// episode/season/series toggles) instead of duplicating it. Returns the
-/// number of episodes actually inserted — already-watched ones are skipped,
-/// so a re-import is idempotent.
+/// episode/season/series toggles) instead of duplicating it.
+///
+/// Returns the episode ids actually inserted — already-watched ones are
+/// skipped, so a re-import is idempotent, and the caller can tell "newly
+/// imported" from "already tracked" (the frontend surfaces the difference as
+/// a distinct duplicate count, and only the ids returned here are safe to
+/// hand to an "undo this import" action — an already-watched episode was
+/// never this import's to undo). `apply_episodes_impl` itself only reports a
+/// count, so the already-watched set is queried up front, against the exact
+/// same condition it uses internally, to recover which specific ids they
+/// were.
 pub(super) async fn import_series_progress_impl(
     pool: &SqlitePool,
     profile_id: &str,
     series: SeriesInput,
     episodes: Vec<ImportableEpisode>,
-) -> Result<i64, ApiError> {
+) -> Result<Vec<i64>, ApiError> {
     if episodes.is_empty() {
-        return Ok(0);
+        return Ok(vec![]);
     }
     let latest_watched_at = episodes
         .iter()
         .map(|episode| episode.watched_at.clone())
         .max()
         .unwrap();
+
+    let already_watched: HashSet<i64> = sqlx::query_as(
+        "SELECT episode_id FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1",
+    )
+    .bind(profile_id)
+    .bind(series.id)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?
+    .into_iter()
+    .map(|(id,): (i64,)| id)
+    .collect();
+
+    let newly_inserted_ids: Vec<i64> = episodes
+        .iter()
+        .map(|episode| episode.episode_id)
+        .filter(|id| !already_watched.contains(id))
+        .collect();
 
     let episode_inputs: Vec<EpisodeInput> = episodes
         .into_iter()
@@ -78,7 +106,9 @@ pub(super) async fn import_series_progress_impl(
         true,
         &latest_watched_at,
     )
-    .await
+    .await?;
+
+    Ok(newly_inserted_ids)
 }
 
 pub(super) async fn import_movie_seen_impl(
@@ -205,7 +235,7 @@ mod tests {
         let inserted = import_series_progress_impl(&pool, "default", series(9), episodes)
             .await
             .unwrap();
-        assert_eq!(inserted, 2);
+        assert_eq!(inserted, vec![1, 2]);
 
         let watched_at: (String,) = sqlx::query_as(
             "SELECT watched_at FROM episode_progress WHERE series_id = 9 AND episode_id = 1",
@@ -223,7 +253,7 @@ mod tests {
         let inserted = import_series_progress_impl(&pool, "default", series(9), vec![])
             .await
             .unwrap();
-        assert_eq!(inserted, 0);
+        assert!(inserted.is_empty());
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM episode_progress")
             .fetch_one(&pool)
@@ -243,7 +273,34 @@ mod tests {
         let second = import_series_progress_impl(&pool, "default", series(9), episodes)
             .await
             .unwrap();
-        assert_eq!(second, 0);
+        assert!(second.is_empty());
+    }
+
+    #[tokio::test]
+    async fn only_reports_the_episodes_actually_newly_inserted_when_some_were_already_watched() {
+        let pool = migrated_pool().await;
+        import_series_progress_impl(
+            &pool,
+            "default",
+            series(9),
+            vec![episode(1, 1, "2020-01-01T00:00:00.000Z")],
+        )
+        .await
+        .unwrap();
+
+        let inserted = import_series_progress_impl(
+            &pool,
+            "default",
+            series(9),
+            vec![
+                episode(1, 1, "2020-01-01T00:00:00.000Z"),
+                episode(2, 2, "2020-06-01T00:00:00.000Z"),
+            ],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(inserted, vec![2]);
     }
 
     #[tokio::test]

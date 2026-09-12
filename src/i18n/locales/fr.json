@@ -1013,6 +1013,10 @@
     "unresolvedEpisodeCount_other": "{{count}} ép.",
     "unmatched_one": "{{count}} titre n'a pas pu être associé",
     "unmatched_other": "{{count}} titres n'ont pas pu être associés",
+    "duplicateTitles_one": "{{count}} titre était déjà dans votre bibliothèque et a été ignoré",
+    "duplicateTitles_other": "{{count}} titres étaient déjà dans votre bibliothèque et ont été ignorés",
+    "duplicateEpisodes_one": "{{count}} épisode était déjà suivi et a été ignoré",
+    "duplicateEpisodes_other": "{{count}} épisodes étaient déjà suivis et ont été ignorés",
     "phase": {
       "series": "Séries",
       "movies": "Films",
@@ -1046,6 +1050,14 @@
       "episodeCount_other": "{{count}} épisodes",
       "pointer_one": "{{count}} titre a besoin de vous ci-dessous.",
       "pointer_other": "{{count}} titres ont besoin de vous ci-dessous."
+    },
+    "undo": {
+      "button": "Annuler le dernier import",
+      "confirmTitle": "Annuler cet import ?",
+      "confirmDescription": "Cela retire le statut « vu » de chaque film et épisode ajouté par cet import, et supprime les titres de la liste à voir qu'il a ajoutés et que vous n'avez pas encore commencés. Les titres regardés ou modifiés depuis cet import ne seront pas touchés.",
+      "confirm": "Annuler l'import",
+      "success": "Import annulé.",
+      "failed": "Impossible d'annuler l'import. Réessayez."
     }
   },
   "discovery": {

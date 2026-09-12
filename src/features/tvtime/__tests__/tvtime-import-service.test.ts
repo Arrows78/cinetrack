@@ -28,8 +28,23 @@ vi.mock("@/features/media/media-repository", async () => {
 });
 
 const librarySaveMock = vi.fn();
+const libraryHasMock = vi.fn();
+const libraryRemoveIfPlannedMock = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({
-  libraryRepository: { save: (...args: unknown[]) => librarySaveMock(...args) },
+  libraryRepository: {
+    save: (...args: unknown[]) => librarySaveMock(...args),
+    has: (...args: unknown[]) => libraryHasMock(...args),
+    removeIfPlanned: (...args: unknown[]) => libraryRemoveIfPlannedMock(...args),
+  },
+}));
+
+const toggleMovieSeenMock = vi.fn();
+const toggleEpisodesWatchedMock = vi.fn();
+vi.mock("@/features/progress/progress-repository", () => ({
+  progressRepository: {
+    toggleMovieSeen: (...args: unknown[]) => toggleMovieSeenMock(...args),
+    toggleEpisodesWatched: (...args: unknown[]) => toggleEpisodesWatchedMock(...args),
+  },
 }));
 
 const importSeriesProgressMock = vi.fn();
@@ -54,6 +69,7 @@ const {
   resolveRetryableMovie,
   resolveRetryableWatchlist,
   invalidateTvTimeImportQueries,
+  undoTvTimeImport,
 } = await import("../tvtime-import-service");
 
 function media(overrides: Partial<MediaSummary> = {}): MediaSummary {
@@ -104,7 +120,8 @@ describe("importTvTimeExport", () => {
     vi.clearAllMocks();
     exportData = emptyExportData();
     librarySaveMock.mockResolvedValue(undefined);
-    importSeriesProgressMock.mockResolvedValue(0);
+    libraryHasMock.mockResolvedValue(false);
+    importSeriesProgressMock.mockResolvedValue([]);
     importMovieSeenMock.mockResolvedValue(false);
   });
 
@@ -125,7 +142,7 @@ describe("importTvTimeExport", () => {
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
       getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
-      importSeriesProgressMock.mockResolvedValue(1);
+      importSeriesProgressMock.mockResolvedValue([100]);
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
@@ -144,6 +161,10 @@ describe("importTvTimeExport", () => {
       expect(summary.seriesImported).toBe(1);
       expect(summary.episodesImported).toBe(1);
       expect(summary.unmatched).toEqual([]);
+      expect(summary.episodesAlreadyWatched).toBe(0);
+      expect(summary.undo.series).toEqual([
+        { series: series({ id: 62 }), episodes: [{ id: 100, seasonNumber: 1, episodeNumber: 1 }] },
+      ]);
     });
 
     it("applies a favourited/rated series' signals to its library entry after import", async () => {
@@ -167,7 +188,7 @@ describe("importTvTimeExport", () => {
       const matchedSeries = series({ id: 62 });
       findSeriesByTvdbIdMock.mockResolvedValue(matchedSeries);
       getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
-      importSeriesProgressMock.mockResolvedValue(1);
+      importSeriesProgressMock.mockResolvedValue([100]);
 
       await importTvTimeExport(["irrelevant"]);
 
@@ -190,7 +211,7 @@ describe("importTvTimeExport", () => {
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
       getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
-      importSeriesProgressMock.mockResolvedValue(1);
+      importSeriesProgressMock.mockResolvedValue([100]);
 
       await importTvTimeExport(["irrelevant"]);
 
@@ -218,7 +239,7 @@ describe("importTvTimeExport", () => {
       });
       getSeriesDetailsMock.mockResolvedValue(series({ id: 2 }));
       getSeasonDetailsMock.mockResolvedValue(season(200, 1, 1, 22));
-      importSeriesProgressMock.mockResolvedValue(1);
+      importSeriesProgressMock.mockResolvedValue([200]);
 
       await importTvTimeExport(["irrelevant"]);
 
@@ -303,7 +324,7 @@ describe("importTvTimeExport", () => {
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
       // Season lookup only returns episode 1 — episode 2 is unresolved.
       getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
-      importSeriesProgressMock.mockResolvedValue(1);
+      importSeriesProgressMock.mockResolvedValue([100]);
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
@@ -328,7 +349,7 @@ describe("importTvTimeExport", () => {
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
       getSeasonDetailsMock.mockRejectedValue(new Error("not found on TMDB"));
-      importSeriesProgressMock.mockResolvedValue(0);
+      importSeriesProgressMock.mockResolvedValue([]);
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
@@ -358,12 +379,14 @@ describe("importTvTimeExport", () => {
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
       getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
-      importSeriesProgressMock.mockResolvedValue(0);
+      importSeriesProgressMock.mockResolvedValue([]);
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
       expect(summary.seriesImported).toBe(0);
       expect(summary.episodesImported).toBe(0);
+      expect(summary.episodesAlreadyWatched).toBe(1);
+      expect(summary.undo.series).toEqual([]);
     });
 
     it("catches an unexpected error resolving a series and reports it as unmatched", async () => {
@@ -449,6 +472,9 @@ describe("importTvTimeExport", () => {
         genres: [],
       });
       expect(summary.moviesImported).toBe(1);
+      expect(summary.undo.movies).toEqual([
+        media({ id: 5, mediaType: "movie", title: "Inception", year: 2010, runtime: 148 }),
+      ]);
     });
 
     it("prefers the export's own runtime over TMDB's when both are present", async () => {
@@ -498,6 +524,8 @@ describe("importTvTimeExport", () => {
       const summary = await importTvTimeExport(["irrelevant"]);
 
       expect(summary.moviesImported).toBe(0);
+      expect(summary.moviesAlreadyInLibrary).toBe(1);
+      expect(summary.undo.movies).toEqual([]);
     });
 
     it("matches past a diacritic/punctuation difference between the export and TMDB's title", async () => {
@@ -616,6 +644,26 @@ describe("importTvTimeExport", () => {
         { status: "planned" }
       );
       expect(summary.plannedImported).toBe(1);
+      expect(summary.plannedAlreadyInLibrary).toBe(0);
+      expect(summary.undo.planned).toEqual([{ mediaId: 9, mediaType: "movie" }]);
+    });
+
+    it("does not count an entry already in the library as newly planned, and leaves it out of undo", async () => {
+      exportData = { ...emptyExportData(), watchlist: [{ title: "Dune", mediaType: "movie", year: 2021 }] };
+      searchMock.mockResolvedValue({
+        page: 1,
+        totalPages: 1,
+        totalResults: 1,
+        results: [media({ id: 9, mediaType: "movie", title: "Dune", year: 2021 })],
+      });
+      libraryHasMock.mockResolvedValue(true);
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(librarySaveMock).toHaveBeenCalled();
+      expect(summary.plannedImported).toBe(0);
+      expect(summary.plannedAlreadyInLibrary).toBe(1);
+      expect(summary.undo.planned).toEqual([]);
     });
 
     it("reports an unmatched entry without saving anything", async () => {
@@ -756,7 +804,7 @@ describe("importTvTimeExport", () => {
         ],
       };
       getSeasonDetailsMock.mockResolvedValue(season(500, 1, 1));
-      importSeriesProgressMock.mockResolvedValue(1);
+      importSeriesProgressMock.mockResolvedValue([500]);
 
       const result = await resolveRetryableSeries(item, series({ id: 77 }));
 
@@ -821,7 +869,7 @@ describe("importTvTimeExport", () => {
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
       getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
-      importSeriesProgressMock.mockResolvedValue(1);
+      importSeriesProgressMock.mockResolvedValue([100]);
       searchMock.mockResolvedValue({
         page: 1,
         totalPages: 1,
@@ -942,5 +990,71 @@ describe("invalidateTvTimeImportQueries", () => {
     // Never the bare ["local"] prefix, which would also evict every other
     // profile's unrelated cached data.
     expect(invalidatedKeys.some((key) => key.length === 1)).toBe(false);
+  });
+});
+
+describe("undoTvTimeImport", () => {
+  beforeEach(() => {
+    toggleMovieSeenMock.mockReset().mockResolvedValue(undefined);
+    toggleEpisodesWatchedMock.mockReset().mockResolvedValue(0);
+    libraryRemoveIfPlannedMock.mockReset().mockResolvedValue(true);
+  });
+
+  it("unmarks every undone movie as unwatched", async () => {
+    const movie = media({ id: 5, mediaType: "movie", title: "Inception" });
+
+    await undoTvTimeImport({ movies: [movie], series: [], planned: [] });
+
+    expect(toggleMovieSeenMock).toHaveBeenCalledWith(movie, false);
+  });
+
+  it("unmarks every undone series' imported episodes as unwatched, in one call per series", async () => {
+    const undoneSeries = series({ id: 62 });
+
+    await undoTvTimeImport({
+      movies: [],
+      series: [
+        {
+          series: undoneSeries,
+          episodes: [
+            { id: 100, seasonNumber: 1, episodeNumber: 1 },
+            { id: 101, seasonNumber: 1, episodeNumber: 2 },
+          ],
+        },
+      ],
+      planned: [],
+    });
+
+    expect(toggleEpisodesWatchedMock).toHaveBeenCalledTimes(1);
+    expect(toggleEpisodesWatchedMock).toHaveBeenCalledWith(
+      undoneSeries,
+      [
+        expect.objectContaining({ id: 100, seasonNumber: 1, episodeNumber: 1 }),
+        expect.objectContaining({ id: 101, seasonNumber: 1, episodeNumber: 2 }),
+      ],
+      false
+    );
+  });
+
+  it("removes every undone planned entry only if it's still planned", async () => {
+    await undoTvTimeImport({
+      movies: [],
+      series: [],
+      planned: [
+        { mediaId: 9, mediaType: "movie" },
+        { mediaId: 62, mediaType: "series" },
+      ],
+    });
+
+    expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(9, "movie");
+    expect(libraryRemoveIfPlannedMock).toHaveBeenCalledWith(62, "series");
+  });
+
+  it("undoes an empty descriptor as a no-op", async () => {
+    await undoTvTimeImport({ movies: [], series: [], planned: [] });
+
+    expect(toggleMovieSeenMock).not.toHaveBeenCalled();
+    expect(toggleEpisodesWatchedMock).not.toHaveBeenCalled();
+    expect(libraryRemoveIfPlannedMock).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Tv, Upload } from "lucide-react";
+import { Tv, Undo2, Upload } from "lucide-react";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +16,13 @@ import {
   MAX_TVTIME_FILES,
   MAX_TVTIME_TOTAL_BYTES,
   parseTvTimeFiles,
+  undoTvTimeImport,
   ZipTooLargeError,
   type RetryableUnmatched,
   type TvTimeExport,
   type TvTimeFile,
   type TvTimeImportProgress,
+  type TvTimeImportUndo,
 } from "@/features/tvtime";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { TvTimeUnmatchedResolver } from "./tvtime-unmatched-resolver";
@@ -44,8 +46,12 @@ export function TvTimeImportCard() {
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [progress, setProgress] = useState<TvTimeImportProgress | null>(null);
   const [retryableItems, setRetryableItems] = useState<RetryableUnmatched[]>([]);
+  const [lastImportUndo, setLastImportUndo] = useState<TvTimeImportUndo | null>(null);
+  const [confirmingUndo, setConfirmingUndo] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
 
   const running = progress !== null;
+  const hasUndoableImport = lastImportUndo !== null;
 
   const expandFiles = async (files: File[]): Promise<TvTimeFile[]> => {
     const expanded: TvTimeFile[] = [];
@@ -117,6 +123,9 @@ export function TvTimeImportCard() {
       const result = await applyTvTimeImport(data, setProgress);
       await invalidateTvTimeImportQueries(queryClient, profileId);
       setRetryableItems(result.retryable);
+      const duplicateTitles = result.moviesAlreadyInLibrary + result.plannedAlreadyInLibrary;
+      const hasUndo = result.undo.movies.length > 0 || result.undo.series.length > 0 || result.undo.planned.length > 0;
+      setLastImportUndo(hasUndo ? result.undo : null);
       toast({
         description: (
           <div>
@@ -131,6 +140,16 @@ export function TvTimeImportCard() {
             {result.ambiguous.length ? (
               <p className="mt-1 text-caption opacity-90">
                 {t("tvtimeImport.ambiguous", { count: result.ambiguous.length })}
+              </p>
+            ) : null}
+            {duplicateTitles > 0 ? (
+              <p className="mt-1 text-caption opacity-90">
+                {t("tvtimeImport.duplicateTitles", { count: duplicateTitles })}
+              </p>
+            ) : null}
+            {result.episodesAlreadyWatched > 0 ? (
+              <p className="mt-1 text-caption opacity-90">
+                {t("tvtimeImport.duplicateEpisodes", { count: result.episodesAlreadyWatched })}
               </p>
             ) : null}
             {result.retryable.length ? (
@@ -155,6 +174,23 @@ export function TvTimeImportCard() {
       toast({ description: t("tvtimeImport.failed"), variant: "error" });
     } finally {
       setProgress(null);
+    }
+  };
+
+  const confirmUndo = async () => {
+    if (!lastImportUndo) return;
+    setConfirmingUndo(false);
+    setIsUndoing(true);
+    try {
+      await undoTvTimeImport(lastImportUndo);
+      await invalidateTvTimeImportQueries(queryClient, profileId);
+      setLastImportUndo(null);
+      toast({ description: t("tvtimeImport.undo.success"), variant: "success" });
+    } catch (undoError) {
+      logger.warn(`TV Time import undo failed: ${undoError instanceof Error ? undoError.message : String(undoError)}`);
+      toast({ description: t("tvtimeImport.undo.failed"), variant: "error" });
+    } finally {
+      setIsUndoing(false);
     }
   };
 
@@ -223,6 +259,19 @@ export function TvTimeImportCard() {
               multiple
               onChange={(event) => void prepareImport(event.target.files)}
             />
+            {hasUndoableImport ? (
+              <Button
+                type="button"
+                variant="ghost"
+                isLoading={isUndoing}
+                aria-busy={isUndoing}
+                disabled={running || isPreparing}
+                onClick={() => setConfirmingUndo(true)}
+              >
+                {!isUndoing && <Undo2 className="size-4" />}
+                {t("tvtimeImport.undo.button")}
+              </Button>
+            ) : null}
           </div>
           {progress && progress.total > 0 ? (
             // A fixed-height row, own line, with the current title truncated
@@ -252,6 +301,18 @@ export function TvTimeImportCard() {
           cancelLabel={t("common.cancel")}
           confirmVariant="default"
           onConfirm={() => void confirmImport()}
+        />
+
+        <ConfirmDialog
+          open={confirmingUndo}
+          onOpenChange={(open) => !open && !isUndoing && setConfirmingUndo(false)}
+          title={t("tvtimeImport.undo.confirmTitle")}
+          description={t("tvtimeImport.undo.confirmDescription")}
+          confirmLabel={t("tvtimeImport.undo.confirm")}
+          cancelLabel={t("common.cancel")}
+          confirmVariant="destructive"
+          isConfirming={isUndoing}
+          onConfirm={() => void confirmUndo()}
         />
       </Card>
 

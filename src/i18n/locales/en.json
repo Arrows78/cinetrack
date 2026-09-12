@@ -1013,6 +1013,10 @@
     "unresolvedEpisodeCount_other": "{{count}} eps.",
     "unmatched_one": "{{count}} title could not be matched",
     "unmatched_other": "{{count}} titles could not be matched",
+    "duplicateTitles_one": "{{count}} title was already in your library and was skipped",
+    "duplicateTitles_other": "{{count}} titles were already in your library and were skipped",
+    "duplicateEpisodes_one": "{{count}} episode was already tracked and was skipped",
+    "duplicateEpisodes_other": "{{count}} episodes were already tracked and were skipped",
     "phase": {
       "series": "Series",
       "movies": "Movies",
@@ -1046,6 +1050,14 @@
       "episodeCount_other": "{{count}} episodes",
       "pointer_one": "{{count}} title needs your input below.",
       "pointer_other": "{{count}} titles need your input below."
+    },
+    "undo": {
+      "button": "Undo last import",
+      "confirmTitle": "Undo this import?",
+      "confirmDescription": "This unmarks every movie and episode this import added as watched, and removes any watchlist titles it added that you haven't started watching yet. Titles you've watched or edited since this import won't be touched.",
+      "confirm": "Undo import",
+      "success": "Import undone.",
+      "failed": "Couldn't undo the import. Try again."
     }
   },
   "discovery": {

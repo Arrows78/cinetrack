@@ -2,10 +2,11 @@ import type { QueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { TmdbRequestError, mediaRepository } from "@/features/media/media-repository";
 import { libraryRepository } from "@/features/library/library-repository";
+import { progressRepository } from "@/features/progress/progress-repository";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import { normalizeTitle } from "@/shared/utils/text";
 import { queryKeys } from "@/shared/constants/query-keys";
-import type { MediaSummary, Series } from "@/types/media";
+import type { Episode, MediaSummary, Series } from "@/types/media";
 import {
   emptyExport,
   normalizeExport,
@@ -83,11 +84,42 @@ export interface RetryableWatchlistEntry {
 }
 export type RetryableUnmatched = RetryableSeries | RetryableMovie | RetryableWatchlistEntry;
 
+/** Minimal per-episode identity — enough to build the `Episode` shape `progressRepository.toggleEpisodesWatched` needs when undoing, without carrying every TMDB detail field around in the undo descriptor. */
+export interface TvTimeImportUndoEpisode {
+  id: number;
+  seasonNumber: number;
+  episodeNumber: number;
+}
+
+export interface TvTimeImportUndoSeries {
+  series: Series;
+  /** Only the episodes this import run actually inserted — never one that was already tracked before this run, which undo must leave alone. */
+  episodes: TvTimeImportUndoEpisode[];
+}
+
+export interface TvTimeImportUndo {
+  /** Movies this run newly marked seen — never one that was already in the library, which undo must leave alone. */
+  movies: MediaSummary[];
+  series: TvTimeImportUndoSeries[];
+  /** Watchlist ("planned") titles this run newly added — never one already in the library in any status. */
+  planned: Array<{ mediaId: number; mediaType: "movie" | "series" }>;
+}
+
+function emptyUndo(): TvTimeImportUndo {
+  return { movies: [], series: [], planned: [] };
+}
+
 export interface TvTimeImportSummary {
   seriesImported: number;
   episodesImported: number;
   moviesImported: number;
   plannedImported: number;
+  /** Matched fine, but already seen — the import skipped it rather than duplicating it (see import_movie_seen_impl's idempotency guard). */
+  moviesAlreadyInLibrary: number;
+  /** Matched fine, but already tracked as watched — same idempotency guard, per episode (see import_series_progress_impl). */
+  episodesAlreadyWatched: number;
+  /** Matched fine, but already in the library in some status — the watchlist add was skipped, not duplicated. */
+  plannedAlreadyInLibrary: number;
   unmatched: string[];
   /**
    * Matched, but only by picking the most likely of several same-titled
@@ -97,6 +129,13 @@ export interface TvTimeImportSummary {
   ambiguous: string[];
   /** Structured version of the `unmatched` titles a user can actually retry. */
   retryable: RetryableUnmatched[];
+  /**
+   * Exactly what this run newly wrote — feeds undoTvTimeImport(). Kept only
+   * for the lifetime of this one import call (never persisted), so "undo"
+   * is only ever offered for the import that just finished, not a past one
+   * from an earlier session.
+   */
+  undo: TvTimeImportUndo;
 }
 
 const CONCURRENCY = 3;
@@ -231,7 +270,7 @@ async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): 
 async function attachEpisodesToSeries(
   series: Series,
   episodes: TvTimeEpisode[]
-): Promise<{ episodesImported: number; unresolvedCount: number }> {
+): Promise<{ insertedEpisodes: ImportableEpisode[]; attemptedCount: number; unresolvedCount: number }> {
   const seasonNumbers = [...new Set(episodes.map((episode) => episode.seasonNumber))];
   const episodeIdByCode = new Map<string, { id: number; runtime: number | null }>();
   for (const seasonNumber of seasonNumbers) {
@@ -265,8 +304,9 @@ async function attachEpisodesToSeries(
     });
   }
 
-  const inserted = await tvTimeImportRepository.importSeriesProgress(series, importable);
-  return { episodesImported: inserted, unresolvedCount };
+  const insertedIds = new Set(await tvTimeImportRepository.importSeriesProgress(series, importable));
+  const insertedEpisodes = importable.filter((episode) => insertedIds.has(episode.episodeId));
+  return { insertedEpisodes, attemptedCount: importable.length, unresolvedCount };
 }
 
 // Favourite/rating apply to the show itself, independent of whether any of
@@ -305,15 +345,24 @@ async function importOneSeries(
     return;
   }
 
-  const { episodesImported, unresolvedCount } = await attachEpisodesToSeries(resolved.series, episodes);
+  const { insertedEpisodes, attemptedCount, unresolvedCount } = await attachEpisodesToSeries(resolved.series, episodes);
   if (unresolvedCount > 0) {
     summary.unmatched.push(
       `${seriesName} (${i18n.t("tvtimeImport.unresolvedEpisodeCount", { count: unresolvedCount })})`
     );
   }
-  if (episodesImported > 0) {
+  summary.episodesAlreadyWatched += attemptedCount - insertedEpisodes.length;
+  if (insertedEpisodes.length > 0) {
     summary.seriesImported += 1;
-    summary.episodesImported += episodesImported;
+    summary.episodesImported += insertedEpisodes.length;
+    summary.undo.series.push({
+      series: resolved.series,
+      episodes: insertedEpisodes.map((episode) => ({
+        id: episode.episodeId,
+        seasonNumber: episode.seasonNumber,
+        episodeNumber: episode.episodeNumber,
+      })),
+    });
   }
 
   // Best-effort, after the episode import: a failure here shouldn't undo
@@ -334,8 +383,8 @@ export async function resolveRetryableSeries(
   item: RetryableSeries,
   series: Series
 ): Promise<{ episodesImported: number }> {
-  const { episodesImported } = await attachEpisodesToSeries(series, item.episodes);
-  return { episodesImported };
+  const { insertedEpisodes } = await attachEpisodesToSeries(series, item.episodes);
+  return { episodesImported: insertedEpisodes.length };
 }
 
 async function importMatchedMovie(movie: TvTimeMovie, match: MediaSummary): Promise<boolean> {
@@ -378,9 +427,13 @@ export async function applyTvTimeImport(
     episodesImported: 0,
     moviesImported: 0,
     plannedImported: 0,
+    moviesAlreadyInLibrary: 0,
+    episodesAlreadyWatched: 0,
+    plannedAlreadyInLibrary: 0,
     unmatched: [],
     ambiguous: [],
     retryable: [],
+    undo: emptyUndo(),
   };
 
   const episodesBySeries = new Map<string, TvTimeEpisode[]>();
@@ -422,7 +475,12 @@ export async function applyTvTimeImport(
           summary.retryable.push(retryableMovieFrom(movie));
         } else {
           const inserted = await importMatchedMovie(movie, match);
-          if (inserted) summary.moviesImported += 1;
+          if (inserted) {
+            summary.moviesImported += 1;
+            summary.undo.movies.push(match);
+          } else {
+            summary.moviesAlreadyInLibrary += 1;
+          }
         }
       } catch {
         summary.unmatched.push(movie.title);
@@ -450,8 +508,14 @@ export async function applyTvTimeImport(
           summary.unmatched.push(entry.title);
           summary.retryable.push(retryableWatchlistFrom(entry));
         } else {
+          const alreadyInLibrary = await libraryRepository.has(match.id, match.mediaType);
           await libraryRepository.save(match, { status: "planned" });
-          summary.plannedImported += 1;
+          if (alreadyInLibrary) {
+            summary.plannedAlreadyInLibrary += 1;
+          } else {
+            summary.plannedImported += 1;
+            summary.undo.planned.push({ mediaId: match.id, mediaType: match.mediaType });
+          }
         }
       } catch {
         summary.unmatched.push(entry.title);
@@ -468,6 +532,52 @@ export async function applyTvTimeImport(
 
 export { parseTvTimeFiles };
 export type { ParsedTvTimeFiles, TvTimeFile };
+
+/**
+ * Reverts exactly what one `applyTvTimeImport` call wrote — nothing else.
+ * Reuses the same commands the interactive UI already uses to mark
+ * something unwatched/unplanned (`progressRepository.toggleMovieSeen`/
+ * `toggleEpisodesWatched` with `watched: false`, `libraryRepository.
+ * removeIfPlanned`), so undoing produces exactly the same state as if the
+ * user had manually unmarked each of those titles — no bespoke rollback
+ * logic to keep in sync with the interactive toggles' own behavior.
+ *
+ * `removeIfPlanned` only removes a library row still in the default
+ * `planned` status (see library/repository.rs) — safe even though
+ * `undo.planned` is already scoped to titles this import newly added: if
+ * the user has since started watching one, undo leaves it alone rather
+ * than deleting real progress.
+ */
+export async function undoTvTimeImport(undo: TvTimeImportUndo): Promise<void> {
+  await mapWithConcurrency(
+    undo.movies,
+    async (movie) => {
+      await progressRepository.toggleMovieSeen(movie, false);
+    },
+    CONCURRENCY
+  );
+  await mapWithConcurrency(
+    undo.series,
+    async (item) => {
+      const episodes: Episode[] = item.episodes.map((episode) => ({
+        id: episode.id,
+        seasonNumber: episode.seasonNumber,
+        episodeNumber: episode.episodeNumber,
+        title: "",
+        overview: "",
+      }));
+      await progressRepository.toggleEpisodesWatched(item.series, episodes, false);
+    },
+    CONCURRENCY
+  );
+  await mapWithConcurrency(
+    undo.planned,
+    async (item) => {
+      await libraryRepository.removeIfPlanned(item.mediaId, item.mediaType);
+    },
+    CONCURRENCY
+  );
+}
 
 // A bulk import (or resolving one retryable/unmatched item afterwards) can
 // touch history, library, tracked series, stats, tracking/calendar and
