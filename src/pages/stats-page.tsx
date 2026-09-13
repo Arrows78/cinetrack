@@ -36,6 +36,7 @@ import { MonthlyRecapSection } from "@/components/stats/monthly-recap-section";
 import { RewatchAnalyticsSection } from "@/components/stats/rewatch-analytics-section";
 import { RatingDistributionSection } from "@/components/stats/rating-distribution-section";
 import { WatchMilestonesSection } from "@/components/stats/watch-milestones-section";
+import { ExportPreviewDialog } from "@/components/stats/export-preview-dialog";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { StatCard } from "@/components/media/primitives/stat-card";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -73,6 +74,9 @@ export function StatsPage() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [isExportingWrapped, setIsExportingWrapped] = useState(false);
+  const [isSavingWrapped, setIsSavingWrapped] = useState(false);
+  const [wrappedPreviewBlob, setWrappedPreviewBlob] = useState<Blob | null>(null);
+  const [wrappedPreviewUrl, setWrappedPreviewUrl] = useState<string | null>(null);
   const stats = useStats();
   const wrapped = useWrapped(selectedYear);
   const forecast = useWatchForecast();
@@ -89,6 +93,12 @@ export function StatsPage() {
   useEffect(() => {
     if (yearlyActivity.isError) logger.warn("Yearly activity failed to load — that section will stay hidden.");
   }, [yearlyActivity.isError]);
+
+  const closeWrappedPreview = () => {
+    if (wrappedPreviewUrl) URL.revokeObjectURL(wrappedPreviewUrl);
+    setWrappedPreviewUrl(null);
+    setWrappedPreviewBlob(null);
+  };
 
   const exportWrapped = async () => {
     if (!wrapped.data) return;
@@ -110,14 +120,29 @@ export function StatsPage() {
           favouriteGenreLabel: t("stats.favouriteGenre"),
         }
       );
-      await downloadWrappedCard(blob, wrapped.data.year);
+      setWrappedPreviewBlob(blob);
+      setWrappedPreviewUrl(URL.createObjectURL(blob));
+    } catch (error) {
+      logger.warn(`Wrapped export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast({ description: displayMessage(error, t("stats.exportFailed")), variant: "error" });
+    } finally {
+      setIsExportingWrapped(false);
+    }
+  };
+
+  const confirmExportWrapped = async () => {
+    if (!wrappedPreviewBlob || !wrapped.data) return;
+    setIsSavingWrapped(true);
+    try {
+      await downloadWrappedCard(wrappedPreviewBlob, wrapped.data.year);
       toast({ description: t("stats.exportSuccess"), variant: "success" });
+      closeWrappedPreview();
     } catch (error) {
       if (error instanceof ShareCancelledError) return;
       logger.warn(`Wrapped export failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ description: displayMessage(error, t("stats.exportFailed")), variant: "error" });
     } finally {
-      setIsExportingWrapped(false);
+      setIsSavingWrapped(false);
     }
   };
 
@@ -484,6 +509,15 @@ export function StatsPage() {
           </article>
         </Panel>
       </section>
+
+      <ExportPreviewDialog
+        open={isExportingWrapped || wrappedPreviewUrl !== null}
+        onOpenChange={(open) => !open && closeWrappedPreview()}
+        title={t("stats.exportPreviewTitle")}
+        imageUrl={wrappedPreviewUrl}
+        isConfirming={isSavingWrapped}
+        onConfirm={() => void confirmExportWrapped()}
+      />
     </div>
   );
 }

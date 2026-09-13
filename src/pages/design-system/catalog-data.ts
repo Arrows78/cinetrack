@@ -1138,6 +1138,14 @@ export const componentInventory = [
     "Threshold-crossing achievements (episodes, hours, completed series) based on current watch state."
   ),
   component(
+    "ExportPreviewDialog",
+    "components/stats/export-preview-dialog.tsx",
+    "Stats",
+    "pattern",
+    "live",
+    "Shows a Wrapped/monthly-recap/milestone card before it's saved or shared, instead of downloading it blind."
+  ),
+  component(
     "AboutSettings",
     "components/settings/about-settings.tsx",
     "Settings",

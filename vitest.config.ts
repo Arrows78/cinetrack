@@ -222,6 +222,7 @@ export default defineConfig({
           functions: 100,
           lines: 100,
         },
+        "src/components/stats/export-preview-dialog.tsx": { statements: 100, branches: 90, functions: 100, lines: 100 },
       },
     },
   },

@@ -101,6 +101,8 @@
     "unknownDate": "Unknown date",
     "confirm": "Confirm",
     "cancel": "Cancel",
+    "download": "Download",
+    "share": "Share",
     "durationHoursMinutes": "{{hours}}h {{minutes}}",
     "durationMinutes": "{{minutes}} min",
     "episodeCode": "S{{season}}E{{episode}}",
@@ -467,6 +469,7 @@
     "rewatchCount_other": "Watched again {{count}} times",
     "favouriteGenreByRating": "Highest-rated genre",
     "exportWrapped": "Export as image",
+    "exportPreviewTitle": "Preview before saving",
     "exportSuccess": "Wrapped image saved",
     "exportFailed": "Couldn't export the Wrapped image",
     "heatmap": {

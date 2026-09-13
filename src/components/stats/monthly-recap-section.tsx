@@ -10,6 +10,7 @@ import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { PartialErrorState } from "@/components/states/partial-error-state";
+import { ExportPreviewDialog } from "@/components/stats/export-preview-dialog";
 import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
@@ -34,7 +35,16 @@ export function MonthlyRecapSection() {
   const { t, i18n } = useTranslation();
   const [month, setMonth] = useState(currentMonthLabel);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSavingExport, setIsSavingExport] = useState(false);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const recap = useMonthlyRecap(month);
+
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewBlob(null);
+  };
 
   useEffect(() => {
     if (recap.isError) {
@@ -92,14 +102,29 @@ export function MonthlyRecapSection() {
           biggestBingeLabel: t("stats.monthlyRecap.biggestBingeCardLabel"),
         }
       );
-      await downloadMonthlyRecapCard(blob, month);
+      setPreviewBlob(blob);
+      setPreviewUrl(URL.createObjectURL(blob));
+    } catch (error) {
+      logger.warn(`Monthly recap export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast({ description: displayMessage(error, t("stats.monthlyRecap.exportFailed")), variant: "error" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const confirmExportRecap = async () => {
+    if (!previewBlob) return;
+    setIsSavingExport(true);
+    try {
+      await downloadMonthlyRecapCard(previewBlob, month);
       toast({ description: t("stats.monthlyRecap.exportSuccess"), variant: "success" });
+      closePreview();
     } catch (error) {
       if (error instanceof ShareCancelledError) return;
       logger.warn(`Monthly recap export failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ description: displayMessage(error, t("stats.monthlyRecap.exportFailed")), variant: "error" });
     } finally {
-      setIsExporting(false);
+      setIsSavingExport(false);
     }
   };
 
@@ -183,6 +208,15 @@ export function MonthlyRecapSection() {
           </p>
         </Tile>
       </div>
+
+      <ExportPreviewDialog
+        open={isExporting || previewUrl !== null}
+        onOpenChange={(open) => !open && closePreview()}
+        title={t("stats.exportPreviewTitle")}
+        imageUrl={previewUrl}
+        isConfirming={isSavingExport}
+        onConfirm={() => void confirmExportRecap()}
+      />
     </Panel>
   );
 }

@@ -154,6 +154,9 @@ describe("StatsPage", () => {
     downloadWrappedCardMock.mockReset();
     toastMock.mockReset();
     loggerWarnMock.mockReset();
+
+    URL.createObjectURL = vi.fn(() => "blob:mock-wrapped-url");
+    URL.revokeObjectURL = vi.fn();
   });
 
   it("shows a remote error state when stats or wrapped fail, and retry refetches both", async () => {
@@ -312,26 +315,39 @@ describe("StatsPage", () => {
     await waitFor(() => expect(wrappedMock).toHaveBeenCalledWith(CURRENT_YEAR - 1));
   });
 
-  it("exports the wrapped card: renders, downloads, then shows a success toast", async () => {
+  it("renders the wrapped card and opens a preview dialog before saving anything", async () => {
     renderPage();
     await screen.findByText("Stats");
 
     fireEvent.click(screen.getByRole("button", { name: "Export as image" }));
 
-    await waitFor(() => expect(downloadWrappedCardMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(renderWrappedCardMock).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(downloadWrappedCardMock).not.toHaveBeenCalled();
 
-    expect(renderWrappedCardMock).toHaveBeenCalledTimes(1);
     const [data] = renderWrappedCardMock.mock.calls[0] as [{ year: number }];
     expect(data.year).toBe(CURRENT_YEAR);
+  });
+
+  it("exports the wrapped card: renders, previews, downloads on confirm, then shows a success toast", async () => {
+    renderPage();
+    await screen.findByText("Stats");
+
+    fireEvent.click(screen.getByRole("button", { name: "Export as image" }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => expect(downloadWrappedCardMock).toHaveBeenCalledTimes(1));
 
     const [blob, year] = downloadWrappedCardMock.mock.calls[0] as [Blob, number];
     expect(year).toBe(CURRENT_YEAR);
     expect(blob).toBeInstanceOf(Blob);
 
     expect(toastMock).toHaveBeenCalledWith({ description: "Wrapped image saved", variant: "success" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("shows a translated error toast and logs a warning when the export fails", async () => {
+  it("shows a translated error toast and logs a warning when rendering the card fails", async () => {
     renderWrappedCardMock.mockReset().mockRejectedValue(new Error("canvas exploded"));
     renderPage();
     await screen.findByText("Stats");
@@ -343,6 +359,22 @@ describe("StatsPage", () => {
     expect(downloadWrappedCardMock).not.toHaveBeenCalled();
     expect(toastMock).toHaveBeenCalledWith({ description: "Couldn't export the Wrapped image", variant: "error" });
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("canvas exploded"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows a translated error toast and logs a warning when saving the previewed card fails", async () => {
+    downloadWrappedCardMock.mockReset().mockRejectedValue(new Error("disk full"));
+    renderPage();
+    await screen.findByText("Stats");
+
+    fireEvent.click(screen.getByRole("button", { name: "Export as image" }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => expect(toastMock).toHaveBeenCalled());
+
+    expect(toastMock).toHaveBeenCalledWith({ description: "Couldn't export the Wrapped image", variant: "error" });
+    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("disk full"));
   });
 
   it("has no detectable accessibility violations once stats have loaded", async () => {

@@ -52,6 +52,8 @@ describe("MonthlyRecapSection", () => {
     downloadMonthlyRecapCardMock.mockReset();
     renderMonthlyRecapCardMock.mockReset();
     toastMock.mockReset();
+    URL.createObjectURL = vi.fn(() => "blob:mock-recap-url");
+    URL.revokeObjectURL = vi.fn();
   });
 
   it("renders nothing while loading", () => {
@@ -147,7 +149,19 @@ describe("MonthlyRecapSection", () => {
     expect(lastCall?.[0]).toBe(initialMonth);
   });
 
-  it("exports the selected recap and reports success", async () => {
+  it("renders the recap card and opens a preview dialog before saving anything", async () => {
+    useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
+    renderMonthlyRecapCardMock.mockResolvedValue(new Blob(["recap"], { type: "image/png" }));
+    render(<MonthlyRecapSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(renderMonthlyRecapCardMock).toHaveBeenCalledOnce());
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(downloadMonthlyRecapCardMock).not.toHaveBeenCalled();
+  });
+
+  it("saves the previewed recap and reports success once the dialog is confirmed", async () => {
     useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
     const blob = new Blob(["recap"], { type: "image/png" });
     renderMonthlyRecapCardMock.mockResolvedValue(blob);
@@ -156,26 +170,31 @@ describe("MonthlyRecapSection", () => {
     const month = useMonthlyRecapMock.mock.calls[0]?.[0] as string;
 
     fireEvent.click(screen.getByRole("button", { name: /export/i }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
 
     await waitFor(() => expect(downloadMonthlyRecapCardMock).toHaveBeenCalledWith(blob, month));
-    expect(renderMonthlyRecapCardMock).toHaveBeenCalledOnce();
     expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("treats a cancelled recap share as a non-error", async () => {
     useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
-    renderMonthlyRecapCardMock.mockRejectedValue(new ShareCancelledError());
+    renderMonthlyRecapCardMock.mockResolvedValue(new Blob(["recap"], { type: "image/png" }));
+    downloadMonthlyRecapCardMock.mockRejectedValue(new ShareCancelledError());
     render(<MonthlyRecapSection />);
 
     fireEvent.click(screen.getByRole("button", { name: /export/i }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
 
-    await waitFor(() => expect(renderMonthlyRecapCardMock).toHaveBeenCalledOnce());
-    await waitFor(() => expect(screen.getByRole("button", { name: /export/i })).not.toBeDisabled());
+    await waitFor(() => expect(downloadMonthlyRecapCardMock).toHaveBeenCalledOnce());
     expect(loggerWarnMock).not.toHaveBeenCalled();
     expect(toastMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("logs and surfaces an unexpected recap export failure", async () => {
+  it("logs and surfaces an unexpected recap render failure", async () => {
     useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
     renderMonthlyRecapCardMock.mockRejectedValue("export failed");
     render(<MonthlyRecapSection />);
@@ -183,6 +202,21 @@ describe("MonthlyRecapSection", () => {
     fireEvent.click(screen.getByRole("button", { name: /export/i }));
 
     await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("export failed")));
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("logs and surfaces an unexpected recap save failure", async () => {
+    useMonthlyRecapMock.mockReturnValue({ data: makeRecap(), isError: false, error: null });
+    renderMonthlyRecapCardMock.mockResolvedValue(new Blob(["recap"], { type: "image/png" }));
+    downloadMonthlyRecapCardMock.mockRejectedValue("save failed");
+    render(<MonthlyRecapSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("save failed")));
     expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
   });
 });
