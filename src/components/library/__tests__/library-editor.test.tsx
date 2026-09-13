@@ -165,7 +165,7 @@ describe("LibraryEditor", () => {
     expect(panel).toHaveTextContent("Save");
   });
 
-  it("keeps the add-to-list section collapsed until the user opens it", async () => {
+  it("shows the add-to-list control right away, with no accordion to open first", async () => {
     useLibraryItemMock.mockReturnValue({
       data: libraryItem,
       isLoading: false,
@@ -178,10 +178,9 @@ describe("LibraryEditor", () => {
 
     renderLoaded();
 
-    expect(screen.queryByText(/don't have any lists yet/i)).not.toBeInTheDocument();
-
-    screen.getByRole("button", { name: "Add to a list" }).click();
-
+    // Right after marking something is the moment a user is most likely to
+    // also want to add it to a list — it used to take an extra click to
+    // reveal this (a collapsed accordion), which this asserts is gone.
     expect(await screen.findByText(/don't have any lists yet/i)).toBeInTheDocument();
   });
 

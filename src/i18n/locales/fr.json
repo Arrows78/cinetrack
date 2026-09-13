@@ -299,7 +299,13 @@
       "delete": "Supprimer la vue enregistrée « {{name}} »",
       "deleteConfirmTitle": "Supprimer la vue enregistrée « {{name}} » ?",
       "deleteConfirmDescription": "Cette action supprime uniquement la vue enregistrée — vos filtres actuels et votre bibliothèque ne sont pas affectés.",
-      "deleteFailed": "Impossible de supprimer cette vue. Veuillez réessayer."
+      "deleteFailed": "Impossible de supprimer cette vue. Veuillez réessayer.",
+      "rename": "Renommer la vue enregistrée « {{name}} »",
+      "renameLabel": "Nouveau nom",
+      "renameSave": "Enregistrer le nom",
+      "renameCancel": "Annuler le renommage",
+      "renameFailed": "Impossible de renommer cette vue. Veuillez réessayer.",
+      "active": "Active"
     }
   },
   "settings": {
@@ -590,6 +596,7 @@
     "sortBy": "Trier par",
     "sortDate": "Date",
     "sortTitle": "Titre",
+    "sortPlatform": "Plateforme",
     "discoveryBadge": "Découverte",
     "newEpisodeFallback": "Nouvel épisode",
     "theatricalRelease": "Sortie cinéma",
@@ -744,7 +751,7 @@
     "emptyTitle": "Votre bibliothèque est vide",
     "emptyDesc": "Ajoutez un film ou une série à votre bibliothèque depuis sa fiche pour suivre ici statut, note et progression.",
     "exploreCta": "Découvrir des films et séries",
-    "searchPlaceholder": "Rechercher dans votre bibliothèque par titre…",
+    "searchPlaceholder": "Rechercher dans votre bibliothèque par titre, notes ou tags…",
     "noResultsTitle": "Aucun résultat",
     "noResultsDesc": "Aucun titre ne correspond à vos filtres ou à votre recherche. Ajustez-les ou réinitialisez-les.",
     "clearFilters": "Réinitialiser les filtres",
@@ -812,6 +819,10 @@
       "minRatingPlaceholder": "ex. 8",
       "providerLabel": "Service de streaming",
       "hasEpisodeWaitingLabel": "Séries avec épisodes en attente",
+      "previewCountLoading": "Décompte des correspondances…",
+      "previewCountError": "Impossible de compter les correspondances pour ces règles.",
+      "previewCount_one": "{{count}} correspondance dans votre bibliothèque",
+      "previewCount_other": "{{count}} correspondances dans votre bibliothèque",
       "create": "Créer la liste intelligente",
       "save": "Enregistrer les modifications",
       "cancel": "Annuler la modification",

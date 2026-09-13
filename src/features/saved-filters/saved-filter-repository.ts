@@ -20,6 +20,10 @@ export const savedFilterRepository = {
     return invokeTypedCommand(savedFilterCommands.create<TState>(), { page, name, filters });
   },
 
+  async rename<TState extends SavedFilterState>(savedFilterId: string, name: string): Promise<SavedFilter<TState>> {
+    return invokeTypedCommand(savedFilterCommands.rename<TState>(), { savedFilterId, name });
+  },
+
   async remove(savedFilterId: string): Promise<void> {
     await invokeTypedCommand(savedFilterCommands.remove, { savedFilterId });
   },

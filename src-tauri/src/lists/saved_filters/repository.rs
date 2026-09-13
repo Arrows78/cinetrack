@@ -86,6 +86,32 @@ async fn assert_owns_saved_filter(
         .ok_or_else(|| ApiError::not_found("Saved filter not found."))
 }
 
+pub(super) async fn rename_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    saved_filter_id: &str,
+    name: &str,
+) -> Result<SavedFilter, ApiError> {
+    assert_owns_saved_filter(pool, profile_id, saved_filter_id).await?;
+    let name = validate_name(name)?;
+    let now = now_iso(pool).await?;
+
+    sqlx::query("UPDATE saved_filters SET name = $1, updated_at = $2 WHERE uuid = $3")
+        .bind(&name)
+        .bind(&now)
+        .bind(saved_filter_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
+
+    let row: SavedFilterRow = sqlx::query_as("SELECT * FROM saved_filters WHERE uuid = $1")
+        .bind(saved_filter_id)
+        .fetch_one(pool)
+        .await
+        .map_err(ApiError::from)?;
+    SavedFilter::try_from(row)
+}
+
 pub(super) async fn remove_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -245,6 +271,70 @@ mod tests {
             )
             .await
             .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn renames_a_saved_filter_in_place() {
+        let pool = migrated_pool().await;
+        let saved = create_impl(&pool, "default", "library", "Old name", json!({}))
+            .await
+            .unwrap();
+
+        let renamed = rename_impl(&pool, "default", &saved.id, "New name")
+            .await
+            .unwrap();
+
+        assert_eq!(renamed.id, saved.id);
+        assert_eq!(renamed.name, "New name");
+        assert_eq!(
+            list_impl(&pool, "default", "library".to_string())
+                .await
+                .unwrap()[0]
+                .name,
+            "New name"
+        );
+    }
+
+    #[tokio::test]
+    async fn rejects_renaming_to_a_whitespace_only_name() {
+        let pool = migrated_pool().await;
+        let saved = create_impl(&pool, "default", "library", "Keep me", json!({}))
+            .await
+            .unwrap();
+
+        assert!(
+            rename_impl(&pool, "default", &saved.id, "   ")
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            list_impl(&pool, "default", "library".to_string())
+                .await
+                .unwrap()[0]
+                .name,
+            "Keep me"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_profile_cannot_rename_another_profiles_saved_filter() {
+        let pool = migrated_pool().await;
+        let saved = create_impl(&pool, "default", "library", "Privé", json!({}))
+            .await
+            .unwrap();
+
+        assert!(
+            rename_impl(&pool, "other", &saved.id, "Hijacked")
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            list_impl(&pool, "default", "library".to_string())
+                .await
+                .unwrap()[0]
+                .name,
+            "Privé"
         );
     }
 

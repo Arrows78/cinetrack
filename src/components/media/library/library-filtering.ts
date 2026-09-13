@@ -40,7 +40,12 @@ export function filterAndSortLibrary(
   const { typeFilter, statusFilter, favouritesOnly, search, sort, listMediaKeys, smartListMediaKeys } = criteria;
   const libraryByKey = new Map(libraryItems.map((item) => [libraryMediaKey(item.mediaType, item.mediaId), item]));
   const normalizedSearch = search.trim().toLowerCase();
-  const matchesSearch = (title: string) => (normalizedSearch ? title.toLowerCase().includes(normalizedSearch) : true);
+  const matchesSearch = (text: string) => (normalizedSearch ? text.toLowerCase().includes(normalizedSearch) : true);
+  // Library items can also be found by their private notes or tags, not just
+  // the title — a "liste seule" item (CustomListItem) has neither, so it
+  // only ever matches on title (see matchesSearch(li.title) below).
+  const matchesLibrarySearch = (item: LibraryItem) =>
+    matchesSearch([item.title, item.notes ?? "", ...item.tags].join(" "));
 
   const fromLibrary = libraryItems
     .filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter))
@@ -50,7 +55,7 @@ export function filterAndSortLibrary(
     .filter((item) =>
       smartListMediaKeys ? smartListMediaKeys.has(libraryMediaKey(item.mediaType, item.mediaId)) : true
     )
-    .filter((item) => matchesSearch(item.title))
+    .filter((item) => matchesLibrarySearch(item))
     .map((item) => ({
       sortKey: item.updatedAt,
       media: {

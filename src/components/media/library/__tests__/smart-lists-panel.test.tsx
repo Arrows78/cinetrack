@@ -11,6 +11,16 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => usePreferencesMock(),
 }));
 
+// The live result-count preview (useSmartListMatches) pulls in its own
+// react-query wiring across library/progress/availability data — irrelevant
+// to this suite's form/CRUD behavior, and there's no QueryClientProvider
+// here for it to run against. Stubbed to a fixed, empty result by default;
+// the dedicated preview-count tests below override it per case.
+const useSmartListMatchesMock = vi.fn();
+vi.mock("@/components/media/library/use-smart-list-matches", () => ({
+  useSmartListMatches: (rules: unknown) => useSmartListMatchesMock(rules),
+}));
+
 const smartList = (overrides: Partial<SmartList> = {}): SmartList => ({
   id: "sl-1",
   profileId: "default",
@@ -50,6 +60,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   usePreferencesMock.mockReset().mockReturnValue({ data: { preferredProviderIds: [] } });
+  useSmartListMatchesMock.mockReset().mockReturnValue({ items: [], isLoading: false, isError: false });
 });
 
 describe("SmartListsAccordionContent", () => {
@@ -290,5 +301,40 @@ describe("SmartListsAccordionContent", () => {
     fireEvent.click(screen.getByRole("button", { name: i18n.t("library.smartLists.create") }));
 
     await waitFor(() => expect(screen.getByText(i18n.t("desktop.operationFailed"))).toBeInTheDocument());
+  });
+
+  it("shows a live result count evaluated against the draft rules as they're edited", () => {
+    useSmartListMatchesMock.mockReturnValue({ items: [{}, {}, {}], isLoading: false, isError: false });
+    render(
+      <SmartListsAccordionContent smartLists={smartListsProp()} activeSmartListId="all" onSelectSmartList={vi.fn()} />
+    );
+
+    expect(screen.getByText(i18n.t("library.smartLists.previewCount", { count: 3 }))).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(i18n.t("library.smartLists.statusLabel")), {
+      target: { value: "watching" },
+    });
+
+    expect(useSmartListMatchesMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "watching", mediaType: DEFAULT_SMART_LIST_RULES.mediaType })
+    );
+  });
+
+  it("shows a loading message while the preview count is still evaluating", () => {
+    useSmartListMatchesMock.mockReturnValue({ items: [], isLoading: true, isError: false });
+    render(
+      <SmartListsAccordionContent smartLists={smartListsProp()} activeSmartListId="all" onSelectSmartList={vi.fn()} />
+    );
+
+    expect(screen.getByText(i18n.t("library.smartLists.previewCountLoading"))).toBeInTheDocument();
+  });
+
+  it("shows an error message when the preview count fails to evaluate", () => {
+    useSmartListMatchesMock.mockReturnValue({ items: [], isLoading: false, isError: true });
+    render(
+      <SmartListsAccordionContent smartLists={smartListsProp()} activeSmartListId="all" onSelectSmartList={vi.fn()} />
+    );
+
+    expect(screen.getByText(i18n.t("library.smartLists.previewCountError"))).toBeInTheDocument();
   });
 });

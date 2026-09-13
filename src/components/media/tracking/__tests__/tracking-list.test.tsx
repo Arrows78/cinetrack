@@ -117,6 +117,34 @@ const pendingEntryNoAlert = makeEntry({
   providerIds: [],
 });
 
+const availableOnNetflix = makeEntry({
+  id: "available-netflix",
+  mediaId: 50,
+  mediaType: "movie",
+  title: "Zeta Movie",
+  type: "availability",
+  scope: "mine",
+  date: null,
+  available: true,
+  region: "FR",
+  providerIds: [8], // Netflix
+  alertId: "alert-netflix",
+});
+
+const availableOnDisneyPlus = makeEntry({
+  id: "available-disney",
+  mediaId: 51,
+  mediaType: "movie",
+  title: "Alpha Movie",
+  type: "availability",
+  scope: "mine",
+  date: null,
+  available: true,
+  region: "FR",
+  providerIds: [337], // Disney+
+  alertId: "alert-disney",
+});
+
 function mockTracking(overrides: Partial<ReturnType<typeof useTrackingMock>> = {}) {
   useTrackingMock.mockReturnValue({
     data: [],
@@ -385,6 +413,19 @@ describe("TrackingList", () => {
     // Alphabetical: "Discovery Series" before "Mine Movie".
     const titles = screen.getAllByText(/Discovery Series|Mine Movie/).map((el) => el.textContent);
     expect(titles).toEqual(["Discovery Series", "Mine Movie"]);
+  });
+
+  it("switching sort to platform reorders the availability tiles by provider name, alphabetically", () => {
+    // Deliberately seeded in Netflix-then-Disney+ order — "platform" sort
+    // should flip that to Disney+ first ("D" before "N"), independent of the
+    // titles ("Zeta" before "Alpha" alphabetically, the opposite order).
+    mockTracking({ data: [availableOnNetflix, availableOnDisneyPlus] });
+    render(<TrackingList />);
+
+    fireEvent.click(within(screen.getByRole("group", { name: "Sort by" })).getByRole("button", { name: "Platform" }));
+
+    const titles = screen.getAllByText(/Zeta Movie|Alpha Movie/).map((el) => el.textContent);
+    expect(titles).toEqual(["Alpha Movie", "Zeta Movie"]);
   });
 
   it("defaults to controlled scope/type/sort when passed, instead of its own local state", () => {

@@ -25,6 +25,11 @@ export function useSavedFilters<TState extends SavedFilterState>(page: SavedFilt
     ({ name, filters }: { name: string; filters: TState }) => savedFilterRepository.create(page, name, filters),
     [queryKeys.local.savedFilters(profileId, page)]
   );
+  const rename = useInvalidatingMutation(
+    ({ savedFilterId, name }: { savedFilterId: string; name: string }) =>
+      savedFilterRepository.rename<TState>(savedFilterId, name),
+    [queryKeys.local.savedFilters(profileId, page)]
+  );
   const remove = useInvalidatingMutation(
     (savedFilterId: string) => savedFilterRepository.remove(savedFilterId),
     [queryKeys.local.savedFilters(profileId, page)]
@@ -32,7 +37,8 @@ export function useSavedFilters<TState extends SavedFilterState>(page: SavedFilt
   return {
     ...query,
     create: create.mutateAsync,
+    rename: rename.mutateAsync,
     remove: remove.mutateAsync,
-    isSaving: create.isPending || remove.isPending,
+    isSaving: create.isPending || rename.isPending || remove.isPending,
   };
 }

@@ -397,7 +397,9 @@ export function LibraryExplorer({
       <ActiveFilterChips chips={chips} onClearAll={clearFilters} />
 
       {lockedMediaType ? null : (
-        <Accordion type="single" collapsible className="space-y-3">
+        // "multiple" (not "single") so opening Smart Lists doesn't force-close
+        // My Lists — the two are independent filter panels, not alternatives.
+        <Accordion type="multiple" className="space-y-3">
           <AccordionItem value="lists">
             <AccordionTrigger>
               <span className="flex items-center gap-2">

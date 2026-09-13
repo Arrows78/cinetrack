@@ -94,7 +94,7 @@ const trackingRoute = createRoute({
     // fully in memory (unlike History's cursor-paginated feed, which can't
     // expose a sort without abandoning its cursor) — a real, cheap re-sort
     // of what's already loaded, not a decorative control.
-    sort: z.enum(["date", "title"]).optional(),
+    sort: z.enum(["date", "title", "platform"]).optional(),
   }),
   component: lazyRouteComponent(() => import("@/pages/tracking-page"), "TrackingPage"),
 });

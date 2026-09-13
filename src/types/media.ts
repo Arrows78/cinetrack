@@ -292,7 +292,7 @@ export interface SearchFilterState {
 export interface TrackingFilterState {
   scopeFilter: TrackingScope | "all";
   typeFilter: TrackingEntryType | "all";
-  sort: "date" | "title";
+  sort: "date" | "title" | "platform";
 }
 
 // HistoryPage's own filter-control state (src/pages/history-page.tsx).

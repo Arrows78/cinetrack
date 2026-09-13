@@ -115,6 +115,32 @@ describe("filterAndSortLibrary", () => {
     ]);
   });
 
+  it("also matches search against private notes and tags, not just the title", () => {
+    const items = [
+      libraryItem({ id: "1", mediaId: 1, title: "Dune", notes: "Great cinematography" }),
+      libraryItem({ id: "2", mediaId: 2, title: "Severance", tags: ["mind-bending"] }),
+      libraryItem({ id: "3", mediaId: 3, title: "Arrival" }),
+    ];
+
+    expect(
+      titlesOf(filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, search: "cinematography" }))
+    ).toEqual(["Dune"]);
+    expect(
+      titlesOf(filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, search: "mind-bending" }))
+    ).toEqual(["Severance"]);
+  });
+
+  it("does not match a custom-list-only item (no notes/tags of its own) against unrelated search text", () => {
+    const listMediaKeys = new Set([libraryMediaKey("movie", 9)]);
+    const listOnlyItems = [listItem({ id: "l1", mediaId: 9, title: "Only In List" })];
+
+    expect(
+      titlesOf(
+        filterAndSortLibrary([], listOnlyItems, NO_PROGRESS, { ...BASE_CRITERIA, search: "notes", listMediaKeys })
+      )
+    ).toEqual([]);
+  });
+
   it("combines search and status with AND semantics", () => {
     const items = [
       libraryItem({ id: "1", mediaId: 1, title: "Dune", status: "planned" }),

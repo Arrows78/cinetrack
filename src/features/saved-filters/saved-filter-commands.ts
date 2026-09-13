@@ -11,6 +11,11 @@ type CreateSavedFilterArgs<TState extends SavedFilterState> = {
   filters: TState;
 };
 
+type RenameSavedFilterArgs = {
+  savedFilterId: string;
+  name: string;
+};
+
 type RemoveSavedFilterArgs = {
   savedFilterId: string;
 };
@@ -20,5 +25,7 @@ export const savedFilterCommands = {
     defineCommand<ListSavedFiltersArgs, Array<SavedFilter<TState>>>("list_saved_filters"),
   create: <TState extends SavedFilterState>() =>
     defineCommand<CreateSavedFilterArgs<TState>, SavedFilter<TState>>("create_saved_filter"),
+  rename: <TState extends SavedFilterState>() =>
+    defineCommand<RenameSavedFilterArgs, SavedFilter<TState>>("rename_saved_filter"),
   remove: defineCommand<RemoveSavedFilterArgs, void>("remove_saved_filter"),
 } as const;

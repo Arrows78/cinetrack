@@ -3,7 +3,7 @@ use sqlx::SqlitePool;
 use tauri::State;
 
 use super::models::SavedFilter;
-use super::repository::{create_impl, list_impl, remove_impl};
+use super::repository::{create_impl, list_impl, remove_impl, rename_impl};
 use crate::database::current_profile_id;
 use crate::diagnostics::timed;
 use crate::error::ApiError;
@@ -30,6 +30,19 @@ pub async fn create_saved_filter(
     timed("create_saved_filter", async {
         let profile_id = current_profile_id(&pool).await?;
         create_impl(&pool, &profile_id, &page, &name, filters).await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn rename_saved_filter(
+    saved_filter_id: String,
+    name: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<SavedFilter, ApiError> {
+    timed("rename_saved_filter", async {
+        let profile_id = current_profile_id(&pool).await?;
+        rename_impl(&pool, &profile_id, &saved_filter_id, &name).await
     })
     .await
 }
@@ -114,6 +127,28 @@ mod tests {
             .unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].name, "Search");
+    }
+
+    #[tokio::test]
+    async fn rename_saved_filter_command_renames_the_callers_filter() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        let saved = create_saved_filter(
+            "library".to_string(),
+            "Old name".to_string(),
+            json!({}),
+            state.clone(),
+        )
+        .await
+        .unwrap();
+
+        let renamed = rename_saved_filter(saved.id, "New name".to_string(), state)
+            .await
+            .unwrap();
+        assert_eq!(renamed.name, "New name");
     }
 
     #[tokio::test]

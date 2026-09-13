@@ -299,7 +299,13 @@
       "delete": "Delete the saved view \"{{name}}\"",
       "deleteConfirmTitle": "Delete the saved view \"{{name}}\"?",
       "deleteConfirmDescription": "This only removes the saved view — your current filters and library are unaffected.",
-      "deleteFailed": "Couldn't delete this view. Please try again."
+      "deleteFailed": "Couldn't delete this view. Please try again.",
+      "rename": "Rename the saved view \"{{name}}\"",
+      "renameLabel": "New name",
+      "renameSave": "Save name",
+      "renameCancel": "Cancel rename",
+      "renameFailed": "Couldn't rename this view. Please try again.",
+      "active": "Active"
     }
   },
   "settings": {
@@ -590,6 +596,7 @@
     "sortBy": "Sort by",
     "sortDate": "Date",
     "sortTitle": "Title",
+    "sortPlatform": "Platform",
     "discoveryBadge": "Discovery",
     "newEpisodeFallback": "New episode",
     "theatricalRelease": "Theatrical release",
@@ -744,7 +751,7 @@
     "emptyTitle": "Your library is empty",
     "emptyDesc": "Add a movie or series to your library from its detail page to track status, ratings and progress here.",
     "exploreCta": "Discover movies & series",
-    "searchPlaceholder": "Search your library by title…",
+    "searchPlaceholder": "Search your library by title, notes or tags…",
     "noResultsTitle": "No matches",
     "noResultsDesc": "No title matches your current filters or search. Try adjusting them or clear everything.",
     "clearFilters": "Clear filters",
@@ -812,6 +819,10 @@
       "minRatingPlaceholder": "e.g. 8",
       "providerLabel": "Streaming service",
       "hasEpisodeWaitingLabel": "Series with episodes waiting",
+      "previewCountLoading": "Counting matches…",
+      "previewCountError": "Couldn't count matches for these rules.",
+      "previewCount_one": "{{count}} match in your library",
+      "previewCount_other": "{{count}} matches in your library",
       "create": "Create smart list",
       "save": "Save changes",
       "cancel": "Cancel edit",

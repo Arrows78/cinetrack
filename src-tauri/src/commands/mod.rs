@@ -23,7 +23,7 @@ pub use crate::lists::{
     add_custom_list_item, create_custom_list, create_saved_filter, create_smart_list,
     list_custom_list_items, list_custom_lists, list_saved_filters, list_smart_lists,
     remove_custom_list, remove_custom_list_item, remove_saved_filter, remove_smart_list,
-    update_smart_list,
+    rename_saved_filter, update_smart_list,
 };
 pub use crate::preferences::{
     PreferencesCache, get_preferences, refresh_preferences, set_active_profile, update_preference,

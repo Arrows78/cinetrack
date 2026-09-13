@@ -70,7 +70,9 @@ export function TrackingPage() {
       ? [
           {
             key: "sort",
-            label: t("filters.chips.sort", { value: t("tracking.sortTitle") }),
+            label: t("filters.chips.sort", {
+              value: sort === "platform" ? t("tracking.sortPlatform") : t("tracking.sortTitle"),
+            }),
             onRemove: () => setSort("date"),
           },
         ]

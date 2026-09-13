@@ -18,6 +18,7 @@ import {
   SMART_LIST_PROVIDER_MINE,
 } from "@/features/smart-lists";
 import type { useSmartLists } from "@/features/smart-lists/use-smart-lists";
+import { useSmartListMatches } from "@/components/media/library/use-smart-list-matches";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { PLATFORMS } from "@/shared/constants/discover";
@@ -47,6 +48,11 @@ function SmartListForm({
   const preferredProviderIds = preferences.data?.preferredProviderIds ?? [];
   const [name, setName] = useState(initialName);
   const [rules, setRules] = useState<SmartListRules>(initialRules);
+  // Live, not just on submit — evaluated against the draft rules exactly as
+  // typed, reusing the same hook the active-filter grid itself uses, so the
+  // count a user sees while building the list is the same one they'd get
+  // once it's saved and selected.
+  const preview = useSmartListMatches(rules);
 
   const providerValue =
     rules.provider === SMART_LIST_PROVIDER_ANY || rules.provider === SMART_LIST_PROVIDER_MINE
@@ -183,6 +189,13 @@ function SmartListForm({
         pressed={rules.hasEpisodeWaiting}
         onPressedChange={() => setRules((current) => ({ ...current, hasEpisodeWaiting: !current.hasEpisodeWaiting }))}
       />
+      <p className="text-body-sm text-muted-foreground" aria-live="polite">
+        {preview.isLoading
+          ? t("library.smartLists.previewCountLoading")
+          : preview.isError
+            ? t("library.smartLists.previewCountError")
+            : t("library.smartLists.previewCount", { count: preview.items.length })}
+      </p>
       <div className="flex gap-2">
         <Button type="button" disabled={!name.trim() || isSaving} onClick={() => onSubmit(name, rules)}>
           <ListPlus className="mr-2 size-4" />

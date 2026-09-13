@@ -14,6 +14,7 @@ const savedFilterA = {
 };
 
 const createMock = vi.fn();
+const renameMock = vi.fn();
 const removeMock = vi.fn();
 const useSavedFiltersMock = vi.fn();
 vi.mock("@/features/saved-filters/use-saved-filters", () => ({
@@ -26,6 +27,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createMock.mockReset().mockResolvedValue(savedFilterA);
+  renameMock.mockReset().mockResolvedValue({ ...savedFilterA, name: "Renamed" });
   removeMock.mockReset().mockResolvedValue(undefined);
   useSavedFiltersMock.mockReset().mockReturnValue({
     data: [savedFilterA],
@@ -33,6 +35,7 @@ beforeEach(() => {
     isError: false,
     error: null,
     create: createMock,
+    rename: renameMock,
     remove: removeMock,
     isSaving: false,
   });
@@ -111,5 +114,66 @@ describe("SavedFiltersBar", () => {
     fireEvent.click(screen.getByRole("button", { name: i18n.t("common.cancel") }));
 
     expect(removeMock).not.toHaveBeenCalled();
+  });
+
+  it("marks the saved filter matching the current filters as active", () => {
+    render(<SavedFiltersBar page="library" currentFilters={{ statusFilter: "paused" }} onApply={vi.fn()} />);
+    expect(screen.getByText(i18n.t("filters.savedFilters.active"))).toBeInTheDocument();
+  });
+
+  it("does not mark any saved filter as active when the current filters differ", () => {
+    render(<SavedFiltersBar page="library" currentFilters={{ statusFilter: "watching" }} onApply={vi.fn()} />);
+    expect(screen.queryByText(i18n.t("filters.savedFilters.active"))).not.toBeInTheDocument();
+  });
+
+  it("renames a saved filter under its typed name", async () => {
+    render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("filters.savedFilters.rename", { name: "Paused shows" }) })
+    );
+    const input = screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.renameLabel") });
+    fireEvent.change(input, { target: { value: "  Currently paused  " } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.renameSave") }));
+
+    await waitFor(() =>
+      expect(renameMock).toHaveBeenCalledWith({ savedFilterId: "saved-a", name: "Currently paused" })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("textbox", { name: i18n.t("filters.savedFilters.renameLabel") })
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it("cancelling a rename discards the typed name without saving", () => {
+    render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("filters.savedFilters.rename", { name: "Paused shows" }) })
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.renameLabel") }), {
+      target: { value: "Discarded" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.renameCancel") }));
+
+    expect(renameMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Paused shows" })).toBeInTheDocument();
+  });
+
+  it("shows a translated error and keeps editing open when renaming rejects", async () => {
+    renameMock.mockRejectedValueOnce(new Error("boom"));
+    render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("filters.savedFilters.rename", { name: "Paused shows" }) })
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.renameLabel") }), {
+      target: { value: "New name" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.renameSave") }));
+
+    await waitFor(() => expect(screen.getByText(i18n.t("filters.savedFilters.renameFailed"))).toBeInTheDocument());
+    expect(screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.renameLabel") })).toHaveValue("New name");
   });
 });

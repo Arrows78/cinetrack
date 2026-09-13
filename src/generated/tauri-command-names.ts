@@ -73,6 +73,7 @@ export const tauriCommandNames = [
   "list_availability_snapshots",
   "list_saved_filters",
   "create_saved_filter",
+  "rename_saved_filter",
   "remove_saved_filter",
   "import_series_progress",
   "import_movie_seen",

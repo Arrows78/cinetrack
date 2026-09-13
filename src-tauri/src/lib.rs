@@ -50,7 +50,7 @@ use commands::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
     get_sync_status, list_sync_outbox, mark_sync_completed, prepare_sync, rebase_sync_conflicts,
 };
-use commands::{create_saved_filter, list_saved_filters};
+use commands::{create_saved_filter, list_saved_filters, rename_saved_filter};
 use commands::{dismiss_recommendation, list_dismissed_recommendations, undismiss_recommendation};
 use commands::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
@@ -190,6 +190,7 @@ pub fn run() {
             list_availability_snapshots,
             list_saved_filters,
             create_saved_filter,
+            rename_saved_filter,
             remove_saved_filter,
             import_series_progress,
             import_movie_seen,

@@ -22,10 +22,23 @@ import type { TrackingEntry, TrackingEntryType, TrackingScope } from "@/types/me
 
 type ScopeFilter = TrackingScope | "all";
 type TypeFilter = TrackingEntryType | "all";
-type SortOption = "date" | "title";
+type SortOption = "date" | "title" | "platform";
 
 function providerNames(providerIds: number[] = []): string[] {
   return providerIds.map((id) => PLATFORMS.find((platform) => platform.id === id)?.label ?? String(id));
+}
+
+// Only "availability" entries (AvailabilityTile) carry a meaningful platform
+// — release/episode entries never do (see calendar-service.ts) — so this is
+// only ever applied to those two lists (availableNow/pending), never to the
+// dated/grouped ones below, which fall back to the same flat title order
+// "title" already uses.
+function sortByProviderName(entries: TrackingEntry[]): TrackingEntry[] {
+  return [...entries].sort((a, b) => {
+    const left = providerNames(a.providerIds)[0] ?? "";
+    const right = providerNames(b.providerIds)[0] ?? "";
+    return left.localeCompare(right);
+  });
 }
 
 function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove: () => void }) {
@@ -137,8 +150,10 @@ export function TrackingList({
     setSort("date");
   };
 
-  const availableNow = filtered.filter((entry) => entry.type === "availability" && entry.available);
-  const pending = filtered.filter((entry) => entry.type === "availability" && !entry.available);
+  const availableNowUnsorted = filtered.filter((entry) => entry.type === "availability" && entry.available);
+  const pendingUnsorted = filtered.filter((entry) => entry.type === "availability" && !entry.available);
+  const availableNow = sort === "platform" ? sortByProviderName(availableNowUnsorted) : availableNowUnsorted;
+  const pending = sort === "platform" ? sortByProviderName(pendingUnsorted) : pendingUnsorted;
   const dated = filtered.filter((entry) => entry.type !== "availability");
   // "date" keeps the calendar's own ascending order (see calendar-service.ts)
   // grouped under per-date panels; "title" drops the date grouping for one
@@ -186,6 +201,7 @@ export function TrackingList({
           options={[
             { value: "date", label: t("tracking.sortDate") },
             { value: "title", label: t("tracking.sortTitle") },
+            { value: "platform", label: t("tracking.sortPlatform") },
           ]}
         />
       </div>
