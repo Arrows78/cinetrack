@@ -9,7 +9,7 @@ import {
   type LibraryStatusFilter,
   type LibraryTypeFilter,
 } from "@/components/media/library/library-filtering";
-import { useCustomListItems, useCustomLists } from "@/features/custom-lists/use-custom-lists";
+import { useAllCustomListItems, useCustomListItems, useCustomLists } from "@/features/custom-lists/use-custom-lists";
 import { useLibrary, useLibraryMediaKeys, useLibraryPage } from "@/features/library/use-library";
 import { useSmartLists } from "@/features/smart-lists/use-smart-lists";
 import { useSmartListMatches } from "@/components/media/library/use-smart-list-matches";
@@ -48,6 +48,15 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     void preferences.updatePreference({ key: "libraryViewMode", value: mode });
   const [listFilter, setListFilter] = useState("all");
   const listItems = useCustomListItems(listFilter === "all" ? "" : listFilter);
+  // A title added to a list but never given a library status (no
+  // library_items row at all) otherwise only ever surfaced while that one
+  // list was selected — invisible from the default "browse everything" view,
+  // including the /movies and /series "Haven't started" sections. Merging
+  // every list's items in (deduplicated by media key in filterAndSortLibrary)
+  // fixes that without touching the single-list fetch above, which still
+  // drives the selected-list loading/error UI in library-explorer.tsx.
+  const listIds = useMemo(() => (lists.data ?? []).map((list) => list.id), [lists.data]);
+  const allListItems = useAllCustomListItems(listIds);
   const smartLists = useSmartLists();
   const [smartListFilter, setSmartListFilter] = useState("all");
   const activeSmartList =
@@ -130,7 +139,11 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
         ? null
         : new Set(smartListMatches.items.map((media) => libraryMediaKey(media.mediaType, media.id)));
 
-    return filterAndSortLibrary(items ?? [], listItems.data ?? [], progressBySeries, {
+    // Browsing "all" surfaces list-only items across every list; a specific
+    // list already has its own scoped, already-fetched data.
+    const listOnlySource = listFilter === "all" ? (allListItems.data ?? []) : (listItems.data ?? []);
+
+    return filterAndSortLibrary(items ?? [], listOnlySource, progressBySeries, {
       typeFilter,
       statusFilter,
       favouritesOnly,
@@ -149,6 +162,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     sort,
     listFilter,
     listItems.data,
+    allListItems.data,
     smartListFilter,
     smartListMatches.items,
   ]);

@@ -341,10 +341,24 @@ describe("filterAndSortLibrary", () => {
       expect(result).toHaveLength(0);
     });
 
-    it("does not include any list-only item when no list filter is active", () => {
+    it("surfaces a list-only item when no list filter is active — the caller passes every list's items in that case", () => {
       const listItems = [listItem({ id: "li-1", mediaId: 9, title: "OnlyInList" })];
 
-      expect(filterAndSortLibrary([], listItems, NO_PROGRESS, BASE_CRITERIA)).toHaveLength(0);
+      const result = filterAndSortLibrary([], listItems, NO_PROGRESS, BASE_CRITERIA);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.title).toBe("OnlyInList");
+    });
+
+    it("shows a title added to more than one list only once", () => {
+      const listItems = [
+        listItem({ id: "li-1", listId: "list-a", mediaId: 9, title: "OnlyInList" }),
+        listItem({ id: "li-2", listId: "list-b", mediaId: 9, title: "OnlyInList" }),
+      ];
+
+      const result = filterAndSortLibrary([], listItems, NO_PROGRESS, BASE_CRITERIA);
+
+      expect(result).toHaveLength(1);
     });
   });
 });

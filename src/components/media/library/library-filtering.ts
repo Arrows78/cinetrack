@@ -74,18 +74,30 @@ export function filterAndSortLibrary(
       } as MediaGridItem,
     }));
 
-  // Only ever restricts library items (a smart list's rules — status,
-  // rating, ... — can't be evaluated against a custom-list-only item that
-  // was never added to the library), so this stays empty whenever a smart
-  // list is active.
+  // `listItems` is whatever the caller decided is in scope — every list's
+  // items when browsing "all" (so a title added to a list but never given a
+  // library status still shows up there), or just the selected list's own
+  // items once one is chosen. Never restricted by a smart list's rules —
+  // those can't be evaluated against a custom-list-only item that was never
+  // added to the library — so this stays empty whenever a smart list is
+  // active.
+  const seenListOnlyKeys = new Set<string>();
   const listOnly =
-    listMediaKeys === null || smartListMediaKeys !== null
+    smartListMediaKeys !== null
       ? []
       : listItems
           .filter((li) => !libraryByKey.has(libraryMediaKey(li.mediaType, li.mediaId)))
           .filter((li) => (typeFilter === "all" ? true : li.mediaType === typeFilter))
           .filter(() => statusFilter === "all" && !favouritesOnly)
           .filter((li) => matchesSearch(li.title))
+          .filter((li) => {
+            // The same title can live in more than one list — one card, not
+            // one per list it happens to be on.
+            const key = libraryMediaKey(li.mediaType, li.mediaId);
+            if (seenListOnlyKeys.has(key)) return false;
+            seenListOnlyKeys.add(key);
+            return true;
+          })
           .map((li) => ({
             sortKey: li.addedAt,
             media: {

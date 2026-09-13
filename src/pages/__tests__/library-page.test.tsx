@@ -280,6 +280,17 @@ const customListItemsMock = vi.fn((listId: string) => {
 vi.mock("@/features/custom-lists/use-custom-lists", () => ({
   useCustomLists: () => customListsState,
   useCustomListItems: (listId: string) => customListItemsMock(listId),
+  // Mirrors the real hook's merge: one query per list, flattened — used by
+  // useLibraryExplorer to surface list-only items in the default "browse
+  // everything" view (see library-filtering.test.ts for the actual merge
+  // logic under test; this just wires the same per-list mock into it).
+  useAllCustomListItems: (listIds: string[]) => {
+    const perList = listIds.map((listId) => customListItemsMock(listId));
+    const data = perList.some((result) => result.data === undefined)
+      ? undefined
+      : perList.flatMap((result) => result.data ?? []);
+    return { data, isLoading: perList.some((result) => result.isLoading) };
+  },
 }));
 
 // Succinct fixture builder for the sort/filter test groups below — only the
@@ -675,6 +686,19 @@ describe("LibraryExplorer — lockedMediaType", () => {
     expect(await screen.findByRole("button", { name: "Movies" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Series" })).toBeInTheDocument();
     expect(screen.getByTestId("grid")).toBeInTheDocument();
+  });
+
+  it("surfaces a list-only movie in the locked /movies hub without selecting its list first", async () => {
+    // "Only In List" (list-1, per customListItemsMock) has no library status
+    // at all — this is the exact gap reported against the Series/Movies
+    // pages: a title added to a list but never marked planned/watching/etc.
+    // used to be invisible outside that one list's own filtered view.
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderExplorer({ lockedMediaType: "movie" });
+
+    const sections = await screen.findByTestId("movie-sections");
+    expect(within(sections).getByText("Dune")).toBeInTheDocument();
+    expect(within(sections).getByText("Only In List")).toBeInTheDocument();
   });
 });
 
