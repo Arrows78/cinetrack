@@ -5,7 +5,7 @@ use super::models::{
 };
 use super::queries::{get_episode_progress_impl, is_movie_seen_impl, list_tracked_series_impl};
 use super::repository::{
-    apply_episodes_and_log_impl, refresh_tracked_series_status_impl,
+    apply_episodes_and_log_impl, refresh_tracked_series_status_impl, set_episode_rating_impl,
     toggle_movie_seen_with_note_impl,
 };
 use crate::database::current_profile_id;
@@ -93,5 +93,15 @@ impl<'a> ProgressService<'a> {
             total_episodes,
         )
         .await
+    }
+
+    pub(super) async fn set_episode_rating(
+        &self,
+        series_id: i64,
+        episode_id: i64,
+        rating: Option<i64>,
+    ) -> Result<(), ApiError> {
+        let profile_id = self.profile_id().await?;
+        set_episode_rating_impl(self.pool, &profile_id, series_id, episode_id, rating).await
     }
 }

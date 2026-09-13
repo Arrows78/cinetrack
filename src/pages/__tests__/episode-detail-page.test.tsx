@@ -33,6 +33,7 @@ vi.mock("@/features/media/use-media", () => ({
 const progressQueryMock = vi.fn();
 const toggleEpisodeSeenMock = vi.fn();
 const markEpisodesSeenMock = vi.fn();
+const setEpisodeRatingMock = vi.fn();
 vi.mock("@/features/progress/use-progress", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
@@ -122,10 +123,12 @@ const episode3: Episode = {
 
 function makeProgressQuery(episodeIds: number[], overrides: Partial<Record<string, unknown>> = {}) {
   return {
-    data: episodeIds.map((episodeId) => ({ episodeId })),
+    data: episodeIds.map((episodeId) => ({ episodeId, rating: null })),
     isSaving: false,
+    isSavingRating: false,
     toggleEpisodeSeen: toggleEpisodeSeenMock,
     markEpisodesSeen: markEpisodesSeenMock,
+    setEpisodeRating: setEpisodeRatingMock,
     ...overrides,
   };
 }
@@ -150,6 +153,7 @@ describe("EpisodeDetailPage", () => {
     seasonQueryMock.mockReset().mockReturnValue(makeQuery(makeSeason([episode1, episode2, episode3])));
     toggleEpisodeSeenMock.mockReset();
     markEpisodesSeenMock.mockReset();
+    setEpisodeRatingMock.mockReset();
     progressQueryMock.mockReset().mockReturnValue(makeProgressQuery([]));
   });
 
@@ -253,6 +257,33 @@ describe("EpisodeDetailPage", () => {
     renderPage();
 
     expect(screen.queryByRole("button", { name: i18n.t("media.addWatchNoteAction") })).not.toBeInTheDocument();
+  });
+
+  it("shows the rating control only once the episode is watched", () => {
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+    expect(screen.queryByRole("group", { name: i18n.t("episode.rating.label") })).not.toBeInTheDocument();
+
+    cleanup();
+    progressQueryMock.mockReturnValue(makeProgressQuery([2]));
+    renderPage();
+    expect(screen.getByRole("group", { name: i18n.t("episode.rating.label") })).toBeInTheDocument();
+  });
+
+  it("passes this episode's current rating to the rating control", () => {
+    progressQueryMock.mockReturnValue(makeProgressQuery([], { data: [{ episodeId: 2, rating: 4 }] }));
+    renderPage();
+
+    expect(screen.getByRole("button", { name: "Good" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("rating the episode calls setEpisodeRating with the series/episode ids", () => {
+    progressQueryMock.mockReturnValue(makeProgressQuery([2]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Great" }));
+
+    expect(setEpisodeRatingMock).toHaveBeenCalledWith({ seriesId: 9, episodeId: 2, rating: 5 });
   });
 
   // A failed progress read falls back to an empty watched set — this

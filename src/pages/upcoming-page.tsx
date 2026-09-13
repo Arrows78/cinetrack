@@ -36,12 +36,7 @@ export function UpcomingPage() {
 
   return (
     <div className="space-y-8">
-      <SectionHeader
-        title={t("upcoming.title")}
-        subtitle={t("upcoming.subtitle")}
-        icon={CalendarClock}
-        isPageTitle
-      />
+      <SectionHeader title={t("upcoming.title")} subtitle={t("upcoming.subtitle")} icon={CalendarClock} isPageTitle />
 
       {tracking.isLoading ? <LoadingState label={t("tracking.loading")} /> : null}
       {tracking.isError ? <RemoteErrorState error={tracking.error} onRetry={() => void tracking.refetch()} /> : null}

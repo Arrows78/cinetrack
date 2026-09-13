@@ -193,6 +193,7 @@ const watchedProgress: EpisodeProgress[] = [
     watchedAt: null,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
+    rating: null,
   },
   {
     id: "p2",
@@ -205,6 +206,7 @@ const watchedProgress: EpisodeProgress[] = [
     watchedAt: null,
     createdAt: "2024-01-08T00:00:00.000Z",
     updatedAt: "2024-01-08T00:00:00.000Z",
+    rating: null,
   },
 ];
 

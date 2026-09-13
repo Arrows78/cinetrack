@@ -38,6 +38,7 @@ describe("progress-utils", () => {
       watchedAt: null,
       createdAt: now,
       updatedAt: now,
+      rating: null,
     };
     const next = getNextEpisode([s], [mockProgress]);
     expect(next?.id).toBe(2);
@@ -75,6 +76,7 @@ describe("progress-utils", () => {
       watchedAt: null,
       createdAt: now,
       updatedAt: now,
+      rating: null,
     };
 
     const progress = calculateSeriesProgress(9, [s], [watchedAired]);
@@ -110,6 +112,7 @@ describe("progress-utils", () => {
       watchedAt: null,
       createdAt: now,
       updatedAt: now,
+      rating: null,
     };
 
     const progress = calculateSeriesProgress(9, [s], [watchedAired]);
@@ -139,6 +142,7 @@ describe("progress-utils", () => {
       watchedAt: null,
       createdAt: now,
       updatedAt: now,
+      rating: null,
     };
 
     const progress = calculateSeriesProgress(9, [s], [watched]);

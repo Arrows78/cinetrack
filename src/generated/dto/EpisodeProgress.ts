@@ -11,4 +11,13 @@ export type EpisodeProgress = {
   watchedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * A per-episode rating, 1-5 — stored as a plain integer (not a named
+   * enum) so a future /10-with-half-points scale is just a different
+   * multiplier over the same column, not a migration. The frontend is
+   * free to render it as emoji/labels; local only, deliberately not part
+   * of the cloud-sync payload (see docs/database-schema.md's
+   * episode_progress entry).
+   */
+  rating: number | null;
 };

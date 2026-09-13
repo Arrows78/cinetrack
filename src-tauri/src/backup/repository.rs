@@ -107,6 +107,7 @@ struct EpisodeProgressRow {
     watched_at: Option<String>,
     created_at: String,
     updated_at: String,
+    rating: Option<i64>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -258,6 +259,7 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
                 watched_at: row.watched_at,
                 created_at: row.created_at,
                 updated_at: row.updated_at,
+                rating: row.rating,
             })
             .collect(),
         tracked_series: tracked_series
@@ -524,7 +526,7 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
         tx,
         data.episode_progress,
         "INSERT INTO episode_progress
-              (uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at) ",
+              (uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at,rating) ",
         |b, item| {
             let timestamp = item.watched_at.clone().unwrap_or_else(|| now.clone());
             b.push_bind(new_uuid())
@@ -536,7 +538,8 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
                 .push_bind(item.watched)
                 .push_bind(item.watched_at.clone())
                 .push_bind(timestamp.clone())
-                .push_bind(timestamp);
+                .push_bind(timestamp)
+                .push_bind(item.rating);
         }
     );
 
@@ -835,6 +838,7 @@ mod tests {
                     "watched_at",
                     "created_at",
                     "updated_at",
+                    "rating",
                 ]),
             ),
             (
@@ -1062,6 +1066,31 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(supabase_user_id.0.as_deref(), Some("user-1"));
+    }
+
+    #[tokio::test]
+    async fn export_and_reimport_preserves_an_episode_rating() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at, rating)
+             VALUES ('ep1', 'default', 9, 100, 1, 1, 1, 'now', 'now', 'now', 4)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let exported = export_impl(&pool).await.unwrap();
+        assert_eq!(exported.episode_progress[0].rating, Some(4));
+
+        import_impl(&pool, exported).await.unwrap();
+
+        let rating: (Option<i64>,) = sqlx::query_as(
+            "SELECT rating FROM episode_progress WHERE series_id = 9 AND episode_id = 100",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(rating.0, Some(4));
     }
 
     fn library_item(id: &str, media_id: i64, title: &str) -> LibraryItem {

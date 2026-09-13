@@ -4,9 +4,9 @@ The database is local SQLite, embedded in the app via Tauri — no server, every
 
 Every table's primary key is a `uuid TEXT PRIMARY KEY`, generated app-side in Rust (`new_uuid()`, a UUIDv7, in [`src-tauri/src/database/mod.rs`](../src-tauri/src/database/mod.rs)) — there is no separate internal integer id. Two tables deliberately don't follow this: `preferences` (`key` is already a stable natural primary key) and `availability_snapshots` (a pure cache keyed by `(media_id, media_type, region)`, with no row ever referenced individually).
 
-**18 active tables · 11 migrations · 1 database file per machine.**
+**18 active tables · 12 migrations · 1 database file per machine.**
 
-The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus ten follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql`, `017-library-cursor-pagination-indexes.sql`, `018-add-sync-outbox.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
+The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus eleven follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql`, `017-library-cursor-pagination-indexes.sql`, `018-add-sync-outbox.sql`, `019-add-rating-to-episode-progress.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
 
 `supabase/migrations/` is a **separate** schema, in a separate Postgres database on Supabase, applied with `supabase db push` rather than by this app's own migration runner — it's the cloud-sync/community counterpart described in "Cloud sync" below, not part of the local SQLite file this document otherwise covers.
 
@@ -108,13 +108,14 @@ Relations: a profile has `0..n` movies marked as seen.
 
 One row per watched episode. This is the source of truth for where a profile stands in a show — the displayed count is recomputed on read, not stored. Used to be called `profile_episode_progress` before the single schema.
 
-| Column                                              | Type       | Notes                                     |
-| --------------------------------------------------- | ---------- | ----------------------------------------- |
-| `uuid` **PK**                                       | TEXT       | public identifier of the row              |
-| `profile_id`, `series_id`, `episode_id` `FK` **UK** | …          | → `profiles.uuid` ; natural composite key |
-| `season_number`, `episode_number`                   | INT        | locates the episode (both `>= 0`)         |
-| `watched`, `watched_at`                             | BOOL, TEXT | defaults to watched                       |
-| `created_at`, `updated_at`                          | TEXT       | ISO dates                                 |
+| Column                                              | Type       | Notes                                                                                                                                                                                                                 |
+| --------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uuid` **PK**                                       | TEXT       | public identifier of the row                                                                                                                                                                                          |
+| `profile_id`, `series_id`, `episode_id` `FK` **UK** | …          | → `profiles.uuid` ; natural composite key                                                                                                                                                                             |
+| `season_number`, `episode_number`                   | INT        | locates the episode (both `>= 0`)                                                                                                                                                                                     |
+| `watched`, `watched_at`                             | BOOL, TEXT | defaults to watched                                                                                                                                                                                                   |
+| `created_at`, `updated_at`                          | TEXT       | ISO dates                                                                                                                                                                                                             |
+| `rating`                                            | INT        | 1-5, nullable (migration 19); local-only — deliberately **not** included in the `sync_outbox` payload the `AFTER INSERT/UPDATE` triggers build (see `sync_outbox` below), so it never leaves the device it was set on |
 
 Indexes: `(profile_id, series_id, watched)`, `(episode_id)`.
 

@@ -55,6 +55,7 @@ const getEpisodeProgressMock = vi.fn(async () => [] as never);
 const toggleEpisodeSeenMock = vi.fn(async () => undefined);
 const markSeasonMock = vi.fn(async () => undefined);
 const markSeriesMock = vi.fn(async () => undefined);
+const setEpisodeRatingMock = vi.fn(async () => undefined);
 const listTrackedSeriesMock = vi.fn(async () => [] as TrackedSeriesItem[]);
 const listViewingEventsForMediaMock = vi.fn(async () => [] as never);
 const refreshTrackedSeriesStatusMock = vi.fn<
@@ -74,6 +75,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
     toggleEpisodeSeen: toggleEpisodeSeenMock,
     markSeason: markSeasonMock,
     markSeries: markSeriesMock,
+    setEpisodeRating: setEpisodeRatingMock,
     listTrackedSeries: listTrackedSeriesMock,
     refreshTrackedSeriesStatus: refreshTrackedSeriesStatusMock,
     listViewingEventsForMedia: listViewingEventsForMediaMock,
@@ -101,6 +103,7 @@ beforeEach(() => {
   toggleEpisodeSeenMock.mockClear();
   markSeasonMock.mockClear();
   markSeriesMock.mockClear();
+  setEpisodeRatingMock.mockClear();
   listTrackedSeriesMock.mockClear();
   refreshTrackedSeriesStatusMock.mockClear();
   getPreferencesMock.mockClear();
@@ -213,6 +216,21 @@ describe("useEpisodeProgress", () => {
     });
 
     expect(markSeriesMock).toHaveBeenCalledWith(series, [season], true);
+  });
+
+  it("rating an episode delegates to progressRepository.setEpisodeRating and invalidates the episode-progress fanout", async () => {
+    const { useEpisodeProgress } = await import("../use-progress");
+    const { Wrapper, client } = createWrapper();
+    const { result } = renderHook(() => useEpisodeProgress(9), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+
+    await act(async () => {
+      await result.current.setEpisodeRating({ seriesId: 9, episodeId: 1, rating: 4 });
+    });
+
+    expect(setEpisodeRatingMock).toHaveBeenCalledWith(9, 1, 4);
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.local.episodeProgress(DEFAULT_PROFILE_ID, 9) });
   });
 });
 

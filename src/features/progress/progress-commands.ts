@@ -47,6 +47,11 @@ type RefreshTrackedSeriesStatusArgs = SeriesIdArgs & {
   totalEpisodes: number | null;
 };
 
+type SetEpisodeRatingArgs = SeriesIdArgs & {
+  episodeId: number;
+  rating: number | null;
+};
+
 type ViewingEventsForMediaArgs = {
   mediaId: number;
   mediaType: MediaType;
@@ -59,6 +64,7 @@ export const progressCommands = {
   toggleEpisodesWatched: defineCommand<ToggleEpisodesWatchedArgs, number>("toggle_episodes_watched"),
   listTrackedSeries: defineCommand<undefined, TrackedSeriesItem[]>("list_tracked_series"),
   refreshTrackedSeriesStatus: defineCommand<RefreshTrackedSeriesStatusArgs, void>("refresh_tracked_series_status"),
+  setEpisodeRating: defineCommand<SetEpisodeRatingArgs, void>("set_episode_rating"),
   listViewingEventsForMedia: defineCommand<ViewingEventsForMediaArgs, ViewingEventNote[]>(
     "list_viewing_events_for_media"
   ),

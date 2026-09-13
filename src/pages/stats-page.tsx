@@ -196,10 +196,7 @@ export function StatsPage() {
           time for each type were already computed separately by the backend
           (StatsTotals.movie/episodeMinutesWatched), just never presented
           that way. Replaces the old single "Movies vs. series" ratio bar. */}
-      <section
-        className="grid gap-4 sm:grid-cols-2 animate-in"
-        style={{ animationDelay: `${staggerDelayMs(2)}ms` }}
-      >
+      <section className="grid gap-4 sm:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
         <div>
           <SectionHeader title={t("stats.filmsSection")} size="sub" headingLevel={2} />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">

@@ -20,7 +20,9 @@ vi.mock("@/features/progress/progress-repository", () => ({
 
 function renderRow(ui: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(ui, { wrapper: ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+  return render(ui, {
+    wrapper: ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  });
 }
 
 describe("MediaListRow", () => {
@@ -33,7 +35,9 @@ describe("MediaListRow", () => {
   });
 
   it("renders the title, year, genre and links to the right detail route", () => {
-    renderRow(<MediaListRow media={makeMedia({ title: "Dune", year: 2021, genres: ["Sci-Fi"], mediaType: "movie" })} />);
+    renderRow(
+      <MediaListRow media={makeMedia({ title: "Dune", year: 2021, genres: ["Sci-Fi"], mediaType: "movie" })} />
+    );
 
     expect(screen.getByText("Dune")).toBeInTheDocument();
     expect(screen.getByText("2021")).toBeInTheDocument();

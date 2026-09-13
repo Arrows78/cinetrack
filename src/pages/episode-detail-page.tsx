@@ -5,6 +5,7 @@ import { Calendar, ChevronLeft, ChevronRight, Clock4, ImageOff, NotebookPen, Tri
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
+import { EpisodeRatingControl } from "@/components/media/tracking/episode-rating-control";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { WatchHistoryPanel } from "@/components/media/activity/watch-history-panel";
@@ -86,6 +87,7 @@ export function EpisodeDetailPage() {
 
   const watchedSet = new Set((progressQuery.data ?? []).map((item) => item.episodeId));
   const watched = watchedSet.has(episode.id);
+  const currentRating = (progressQuery.data ?? []).find((item) => item.episodeId === episode.id)?.rating ?? null;
   const isUnreleased = !watched && !hasAired(episode);
   const stillUrl = buildTmdbImageUrl(episode.stillPath, "w780");
 
@@ -131,6 +133,15 @@ export function EpisodeDetailPage() {
                 toggle keeps that wrong read from being written back as if it
                 were real. */}
             {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
+            {watched ? (
+              <EpisodeRatingControl
+                rating={currentRating}
+                disabled={progressQuery.isSavingRating}
+                onRate={(value) =>
+                  void progressQuery.setEpisodeRating({ seriesId: series.id, episodeId: episode.id, rating: value })
+                }
+              />
+            ) : null}
           </div>
         }
       />

@@ -31,6 +31,7 @@ export const tauriCommandNames = [
   "toggle_episodes_watched",
   "list_tracked_series",
   "refresh_tracked_series_status",
+  "set_episode_rating",
   "list_recent_viewing_events",
   "list_viewing_events_for_year",
   "list_viewing_events_for_media",

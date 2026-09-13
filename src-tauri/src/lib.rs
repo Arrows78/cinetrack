@@ -41,9 +41,9 @@ use commands::{
     refresh_tracked_series_status, remove_availability_alert, remove_backup_file,
     remove_custom_list, remove_custom_list_item, remove_library_item, remove_planned_library_item,
     remove_profile, remove_saved_filter, remove_smart_list, resolve_profile_for_supabase_user,
-    save_availability_snapshot, save_library_item, set_active_profile, tmdb_request,
-    toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen, update_preference,
-    update_smart_list, updater_is_configured, write_backup_to_path,
+    save_availability_snapshot, save_library_item, set_active_profile, set_episode_rating,
+    tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
+    update_preference, update_smart_list, updater_is_configured, write_backup_to_path,
 };
 use commands::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
@@ -146,6 +146,7 @@ pub fn run() {
             toggle_episodes_watched,
             list_tracked_series,
             refresh_tracked_series_status,
+            set_episode_rating,
             list_recent_viewing_events,
             list_viewing_events_for_year,
             list_viewing_events_for_media,

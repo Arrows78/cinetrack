@@ -72,6 +72,7 @@ export function makeEpisodeProgress(overrides: Partial<EpisodeProgress> = {}): E
     watchedAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    rating: null,
     ...overrides,
   };
 }

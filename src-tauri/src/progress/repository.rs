@@ -462,6 +462,42 @@ pub(super) async fn refresh_tracked_series_status_impl(
     Ok(())
 }
 
+/// Local-only rating (1-5) on an already-watched episode — plain UPDATE, no
+/// upsert: rating a never-watched episode is a no-op (0 rows affected),
+/// same "unreachable in practice" shape as other guards in this file, since
+/// the frontend only shows the rating control once an episode is marked
+/// watched. Deliberately excluded from the sync_outbox payload (see
+/// docs/database-schema.md's episode_progress entry) — updating this
+/// column still fires the AFTER UPDATE sync trigger (it fires regardless of
+/// which column changed), which just re-queues the episode's existing
+/// fields; harmless, but the rating itself never actually reaches sync.
+pub(crate) async fn set_episode_rating_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    series_id: i64,
+    episode_id: i64,
+    rating: Option<i64>,
+) -> Result<(), ApiError> {
+    if let Some(value) = rating
+        && !(1..=5).contains(&value)
+    {
+        return Err(ApiError::bad_request(format!(
+            "Episode rating out of range: {value}"
+        )));
+    }
+    sqlx::query(
+        "UPDATE episode_progress SET rating = $1 WHERE profile_id = $2 AND series_id = $3 AND episode_id = $4",
+    )
+    .bind(rating)
+    .bind(profile_id)
+    .bind(series_id)
+    .bind(episode_id)
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1692,5 +1728,90 @@ mod tests {
                 .iter()
                 .any(|item| item.series_id == 9)
         );
+    }
+
+    #[tokio::test]
+    async fn sets_and_clears_a_rating_on_a_watched_episode() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        set_episode_rating_impl(&pool, "default", 9, 100, Some(4))
+            .await
+            .unwrap();
+        let progress = get_episode_progress_impl(&pool, "default", 9)
+            .await
+            .unwrap();
+        assert_eq!(progress[0].rating, Some(4));
+
+        set_episode_rating_impl(&pool, "default", 9, 100, None)
+            .await
+            .unwrap();
+        let progress = get_episode_progress_impl(&pool, "default", 9)
+            .await
+            .unwrap();
+        assert_eq!(progress[0].rating, None);
+    }
+
+    #[tokio::test]
+    async fn rejects_a_rating_outside_1_to_5() {
+        let pool = migrated_pool().await;
+
+        let result = set_episode_rating_impl(&pool, "default", 9, 100, Some(0)).await;
+        assert!(result.is_err());
+
+        let result = set_episode_rating_impl(&pool, "default", 9, 100, Some(6)).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn rating_a_never_watched_episode_is_a_harmless_no_op() {
+        let pool = migrated_pool().await;
+
+        // No episode_progress row exists for (default, 9, 100) — the UPDATE
+        // affects zero rows, and that's fine: the frontend only shows the
+        // rating control once an episode is already marked watched.
+        let result = set_episode_rating_impl(&pool, "default", 9, 100, Some(3)).await;
+        assert!(result.is_ok());
+        assert!(
+            get_episode_progress_impl(&pool, "default", 9)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_rating_never_leaks_across_profiles() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        set_episode_rating_impl(&pool, "other", 9, 100, Some(5))
+            .await
+            .unwrap();
+
+        let progress = get_episode_progress_impl(&pool, "default", 9)
+            .await
+            .unwrap();
+        assert_eq!(progress[0].rating, None);
     }
 }

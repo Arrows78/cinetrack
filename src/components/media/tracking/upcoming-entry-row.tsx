@@ -27,7 +27,14 @@ function EpisodeStatus({ entry }: { entry: TrackingEntry }) {
   // Minimal SeriesInput — id/mediaType/title are all the Rust command's
   // episode-progress write actually needs (see progress-commands.ts);
   // TrackingEntry never carries a full MediaSummary.
-  const series: SeriesInput = { id: entry.mediaId, mediaType: "series", title: entry.title, overview: "", genres: [], cast: [] };
+  const series: SeriesInput = {
+    id: entry.mediaId,
+    mediaType: "series",
+    title: entry.title,
+    overview: "",
+    genres: [],
+    cast: [],
+  };
 
   return (
     <>

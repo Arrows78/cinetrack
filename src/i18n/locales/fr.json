@@ -602,6 +602,17 @@
     "badgeNew": "Nouveau",
     "badgeAired": "Diffusé"
   },
+  "episode": {
+    "rating": {
+      "label": "Noter cet épisode",
+      "clear": "Effacer la note",
+      "1": "Nul",
+      "2": "Mauvais",
+      "3": "Moyen",
+      "4": "Bien",
+      "5": "Excellent"
+    }
+  },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
     "theatricalReleaseBody": "Sortie cinéma aujourd'hui ou très bientôt.",

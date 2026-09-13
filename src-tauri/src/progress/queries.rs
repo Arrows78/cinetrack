@@ -14,6 +14,7 @@ struct EpisodeProgressRow {
     watched_at: Option<String>,
     created_at: String,
     updated_at: String,
+    rating: Option<i64>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -54,7 +55,7 @@ pub(super) async fn get_episode_progress_impl(
     series_id: i64,
 ) -> Result<Vec<EpisodeProgress>, ApiError> {
     let rows: Vec<EpisodeProgressRow> = sqlx::query_as(
-        "SELECT uuid, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at
+        "SELECT uuid, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at, rating
          FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1",
     )
     .bind(profile_id)
@@ -76,6 +77,7 @@ pub(super) async fn get_episode_progress_impl(
             watched_at: row.watched_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
+            rating: row.rating,
         })
         .collect())
 }

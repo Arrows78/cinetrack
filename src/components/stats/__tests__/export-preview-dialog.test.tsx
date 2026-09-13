@@ -25,9 +25,7 @@ describe("ExportPreviewDialog", () => {
   });
 
   it("shows a loading placeholder (no image, confirm disabled) while the card is still rendering", () => {
-    render(
-      <ExportPreviewDialog open onOpenChange={vi.fn()} title="Preview" imageUrl={null} onConfirm={vi.fn()} />
-    );
+    render(<ExportPreviewDialog open onOpenChange={vi.fn()} title="Preview" imageUrl={null} onConfirm={vi.fn()} />);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
@@ -36,13 +34,7 @@ describe("ExportPreviewDialog", () => {
 
   it("shows the rendered image and an enabled confirm button once imageUrl is set", () => {
     render(
-      <ExportPreviewDialog
-        open
-        onOpenChange={vi.fn()}
-        title="Preview"
-        imageUrl="blob:mock-url"
-        onConfirm={vi.fn()}
-      />
+      <ExportPreviewDialog open onOpenChange={vi.fn()} title="Preview" imageUrl="blob:mock-url" onConfirm={vi.fn()} />
     );
 
     expect(screen.getByRole("img", { name: "Preview" })).toHaveAttribute("src", "blob:mock-url");
@@ -62,13 +54,7 @@ describe("ExportPreviewDialog", () => {
   it("calls onConfirm when the confirm button is clicked", () => {
     const onConfirm = vi.fn();
     render(
-      <ExportPreviewDialog
-        open
-        onOpenChange={vi.fn()}
-        title="Preview"
-        imageUrl="blob:mock-url"
-        onConfirm={onConfirm}
-      />
+      <ExportPreviewDialog open onOpenChange={vi.fn()} title="Preview" imageUrl="blob:mock-url" onConfirm={onConfirm} />
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Download" }));

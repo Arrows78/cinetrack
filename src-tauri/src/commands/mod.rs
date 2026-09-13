@@ -34,7 +34,7 @@ pub use crate::profiles::{
 };
 pub use crate::progress::{
     get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
-    toggle_episodes_watched, toggle_movie_seen,
+    set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
 };
 pub use crate::stats::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,

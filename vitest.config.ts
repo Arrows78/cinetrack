@@ -242,6 +242,12 @@ export default defineConfig({
           functions: 64,
           lines: 88,
         },
+        "src/components/media/tracking/episode-rating-control.tsx": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
       },
     },
   },

@@ -602,6 +602,17 @@
     "badgeNew": "New",
     "badgeAired": "Aired"
   },
+  "episode": {
+    "rating": {
+      "label": "Rate this episode",
+      "clear": "Clear rating",
+      "1": "Terrible",
+      "2": "Bad",
+      "3": "Okay",
+      "4": "Good",
+      "5": "Great"
+    }
+  },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
     "theatricalReleaseBody": "Theatrical release today or very soon.",

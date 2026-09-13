@@ -970,6 +970,14 @@ export const componentInventory = [
     "Circular 'mark as seen' toggle button for inline use in rows and cards."
   ),
   component(
+    "EpisodeRatingControl",
+    "components/media/tracking/episode-rating-control.tsx",
+    "Media",
+    "feature",
+    "live",
+    "Five-option 1-5 rating for an already-watched episode — emoji plus a real word label per option."
+  ),
+  component(
     "SmartListsPanel",
     "components/media/library/smart-lists-panel.tsx",
     "Media",
