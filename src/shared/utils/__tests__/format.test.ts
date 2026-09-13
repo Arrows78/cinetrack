@@ -118,6 +118,8 @@ describe("formatRelativeCountdown", () => {
     expect(formatRelativeCountdown(day(3))).toBe("Dans 3 jours");
     expect(formatRelativeCountdown(day(7))).toBe("Dans 1 semaine");
     expect(formatRelativeCountdown(day(14))).toBe("Dans 2 semaines");
+
+    await i18n.changeLanguage("en");
   });
 
   it("falls back to the generic relative-date phrasing for a past date", () => {
