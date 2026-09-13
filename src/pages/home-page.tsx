@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { Tile } from "@/components/ui/tile";
 import { EmptyState } from "@/components/states/empty-state";
+import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { GridSkeleton, HeroSkeleton } from "@/components/states/loading-skeletons";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { StatCard } from "@/components/media/primitives/stat-card";
@@ -211,7 +213,7 @@ function HomePageContent() {
     );
   }
 
-  if (homeQuery.isError) {
+  if (homeQuery.isError && (!homeQuery.isRefetchError || !isDegradedRemoteError(homeQuery.error))) {
     return <RemoteErrorState error={homeQuery.error} onRetry={() => void homeQuery.refetch()} />;
   }
 
@@ -221,6 +223,7 @@ function HomePageContent() {
 
   return (
     <div className="space-y-8">
+      {homeQuery.isRefetchError ? <DegradedModeBadge /> : null}
       {hero ? (
         <section className="relative overflow-hidden rounded-hero border border-border animate-in-up">
           <img

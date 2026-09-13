@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { errorMessage } from "../errors";
+import { errorMessage, isDegradedRemoteError } from "../errors";
 
 class CustomError extends Error {
   constructor(message: string) {
@@ -45,5 +45,19 @@ describe("errorMessage", () => {
     circular.self = circular;
 
     expect(errorMessage(circular)).toBe(String(circular));
+  });
+});
+
+describe("isDegradedRemoteError", () => {
+  it("is true for a connection failure", () => {
+    expect(isDegradedRemoteError(new Error("socket hang up"))).toBe(true);
+  });
+
+  it("is false for an authentication failure", () => {
+    expect(isDegradedRemoteError(new Error("TMDB 401: invalid token"))).toBe(false);
+  });
+
+  it("is false for a local database failure", () => {
+    expect(isDegradedRemoteError(new Error("plugin:sql error"))).toBe(false);
   });
 });

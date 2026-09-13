@@ -8,7 +8,9 @@ import { SectionHeader } from "@/components/media/primitives/section-header";
 import { ImdbLink } from "@/components/media/detail/imdb-link";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
+import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { usePerson } from "@/features/media/use-discovery";
 import { ageFromBirthday, buildTmdbImageUrl, formatDate } from "@/shared/utils/format";
@@ -70,7 +72,12 @@ export function PersonDetailPage() {
     return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
   }
   if (query.isPending) return <HeroSkeleton />;
-  if (query.isError) {
+  // See movie-detail-page.tsx's equivalent guard for why this is two
+  // separate checks rather than one combined condition (TS narrowing).
+  if (query.isError && !query.isRefetchError) {
+    return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
+  }
+  if (query.isRefetchError && !isDegradedRemoteError(query.error)) {
     return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
   }
 
@@ -79,6 +86,7 @@ export function PersonDetailPage() {
 
   return (
     <div className="space-y-8">
+      {query.isRefetchError ? <DegradedModeBadge /> : null}
       <Panel
         className="flex flex-col gap-5 animate-in sm:flex-row sm:items-start"
         style={{ animationDelay: `${staggerDelayMs(0)}ms` }}

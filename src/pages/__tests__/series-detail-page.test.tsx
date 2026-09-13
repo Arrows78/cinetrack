@@ -484,6 +484,40 @@ describe("SeriesDetailPage", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it("shows a remote error state on a non-connection refetch error, and retry triggers refetch", () => {
+    const refetch = vi.fn();
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("TMDB 401: invalid token"),
+      refetch,
+      data: buildSeries(),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("Unable to load the catalogue")).toBeInTheDocument();
+    screen.getByRole("button", { name: /Try again/i }).click();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps showing the cached hero with a degraded-mode badge on a connection refetch error", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("socket hang up"),
+      refetch: vi.fn(),
+      data: buildSeries(),
+    });
+
+    renderPage();
+
+    expect(screen.getByTestId("hero")).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("offline.message"))).toBeInTheDocument();
+  });
+
   it("computes series progress from real season/episode data and passes it down to the season/next-episode cards", () => {
     renderPage();
 

@@ -35,3 +35,16 @@ export const errorCategory = (error: unknown): ErrorCategory => {
   }
   return "connection";
 };
+
+/**
+ * Whether a failed *refetch* (query.isRefetchError — the query previously
+ * succeeded and still has that data, see TanStack Query's
+ * QueryObserverRefetchErrorResult) should degrade to "keep showing that
+ * cached data, with a contextual badge" (see DegradedModeBadge) instead of
+ * replacing the whole section with RemoteErrorState.
+ *
+ * Only "connection" failures qualify: an authentication error needs the
+ * user to actually fix something (renew the TMDB token), so hiding it
+ * behind stale data would bury an actionable problem rather than surface it.
+ */
+export const isDegradedRemoteError = (error: unknown): boolean => errorCategory(error) === "connection";

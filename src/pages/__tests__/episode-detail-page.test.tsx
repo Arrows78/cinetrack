@@ -195,6 +195,87 @@ describe("EpisodeDetailPage", () => {
     expect(seasonRefetch).toHaveBeenCalledTimes(1);
   });
 
+  it("shows a remote error state on a season query error, and retry refetches both queries", () => {
+    const seriesRefetch = vi.fn();
+    const seasonRefetch = vi.fn();
+    seriesQueryMock.mockReturnValue(makeQuery(defaultSeries, { refetch: seriesRefetch }));
+    seasonQueryMock.mockReturnValue(
+      makeQuery(undefined, { isError: true, error: new Error("boom"), refetch: seasonRefetch })
+    );
+    renderPage();
+
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+
+    expect(seriesRefetch).toHaveBeenCalledTimes(1);
+    expect(seasonRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a remote error state on a non-connection series refetch error, and retry refetches both queries", () => {
+    const seriesRefetch = vi.fn();
+    const seasonRefetch = vi.fn();
+    seriesQueryMock.mockReturnValue(
+      makeQuery(defaultSeries, {
+        isError: true,
+        isRefetchError: true,
+        error: new Error("TMDB 401: invalid token"),
+        refetch: seriesRefetch,
+      })
+    );
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason([]), { refetch: seasonRefetch }));
+    renderPage();
+
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+
+    expect(seriesRefetch).toHaveBeenCalledTimes(1);
+    expect(seasonRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a remote error state on a non-connection season refetch error, and retry refetches both queries", () => {
+    const seriesRefetch = vi.fn();
+    const seasonRefetch = vi.fn();
+    seriesQueryMock.mockReturnValue(makeQuery(defaultSeries, { refetch: seriesRefetch }));
+    seasonQueryMock.mockReturnValue(
+      makeQuery(makeSeason([]), {
+        isError: true,
+        isRefetchError: true,
+        error: new Error("TMDB 401: invalid token"),
+        refetch: seasonRefetch,
+      })
+    );
+    renderPage();
+
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+
+    expect(seriesRefetch).toHaveBeenCalledTimes(1);
+    expect(seasonRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps showing cached content with a degraded-mode badge on a connection series refetch error", () => {
+    seriesQueryMock.mockReturnValue(
+      makeQuery(defaultSeries, { isError: true, isRefetchError: true, error: new Error("socket hang up") })
+    );
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason([episode1, episode2, episode3])));
+    renderPage();
+
+    expect(screen.getByTestId("hero")).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("offline.message"))).toBeInTheDocument();
+  });
+
+  it("keeps showing cached content with a degraded-mode badge on a connection season refetch error", () => {
+    seriesQueryMock.mockReturnValue(makeQuery(defaultSeries));
+    seasonQueryMock.mockReturnValue(
+      makeQuery(makeSeason([episode1, episode2, episode3]), {
+        isError: true,
+        isRefetchError: true,
+        error: new Error("socket hang up"),
+      })
+    );
+    renderPage();
+
+    expect(screen.getByTestId("hero")).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("offline.message"))).toBeInTheDocument();
+  });
+
   it("renders the episode's title, episode code, overview, air date, runtime and rating", () => {
     renderPage();
 

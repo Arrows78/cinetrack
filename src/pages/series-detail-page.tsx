@@ -27,7 +27,9 @@ import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-b
 import { FavouriteButton } from "@/components/media/tracking/favourite-button";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
+import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { EmptyState } from "@/components/states/empty-state";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { formatRelativeCountdown } from "@/shared/utils/format";
@@ -103,7 +105,12 @@ export function SeriesDetailPage() {
   // fast series-to-series navigation. isPending alone covers "no data yet"
   // unconditionally, so this never falls through to the same blank-page gap.
   if (seriesQuery.isPending) return <HeroSkeleton />;
-  if (seriesQuery.isError) {
+  // See movie-detail-page.tsx's equivalent guard for why this is two
+  // separate checks rather than one combined condition (TS narrowing).
+  if (seriesQuery.isError && !seriesQuery.isRefetchError) {
+    return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
+  }
+  if (seriesQuery.isRefetchError && !isDegradedRemoteError(seriesQuery.error)) {
     return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
   }
   const series = seriesQuery.data;
@@ -112,6 +119,7 @@ export function SeriesDetailPage() {
 
   return (
     <div className="space-y-8">
+      {seriesQuery.isRefetchError ? <DegradedModeBadge /> : null}
       <MediaDetailsHero
         media={series}
         actions={

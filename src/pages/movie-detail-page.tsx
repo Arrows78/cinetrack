@@ -27,7 +27,9 @@ import { FavouriteButton } from "@/components/media/tracking/favourite-button";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
+import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useMovieDetails } from "@/features/media/use-media";
@@ -47,13 +49,22 @@ export function MovieDetailPage() {
     return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
   }
   if (movieQuery.isPending) return <HeroSkeleton />;
-  if (movieQuery.isError) {
+  // Two separate guards (rather than one combined condition) so TypeScript
+  // can narrow movieQuery.data to defined below: isRefetchError alone is
+  // the discriminant TanStack Query's own types key data's definedness on
+  // (see isDegradedRemoteError's doc comment) — folding the category check
+  // into the same condition as isRefetchError would erase that narrowing.
+  if (movieQuery.isError && !movieQuery.isRefetchError) {
+    return <RemoteErrorState error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
+  }
+  if (movieQuery.isRefetchError && !isDegradedRemoteError(movieQuery.error)) {
     return <RemoteErrorState error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
   }
   const movie = movieQuery.data;
 
   return (
     <div className="space-y-8">
+      {movieQuery.isRefetchError ? <DegradedModeBadge /> : null}
       <MediaDetailsHero
         media={movie}
         actions={

@@ -184,6 +184,42 @@ describe("MovieDetailPage", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it("renders a remote error state on a refetch error that isn't a plain connection failure", () => {
+    const refetch = vi.fn();
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("TMDB 401: invalid token"),
+      refetch,
+      data: buildMovie(),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("Unable to load the catalogue")).toBeInTheDocument();
+    expect(screen.queryByTestId("hero")).not.toBeInTheDocument();
+
+    screen.getByRole("button", { name: /Try again/i }).click();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows cached movie data with a degraded-mode badge when a background refetch fails to connect", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("socket hang up"),
+      refetch: vi.fn(),
+      data: buildMovie(),
+    });
+
+    renderPage();
+
+    expect(screen.getByTestId("hero")).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("offline.message"))).toBeInTheDocument();
+  });
+
   it("renders overview and technical sheet from movie data, with a fallback for missing fields", () => {
     movieQueryMock.mockReturnValue({
       isPending: false,

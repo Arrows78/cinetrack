@@ -17,7 +17,9 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/states/empty-state";
 import { HeroSkeleton } from "@/components/states/loading-skeletons";
 import { PartialErrorState } from "@/components/states/partial-error-state";
+import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { hasAired, useEpisodeProgress } from "@/features/progress/use-progress";
 import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
@@ -62,16 +64,24 @@ export function EpisodeDetailPage() {
     return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
   }
   if (seriesQuery.isPending || seasonQuery.isPending) return <HeroSkeleton />;
-  if (seriesQuery.isError || seasonQuery.isError) {
-    return (
-      <RemoteErrorState
-        error={seriesQuery.error ?? seasonQuery.error}
-        onRetry={() => {
-          void seriesQuery.refetch();
-          void seasonQuery.refetch();
-        }}
-      />
-    );
+  const retryBoth = () => {
+    void seriesQuery.refetch();
+    void seasonQuery.refetch();
+  };
+  // Per-query, discriminant-only guards (rather than one combined condition)
+  // so TypeScript can narrow seriesQuery.data/seasonQuery.data to defined
+  // below — see movie-detail-page.tsx's equivalent guard for why.
+  if (seriesQuery.isError && !seriesQuery.isRefetchError) {
+    return <RemoteErrorState error={seriesQuery.error} onRetry={retryBoth} />;
+  }
+  if (seasonQuery.isError && !seasonQuery.isRefetchError) {
+    return <RemoteErrorState error={seasonQuery.error} onRetry={retryBoth} />;
+  }
+  if (seriesQuery.isRefetchError && !isDegradedRemoteError(seriesQuery.error)) {
+    return <RemoteErrorState error={seriesQuery.error} onRetry={retryBoth} />;
+  }
+  if (seasonQuery.isRefetchError && !isDegradedRemoteError(seasonQuery.error)) {
+    return <RemoteErrorState error={seasonQuery.error} onRetry={retryBoth} />;
   }
 
   const series = seriesQuery.data;
@@ -99,6 +109,7 @@ export function EpisodeDetailPage() {
 
   return (
     <div className="space-y-8">
+      {seriesQuery.isRefetchError || seasonQuery.isRefetchError ? <DegradedModeBadge /> : null}
       <MediaDetailsHero
         media={series}
         actions={<AddToLibraryButton media={series} />}

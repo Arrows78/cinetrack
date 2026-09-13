@@ -104,6 +104,40 @@ describe("PersonDetailPage", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it("shows a remote error state on a non-connection refetch error, and retry calls refetch", () => {
+    const refetch = vi.fn();
+    personQueryMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("TMDB 401: invalid token"),
+      data: personDetail(),
+      refetch,
+    });
+
+    renderPage();
+
+    const retryButton = screen.getByRole("button", { name: "Try again" });
+    retryButton.click();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps showing cached content with a degraded-mode badge on a connection refetch error", () => {
+    personQueryMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("socket hang up"),
+      data: personDetail(),
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("heading", { level: 1, name: "Denis Villeneuve" })).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("offline.message"))).toBeInTheDocument();
+  });
+
   it("shows a skeleton while the query is pending", () => {
     personQueryMock.mockReturnValue({ isPending: true, isError: false, data: undefined, refetch: vi.fn() });
 

@@ -239,6 +239,40 @@ describe("HomePage", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it("renders RemoteErrorState on a non-connection home-feed refetch error, and retry calls refetch", () => {
+    const refetch = vi.fn();
+    homeFeedMock.mockReturnValue({
+      isLoading: false,
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("TMDB 401: invalid token"),
+      refetch,
+      data: buildHomeFeed(),
+    });
+    renderPage();
+
+    expect(screen.getByText(i18n.t("errors.catalogUnavailable"))).toBeInTheDocument();
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps showing cached content with a degraded-mode badge on a connection home-feed refetch error", () => {
+    homeFeedMock.mockReturnValue({
+      isLoading: false,
+      isPending: false,
+      isError: true,
+      isRefetchError: true,
+      error: new Error("socket hang up"),
+      refetch: vi.fn(),
+      data: buildHomeFeed(),
+    });
+    renderPage();
+
+    expect(screen.getByTestId("catalogue-sections")).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("offline.message"))).toBeInTheDocument();
+  });
+
   it("renders the hero from the first trending movie, its link, and the three stat cards", () => {
     trackedSeriesMock.mockReturnValue({ data: [{ id: "1" }, { id: "2" }] });
     libraryMock.mockReturnValue({

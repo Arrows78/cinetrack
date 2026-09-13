@@ -17,7 +17,9 @@ import { Select } from "@/components/ui/select";
 import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
+import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { ORIGIN_COUNTRIES, PLATFORMS } from "@/shared/constants/discover";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -306,8 +308,11 @@ export function WatchTonightPage() {
         <HideWatchedToggle />
       </div>
       {query.isPending ? <GridSkeleton count={8} /> : null}
-      {query.isError ? <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} /> : null}
-      {!query.isPending && !query.isError ? (
+      {query.isError && (!query.isRefetchError || !isDegradedRemoteError(query.error)) ? (
+        <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />
+      ) : null}
+      {query.isRefetchError && isDegradedRemoteError(query.error) ? <DegradedModeBadge /> : null}
+      {!query.isPending && (!query.isError || query.isRefetchError) ? (
         isEmpty ? (
           <EmptyState icon={Popcorn} title={t("watchTonight.emptyTitle")} description={t("watchTonight.emptyDesc")} />
         ) : (
