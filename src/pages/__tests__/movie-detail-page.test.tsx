@@ -229,6 +229,37 @@ describe("MovieDetailPage", () => {
     expect(screen.getAllByText("—")).toHaveLength(3);
   });
 
+  it("shows director and writer rows only when the movie has that credit data", () => {
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie(),
+    });
+    renderPage();
+
+    expect(screen.queryByText("Director")).not.toBeInTheDocument();
+    expect(screen.queryByText("Writer(s)")).not.toBeInTheDocument();
+
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildMovie({
+        directors: [{ id: 1, name: "Denis Villeneuve", job: "Director" }],
+        writers: [{ id: 2, name: "Jon Spaihts", job: "Writer" }],
+      }),
+    });
+    renderPage();
+
+    expect(screen.getByText("Director")).toBeInTheDocument();
+    expect(screen.getByText("Denis Villeneuve")).toBeInTheDocument();
+    expect(screen.getByText("Writer(s)")).toBeInTheDocument();
+    expect(screen.getByText("Jon Spaihts")).toBeInTheDocument();
+  });
+
   it("links out to IMDb when the movie has an imdbId, and omits the link otherwise", () => {
     movieQueryMock.mockReturnValue({
       isPending: false,

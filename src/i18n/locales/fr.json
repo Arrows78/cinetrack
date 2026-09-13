@@ -34,6 +34,8 @@
     "progressLabel": "{{percent}}% regardé",
     "status": "Statut",
     "genres": "Genres",
+    "director": "Réalisateur",
+    "writers": "Scénariste(s)",
     "addToLibrary": "Ajouter à la bibliothèque",
     "inLibrary": "Dans la bibliothèque",
     "unknownYear": "Année inconnue",

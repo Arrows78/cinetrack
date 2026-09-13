@@ -126,6 +126,21 @@ const mapCrew = (crew?: TmdbCrewDto[]): CrewMember[] =>
       profilePath: member.profile_path,
     }));
 
+// Writing credits — TMDB spreads these across several `job` values rather
+// than a single "Writer" tag; a person can hold more than one of them for
+// the same title (e.g. "Writer" and "Story"), so dedupe by id.
+const WRITING_JOBS = new Set(["Writer", "Screenplay", "Story"]);
+const mapWriters = (crew?: TmdbCrewDto[]): CrewMember[] => {
+  const seen = new Set<number>();
+  const writers: CrewMember[] = [];
+  for (const member of crew ?? []) {
+    if (!member.job || !WRITING_JOBS.has(member.job) || seen.has(member.id)) continue;
+    seen.add(member.id);
+    writers.push({ id: member.id, name: member.name, job: member.job, profilePath: member.profile_path });
+  }
+  return writers;
+};
+
 export const mapCollectionSummary = (dto: TmdbCollectionSummaryDto): CollectionSummary => ({
   id: dto.id,
   name: dto.name,
@@ -153,6 +168,7 @@ export const mapMovieDto = (dto: TmdbMovieDto, region: string = DEFAULT_TMDB_REG
   duration: dto.runtime,
   cast: mapCast(dto.credits?.cast),
   directors: mapCrew(dto.credits?.crew),
+  writers: mapWriters(dto.credits?.crew),
   collection: dto.belongs_to_collection ? mapCollectionSummary(dto.belongs_to_collection) : null,
   imdbId: dto.external_ids?.imdb_id ?? null,
   certification: resolveMovieCertification(dto.release_dates, region),
@@ -200,6 +216,7 @@ export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGIO
   runtime: dto.episode_run_time?.[0] ?? null,
   cast: mapCast(dto.credits?.cast),
   directors: mapCrew(dto.credits?.crew),
+  writers: mapWriters(dto.credits?.crew),
   numberOfSeasons: dto.number_of_seasons ?? dto.seasons?.length ?? 0,
   numberOfEpisodes: dto.number_of_episodes,
   imdbId: dto.external_ids?.imdb_id ?? null,
@@ -208,6 +225,7 @@ export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGIO
   backdropPaths: mapBackdropPaths(dto.images),
   reviews: mapReviews(dto.reviews),
   seasons: dto.seasons?.map(mapSeasonPreviewDto) ?? [],
+  nextEpisodeToAir: dto.next_episode_to_air ? mapEpisodeDto(dto.next_episode_to_air) : null,
 });
 
 export const mapEpisodeDto = (dto: TmdbEpisodeDto): Episode => ({
