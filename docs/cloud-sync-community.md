@@ -4,6 +4,12 @@ This patch adds the infrastructure needed for the same signed-in CineTrack
 account to converge across multiple Tauri installations without replacing the
 local-first SQLite architecture.
 
+Cloud sync itself is shipped (see `docs/architecture.md`'s "Cloud sync"
+section). The community pieces described below (`src/features/community/`,
+the "Community boundary"/"Community verification" sections) are backend
+preparation only — no UI exists yet; see `docs/architecture.md`'s "Community
+(not yet built)" section.
+
 ## Data flow
 
 ```text

@@ -127,6 +127,10 @@ CineTrack is local-first: SQLite stays the source of truth for the device it's o
 
 **Mobile (iOS only, no Android yet).** `src-tauri/tauri.ios.conf.json` is Tauri's platform-config-override mechanism, merged on top of `tauri.conf.json` only for iOS builds; it registers `cinetrack://` under `plugins.deep-link.mobile` so the existing `onOpenUrl`/`getCurrent` handlers work unchanged on iOS. `syncService.initialize()` also wakes on `visibilitychange`, since a backgrounded WKWebView pauses the periodic timer and Realtime channel alike. CI builds `gen/apple` (gitignored, regenerated per build) for the iOS Simulator with `--no-sign` (`pnpm ios:init` / `pnpm ios:build:sim`) — real-device/TestFlight/App Store signing waits on an Apple Developer account (see `docs/cloud-sync-community.md`'s "Mobile" section).
 
+## Community (not yet built)
+
+`src/features/community/` (types + a Supabase-direct repository — `community-repository.ts` calls `community_profiles`/`community_reviews`/`community_follows`/`community_blocks`/`community_mutes`/`community_review_likes` and a `community_feed` RPC) and the privacy/moderation design in `docs/cloud-sync-community.md`'s "Community boundary" and "Community verification" sections exist as **backend preparation for a future social UI, not a shipped feature**. There is deliberately no Tauri command, no route, no page, and no `community.*` i18n namespace — the only consumer today is the module's own colocated test file. This is intentional groundwork, not dead code: the decision (as of this writing) is to keep it in place, undocumented as a "real" domain in the list above, until building the actual UI is scheduled.
+
 ## Testing strategy
 
 - **Rust** (`cargo test`) exercises the crate-root domain slices directly against real, migrated SQLite pools — this is where service orchestration, cascades, transactions, query behavior, and multi-table invariants are proven, not just "does the call succeed."
