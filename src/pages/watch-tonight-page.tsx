@@ -43,7 +43,7 @@ const MY_SERVICES_VALUE = "mine";
 const DURATION_PRESETS = [
   { minutes: 30, labelKey: "watchTonight.durationPreset30" },
   { minutes: 60, labelKey: "watchTonight.durationPreset60" },
-  { minutes: 90, labelKey: "watchTonight.durationPreset90" },
+  { minutes: 120, labelKey: "watchTonight.durationPreset120" },
 ] as const;
 
 // Two separate <Link> branches (rather than one with a conditional `to`) so
@@ -286,7 +286,13 @@ export function WatchTonightPage() {
         icon={Dices}
         isPageTitle
       />
-      <div className="flex flex-col gap-3 animate-in sm:flex-row sm:flex-wrap sm:items-end">
+      {/* items-start (not items-end): Max duration is taller than its
+          siblings once its presets render below the input, and items-end
+          would align every field's *bottom* edge — pushing Max duration's
+          own input row up out of line with the others. items-start aligns
+          every field's top (its label) instead, so every input/control row
+          lines up regardless of what extra content trails after one of them. */}
+      <div className="flex flex-col gap-3 animate-in sm:flex-row sm:flex-wrap sm:items-start">
         <FormField label={t("watchTonight.genre")}>
           {() => (
             <Select value={genreId} onChange={(e) => setGenreId(e.target.value)}>
@@ -373,10 +379,19 @@ export function WatchTonightPage() {
             </Select>
           )}
         </FormField>
-        <Button type="button" onClick={() => setSeed((value) => value + 1)}>
-          <Dices className="mr-2 size-4" />
-          {t("watchTonight.retry")}
-        </Button>
+        {/* Matches FormField's own label row (same classes, empty text) so
+            items-start above lines this button up with the other fields'
+            inputs instead of with their labels — this button has no label
+            of its own to occupy that first row. */}
+        <div className="grid gap-1.5 text-body-sm font-medium">
+          <span aria-hidden="true" className="invisible">
+            &nbsp;
+          </span>
+          <Button type="button" onClick={() => setSeed((value) => value + 1)}>
+            <Dices className="mr-2 size-4" />
+            {t("watchTonight.retry")}
+          </Button>
+        </div>
       </div>
       <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
       <div className="flex justify-end">

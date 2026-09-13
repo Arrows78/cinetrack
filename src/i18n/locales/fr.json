@@ -722,7 +722,7 @@
     "maxDuration": "Durée maximale",
     "durationPreset30": "< 30 min",
     "durationPreset60": "< 1h",
-    "durationPreset90": "< 1h30",
+    "durationPreset120": "< 2h",
     "originCountry": "Origine",
     "allOriginCountries": "Tous les pays",
     "originCountryOptions": {
