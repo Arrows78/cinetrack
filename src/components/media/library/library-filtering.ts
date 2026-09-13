@@ -45,7 +45,7 @@ export function filterAndSortLibrary(
   // the title — a "liste seule" item (CustomListItem) has neither, so it
   // only ever matches on title (see matchesSearch(li.title) below).
   const matchesLibrarySearch = (item: LibraryItem) =>
-    matchesSearch([item.title, item.notes ?? "", ...item.tags].join(" "));
+    matchesSearch([item.title, item.notes ?? "", ...(item.tags ?? [])].join(" "));
 
   const fromLibrary = libraryItems
     .filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter))

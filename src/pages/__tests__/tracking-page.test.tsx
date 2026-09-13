@@ -199,6 +199,16 @@ describe("TrackingPage", () => {
     expect(getRouterSearch()).toContain("type=release");
   });
 
+  it("labels the sort chip for the platform sort as well as title", () => {
+    setRouterSearch("?sort=platform");
+    render(<TrackingPage />);
+
+    const chipLabel = i18n.t("filters.chips.sort", { value: i18n.t("tracking.sortPlatform") });
+    expect(
+      screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) })
+    ).toBeInTheDocument();
+  });
+
   it("labels the type chip for the episode and availability filters", () => {
     setRouterSearch("?type=episode");
     const { rerender } = render(<TrackingPage />);

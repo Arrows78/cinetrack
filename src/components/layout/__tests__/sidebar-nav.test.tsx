@@ -49,6 +49,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 
 vi.mock("@/features/profiles/use-profiles", () => ({
   useProfiles: () => ({ data: [], isLoading: false, isError: false }),
+  useProfileSwitching: () => ({ switchingProfileId: null, switchToProfile: vi.fn() }),
 }));
 
 function renderSidebar(props: Partial<Parameters<typeof SidebarNav>[0]> = {}): ReturnType<typeof render> {

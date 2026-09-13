@@ -880,7 +880,7 @@ describe("LibraryExplorer — empty states", () => {
     renderPage();
     await screen.findByText("Dune");
 
-    fireEvent.change(screen.getByLabelText("Search your library by title…"), {
+    fireEvent.change(screen.getByLabelText("Search your library by title, notes or tags…"), {
       target: { value: "nonexistent title" },
     });
 
@@ -898,7 +898,9 @@ describe("LibraryExplorer — text search", () => {
     renderPage();
     await screen.findByText("Dune");
 
-    fireEvent.change(screen.getByLabelText("Search your library by title…"), { target: { value: "dun" } });
+    fireEvent.change(screen.getByLabelText("Search your library by title, notes or tags…"), {
+      target: { value: "dun" },
+    });
 
     // The server-paginated search term is debounced (see DEBOUNCE_MS in
     // library-explorer.tsx), so the filtered result lands a moment after
@@ -921,7 +923,9 @@ describe("LibraryExplorer — text search", () => {
     renderPage();
     await screen.findByText("Dune");
 
-    fireEvent.change(screen.getByLabelText("Search your library by title…"), { target: { value: "dune" } });
+    fireEvent.change(screen.getByLabelText("Search your library by title, notes or tags…"), {
+      target: { value: "dune" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Watching" }));
 
     // Same debounce note as the test above — the search half of this

@@ -38,6 +38,7 @@ vi.mock("@/features/auth/use-auth", async (importOriginal) => ({
 
 vi.mock("@/features/profiles/use-profiles", () => ({
   useProfiles: () => ({ data: [], isLoading: false, isError: false }),
+  useProfileSwitching: () => ({ switchingProfileId: null, switchToProfile: vi.fn() }),
 }));
 
 vi.mock("@/features/preferences/use-preferences", () => ({

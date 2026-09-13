@@ -1090,6 +1090,14 @@ export const componentInventory = [
     "Filterable, sortable library browser shared by /library and the /movies and /series 'My list' tab."
   ),
   component(
+    "MediaHubPage",
+    "components/media/library/media-hub-page.tsx",
+    "Media",
+    "feature",
+    "live",
+    "Shared Series/Movies page shell (title, My list/Upcoming tabs) — SeriesPage and MoviesPage just supply the icon/labels."
+  ),
+  component(
     "ViewModeToggle",
     "components/media/primitives/view-mode-toggle.tsx",
     "Media",
