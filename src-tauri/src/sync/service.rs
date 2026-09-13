@@ -928,13 +928,25 @@ mod tests {
         .unwrap();
         let pending = list_outbox(&pool, 10).await.unwrap();
         assert_eq!(pending.len(), 2);
+        // Both rows share the same millisecond-granularity created_at, so
+        // list_outbox's tie-break (a random mutation_id) can return them in
+        // either order — look each one up by its actual entity_id instead of
+        // assuming an index reflects insertion order.
+        let local_1 = pending
+            .iter()
+            .find(|row| row.entity_id == "local-1")
+            .unwrap();
+        let local_2 = pending
+            .iter()
+            .find(|row| row.entity_id == "local-2")
+            .unwrap();
 
         // One mutation gets rebased as a conflict; the other is marked
         // failed by some other generic error, never a conflict.
         rebase_conflicts(
             &pool,
             &[SyncConflict {
-                mutation_id: pending[0].mutation_id.clone(),
+                mutation_id: local_1.mutation_id.clone(),
                 entity_type: "library_item".to_string(),
                 entity_id: "local-1".to_string(),
                 server_version: 7,
@@ -943,7 +955,7 @@ mod tests {
         .await
         .unwrap();
         sqlx::query("UPDATE sync_outbox SET last_error='network timeout' WHERE mutation_id=?1")
-            .bind(&pending[1].mutation_id)
+            .bind(&local_2.mutation_id)
             .execute(&pool)
             .await
             .unwrap();
