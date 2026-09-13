@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { SeasonPage } from "../season-page";
 import type { Episode, MediaSummary, Season } from "@/types/media";
@@ -10,6 +11,13 @@ import type { Episode, MediaSummary, Season } from "@/types/media";
 const paramsHolder = vi.hoisted(() => ({ seriesId: "9", seasonNumber: "1" }));
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => paramsHolder,
+  // Same fake as history-page.test.tsx's own mock — no RouterProvider exists
+  // in this render, and the prev/next season nav renders a real <Link>.
+  Link: ({ children, to, params, ...rest }: PropsWithChildren<{ to: string; params?: Record<string, string> }>) => (
+    <a href={params ? to.replace(/\$(\w+)/g, (_, key: string) => params[key] ?? "") : to} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 const seriesQueryMock = vi.fn();
@@ -332,5 +340,58 @@ describe("SeasonPage", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(toggleEpisodeSeenMock).not.toHaveBeenCalled();
     expect(markEpisodesSeenMock).not.toHaveBeenCalled();
+  });
+
+  describe("season navigation", () => {
+    function seriesWithSeasons(seasonNumbers: number[]) {
+      return {
+        ...defaultSeries,
+        seasons: seasonNumbers.map((seasonNumber) => ({
+          id: seasonNumber,
+          seasonNumber,
+          name: `Season ${seasonNumber}`,
+          overview: "",
+          episodeCount: 0,
+          episodes: [],
+        })),
+      };
+    }
+
+    it("shows no previous-season link on the first season, and a next-season link when a later season exists", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([0, 1, 2, 3])));
+      seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1]))); // seasonNumber: 1
+      renderPage();
+
+      expect(screen.queryByRole("link", { name: /previous season/i })).not.toBeInTheDocument();
+      const next = screen.getByRole("link", { name: /next season: season 2/i });
+      expect(next).toHaveAttribute("href", "/series/9/season/2");
+    });
+
+    it("shows a previous-season link and no next-season link on the last season", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([1, 2, 3])));
+      seasonQueryMock.mockReturnValue(makeQuery({ ...makeSeason("Season Three", [episode1]), seasonNumber: 3 }));
+      renderPage();
+
+      const previous = screen.getByRole("link", { name: /previous season: season 2/i });
+      expect(previous).toHaveAttribute("href", "/series/9/season/2");
+      expect(screen.queryByRole("link", { name: /next season/i })).not.toBeInTheDocument();
+    });
+
+    it("excludes specials (season 0) from the previous/next sequence", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([0, 1, 2])));
+      seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1]))); // seasonNumber: 1
+      renderPage();
+
+      expect(screen.queryByRole("link", { name: /previous season/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /next season: season 2/i })).toBeInTheDocument();
+    });
+
+    it("shows no season navigation links when the series has a single season", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([1])));
+      renderPage();
+
+      expect(screen.queryByRole("link", { name: /previous season/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /next season/i })).not.toBeInTheDocument();
+    });
   });
 });

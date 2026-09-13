@@ -61,6 +61,8 @@
     "markPreviousOnlyThisCta": "Seulement celui-ci",
     "nextEpisode": "Prochain épisode",
     "previousEpisode": "Épisode précédent",
+    "nextSeason": "Saison suivante",
+    "previousSeason": "Saison précédente",
     "similarSuggestions": "Suggestions similaires",
     "becauseWatching": "Parce que vous consultez {{title}}",
     "trailer": "Bande-annonce",

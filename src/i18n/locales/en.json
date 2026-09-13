@@ -61,6 +61,8 @@
     "markPreviousOnlyThisCta": "Only this one",
     "nextEpisode": "Next episode",
     "previousEpisode": "Previous episode",
+    "nextSeason": "Next season",
+    "previousSeason": "Previous season",
     "similarSuggestions": "Similar suggestions",
     "becauseWatching": "Because you're watching {{title}}",
     "trailer": "Trailer",
