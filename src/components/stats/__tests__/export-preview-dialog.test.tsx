@@ -107,6 +107,22 @@ describe("ExportPreviewDialog", () => {
     expect(screen.getByRole("button", { name: "Download" })).toHaveAttribute("aria-busy", "true");
   });
 
+  it("lets escape close the dialog when not confirming", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <ExportPreviewDialog
+        open
+        onOpenChange={onOpenChange}
+        title="Preview"
+        imageUrl="blob:mock-url"
+        onConfirm={vi.fn()}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it("does not let the overlay/escape close the dialog while isConfirming", () => {
     const onOpenChange = vi.fn();
     render(

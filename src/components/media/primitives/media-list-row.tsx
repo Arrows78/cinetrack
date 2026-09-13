@@ -74,6 +74,11 @@ export function MediaListRow({
             </Badge>
             <span>{media.year ?? t("media.unknownYear")}</span>
             {media.genres[0] ? <span className="truncate">· {media.genres[0]}</span> : null}
+            {tone === "caughtUp" ? (
+              <Badge variant="success" className="px-2 py-0 text-overline font-semibold">
+                {t("media.upToDate")}
+              </Badge>
+            ) : null}
             <span
               aria-label={t("media.ratingLabel", { rating: formatRating(media.rating) })}
               className="ml-auto flex items-center gap-1 tabular-nums"

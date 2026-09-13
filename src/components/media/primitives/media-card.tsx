@@ -162,6 +162,14 @@ function MediaCardInner({
           >
             {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
           </Badge>
+          {/* Explicit text alongside the lighter-green progress bar shade
+              below — a color-only cue is easy to miss across a whole grid
+              of cards. */}
+          {tone === "caughtUp" ? (
+            <Badge variant="success" className="px-2.5 py-1 text-caption font-semibold backdrop-blur-sm">
+              {t("media.upToDate")}
+            </Badge>
+          ) : null}
         </div>
 
         {/* Bottom: title + year + genre */}
