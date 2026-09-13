@@ -268,7 +268,7 @@ export function SettingsPage() {
       <SectionHeader title={t("nav.settings")} subtitle={t("settings.subtitleDesktop")} icon={Settings} isPageTitle />
       <SectionNav items={navItems} ariaLabel={t("settings.navSectionsLabel")} />
 
-      <section id={SETTINGS_UI_ID}>
+      <section id={SETTINGS_UI_ID} className="scroll-mt-28">
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -393,7 +393,7 @@ export function SettingsPage() {
         </Card>
       </section>
 
-      <section id={SETTINGS_STREAMING_ID}>
+      <section id={SETTINGS_STREAMING_ID} className="scroll-mt-28">
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -407,7 +407,7 @@ export function SettingsPage() {
         />
       </section>
 
-      <section id={SETTINGS_ACCOUNT_ID}>
+      <section id={SETTINGS_ACCOUNT_ID} className="scroll-mt-28">
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -420,7 +420,7 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <section id={SETTINGS_DATA_ID}>
+      <section id={SETTINGS_DATA_ID} className="scroll-mt-28">
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -433,12 +433,12 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <section id={SETTINGS_HIDDEN_TITLES_ID}>
+      <section id={SETTINGS_HIDDEN_TITLES_ID} className="scroll-mt-28">
         <SectionHeader size="sub" headingLevel={2} title={t("recommendations.hiddenTitles.title")} />
         <HiddenTitlesCard />
       </section>
 
-      <section id={SETTINGS_DESKTOP_ID}>
+      <section id={SETTINGS_DESKTOP_ID} className="scroll-mt-28">
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -448,7 +448,7 @@ export function SettingsPage() {
         <DesktopSettings />
       </section>
 
-      <section id={SETTINGS_ABOUT_ID}>
+      <section id={SETTINGS_ABOUT_ID} className="scroll-mt-28">
         <SectionHeader
           size="sub"
           headingLevel={2}

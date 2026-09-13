@@ -32,7 +32,7 @@ export function WeeklyAgendaSection({ index, id }: { index: number; id?: string 
   if (agenda.isLoading || agenda.isError || !entries.length) return null;
 
   return (
-    <section id={id}>
+    <section id={id} className="scroll-mt-28">
       <SectionHeader title={t("home.thisWeekTitle")} subtitle={t("home.thisWeekSubtitle")} index={index} />
       <div className="grid gap-2 lg:grid-cols-2">
         {entries.map((entry) => (

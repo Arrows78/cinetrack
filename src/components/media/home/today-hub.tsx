@@ -113,7 +113,7 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
   if (!hasHubContent && !hasPartialFailure) return null;
 
   return (
-    <section id={id}>
+    <section id={id} className="scroll-mt-28">
       <SectionHeader title={t("home.todayHubTitle")} subtitle={t("home.todayHubSubtitle")} index={index} />
       <Panel tone="highlight" className="space-y-8">
         {episodes.continueWatching.length > 0 ? (

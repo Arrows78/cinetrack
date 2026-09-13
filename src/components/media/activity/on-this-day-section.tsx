@@ -65,7 +65,7 @@ export function OnThisDaySection({ id }: { id?: string }) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <Panel id={id} tone="highlight" className="flex flex-col gap-4 animate-in-up">
+    <Panel id={id} tone="highlight" className="flex flex-col gap-4 scroll-mt-28 animate-in-up">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
         <p className="font-display text-heading-sm font-bold tracking-tight">{t("home.onThisDayTitle")}</p>
@@ -130,7 +130,11 @@ export function OnThisDayInviteBanner({ id }: { id?: string }) {
   };
 
   return (
-    <Panel id={id} tone="highlight" className="flex flex-wrap items-center justify-between gap-4 animate-in-up">
+    <Panel
+      id={id}
+      tone="highlight"
+      className="flex flex-wrap items-center justify-between gap-4 scroll-mt-28 animate-in-up"
+    >
       <div className="flex items-center gap-3">
         <Sparkles className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
         <div>

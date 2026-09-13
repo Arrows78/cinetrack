@@ -335,7 +335,7 @@ function HomePageContent() {
           there's nothing to show, same as the rails above. */}
       <WeeklyAgendaSection index={++sectionIndex} id={HOME_AGENDA_ID} />
 
-      <div id={HOME_DISCOVER_ID} className="space-y-8">
+      <div id={HOME_DISCOVER_ID} className="scroll-mt-28 space-y-8">
         <div className="flex justify-end">
           <HideWatchedToggle />
         </div>
