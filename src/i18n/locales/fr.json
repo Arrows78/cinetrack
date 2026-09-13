@@ -83,7 +83,8 @@
   },
   "availability": {
     "alert": "Alerte de disponibilité",
-    "disableAlert": "Désactiver l'alerte"
+    "disableAlert": "Désactiver l'alerte",
+    "notificationPermissionDenied": "Les notifications sont bloquées — activez-les dans les réglages système pour recevoir les alertes de disponibilité."
   },
   "pages": {
     "notFound": "Page introuvable",
@@ -264,6 +265,7 @@
     "filterScope": "Filtrer par type",
     "subtitle": "Recherchez des films et des séries.",
     "noResultsDesc": "Essayez un autre titre ou un autre filtre.",
+    "tryPeopleSearch": "Rechercher plutôt « {{query}} » parmi les personnes",
     "resultsCount_one": "{{count}} résultat",
     "resultsCount_other": "{{count}} résultats",
     "showingResults": "Résultats pour {{filters}}"
@@ -605,6 +607,7 @@
     "awaitingAvailability": "En attente de disponibilité",
     "availabilityCheckFailed": "Impossible de vérifier vos alertes de disponibilité — TMDB est injoignable. Une nouvelle tentative aura lieu automatiquement.",
     "region": "Région : {{region}}",
+    "alertSince": "alerte créée {{date}}",
     "remove": "Supprimer l'alerte pour {{title}}",
     "removeConfirmTitle": "Supprimer l'alerte pour « {{title}} » ?",
     "removeConfirmDescription": "Vous ne serez plus averti·e lorsque ce titre sera disponible. Vous pourrez recréer une alerte à tout moment.",

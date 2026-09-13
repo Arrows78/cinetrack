@@ -14,11 +14,24 @@ interface SearchOptions {
   region?: string;
 }
 
+// TMDB has no relevance score shared between its movie and series discover
+// endpoints, so a real combined-relevance sort isn't possible here — this
+// round-robins the two result lists instead of blocking movies before
+// series, so scope "all" doesn't read as "every movie, then every series".
+function interleave<T>(lists: T[][]): T[] {
+  const result: T[] = [];
+  const maxLength = Math.max(0, ...lists.map((list) => list.length));
+  for (let index = 0; index < maxLength; index++) {
+    for (const list of lists) if (index < list.length) result.push(list[index]!);
+  }
+  return result;
+}
+
 const mergePages = (pages: PageResult<MediaSummary>[]): PageResult<MediaSummary> => ({
   page: pages[pages.length - 1]?.page ?? 1,
   totalPages: Math.max(0, ...pages.map((page) => page.totalPages)),
   totalResults: pages.reduce((sum, page) => sum + page.totalResults, 0),
-  results: pages.flatMap((page) => page.results),
+  results: interleave(pages.map((page) => page.results)),
 });
 
 export function useSearch(query: string, scope: SearchScope, options?: SearchOptions) {

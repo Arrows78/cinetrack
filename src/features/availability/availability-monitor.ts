@@ -16,7 +16,15 @@ export interface AvailabilityCheckOutcome {
 export const availabilityMonitor = {
   async checkAll({
     notificationsEnabled = true,
-  }: { notificationsEnabled?: boolean } = {}): Promise<AvailabilityCheckOutcome> {
+    preferredProviderIds = [],
+  }: {
+    notificationsEnabled?: boolean;
+    // Falls back to the profile's own preferred streaming services when an
+    // alert has none of its own selected — previously fell back to "every
+    // platform", so an alert with no explicit provider notified for a
+    // service the user doesn't even subscribe to.
+    preferredProviderIds?: number[];
+  } = {}): Promise<AvailabilityCheckOutcome> {
     const alerts = (await availabilityRepository.listAlerts()).filter((item) => item.enabled);
     let changes = 0;
     let failures = 0;
@@ -26,7 +34,10 @@ export const availabilityMonitor = {
         const availability = await mediaRepository.getWatchAvailability(alert.mediaType, alert.mediaId, alert.region);
         const current = [...availability.flatrate, ...availability.free].map((provider) => provider.id);
         const previous = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
-        const preferred = alert.providerIds.length ? current.filter((id) => alert.providerIds.includes(id)) : current;
+        const relevantProviderIds = alert.providerIds.length ? alert.providerIds : preferredProviderIds;
+        const preferred = relevantProviderIds.length
+          ? current.filter((id) => relevantProviderIds.includes(id))
+          : current;
         const newProviders = preferred.filter((id) => !previous?.providerIds.includes(id));
 
         if (previous && newProviders.length) {

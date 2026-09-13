@@ -151,13 +151,31 @@ describe("trackingService.build", () => {
     expect(entries[0]).toMatchObject({ available: false, providerIds: [] });
   });
 
-  it("treats an alert with no provider filter as available on any current provider", async () => {
+  it("treats an alert with no provider filter as available on any current provider, absent a preference", async () => {
     mocks.listAlerts.mockResolvedValue([alert({ providerIds: [] })]);
     mocks.getSnapshot.mockResolvedValue(snapshot([337]));
 
     const entries = await trackingService.build();
 
     expect(entries[0]).toMatchObject({ available: true, providerIds: [337] });
+  });
+
+  it("restricts an alert with no provider filter to the profile's preferred providers instead of any", async () => {
+    mocks.listAlerts.mockResolvedValue([alert({ providerIds: [] })]);
+    mocks.getSnapshot.mockResolvedValue(snapshot([337]));
+
+    // Preferred is 8 (e.g. Netflix), but the snapshot only has 337 — no match.
+    const entries = await trackingService.build(60, [8]);
+
+    expect(entries[0]).toMatchObject({ available: false, providerIds: [] });
+  });
+
+  it("carries the alert's own createdAt through as alertCreatedAt", async () => {
+    mocks.listAlerts.mockResolvedValue([alert({ createdAt: "2026-03-01T00:00:00.000Z" })]);
+
+    const entries = await trackingService.build();
+
+    expect(entries[0]).toMatchObject({ alertCreatedAt: "2026-03-01T00:00:00.000Z" });
   });
 });
 

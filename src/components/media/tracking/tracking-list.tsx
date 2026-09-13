@@ -17,7 +17,7 @@ import { useAvailabilityAlerts } from "@/features/availability/use-availability-
 import { useTracking } from "@/features/tracking/use-tracking";
 import { PLATFORMS } from "@/shared/constants/discover";
 import { staggerDelayMs } from "@/shared/utils/animation";
-import { formatFullDate, formatRelativeCountdown } from "@/shared/utils/format";
+import { formatFullDate, formatRelativeCountdown, formatRelativeDate } from "@/shared/utils/format";
 import type { TrackingEntry, TrackingEntryType, TrackingScope } from "@/types/media";
 
 type ScopeFilter = TrackingScope | "all";
@@ -64,6 +64,9 @@ function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove:
           <p className="truncate text-body-sm text-muted-foreground">
             {t("tracking.region", { region: entry.region })}
             {names.length ? ` · ${names.join(", ")}` : ""}
+            {entry.alertCreatedAt
+              ? ` · ${t("tracking.alertSince", { date: formatRelativeDate(entry.alertCreatedAt) })}`
+              : ""}
           </p>
         </div>
       </Link>

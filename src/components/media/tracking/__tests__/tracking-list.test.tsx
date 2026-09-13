@@ -190,6 +190,16 @@ describe("TrackingList", () => {
     vi.clearAllMocks();
   });
 
+  it("shows how long ago the alert was set, alongside region and platform", () => {
+    mockTracking({
+      data: [makeEntry({ ...availableEntry, alertCreatedAt: new Date().toISOString() })],
+    });
+    render(<TrackingList />);
+
+    expect(screen.getByText(/^Region: FR/)).toBeInTheDocument();
+    expect(screen.getByText(/alert set /)).toBeInTheDocument();
+  });
+
   it("renders a loading state while tracking data is loading", () => {
     mockTracking({ isLoading: true, data: undefined });
     render(<TrackingList />);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { PropsWithChildren } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -49,6 +50,9 @@ const { getRouterSearch, setRouterSearch, mockNavigate } = vi.hoisted(() => {
 vi.mock("@tanstack/react-router", () => {
   return {
     useNavigate: () => mockNavigate,
+    Link: ({ children, to, search }: PropsWithChildren<{ to: string; search?: Record<string, unknown> }>) => (
+      <a href={search ? `${to}?${new URLSearchParams(search as Record<string, string>).toString()}` : to}>{children}</a>
+    ),
     // Real @tanstack/react-router re-renders every `useSearch` consumer when
     // the location store changes (e.g. after a `navigate({ replace: true
     // })`). `mockNavigate`'s implementation mutates the shared
@@ -305,11 +309,21 @@ describe("SearchPage", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the no-results empty state when the search resolves with no items", () => {
+  it("shows the no-results empty state when the search resolves with no items, with a link to try people search", () => {
     renderPage("?q=movie");
 
     expect(screen.getByText(i18n.t("pages.noResults"))).toBeInTheDocument();
     expect(screen.getByText(i18n.t("search.noResultsDesc"))).toBeInTheDocument();
+
+    const peopleLink = screen.getByRole("link", { name: i18n.t("search.tryPeopleSearch", { query: "movie" }) });
+    expect(peopleLink).toHaveAttribute("href", "/people?q=movie");
+  });
+
+  it("does not offer the people-search suggestion when no-results comes from filters alone (no typed query)", () => {
+    renderPage("?provider=8");
+
+    expect(screen.getByText(i18n.t("pages.noResults"))).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /tryPeopleSearch|people/i })).not.toBeInTheDocument();
   });
 
   it("groups results into separate Series and Movies sections when scope is 'all'", () => {

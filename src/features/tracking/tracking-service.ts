@@ -34,7 +34,11 @@ export const trackingService = {
   // The unified feed behind the Suivi page: release dates, episode air
   // dates, and availability-alert status, each tagged with a type and a
   // scope so the page can filter without needing three separate queries.
-  async build(days = 60): Promise<TrackingEntry[]> {
+  // `preferredProviderIds` is the profile's own streaming services — the
+  // fallback an alert with no provider selection of its own is restricted
+  // to, rather than "any platform at all" (see availability-monitor.ts's
+  // checkAll, which applies the same fallback before ever notifying).
+  async build(days = 60, preferredProviderIds: number[] = []): Promise<TrackingEntry[]> {
     const [calendarEntries, libraryKeys, alerts] = await Promise.all([
       calendarService.build(days),
       libraryRepository.listMediaKeys(),
@@ -50,8 +54,9 @@ export const trackingService = {
         .map(async (alert): Promise<TrackingEntry> => {
           const snapshot = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
           const currentProviderIds = snapshot?.providerIds ?? [];
-          const matchedProviderIds = alert.providerIds.length
-            ? currentProviderIds.filter((id) => alert.providerIds.includes(id))
+          const relevantProviderIds = alert.providerIds.length ? alert.providerIds : preferredProviderIds;
+          const matchedProviderIds = relevantProviderIds.length
+            ? currentProviderIds.filter((id) => relevantProviderIds.includes(id))
             : currentProviderIds;
           return {
             id: `availability-${alert.id}`,
@@ -65,6 +70,7 @@ export const trackingService = {
             providerIds: matchedProviderIds,
             region: alert.region,
             alertId: alert.id,
+            alertCreatedAt: alert.createdAt,
           };
         })
     );

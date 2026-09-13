@@ -83,6 +83,24 @@ describe("useSearch", () => {
     expect(result.current.items).toEqual([summary(2, "Discovered Movie"), summary(3, "Discovered Series")]);
   });
 
+  it("interleaves movie and series results round-robin rather than blocking one type after the other", async () => {
+    discoverMoviesMock.mockResolvedValueOnce(page([summary(10, "Movie A"), summary(11, "Movie B")]));
+    discoverSeriesMock.mockResolvedValueOnce(
+      page([summary(20, "Series A"), summary(21, "Series B"), summary(22, "Series C")])
+    );
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("", "all", { provider: "8" }), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items.map((item) => item.title)).toEqual([
+      "Movie A",
+      "Series A",
+      "Movie B",
+      "Series B",
+      "Series C",
+    ]);
+  });
+
   it("returns an empty page when a series filter has neither genre nor provider", async () => {
     const { useSearch } = await import("../use-search");
     // hasFilters is true (genreMovie set) but scope is "series" with no genreSeries/provider.

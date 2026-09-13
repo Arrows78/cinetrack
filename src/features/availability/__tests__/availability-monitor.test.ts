@@ -137,6 +137,22 @@ describe("availabilityMonitor.checkAll", () => {
     expect(mocks.saveSnapshot).not.toHaveBeenCalled();
   });
 
+  it("does not notify for a newly-available provider outside the profile's preferred providers, when the alert has none of its own", async () => {
+    // Alert has no explicit providerIds; the profile only prefers 337, but
+    // the new provider is 8 — that's not a match this alert should surface.
+    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true, preferredProviderIds: [337] });
+
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(outcome.changes).toBe(0);
+  });
+
+  it("notifies for a newly-available provider that is one of the profile's preferred providers", async () => {
+    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true, preferredProviderIds: [8] });
+
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect(outcome.changes).toBe(1);
+  });
+
   it("reports nothing checked when no alert is enabled", async () => {
     mocks.listAlerts.mockResolvedValue([alert({ enabled: false })]);
 

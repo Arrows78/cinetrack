@@ -199,12 +199,23 @@ describe("computeAlertStatuses", () => {
     expect(groups).toEqual({ availableNow: [], pending: [] });
   });
 
-  it("treats an alert with no provider selection as matching any provider currently in the snapshot", async () => {
+  it("falls back to matching any provider when the alert has none selected and no preference is known either", async () => {
     const { computeAlertStatuses } = await import("../use-availability-alerts");
     const noProviderAlert = { ...alert, providerIds: [] };
     const groups = computeAlertStatuses([noProviderAlert], [matchingSnapshot]);
 
     expect(groups.availableNow).toEqual([{ alert: noProviderAlert, matchedProviderIds: [8], available: true }]);
+  });
+
+  it("restricts an alert with no provider selection to the profile's preferred providers instead of any", async () => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const noProviderAlert = { ...alert, providerIds: [] };
+    // matchingSnapshot is on provider 8, but the profile only prefers 337
+    // (e.g. Disney+) — that's not a match this alert should have surfaced.
+    const groups = computeAlertStatuses([noProviderAlert], [matchingSnapshot], [337]);
+
+    expect(groups.pending).toEqual([{ alert: noProviderAlert, matchedProviderIds: [], available: false }]);
+    expect(groups.availableNow).toEqual([]);
   });
 });
 

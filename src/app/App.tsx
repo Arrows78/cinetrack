@@ -86,6 +86,7 @@ export function App() {
       const preferences = await preferencesRepository.getPreferences();
       const availabilityOutcome = await availabilityMonitor.checkAll({
         notificationsEnabled: preferences.notificationsEnabled,
+        preferredProviderIds: preferences.preferredProviderIds,
       });
       // Every single alert failing is a real outage (TMDB down, no network),
       // not a quiet day — say so once, rather than letting the user believe

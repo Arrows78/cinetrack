@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { notificationService } from "@/features/desktop";
@@ -15,7 +16,13 @@ export function AvailabilityAlertButton({ media }: { media: MediaSummary }) {
   const alert = useAvailabilityAlert(media, region, providers);
 
   const toggle = async () => {
-    if (!alert.data && !(await notificationService.requestPermission())) return;
+    if (!alert.data && !(await notificationService.requestPermission())) {
+      // The permission prompt itself only ever appears once per OS session —
+      // a silent no-op here would leave the button looking broken on every
+      // later click, with no way to tell "denied" from "just didn't work".
+      toast({ description: t("availability.notificationPermissionDenied"), variant: "error" });
+      return;
+    }
     await alert.toggle();
   };
 

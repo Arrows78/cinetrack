@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { Search, SearchX } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
@@ -270,7 +271,20 @@ export function SearchPage() {
             <RemoteErrorState error={searchQuery.error} onRetry={() => void searchQuery.refetch()} />
           ) : null}
           {!searchQuery.isPending && !searchQuery.isError && !searchQuery.items.length ? (
-            <EmptyState icon={SearchX} title={t("pages.noResults")} description={t("search.noResultsDesc")} />
+            <EmptyState
+              icon={SearchX}
+              title={t("pages.noResults")}
+              description={t("search.noResultsDesc")}
+              action={
+                debouncedQuery.trim() ? (
+                  <Button asChild variant="outline">
+                    <Link to="/people" search={{ q: debouncedQuery }}>
+                      {t("search.tryPeopleSearch", { query: debouncedQuery })}
+                    </Link>
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : null}
 
           {scope === "all" && grouped.series.length > 0 ? (

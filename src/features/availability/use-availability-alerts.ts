@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { availabilityRepository } from "@/features/availability/availability-repository";
-import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { useActiveProfileId, usePreferences } from "@/features/preferences/use-preferences";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
@@ -50,7 +50,11 @@ export interface AvailabilityStatusGroups {
  */
 export function computeAlertStatuses(
   alerts: AvailabilityAlert[],
-  snapshots: AvailabilitySnapshot[]
+  snapshots: AvailabilitySnapshot[],
+  // Falls back to the profile's own preferred streaming services when an
+  // alert has none of its own selected — see availability-monitor.ts's
+  // checkAll, which applies the same fallback before ever notifying.
+  preferredProviderIds: number[] = []
 ): AvailabilityStatusGroups {
   const snapshotByKey = new Map(snapshots.map((snapshot) => [`${snapshot.mediaType}-${snapshot.mediaId}`, snapshot]));
   const groups: AvailabilityStatusGroups = { availableNow: [], pending: [] };
@@ -58,8 +62,9 @@ export function computeAlertStatuses(
   for (const alert of alerts.filter((item) => item.enabled)) {
     const snapshot = snapshotByKey.get(`${alert.mediaType}-${alert.mediaId}`);
     const currentProviderIds = snapshot?.providerIds ?? [];
-    const matchedProviderIds = alert.providerIds.length
-      ? currentProviderIds.filter((id) => alert.providerIds.includes(id))
+    const relevantProviderIds = alert.providerIds.length ? alert.providerIds : preferredProviderIds;
+    const matchedProviderIds = relevantProviderIds.length
+      ? currentProviderIds.filter((id) => relevantProviderIds.includes(id))
       : currentProviderIds;
     const status: AlertStatus = { alert, matchedProviderIds, available: matchedProviderIds.length > 0 };
     (status.available ? groups.availableNow : groups.pending).push(status);
@@ -72,9 +77,11 @@ export function computeAlertStatuses(
 export function useAvailabilityStatus(): AvailabilityStatusGroups & { isLoading: boolean; isError: boolean } {
   const alertsQuery = useAvailabilityAlerts();
   const snapshotsQuery = useAvailabilitySnapshots();
+  const preferencesQuery = usePreferences();
+  const preferredProviderIds = preferencesQuery.data?.preferredProviderIds;
   const groups = useMemo(
-    () => computeAlertStatuses(alertsQuery.data ?? [], snapshotsQuery.data ?? []),
-    [alertsQuery.data, snapshotsQuery.data]
+    () => computeAlertStatuses(alertsQuery.data ?? [], snapshotsQuery.data ?? [], preferredProviderIds ?? []),
+    [alertsQuery.data, snapshotsQuery.data, preferredProviderIds]
   );
   return {
     ...groups,

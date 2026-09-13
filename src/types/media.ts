@@ -410,6 +410,8 @@ export interface TrackingEntry {
   providerIds?: number[];
   region?: string;
   alertId?: string;
+  /** When the underlying alert was created — "availability" entries only. */
+  alertCreatedAt?: string;
 }
 
 export interface LibraryStats {

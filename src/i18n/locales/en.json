@@ -83,7 +83,8 @@
   },
   "availability": {
     "alert": "Availability alert",
-    "disableAlert": "Disable alert"
+    "disableAlert": "Disable alert",
+    "notificationPermissionDenied": "Notifications are blocked — enable them in your system settings to get availability alerts."
   },
   "pages": {
     "notFound": "Page not found",
@@ -264,6 +265,7 @@
     "filterScope": "Filter by type",
     "subtitle": "Search movies and series.",
     "noResultsDesc": "Try another title, different language, or a different filter.",
+    "tryPeopleSearch": "Search people for \"{{query}}\" instead",
     "resultsCount_one": "{{count}} result",
     "resultsCount_other": "{{count}} results",
     "showingResults": "Showing results for {{filters}}"
@@ -605,6 +607,7 @@
     "awaitingAvailability": "Waiting for availability",
     "availabilityCheckFailed": "Couldn't check your availability alerts — TMDB is unreachable. They'll be retried automatically.",
     "region": "Region: {{region}}",
+    "alertSince": "alert set {{date}}",
     "remove": "Remove the alert for {{title}}",
     "removeConfirmTitle": "Remove the alert for \"{{title}}\"?",
     "removeConfirmDescription": "You'll stop being notified when it becomes available. You can set up a new alert for it at any time.",
