@@ -543,11 +543,12 @@ describe("SeriesDetailPage", () => {
 
     renderPage();
 
+    // Shown once (the season-section PartialErrorState, with a retry
+    // button) — the hero used to duplicate this same message with no
+    // onRetry of its own, which this asserts is gone.
     const partialErrorMessage = "Some seasons couldn't load, so marking the whole series is disabled until they do.";
-    expect(screen.getAllByText(partialErrorMessage).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(partialErrorMessage)).toHaveLength(1);
 
-    // Only the season-section PartialErrorState renders a retry button — the
-    // one alongside the seen toggle has no onRetry.
     const retryButton = screen.getByRole("button", { name: "Try again" });
     retryButton.click();
     expect(seasonRefetch).toHaveBeenCalledTimes(1);

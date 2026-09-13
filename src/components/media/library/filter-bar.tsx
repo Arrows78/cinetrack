@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
 
 export function FilterBar<T extends string>({
@@ -8,7 +9,10 @@ export function FilterBar<T extends string>({
   as = "filter",
 }: {
   value: T;
-  options: Array<{ value: T; label: string }>;
+  // ReactNode (not just string) so a tab can carry an icon alongside its
+  // text — e.g. MediaHubPage's "Upcoming" tab, which otherwise reads as a
+  // plain subset of "My list" rather than a visually distinct view.
+  options: Array<{ value: T; label: ReactNode }>;
   onChange: (value: T) => void;
   // Required, not optional: without it a screen reader falls back to the
   // same generic "Filter" label for every group on the page, so two filter

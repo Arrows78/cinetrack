@@ -160,9 +160,18 @@ export function EpisodeDetailPage() {
       <Card>
         <SectionHeader
           title={episode.title}
-          subtitle={`${formatEpisodeCode(season.seasonNumber, episode.episodeNumber, { padded: true })} · ${
-            season.name || t("media.fallbackTitle", { number: season.seasonNumber })
-          }`}
+          subtitle={
+            <>
+              {formatEpisodeCode(season.seasonNumber, episode.episodeNumber, { padded: true })} ·{" "}
+              <Link
+                to="/series/$seriesId/season/$seasonNumber"
+                params={{ seriesId: String(series.id), seasonNumber: String(season.seasonNumber) }}
+                className="underline-offset-4 hover:text-foreground hover:underline"
+              >
+                {season.name || t("media.fallbackTitle", { number: season.seasonNumber })}
+              </Link>
+            </>
+          }
         />
         <div className="grid gap-4 md:grid-cols-[1fr_1.3fr]">
           <div className="relative aspect-video overflow-hidden rounded-card bg-muted">

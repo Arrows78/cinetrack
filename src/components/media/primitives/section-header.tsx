@@ -15,7 +15,10 @@ export function SectionHeader({
   className,
 }: {
   title: string;
-  subtitle?: string;
+  // ReactNode (not just string) so a caller can make part of the subtitle
+  // interactive — e.g. episode-detail-page.tsx's season number, linked to
+  // that season's own page.
+  subtitle?: React.ReactNode;
   action?: React.ReactNode;
   index?: number;
   // "sub" is for a header nested inside a larger zone (e.g. the Today Hub

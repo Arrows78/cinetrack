@@ -114,6 +114,7 @@ export function SeasonPage() {
           title={season.name || t("media.fallbackTitle", { number: season.seasonNumber })}
           subtitle={t("media.episodesAvailable", { count: season.episodes.length })}
         />
+        <p className="mb-4 text-body-lg text-muted-foreground">{season.overview || t("media.noOverview")}</p>
         <div className="space-y-4">
           {season.episodes.map((episode) => (
             <EpisodeCard

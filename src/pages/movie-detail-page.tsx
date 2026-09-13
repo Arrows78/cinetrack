@@ -112,6 +112,10 @@ export function MovieDetailPage() {
           void seenQuery.toggleMovieSeen({ movie, watched: true, note: note || undefined }).catch(() => {});
         }}
       />
+      {/* Right after the hero, not after gallery/trailer/availability below —
+          a user who just finished a franchise entry wants "Next up" without
+          a long scroll. */}
+      <CollectionProgressPanel movie={movie} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
@@ -153,7 +157,6 @@ export function MovieDetailPage() {
       <ProviderAvailability media={movie} />
       <LibraryEditor media={movie} />
       <CatalogMetadataSync media={movie} />
-      <CollectionProgressPanel movie={movie} />
       <WatchHistoryPanel mediaId={movie.id} mediaType="movie" />
       <ReviewsPanel reviews={movie.reviews} />
       <RecommendationsPanel media={movie} />

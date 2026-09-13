@@ -144,7 +144,6 @@ export function SeriesDetailPage() {
                 real, same guard movie-detail-page.tsx applies to its own
                 single seen toggle. */}
             {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
-            {failedSeasonQueries.length > 0 ? <PartialErrorState message={t("series.someSeasonsUnavailable")} /> : null}
           </div>
         }
       />
@@ -153,6 +152,10 @@ export function SeriesDetailPage() {
         isSaving={progressQuery.isSaving}
         onWatched={(episode, note) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true, note })}
       />
+      {/* Right after the hero, not after gallery/trailer/availability below —
+          this is the most frequent action on the page (status, personal
+          rating, tags), it shouldn't need a long scroll to reach. */}
+      <LibraryEditor media={series} />
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
@@ -222,7 +225,6 @@ export function SeriesDetailPage() {
       <MediaGallery backdropPaths={series.backdropPaths} />
       <TrailerPanel mediaType="series" mediaId={series.id} />
       <ProviderAvailability media={series} />
-      <LibraryEditor media={series} />
       <CatalogMetadataSync media={series} />
       <section>
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />

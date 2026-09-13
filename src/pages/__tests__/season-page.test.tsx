@@ -287,6 +287,18 @@ describe("SeasonPage", () => {
     expect(screen.getByTestId("episode-3")).toHaveAttribute("data-watched", "true");
   });
 
+  it("renders the season's own overview, falling back to the no-overview message when empty", () => {
+    seasonQueryMock.mockReturnValue(
+      makeQuery({ ...makeSeason("Season One", [episode1]), overview: "A team severs work from memory." })
+    );
+    renderPage();
+    expect(screen.getByText("A team severs work from memory.")).toBeInTheDocument();
+
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1])));
+    renderPage();
+    expect(screen.getByText(i18n.t("media.noOverview"))).toBeInTheDocument();
+  });
+
   it("falls back to media.fallbackTitle when the season has no name", () => {
     seasonQueryMock.mockReturnValue(makeQuery(makeSeason("", [episode1])));
     renderPage();

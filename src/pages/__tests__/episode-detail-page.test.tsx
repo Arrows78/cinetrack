@@ -284,6 +284,16 @@ describe("EpisodeDetailPage", () => {
     expect(screen.getByText(/S01E02/)).toBeInTheDocument();
   });
 
+  it("links the season name in the subtitle to that season's own page", () => {
+    renderPage();
+
+    const seasonLink = screen.getByRole("link", { name: "Season One" });
+    expect(seasonLink).toHaveAttribute(
+      "href",
+      '/series/$seriesId/season/$seasonNumber::{"seriesId":"9","seasonNumber":"1"}'
+    );
+  });
+
   it("renders the episode's watch history panel scoped to its own episodeId", () => {
     renderPage();
     expect(screen.getByTestId("watch-history")).toHaveTextContent("2");
