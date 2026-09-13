@@ -31,8 +31,31 @@ import { formatEpisodeCode, formatRelativeDate, percent } from "@/shared/utils/f
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
-import type { HistoryAction, HistoryFilterState } from "@/types/media";
+import type { HistoryAction, HistoryFilterState, ViewingHistoryItem } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
+
+/** Where a history row's whole-card link should go — episode > season > movie/series, whichever the entry actually carries. */
+function historyItemLink(item: ViewingHistoryItem) {
+  if (item.mediaType === "series" && item.seasonNumber != null && item.episodeNumber != null) {
+    return {
+      to: "/series/$seriesId/season/$seasonNumber/episode/$episodeNumber" as const,
+      params: {
+        seriesId: String(item.mediaId),
+        seasonNumber: String(item.seasonNumber),
+        episodeNumber: String(item.episodeNumber),
+      },
+    };
+  }
+  if (item.mediaType === "series" && item.seasonNumber != null) {
+    return {
+      to: "/series/$seriesId/season/$seasonNumber" as const,
+      params: { seriesId: String(item.mediaId), seasonNumber: String(item.seasonNumber) },
+    };
+  }
+  return item.mediaType === "movie"
+    ? { to: "/movies/$movieId" as const, params: { movieId: String(item.mediaId) } }
+    : { to: "/series/$seriesId" as const, params: { seriesId: String(item.mediaId) } };
+}
 
 const labelByAction: Record<HistoryAction, string> = {
   "movie:watched": "movieWatched",
@@ -211,7 +234,7 @@ export function HistoryPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: Math.min(i, 20) * 0.04, type: "spring", stiffness: 220, damping: 28 }}
-                  className="relative flex gap-4 pb-5"
+                  className="group relative flex gap-4 rounded-xl pb-5 transition-colors hover:bg-foreground/[0.03]"
                 >
                   {/* Icon dot, with its own connector segment reaching down
                       to the next row — each mounted row draws its own
@@ -250,6 +273,11 @@ export function HistoryPage() {
                       </time>
                     </div>
                   </div>
+                  <Link
+                    {...historyItemLink(item)}
+                    className="absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={item.title}
+                  />
                 </motion.div>
               );
             }}

@@ -317,6 +317,93 @@ describe("HistoryPage", () => {
       await waitFor(() => expect(getRouterSearch()).not.toContain("type"));
     });
 
+    it("links a movie row to the movie detail page", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: [[makeHistoryItem({ id: "1", title: "Dune", mediaType: "movie", mediaId: 438631 })]] },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByRole("link", { name: "Dune" })).toHaveAttribute("href", "/movies/438631");
+    });
+
+    it("links a series row with no season/episode to the series detail page", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: {
+            pages: [
+              [
+                makeHistoryItem({
+                  id: "1",
+                  title: "Severance",
+                  mediaType: "series",
+                  mediaId: 95396,
+                  action: "series:watched",
+                }),
+              ],
+            ],
+          },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByRole("link", { name: "Severance" })).toHaveAttribute("href", "/series/95396");
+    });
+
+    it("links a season-level row to the season page", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: {
+            pages: [
+              [
+                makeHistoryItem({
+                  id: "1",
+                  title: "Severance",
+                  mediaType: "series",
+                  mediaId: 95396,
+                  action: "season:watched",
+                  seasonNumber: 2,
+                }),
+              ],
+            ],
+          },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByRole("link", { name: "Severance" })).toHaveAttribute("href", "/series/95396/season/2");
+    });
+
+    it("links an episode row to the episode detail page", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: {
+            pages: [
+              [
+                makeHistoryItem({
+                  id: "1",
+                  title: "Breaking Bad",
+                  mediaType: "series",
+                  mediaId: 1396,
+                  action: "episode:watched",
+                  seasonNumber: 2,
+                  episodeNumber: 5,
+                  episodeTitle: "Breakage",
+                }),
+              ],
+            ],
+          },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByRole("link", { name: "Breaking Bad" })).toHaveAttribute(
+        "href",
+        "/series/1396/season/2/episode/5"
+      );
+    });
+
     it("wires the load-more button to hasNextPage/isFetchingNextPage and fetchNextPage", () => {
       const fetchNextPage = vi.fn();
       mockUseHistory.mockReturnValue(
