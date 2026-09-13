@@ -30,7 +30,14 @@ function createWrapper() {
 }
 
 beforeEach(() => {
-  getStatusMock.mockReset().mockResolvedValue({ deviceId: "device-1", cursor: 3, pendingCount: 0, failedCount: 0 });
+  getStatusMock.mockReset().mockResolvedValue({
+    deviceId: "device-1",
+    cursor: 3,
+    pendingCount: 0,
+    failedCount: 0,
+    conflictCount: 0,
+    lastSyncedAt: null,
+  });
   runMock.mockReset().mockResolvedValue({ pushed: 0, pulled: 0, conflicts: 0 });
   isTauriAppMock.mockReset().mockReturnValue(true);
 });
@@ -41,7 +48,14 @@ describe("useSyncStatus", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toEqual({ deviceId: "device-1", cursor: 3, pendingCount: 0, failedCount: 0 });
+    expect(result.current.data).toEqual({
+      deviceId: "device-1",
+      cursor: 3,
+      pendingCount: 0,
+      failedCount: 0,
+      conflictCount: 0,
+      lastSyncedAt: null,
+    });
   });
 
   it("never calls the native status command outside Tauri", async () => {

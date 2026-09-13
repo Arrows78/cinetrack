@@ -114,6 +114,9 @@ async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
   // A pull may have rebased pending local edits onto a newer remote version.
   // Flush them now instead of waiting for the next periodic wake-up.
   const secondPush = await pushOutbox();
+  // Recorded even when nothing moved: a successful round with no pending
+  // changes is still a successful "last synced" check-in.
+  await syncRepository.markCompleted();
 
   if (pulled > 0) {
     await queryClient?.invalidateQueries({ queryKey: ["local"] });

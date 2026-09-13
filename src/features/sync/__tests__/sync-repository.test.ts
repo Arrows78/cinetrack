@@ -31,16 +31,18 @@ describe("syncRepository", () => {
     await syncRepository.getDeviceId();
     await syncRepository.prepare();
     await syncRepository.getStatus();
+    await syncRepository.markCompleted();
     await syncRepository.getCursor();
     await syncRepository.listOutbox(25);
     await syncRepository.ack([ack]);
     await syncRepository.rebase([conflict]);
     await syncRepository.applyRemote([change]);
 
-    expect(invokeTypedCommandMock).toHaveBeenCalledTimes(8);
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(5, "list_sync_outbox", { limit: 25 });
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(6, "ack_sync_mutations", { acks: [ack] });
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(7, "rebase_sync_conflicts", { conflicts: [conflict] });
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(8, "apply_remote_sync_changes", { changes: [change] });
+    expect(invokeTypedCommandMock).toHaveBeenCalledTimes(9);
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(4, "mark_sync_completed");
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(6, "list_sync_outbox", { limit: 25 });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(7, "ack_sync_mutations", { acks: [ack] });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(8, "rebase_sync_conflicts", { conflicts: [conflict] });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(9, "apply_remote_sync_changes", { changes: [change] });
   });
 });

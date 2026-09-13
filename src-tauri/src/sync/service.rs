@@ -11,12 +11,20 @@ use super::models::{
 
 const DEVICE_ID_KEY: &str = "deviceId";
 
+// Shared between rebase_conflicts (which writes it) and status (which counts
+// rows matching it) — see CLAUDE.md's "No hand-duplicated literal lists".
+const CONFLICT_MARKER: &str = "optimistic conflict; rebased";
+
 fn cursor_key(profile_id: &str) -> String {
     format!("cursor:{profile_id}")
 }
 
 fn bootstrap_key(profile_id: &str) -> String {
     format!("bootstrap:{profile_id}")
+}
+
+fn last_synced_key(profile_id: &str) -> String {
+    format!("lastSyncedAt:{profile_id}")
 }
 
 pub async fn device_id(pool: &SqlitePool) -> Result<String, ApiError> {
@@ -189,12 +197,48 @@ pub async fn status(pool: &SqlitePool) -> Result<SyncStatus, ApiError> {
     .fetch_one(pool)
     .await
     .map_err(ApiError::from)?;
+    let conflict_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sync_outbox WHERE profile_id=?1 AND last_error=?2",
+    )
+    .bind(&profile_id)
+    .bind(CONFLICT_MARKER)
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)?;
+    let last_synced_at: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM sync_metadata WHERE key=?1")
+            .bind(last_synced_key(&profile_id))
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
     Ok(SyncStatus {
         device_id: device_id(pool).await?,
         cursor: cursor(pool).await?,
         pending_count,
         failed_count,
+        conflict_count,
+        last_synced_at: last_synced_at.map(|(value,)| value),
     })
+}
+
+/// Records that a sync round just completed successfully — called from the
+/// TS orchestrator (sync-service.ts's execute()) after a push+pull round,
+/// regardless of whether it moved any rows, so "last synced" reflects the
+/// last successful check-in rather than only the last one with changes.
+pub async fn mark_synced(pool: &SqlitePool) -> Result<(), ApiError> {
+    let profile_id = current_profile_id(pool).await?;
+    let now = now_iso(pool).await?;
+    sqlx::query(
+        "INSERT INTO sync_metadata(key,value,updated_at) VALUES(?1,?2,?3) \
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
+    )
+    .bind(last_synced_key(&profile_id))
+    .bind(&now)
+    .bind(now)
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(())
 }
 
 /// (mutation_id, entity_type, entity_id, operation, payload, base_version, created_at, attempt_count)
@@ -286,11 +330,18 @@ pub async fn rebase_conflicts(
             continue;
         }
         sqlx::query(
-            "UPDATE sync_outbox SET base_version=?1,attempt_count=attempt_count+1,last_error='optimistic conflict; rebased' \
-             WHERE profile_id=?2 AND mutation_id=?3 AND entity_type=?4 AND entity_id=?5",
-        ).bind(conflict.server_version).bind(&profile_id).bind(&conflict.mutation_id)
-         .bind(&conflict.entity_type).bind(&conflict.entity_id)
-         .execute(&mut *tx).await.map_err(ApiError::from)?;
+            "UPDATE sync_outbox SET base_version=?1,attempt_count=attempt_count+1,last_error=?2 \
+             WHERE profile_id=?3 AND mutation_id=?4 AND entity_type=?5 AND entity_id=?6",
+        )
+        .bind(conflict.server_version)
+        .bind(CONFLICT_MARKER)
+        .bind(&profile_id)
+        .bind(&conflict.mutation_id)
+        .bind(&conflict.entity_type)
+        .bind(&conflict.entity_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
     }
     tx.commit().await.map_err(ApiError::from)
 }
@@ -856,5 +907,69 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(count.0, 0);
+    }
+
+    #[tokio::test]
+    async fn status_counts_conflicts_separately_from_other_failures() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at) \
+             VALUES ('local-1','default',42,'movie','Local Title','planned','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at) \
+             VALUES ('local-2','default',43,'movie','Other Title','planned','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let pending = list_outbox(&pool, 10).await.unwrap();
+        assert_eq!(pending.len(), 2);
+
+        // One mutation gets rebased as a conflict; the other is marked
+        // failed by some other generic error, never a conflict.
+        rebase_conflicts(
+            &pool,
+            &[SyncConflict {
+                mutation_id: pending[0].mutation_id.clone(),
+                entity_type: "library_item".to_string(),
+                entity_id: "local-1".to_string(),
+                server_version: 7,
+            }],
+        )
+        .await
+        .unwrap();
+        sqlx::query("UPDATE sync_outbox SET last_error='network timeout' WHERE mutation_id=?1")
+            .bind(&pending[1].mutation_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let status = status(&pool).await.unwrap();
+        assert_eq!(status.failed_count, 2, "both rows carry a last_error");
+        assert_eq!(
+            status.conflict_count, 1,
+            "only the rebased row is a conflict, not the generic failure"
+        );
+    }
+
+    #[tokio::test]
+    async fn mark_synced_records_a_timestamp_that_status_then_reports() {
+        let pool = pool().await;
+        assert_eq!(status(&pool).await.unwrap().last_synced_at, None);
+
+        mark_synced(&pool).await.unwrap();
+
+        let after_first = status(&pool).await.unwrap().last_synced_at;
+        assert!(after_first.is_some());
+
+        // Calling it again updates the same key rather than erroring or
+        // creating a second row.
+        mark_synced(&pool).await.unwrap();
+        let after_second = status(&pool).await.unwrap().last_synced_at;
+        assert!(after_second.is_some());
     }
 }

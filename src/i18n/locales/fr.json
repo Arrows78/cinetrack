@@ -345,6 +345,10 @@
       "pending_other": "{{count}} modifications en cours de synchronisation…",
       "failed_one": "{{count}} modification n'a pas pu être synchronisée — réessayez.",
       "failed_other": "{{count}} modifications n'ont pas pu être synchronisées — réessayez.",
+      "conflicts_one": "{{count}} modification est en conflit et nécessite votre attention.",
+      "conflicts_other": "{{count}} modifications sont en conflit et nécessitent votre attention.",
+      "lastSynced": "Dernière synchro {{date}}.",
+      "neverSynced": "Pas encore synchronisé.",
       "syncNow": "Synchroniser maintenant"
     },
     "streaming": {

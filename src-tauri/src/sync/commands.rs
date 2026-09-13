@@ -29,6 +29,11 @@ pub async fn get_sync_cursor(pool: State<'_, SqlitePool>) -> Result<i64, ApiErro
 }
 
 #[tauri::command]
+pub async fn mark_sync_completed(pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
+    service::mark_synced(pool.inner()).await
+}
+
+#[tauri::command]
 pub async fn list_sync_outbox(
     pool: State<'_, SqlitePool>,
     limit: Option<i64>,

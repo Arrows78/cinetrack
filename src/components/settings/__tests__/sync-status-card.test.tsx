@@ -39,7 +39,14 @@ describe("SyncStatusCard", () => {
   beforeEach(() => {
     isTauriAppMock.mockReset().mockReturnValue(true);
     currentSession = { user: { id: "user-1" } };
-    getStatusMock.mockReset().mockResolvedValue({ deviceId: "device-1", cursor: 1, pendingCount: 0, failedCount: 0 });
+    getStatusMock.mockReset().mockResolvedValue({
+      deviceId: "device-1",
+      cursor: 1,
+      pendingCount: 0,
+      failedCount: 0,
+      conflictCount: 0,
+      lastSyncedAt: null,
+    });
     runMock.mockReset().mockResolvedValue({ pushed: 0, pulled: 0, conflicts: 0 });
   });
 
@@ -61,21 +68,73 @@ describe("SyncStatusCard", () => {
   });
 
   it("shows the pending count over the up-to-date message", async () => {
-    getStatusMock.mockResolvedValue({ deviceId: "device-1", cursor: 1, pendingCount: 3, failedCount: 0 });
+    getStatusMock.mockResolvedValue({
+      deviceId: "device-1",
+      cursor: 1,
+      pendingCount: 3,
+      failedCount: 0,
+      conflictCount: 0,
+      lastSyncedAt: null,
+    });
     renderCard();
     expect(await screen.findByText("3 changes syncing…")).toBeInTheDocument();
   });
 
   it("shows the failed count ahead of the pending count when both are non-zero", async () => {
-    getStatusMock.mockResolvedValue({ deviceId: "device-1", cursor: 1, pendingCount: 2, failedCount: 1 });
+    getStatusMock.mockResolvedValue({
+      deviceId: "device-1",
+      cursor: 1,
+      pendingCount: 2,
+      failedCount: 1,
+      conflictCount: 0,
+      lastSyncedAt: null,
+    });
     renderCard();
     expect(await screen.findByText("1 change couldn't sync — try again.")).toBeInTheDocument();
+  });
+
+  it("shows a distinct conflict badge alongside the failed count", async () => {
+    getStatusMock.mockResolvedValue({
+      deviceId: "device-1",
+      cursor: 1,
+      pendingCount: 0,
+      failedCount: 1,
+      conflictCount: 1,
+      lastSyncedAt: null,
+    });
+    renderCard();
+    expect(await screen.findByText("1 change has a conflict that needs attention.")).toBeInTheDocument();
+  });
+
+  it("shows never-synced when no sync has completed yet", async () => {
+    renderCard();
+    expect(await screen.findByText("Not synced yet.")).toBeInTheDocument();
+  });
+
+  it("shows the last-synced relative time once a sync has completed", async () => {
+    getStatusMock.mockResolvedValue({
+      deviceId: "device-1",
+      cursor: 1,
+      pendingCount: 0,
+      failedCount: 0,
+      conflictCount: 0,
+      lastSyncedAt: new Date().toISOString(),
+    });
+    renderCard();
+    expect(await screen.findByText(/Last synced/)).toBeInTheDocument();
   });
 
   it("runs the sync engine and refreshes the status when Sync now is clicked", async () => {
     renderCard();
     await screen.findByText("Up to date.");
-    getStatusMock.mockResolvedValue({ deviceId: "device-1", cursor: 2, pendingCount: 0, failedCount: 0 });
+    getStatusMock.mockResolvedValue({
+      deviceId: "device-1",
+      cursor: 2,
+      pendingCount: 0,
+      failedCount: 0,
+      conflictCount: 0,
+      lastSyncedAt: null,
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Sync now" }));
 
@@ -90,6 +149,8 @@ describe("SyncStatusCard", () => {
       cursor: 1,
       pendingCount: 0,
       failedCount: 0,
+      conflictCount: 0,
+      lastSyncedAt: null,
     });
     renderCard();
 

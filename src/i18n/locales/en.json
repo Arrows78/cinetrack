@@ -345,6 +345,10 @@
       "pending_other": "{{count}} changes syncing…",
       "failed_one": "{{count}} change couldn't sync — try again.",
       "failed_other": "{{count}} changes couldn't sync — try again.",
+      "conflicts_one": "{{count}} change has a conflict that needs attention.",
+      "conflicts_other": "{{count}} changes have a conflict that needs attention.",
+      "lastSynced": "Last synced {{date}}.",
+      "neverSynced": "Not synced yet.",
       "syncNow": "Sync now"
     },
     "streaming": {

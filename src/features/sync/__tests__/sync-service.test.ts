@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getDeviceId: vi.fn(),
   prepare: vi.fn(),
   getStatus: vi.fn(),
+  markCompleted: vi.fn(),
   getCursor: vi.fn(),
   listOutbox: vi.fn(),
   ack: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("@/features/sync/sync-repository", () => ({
     getDeviceId: (...args: unknown[]) => mocks.getDeviceId(...args),
     prepare: (...args: unknown[]) => mocks.prepare(...args),
     getStatus: (...args: unknown[]) => mocks.getStatus(...args),
+    markCompleted: (...args: unknown[]) => mocks.markCompleted(...args),
     getCursor: (...args: unknown[]) => mocks.getCursor(...args),
     listOutbox: (...args: unknown[]) => mocks.listOutbox(...args),
     ack: (...args: unknown[]) => mocks.ack(...args),
@@ -80,7 +82,15 @@ beforeEach(() => {
   mocks.isTauriApp.mockReturnValue(true);
   mocks.getDeviceId.mockResolvedValue("device-1");
   mocks.prepare.mockResolvedValue(undefined);
-  mocks.getStatus.mockResolvedValue({ deviceId: "device-1", cursor: 0, pendingCount: 0, failedCount: 0 });
+  mocks.getStatus.mockResolvedValue({
+    deviceId: "device-1",
+    cursor: 0,
+    pendingCount: 0,
+    failedCount: 0,
+    conflictCount: 0,
+    lastSyncedAt: null,
+  });
+  mocks.markCompleted.mockResolvedValue(undefined);
   mocks.getCursor.mockResolvedValue(0);
   mocks.listOutbox.mockResolvedValue([]);
   mocks.ack.mockResolvedValue(undefined);
@@ -161,6 +171,17 @@ describe("syncService.run", () => {
     ]);
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["local"] });
     expect(mocks.loggerInfo).toHaveBeenCalledWith("cloud.sync pushed=1 pulled=1 conflicts=0");
+    expect(mocks.markCompleted).toHaveBeenCalledTimes(1);
+  });
+
+  it("records completion even when nothing was pushed or pulled", async () => {
+    const { client } = makeClient();
+    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    client.rpc.mockResolvedValue({ data: [], error: null });
+
+    await expect(syncService.run()).resolves.toEqual({ pushed: 0, pulled: 0, conflicts: 0 });
+    expect(mocks.markCompleted).toHaveBeenCalledTimes(1);
   });
 
   it("rebases optimistic conflicts and retries them", async () => {
