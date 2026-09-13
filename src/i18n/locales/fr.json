@@ -10,6 +10,7 @@
     "people": "Personnes",
     "watchTonight": "Ce soir",
     "tracking": "Suivi",
+    "upcoming": "À venir",
     "stats": "Statistiques"
   },
   "media": {
@@ -588,6 +589,14 @@
     "emptyTitle": "Rien de suivi pour l'instant",
     "emptyDesc": "Ajoutez une série ou un film à votre bibliothèque pour voir ici ses prochaines sorties et épisodes.",
     "emptyCta": "Découvrir films et séries"
+  },
+  "upcoming": {
+    "title": "À venir",
+    "subtitle": "La suite pour les films et séries que vous suivez, avec une coche rapide pour un nouvel épisode.",
+    "emptyTitle": "Rien à venir",
+    "emptyDesc": "Ajoutez une série ou un film à votre bibliothèque pour voir ici ses prochaines sorties et épisodes.",
+    "badgeNew": "Nouveau",
+    "badgeAired": "Diffusé"
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",

@@ -1074,6 +1074,14 @@ export const componentInventory = [
     "Groups upcoming releases, episodes and availability alerts, shared by /tracking and the /movies and /series 'Upcoming' tab."
   ),
   component(
+    "UpcomingEntryRow",
+    "components/media/tracking/upcoming-entry-row.tsx",
+    "Media",
+    "feature",
+    "live",
+    "TV-Time-style row for the /upcoming page — a countdown badge before an episode airs, a New/Aired badge plus inline quick-check once it has."
+  ),
+  component(
     "AddWatchNoteDialog",
     "components/media/tracking/add-watch-note-dialog.tsx",
     "Media",

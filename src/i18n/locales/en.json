@@ -10,6 +10,7 @@
     "people": "People",
     "watchTonight": "Watch tonight",
     "tracking": "Tracking",
+    "upcoming": "Upcoming",
     "stats": "Stats"
   },
   "media": {
@@ -588,6 +589,14 @@
     "emptyTitle": "Nothing tracked yet",
     "emptyDesc": "Add a series or movie to your library to see its upcoming releases and episodes here.",
     "emptyCta": "Discover movies & series"
+  },
+  "upcoming": {
+    "title": "Upcoming",
+    "subtitle": "What's next for the movies and series you follow, with a quick way to check off a new episode.",
+    "emptyTitle": "Nothing upcoming",
+    "emptyDesc": "Add a series or movie to your library to see its next releases and episodes here.",
+    "badgeNew": "New",
+    "badgeAired": "Aired"
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
