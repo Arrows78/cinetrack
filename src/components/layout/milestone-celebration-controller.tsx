@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useWatchMilestones } from "@/features/stats/use-stats";
-import { MILESTONE_THRESHOLD_KEY } from "@/features/stats/milestone-labels";
+import { MILESTONE_THRESHOLD_KEY } from "@/features/stats";
 import { useConfetti } from "@/hooks/use-confetti";
 import { toast } from "@/components/ui/use-toast";
 import { MILESTONE_CELEBRATION_WINDOW_MS } from "@/shared/constants/query";

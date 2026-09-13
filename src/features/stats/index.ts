@@ -7,3 +7,4 @@ export {
   renderWrappedCard,
   ShareCancelledError,
 } from "./wrapped-export";
+export { MILESTONE_THRESHOLD_KEY } from "./milestone-labels";
