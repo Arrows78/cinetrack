@@ -184,18 +184,39 @@ describe("StatsPage", () => {
     expect(screen.queryByText("Stats")).not.toBeInTheDocument();
   });
 
-  it("renders the six top stat cards from stats data, including fallbacks", async () => {
+  it("renders the four type-agnostic overview cards from stats data, including fallbacks", async () => {
     statsState.data = makeStats({ averageUserRating: null });
     renderPage();
 
     await screen.findByText("Stats");
 
-    expect(screen.getByText("42")).toBeInTheDocument(); // moviesWatched
-    expect(screen.getByText("310")).toBeInTheDocument(); // episodesWatched
     expect(screen.getByText("8 days 8h")).toBeInTheDocument(); // 12000 minutes
     expect(screen.getByText("3 days")).toBeInTheDocument(); // currentStreakDays
     expect(screen.getByText("—")).toBeInTheDocument(); // averageUserRating fallback (may match others too, checked below)
     expect(screen.getByText("67%")).toBeInTheDocument(); // libraryCompletionPercent
+  });
+
+  it("groups movie/series counts and watch time under their own Films/Series sections", async () => {
+    renderPage();
+
+    await screen.findByText("Stats");
+
+    expect(screen.getByText("Films")).toBeInTheDocument();
+    expect(screen.getByText("Series")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument(); // moviesWatched
+    expect(screen.getByText("310")).toBeInTheDocument(); // episodesWatched
+    // movieMinutesWatched/episodeMinutesWatched are both 6000 in makeStats()
+    // (and wrapped.minutes also happens to be 6000), so "4 days 4h" appears
+    // more than once on the page — asserting the label pairing (rather than
+    // counting a value shared with an unrelated section) confirms each
+    // section has its own watch-time card.
+    expect(screen.getByText("Movie time")).toBeInTheDocument();
+    expect(screen.getByText("Series time")).toBeInTheDocument();
+    expect(screen.getAllByText("4 days 4h").length).toBeGreaterThanOrEqual(2);
+
+    // The old merged "Movies vs. series" ratio bar is gone now that each
+    // type has its own section above.
+    expect(screen.queryByText("Movies vs. series")).not.toBeInTheDocument();
   });
 
   it("renders a formatted average rating when present", async () => {
