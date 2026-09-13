@@ -1,5 +1,6 @@
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { cn } from "@/shared/lib/cn";
+import { hslVar } from "@/shared/lib/hsl-var";
 
 export interface ActivityBarChartDatum {
   label: string;
@@ -10,17 +11,17 @@ export interface ActivityBarChartDatum {
 // eslint-plugin-i18next's jsx-only literal-string check (which only scans
 // string literals written inline in JSX) doesn't flag them the way it would
 // an actual inline `contentStyle={{ ... }}` object.
-const MUTED_FOREGROUND = "hsl(var(--muted-foreground))";
-const CURSOR_FILL = "hsl(var(--foreground) / 0.06)";
-const PRIMARY = "hsl(var(--primary))";
+const MUTED_FOREGROUND = hslVar("muted-foreground");
+const CURSOR_FILL = hslVar("foreground", 0.06);
+const PRIMARY = hslVar("primary");
 // The "current period" bar, everything else muted — same convention on
 // every Stats chart so "where am I right now" reads the same way everywhere.
-const HISTORY_FILL = "hsl(var(--foreground) / 0.12)";
+const HISTORY_FILL = hslVar("foreground", 0.12);
 const TOOLTIP_CONTENT_STYLE = {
-  background: "hsl(var(--popover))",
-  border: "1px solid hsl(var(--border))",
+  background: hslVar("popover"),
+  border: `1px solid ${hslVar("border")}`,
   borderRadius: "0.75rem",
-  color: "hsl(var(--popover-foreground))",
+  color: hslVar("popover-foreground"),
   fontSize: "0.8125rem",
 };
 

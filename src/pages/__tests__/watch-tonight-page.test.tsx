@@ -214,6 +214,13 @@ describe("WatchTonightPage", () => {
     expect(grid).not.toHaveTextContent("Dune");
   });
 
+  it("shows a Not interested action on the hero pick", async () => {
+    pickMock.mockResolvedValue({ movies: [movie()], series: [] });
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Not interested" })).toBeInTheDocument();
+  });
+
   it("shows the hero pick's own overview — MediaDetailsHero itself no longer renders one", async () => {
     pickMock.mockResolvedValue({ movies: [movie({ overview: "A boy rises to fulfil a great destiny." })], series: [] });
 

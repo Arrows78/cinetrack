@@ -12,7 +12,6 @@ import {
   Gauge,
   Hourglass,
   Minus,
-  PieChart,
   Popcorn,
   Repeat,
   Star,
@@ -37,6 +36,7 @@ import { MonthlyRecapSection } from "@/components/stats/monthly-recap-section";
 import { RewatchAnalyticsSection } from "@/components/stats/rewatch-analytics-section";
 import { RatingDistributionSection } from "@/components/stats/rating-distribution-section";
 import { WatchMilestonesSection } from "@/components/stats/watch-milestones-section";
+import { ExportPreviewDialog } from "@/components/stats/export-preview-dialog";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { StatCard } from "@/components/media/primitives/stat-card";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
@@ -74,6 +74,9 @@ export function StatsPage() {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [isExportingWrapped, setIsExportingWrapped] = useState(false);
+  const [isSavingWrapped, setIsSavingWrapped] = useState(false);
+  const [wrappedPreviewBlob, setWrappedPreviewBlob] = useState<Blob | null>(null);
+  const [wrappedPreviewUrl, setWrappedPreviewUrl] = useState<string | null>(null);
   const stats = useStats();
   const wrapped = useWrapped(selectedYear);
   const forecast = useWatchForecast();
@@ -90,6 +93,12 @@ export function StatsPage() {
   useEffect(() => {
     if (yearlyActivity.isError) logger.warn("Yearly activity failed to load — that section will stay hidden.");
   }, [yearlyActivity.isError]);
+
+  const closeWrappedPreview = () => {
+    if (wrappedPreviewUrl) URL.revokeObjectURL(wrappedPreviewUrl);
+    setWrappedPreviewUrl(null);
+    setWrappedPreviewBlob(null);
+  };
 
   const exportWrapped = async () => {
     if (!wrapped.data) return;
@@ -111,14 +120,29 @@ export function StatsPage() {
           favouriteGenreLabel: t("stats.favouriteGenre"),
         }
       );
-      await downloadWrappedCard(blob, wrapped.data.year);
+      setWrappedPreviewBlob(blob);
+      setWrappedPreviewUrl(URL.createObjectURL(blob));
+    } catch (error) {
+      logger.warn(`Wrapped export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast({ description: displayMessage(error, t("stats.exportFailed")), variant: "error" });
+    } finally {
+      setIsExportingWrapped(false);
+    }
+  };
+
+  const confirmExportWrapped = async () => {
+    if (!wrappedPreviewBlob || !wrapped.data) return;
+    setIsSavingWrapped(true);
+    try {
+      await downloadWrappedCard(wrappedPreviewBlob, wrapped.data.year);
       toast({ description: t("stats.exportSuccess"), variant: "success" });
+      closeWrappedPreview();
     } catch (error) {
       if (error instanceof ShareCancelledError) return;
       logger.warn(`Wrapped export failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ description: displayMessage(error, t("stats.exportFailed")), variant: "error" });
     } finally {
-      setIsExportingWrapped(false);
+      setIsSavingWrapped(false);
     }
   };
 
@@ -139,8 +163,6 @@ export function StatsPage() {
   }
 
   const cards = [
-    { label: t("stats.moviesWatched"), value: stats.data.moviesWatched, icon: Film },
-    { label: t("stats.episodesWatched"), value: stats.data.episodesWatched, icon: Tv },
     { label: t("stats.timeWatched"), value: formatWatchDurationBreakdown(stats.data.minutesWatched), icon: Clock },
     {
       label: t("stats.currentStreak"),
@@ -151,10 +173,6 @@ export function StatsPage() {
     { label: t("stats.libraryCompleted"), value: `${stats.data.libraryCompletionPercent}%`, icon: BarChart3 },
   ];
   const comparison = monthOverMonthComparison(stats.data.monthlyActivity);
-  const watchedMinutesByType = stats.data.movieMinutesWatched + stats.data.episodeMinutesWatched;
-  const moviesPercent = watchedMinutesByType
-    ? Math.round((stats.data.movieMinutesWatched / watchedMinutesByType) * 100)
-    : 0;
 
   const availableYears = yearlyActivity.data?.map((bucket) => bucket.year) ?? [];
   const minYear = availableYears.length ? Math.min(...availableYears, currentYear) : currentYear;
@@ -165,7 +183,7 @@ export function StatsPage() {
     <div className="space-y-8">
       <SectionHeader title={t("stats.title")} subtitle={t("stats.description")} icon={BarChart3} isPageTitle />
       <section
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 animate-in"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 animate-in"
         style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
       >
         {cards.map(({ label, value, icon }) => (
@@ -173,9 +191,41 @@ export function StatsPage() {
         ))}
       </section>
 
-      <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
+      {/* Films and Series get their own grouped cards instead of being
+          interleaved with type-agnostic stats above — the count and watch
+          time for each type were already computed separately by the backend
+          (StatsTotals.movie/episodeMinutesWatched), just never presented
+          that way. Replaces the old single "Movies vs. series" ratio bar. */}
+      <section className="grid gap-4 sm:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
+        <div>
+          <SectionHeader title={t("stats.filmsSection")} size="sub" headingLevel={2} />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <StatCard boxed icon={Film} label={t("stats.moviesWatched")} value={String(stats.data.moviesWatched)} />
+            <StatCard
+              boxed
+              icon={Clock}
+              label={t("stats.timeWatchedMovies")}
+              value={formatWatchDurationBreakdown(stats.data.movieMinutesWatched)}
+            />
+          </div>
+        </div>
+        <div>
+          <SectionHeader title={t("stats.seriesSection")} size="sub" headingLevel={2} />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <StatCard boxed icon={Tv} label={t("stats.episodesWatched")} value={String(stats.data.episodesWatched)} />
+            <StatCard
+              boxed
+              icon={Clock}
+              label={t("stats.timeWatchedEpisodes")}
+              value={formatWatchDurationBreakdown(stats.data.episodeMinutesWatched)}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
         <SectionHeader title={t("stats.records")} size="sub" headingLevel={2} />
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             boxed
             icon={Trophy}
@@ -218,37 +268,16 @@ export function StatsPage() {
             label={t("stats.favouriteGenreByRating")}
             value={stats.data.favouriteGenreByRating ?? "—"}
           />
-          <Panel asChild className="min-w-0">
-            <article>
-              <PieChart className="size-5 text-primary" />
-              <p className="mt-4 text-body-sm text-muted-foreground">{t("stats.moviesVsSeries")}</p>
-              <div
-                className="mt-4 flex h-2 w-full overflow-hidden rounded-full bg-foreground/[0.08]"
-                aria-hidden="true"
-              >
-                <div className="h-full bg-primary" style={{ width: `${moviesPercent}%` }} />
-                <div className="h-full bg-accent" style={{ width: `${100 - moviesPercent}%` }} />
-              </div>
-              <div className="mt-2 flex justify-between text-caption text-muted-foreground">
-                <span>
-                  {t("stats.moviesShare")} {moviesPercent}%
-                </span>
-                <span>
-                  {t("stats.episodesShare")} {100 - moviesPercent}%
-                </span>
-              </div>
-            </article>
-          </Panel>
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(3)}ms` }}>
+      <div className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
         <MonthlyRecapSection />
         <RewatchAnalyticsSection />
       </div>
 
       {comparison ? (
-        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(4)}ms` }}>
+        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(5)}ms` }}>
           <SectionHeader title={t("stats.thisMonth")} size="sub" headingLevel={2} />
           <div className="grid gap-3 sm:grid-cols-2">
             <StatCard
@@ -268,7 +297,7 @@ export function StatsPage() {
       ) : null}
 
       {forecast.data && forecast.data.backlogEpisodes > 0 ? (
-        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(5)}ms` }}>
+        <section className="animate-in" style={{ animationDelay: `${staggerDelayMs(6)}ms` }}>
           <SectionHeader title={t("stats.forecast")} size="sub" headingLevel={2} />
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard
@@ -299,7 +328,7 @@ export function StatsPage() {
         </section>
       ) : null}
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(6)}ms` }}>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(7)}ms` }}>
         <SectionHeader title={t("stats.activity12Months")} size="sub" headingLevel={2} />
         <ActivityBarChart
           data={stats.data.monthlyActivity.map((month) => ({ label: month.month.slice(5), value: month.count }))}
@@ -332,7 +361,7 @@ export function StatsPage() {
       </Panel>
 
       {yearlyActivity.data && yearlyActivity.data.length ? (
-        <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(7)}ms` }}>
+        <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
           <SectionHeader title={t("stats.activityByYear")} size="sub" headingLevel={2} />
           <ActivityBarChart
             data={yearlyActivity.data.map((bucket) => ({
@@ -364,7 +393,7 @@ export function StatsPage() {
         </Panel>
       ) : null}
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(8)}ms` }}>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(9)}ms` }}>
         <SectionHeader
           title={t("stats.heatmap.title")}
           subtitle={t("stats.heatmap.description")}
@@ -374,7 +403,7 @@ export function StatsPage() {
         <ViewingHeatmap data={stats.data.heatmap} />
       </Panel>
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(9)}ms` }}>
+      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(10)}ms` }}>
         <SectionHeader
           title={t("stats.yearCalendar.title", { year: wrapped.data.year })}
           subtitle={t("stats.yearCalendar.description")}
@@ -386,15 +415,15 @@ export function StatsPage() {
         </div>
       </Panel>
 
-      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(10)}ms` }}>
+      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(11)}ms` }}>
         <RatingDistributionSection />
       </div>
 
-      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(11)}ms` }}>
+      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(12)}ms` }}>
         <WatchMilestonesSection />
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(12)}ms` }}>
+      <section className="grid gap-4 lg:grid-cols-2 animate-in" style={{ animationDelay: `${staggerDelayMs(13)}ms` }}>
         <Panel asChild className="min-w-0">
           <article>
             <SectionHeader title={t("stats.favouriteGenres")} size="sub" headingLevel={2} />
@@ -477,6 +506,15 @@ export function StatsPage() {
           </article>
         </Panel>
       </section>
+
+      <ExportPreviewDialog
+        open={isExportingWrapped || wrappedPreviewUrl !== null}
+        onOpenChange={(open) => !open && closeWrappedPreview()}
+        title={t("stats.exportPreviewTitle")}
+        imageUrl={wrappedPreviewUrl}
+        isConfirming={isSavingWrapped}
+        onConfirm={() => void confirmExportWrapped()}
+      />
     </div>
   );
 }

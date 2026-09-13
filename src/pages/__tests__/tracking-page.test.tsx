@@ -62,7 +62,7 @@ vi.mock("@tanstack/react-router", () => ({
 // saved-filters-bar.test.tsx) but stubbed to a fixed, empty list here so this
 // suite's own filter/URL assertions don't also need a real invoke() round-trip.
 const savedFiltersState = {
-  data: [] as Array<{ id: string; name: string }>,
+  data: [] as Array<{ id: string; name: string; filters: unknown }>,
   isLoading: false,
   isError: false,
   error: null as unknown,
@@ -119,6 +119,7 @@ describe("TrackingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setRouterSearch("");
+    savedFiltersState.data = [];
   });
 
   it("renders its header and mounts TrackingList", () => {
@@ -174,5 +175,62 @@ describe("TrackingPage", () => {
       expect(search).not.toContain("type");
       expect(search).not.toContain("sort");
     });
+  });
+
+  it("removes just the scope chip", async () => {
+    setRouterSearch("?scope=all&type=release");
+    render(<TrackingPage />);
+
+    const chipLabel = i18n.t("filters.chips.scope", { value: i18n.t("filters.all") });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    await waitFor(() => expect(getRouterSearch()).not.toContain("scope"));
+    expect(getRouterSearch()).toContain("type=release");
+  });
+
+  it("removes just the sort chip", async () => {
+    setRouterSearch("?sort=title&type=release");
+    render(<TrackingPage />);
+
+    const chipLabel = i18n.t("filters.chips.sort", { value: i18n.t("tracking.sortTitle") });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    await waitFor(() => expect(getRouterSearch()).not.toContain("sort"));
+    expect(getRouterSearch()).toContain("type=release");
+  });
+
+  it("labels the type chip for the episode and availability filters", () => {
+    setRouterSearch("?type=episode");
+    const { rerender } = render(<TrackingPage />);
+
+    expect(
+      screen.getByText(i18n.t("filters.chips.type", { value: i18n.t("tracking.typeEpisode") }))
+    ).toBeInTheDocument();
+
+    setRouterSearch("?type=availability");
+    rerender(<TrackingPage />);
+
+    return waitFor(() => {
+      expect(
+        screen.getByText(i18n.t("filters.chips.type", { value: i18n.t("tracking.typeAvailability") }))
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("applies a saved filter, replacing scope/type/sort in the URL", async () => {
+    savedFiltersState.data = [
+      {
+        id: "saved-1",
+        name: "My saved view",
+        filters: { scopeFilter: "all", typeFilter: "release", sort: "title" },
+      },
+    ];
+    render(<TrackingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "My saved view" }));
+
+    await waitFor(() => expect(getRouterSearch()).toContain("scope=all"));
+    expect(getRouterSearch()).toContain("type=release");
+    expect(getRouterSearch()).toContain("sort=title");
   });
 });

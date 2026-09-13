@@ -4,18 +4,27 @@ import type { Movie, Series } from "@/types/media";
 const mocks = vi.hoisted(() => ({
   plannedCandidates: vi.fn(),
   idsMatchingFilters: vi.fn(),
+  completedCandidates: vi.fn(),
   getMovieDetails: vi.fn(),
   getSeriesDetails: vi.fn(),
   getWatchAvailability: vi.fn(),
   discoverMovies: vi.fn(),
   discoverSeries: vi.fn(),
   loggerWarn: vi.fn(),
+  listDismissed: vi.fn(),
 }));
 
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     plannedCandidates: mocks.plannedCandidates,
     idsMatchingFilters: mocks.idsMatchingFilters,
+    completedCandidates: mocks.completedCandidates,
+  },
+}));
+
+vi.mock("@/features/recommendations/recommendations-repository", () => ({
+  recommendationsRepository: {
+    listDismissed: mocks.listDismissed,
   },
 }));
 
@@ -65,6 +74,8 @@ interface LibraryFixtureItem {
   mediaId: number;
   mediaType: "movie" | "series";
   status: "planned" | "completed";
+  /** Only relevant for `status: "completed"` items — feeds the genre-affinity ranking signal (see completedCandidates in watch-tonight-service.ts). Canonical English labels, same format as LibraryItem.genres. */
+  genres?: string[];
 }
 
 // pickMovies/pickSeries now get their planned candidates from
@@ -86,12 +97,20 @@ function seedLibrary(items: LibraryFixtureItem[]) {
       .filter((item) => item.status === "completed")
       .map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType }))
   );
+  mocks.completedCandidates.mockImplementation((mediaType: "movie" | "series") =>
+    Promise.resolve(
+      items
+        .filter((item) => item.mediaType === mediaType && item.status === "completed")
+        .map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType, genres: item.genres ?? [] }))
+    )
+  );
 }
 
 describe("watchTonightService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     seedLibrary([]);
+    mocks.listDismissed.mockResolvedValue([]);
     mocks.discoverMovies.mockResolvedValue({
       page: 1,
       totalPages: 1,
@@ -296,6 +315,22 @@ describe("watchTonightService", () => {
     expect(result.movies.map((item) => item.id)).toContain(2);
   });
 
+  it("always drops a dismissed ('not interested') movie, regardless of hideWatched", async () => {
+    mocks.listDismissed.mockResolvedValue([{ mediaId: 2, mediaType: "movie", title: "Film 2" }]);
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.movies.map((item) => item.id)).not.toContain(2);
+  });
+
+  it("always drops a dismissed ('not interested') series, regardless of hideWatched", async () => {
+    mocks.listDismissed.mockResolvedValue([{ mediaId: 3, mediaType: "series", title: "Série 3" }]);
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.series.map((item) => item.id)).not.toContain(3);
+  });
+
   it("caps picks at PICKS_PER_TYPE (4) when more planned candidates match than that, for both movies and series", async () => {
     seedLibrary([
       { mediaId: 60, mediaType: "movie", status: "planned" },
@@ -319,5 +354,55 @@ describe("watchTonightService", () => {
     expect(result.series).toHaveLength(4);
     expect(mocks.discoverMovies).not.toHaveBeenCalled();
     expect(mocks.discoverSeries).not.toHaveBeenCalled();
+  });
+
+  describe("ranking and reason", () => {
+    it("ranks a candidate matching the profile's completed-genre affinity above one that doesn't, with a genre reason", async () => {
+      seedLibrary([
+        { mediaId: 1, mediaType: "movie", status: "completed", genres: ["Drama"] },
+        { mediaId: 2, mediaType: "movie", status: "completed", genres: ["Drama"] },
+        { mediaId: 100, mediaType: "movie", status: "planned" },
+        { mediaId: 101, mediaType: "movie", status: "planned" },
+      ]);
+      mocks.getMovieDetails.mockImplementation(
+        (id: number) => Promise.resolve(movie(id, { genreIds: id === 100 ? [18] : [27] })) // 18 = Drama, 27 = Horror
+      );
+
+      const result = await watchTonightService.pick({});
+
+      expect(result.movies.map((item) => item.id)).toEqual([100, 101]);
+      expect(result.movies[0]?.watchTonightReason).toEqual({ kind: "genre", genreLabelKey: "genres.drama" });
+      expect(result.movies[1]?.watchTonightReason).toBeNull();
+    });
+
+    it("falls back to a highlyRated reason, ranked by rating, when no candidate matches the genre affinity", async () => {
+      seedLibrary([
+        { mediaId: 200, mediaType: "movie", status: "planned" },
+        { mediaId: 201, mediaType: "movie", status: "planned" },
+      ]);
+      mocks.getMovieDetails.mockImplementation((id: number) =>
+        Promise.resolve(movie(id, { rating: id === 200 ? 9 : 5 }))
+      );
+
+      const result = await watchTonightService.pick({});
+
+      expect(result.movies.map((item) => item.id)).toEqual([200, 201]);
+      expect(result.movies[0]?.watchTonightReason).toEqual({ kind: "highlyRated" });
+      expect(result.movies[1]?.watchTonightReason).toBeNull();
+    });
+
+    it("does not surface a genre reason off a single completed title in that genre — ranking only, no explanation", async () => {
+      seedLibrary([
+        { mediaId: 1, mediaType: "movie", status: "completed", genres: ["Drama"] },
+        { mediaId: 300, mediaType: "movie", status: "planned" },
+      ]);
+      mocks.getMovieDetails.mockImplementation((id: number) =>
+        Promise.resolve(movie(id, { genreIds: [18], rating: 5 }))
+      );
+
+      const result = await watchTonightService.pick({});
+
+      expect(result.movies[0]?.watchTonightReason).toBeNull();
+    });
   });
 });

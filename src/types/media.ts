@@ -68,6 +68,8 @@ export interface MediaSummary {
   // care (people-you-watch.ts) treat a missing value the same as `[]`.
   /** Directors from this title's credits (job === "Director"). Undefined/empty unless fetched via a detail endpoint that appends credits. */
   directors?: CrewMember[];
+  /** Writing credits from this title's credits (job in "Writer"/"Screenplay"/"Story"). Undefined/empty unless fetched via a detail endpoint that appends credits. */
+  writers?: CrewMember[];
   /** TMDB's external_ids.imdb_id. Undefined/null unless fetched via a detail endpoint that appends external_ids. */
   imdbId?: string | null;
   /** Age-rating certification (e.g. "PG-13", "TV-MA") for the user's region, falling back to the US rating. Undefined/null unless fetched via a detail endpoint that appends release_dates (movies) or content_ratings (series). */
@@ -155,6 +157,8 @@ export interface Series extends MediaSummary {
   numberOfSeasons: number;
   numberOfEpisodes?: number;
   seasons: Season[];
+  /** TMDB's `next_episode_to_air` — the next episode scheduled to air, independent of what the user has watched. Null once the series has no more scheduled episodes (ended, or between seasons with nothing announced yet). */
+  nextEpisodeToAir?: Episode | null;
 }
 
 export type { LibraryItem } from "@/generated/dto/LibraryItem";
@@ -170,6 +174,7 @@ export type { ViewingEventType } from "@/generated/dto/ViewingEventType";
 export type { ViewingEventNote } from "@/generated/dto/ViewingEventNote";
 export type { EpisodeProgress } from "@/generated/dto/EpisodeProgress";
 export type { TrackedSeriesItem } from "@/generated/dto/TrackedSeriesItem";
+export type { DismissedRecommendation } from "@/generated/dto/DismissedRecommendation";
 
 export interface SeriesProgress {
   seriesId: number;

@@ -259,6 +259,46 @@ jobs:
             src-tauri/target/performance/database-benchmark.json \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1
+        with:
+          cache: false
+          rustflags: ""
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      # gen/apple is gitignored (regenerated from tauri.conf.json/tauri.ios.conf.json
+      # on every build) — no Apple Developer account exists yet, so this only ever
+      # targets the iOS Simulator with code signing disabled (pnpm ios:build:sim).
+      # Catches iOS-specific compile breaks without needing any signing identity.
+      - name: Initialize iOS project
+        run: pnpm ios:init
+
+      - name: Build for iOS Simulator (no code signing)
+        run: pnpm ios:build:sim
+
   cargo-audit:
     runs-on: ubuntu-latest
     # rustsec/audit-check reports its result as a GitHub Check Run, which

@@ -138,6 +138,7 @@ export interface TmdbTvDto {
   number_of_seasons?: number;
   number_of_episodes?: number;
   seasons?: TmdbSeasonPreviewDto[];
+  next_episode_to_air?: TmdbEpisodeDto | null;
   credits?: TmdbCreditsDto;
   external_ids?: TmdbExternalIdsDto;
   content_ratings?: TmdbContentRatingsDto;

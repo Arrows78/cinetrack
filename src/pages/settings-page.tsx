@@ -4,7 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { BackupTools } from "@/components/settings/backup-tools";
+import { HiddenTitlesCard } from "@/components/settings/hidden-titles-card";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
+import { SyncStatusCard } from "@/components/settings/sync-status-card";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -400,7 +402,10 @@ export function SettingsPage() {
           title={t("settings.sections.account")}
           subtitle={t("settings.sections.accountDesc")}
         />
-        <ProfilesCard activeProfileId={preferences?.activeProfileId} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ProfilesCard activeProfileId={preferences?.activeProfileId} />
+          <SyncStatusCard />
+        </div>
       </section>
 
       <section>
@@ -414,6 +419,11 @@ export function SettingsPage() {
           <BackupTools />
           <TvTimeImportCard />
         </div>
+      </section>
+
+      <section>
+        <SectionHeader size="sub" headingLevel={2} title={t("recommendations.hiddenTitles.title")} />
+        <HiddenTitlesCard />
       </section>
 
       <section>

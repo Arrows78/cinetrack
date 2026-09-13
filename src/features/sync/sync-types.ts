@@ -50,6 +50,8 @@ export type SyncStatus = {
   cursor: number;
   pendingCount: number;
   failedCount: number;
+  conflictCount: number;
+  lastSyncedAt: string | null;
 };
 
 export type SyncRunResult = {

@@ -51,6 +51,8 @@ describe("WatchMilestonesSection", () => {
     downloadMilestoneCardMock.mockReset();
     renderMilestoneCardMock.mockReset();
     toastMock.mockReset();
+    URL.createObjectURL = vi.fn(() => "blob:mock-milestone-url");
+    URL.revokeObjectURL = vi.fn();
   });
 
   it("renders nothing while loading", () => {
@@ -118,7 +120,21 @@ describe("WatchMilestonesSection", () => {
     expect(screen.getByText("Achieved")).toBeInTheDocument();
   });
 
-  it("exports an achieved milestone and reports success", async () => {
+  it("renders the card and opens a preview dialog before saving anything", async () => {
+    const milestone = makeMilestone({ achieved: true, achievedAt: "2026-01-02T00:00:00.000Z" });
+    useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
+    const blob = new Blob(["milestone"], { type: "image/png" });
+    renderMilestoneCardMock.mockResolvedValue(blob);
+    render(<WatchMilestonesSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
+    await waitFor(() => expect(renderMilestoneCardMock).toHaveBeenCalledOnce());
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(downloadMilestoneCardMock).not.toHaveBeenCalled();
+  });
+
+  it("saves the previewed card and reports success once the dialog is confirmed", async () => {
     const milestone = makeMilestone({ achieved: true, achievedAt: "2026-01-02T00:00:00.000Z" });
     useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
     const blob = new Blob(["milestone"], { type: "image/png" });
@@ -127,27 +143,33 @@ describe("WatchMilestonesSection", () => {
     render(<WatchMilestonesSection />);
 
     fireEvent.click(screen.getByRole("button", { name: /export/i }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
 
     await waitFor(() => expect(downloadMilestoneCardMock).toHaveBeenCalledWith(blob, milestone.id));
-    expect(renderMilestoneCardMock).toHaveBeenCalledOnce();
     expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("treats a cancelled milestone share as a non-error", async () => {
     const milestone = makeMilestone({ achieved: true });
     useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
-    renderMilestoneCardMock.mockRejectedValue(new ShareCancelledError());
+    renderMilestoneCardMock.mockResolvedValue(new Blob(["milestone"], { type: "image/png" }));
+    downloadMilestoneCardMock.mockRejectedValue(new ShareCancelledError());
     render(<WatchMilestonesSection />);
 
     fireEvent.click(screen.getByRole("button", { name: /export/i }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
 
-    await waitFor(() => expect(renderMilestoneCardMock).toHaveBeenCalledOnce());
-    await waitFor(() => expect(screen.getByRole("button", { name: /export/i })).not.toBeDisabled());
+    await waitFor(() => expect(downloadMilestoneCardMock).toHaveBeenCalledOnce());
     expect(loggerWarnMock).not.toHaveBeenCalled();
     expect(toastMock).not.toHaveBeenCalled();
+    // A cancelled share leaves the preview open, so the user can retry.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("logs and surfaces an unexpected milestone export failure", async () => {
+  it("logs and surfaces an unexpected milestone render failure", async () => {
     const milestone = makeMilestone({ achieved: true });
     useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
     renderMilestoneCardMock.mockRejectedValue("export failed");
@@ -156,6 +178,22 @@ describe("WatchMilestonesSection", () => {
     fireEvent.click(screen.getByRole("button", { name: /export/i }));
 
     await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("export failed")));
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("logs and surfaces an unexpected milestone save failure", async () => {
+    const milestone = makeMilestone({ achieved: true });
+    useWatchMilestonesMock.mockReturnValue({ data: [milestone], isError: false, error: null });
+    renderMilestoneCardMock.mockResolvedValue(new Blob(["milestone"], { type: "image/png" }));
+    downloadMilestoneCardMock.mockRejectedValue("save failed");
+    render(<WatchMilestonesSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("save failed")));
     expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
   });
 });

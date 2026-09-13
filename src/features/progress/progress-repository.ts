@@ -129,4 +129,11 @@ export const progressRepository = {
   async listViewingEventsForMedia(mediaId: number, mediaType: MediaType): Promise<ViewingEventNote[]> {
     return invokeTypedCommand(progressCommands.listViewingEventsForMedia, { mediaId, mediaType });
   },
+
+  // Local only — deliberately not part of the cloud-sync payload (see
+  // docs/database-schema.md's episode_progress entry). A no-op in Rust if
+  // the episode isn't marked watched yet (set_episode_rating_impl).
+  async setEpisodeRating(seriesId: number, episodeId: number, rating: number | null): Promise<void> {
+    await invokeTypedCommand(progressCommands.setEpisodeRating, { seriesId, episodeId, rating });
+  },
 };

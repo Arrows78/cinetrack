@@ -31,6 +31,6 @@ type ImportMovieSeenArgs = {
 };
 
 export const tvTimeImportCommands = {
-  importSeriesProgress: defineCommand<ImportSeriesProgressArgs, number>("import_series_progress"),
+  importSeriesProgress: defineCommand<ImportSeriesProgressArgs, number[]>("import_series_progress"),
   importMovieSeen: defineCommand<ImportMovieSeenArgs, boolean>("import_movie_seen"),
 } as const;

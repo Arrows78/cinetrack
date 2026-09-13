@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { SeasonPage } from "../season-page";
 import type { Episode, MediaSummary, Season } from "@/types/media";
@@ -10,6 +11,13 @@ import type { Episode, MediaSummary, Season } from "@/types/media";
 const paramsHolder = vi.hoisted(() => ({ seriesId: "9", seasonNumber: "1" }));
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => paramsHolder,
+  // Same fake as history-page.test.tsx's own mock — no RouterProvider exists
+  // in this render, and the prev/next season nav renders a real <Link>.
+  Link: ({ children, to, params, ...rest }: PropsWithChildren<{ to: string; params?: Record<string, string> }>) => (
+    <a href={params ? to.replace(/\$(\w+)/g, (_, key: string) => params[key] ?? "") : to} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 const seriesQueryMock = vi.fn();
@@ -99,6 +107,7 @@ const episode3: Episode = { id: 3, seasonNumber: 1, episodeNumber: 3, title: "In
 
 const toggleEpisodeSeenMock = vi.fn();
 const markSeasonSeenMock = vi.fn();
+const markEpisodesSeenMock = vi.fn();
 
 function makeProgressQuery(episodeIds: number[], overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -106,6 +115,7 @@ function makeProgressQuery(episodeIds: number[], overrides: Partial<Record<strin
     isSaving: false,
     toggleEpisodeSeen: toggleEpisodeSeenMock,
     markSeasonSeen: markSeasonSeenMock,
+    markEpisodesSeen: markEpisodesSeenMock,
     ...overrides,
   };
 }
@@ -129,6 +139,7 @@ describe("SeasonPage", () => {
     seasonQueryMock.mockReset().mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
     toggleEpisodeSeenMock.mockReset();
     markSeasonSeenMock.mockReset();
+    markEpisodesSeenMock.mockReset();
     progressQueryMock.mockReset().mockReturnValue(makeProgressQuery([]));
   });
 
@@ -271,6 +282,116 @@ describe("SeasonPage", () => {
       series: defaultSeries,
       episode: episode2,
       watched: true,
+    });
+  });
+
+  // Marking episode3 watched while episode1/episode2 are both still unwatched
+  // has real previous-unwatched siblings — this is the one path that opens
+  // MarkPreviousEpisodesDialog instead of calling toggleEpisodeSeen directly.
+  it("marking an episode watched with earlier unwatched siblings opens the mark-previous-episodes dialog", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(toggleEpisodeSeenMock).not.toHaveBeenCalled();
+  });
+
+  it("confirming 'include previous' calls markEpisodesSeen with every unwatched earlier episode plus this one", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markPreviousIncludeCta", { count: 2 }) }));
+
+    expect(markEpisodesSeenMock).toHaveBeenCalledWith({
+      series: defaultSeries,
+      episodes: [episode1, episode2, episode3],
+      target: episode3,
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("confirming 'only this' from the dialog calls toggleEpisodeSeen for just that episode", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markPreviousOnlyThisCta") }));
+
+    expect(toggleEpisodeSeenMock).toHaveBeenCalledWith({ series: defaultSeries, episode: episode3, watched: true });
+    expect(markEpisodesSeenMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("closing the mark-previous-episodes dialog without choosing dismisses it without calling either mutation", async () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(toggleEpisodeSeenMock).not.toHaveBeenCalled();
+    expect(markEpisodesSeenMock).not.toHaveBeenCalled();
+  });
+
+  describe("season navigation", () => {
+    function seriesWithSeasons(seasonNumbers: number[]) {
+      return {
+        ...defaultSeries,
+        seasons: seasonNumbers.map((seasonNumber) => ({
+          id: seasonNumber,
+          seasonNumber,
+          name: `Season ${seasonNumber}`,
+          overview: "",
+          episodeCount: 0,
+          episodes: [],
+        })),
+      };
+    }
+
+    it("shows no previous-season link on the first season, and a next-season link when a later season exists", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([0, 1, 2, 3])));
+      seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1]))); // seasonNumber: 1
+      renderPage();
+
+      expect(screen.queryByRole("link", { name: /previous season/i })).not.toBeInTheDocument();
+      const next = screen.getByRole("link", { name: /next season: season 2/i });
+      expect(next).toHaveAttribute("href", "/series/9/season/2");
+    });
+
+    it("shows a previous-season link and no next-season link on the last season", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([1, 2, 3])));
+      seasonQueryMock.mockReturnValue(makeQuery({ ...makeSeason("Season Three", [episode1]), seasonNumber: 3 }));
+      renderPage();
+
+      const previous = screen.getByRole("link", { name: /previous season: season 2/i });
+      expect(previous).toHaveAttribute("href", "/series/9/season/2");
+      expect(screen.queryByRole("link", { name: /next season/i })).not.toBeInTheDocument();
+    });
+
+    it("excludes specials (season 0) from the previous/next sequence", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([0, 1, 2])));
+      seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1]))); // seasonNumber: 1
+      renderPage();
+
+      expect(screen.queryByRole("link", { name: /previous season/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /next season: season 2/i })).toBeInTheDocument();
+    });
+
+    it("shows no season navigation links when the series has a single season", () => {
+      seriesQueryMock.mockReturnValue(makeQuery(seriesWithSeasons([1])));
+      renderPage();
+
+      expect(screen.queryByRole("link", { name: /previous season/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /next season/i })).not.toBeInTheDocument();
     });
   });
 });

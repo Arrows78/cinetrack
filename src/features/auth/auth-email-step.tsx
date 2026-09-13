@@ -66,7 +66,7 @@ export function AuthEmailStep({
             aria-checked={marketingOptIn}
             onClick={onMarketingOptInToggle}
             className={cn(
-              "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
+              "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border transition",
               marketingOptIn ? "border-primary bg-primary text-primary-foreground" : "border-white/60 bg-transparent"
             )}
           >

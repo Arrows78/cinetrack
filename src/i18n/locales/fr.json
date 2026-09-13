@@ -34,6 +34,8 @@
     "progressLabel": "{{percent}}% regardé",
     "status": "Statut",
     "genres": "Genres",
+    "director": "Réalisateur",
+    "writers": "Scénariste(s)",
     "addToLibrary": "Ajouter à la bibliothèque",
     "inLibrary": "Dans la bibliothèque",
     "unknownYear": "Année inconnue",
@@ -61,6 +63,8 @@
     "markPreviousOnlyThisCta": "Seulement celui-ci",
     "nextEpisode": "Prochain épisode",
     "previousEpisode": "Épisode précédent",
+    "nextSeason": "Saison suivante",
+    "previousSeason": "Saison précédente",
     "similarSuggestions": "Suggestions similaires",
     "becauseWatching": "Parce que vous consultez {{title}}",
     "trailer": "Bande-annonce",
@@ -96,6 +100,8 @@
     "unknownDate": "Date inconnue",
     "confirm": "Confirmer",
     "cancel": "Annuler",
+    "download": "Télécharger",
+    "share": "Partager",
     "durationHoursMinutes": "{{hours}}h {{minutes}}",
     "durationMinutes": "{{minutes}} min",
     "episodeCode": "S{{season}}E{{episode}}",
@@ -329,6 +335,21 @@
       "deleteConfirmTitle": "Supprimer le profil « {{name}} » ?",
       "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible."
     },
+    "sync": {
+      "title": "Synchronisation cloud",
+      "description": "Votre bibliothèque, votre historique et vos listes se synchronisent automatiquement entre tous les appareils connectés à ce compte.",
+      "checking": "Vérification de la synchronisation…",
+      "upToDate": "À jour.",
+      "pending_one": "{{count}} modification en cours de synchronisation…",
+      "pending_other": "{{count}} modifications en cours de synchronisation…",
+      "failed_one": "{{count}} modification n'a pas pu être synchronisée — réessayez.",
+      "failed_other": "{{count}} modifications n'ont pas pu être synchronisées — réessayez.",
+      "conflicts_one": "{{count}} modification est en conflit et nécessite votre attention.",
+      "conflicts_other": "{{count}} modifications sont en conflit et nécessitent votre attention.",
+      "lastSynced": "Dernière synchro {{date}}.",
+      "neverSynced": "Pas encore synchronisé.",
+      "syncNow": "Synchroniser maintenant"
+    },
     "streaming": {
       "title": "Mes services de streaming",
       "description": "Choisissez les plateformes auxquelles vous êtes abonné·e — utilisé pour filtrer les alertes de disponibilité et les suggestions de « Ce soir »."
@@ -392,9 +413,13 @@
   "stats": {
     "title": "Statistiques",
     "description": "Votre activité locale, sans envoyer votre historique vers un serveur.",
+    "filmsSection": "Films",
+    "seriesSection": "Séries",
     "moviesWatched": "Films vus",
     "episodesWatched": "Épisodes vus",
     "timeWatched": "Temps regardé",
+    "timeWatchedMovies": "Temps films",
+    "timeWatchedEpisodes": "Temps séries",
     "currentStreak": "Série actuelle",
     "durationHoursMinutes": "{{hours}} h {{minutes}} min",
     "watchDurationDays_one": "{{count}} jour",
@@ -446,10 +471,8 @@
     "rewatchCount_one": "Revu {{count}} fois",
     "rewatchCount_other": "Revu {{count}} fois",
     "favouriteGenreByRating": "Genre le mieux noté",
-    "moviesVsSeries": "Films vs séries",
-    "moviesShare": "Films :",
-    "episodesShare": "Épisodes :",
     "exportWrapped": "Exporter en image",
+    "exportPreviewTitle": "Aperçu avant enregistrement",
     "exportSuccess": "Image Wrapped enregistrée",
     "exportFailed": "Échec de l'export de l'image Wrapped",
     "heatmap": {
@@ -572,7 +595,33 @@
     "clearFilters": "Réinitialiser les filtres",
     "emptyTitle": "Rien de suivi pour l'instant",
     "emptyDesc": "Ajoutez une série ou un film à votre bibliothèque pour voir ici ses prochaines sorties et épisodes.",
-    "emptyCta": "Découvrir films et séries"
+    "emptyCta": "Découvrir films et séries",
+    "badgeNew": "Nouveau",
+    "badgeAired": "Diffusé"
+  },
+  "episode": {
+    "rating": {
+      "label": "Noter cet épisode",
+      "clear": "Effacer la note",
+      "1": "Nul",
+      "2": "Mauvais",
+      "3": "Moyen",
+      "4": "Bien",
+      "5": "Excellent"
+    }
+  },
+  "recommendations": {
+    "notInterested": "Pas intéressé",
+    "dismissedToast": "{{title}} ne sera plus recommandé",
+    "dismissFailed": "Impossible de masquer ce titre",
+    "hiddenTitles": {
+      "title": "Titres masqués",
+      "description": "Titres marqués « pas intéressé » — exclus de Watch Tonight et de vos recommandations.",
+      "empty": "Aucun titre masqué",
+      "restore": "Réafficher",
+      "restoredToast": "{{title}} pourra de nouveau être recommandé",
+      "restoreFailed": "Impossible de réafficher ce titre"
+    }
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
@@ -660,7 +709,9 @@
     "emptyTitle": "Aucun résultat pour ces filtres",
     "emptyDesc": "Essayez un genre, une plateforme ou une durée plus large — ou ajoutez des titres à votre bibliothèque « à voir ».",
     "viewDetails": "Voir les détails",
-    "alternatesTitle": "Ou essayez plutôt"
+    "alternatesTitle": "Ou essayez plutôt",
+    "reasonGenre": "Parce que vous regardez souvent des {{genre}}",
+    "reasonHighlyRated": "Très bien noté sur TMDB"
   },
   "library": {
     "myLibrary": "Ma bibliothèque",
@@ -1011,6 +1062,10 @@
     "unresolvedEpisodeCount_other": "{{count}} ép.",
     "unmatched_one": "{{count}} titre n'a pas pu être associé",
     "unmatched_other": "{{count}} titres n'ont pas pu être associés",
+    "duplicateTitles_one": "{{count}} titre était déjà dans votre bibliothèque et a été ignoré",
+    "duplicateTitles_other": "{{count}} titres étaient déjà dans votre bibliothèque et ont été ignorés",
+    "duplicateEpisodes_one": "{{count}} épisode était déjà suivi et a été ignoré",
+    "duplicateEpisodes_other": "{{count}} épisodes étaient déjà suivis et ont été ignorés",
     "phase": {
       "series": "Séries",
       "movies": "Films",
@@ -1044,6 +1099,14 @@
       "episodeCount_other": "{{count}} épisodes",
       "pointer_one": "{{count}} titre a besoin de vous ci-dessous.",
       "pointer_other": "{{count}} titres ont besoin de vous ci-dessous."
+    },
+    "undo": {
+      "button": "Annuler le dernier import",
+      "confirmTitle": "Annuler cet import ?",
+      "confirmDescription": "Cela retire le statut « vu » de chaque film et épisode ajouté par cet import, et supprime les titres de la liste à voir qu'il a ajoutés et que vous n'avez pas encore commencés. Les titres regardés ou modifiés depuis cet import ne seront pas touchés.",
+      "confirm": "Annuler l'import",
+      "success": "Import annulé.",
+      "failed": "Impossible d'annuler l'import. Réessayez."
     }
   },
   "discovery": {

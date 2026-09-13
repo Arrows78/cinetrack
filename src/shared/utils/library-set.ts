@@ -80,3 +80,15 @@ export function filterHiddenIfWatchedByKeySet<T extends MediaSummary>(
   if (!hideWatched || items.length === 0) return items;
   return items.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, completedKeySet));
 }
+
+/**
+ * Drops any item the user dismissed as "not interested" (see
+ * features/recommendations/use-recommendations.ts's
+ * useDismissedRecommendationKeys, which builds `dismissedKeySet` in this
+ * same `"type:id"` shape) — unlike `filterHiddenIfWatchedByKeySet`, this is
+ * never gated behind a toggle: a dismissal always applies.
+ */
+export function filterDismissedByKeySet<T extends MediaSummary>(items: T[], dismissedKeySet: Set<string>): T[] {
+  if (dismissedKeySet.size === 0 || items.length === 0) return items;
+  return items.filter((item) => !isInLibrary({ mediaId: item.id, mediaType: item.mediaType }, dismissedKeySet));
+}

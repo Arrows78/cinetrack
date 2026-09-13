@@ -67,6 +67,7 @@ export const queryKeys = {
     calendar: (profileId: string) => ["local", "calendar", profileId] as const,
     availabilityAlerts: (profileId: string) => ["local", "availabilityAlerts", profileId] as const,
     availabilitySnapshots: ["local", "availabilitySnapshots"] as const,
+    dismissedRecommendations: (profileId: string) => ["local", "dismissedRecommendations", profileId] as const,
     tracking: (profileId: string) => ["local", "tracking", profileId] as const,
     watchTonight: (profileId: string) => ["local", "watchTonight", profileId] as const,
     watchNextEpisode: (profileId: string, seriesId: number) => ["local", "watchNext", profileId, seriesId] as const,
@@ -87,5 +88,10 @@ export const queryKeys = {
     libraryMediaKeys: (profileId: string) => ["local", "libraryMediaKeys", profileId] as const,
     completedLibraryCandidates: (profileId: string) => ["local", "completedLibraryCandidates", profileId] as const,
     bestRecommendationSeed: (profileId: string) => ["local", "bestRecommendationSeed", profileId] as const,
+    // Cursor/pending/failed counts are scoped by the active local profile
+    // (see sync::service::status on the Rust side) — deviceId within the
+    // same result is the one exception, shared across every profile on this
+    // install.
+    sync: (profileId: string) => ["local", "sync", profileId] as const,
   },
 };

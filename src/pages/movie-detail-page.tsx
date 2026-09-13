@@ -115,6 +115,12 @@ export function MovieDetailPage() {
               { label: t("movies.language"), value: movie.language || "—" },
               { label: t("media.genres"), value: movie.genres.join(", ") || "—" },
               { label: t("media.status"), value: movie.status || "—" },
+              ...(movie.directors?.length
+                ? [{ label: t("media.director"), value: movie.directors.map((person) => person.name).join(", ") }]
+                : []),
+              ...(movie.writers?.length
+                ? [{ label: t("media.writers"), value: movie.writers.map((person) => person.name).join(", ") }]
+                : []),
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">{label}</span>

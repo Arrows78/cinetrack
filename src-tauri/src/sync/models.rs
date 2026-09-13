@@ -49,6 +49,8 @@ pub struct SyncStatus {
     pub cursor: i64,
     pub pending_count: i64,
     pub failed_count: i64,
+    pub conflict_count: i64,
+    pub last_synced_at: Option<String>,
 }
 
 pub const SYNC_ENTITY_TYPES: &[&str] = &[
@@ -62,6 +64,8 @@ pub const SYNC_ENTITY_TYPES: &[&str] = &[
     "smart_list",
     "saved_filter",
     "availability_alert",
+    "dismissed_recommendation",
+    "account_preferences",
 ];
 
 pub fn validate_entity_type(value: &str) -> bool {

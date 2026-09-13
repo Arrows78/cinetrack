@@ -114,6 +114,9 @@ async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
   // A pull may have rebased pending local edits onto a newer remote version.
   // Flush them now instead of waiting for the next periodic wake-up.
   const secondPush = await pushOutbox();
+  // Recorded even when nothing moved: a successful round with no pending
+  // changes is still a successful "last synced" check-in.
+  await syncRepository.markCompleted();
 
   if (pulled > 0) {
     await queryClient?.invalidateQueries({ queryKey: ["local"] });
@@ -152,6 +155,10 @@ export const syncService = {
     };
 
     window.addEventListener("online", wake);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") wake();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     const timer = window.setInterval(wake, PERIODIC_SYNC_MS);
 
     // Realtime is deliberately not the transport. Missing this notification
@@ -175,6 +182,7 @@ export const syncService = {
 
     return () => {
       window.removeEventListener("online", wake);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(timer);
       window.clearTimeout(debounce);
       void auth.client.removeChannel(channel);

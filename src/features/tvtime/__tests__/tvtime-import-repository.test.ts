@@ -29,15 +29,15 @@ const series: Series = {
 };
 
 describe("tvTimeImportRepository", () => {
-  it("importSeriesProgress invokes import_series_progress with the series and episodes", async () => {
-    invokeCommandMock.mockResolvedValue(3);
+  it("importSeriesProgress invokes import_series_progress and returns the newly inserted episode ids", async () => {
+    invokeCommandMock.mockResolvedValue([1]);
     const episodes: ImportableEpisode[] = [
       { episodeId: 1, seasonNumber: 1, episodeNumber: 1, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: 42 },
     ];
 
     const result = await tvTimeImportRepository.importSeriesProgress(series, episodes);
 
-    expect(result).toBe(3);
+    expect(result).toEqual([1]);
     expect(invokeCommandMock).toHaveBeenCalledWith("import_series_progress", { series, episodes });
   });
 

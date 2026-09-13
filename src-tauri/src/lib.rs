@@ -12,6 +12,7 @@ mod models;
 mod preferences;
 mod profiles;
 mod progress;
+mod recommendations;
 mod stats;
 mod sync;
 // tray::build uses tauri::tray/tauri::menu, which only exist on desktop —
@@ -41,15 +42,16 @@ use commands::{
     refresh_tracked_series_status, remove_availability_alert, remove_backup_file,
     remove_custom_list, remove_custom_list_item, remove_library_item, remove_planned_library_item,
     remove_profile, remove_saved_filter, remove_smart_list, resolve_profile_for_supabase_user,
-    save_availability_snapshot, save_library_item, set_active_profile, tmdb_request,
-    toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen, update_preference,
-    update_smart_list, updater_is_configured, write_backup_to_path,
+    save_availability_snapshot, save_library_item, set_active_profile, set_episode_rating,
+    tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
+    update_preference, update_smart_list, updater_is_configured, write_backup_to_path,
 };
 use commands::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
-    get_sync_status, list_sync_outbox, prepare_sync, rebase_sync_conflicts,
+    get_sync_status, list_sync_outbox, mark_sync_completed, prepare_sync, rebase_sync_conflicts,
 };
 use commands::{create_saved_filter, list_saved_filters};
+use commands::{dismiss_recommendation, list_dismissed_recommendations, undismiss_recommendation};
 use commands::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
     get_rewatch_stats, get_watch_forecast, get_watch_milestones,
@@ -146,6 +148,10 @@ pub fn run() {
             toggle_episodes_watched,
             list_tracked_series,
             refresh_tracked_series_status,
+            set_episode_rating,
+            list_dismissed_recommendations,
+            dismiss_recommendation,
+            undismiss_recommendation,
             list_recent_viewing_events,
             list_viewing_events_for_year,
             list_viewing_events_for_media,
@@ -199,6 +205,7 @@ pub fn run() {
             prepare_sync,
             get_sync_status,
             get_sync_cursor,
+            mark_sync_completed,
             list_sync_outbox,
             ack_sync_mutations,
             rebase_sync_conflicts,

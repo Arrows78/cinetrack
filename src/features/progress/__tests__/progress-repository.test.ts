@@ -258,6 +258,22 @@ describe("progressRepository", () => {
     });
   });
 
+  it("setEpisodeRating() invokes set_episode_rating with seriesId/episodeId/rating", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    const { progressRepository } = await import("../progress-repository");
+
+    await progressRepository.setEpisodeRating(9, 100, 4);
+    expect(invokeMock).toHaveBeenCalledWith("set_episode_rating", { seriesId: 9, episodeId: 100, rating: 4 });
+  });
+
+  it("setEpisodeRating() passes null through to clear a rating", async () => {
+    invokeMock.mockResolvedValueOnce(undefined);
+    const { progressRepository } = await import("../progress-repository");
+
+    await progressRepository.setEpisodeRating(9, 100, null);
+    expect(invokeMock).toHaveBeenCalledWith("set_episode_rating", { seriesId: 9, episodeId: 100, rating: null });
+  });
+
   it("listViewingEventsForMedia() invokes list_viewing_events_for_media with mediaId/mediaType", async () => {
     invokeMock.mockResolvedValueOnce([]);
     const { progressRepository } = await import("../progress-repository");

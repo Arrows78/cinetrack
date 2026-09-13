@@ -34,6 +34,8 @@
     "progressLabel": "{{percent}}% watched",
     "status": "Status",
     "genres": "Genres",
+    "director": "Director",
+    "writers": "Writer(s)",
     "addToLibrary": "Add to library",
     "inLibrary": "In library",
     "unknownYear": "Unknown year",
@@ -61,6 +63,8 @@
     "markPreviousOnlyThisCta": "Only this one",
     "nextEpisode": "Next episode",
     "previousEpisode": "Previous episode",
+    "nextSeason": "Next season",
+    "previousSeason": "Previous season",
     "similarSuggestions": "Similar suggestions",
     "becauseWatching": "Because you're watching {{title}}",
     "trailer": "Trailer",
@@ -96,6 +100,8 @@
     "unknownDate": "Unknown date",
     "confirm": "Confirm",
     "cancel": "Cancel",
+    "download": "Download",
+    "share": "Share",
     "durationHoursMinutes": "{{hours}}h {{minutes}}",
     "durationMinutes": "{{minutes}} min",
     "episodeCode": "S{{season}}E{{episode}}",
@@ -329,6 +335,21 @@
       "deleteConfirmTitle": "Delete the profile \"{{name}}\"?",
       "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone."
     },
+    "sync": {
+      "title": "Cloud sync",
+      "description": "Your library, history and lists sync automatically across every device signed in to this account.",
+      "checking": "Checking sync status…",
+      "upToDate": "Up to date.",
+      "pending_one": "{{count}} change syncing…",
+      "pending_other": "{{count}} changes syncing…",
+      "failed_one": "{{count}} change couldn't sync — try again.",
+      "failed_other": "{{count}} changes couldn't sync — try again.",
+      "conflicts_one": "{{count}} change has a conflict that needs attention.",
+      "conflicts_other": "{{count}} changes have a conflict that needs attention.",
+      "lastSynced": "Last synced {{date}}.",
+      "neverSynced": "Not synced yet.",
+      "syncNow": "Sync now"
+    },
     "streaming": {
       "title": "My streaming services",
       "description": "Pick the platforms you're subscribed to — used to filter availability alerts and Watch Tonight picks."
@@ -392,9 +413,13 @@
   "stats": {
     "title": "Stats",
     "description": "Your local activity, without sending your history to a server.",
+    "filmsSection": "Films",
+    "seriesSection": "Series",
     "moviesWatched": "Movies watched",
     "episodesWatched": "Episodes watched",
     "timeWatched": "Time watched",
+    "timeWatchedMovies": "Movie time",
+    "timeWatchedEpisodes": "Series time",
     "currentStreak": "Current streak",
     "durationHoursMinutes": "{{hours}}h {{minutes}}min",
     "watchDurationDays_one": "{{count}} day",
@@ -446,10 +471,8 @@
     "rewatchCount_one": "Watched again {{count}} time",
     "rewatchCount_other": "Watched again {{count}} times",
     "favouriteGenreByRating": "Highest-rated genre",
-    "moviesVsSeries": "Movies vs. series",
-    "moviesShare": "Movies:",
-    "episodesShare": "Episodes:",
     "exportWrapped": "Export as image",
+    "exportPreviewTitle": "Preview before saving",
     "exportSuccess": "Wrapped image saved",
     "exportFailed": "Couldn't export the Wrapped image",
     "heatmap": {
@@ -572,7 +595,33 @@
     "clearFilters": "Clear filters",
     "emptyTitle": "Nothing tracked yet",
     "emptyDesc": "Add a series or movie to your library to see its upcoming releases and episodes here.",
-    "emptyCta": "Discover movies & series"
+    "emptyCta": "Discover movies & series",
+    "badgeNew": "New",
+    "badgeAired": "Aired"
+  },
+  "episode": {
+    "rating": {
+      "label": "Rate this episode",
+      "clear": "Clear rating",
+      "1": "Terrible",
+      "2": "Bad",
+      "3": "Okay",
+      "4": "Good",
+      "5": "Great"
+    }
+  },
+  "recommendations": {
+    "notInterested": "Not interested",
+    "dismissedToast": "{{title}} won't be recommended again",
+    "dismissFailed": "Couldn't hide this title",
+    "hiddenTitles": {
+      "title": "Hidden titles",
+      "description": "Titles you marked \"not interested\" — they're excluded from Watch Tonight and your recommendation rails.",
+      "empty": "No hidden titles",
+      "restore": "Show again",
+      "restoredToast": "{{title}} may be recommended again",
+      "restoreFailed": "Couldn't restore this title"
+    }
   },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
@@ -660,7 +709,9 @@
     "emptyTitle": "No match for these filters",
     "emptyDesc": "Try a wider genre, platform or duration — or add more titles to your \"to watch\" library.",
     "viewDetails": "View details",
-    "alternatesTitle": "Or try one of these"
+    "alternatesTitle": "Or try one of these",
+    "reasonGenre": "Because you often watch {{genre}}",
+    "reasonHighlyRated": "Highly rated on TMDB"
   },
   "library": {
     "myLibrary": "My library",
@@ -1011,6 +1062,10 @@
     "unresolvedEpisodeCount_other": "{{count}} eps.",
     "unmatched_one": "{{count}} title could not be matched",
     "unmatched_other": "{{count}} titles could not be matched",
+    "duplicateTitles_one": "{{count}} title was already in your library and was skipped",
+    "duplicateTitles_other": "{{count}} titles were already in your library and were skipped",
+    "duplicateEpisodes_one": "{{count}} episode was already tracked and was skipped",
+    "duplicateEpisodes_other": "{{count}} episodes were already tracked and were skipped",
     "phase": {
       "series": "Series",
       "movies": "Movies",
@@ -1044,6 +1099,14 @@
       "episodeCount_other": "{{count}} episodes",
       "pointer_one": "{{count}} title needs your input below.",
       "pointer_other": "{{count}} titles need your input below."
+    },
+    "undo": {
+      "button": "Undo last import",
+      "confirmTitle": "Undo this import?",
+      "confirmDescription": "This unmarks every movie and episode this import added as watched, and removes any watchlist titles it added that you haven't started watching yet. Titles you've watched or edited since this import won't be touched.",
+      "confirm": "Undo import",
+      "success": "Import undone.",
+      "failed": "Couldn't undo the import. Try again."
     }
   },
   "discovery": {

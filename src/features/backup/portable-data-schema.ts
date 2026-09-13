@@ -67,6 +67,19 @@ export const episodeProgressSchema = z.object({
   watchedAt: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  rating: z.number().nullable().optional(),
+});
+
+export const dismissedRecommendationSchema = z.object({
+  id: z.string(),
+  profileId: z.string().optional(),
+  mediaId: z.number(),
+  mediaType,
+  title: z.string(),
+  posterPath: z.string().nullable().optional(),
+  dismissedAt: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export const trackedSeriesItemSchema = z.object({
@@ -248,4 +261,5 @@ export const portableDataSchema = z.object({
   availabilityAlerts: z.array(availabilityAlertSchema).max(MAX_LIST_ITEMS).optional(),
   smartLists: z.array(smartListSchema).max(MAX_LISTS).optional(),
   savedFilters: z.array(savedFilterSchema).max(MAX_LISTS).optional(),
+  dismissedRecommendations: z.array(dismissedRecommendationSchema).max(MAX_LIST_ITEMS).optional(),
 });

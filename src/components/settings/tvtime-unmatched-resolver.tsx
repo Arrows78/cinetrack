@@ -18,6 +18,7 @@ import {
   resolveRetryableSeries,
   resolveRetryableWatchlist,
   type RetryableUnmatched,
+  type TvTimeImportUndo,
 } from "@/features/tvtime";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import type { MediaSummary, SearchScope } from "@/types/media";
@@ -28,7 +29,15 @@ const scopeFor = (item: RetryableUnmatched): SearchScope => {
   return item.entry.mediaType === "movie" ? "movie" : "series";
 };
 
-function UnmatchedItemRow({ item, onResolved }: { item: RetryableUnmatched; onResolved: () => void }) {
+const NO_UNDO: TvTimeImportUndo = { movies: [], series: [], planned: [] };
+
+function UnmatchedItemRow({
+  item,
+  onResolved,
+}: {
+  item: RetryableUnmatched;
+  onResolved: (item: RetryableUnmatched, undo: TvTimeImportUndo) => void;
+}) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const profileId = useActiveProfileId();
@@ -45,17 +54,27 @@ function UnmatchedItemRow({ item, onResolved }: { item: RetryableUnmatched; onRe
     setResolvingId(match.id);
     setError(null);
     try {
+      // Each branch's own undo contribution — same shape resolveRetryableSeries/
+      // the main import loop already build, so TvTimeImportCard can merge this
+      // into its running "undo last import" state the same way either way,
+      // regardless of whether a title was resolved automatically or by hand
+      // here.
+      let undo = NO_UNDO;
       if (item.kind === "series") {
         const series = await mediaRepository.getSeriesDetails(match.id);
-        await resolveRetryableSeries(item, series);
+        const result = await resolveRetryableSeries(item, series);
+        if (result.undo) undo = { movies: [], series: [result.undo], planned: [] };
       } else if (item.kind === "movie") {
-        await resolveRetryableMovie(item, match);
+        const inserted = await resolveRetryableMovie(item, match);
+        if (inserted) undo = { movies: [match], series: [], planned: [] };
       } else {
-        await resolveRetryableWatchlist(item, match);
+        const wasNewlyPlanned = await resolveRetryableWatchlist(item, match);
+        if (wasNewlyPlanned)
+          undo = { movies: [], series: [], planned: [{ mediaId: match.id, mediaType: match.mediaType }] };
       }
       await invalidateTvTimeImportQueries(queryClient, profileId);
       toast({ description: t("tvtimeImport.retry.resolved", { title: match.title }), variant: "success" });
-      onResolved();
+      onResolved(item, undo);
     } catch {
       setError(t("tvtimeImport.retry.resolveFailed"));
       setResolvingId(null);
@@ -124,7 +143,7 @@ export function TvTimeUnmatchedResolver({
   onResolved,
 }: {
   items: RetryableUnmatched[];
-  onResolved: (item: RetryableUnmatched) => void;
+  onResolved: (item: RetryableUnmatched, undo: TvTimeImportUndo) => void;
 }) {
   const { t } = useTranslation();
   if (!items.length) return null;
@@ -141,7 +160,7 @@ export function TvTimeUnmatchedResolver({
       <CardContent>
         <Accordion type="single" collapsible className="space-y-2">
           {items.map((item) => (
-            <UnmatchedItemRow key={`${item.kind}-${item.label}`} item={item} onResolved={() => onResolved(item)} />
+            <UnmatchedItemRow key={`${item.kind}-${item.label}`} item={item} onResolved={onResolved} />
           ))}
         </Accordion>
       </CardContent>

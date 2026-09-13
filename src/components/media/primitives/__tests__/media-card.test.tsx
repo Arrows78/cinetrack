@@ -145,4 +145,36 @@ describe("MediaCard", () => {
     expect(bar).toHaveAttribute("aria-valuenow", "8");
     expect(bar).toHaveAttribute("aria-valuemax", "24");
   });
+
+  it("shows an Up to date badge for a still-airing series caught up on every aired episode", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const Wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    render(
+      <MediaCard
+        media={makeMedia({ id: 10, mediaType: "series" })}
+        progress={{ watched: 24, total: 24, seriesStatus: "Returning Series" }}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    expect(screen.getByText("All up to date")).toBeInTheDocument();
+  });
+
+  it("does not show an Up to date badge once the series has actually ended", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const Wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    render(
+      <MediaCard
+        media={makeMedia({ id: 10, mediaType: "series" })}
+        progress={{ watched: 24, total: 24, seriesStatus: "Ended" }}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    expect(screen.queryByText("All up to date")).not.toBeInTheDocument();
+  });
 });

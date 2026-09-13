@@ -246,6 +246,33 @@ describe("mapMovieDto", () => {
     expect(mapMovieDto(movieDto()).directors).toEqual([]);
   });
 
+  it("maps Writer/Screenplay/Story crew credits into writers, dropping every other job", () => {
+    const crew: TmdbCrewDto[] = [
+      { id: 1, name: "Writer One", job: "Writer" },
+      { id: 2, name: "Screenplay Two", job: "Screenplay" },
+      { id: 3, name: "Story Three", job: "Story" },
+      { id: 4, name: "Director Four", job: "Director" },
+      { id: 5, name: "Producer Five", job: "Producer" },
+    ];
+
+    const movie = mapMovieDto(movieDto({ credits: { cast: [], crew } }));
+
+    expect(movie.writers?.map((w) => w.id)).toEqual([1, 2, 3]);
+  });
+
+  it("dedupes a writer credited under more than one writing job", () => {
+    const crew: TmdbCrewDto[] = [
+      { id: 1, name: "Writer One", job: "Writer" },
+      { id: 1, name: "Writer One", job: "Story" },
+    ];
+
+    expect(mapMovieDto(movieDto({ credits: { cast: [], crew } })).writers?.map((w) => w.id)).toEqual([1]);
+  });
+
+  it("defaults writers to [] when there's no crew data at all", () => {
+    expect(mapMovieDto(movieDto()).writers).toEqual([]);
+  });
+
   it("maps belongs_to_collection into collection, and null/absent into null", () => {
     const withCollection = mapMovieDto(
       movieDto({
@@ -404,6 +431,37 @@ describe("mapSeriesDto", () => {
 
   it("resolves genre names from genre_ids via the series genre list, not the movie one", () => {
     expect(mapSeriesDto(tvDto({ genre_ids: [10759, 35] })).genres).toEqual(["Action & Adventure", "Comedy"]);
+  });
+
+  it("maps writer credits the same way as movies", () => {
+    const crew: TmdbCrewDto[] = [
+      { id: 1, name: "Writer One", job: "Writer" },
+      { id: 2, name: "Director Two", job: "Director" },
+    ];
+
+    expect(mapSeriesDto(tvDto({ credits: { cast: [], crew } })).writers?.map((w) => w.id)).toEqual([1]);
+  });
+
+  it("maps next_episode_to_air into nextEpisodeToAir, and null/absent into null", () => {
+    const withNext = mapSeriesDto(
+      tvDto({
+        next_episode_to_air: {
+          id: 99,
+          air_date: "2026-05-01",
+          episode_number: 4,
+          name: "The Return",
+          overview: "",
+          runtime: null,
+          season_number: 2,
+          still_path: null,
+          vote_average: 0,
+        },
+      })
+    );
+    expect(withNext.nextEpisodeToAir).toMatchObject({ id: 99, airDate: "2026-05-01", episodeNumber: 4 });
+
+    expect(mapSeriesDto(tvDto({ next_episode_to_air: null })).nextEpisodeToAir).toBeNull();
+    expect(mapSeriesDto(tvDto()).nextEpisodeToAir).toBeNull();
   });
 });
 

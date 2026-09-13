@@ -12,6 +12,7 @@ export const syncCommands = {
   prepare: defineCommand<undefined, void>("prepare_sync"),
   status: defineCommand<undefined, SyncStatus>("get_sync_status"),
   cursor: defineCommand<undefined, number>("get_sync_cursor"),
+  markCompleted: defineCommand<undefined, void>("mark_sync_completed"),
   outbox: defineCommand<LimitArgs, SyncOutboxMutation[]>("list_sync_outbox"),
   ack: defineCommand<AckArgs, void>("ack_sync_mutations"),
   rebase: defineCommand<ConflictArgs, void>("rebase_sync_conflicts"),

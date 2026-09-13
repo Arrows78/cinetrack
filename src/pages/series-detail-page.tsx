@@ -30,6 +30,7 @@ import { PartialErrorState } from "@/components/states/partial-error-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { EmptyState } from "@/components/states/empty-state";
 import { useImageCache } from "@/features/media/use-image-cache";
+import { formatRelativeCountdown } from "@/shared/utils/format";
 import {
   calculateSeriesProgress,
   getNextEpisode,
@@ -170,13 +171,29 @@ export function SeriesDetailPage() {
             </div>
           </Panel>
           <Panel tone="subtle" className="p-6">
-            <SectionHeader title={t("series.seriesInfo")} />
+            <SectionHeader
+              title={t("series.seriesInfo")}
+              action={
+                series.nextEpisodeToAir?.airDate ? (
+                  <div className="flex items-center gap-1.5 text-caption text-muted-foreground">
+                    <span>{t("media.nextEpisode")}</span>
+                    <Badge variant="secondary">{formatRelativeCountdown(series.nextEpisodeToAir.airDate)}</Badge>
+                  </div>
+                ) : null
+              }
+            />
             <div className="grid gap-2 text-body-sm">
               {[
                 { label: t("media.seasons"), value: series.numberOfSeasons },
                 { label: t("media.episodes"), value: series.numberOfEpisodes ?? "—" },
                 { label: t("media.status"), value: series.status || "—" },
                 { label: t("media.genres"), value: series.genres.join(", ") || "—" },
+                ...(series.directors?.length
+                  ? [{ label: t("media.director"), value: series.directors.map((person) => person.name).join(", ") }]
+                  : []),
+                ...(series.writers?.length
+                  ? [{ label: t("media.writers"), value: series.writers.map((person) => person.name).join(", ") }]
+                  : []),
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between gap-2">
                   <span className="text-muted-foreground">{label}</span>

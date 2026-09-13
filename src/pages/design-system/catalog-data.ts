@@ -650,6 +650,14 @@ export const componentInventory = [
     "Renders the shared trending/top-rated/upcoming rows used by both the home dashboard and Search's default browse state."
   ),
   component(
+    "NotInterestedButton",
+    "components/media/discover/not-interested-button.tsx",
+    "Media",
+    "feature",
+    "live",
+    '"Pas intéressé" — excludes a title from Watch Tonight and Home\'s recommendation rails.'
+  ),
+  component(
     "TodayHub",
     "components/media/home/today-hub.tsx",
     "Media",
@@ -970,6 +978,14 @@ export const componentInventory = [
     "Circular 'mark as seen' toggle button for inline use in rows and cards."
   ),
   component(
+    "EpisodeRatingControl",
+    "components/media/tracking/episode-rating-control.tsx",
+    "Media",
+    "feature",
+    "live",
+    "Five-option 1-5 rating for an already-watched episode — emoji plus a real word label per option."
+  ),
+  component(
     "SmartListsPanel",
     "components/media/library/smart-lists-panel.tsx",
     "Media",
@@ -1063,7 +1079,7 @@ export const componentInventory = [
     "Media",
     "feature",
     "reference",
-    "Shared release/episode/availability row for TrackingList and the Today Hub's dashboard rails."
+    "Shared release/episode/availability row for TrackingList and the Today Hub's dashboard rails — optionally shows an Aired badge and, for episodes, an inline New/Aired badge plus quick-check (showAiredStatus)."
   ),
   component(
     "TrackingList",
@@ -1130,6 +1146,14 @@ export const componentInventory = [
     "Threshold-crossing achievements (episodes, hours, completed series) based on current watch state."
   ),
   component(
+    "ExportPreviewDialog",
+    "components/stats/export-preview-dialog.tsx",
+    "Stats",
+    "pattern",
+    "live",
+    "Shows a Wrapped/monthly-recap/milestone card before it's saved or shared, instead of downloading it blind."
+  ),
+  component(
     "AboutSettings",
     "components/settings/about-settings.tsx",
     "Settings",
@@ -1152,6 +1176,22 @@ export const componentInventory = [
     "feature",
     "reference",
     "Configures desktop integration and startup behavior."
+  ),
+  component(
+    "SyncStatusCard",
+    "components/settings/sync-status-card.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Read-only cloud-sync status (pending/failed counts) plus a manual sync-now action."
+  ),
+  component(
+    "HiddenTitlesCard",
+    "components/settings/hidden-titles-card.tsx",
+    "Settings",
+    "feature",
+    "live",
+    'Lists titles dismissed as "not interested", each with a Show again action.'
   ),
   component(
     "TvTimeImportCard",

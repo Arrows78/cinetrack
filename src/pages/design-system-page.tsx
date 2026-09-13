@@ -62,6 +62,7 @@ import { Tile } from "@/components/ui/tile";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { COLOR_PRESETS, type AccentColor, type ColorPreset } from "@/shared/constants/colors";
 import { cn } from "@/shared/lib/cn";
+import { hslVar } from "@/shared/lib/hsl-var";
 
 import {
   accessibilityChecklist,
@@ -504,10 +505,7 @@ export function DesignSystemPage() {
               {lineTokens.map((token) => (
                 <TokenTile key={token.varName} label={token.label} meta={`--${token.varName}`}>
                   <div className="flex h-20 items-center rounded-card bg-card/40 p-3">
-                    <div
-                      className="h-10 w-full rounded-xl border-2"
-                      style={{ borderColor: `hsl(var(--${token.varName}))` }}
-                    />
+                    <div className="h-10 w-full rounded-xl border-2" style={{ borderColor: hslVar(token.varName) }} />
                   </div>
                   <p className="text-caption leading-5 text-muted-foreground">{token.usage}</p>
                 </TokenTile>

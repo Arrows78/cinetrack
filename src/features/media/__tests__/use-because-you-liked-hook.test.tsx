@@ -9,6 +9,7 @@ import type { LibraryItem, LibraryMediaKey, MediaSummary } from "@/types/media";
 const bestSeedMock = vi.fn<() => LibraryItem | null>();
 const mediaKeysMock = vi.fn<() => LibraryMediaKey[]>();
 const recommendationsMock = vi.fn<() => { data: { results: MediaSummary[] } | undefined; isLoading: boolean }>();
+const dismissedKeysMock = vi.fn<() => Set<string>>();
 
 // The seed and the exclude-if-owned membership set both now come from Rust
 // (get_best_recommendation_seed_impl, list_media_keys_impl) — these mocks
@@ -28,6 +29,9 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 vi.mock("@/features/media/use-discovery", () => ({
   useRecommendations: () => recommendationsMock(),
 }));
+vi.mock("@/features/recommendations/use-recommendations", () => ({
+  useDismissedRecommendationKeys: () => dismissedKeysMock(),
+}));
 
 function createWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -40,8 +44,10 @@ beforeEach(() => {
   bestSeedMock.mockReset();
   mediaKeysMock.mockReset();
   recommendationsMock.mockReset();
+  dismissedKeysMock.mockReset();
   bestSeedMock.mockReturnValue(null);
   mediaKeysMock.mockReturnValue([]);
+  dismissedKeysMock.mockReturnValue(new Set());
 });
 
 describe("useBecauseYouLiked", () => {
@@ -75,6 +81,25 @@ describe("useBecauseYouLiked", () => {
       data: {
         results: [
           makeMedia({ id: 2, mediaType: "movie", title: "Already Owned" }),
+          makeMedia({ id: 3, mediaType: "movie", title: "Arrival" }),
+        ],
+      },
+      isLoading: false,
+    });
+
+    const { result } = renderHook(() => useBecauseYouLiked(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.items.map((item) => item.id)).toEqual([3]));
+  });
+
+  it("filters out a dismissed ('not interested') title from the recommendations results", async () => {
+    const seed = makeLibraryItem({ id: "seed", mediaId: 1, status: "completed", title: "Fight Club" });
+    bestSeedMock.mockReturnValue(seed);
+    dismissedKeysMock.mockReturnValue(new Set(["movie:2"]));
+    recommendationsMock.mockReturnValue({
+      data: {
+        results: [
+          makeMedia({ id: 2, mediaType: "movie", title: "Not Interested" }),
           makeMedia({ id: 3, mediaType: "movie", title: "Arrival" }),
         ],
       },

@@ -58,7 +58,10 @@
     "validate:frontend": "pnpm contract:check && pnpm architecture:check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build",
     "validate:backend": "pnpm cargo:check && pnpm cargo:clippy && pnpm cargo:format:check && pnpm cargo:test && pnpm contract:check-ts-bindings",
     "validate": "pnpm validate:frontend && pnpm validate:backend",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "ios:init": "tauri ios init --ci",
+    "ios:dev": "tauri ios dev",
+    "ios:build:sim": "tauri ios build --target aarch64-sim --no-sign --ci"
   },
   "dependencies": {
     "@choochmeque/tauri-plugin-sharekit-api": "0.3.1",

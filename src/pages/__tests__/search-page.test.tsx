@@ -6,7 +6,7 @@ import i18n from "@/i18n";
 import { SearchPage } from "../search-page";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import type { MediaSummary } from "@/types/media";
+import type { MediaSummary, SearchScope } from "@/types/media";
 
 // --- Fake router -----------------------------------------------------------
 //
@@ -83,7 +83,10 @@ vi.mock("@tanstack/react-router", () => {
   };
 });
 
-const preferencesDataMock = vi.fn(() => ({ region: "FR", defaultSearchType: "all" as const }));
+const preferencesDataMock = vi.fn((): { region: string; defaultSearchType: SearchScope | undefined } => ({
+  region: "FR",
+  defaultSearchType: "all",
+}));
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({ data: preferencesDataMock() }),
   // SearchPage's saved-filters bar (see saved-filters-bar.tsx) resolves the
@@ -97,7 +100,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 // so this suite's own URL/scope-sync assertions don't also need to account
 // for a real invoke() round-trip.
 const savedFiltersState = {
-  data: [] as Array<{ id: string; name: string }>,
+  data: [] as Array<{ id: string; name: string; filters: unknown }>,
   isLoading: false,
   isError: false,
   error: null as unknown,
@@ -202,6 +205,7 @@ describe("SearchPage", () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     setRouterSearch("");
+    savedFiltersState.data = [];
 
     preferencesDataMock.mockReset().mockReturnValue({ region: "FR", defaultSearchType: "all" });
     searchHookMock.mockReset().mockReturnValue(defaultSearchResult());
@@ -397,5 +401,174 @@ describe("SearchPage", () => {
     expect(getRouterSearch()).not.toContain("genreMovie");
     expect(getRouterSearch()).not.toContain("provider");
     expect(getRouterSearch()).toContain("scope=all");
+  });
+
+  it("removes just the scope chip, resetting scope to 'all' without touching other filters", () => {
+    renderPage("?scope=movie&provider=8");
+
+    const chipLabel = i18n.t("filters.chips.type", { value: i18n.t("nav.movies") });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    expect(getRouterSearch()).toContain("scope=all");
+    expect(getRouterSearch()).toContain("provider=8");
+  });
+
+  it("removes just the genreMovie chip", () => {
+    renderPage("?genreMovie=28&provider=8");
+
+    const chipLabel = i18n.t("filters.chips.genre", { value: i18n.t("genres.action") });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    expect(getRouterSearch()).not.toContain("genreMovie");
+    expect(getRouterSearch()).toContain("provider=8");
+  });
+
+  it("removes just the genreSeries chip", () => {
+    renderPage("?genreSeries=10759&provider=8");
+
+    const chipLabel = i18n.t("filters.chips.genre", { value: i18n.t("genres.actionAdventure") });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    expect(getRouterSearch()).not.toContain("genreSeries");
+    expect(getRouterSearch()).toContain("provider=8");
+  });
+
+  it("removes just the provider chip", () => {
+    renderPage("?provider=8&genreMovie=28");
+
+    const chipLabel = i18n.t("filters.chips.provider", { value: "Netflix" });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    expect(getRouterSearch()).not.toContain("provider");
+    expect(getRouterSearch()).toContain("genreMovie=28");
+  });
+
+  it("removes just the company chip", () => {
+    renderPage("?company=420&genreMovie=28");
+
+    const chipLabel = i18n.t("filters.chips.studio", { value: "Marvel Studios" });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    expect(getRouterSearch()).not.toContain("company");
+    expect(getRouterSearch()).toContain("genreMovie=28");
+  });
+
+  it("falls back to the raw id as the label when a genre id isn't in the known list", () => {
+    renderPage("?genreMovie=999999");
+
+    expect(screen.getByText(i18n.t("search.showingResults", { filters: "999999" }))).toBeInTheDocument();
+  });
+
+  it("falls back to the raw id as the label when a provider/company id isn't in the known list", () => {
+    renderPage("?provider=999999&company=888888");
+
+    expect(screen.getByText(i18n.t("search.showingResults", { filters: "999999 • 888888" }))).toBeInTheDocument();
+  });
+
+  it("applies a saved filter, replacing the current scope and genre/provider/company filters", async () => {
+    savedFiltersState.data = [
+      {
+        id: "saved-1",
+        name: "My action picks",
+        filters: { scope: "movie", genreMovie: "28", genreSeries: undefined, provider: "8", company: undefined },
+      },
+    ];
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "My action picks" }));
+
+    await waitFor(() => {
+      expect(getRouterSearch()).toContain("scope=movie");
+    });
+    expect(getRouterSearch()).toContain("genreMovie=28");
+    expect(getRouterSearch()).toContain("provider=8");
+    expect(getRouterSearch()).not.toContain("company");
+  });
+
+  it("shows RemoteErrorState for the home-feed browse view, and retry calls refetch", () => {
+    const refetch = vi.fn();
+    homeFeedMock.mockReturnValue({
+      isLoading: false,
+      isPending: false,
+      isError: true,
+      error: new Error("network down"),
+      refetch,
+      data: undefined,
+    });
+    renderPage();
+
+    expect(screen.getByText(i18n.t("errors.catalogUnavailable"))).toBeInTheDocument();
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches the next page when the Load More button is clicked", () => {
+    const fetchNextPage = vi.fn();
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [buildSummary({ id: 1, mediaType: "movie", title: "Dune" })],
+      hasNextPage: true,
+      fetchNextPage,
+    });
+    renderPage("?q=movie");
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.loadMore") }));
+
+    expect(fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a loading skeleton for the home-feed browse view while it is pending", () => {
+    homeFeedMock.mockReturnValue({
+      isLoading: true,
+      isPending: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: undefined,
+    });
+    const { container } = renderPage();
+
+    expect(screen.queryByTestId("catalogue-sections")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".animate-shimmer").length).toBeGreaterThan(0);
+  });
+
+  it("falls back to the 'all' scope when neither the URL nor preferences pick one", () => {
+    preferencesDataMock.mockReturnValue({ region: "FR", defaultSearchType: undefined });
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [
+        buildSummary({ id: 1, mediaType: "movie", title: "Dune" }),
+        buildSummary({ id: 2, mediaType: "series", title: "Severance" }),
+      ],
+    });
+    renderPage("?q=movie");
+
+    expect(screen.getByRole("heading", { name: i18n.t("nav.series") })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: i18n.t("nav.movies") })).toBeInTheDocument();
+  });
+
+  it("labels the scope chip for the series scope", () => {
+    renderPage("?scope=series");
+
+    const chipLabel = i18n.t("filters.chips.type", { value: i18n.t("nav.series") });
+    expect(
+      screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) })
+    ).toBeInTheDocument();
+  });
+
+  it("reflects an externally-changed URL scope (e.g. browser back/forward) into local state", async () => {
+    renderPage();
+
+    setRouterSearch("?scope=movie");
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", {
+          name: i18n.t("filters.removeFilter", {
+            filter: i18n.t("filters.chips.type", { value: i18n.t("nav.movies") }),
+          }),
+        })
+      ).toBeInTheDocument();
+    });
   });
 });

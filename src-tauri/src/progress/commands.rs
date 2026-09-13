@@ -91,3 +91,18 @@ pub async fn refresh_tracked_series_status(
     })
     .await
 }
+
+#[tauri::command]
+pub async fn set_episode_rating(
+    series_id: i64,
+    episode_id: i64,
+    rating: Option<i64>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
+    timed("set_episode_rating", async {
+        ProgressService::new(pool.inner())
+            .set_episode_rating(series_id, episode_id, rating)
+            .await
+    })
+    .await
+}

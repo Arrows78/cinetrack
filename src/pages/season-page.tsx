@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { useParams } from "@tanstack/react-router";
-import { TriangleAlert } from "lucide-react";
+import { Link, useParams } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { EpisodeCard } from "@/components/media/tracking/episode-card";
 import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
@@ -65,6 +65,17 @@ export function SeasonPage() {
   const watchedSet = new Set((progressQuery.data ?? []).map((item) => item.episodeId));
   const allWatched = season.episodes.length > 0 && season.episodes.every((ep) => watchedSet.has(ep.id));
 
+  // Same prev/next pattern as episode-detail-page.tsx, one level up: specials
+  // (season 0) are excluded, matching series-detail-page.tsx's own season list.
+  const sortedSeasonNumbers = (series.seasons ?? [])
+    .map((item) => item.seasonNumber)
+    .filter((number) => number > 0)
+    .sort((a, b) => a - b);
+  const seasonIndex = sortedSeasonNumbers.indexOf(season.seasonNumber);
+  const previousSeasonNumber = seasonIndex > 0 ? sortedSeasonNumbers[seasonIndex - 1] : null;
+  const nextSeasonNumber =
+    seasonIndex >= 0 && seasonIndex < sortedSeasonNumbers.length - 1 ? sortedSeasonNumbers[seasonIndex + 1] : null;
+
   return (
     <div className="space-y-8">
       <MediaDetailsHero
@@ -114,6 +125,39 @@ export function SeasonPage() {
           ))}
         </div>
       </Card>
+
+      <div className="flex items-center justify-between gap-3">
+        {previousSeasonNumber !== null ? (
+          <Link
+            to="/series/$seriesId/season/$seasonNumber"
+            params={{ seriesId: String(series.id), seasonNumber: String(previousSeasonNumber) }}
+            aria-label={`${t("media.previousSeason")}: ${t("media.fallbackTitle", { number: previousSeasonNumber })}`}
+            className="flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="size-4 shrink-0" aria-hidden="true" />
+            <span className="truncate" aria-hidden="true">
+              {t("media.fallbackTitle", { number: previousSeasonNumber })}
+            </span>
+          </Link>
+        ) : (
+          <span />
+        )}
+        {nextSeasonNumber !== null ? (
+          <Link
+            to="/series/$seriesId/season/$seasonNumber"
+            params={{ seriesId: String(series.id), seasonNumber: String(nextSeasonNumber) }}
+            aria-label={`${t("media.nextSeason")}: ${t("media.fallbackTitle", { number: nextSeasonNumber })}`}
+            className="flex min-w-0 items-center gap-1.5 text-right text-body-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span className="truncate" aria-hidden="true">
+              {t("media.fallbackTitle", { number: nextSeasonNumber })}
+            </span>
+            <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+          </Link>
+        ) : (
+          <span />
+        )}
+      </div>
 
       <MarkPreviousEpisodesDialog
         open={backlog.prompt !== null}

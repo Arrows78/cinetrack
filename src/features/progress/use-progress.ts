@@ -137,12 +137,22 @@ export function useEpisodeProgress(seriesId: number) {
     (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
   );
 
+  // Kept separate from isSaving below: rating an episode shouldn't disable
+  // the seen toggle (or vice versa) — they're independent controls.
+  const ratingMutation = useInvalidatingMutation(
+    ({ seriesId, episodeId, rating }: { seriesId: number; episodeId: number; rating: number | null }) =>
+      progressRepository.setEpisodeRating(seriesId, episodeId, rating),
+    (_data, variables) => episodeProgressKeys(profileId, variables.seriesId)
+  );
+
   return {
     ...query,
     toggleEpisodeSeen: toggleMutation.mutateAsync,
     markEpisodesSeen: markManyMutation.mutateAsync,
     markSeasonSeen: seasonMutation.mutateAsync,
     markSeriesSeen: seriesMutation.mutateAsync,
+    setEpisodeRating: ratingMutation.mutateAsync,
+    isSavingRating: ratingMutation.isPending,
     isSaving:
       toggleMutation.isPending || markManyMutation.isPending || seasonMutation.isPending || seriesMutation.isPending,
   };

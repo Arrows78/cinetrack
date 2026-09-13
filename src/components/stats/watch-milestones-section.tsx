@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { PartialErrorState } from "@/components/states/partial-error-state";
+import { ExportPreviewDialog } from "@/components/stats/export-preview-dialog";
 import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate } from "@/shared/utils/format";
@@ -35,6 +36,17 @@ export function WatchMilestonesSection() {
   const { t } = useTranslation();
   const milestones = useWatchMilestones();
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [isSavingExport, setIsSavingExport] = useState(false);
+  const [previewMilestone, setPreviewMilestone] = useState<WatchMilestone | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewBlob(null);
+    setPreviewMilestone(null);
+  };
 
   useEffect(() => {
     if (milestones.isError) {
@@ -78,14 +90,30 @@ export function WatchMilestonesSection() {
           achievedLabel: t("stats.milestones.achievedCardLabel"),
         }
       );
-      await downloadMilestoneCard(blob, milestone.id);
+      setPreviewMilestone(milestone);
+      setPreviewBlob(blob);
+      setPreviewUrl(URL.createObjectURL(blob));
+    } catch (error) {
+      logger.warn(`Milestone export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast({ description: displayMessage(error, t("stats.milestones.exportFailed")), variant: "error" });
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const confirmExportMilestone = async () => {
+    if (!previewBlob || !previewMilestone) return;
+    setIsSavingExport(true);
+    try {
+      await downloadMilestoneCard(previewBlob, previewMilestone.id);
       toast({ description: t("stats.milestones.exportSuccess"), variant: "success" });
+      closePreview();
     } catch (error) {
       if (error instanceof ShareCancelledError) return;
       logger.warn(`Milestone export failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ description: displayMessage(error, t("stats.milestones.exportFailed")), variant: "error" });
     } finally {
-      setExportingId(null);
+      setIsSavingExport(false);
     }
   };
 
@@ -136,6 +164,15 @@ export function WatchMilestonesSection() {
           </Tile>
         ))}
       </div>
+
+      <ExportPreviewDialog
+        open={exportingId !== null || previewUrl !== null}
+        onOpenChange={(open) => !open && closePreview()}
+        title={t("stats.exportPreviewTitle")}
+        imageUrl={previewUrl}
+        isConfirming={isSavingExport}
+        onConfirm={() => void confirmExportMilestone()}
+      />
     </Panel>
   );
 }

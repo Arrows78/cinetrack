@@ -16,6 +16,10 @@ export const syncRepository = {
     return invokeTypedCommand(syncCommands.status);
   },
 
+  markCompleted() {
+    return invokeTypedCommand(syncCommands.markCompleted);
+  },
+
   getCursor() {
     return invokeTypedCommand(syncCommands.cursor);
   },

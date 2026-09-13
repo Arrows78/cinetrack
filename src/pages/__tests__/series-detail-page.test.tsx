@@ -193,6 +193,7 @@ const watchedProgress: EpisodeProgress[] = [
     watchedAt: null,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
+    rating: null,
   },
   {
     id: "p2",
@@ -205,6 +206,7 @@ const watchedProgress: EpisodeProgress[] = [
     watchedAt: null,
     createdAt: "2024-01-08T00:00:00.000Z",
     updatedAt: "2024-01-08T00:00:00.000Z",
+    rating: null,
   },
 ];
 
@@ -327,6 +329,73 @@ describe("SeriesDetailPage", () => {
 
     expect(screen.getByText("anthology")).toBeInTheDocument();
     expect(screen.getByText("based on a podcast")).toBeInTheDocument();
+  });
+
+  it("shows director and writer rows only when the series has that credit data", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries(),
+    });
+    renderPage();
+
+    expect(screen.queryByText("Director")).not.toBeInTheDocument();
+    expect(screen.queryByText("Writer(s)")).not.toBeInTheDocument();
+
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({
+        directors: [{ id: 1, name: "Dan Erickson", job: "Director" }],
+        writers: [
+          { id: 1, name: "Dan Erickson", job: "Writer" },
+          { id: 2, name: "Second Writer", job: "Story" },
+        ],
+      }),
+    });
+    renderPage();
+
+    expect(screen.getByText("Director")).toBeInTheDocument();
+    expect(screen.getByText("Dan Erickson")).toBeInTheDocument();
+    expect(screen.getByText("Writer(s)")).toBeInTheDocument();
+    expect(screen.getByText("Dan Erickson, Second Writer")).toBeInTheDocument();
+  });
+
+  it("shows a next-episode countdown badge only when the series has a scheduled next episode", () => {
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries(),
+    });
+    renderPage();
+
+    expect(screen.queryByText("Next episode")).not.toBeInTheDocument();
+
+    seriesQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildSeries({
+        nextEpisodeToAir: {
+          id: 5001,
+          seasonNumber: 2,
+          episodeNumber: 1,
+          title: "Season Premiere",
+          overview: "",
+          airDate: "2030-01-01",
+        },
+      }),
+    });
+    renderPage();
+
+    expect(screen.getByText("Next episode")).toBeInTheDocument();
   });
 
   it("shows a gallery thumbnail for each extra backdrop", () => {

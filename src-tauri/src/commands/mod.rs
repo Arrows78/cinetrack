@@ -34,7 +34,10 @@ pub use crate::profiles::{
 };
 pub use crate::progress::{
     get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
-    toggle_episodes_watched, toggle_movie_seen,
+    set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
+};
+pub use crate::recommendations::{
+    dismiss_recommendation, list_dismissed_recommendations, undismiss_recommendation,
 };
 pub use crate::stats::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
@@ -44,7 +47,7 @@ pub use crate::stats::{
 };
 pub use crate::sync::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
-    get_sync_status, list_sync_outbox, prepare_sync, rebase_sync_conflicts,
+    get_sync_status, list_sync_outbox, mark_sync_completed, prepare_sync, rebase_sync_conflicts,
 };
 pub use boot::get_boot_recovery;
 pub use updater::{has_updater_config, updater_is_configured};
