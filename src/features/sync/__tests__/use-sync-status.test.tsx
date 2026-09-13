@@ -11,6 +11,7 @@ vi.mock("@/features/sync/sync-repository", () => ({
 const runMock = vi.fn();
 vi.mock("@/features/sync/sync-service", () => ({
   syncService: { run: (...args: unknown[]) => runMock(...args) },
+  PERIODIC_SYNC_MS: 5 * 60 * 1000,
 }));
 
 const isTauriAppMock = vi.fn(() => true);
@@ -64,6 +65,31 @@ describe("useSyncStatus", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(getStatusMock).not.toHaveBeenCalled();
+  });
+
+  it("estimates minutes until the next periodic check from lastSyncedAt", async () => {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    getStatusMock.mockResolvedValue({
+      deviceId: "device-1",
+      cursor: 3,
+      pendingCount: 0,
+      failedCount: 0,
+      conflictCount: 0,
+      lastSyncedAt: twoMinutesAgo,
+    });
+
+    const { result } = renderHook(() => useSyncStatus(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // 5-minute interval minus the 2 already elapsed since lastSyncedAt.
+    expect(result.current.nextCheckInMinutes).toBe(3);
+  });
+
+  it("has no next-check estimate before anything has ever synced", async () => {
+    const { result } = renderHook(() => useSyncStatus(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.nextCheckInMinutes).toBeNull();
   });
 
   it("syncNow runs the shared sync engine, then refetches the status", async () => {

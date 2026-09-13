@@ -18,6 +18,7 @@ vi.mock("@/features/sync/sync-repository", () => ({
 const runMock = vi.fn();
 vi.mock("@/features/sync/sync-service", () => ({
   syncService: { run: (...args: unknown[]) => runMock(...args) },
+  PERIODIC_SYNC_MS: 5 * 60 * 1000,
 }));
 
 vi.mock("@/features/preferences/use-preferences", () => ({
@@ -122,6 +123,13 @@ describe("SyncStatusCard", () => {
     });
     renderCard();
     expect(await screen.findByText(/Last synced/)).toBeInTheDocument();
+    expect(await screen.findByText(/next check in \d+ min/)).toBeInTheDocument();
+  });
+
+  it("shows no next-check estimate before anything has ever synced", async () => {
+    renderCard();
+    await screen.findByText("Not synced yet.");
+    expect(screen.queryByText(/next check in/)).not.toBeInTheDocument();
   });
 
   it("runs the sync engine and refreshes the status when Sync now is clicked", async () => {

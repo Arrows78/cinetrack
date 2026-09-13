@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation, Trans } from "react-i18next";
+import { Copy } from "lucide-react";
 
 import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client";
 import { useAuth } from "@/features/auth/use-auth";
+import { Button } from "@/components/ui/button";
 import { getEnabledSocialProviders } from "@/features/auth/provider-availability";
 import { AuthBackdrop } from "@/features/auth/atoms/auth-backdrop";
 import { AuthBrandMark } from "@/features/auth/atoms/auth-brand-mark";
@@ -32,7 +34,7 @@ function isValidEmail(value: string): boolean {
 
 export function AuthScreen() {
   const { t } = useTranslation();
-  const { error, clearError, requestEmailOtp, signInWithProvider, verifyEmailOtp } = useAuth();
+  const { error, errorDetail, clearError, requestEmailOtp, signInWithProvider, verifyEmailOtp } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [step, setStep] = useState<AuthStep>("providers");
   const [email, setEmail] = useState("");
@@ -262,13 +264,28 @@ export function AuthScreen() {
           ) : null}
 
           {visibleError ? (
-            <p
+            <div
               role="alert"
               aria-live="polite"
-              className="mt-5 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-body-sm text-auth-foreground/90"
+              className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-body-sm text-auth-foreground/90"
             >
-              {visibleError}
-            </p>
+              <p>{visibleError}</p>
+              {/* Only for the generic fallback message (see AuthContextValue's
+                  errorDetail doc comment) — every other error is already
+                  specific and actionable enough on its own. */}
+              {!localError && errorDetail ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-auth-foreground/90 hover:bg-auth-destructive/15"
+                  onClick={() => void navigator.clipboard.writeText(errorDetail)}
+                >
+                  <Copy className="mr-2 size-4" aria-hidden="true" />
+                  {t("auth.copyErrorDetails")}
+                </Button>
+              ) : null}
+            </div>
           ) : null}
 
           <p className="mt-8 text-center text-caption leading-5 text-auth-foreground/50">

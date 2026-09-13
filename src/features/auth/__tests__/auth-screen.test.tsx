@@ -159,6 +159,7 @@ vi.mock("@/features/auth/auth-otp-step", () => ({
 
 interface BaseAuthValue {
   error: string | null;
+  errorDetail: string | null;
   clearError: () => void;
   requestEmailOtp: (...args: unknown[]) => Promise<void>;
   signInWithProvider: (...args: unknown[]) => Promise<void>;
@@ -168,6 +169,7 @@ interface BaseAuthValue {
 function baseAuth(overrides: Partial<BaseAuthValue> = {}): BaseAuthValue {
   return {
     error: null,
+    errorDetail: null,
     clearError: vi.fn(),
     requestEmailOtp: vi.fn().mockResolvedValue(undefined),
     signInWithProvider: vi.fn().mockResolvedValue(undefined),
@@ -723,5 +725,52 @@ describe("visibleError", () => {
     await flushMicrotasks();
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// errorDetail — copy-details action on the generic/unrecognized error
+// ---------------------------------------------------------------------------
+
+describe("copy error details", () => {
+  beforeEach(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it("shows a copy-details action when the context error carries a detail", async () => {
+    useAuthMock.mockReturnValue(baseAuth({ error: "Authentication failed.", errorDetail: "unknown_error: boom" }));
+
+    render(<AuthScreen />);
+    await flushMicrotasks();
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy details" }));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("unknown_error: boom");
+  });
+
+  it("shows no copy-details action for a recognized error with no detail", async () => {
+    useAuthMock.mockReturnValue(baseAuth({ error: "context error message", errorDetail: null }));
+
+    render(<AuthScreen />);
+    await flushMicrotasks();
+
+    expect(screen.queryByRole("button", { name: "Copy details" })).not.toBeInTheDocument();
+  });
+
+  it("shows no copy-details action once a local (client-side) error takes over the alert", async () => {
+    useAuthMock.mockReturnValue(baseAuth({ error: "Authentication failed.", errorDetail: "unknown_error: boom" }));
+
+    render(<AuthScreen />);
+    await flushMicrotasks();
+
+    fireEvent.click(screen.getByText("go-email"));
+    fireEvent.submit(screen.getByText("submit-email").closest("form")!);
+    await flushMicrotasks();
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid email address.");
+    expect(screen.queryByRole("button", { name: "Copy details" })).not.toBeInTheDocument();
   });
 });

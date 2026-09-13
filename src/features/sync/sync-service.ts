@@ -8,7 +8,11 @@ import { syncRepository } from "./sync-repository";
 import type { RemoteSyncChange, SyncBatchResult, SyncRunResult } from "./sync-types";
 import { SYNC_BATCH_SIZE, SYNC_PULL_SIZE } from "./sync-types";
 
-const PERIODIC_SYNC_MS = 5 * 60 * 1000;
+// Exported so use-sync-status.ts (this feature's own public hook) can derive
+// a "next check in ~X min" estimate for the Settings card — the interval
+// itself stays a fixed constant, not a user preference (see that hook's own
+// comment for why a full configurable-interval setting was scoped down).
+export const PERIODIC_SYNC_MS = 5 * 60 * 1000;
 const MAX_PUSH_ROUNDS = 20;
 
 let running: Promise<SyncRunResult> | null = null;

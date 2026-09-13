@@ -313,6 +313,7 @@
   },
   "settings": {
     "subtitleDesktop": "Interface, catalogue, confidentialité et intégration desktop.",
+    "navSectionsLabel": "Sections des paramètres",
     "uiPreferences": "Préférences d'interface",
     "customizeDisplay": "Personnalisez l'affichage et les valeurs par défaut.",
     "accentColor": "Couleur d'accent",
@@ -351,6 +352,7 @@
       "create": "Créer le profil",
       "switchFailed": "Impossible de changer de profil. Réessayez.",
       "delete": "Supprimer le profil {{name}}",
+      "defaultCannotDelete": "Le profil par défaut ne peut pas être supprimé.",
       "deleteConfirmTitle": "Supprimer le profil « {{name}} » ?",
       "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible."
     },
@@ -367,6 +369,8 @@
       "conflicts_other": "{{count}} modifications sont en conflit et nécessitent votre attention.",
       "lastSynced": "Dernière synchro {{date}}.",
       "neverSynced": "Pas encore synchronisé.",
+      "nextCheck_one": "prochaine vérification dans {{count}} min",
+      "nextCheck_other": "prochaine vérification dans {{count}} min",
       "syncNow": "Synchroniser maintenant"
     },
     "streaming": {
@@ -980,6 +984,7 @@
   "auth": {
     "welcomeBack": "Bon retour",
     "createAccount": "Créez votre compte",
+    "copyErrorDetails": "Copier les détails",
     "continueWithProviderOrEmail": "Continuez avec un fournisseur ou utilisez un code à usage unique par e-mail.",
     "tabs": {
       "signIn": "Connexion",

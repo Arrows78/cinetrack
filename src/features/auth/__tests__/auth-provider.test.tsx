@@ -279,7 +279,30 @@ describe("AuthProvider", () => {
     });
   });
 
-  it("clearError() resets a previously set error", async () => {
+  it("clearError() resets a previously set error and its detail", async () => {
+    getSessionMock.mockResolvedValue({ data: { session: null }, error: new Error("boom") });
+    const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    expect(result.current.error).toBe(i18next.t("auth.errors.default"));
+    expect(result.current.errorDetail).not.toBeNull();
+
+    act(() => result.current.clearError());
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.errorDetail).toBeNull();
+  });
+
+  it("exposes the raw error as errorDetail only for the unrecognized/generic fallback", async () => {
+    getSessionMock.mockResolvedValue({ data: { session: null }, error: new Error("something truly unexpected") });
+    const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    expect(result.current.error).toBe(i18next.t("auth.errors.default"));
+    expect(result.current.errorDetail).toContain("something truly unexpected");
+  });
+
+  it("leaves errorDetail null for a recognized, already-specific error", async () => {
     signInWithOtpMock.mockResolvedValue({ error: { status: 429 } });
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.status).toBe("ready"));
@@ -287,10 +310,8 @@ describe("AuthProvider", () => {
     await expect(
       result.current.requestEmailOtp({ email: "a@b.com", marketingOptIn: false, shouldCreateUser: false })
     ).rejects.toBeTruthy();
+
     await waitFor(() => expect(result.current.error).toBe(i18next.t("auth.errors.rateLimited")));
-
-    act(() => result.current.clearError());
-
-    expect(result.current.error).toBeNull();
+    expect(result.current.errorDetail).toBeNull();
   });
 });

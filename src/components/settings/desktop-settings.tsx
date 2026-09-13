@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -278,59 +279,71 @@ export function DesktopSettings() {
           </Card>
 
           <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>{t("desktop.diagnosticsTimingTitle")}</CardTitle>
-              <CardDescription>{t("desktop.diagnosticsTimingDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={refreshTimingSummary}>
-                  {t("desktop.diagnosticsTimingRefresh")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!timingSummary?.commands.length}
-                  onClick={() => void navigator.clipboard.writeText(JSON.stringify(timingSummary, null, 2))}
-                >
-                  {t("desktop.diagnosticsTimingCopy")}
-                </Button>
-              </div>
-              {timingSummary?.commands.length ? (
-                <div className="mt-3 overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full text-left text-caption">
-                    <thead className="bg-card text-muted-foreground">
-                      <tr>
-                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingLayer")}</th>
-                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCommand")}</th>
-                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCount")}</th>
-                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingAvg")}</th>
-                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingP95")}</th>
-                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingMax")}</th>
-                        <th className="p-2 font-medium">{t("desktop.diagnosticsTimingErrors")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...timingSummary.commands]
-                        .sort((a, b) => b.p95DurationMs - a.p95DurationMs)
-                        .map((row) => (
-                          <tr key={`${row.layer}-${row.command}`} className="border-t border-border">
-                            <td className="p-2 font-mono">{row.layer}</td>
-                            <td className="p-2 font-mono">{row.command}</td>
-                            <td className="p-2">{row.count}</td>
-                            <td className="p-2">{Math.round(row.avgDurationMs)}</td>
-                            <td className="p-2">{row.p95DurationMs}</td>
-                            <td className="p-2">{row.maxDurationMs}</td>
-                            <td className="p-2">{row.errorCount}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsTimingEmpty")}</p>
-              )}
-            </CardContent>
+            {/* Collapsed by default — a developer-facing diagnostics tool,
+                not something most users need open at a glance. */}
+            <Accordion type="single" collapsible>
+              <AccordionItem value="timing" className="border-none bg-transparent">
+                <CardHeader className="pb-0">
+                  <AccordionTrigger className="p-0 hover:no-underline">
+                    <div className="text-left">
+                      <CardTitle>{t("desktop.diagnosticsTimingTitle")}</CardTitle>
+                      <CardDescription>{t("desktop.diagnosticsTimingDesc")}</CardDescription>
+                    </div>
+                  </AccordionTrigger>
+                </CardHeader>
+                <AccordionContent>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={refreshTimingSummary}>
+                        {t("desktop.diagnosticsTimingRefresh")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!timingSummary?.commands.length}
+                        onClick={() => void navigator.clipboard.writeText(JSON.stringify(timingSummary, null, 2))}
+                      >
+                        {t("desktop.diagnosticsTimingCopy")}
+                      </Button>
+                    </div>
+                    {timingSummary?.commands.length ? (
+                      <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+                        <table className="w-full text-left text-caption">
+                          <thead className="bg-card text-muted-foreground">
+                            <tr>
+                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingLayer")}</th>
+                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCommand")}</th>
+                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCount")}</th>
+                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingAvg")}</th>
+                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingP95")}</th>
+                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingMax")}</th>
+                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingErrors")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...timingSummary.commands]
+                              .sort((a, b) => b.p95DurationMs - a.p95DurationMs)
+                              .map((row) => (
+                                <tr key={`${row.layer}-${row.command}`} className="border-t border-border">
+                                  <td className="p-2 font-mono">{row.layer}</td>
+                                  <td className="p-2 font-mono">{row.command}</td>
+                                  <td className="p-2">{row.count}</td>
+                                  <td className="p-2">{Math.round(row.avgDurationMs)}</td>
+                                  <td className="p-2">{row.p95DurationMs}</td>
+                                  <td className="p-2">{row.maxDurationMs}</td>
+                                  <td className="p-2">{row.errorCount}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsTimingEmpty")}</p>
+                    )}
+                  </CardContent>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
         </>
       ) : null}

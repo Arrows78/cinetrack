@@ -313,6 +313,7 @@
   },
   "settings": {
     "subtitleDesktop": "Interface, catalog, privacy and desktop integration.",
+    "navSectionsLabel": "Settings sections",
     "uiPreferences": "UI preferences",
     "customizeDisplay": "Customize display and default values.",
     "accentColor": "Accent color",
@@ -351,6 +352,7 @@
       "create": "Create profile",
       "switchFailed": "Couldn't switch profiles. Please try again.",
       "delete": "Delete profile {{name}}",
+      "defaultCannotDelete": "The default profile can't be deleted.",
       "deleteConfirmTitle": "Delete the profile \"{{name}}\"?",
       "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone."
     },
@@ -367,6 +369,8 @@
       "conflicts_other": "{{count}} changes have a conflict that needs attention.",
       "lastSynced": "Last synced {{date}}.",
       "neverSynced": "Not synced yet.",
+      "nextCheck_one": "next check in {{count}} min",
+      "nextCheck_other": "next check in {{count}} min",
       "syncNow": "Sync now"
     },
     "streaming": {
@@ -980,6 +984,7 @@
   "auth": {
     "welcomeBack": "Welcome back",
     "createAccount": "Create your account",
+    "copyErrorDetails": "Copy details",
     "continueWithProviderOrEmail": "Continue with a provider or use a one-time code by email.",
     "tabs": {
       "signIn": "Sign in",

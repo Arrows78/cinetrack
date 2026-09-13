@@ -123,7 +123,7 @@ describe("BackupTools", () => {
   });
 
   describe("export", () => {
-    it("exports, downloads a dated file, and shows a success toast", async () => {
+    it("exports, downloads a timestamped file (not just dated, so two same-day exports don't collide), and shows a success toast", async () => {
       renderBackupTools();
       const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
 
@@ -134,7 +134,7 @@ describe("BackupTools", () => {
 
       expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
       const anchor = anchorClickSpy.mock.instances[0] as HTMLAnchorElement;
-      expect(anchor.download).toMatch(/^cinetrack-backup-\d{4}-\d{2}-\d{2}\.json$/);
+      expect(anchor.download).toMatch(/^cinetrack-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.json$/);
 
       await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" })));
 

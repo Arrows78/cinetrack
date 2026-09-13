@@ -1,7 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { profileRepository } from "@/features/profiles/profile-repository";
+import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
+import { toast } from "@/components/ui/use-toast";
 
 export function useProfiles() {
   const query = useQuery({ queryKey: queryKeys.local.profiles, queryFn: () => profileRepository.list() });
@@ -17,6 +21,37 @@ export function useProfiles() {
     remove: remove.mutateAsync,
     isSaving: create.isPending || remove.isPending,
   };
+}
+
+/**
+ * Switches the app's active local profile — the exact logic ProfilesCard
+ * (settings-page.tsx) and ProfileSwitcher (profile-switcher.tsx) each used
+ * to hand-duplicate. Only ever offered when auth isn't required (see either
+ * caller's own comment on that security-critical branch): `set_active_profile`
+ * itself also refuses to switch into a profile linked to a Supabase account
+ * without proof of that account, so this stays safe even if a caller's UI
+ * gate were somehow bypassed. `onSwitched` is optional so a caller with no
+ * extra step to take on success (ProfilesCard) doesn't need to pass one.
+ */
+export function useProfileSwitching(onSwitched?: () => void) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [switchingProfileId, setSwitchingProfileId] = useState<string | null>(null);
+
+  const switchToProfile = async (profileId: string) => {
+    setSwitchingProfileId(profileId);
+    try {
+      await preferencesRepository.setActiveProfile(profileId);
+      queryClient.removeQueries({ queryKey: ["local"] });
+      onSwitched?.();
+    } catch {
+      toast({ description: t("settings.profiles.switchFailed"), variant: "error" });
+    } finally {
+      setSwitchingProfileId(null);
+    }
+  };
+
+  return { switchingProfileId, switchToProfile };
 }
 
 // Resolves which local profile the signed-in Supabase account should use —

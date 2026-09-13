@@ -23,6 +23,12 @@ export interface AuthContextValue {
   session: Session | null;
   user: User | null;
   error: string | null;
+  // Raw error code/message behind an unrecognized `error` — only set when
+  // `error` itself fell back to the generic translated message, so a user
+  // hitting that case can copy something actionable to report rather than
+  // just "Something went wrong." `null` for every error case this feature
+  // already recognizes and gives a specific translated message for.
+  errorDetail: string | null;
   clearError: () => void;
   signInWithProvider: (provider: SocialAuthProvider) => Promise<void>;
   requestEmailOtp: (request: EmailOtpRequest) => Promise<void>;

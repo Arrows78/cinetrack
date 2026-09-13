@@ -611,6 +611,7 @@ describe("DesktopSettings", () => {
   describe("command timing summary", () => {
     it("renders the empty placeholder when no commands have been recorded", async () => {
       render(<DesktopSettings />);
+      fireEvent.click(screen.getByRole("button", { name: /Command timing summary/ }));
 
       await waitFor(() => expect(exportSummaryMock).toHaveBeenCalledTimes(1));
       expect(screen.getByText("No timed commands recorded yet.")).toBeInTheDocument();
@@ -642,6 +643,7 @@ describe("DesktopSettings", () => {
         totalLinesParsed: 13,
       });
       render(<DesktopSettings />);
+      fireEvent.click(screen.getByRole("button", { name: /Command timing summary/ }));
 
       await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument());
       const rows = screen.getAllByRole("row").slice(1); // drop the header row
@@ -673,6 +675,7 @@ describe("DesktopSettings", () => {
       };
       exportSummaryMock.mockResolvedValueOnce({ commands: [], totalLinesParsed: 0 }).mockResolvedValueOnce(summary);
       render(<DesktopSettings />);
+      fireEvent.click(screen.getByRole("button", { name: /Command timing summary/ }));
 
       expect(screen.getByRole("button", { name: "Copy as JSON" })).toBeDisabled();
 

@@ -67,6 +67,9 @@ export function SyncStatusCard() {
                   {status.data.lastSyncedAt
                     ? t("settings.sync.lastSynced", { date: formatRelativeDate(status.data.lastSyncedAt) })
                     : t("settings.sync.neverSynced")}
+                  {status.nextCheckInMinutes !== null
+                    ? ` · ${t("settings.sync.nextCheck", { count: status.nextCheckInMinutes })}`
+                    : ""}
                 </span>
               </div>
             )}

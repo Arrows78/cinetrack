@@ -2,7 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import type { UserProfile } from "@/types/media";
+import type { UserPreferences, UserProfile } from "@/types/media";
+
+const setActiveProfileMock = vi.fn<(profileId: string) => Promise<UserPreferences>>(
+  async () => ({}) as UserPreferences
+);
+vi.mock("@/features/preferences/preferences-repository", () => ({
+  preferencesRepository: { setActiveProfile: (profileId: string) => setActiveProfileMock(profileId) },
+}));
+
+const toastMock = vi.fn();
+vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
 const profile: UserProfile = { id: "profile-1", name: "Alice" } as UserProfile;
 
@@ -38,6 +48,68 @@ beforeEach(() => {
   removeMock.mockClear().mockResolvedValue(undefined);
   resolveForSupabaseUserMock.mockClear().mockResolvedValue(profile);
   createForSupabaseUserMock.mockClear().mockResolvedValue(profile);
+  setActiveProfileMock.mockClear().mockResolvedValue({} as UserPreferences);
+  toastMock.mockClear();
+});
+
+describe("useProfileSwitching", () => {
+  it("switches the active profile and calls the optional onSwitched callback", async () => {
+    const onSwitched = vi.fn();
+    const { useProfileSwitching } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfileSwitching(onSwitched), { wrapper: createWrapper() });
+
+    expect(result.current.switchingProfileId).toBeNull();
+
+    await act(async () => {
+      await result.current.switchToProfile("profile-2");
+    });
+
+    expect(setActiveProfileMock).toHaveBeenCalledWith("profile-2");
+    expect(onSwitched).toHaveBeenCalledTimes(1);
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(result.current.switchingProfileId).toBeNull();
+  });
+
+  it("shows a translated error toast and clears switchingProfileId when the switch fails, without calling onSwitched", async () => {
+    setActiveProfileMock.mockRejectedValueOnce(new Error("boom"));
+    const onSwitched = vi.fn();
+    const { useProfileSwitching } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfileSwitching(onSwitched), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await result.current.switchToProfile("profile-2");
+    });
+
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
+    expect(onSwitched).not.toHaveBeenCalled();
+    expect(result.current.switchingProfileId).toBeNull();
+  });
+
+  it("tracks which profile is currently switching while the call is in flight", async () => {
+    let resolveSwitch!: (value: UserPreferences) => void;
+    setActiveProfileMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSwitch = resolve;
+        })
+    );
+    const { useProfileSwitching } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfileSwitching(), { wrapper: createWrapper() });
+
+    let switchPromise!: Promise<unknown>;
+    act(() => {
+      switchPromise = result.current.switchToProfile("profile-2");
+    });
+
+    await waitFor(() => expect(result.current.switchingProfileId).toBe("profile-2"));
+
+    resolveSwitch({} as UserPreferences);
+    await act(async () => {
+      await switchPromise;
+    });
+
+    expect(result.current.switchingProfileId).toBeNull();
+  });
 });
 
 describe("useProfileForSupabaseUser", () => {

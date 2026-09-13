@@ -33,7 +33,11 @@ export function BackupTools() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `cinetrack-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      // Full timestamp (not just the date) — same pattern
+      // maintenance-service.ts's automatic backup already uses — so two
+      // manual exports the same day don't silently overwrite one another
+      // in the user's downloads folder.
+      anchor.download = `cinetrack-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
       anchor.click();
       URL.revokeObjectURL(url);
       toast({ description: t("backup.exported"), variant: "success" });

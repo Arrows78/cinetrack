@@ -21,21 +21,27 @@ interface AuthErrorLike {
   status?: number;
 }
 
-function getErrorMessage(error: unknown): string {
+/**
+ * `detail` is only ever set on the final, unrecognized-error branch — every
+ * other branch already gives the user a specific, actionable translated
+ * message, so there's nothing more useful to copy. See use-auth.ts's
+ * AuthContextValue.errorDetail doc comment for how the UI uses it.
+ */
+function describeError(error: unknown): { message: string; detail: string | null } {
   const authError = error as AuthErrorLike;
   const code = authError?.code;
   const message = authError?.message?.toLowerCase() ?? "";
 
   if (authError?.status === 429 || code === "over_email_send_rate_limit") {
-    return i18next.t("auth.errors.rateLimited");
+    return { message: i18next.t("auth.errors.rateLimited"), detail: null };
   }
 
   if (code === "otp_expired" || message.includes("expired")) {
-    return i18next.t("auth.errors.otpExpired");
+    return { message: i18next.t("auth.errors.otpExpired"), detail: null };
   }
 
   if (code === "email_address_invalid" || message.includes("invalid email")) {
-    return i18next.t("auth.errors.invalidEmail");
+    return { message: i18next.t("auth.errors.invalidEmail"), detail: null };
   }
 
   if (
@@ -44,19 +50,20 @@ function getErrorMessage(error: unknown): string {
     message.includes("signups not allowed") ||
     message.includes("user not found")
   ) {
-    return i18next.t("auth.errors.noAccount");
+    return { message: i18next.t("auth.errors.noAccount"), detail: null };
   }
 
   if (code === "bad_code_verifier") {
-    return i18next.t("auth.errors.badCodeVerifier");
+    return { message: i18next.t("auth.errors.badCodeVerifier"), detail: null };
   }
 
   if (error instanceof UserFacingError) {
-    return error.message;
+    return { message: error.message, detail: null };
   }
 
-  logger.warn(`Auth error: ${error instanceof Error ? error.message : String(error)}`);
-  return i18next.t("auth.errors.default");
+  const raw = error instanceof Error ? error.message : String(error);
+  logger.warn(`Auth error: ${raw}`);
+  return { message: i18next.t("auth.errors.default"), detail: code ? `${code}: ${raw}` : raw };
 }
 
 function readAuthCode(callbackUrl: string): string | null {
@@ -89,50 +96,61 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const handledCallbackUrls = useRef(new Set<string>());
 
   const clearError = useCallback(() => {
     setError(null);
+    setErrorDetail(null);
   }, []);
 
-  const handleCallbackUrl = useCallback(async (callbackUrl: string) => {
-    const client = await getAuthClient();
+  const applyError = useCallback((raw: unknown) => {
+    const { message, detail } = describeError(raw);
+    setError(message);
+    setErrorDetail(detail);
+  }, []);
 
-    if (!client || handledCallbackUrls.current.has(callbackUrl)) {
-      return;
-    }
+  const handleCallbackUrl = useCallback(
+    async (callbackUrl: string) => {
+      const client = await getAuthClient();
 
-    handledCallbackUrls.current.add(callbackUrl);
+      if (!client || handledCallbackUrls.current.has(callbackUrl)) {
+        return;
+      }
 
-    try {
-      let code: string | null = null;
+      handledCallbackUrls.current.add(callbackUrl);
 
       try {
-        code = readAuthCode(callbackUrl);
+        let code: string | null = null;
+
+        try {
+          code = readAuthCode(callbackUrl);
+        } finally {
+          if (!isTauriApp() && typeof window !== "undefined") {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        }
+
+        if (!code) return;
+
+        const { data, error: exchangeError } = await client.auth.exchangeCodeForSession(code);
+
+        if (exchangeError) {
+          throw exchangeError;
+        }
+
+        setSession(data.session);
+        clearError();
+      } catch (callbackError) {
+        applyError(callbackError);
       } finally {
-        if (!isTauriApp() && typeof window !== "undefined") {
-          window.history.replaceState(null, "", window.location.pathname);
+        if (handledCallbackUrls.current.size > 20) {
+          handledCallbackUrls.current.clear();
         }
       }
-
-      if (!code) return;
-
-      const { data, error: exchangeError } = await client.auth.exchangeCodeForSession(code);
-
-      if (exchangeError) {
-        throw exchangeError;
-      }
-
-      setSession(data.session);
-      setError(null);
-    } catch (callbackError) {
-      setError(getErrorMessage(callbackError));
-    } finally {
-      if (handledCallbackUrls.current.size > 20) {
-        handledCallbackUrls.current.clear();
-      }
-    }
-  }, []);
+    },
+    [applyError, clearError]
+  );
 
   useEffect(() => {
     let disposed = false;
@@ -183,7 +201,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       } catch (initializationError) {
         if (!disposed) {
-          setError(getErrorMessage(initializationError));
+          applyError(initializationError);
         }
       } finally {
         if (!disposed) {
@@ -199,121 +217,130 @@ export function AuthProvider({ children }: PropsWithChildren) {
       authListener?.subscription.unsubscribe();
       unlistenDeepLinks?.();
     };
-  }, [handleCallbackUrl]);
+  }, [applyError, handleCallbackUrl]);
 
-  const signInWithProvider = useCallback(async (provider: SocialAuthProvider) => {
-    const client = await getAuthClient();
+  const signInWithProvider = useCallback(
+    async (provider: SocialAuthProvider) => {
+      const client = await getAuthClient();
 
-    if (!client) {
-      throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
-    }
-
-    setError(null);
-
-    try {
-      const desktop = isTauriApp();
-      const { data, error: oauthError } = await client.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: getAuthRedirectUrl(),
-          skipBrowserRedirect: desktop,
-        },
-      });
-
-      if (oauthError) {
-        throw oauthError;
+      if (!client) {
+        throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
       }
 
-      if (desktop) {
-        if (!data.url) {
-          throw new UserFacingError(i18next.t("auth.errors.noOAuthUrl"));
+      clearError();
+
+      try {
+        const desktop = isTauriApp();
+        const { data, error: oauthError } = await client.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: getAuthRedirectUrl(),
+            skipBrowserRedirect: desktop,
+          },
+        });
+
+        if (oauthError) {
+          throw oauthError;
         }
 
-        const authorizationUrl = new URL(data.url);
+        if (desktop) {
+          if (!data.url) {
+            throw new UserFacingError(i18next.t("auth.errors.noOAuthUrl"));
+          }
 
-        if (authorizationUrl.protocol !== "https:") {
-          throw new UserFacingError(i18next.t("auth.errors.invalidOAuthUrl"));
+          const authorizationUrl = new URL(data.url);
+
+          if (authorizationUrl.protocol !== "https:") {
+            throw new UserFacingError(i18next.t("auth.errors.invalidOAuthUrl"));
+          }
+
+          const { openUrl } = await import("@tauri-apps/plugin-opener");
+          await openUrl(authorizationUrl.toString());
+        }
+      } catch (providerError) {
+        applyError(providerError);
+        throw providerError;
+      }
+    },
+    [applyError, clearError]
+  );
+
+  const requestEmailOtp = useCallback(
+    async ({ email, marketingOptIn, shouldCreateUser }: EmailOtpRequest) => {
+      const client = await getAuthClient();
+
+      if (!client) {
+        throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
+      }
+
+      clearError();
+
+      try {
+        const { error: otpError } = await client.auth.signInWithOtp({
+          email: normalizeEmail(email),
+          options: {
+            shouldCreateUser,
+            emailRedirectTo: getAuthRedirectUrl(),
+            data: shouldCreateUser
+              ? {
+                  marketing_opt_in: marketingOptIn,
+                }
+              : undefined,
+          },
+        });
+
+        if (otpError) {
+          throw otpError;
+        }
+      } catch (requestError) {
+        applyError(requestError);
+        throw requestError;
+      }
+    },
+    [applyError, clearError]
+  );
+
+  const verifyEmailOtp = useCallback(
+    async ({ email, token }: EmailOtpVerification) => {
+      const client = await getAuthClient();
+
+      if (!client) {
+        throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
+      }
+
+      clearError();
+
+      try {
+        const { data, error: verificationError } = await client.auth.verifyOtp({
+          email: normalizeEmail(email),
+          token,
+          type: "email",
+        });
+
+        if (verificationError) {
+          throw verificationError;
         }
 
-        const { openUrl } = await import("@tauri-apps/plugin-opener");
-        await openUrl(authorizationUrl.toString());
-      }
-    } catch (providerError) {
-      setError(getErrorMessage(providerError));
-      throw providerError;
-    }
-  }, []);
-
-  const requestEmailOtp = useCallback(async ({ email, marketingOptIn, shouldCreateUser }: EmailOtpRequest) => {
-    const client = await getAuthClient();
-
-    if (!client) {
-      throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
-    }
-
-    setError(null);
-
-    try {
-      const { error: otpError } = await client.auth.signInWithOtp({
-        email: normalizeEmail(email),
-        options: {
-          shouldCreateUser,
-          emailRedirectTo: getAuthRedirectUrl(),
-          data: shouldCreateUser
-            ? {
-                marketing_opt_in: marketingOptIn,
-              }
-            : undefined,
-        },
-      });
-
-      if (otpError) {
-        throw otpError;
-      }
-    } catch (requestError) {
-      setError(getErrorMessage(requestError));
-      throw requestError;
-    }
-  }, []);
-
-  const verifyEmailOtp = useCallback(async ({ email, token }: EmailOtpVerification) => {
-    const client = await getAuthClient();
-
-    if (!client) {
-      throw new UserFacingError(i18next.t("auth.errors.notConfigured"));
-    }
-
-    setError(null);
-
-    try {
-      const { data, error: verificationError } = await client.auth.verifyOtp({
-        email: normalizeEmail(email),
-        token,
-        type: "email",
-      });
-
-      if (verificationError) {
+        setSession(data.session);
+      } catch (verificationError) {
+        applyError(verificationError);
         throw verificationError;
       }
-
-      setSession(data.session);
-    } catch (verificationError) {
-      setError(getErrorMessage(verificationError));
-      throw verificationError;
-    }
-  }, []);
+    },
+    [applyError, clearError]
+  );
 
   const signOut = useCallback(async () => {
     const client = await getAuthClient();
 
     if (!client) return;
 
-    setError(null);
+    clearError();
 
     const { error: signOutError } = await client.auth.signOut({ scope: "local" });
 
     if (signOutError) {
-      setError(getErrorMessage(signOutError));
+      applyError(signOutError);
       throw signOutError;
     }
 
@@ -324,7 +351,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     // rather than merely marking it stale, so a signed-out user can't
     // briefly keep seeing the previous account's cached library/history/etc.
     queryClient.removeQueries({ queryKey: ["local"] });
-  }, [queryClient]);
+  }, [applyError, clearError, queryClient]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -334,13 +361,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       session,
       user: session?.user ?? null,
       error,
+      errorDetail,
       clearError,
       signInWithProvider,
       requestEmailOtp,
       verifyEmailOtp,
       signOut,
     }),
-    [clearError, error, requestEmailOtp, session, signInWithProvider, signOut, status, verifyEmailOtp]
+    [clearError, error, errorDetail, requestEmailOtp, session, signInWithProvider, signOut, status, verifyEmailOtp]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

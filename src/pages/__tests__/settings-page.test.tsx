@@ -10,6 +10,12 @@ vi.mock("@/components/settings/tvtime-import-card", () => ({ TvTimeImportCard: (
 vi.mock("@/components/settings/desktop-settings", () => ({ DesktopSettings: () => <div /> }));
 vi.mock("@/components/settings/hidden-titles-card", () => ({ HiddenTitlesCard: () => <div /> }));
 
+// Real SectionNav's useActiveSection needs a real IntersectionObserver
+// (jsdom has none) — stubbed the same way home-page.test.tsx already does,
+// since this suite's own assertions are about the settings form, not the
+// jump nav's scroll-spy behavior.
+vi.mock("@/components/ui/section-nav", () => ({ SectionNav: () => <div data-testid="section-nav" /> }));
+
 let currentUser: { email: string } | null = null;
 vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
@@ -134,12 +140,33 @@ describe("SettingsPage — local profile management", () => {
     await waitFor(() => expect(createProfileMock).toHaveBeenCalledWith("Sam"));
   });
 
-  it("offline mode: the default profile has no delete button, but others do", async () => {
+  it("offline mode: shows a loading spinner on the create-profile button while the mutation is pending", async () => {
+    let resolveCreate!: (value: unknown) => void;
+    createProfileMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveCreate = resolve;
+      })
+    );
     renderPage();
     await screen.findByText("Default profile");
 
-    expect(screen.queryByRole("button", { name: "Delete profile Default profile" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Delete profile Alex" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("New profile name"), { target: { value: "Sam" } });
+    const createButton = screen.getByRole("button", { name: "Create profile" });
+    createButton.click();
+
+    await waitFor(() => expect(createButton).toHaveAttribute("aria-busy", "true"));
+
+    resolveCreate({ id: "new-id", name: "Sam", avatar: null, createdAt: "2026-01-03", supabaseUserId: null });
+    await waitFor(() => expect(createButton).not.toHaveAttribute("aria-busy"));
+  });
+
+  it("offline mode: the default profile's delete button is disabled with an explanatory label, others aren't", async () => {
+    renderPage();
+    await screen.findByText("Default profile");
+
+    const defaultDeleteButton = screen.getByRole("button", { name: "The default profile can't be deleted." });
+    expect(defaultDeleteButton).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete profile Alex" })).toBeEnabled();
   });
 
   it("offline mode: deleting a profile goes through ConfirmDialog before calling remove", async () => {

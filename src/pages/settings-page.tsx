@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
 import { Check, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { BackupTools } from "@/components/settings/backup-tools";
@@ -19,47 +18,41 @@ import { Select } from "@/components/ui/select";
 import { SettingToggle } from "@/components/ui/setting-toggle";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { toast } from "@/components/ui/use-toast";
+import { SectionNav } from "@/components/ui/section-nav";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { authConfig } from "@/features/auth";
 import { useAuth } from "@/features/auth/use-auth";
 import { notificationService } from "@/features/desktop";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";
-import { useProfiles } from "@/features/profiles/use-profiles";
+import { useProfiles, useProfileSwitching } from "@/features/profiles/use-profiles";
 import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
 import { DEFAULT_LANGUAGE, DEFAULT_TMDB_REGION, PLATFORMS } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import type { UserPreferences, UserProfile } from "@/types/media";
 
+// Every one of these sections always renders (none depend on async data
+// that could leave it empty), unlike home-page.tsx's own SectionNav — so the
+// item list here is static, no usePresentSectionIds filtering needed.
+const SETTINGS_UI_ID = "settings-ui-preferences";
+const SETTINGS_STREAMING_ID = "settings-streaming";
+const SETTINGS_ACCOUNT_ID = "settings-account";
+const SETTINGS_DATA_ID = "settings-data";
+const SETTINGS_HIDDEN_TITLES_ID = "settings-hidden-titles";
+const SETTINGS_DESKTOP_ID = "settings-desktop-security";
+const SETTINGS_ABOUT_ID = "settings-about";
+
 function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined }) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const profiles = useProfiles();
   const [newProfileName, setNewProfileName] = useState("");
   const [pendingDeleteProfile, setPendingDeleteProfile] = useState<UserProfile | null>(null);
-  const [switchingProfileId, setSwitchingProfileId] = useState<string | null>(null);
+  // See useProfileSwitching's own doc comment for why a free switcher here
+  // is safe (and only ever offered when auth isn't required — the read-only
+  // branch below).
+  const { switchingProfileId, switchToProfile } = useProfileSwitching();
 
   const currentProfile = profiles.data?.find((profile) => profile.id === activeProfileId);
-
-  // Only ever offered when auth isn't required (see the comment on the
-  // read-only branch below for why a free switcher is otherwise a security
-  // hole) — and set_active_profile itself refuses to switch into a profile
-  // linked to a Supabase account without proof of that account, so this
-  // can't be used to hop into somebody else's claimed profile even if auth
-  // gets turned on later without this UI being hidden in time.
-  const switchToProfile = async (profileId: string) => {
-    setSwitchingProfileId(profileId);
-    try {
-      await preferencesRepository.setActiveProfile(profileId);
-      queryClient.removeQueries({ queryKey: ["local"] });
-    } catch {
-      toast({ description: t("settings.profiles.switchFailed"), variant: "error" });
-    } finally {
-      setSwitchingProfileId(null);
-    }
-  };
 
   const createProfile = async () => {
     const name = newProfileName.trim();
@@ -127,20 +120,28 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                       </Badge>
                     ) : null}
                   </button>
-                  {profile.id !== "default" ? (
-                    <IconTooltip label={t("settings.profiles.delete", { name: label })}>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={t("settings.profiles.delete", { name: label })}
-                        disabled={switchingProfileId !== null}
-                        onClick={() => setPendingDeleteProfile(profile)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </IconTooltip>
-                  ) : null}
+                  <IconTooltip
+                    label={
+                      profile.id === "default"
+                        ? t("settings.profiles.defaultCannotDelete")
+                        : t("settings.profiles.delete", { name: label })
+                    }
+                  >
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={
+                        profile.id === "default"
+                          ? t("settings.profiles.defaultCannotDelete")
+                          : t("settings.profiles.delete", { name: label })
+                      }
+                      disabled={profile.id === "default" || switchingProfileId !== null}
+                      onClick={() => setPendingDeleteProfile(profile)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </IconTooltip>
                 </Tile>
               );
             })}
@@ -156,6 +157,7 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
               <Button
                 type="button"
                 variant="outline"
+                isLoading={profiles.isSaving}
                 disabled={!newProfileName.trim() || profiles.isSaving}
                 onClick={() => void createProfile()}
               >
@@ -252,11 +254,21 @@ export function SettingsPage() {
       : [...current, providerId];
     await updatePreference({ key: "preferredProviderIds", value: next });
   };
+  const navItems = [
+    { id: SETTINGS_UI_ID, label: t("settings.uiPreferences") },
+    { id: SETTINGS_STREAMING_ID, label: t("settings.sections.streaming") },
+    { id: SETTINGS_ACCOUNT_ID, label: t("settings.sections.account") },
+    { id: SETTINGS_DATA_ID, label: t("settings.sections.data") },
+    { id: SETTINGS_HIDDEN_TITLES_ID, label: t("recommendations.hiddenTitles.title") },
+    { id: SETTINGS_DESKTOP_ID, label: t("settings.desktopSecurity") },
+    { id: SETTINGS_ABOUT_ID, label: t("settings.sections.about") },
+  ];
   return (
     <div className="space-y-8">
       <SectionHeader title={t("nav.settings")} subtitle={t("settings.subtitleDesktop")} icon={Settings} isPageTitle />
+      <SectionNav items={navItems} ariaLabel={t("settings.navSectionsLabel")} />
 
-      <section>
+      <section id={SETTINGS_UI_ID}>
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -381,7 +393,7 @@ export function SettingsPage() {
         </Card>
       </section>
 
-      <section>
+      <section id={SETTINGS_STREAMING_ID}>
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -395,7 +407,7 @@ export function SettingsPage() {
         />
       </section>
 
-      <section>
+      <section id={SETTINGS_ACCOUNT_ID}>
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -408,7 +420,7 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <section>
+      <section id={SETTINGS_DATA_ID}>
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -421,12 +433,12 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <section>
+      <section id={SETTINGS_HIDDEN_TITLES_ID}>
         <SectionHeader size="sub" headingLevel={2} title={t("recommendations.hiddenTitles.title")} />
         <HiddenTitlesCard />
       </section>
 
-      <section>
+      <section id={SETTINGS_DESKTOP_ID}>
         <SectionHeader
           size="sub"
           headingLevel={2}
@@ -436,7 +448,7 @@ export function SettingsPage() {
         <DesktopSettings />
       </section>
 
-      <section>
+      <section id={SETTINGS_ABOUT_ID}>
         <SectionHeader
           size="sub"
           headingLevel={2}

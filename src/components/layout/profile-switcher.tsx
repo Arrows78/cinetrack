@@ -1,18 +1,15 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tile } from "@/components/ui/tile";
-import { toast } from "@/components/ui/use-toast";
 import { authConfig } from "@/features/auth";
 import { useAuth } from "@/features/auth/use-auth";
 import { logger } from "@/shared/lib/logger";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";
-import { useProfiles } from "@/features/profiles/use-profiles";
+import { useProfiles, useProfileSwitching } from "@/features/profiles/use-profiles";
 import { cn } from "@/shared/lib/cn";
 
 function profileInitial(name: string): string {
@@ -21,11 +18,11 @@ function profileInitial(name: string): string {
 }
 
 // Profile switcher for the persistent nav chrome, so switching doesn't
-// require a trip to Settings. The switching logic itself — including the
-// security-critical branch below — is copied faithfully from ProfilesCard in
-// settings-page.tsx; that component stays the canonical place to
-// create/delete profiles, this one only switches between profiles that
-// already exist.
+// require a trip to Settings. The switching logic itself (including the
+// security-critical branch below) lives in useProfileSwitching, shared with
+// ProfilesCard in settings-page.tsx; that component stays the canonical
+// place to create/delete profiles, this one only switches between profiles
+// that already exist.
 //
 // The trigger is pluggable: pass `children` to use them as the clickable
 // element that opens the picker (sidebar-nav.tsx does this, wrapping the
@@ -37,11 +34,12 @@ function profileInitial(name: string): string {
 export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: boolean; children?: ReactNode }) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const profiles = useProfiles();
   const { data: preferences } = usePreferences();
   const [open, setOpen] = useState(false);
-  const [switchingProfileId, setSwitchingProfileId] = useState<string | null>(null);
+  // See useProfileSwitching's own doc comment for why a free switcher here
+  // is safe (only ever offered when auth isn't required, below).
+  const { switchingProfileId, switchToProfile } = useProfileSwitching(() => setOpen(false));
 
   const activeProfileId = preferences?.activeProfileId;
   const currentProfile = profiles.data?.find((profile) => profile.id === activeProfileId);
@@ -50,25 +48,6 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
       ? t("settings.profiles.defaultName")
       : (currentProfile.name ?? t("settings.profiles.defaultName"))
     : t("settings.profiles.defaultName");
-
-  // Only ever offered when auth isn't required — see ProfilesCard's own
-  // comment on this exact branch for why a free switcher is otherwise a
-  // security hole once Supabase sign-in is in play. set_active_profile
-  // itself also refuses to switch into a profile linked to a Supabase
-  // account without proof of that account, so this stays safe even if this
-  // control were somehow reachable while auth is required.
-  const switchToProfile = async (profileId: string) => {
-    setSwitchingProfileId(profileId);
-    try {
-      await preferencesRepository.setActiveProfile(profileId);
-      queryClient.removeQueries({ queryKey: ["local"] });
-      setOpen(false);
-    } catch {
-      toast({ description: t("settings.profiles.switchFailed"), variant: "error" });
-    } finally {
-      setSwitchingProfileId(null);
-    }
-  };
 
   const defaultTrigger = (
     <button
