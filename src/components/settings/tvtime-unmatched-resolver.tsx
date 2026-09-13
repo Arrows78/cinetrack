@@ -50,6 +50,18 @@ function UnmatchedItemRow({
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Movies/watchlist entries already carry whatever TMDB returned for this
+  // exact title during the automatic pass (see RetryableMovie/
+  // RetryableWatchlistEntry.initialCandidates) — showing those immediately
+  // means a user who opens this row sees candidates right away instead of
+  // waiting on a fresh debounced search for the same query the app already
+  // ran once. Falls back to the live search the moment the user edits the
+  // query away from that original title.
+  const initialCandidates = item.kind !== "series" ? item.initialCandidates : [];
+  const showingInitialCandidates = initialCandidates.length > 0 && query === item.searchTitle;
+  const results = showingInitialCandidates ? initialCandidates : search.items;
+  const isSearching = !showingInitialCandidates && search.isLoading;
+
   const choose = async (match: MediaSummary) => {
     setResolvingId(match.id);
     setError(null);
@@ -102,10 +114,10 @@ function UnmatchedItemRow({
           placeholder={t("tvtimeImport.retry.searchLabel")}
         />
         <div className="mt-2 grid gap-1.5">
-          {search.isLoading ? (
+          {isSearching ? (
             <LoadingState className="py-2" />
-          ) : search.items.length ? (
-            search.items.slice(0, 6).map((result) => (
+          ) : results.length ? (
+            results.slice(0, 6).map((result) => (
               <Tile key={result.id} className="flex items-center justify-between px-3 py-2 text-body-sm">
                 <span className="min-w-0 truncate">
                   {result.title}

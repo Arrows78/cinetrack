@@ -375,6 +375,7 @@ describe("TvTimeImportCard", () => {
           watchedAt: new Date().toISOString(),
           runtimeMinutes: null,
         },
+        initialCandidates: [],
       },
     ];
     applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ seriesImported: 0, episodesImported: 0, retryable }));
@@ -478,6 +479,7 @@ describe("TvTimeImportCard", () => {
             watchedAt: "2026-01-01T00:00:00.000Z",
             runtimeMinutes: null,
           },
+          initialCandidates: [],
         },
       ];
       applyTvTimeImportMock.mockResolvedValueOnce(

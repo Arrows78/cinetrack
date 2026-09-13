@@ -1107,6 +1107,7 @@
       "movies": "Films",
       "watchlist": "À voir"
     },
+    "throttled": "TMDB limite le débit de cet import — un ralentissement normal, pas un blocage.",
     "nothingFound": "Aucun des fichiers sélectionnés n'a pu être lu comme donnée d'export TV Time.",
     "zipTooLarge": "« {{name}} » est trop volumineux une fois décompressé.",
     "zipReadFailed": "Impossible de lire ce fichier comme une archive .zip.",

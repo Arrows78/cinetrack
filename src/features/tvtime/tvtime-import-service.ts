@@ -23,10 +23,23 @@ import { tvTimeImportRepository, type ImportableEpisode } from "./tvtime-import-
 
 const RATE_LIMIT_MAX_ATTEMPTS = 3;
 const RATE_LIMIT_BASE_DELAY_MS = 1000;
+// How long a onProgress payload keeps reporting `throttled: true` after the
+// last observed 429 — long enough to stay visible across the gap between two
+// progress ticks, short enough to clear once TMDB is actually keeping up
+// again.
+const THROTTLE_DISPLAY_WINDOW_MS = 4000;
 
 const isRateLimitError = (error: unknown): boolean => error instanceof TmdbRequestError && error.status === 429;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Set for the duration of one applyTvTimeImport() call (see below) so
+// withRateLimitRetry — called from several nested helpers (searchWithFallback,
+// resolveSeries, attachEpisodesToSeries) with no onProgress of their own —
+// can still report a 429 back up to the UI without every one of those
+// helpers threading a callback through. Only one import runs at a time in
+// practice, same assumption CONCURRENCY's own module-level constant makes.
+let onThrottled: (() => void) | null = null;
 
 // TMDB rate-limits (429) under sustained load, and a bulk TV Time import can
 // fire hundreds of lookups through mapWithConcurrency. Without this, a 429
@@ -42,6 +55,7 @@ async function withRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
     } catch (error) {
       attempt += 1;
       if (!isRateLimitError(error) || attempt >= RATE_LIMIT_MAX_ATTEMPTS) throw error;
+      onThrottled?.();
       await delay(RATE_LIMIT_BASE_DELAY_MS * 2 ** (attempt - 1));
     }
   }
@@ -52,6 +66,8 @@ export interface TvTimeImportProgress {
   done: number;
   total: number;
   label: string;
+  /** TMDB rate-limited a request recently — a stall here is expected, not stuck. */
+  throttled: boolean;
 }
 
 // Carries enough of the original TV Time row(s) to retry a match by hand —
@@ -74,6 +90,8 @@ export interface RetryableMovie {
   searchTitle: string;
   searchYear: number | null;
   movie: TvTimeMovie;
+  /** TMDB results already in hand from the initial attempt (empty when it threw before ever searching) — shown immediately in the resolver panel, before the user types a new search of their own. */
+  initialCandidates: MediaSummary[];
 }
 export interface RetryableWatchlistEntry {
   kind: "watchlist";
@@ -81,6 +99,8 @@ export interface RetryableWatchlistEntry {
   searchTitle: string;
   searchYear: number | null;
   entry: TvTimeWatchlistEntry;
+  /** See RetryableMovie.initialCandidates. */
+  initialCandidates: MediaSummary[];
 }
 export type RetryableUnmatched = RetryableSeries | RetryableMovie | RetryableWatchlistEntry;
 
@@ -164,19 +184,24 @@ const retryableSeriesFrom = (seriesName: string, episodes: TvTimeEpisode[]): Ret
   const { title, year } = splitTitleYear(seriesName);
   return { kind: "series", label: seriesName, searchTitle: title, searchYear: year, episodes };
 };
-const retryableMovieFrom = (movie: TvTimeMovie): RetryableMovie => ({
+const retryableMovieFrom = (movie: TvTimeMovie, initialCandidates: MediaSummary[] = []): RetryableMovie => ({
   kind: "movie",
   label: movie.title,
   searchTitle: movie.title,
   searchYear: movie.year,
   movie,
+  initialCandidates,
 });
-const retryableWatchlistFrom = (entry: TvTimeWatchlistEntry): RetryableWatchlistEntry => ({
+const retryableWatchlistFrom = (
+  entry: TvTimeWatchlistEntry,
+  initialCandidates: MediaSummary[] = []
+): RetryableWatchlistEntry => ({
   kind: "watchlist",
   label: entry.title,
   searchTitle: entry.title,
   searchYear: entry.year,
   entry,
+  initialCandidates,
 });
 
 // "Show Name: Subtitle" → "Show Name" — retried only when the exact title
@@ -448,6 +473,14 @@ export async function applyTvTimeImport(
     undo: emptyUndo(),
   };
 
+  let lastThrottledAt = 0;
+  onThrottled = () => {
+    lastThrottledAt = Date.now();
+  };
+  const reportProgress = (progress: Omit<TvTimeImportProgress, "throttled">) => {
+    onProgress?.({ ...progress, throttled: Date.now() - lastThrottledAt < THROTTLE_DISPLAY_WINDOW_MS });
+  };
+
   const episodesBySeries = new Map<string, TvTimeEpisode[]>();
   for (const episode of data.episodes) {
     const list = episodesBySeries.get(episode.seriesName) ?? [];
@@ -456,88 +489,115 @@ export async function applyTvTimeImport(
   }
 
   const seriesEntries = [...episodesBySeries.entries()];
-  let seriesDone = 0;
-  await mapWithConcurrency(
-    seriesEntries,
-    async ([seriesName, episodes]) => {
-      onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
-      try {
-        await importOneSeries(seriesName, episodes, data, summary);
-      } catch {
-        summary.unmatched.push(seriesName);
-        summary.retryable.push(retryableSeriesFrom(seriesName, episodes));
-      }
-      seriesDone += 1;
-      onProgress?.({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
-    },
-    CONCURRENCY
-  );
 
-  let moviesDone = 0;
-  await mapWithConcurrency(
-    data.movies,
-    async (movie) => {
-      onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
-      try {
-        const { results, queriedTitle } = await searchWithFallback(movie.title, "movie");
-        const { match, ambiguous } = pickBestMatch(results, queriedTitle, movie.year);
-        if (ambiguous) summary.ambiguous.push(movie.title);
-        if (!match) {
-          summary.unmatched.push(movie.title);
-          summary.retryable.push(retryableMovieFrom(movie));
-        } else {
-          const inserted = await importMatchedMovie(movie, match);
-          if (inserted) {
-            summary.moviesImported += 1;
-            summary.undo.movies.push(match);
-          } else {
-            summary.moviesAlreadyInLibrary += 1;
-          }
-        }
-      } catch {
-        summary.unmatched.push(movie.title);
-        summary.retryable.push(retryableMovieFrom(movie));
-      }
-      moviesDone += 1;
-      onProgress?.({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
-    },
-    CONCURRENCY
-  );
-
-  let watchlistDone = 0;
-  await mapWithConcurrency(
-    data.watchlist,
-    async (entry) => {
-      onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
-      try {
-        const { results, queriedTitle } = await searchWithFallback(
-          entry.title,
-          entry.mediaType === "movie" ? "movie" : "series"
+  // The three phases touch disjoint parts of `summary` (series/movies/
+  // watchlist each own their own counters and undo bucket) and only ever
+  // share append-only arrays (unmatched/ambiguous/retryable) — safe to run
+  // concurrently rather than one full phase after another, which used to
+  // make a large export take several minutes end to end for no reason other
+  // than the code happening to await them in sequence.
+  try {
+    await Promise.all([
+      (async () => {
+        let seriesDone = 0;
+        await mapWithConcurrency(
+          seriesEntries,
+          async ([seriesName, episodes]) => {
+            reportProgress({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
+            try {
+              await importOneSeries(seriesName, episodes, data, summary);
+            } catch {
+              summary.unmatched.push(seriesName);
+              summary.retryable.push(retryableSeriesFrom(seriesName, episodes));
+            }
+            seriesDone += 1;
+            reportProgress({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
+          },
+          CONCURRENCY
         );
-        const { match, ambiguous } = pickBestMatch(results, queriedTitle, entry.year);
-        if (ambiguous) summary.ambiguous.push(entry.title);
-        if (!match) {
-          summary.unmatched.push(entry.title);
-          summary.retryable.push(retryableWatchlistFrom(entry));
-        } else {
-          const alreadyInLibrary = await libraryRepository.has(match.id, match.mediaType);
-          await libraryRepository.save(match, { status: "planned" });
-          if (alreadyInLibrary) {
-            summary.plannedAlreadyInLibrary += 1;
-          } else {
-            summary.plannedImported += 1;
-            summary.undo.planned.push({ mediaId: match.id, mediaType: match.mediaType });
-          }
-        }
-      } catch {
-        summary.unmatched.push(entry.title);
-        summary.retryable.push(retryableWatchlistFrom(entry));
-      }
-      watchlistDone += 1;
-      onProgress?.({ phase: "watchlist", done: watchlistDone, total: data.watchlist.length, label: entry.title });
-    },
-    CONCURRENCY
-  );
+      })(),
+      (async () => {
+        let moviesDone = 0;
+        await mapWithConcurrency(
+          data.movies,
+          async (movie) => {
+            reportProgress({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
+            try {
+              const { results, queriedTitle } = await searchWithFallback(movie.title, "movie");
+              const { match, ambiguous } = pickBestMatch(results, queriedTitle, movie.year);
+              if (ambiguous) summary.ambiguous.push(movie.title);
+              if (!match) {
+                summary.unmatched.push(movie.title);
+                summary.retryable.push(retryableMovieFrom(movie, results));
+              } else {
+                const inserted = await importMatchedMovie(movie, match);
+                if (inserted) {
+                  summary.moviesImported += 1;
+                  summary.undo.movies.push(match);
+                } else {
+                  summary.moviesAlreadyInLibrary += 1;
+                }
+              }
+            } catch {
+              summary.unmatched.push(movie.title);
+              summary.retryable.push(retryableMovieFrom(movie));
+            }
+            moviesDone += 1;
+            reportProgress({ phase: "movies", done: moviesDone, total: data.movies.length, label: movie.title });
+          },
+          CONCURRENCY
+        );
+      })(),
+      (async () => {
+        let watchlistDone = 0;
+        await mapWithConcurrency(
+          data.watchlist,
+          async (entry) => {
+            reportProgress({
+              phase: "watchlist",
+              done: watchlistDone,
+              total: data.watchlist.length,
+              label: entry.title,
+            });
+            try {
+              const { results, queriedTitle } = await searchWithFallback(
+                entry.title,
+                entry.mediaType === "movie" ? "movie" : "series"
+              );
+              const { match, ambiguous } = pickBestMatch(results, queriedTitle, entry.year);
+              if (ambiguous) summary.ambiguous.push(entry.title);
+              if (!match) {
+                summary.unmatched.push(entry.title);
+                summary.retryable.push(retryableWatchlistFrom(entry, results));
+              } else {
+                const alreadyInLibrary = await libraryRepository.has(match.id, match.mediaType);
+                await libraryRepository.save(match, { status: "planned" });
+                if (alreadyInLibrary) {
+                  summary.plannedAlreadyInLibrary += 1;
+                } else {
+                  summary.plannedImported += 1;
+                  summary.undo.planned.push({ mediaId: match.id, mediaType: match.mediaType });
+                }
+              }
+            } catch {
+              summary.unmatched.push(entry.title);
+              summary.retryable.push(retryableWatchlistFrom(entry));
+            }
+            watchlistDone += 1;
+            reportProgress({
+              phase: "watchlist",
+              done: watchlistDone,
+              total: data.watchlist.length,
+              label: entry.title,
+            });
+          },
+          CONCURRENCY
+        );
+      })(),
+    ]);
+  } finally {
+    onThrottled = null;
+  }
 
   return summary;
 }

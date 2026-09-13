@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { MediaSummary, PageResult } from "@/types/media";
@@ -68,6 +68,7 @@ const movieItem: RetryableUnmatched = {
   searchTitle: "Unknown Movie",
   searchYear: 1999,
   movie: { title: "Unknown Movie", year: 1999, watchedAt: "2026-01-01", runtimeMinutes: null },
+  initialCandidates: [],
 };
 
 const watchlistItem: RetryableUnmatched = {
@@ -76,6 +77,7 @@ const watchlistItem: RetryableUnmatched = {
   searchTitle: "Unknown Title",
   searchYear: null,
   entry: { title: "Unknown Title", mediaType: "series", year: null },
+  initialCandidates: [],
 };
 
 function renderResolver(items: RetryableUnmatched[], onResolved = vi.fn()) {
@@ -125,6 +127,43 @@ describe("TvTimeUnmatchedResolver", () => {
         planned: [],
       })
     );
+  });
+
+  it("shows initial candidates immediately, with no wait on a fresh search", async () => {
+    // Deliberately never resolves — proves the row doesn't wait on this at all.
+    searchMock.mockReturnValue(new Promise(() => {}));
+    const itemWithCandidates: RetryableUnmatched = {
+      ...movieItem,
+      initialCandidates: [summary({ id: 55, title: "Already Found Movie", year: 1999 })],
+    };
+    const onResolved = vi.fn();
+    renderResolver([itemWithCandidates], onResolved);
+
+    screen.getByRole("button", { name: "Unknown Movie" }).click();
+
+    expect(await screen.findByText("Already Found Movie")).toBeInTheDocument();
+
+    screen.getByRole("button", { name: "Choose" }).click();
+    await waitFor(() =>
+      expect(resolveRetryableMovieMock).toHaveBeenCalledWith(itemWithCandidates, expect.objectContaining({ id: 55 }))
+    );
+  });
+
+  it("falls back to a live search once the query is edited away from the original title", async () => {
+    searchMock.mockResolvedValue(page([summary({ id: 42, title: "The Real Movie", year: 1999 })]));
+    const itemWithCandidates: RetryableUnmatched = {
+      ...movieItem,
+      initialCandidates: [summary({ id: 55, title: "Already Found Movie", year: 1999 })],
+    };
+    renderResolver([itemWithCandidates]);
+
+    screen.getByRole("button", { name: "Unknown Movie" }).click();
+    expect(await screen.findByText("Already Found Movie")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search title"), { target: { value: "Something else" } });
+
+    expect(await screen.findByText("The Real Movie", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.queryByText("Already Found Movie")).not.toBeInTheDocument();
   });
 
   it("fetches full series details before resolving a series match", async () => {

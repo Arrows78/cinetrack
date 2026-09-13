@@ -738,6 +738,7 @@ describe("importTvTimeExport", () => {
           searchTitle: "Unknown Movie",
           searchYear: 1999,
           movie: exportData.movies[0],
+          initialCandidates: [],
         },
       ]);
     });
@@ -755,8 +756,25 @@ describe("importTvTimeExport", () => {
           searchTitle: "Unknown Title",
           searchYear: null,
           entry: exportData.watchlist[0],
+          initialCandidates: [],
         },
       ]);
+    });
+
+    it("carries the already-found TMDB candidates when a movie has several same-titled matches with no year to pick between them", async () => {
+      exportData = {
+        ...emptyExportData(),
+        movies: [{ title: "Ambiguous Movie", year: null, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+      };
+      const candidates = [
+        media({ id: 1, title: "Ambiguous Movie", year: 1999 }),
+        media({ id: 2, title: "Ambiguous Movie", year: 2010 }),
+      ];
+      searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 2, results: candidates });
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+
+      expect(summary.retryable).toEqual([expect.objectContaining({ kind: "movie", initialCandidates: candidates })]);
     });
 
     it("also records a retryable entry when an unexpected error interrupts a series", async () => {
@@ -851,6 +869,7 @@ describe("importTvTimeExport", () => {
         searchTitle: "Unknown Movie",
         searchYear: 1999,
         movie: { title: "Unknown Movie", year: 1999, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: 90 },
+        initialCandidates: [],
       };
       importMovieSeenMock.mockResolvedValue(true);
 
@@ -867,6 +886,7 @@ describe("importTvTimeExport", () => {
         searchTitle: "Unknown Title",
         searchYear: null,
         entry: { title: "Unknown Title", mediaType: "series" as const, year: null },
+        initialCandidates: [],
       };
       const match = media({ id: 8, title: "The Show" });
 
@@ -883,6 +903,7 @@ describe("importTvTimeExport", () => {
         searchTitle: "Unknown Title",
         searchYear: null,
         entry: { title: "Unknown Title", mediaType: "series" as const, year: null },
+        initialCandidates: [],
       };
       const match = media({ id: 8, title: "The Show" });
       libraryHasMock.mockResolvedValue(true);
@@ -890,6 +911,36 @@ describe("importTvTimeExport", () => {
       const wasNewlyPlanned = await resolveRetryableWatchlist(item, match);
 
       expect(wasNewlyPlanned).toBe(false);
+    });
+  });
+
+  describe("phase concurrency", () => {
+    it("starts the movies phase without waiting for the series phase to finish", async () => {
+      exportData = {
+        episodes: [
+          {
+            seriesName: "Breaking Bad",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+        movies: [{ title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+        watchlist: [],
+        tvdbIdsByName: new Map([["breaking bad", 81189]]),
+        favouriteSeriesNames: new Set(),
+        seriesRatingsByName: new Map(),
+        skippedRows: { episodes: 0, movies: 0 },
+      };
+      // The series phase's own TMDB lookup deliberately never resolves within
+      // this test — if the phases still ran sequentially, the movies phase
+      // (and its own searchMock call) would never even start.
+      findSeriesByTvdbIdMock.mockReturnValue(new Promise(() => {}));
+      searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
+
+      void importTvTimeExport(["irrelevant"]);
+      await vi.waitFor(() => expect(searchMock).toHaveBeenCalled());
     });
   });
 
@@ -967,6 +1018,34 @@ describe("importTvTimeExport", () => {
       expect(summary.unmatched).toEqual([]);
       expect(summary.moviesImported).toBe(1);
       expect(searchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("reports throttled: true on progress ticks shortly after a 429, so a stall reads as rate-limiting, not stuck", async () => {
+      vi.useFakeTimers();
+      const { TmdbRequestError } = await import("@/features/media/api/client");
+      exportData = {
+        episodes: [],
+        movies: [
+          { title: "Inception", year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null },
+          { title: "Dune", year: 2021, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null },
+        ],
+        watchlist: [],
+        tvdbIdsByName: new Map(),
+        favouriteSeriesNames: new Set(),
+        seriesRatingsByName: new Map(),
+        skippedRows: { episodes: 0, movies: 0 },
+      };
+      searchMock
+        .mockRejectedValueOnce(new TmdbRequestError("rate limited", 429))
+        .mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
+      const onProgress = vi.fn();
+
+      const promise = importTvTimeExport(["irrelevant"], onProgress);
+      await vi.advanceTimersByTimeAsync(1000);
+      await promise;
+
+      const throttledTicks = onProgress.mock.calls.map(([progress]) => progress.throttled);
+      expect(throttledTicks).toContain(true);
     });
 
     it("gives up and marks unmatched once retries are exhausted on a persistent 429", async () => {

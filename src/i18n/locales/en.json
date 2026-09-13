@@ -1107,6 +1107,7 @@
       "movies": "Movies",
       "watchlist": "To watch"
     },
+    "throttled": "TMDB is rate-limiting this import — it's slowing down, not stuck.",
     "nothingFound": "None of the selected files could be read as TV Time export data.",
     "zipTooLarge": "\"{{name}}\" is too large once unzipped.",
     "zipReadFailed": "Couldn't read that file as a .zip archive.",

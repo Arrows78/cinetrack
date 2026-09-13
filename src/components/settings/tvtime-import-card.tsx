@@ -117,7 +117,7 @@ export function TvTimeImportCard() {
     if (!pending) return;
     const { data } = pending;
     setPending(null);
-    setProgress({ phase: "series", done: 0, total: 0, label: "" });
+    setProgress({ phase: "series", done: 0, total: 0, label: "", throttled: false });
 
     try {
       const result = await applyTvTimeImport(data, setProgress);
@@ -287,6 +287,9 @@ export function TvTimeImportCard() {
               />
               {progress.label ? (
                 <p className="mt-1 truncate text-caption text-muted-foreground">{progress.label}</p>
+              ) : null}
+              {progress.throttled ? (
+                <p className="mt-1 text-caption text-muted-foreground">{t("tvtimeImport.throttled")}</p>
               ) : null}
             </div>
           ) : null}
