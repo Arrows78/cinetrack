@@ -31,6 +31,13 @@ export const CONFETTI_DELAY_MS = 300;
 export const CONFETTI_SEASON_COMPLETE_DELAY_MS = 400;
 
 /**
+ * How recent a milestone's `achievedAt` must be for MilestoneCelebrationController
+ * to treat it as "just crossed" rather than something achieved in a past
+ * session — see that component for why this can't just be a one-time flag.
+ */
+export const MILESTONE_CELEBRATION_WINDOW_MS = 1000 * 60;
+
+/**
  * Minimum search query length before a search is triggered. Prevents firing
  * API requests for single-character inputs that would return too many
  * irrelevant results anyway.

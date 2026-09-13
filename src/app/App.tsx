@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { ThemeController } from "@/components/layout/theme-controller";
 import { AmbientMotionController } from "@/components/layout/ambient-motion-controller";
+import { MilestoneCelebrationController } from "@/components/layout/milestone-celebration-controller";
 import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate";
 import { availabilityMonitor } from "@/features/availability/availability-monitor";
 import { desktopService } from "@/features/desktop/desktop-service";
@@ -145,6 +146,7 @@ export function App() {
     <TooltipProvider delayDuration={TOOLTIP_DELAY_MS}>
       <ThemeController />
       <AmbientMotionController />
+      <MilestoneCelebrationController />
 
       <MotionPreferenceGate>
         <AppRouter />

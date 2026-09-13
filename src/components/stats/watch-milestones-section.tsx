@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Lock, Trophy } from "lucide-react";
 import { useWatchMilestones } from "@/features/stats/use-stats";
+import { MILESTONE_THRESHOLD_KEY } from "@/features/stats/milestone-labels";
 import { ShareCancelledError, downloadMilestoneCard, renderMilestoneCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
@@ -15,14 +16,7 @@ import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate } from "@/shared/utils/format";
 import { cn } from "@/shared/lib/cn";
-import type { MilestoneCategory, WatchMilestone } from "@/types/media";
-
-const THRESHOLD_KEY: Record<MilestoneCategory, string> = {
-  episodes: "stats.milestones.episodesThreshold",
-  movies: "stats.milestones.moviesThreshold",
-  hours: "stats.milestones.hoursThreshold",
-  series: "stats.milestones.seriesThreshold",
-};
+import type { WatchMilestone } from "@/types/media";
 
 /**
  * Watch milestones — threshold-crossing achievements, computed from the
@@ -77,7 +71,7 @@ export function WatchMilestonesSection() {
   const exportMilestone = async (milestone: WatchMilestone) => {
     setExportingId(milestone.id);
     try {
-      const milestoneLabel = t(THRESHOLD_KEY[milestone.category], { count: milestone.threshold });
+      const milestoneLabel = t(MILESTONE_THRESHOLD_KEY[milestone.category], { count: milestone.threshold });
       const blob = await renderMilestoneCard(
         {
           milestoneLabel,
@@ -134,7 +128,7 @@ export function WatchMilestonesSection() {
             )}
             <div className="min-w-0 flex-1">
               <p className="text-body-sm font-medium">
-                {t(THRESHOLD_KEY[milestone.category], { count: milestone.threshold })}
+                {t(MILESTONE_THRESHOLD_KEY[milestone.category], { count: milestone.threshold })}
               </p>
               {milestone.achieved ? (
                 <Badge variant="success" className="mt-1">
