@@ -8,6 +8,7 @@ import { SettingsPage } from "../settings-page";
 vi.mock("@/components/settings/backup-tools", () => ({ BackupTools: () => <div /> }));
 vi.mock("@/components/settings/tvtime-import-card", () => ({ TvTimeImportCard: () => <div /> }));
 vi.mock("@/components/settings/desktop-settings", () => ({ DesktopSettings: () => <div /> }));
+vi.mock("@/components/settings/hidden-titles-card", () => ({ HiddenTitlesCard: () => <div /> }));
 
 let currentUser: { email: string } | null = null;
 vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser }) }));

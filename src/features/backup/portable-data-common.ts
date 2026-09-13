@@ -3,6 +3,7 @@ import type {
   AvailabilitySnapshot,
   CustomList,
   CustomListItem,
+  DismissedRecommendation,
   EpisodeProgress,
   LibraryItem,
   SavedFilter,
@@ -38,6 +39,7 @@ export interface PortableData {
   availabilityAlerts: AvailabilityAlert[];
   smartLists: SmartList[];
   savedFilters: SavedFilter[];
+  dismissedRecommendations: DismissedRecommendation[];
 }
 
 export const emptyData = (): PortableData => ({
@@ -55,6 +57,7 @@ export const emptyData = (): PortableData => ({
   availabilityAlerts: [],
   smartLists: [],
   savedFilters: [],
+  dismissedRecommendations: [],
 });
 
 export const mediaType = (value: unknown) => (value === "movie" ? ("movie" as const) : ("series" as const));

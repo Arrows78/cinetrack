@@ -30,6 +30,7 @@ pub const PROFILE_SCOPED_TABLES: &[&str] = &[
     "activity_log",
     "availability_alerts",
     "custom_lists",
+    "dismissed_recommendations",
     "episode_progress",
     "library_items",
     "saved_filters",

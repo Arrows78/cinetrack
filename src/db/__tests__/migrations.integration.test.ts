@@ -34,6 +34,7 @@ describe("runMigrations against real SQLite", () => {
         "availability_snapshots",
         "custom_list_items",
         "custom_lists",
+        "dismissed_recommendations",
         "episode_progress",
         "library_items",
         "preferences",

@@ -1,6 +1,11 @@
 import { libraryRepository } from "@/features/library/library-repository";
-import { filterHiddenIfWatchedByKeySet, buildKeySetFromMediaKeys } from "@/shared/utils/library-set";
+import {
+  filterHiddenIfWatchedByKeySet,
+  filterDismissedByKeySet,
+  buildKeySetFromMediaKeys,
+} from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
+import { recommendationsRepository } from "@/features/recommendations/recommendations-repository";
 import { logger } from "@/shared/lib/logger";
 import { GENRES } from "@/shared/constants/discover";
 import type { LibraryItem, MediaSummary, MediaType, Movie, Series } from "@/types/media";
@@ -159,6 +164,7 @@ async function pickMovies(
   filters: WatchTonightFilters,
   planned: LibraryItem[],
   completedKeySet: Set<string>,
+  dismissedKeySet: Set<string>,
   genreAffinity: Map<string, number>
 ): Promise<Array<Movie & { watchTonightReason: WatchTonightReason | null }>> {
   const detailed = await Promise.all(
@@ -196,6 +202,7 @@ async function pickMovies(
   // anything is the catalogue fallback just above, since a `planned` item
   // is never `completed` by definition.
   candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
+  candidates = filterDismissedByKeySet(candidates, dismissedKeySet);
 
   return rankCandidates(candidates, genreAffinity, MOVIE_GENRES_BY_ID).slice(0, PICKS_PER_TYPE);
 }
@@ -204,6 +211,7 @@ async function pickSeries(
   filters: WatchTonightFilters,
   planned: LibraryItem[],
   completedKeySet: Set<string>,
+  dismissedKeySet: Set<string>,
   genreAffinity: Map<string, number>
 ): Promise<Array<Series & { watchTonightReason: WatchTonightReason | null }>> {
   const detailed = await Promise.all(
@@ -237,33 +245,39 @@ async function pickSeries(
   }
 
   candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
+  candidates = filterDismissedByKeySet(candidates, dismissedKeySet);
 
   return rankCandidates(candidates, genreAffinity, SERIES_GENRES_BY_ID).slice(0, PICKS_PER_TYPE);
 }
 
 export const watchTonightService = {
   async pick(filters: WatchTonightFilters): Promise<WatchTonightPicks> {
-    const [plannedMovies, plannedSeries, completedKeys, completedMovies, completedSeries] = await Promise.all([
-      libraryRepository.plannedCandidates("movie", PLANNED_CANDIDATE_CAP),
-      libraryRepository.plannedCandidates("series", PLANNED_CANDIDATE_CAP),
-      // Only needed for the hide-watched pass — still fetched unconditionally
-      // rather than gated on filters.hideWatched, since this same result
-      // would otherwise need refetching the moment the user flips that
-      // preference mid-session.
-      libraryRepository.idsMatchingFilters({ status: "completed" }),
-      // Feeds the genre-affinity ranking signal (rankCandidates) — the same
-      // recently-completed candidate pool the "because you liked" rail
-      // draws its own seed from, just aggregated across several titles
-      // instead of picking a single one.
-      libraryRepository.completedCandidates("movie", AFFINITY_CANDIDATE_CAP),
-      libraryRepository.completedCandidates("series", AFFINITY_CANDIDATE_CAP),
-    ]);
+    const [plannedMovies, plannedSeries, completedKeys, completedMovies, completedSeries, dismissed] =
+      await Promise.all([
+        libraryRepository.plannedCandidates("movie", PLANNED_CANDIDATE_CAP),
+        libraryRepository.plannedCandidates("series", PLANNED_CANDIDATE_CAP),
+        // Only needed for the hide-watched pass — still fetched unconditionally
+        // rather than gated on filters.hideWatched, since this same result
+        // would otherwise need refetching the moment the user flips that
+        // preference mid-session.
+        libraryRepository.idsMatchingFilters({ status: "completed" }),
+        // Feeds the genre-affinity ranking signal (rankCandidates) — the same
+        // recently-completed candidate pool the "because you liked" rail
+        // draws its own seed from, just aggregated across several titles
+        // instead of picking a single one.
+        libraryRepository.completedCandidates("movie", AFFINITY_CANDIDATE_CAP),
+        libraryRepository.completedCandidates("series", AFFINITY_CANDIDATE_CAP),
+        // A "pas intéressé" dismissal always applies, unlike hideWatched above
+        // — see filterDismissedByKeySet.
+        recommendationsRepository.listDismissed(),
+      ]);
     const completedKeySet = buildKeySetFromMediaKeys(completedKeys);
+    const dismissedKeySet = new Set(dismissed.map((item) => `${item.mediaType}:${item.mediaId}`));
     const movieAffinity = buildGenreAffinity(completedMovies);
     const seriesAffinity = buildGenreAffinity(completedSeries);
     const [movies, series] = await Promise.all([
-      pickMovies(filters, plannedMovies, completedKeySet, movieAffinity),
-      pickSeries(filters, plannedSeries, completedKeySet, seriesAffinity),
+      pickMovies(filters, plannedMovies, completedKeySet, dismissedKeySet, movieAffinity),
+      pickSeries(filters, plannedSeries, completedKeySet, dismissedKeySet, seriesAffinity),
     ]);
     return { movies, series };
   },

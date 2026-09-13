@@ -174,6 +174,7 @@ export type { ViewingEventType } from "@/generated/dto/ViewingEventType";
 export type { ViewingEventNote } from "@/generated/dto/ViewingEventNote";
 export type { EpisodeProgress } from "@/generated/dto/EpisodeProgress";
 export type { TrackedSeriesItem } from "@/generated/dto/TrackedSeriesItem";
+export type { DismissedRecommendation } from "@/generated/dto/DismissedRecommendation";
 
 export interface SeriesProgress {
   seriesId: number;

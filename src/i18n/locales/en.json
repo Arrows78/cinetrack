@@ -613,6 +613,19 @@
       "5": "Great"
     }
   },
+  "recommendations": {
+    "notInterested": "Not interested",
+    "dismissedToast": "{{title}} won't be recommended again",
+    "dismissFailed": "Couldn't hide this title",
+    "hiddenTitles": {
+      "title": "Hidden titles",
+      "description": "Titles you marked \"not interested\" — they're excluded from Watch Tonight and your recommendation rails.",
+      "empty": "No hidden titles",
+      "restore": "Show again",
+      "restoredToast": "{{title}} may be recommended again",
+      "restoreFailed": "Couldn't restore this title"
+    }
+  },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
     "theatricalReleaseBody": "Theatrical release today or very soon.",

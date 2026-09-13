@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { BackupTools } from "@/components/settings/backup-tools";
+import { HiddenTitlesCard } from "@/components/settings/hidden-titles-card";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
 import { SyncStatusCard } from "@/components/settings/sync-status-card";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
@@ -418,6 +419,11 @@ export function SettingsPage() {
           <BackupTools />
           <TvTimeImportCard />
         </div>
+      </section>
+
+      <section>
+        <SectionHeader size="sub" headingLevel={2} title={t("recommendations.hiddenTitles.title")} />
+        <HiddenTitlesCard />
       </section>
 
       <section>

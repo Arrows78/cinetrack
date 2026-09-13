@@ -12,6 +12,7 @@ mod models;
 mod preferences;
 mod profiles;
 mod progress;
+mod recommendations;
 mod stats;
 mod sync;
 // tray::build uses tauri::tray/tauri::menu, which only exist on desktop —
@@ -50,6 +51,7 @@ use commands::{
     get_sync_status, list_sync_outbox, prepare_sync, rebase_sync_conflicts,
 };
 use commands::{create_saved_filter, list_saved_filters};
+use commands::{dismiss_recommendation, list_dismissed_recommendations, undismiss_recommendation};
 use commands::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
     get_rewatch_stats, get_watch_forecast, get_watch_milestones,
@@ -147,6 +149,9 @@ pub fn run() {
             list_tracked_series,
             refresh_tracked_series_status,
             set_episode_rating,
+            list_dismissed_recommendations,
+            dismiss_recommendation,
+            undismiss_recommendation,
             list_recent_viewing_events,
             list_viewing_events_for_year,
             list_viewing_events_for_media,

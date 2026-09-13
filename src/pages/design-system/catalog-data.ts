@@ -650,6 +650,14 @@ export const componentInventory = [
     "Renders the shared trending/top-rated/upcoming rows used by both the home dashboard and Search's default browse state."
   ),
   component(
+    "NotInterestedButton",
+    "components/media/discover/not-interested-button.tsx",
+    "Media",
+    "feature",
+    "live",
+    '"Pas intéressé" — excludes a title from Watch Tonight and Home\'s recommendation rails.'
+  ),
+  component(
     "TodayHub",
     "components/media/home/today-hub.tsx",
     "Media",
@@ -1184,6 +1192,14 @@ export const componentInventory = [
     "feature",
     "reference",
     "Read-only cloud-sync status (pending/failed counts) plus a manual sync-now action."
+  ),
+  component(
+    "HiddenTitlesCard",
+    "components/settings/hidden-titles-card.tsx",
+    "Settings",
+    "feature",
+    "live",
+    'Lists titles dismissed as "not interested", each with a Show again action.'
   ),
   component(
     "TvTimeImportCard",

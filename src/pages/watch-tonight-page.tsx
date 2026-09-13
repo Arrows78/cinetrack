@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-
 import { Dices, Popcorn } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
+import { NotInterestedButton } from "@/components/media/discover/not-interested-button";
 import { HideWatchedToggle } from "@/components/media/library/hide-watched-toggle";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -74,7 +75,7 @@ function WatchTonightReasonBadge({ reason }: { reason: WatchTonightReason | null
   );
 }
 
-function WatchTonightHeroPick({ media }: { media: WatchTonightMedia }) {
+function WatchTonightHeroPick({ media, onDismissed }: { media: WatchTonightMedia; onDismissed: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="space-y-4">
@@ -84,6 +85,7 @@ function WatchTonightHeroPick({ media }: { media: WatchTonightMedia }) {
           <>
             <AddToLibraryButton media={media} />
             <ViewDetailsButton media={media} />
+            <NotInterestedButton media={media} onDismissed={onDismissed} />
           </>
         }
       />
@@ -310,7 +312,7 @@ export function WatchTonightPage() {
           <EmptyState icon={Popcorn} title={t("watchTonight.emptyTitle")} description={t("watchTonight.emptyDesc")} />
         ) : (
           <div className="space-y-6">
-            {hero ? <WatchTonightHeroPick media={hero} /> : null}
+            {hero ? <WatchTonightHeroPick media={hero} onDismissed={() => setSeed((current) => current + 1)} /> : null}
             {alternates.length ? (
               <section>
                 <SectionHeader title={t("watchTonight.alternatesTitle")} size="sub" headingLevel={2} />

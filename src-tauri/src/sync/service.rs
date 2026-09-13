@@ -76,6 +76,7 @@ pub async fn prepare(pool: &SqlitePool) -> Result<(), ApiError> {
         "custom_lists",
         "smart_lists",
         "availability_alerts",
+        "dismissed_recommendations",
     ] {
         let query = format!("UPDATE {table} SET uuid = uuid WHERE profile_id = ?1");
         sqlx::query(sqlx::AssertSqlSafe(query))
@@ -310,6 +311,9 @@ async fn delete_entity(
         "smart_list" => "DELETE FROM smart_lists WHERE profile_id=?1 AND uuid=?2",
         "saved_filter" => "DELETE FROM saved_filters WHERE profile_id=?1 AND uuid=?2",
         "availability_alert" => "DELETE FROM availability_alerts WHERE profile_id=?1 AND uuid=?2",
+        "dismissed_recommendation" => {
+            "DELETE FROM dismissed_recommendations WHERE profile_id=?1 AND uuid=?2"
+        }
         "custom_list_item" => {
             "DELETE FROM custom_list_items WHERE uuid=?2 AND list_id IN (SELECT uuid FROM custom_lists WHERE profile_id=?1)"
         }
@@ -417,6 +421,11 @@ async fn upsert_entity(
             r#"INSERT INTO availability_alerts(uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.region'),json_extract(?1,'$.providerIds'),coalesce(json_extract(?1,'$.enabled'),1),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
           ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,region=excluded.region,provider_ids=excluded.provider_ids,enabled=excluded.enabled,updated_at=excluded.updated_at"#
+        }
+        "dismissed_recommendation" => {
+            r#"INSERT INTO dismissed_recommendations(uuid,profile_id,media_id,media_type,title,poster_path,dismissed_at,created_at,updated_at)
+          VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.dismissedAt'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
+          ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,poster_path=excluded.poster_path,dismissed_at=excluded.dismissed_at,updated_at=excluded.updated_at"#
         }
         _ => return Err(ApiError::bad_request("Unsupported sync entity type")),
     };
@@ -798,5 +807,54 @@ mod tests {
             vec![("language".to_string(),)],
             "theme is device-scoped and must not be bootstrapped"
         );
+    }
+
+    #[tokio::test]
+    async fn applies_a_remote_dismissed_recommendation_upsert_and_delete() {
+        let pool = pool().await;
+        let change = RemoteSyncChange {
+            sequence: 1,
+            entity_type: "dismissed_recommendation".to_string(),
+            entity_id: "dr-1".to_string(),
+            operation: "upsert".to_string(),
+            version: 1,
+            data: Some(serde_json::json!({
+                "uuid": "dr-1",
+                "mediaId": 42,
+                "mediaType": "movie",
+                "title": "Remote Title",
+                "posterPath": "/p.jpg",
+                "dismissedAt": "2026-01-01T00:00:00.000Z",
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "updatedAt": "2026-01-01T00:00:00.000Z",
+            })),
+        };
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let (media_id, title): (i64, String) = sqlx::query_as(
+            "SELECT media_id, title FROM dismissed_recommendations WHERE profile_id='default' AND uuid='dr-1'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(media_id, 42);
+        assert_eq!(title, "Remote Title");
+
+        let delete_change = RemoteSyncChange {
+            sequence: 2,
+            entity_type: "dismissed_recommendation".to_string(),
+            entity_id: "dr-1".to_string(),
+            operation: "delete".to_string(),
+            version: 2,
+            data: None,
+        };
+        apply_remote_changes(&pool, &[delete_change]).await.unwrap();
+
+        let count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM dismissed_recommendations WHERE uuid='dr-1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(count.0, 0);
     }
 }

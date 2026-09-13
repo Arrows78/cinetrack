@@ -67,6 +67,7 @@ export const queryKeys = {
     calendar: (profileId: string) => ["local", "calendar", profileId] as const,
     availabilityAlerts: (profileId: string) => ["local", "availabilityAlerts", profileId] as const,
     availabilitySnapshots: ["local", "availabilitySnapshots"] as const,
+    dismissedRecommendations: (profileId: string) => ["local", "dismissedRecommendations", profileId] as const,
     tracking: (profileId: string) => ["local", "tracking", profileId] as const,
     watchTonight: (profileId: string) => ["local", "watchTonight", profileId] as const,
     watchNextEpisode: (profileId: string, seriesId: number) => ["local", "watchNext", profileId, seriesId] as const,

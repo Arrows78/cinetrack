@@ -62,6 +62,7 @@ pub const SYNC_ENTITY_TYPES: &[&str] = &[
     "smart_list",
     "saved_filter",
     "availability_alert",
+    "dismissed_recommendation",
     "account_preferences",
 ];
 

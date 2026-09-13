@@ -613,6 +613,19 @@
       "5": "Excellent"
     }
   },
+  "recommendations": {
+    "notInterested": "Pas intéressé",
+    "dismissedToast": "{{title}} ne sera plus recommandé",
+    "dismissFailed": "Impossible de masquer ce titre",
+    "hiddenTitles": {
+      "title": "Titres masqués",
+      "description": "Titres marqués « pas intéressé » — exclus de Watch Tonight et de vos recommandations.",
+      "empty": "Aucun titre masqué",
+      "restore": "Réafficher",
+      "restoredToast": "{{title}} pourra de nouveau être recommandé",
+      "restoreFailed": "Impossible de réafficher ce titre"
+    }
+  },
   "notifications": {
     "episodeBody": "S{{season}}E{{episode}} · {{title}}",
     "theatricalReleaseBody": "Sortie cinéma aujourd'hui ou très bientôt.",

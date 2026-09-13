@@ -4,8 +4,13 @@ import { libraryRepository } from "@/features/library/library-repository";
 import { useLibraryMediaKeys } from "@/features/library/use-library";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { buildKeySetFromMediaKeys, filterAvailableItemsByKeySet } from "@/shared/utils/library-set";
+import {
+  buildKeySetFromMediaKeys,
+  filterAvailableItemsByKeySet,
+  filterDismissedByKeySet,
+} from "@/shared/utils/library-set";
 import { useRecommendations } from "@/features/media/use-discovery";
+import { useDismissedRecommendationKeys } from "@/features/recommendations/use-recommendations";
 import type { MediaSummary } from "@/types/media";
 
 // Picks the strongest positive signal available in the user's library,
@@ -26,6 +31,7 @@ export function useBecauseYouLiked() {
   const seed = seedQuery.data ?? null;
   const mediaKeysQuery = useLibraryMediaKeys();
   const keySet = useMemo(() => buildKeySetFromMediaKeys(mediaKeysQuery.data ?? []), [mediaKeysQuery.data]);
+  const dismissedKeySet = useDismissedRecommendationKeys();
 
   const recommendationsQuery = useRecommendations(seed?.mediaType ?? "movie", seed?.mediaId ?? Number.NaN);
 
@@ -34,8 +40,9 @@ export function useBecauseYouLiked() {
   // TMDB's full ~20-result page.
   const items = useMemo<MediaSummary[]>(() => {
     const results = recommendationsQuery.data?.results ?? [];
-    return filterAvailableItemsByKeySet(results, keySet);
-  }, [recommendationsQuery.data, keySet]);
+    const notDismissed = filterDismissedByKeySet(results, dismissedKeySet);
+    return filterAvailableItemsByKeySet(notDismissed, keySet);
+  }, [recommendationsQuery.data, keySet, dismissedKeySet]);
 
   const isLoading = seedQuery.isLoading || (Boolean(seed) && recommendationsQuery.isLoading);
 

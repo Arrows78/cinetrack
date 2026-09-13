@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   discoverMovies: vi.fn(),
   discoverSeries: vi.fn(),
   loggerWarn: vi.fn(),
+  listDismissed: vi.fn(),
 }));
 
 vi.mock("@/features/library/library-repository", () => ({
@@ -18,6 +19,12 @@ vi.mock("@/features/library/library-repository", () => ({
     plannedCandidates: mocks.plannedCandidates,
     idsMatchingFilters: mocks.idsMatchingFilters,
     completedCandidates: mocks.completedCandidates,
+  },
+}));
+
+vi.mock("@/features/recommendations/recommendations-repository", () => ({
+  recommendationsRepository: {
+    listDismissed: mocks.listDismissed,
   },
 }));
 
@@ -103,6 +110,7 @@ describe("watchTonightService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     seedLibrary([]);
+    mocks.listDismissed.mockResolvedValue([]);
     mocks.discoverMovies.mockResolvedValue({
       page: 1,
       totalPages: 1,
@@ -305,6 +313,22 @@ describe("watchTonightService", () => {
     const result = await watchTonightService.pick({});
 
     expect(result.movies.map((item) => item.id)).toContain(2);
+  });
+
+  it("always drops a dismissed ('not interested') movie, regardless of hideWatched", async () => {
+    mocks.listDismissed.mockResolvedValue([{ mediaId: 2, mediaType: "movie", title: "Film 2" }]);
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.movies.map((item) => item.id)).not.toContain(2);
+  });
+
+  it("always drops a dismissed ('not interested') series, regardless of hideWatched", async () => {
+    mocks.listDismissed.mockResolvedValue([{ mediaId: 3, mediaType: "series", title: "Série 3" }]);
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.series.map((item) => item.id)).not.toContain(3);
   });
 
   it("caps picks at PICKS_PER_TYPE (4) when more planned candidates match than that, for both movies and series", async () => {
