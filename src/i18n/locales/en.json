@@ -408,9 +408,6 @@
     }
   },
   "mediaHub": {
-    "viewTabs": "View",
-    "myList": "My list",
-    "upcoming": "Upcoming",
     "browseAllMovies": "Browse all movies",
     "browseAllSeries": "Browse all series"
   },

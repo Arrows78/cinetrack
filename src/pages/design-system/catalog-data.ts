@@ -1095,7 +1095,7 @@ export const componentInventory = [
     "Media",
     "feature",
     "live",
-    "Shared Series/Movies page shell (title, My list/Upcoming tabs) — SeriesPage and MoviesPage just supply the icon/labels."
+    "Shared Series/Movies page shell (title + locked LibraryExplorer) — SeriesPage and MoviesPage just supply the icon/labels."
   ),
   component(
     "ViewModeToggle",

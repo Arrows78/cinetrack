@@ -5,10 +5,10 @@ import i18n from "@/i18n";
 import { MoviesPage } from "../movies-page";
 import type * as TanstackRouterModule from "@tanstack/react-router";
 
-// LibraryExplorer/TrackingList already have their own coverage (via
-// LibraryPage/TrackingPage/etc.) — shallow-stub them so assertions here
-// target only what MoviesPage itself decides: which tab renders which
-// component, with which props, and the tab switching.
+// LibraryExplorer already has its own coverage (via LibraryPage etc.) —
+// shallow-stub it so assertions here target only what MoviesPage itself
+// decides: which props LibraryExplorer gets, and the page's own browse-all
+// wiring.
 vi.mock("@/components/media/library/library-explorer", () => ({
   LibraryExplorer: ({
     lockedMediaType,
@@ -23,25 +23,6 @@ vi.mock("@/components/media/library/library-explorer", () => ({
       <span>{browseAllLabel}</span>
       <button type="button" onClick={onBrowseAll}>
         library-explorer-browse-all
-      </button>
-    </div>
-  ),
-}));
-
-vi.mock("@/components/media/tracking/tracking-list", () => ({
-  TrackingList: ({
-    lockedMediaType,
-    onBrowseAll,
-    browseAllLabel,
-  }: {
-    lockedMediaType?: "movie" | "series";
-    onBrowseAll?: () => void;
-    browseAllLabel?: string;
-  }) => (
-    <div data-testid="tracking-list" data-locked-media-type={lockedMediaType}>
-      <span>{browseAllLabel}</span>
-      <button type="button" onClick={onBrowseAll}>
-        tracking-list-browse-all
       </button>
     </div>
   ),
@@ -72,22 +53,15 @@ describe("MoviesPage", () => {
     navigateMock.mockReset();
   });
 
-  it("defaults to the list tab, rendering LibraryExplorer locked to movies", () => {
+  it("renders LibraryExplorer locked to movies, with no view-switching tabs", () => {
     renderPage();
 
     const explorer = screen.getByTestId("library-explorer");
     expect(explorer).toHaveAttribute("data-locked-media-type", "movie");
-    expect(screen.queryByTestId("tracking-list")).not.toBeInTheDocument();
-  });
-
-  it("switches to TrackingList locked to movies when the Upcoming filter is clicked", () => {
-    renderPage();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Upcoming" }));
-
-    const tracking = screen.getByTestId("tracking-list");
-    expect(tracking).toHaveAttribute("data-locked-media-type", "movie");
-    expect(screen.queryByTestId("library-explorer")).not.toBeInTheDocument();
+    // Upcoming duplicated the standalone Tracking page filtered to movies —
+    // dropped in favor of Tracking being the one place for that, so there's
+    // nothing left here to switch between.
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 
   it("does not render a Discover filter option", () => {
@@ -100,15 +74,6 @@ describe("MoviesPage", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "library-explorer-browse-all" }));
-
-    expect(navigateMock).toHaveBeenCalledWith({ to: "/search", search: { scope: "movie" } });
-  });
-
-  it("navigates to /search scoped to movies when TrackingList's onBrowseAll is invoked", () => {
-    renderPage();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Upcoming" }));
-    fireEvent.click(screen.getByRole("button", { name: "tracking-list-browse-all" }));
 
     expect(navigateMock).toHaveBeenCalledWith({ to: "/search", search: { scope: "movie" } });
   });

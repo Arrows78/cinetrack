@@ -408,9 +408,6 @@
     }
   },
   "mediaHub": {
-    "viewTabs": "Affichage",
-    "myList": "Ma liste",
-    "upcoming": "À venir",
     "browseAllMovies": "Parcourir tous les films",
     "browseAllSeries": "Parcourir toutes les séries"
   },
