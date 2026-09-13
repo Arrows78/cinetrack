@@ -1,8 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
+import { ON_THIS_DAY_INVITE_DISMISSED_KEY } from "@/shared/constants/local-storage-keys";
 import type { ViewingEvent } from "@/types/media";
 
 const { usePreferencesMock, useOnThisDayMock } = vi.hoisted(() => ({
@@ -26,7 +27,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-import { OnThisDaySection } from "../on-this-day-section";
+import { OnThisDayInviteBanner, OnThisDaySection } from "../on-this-day-section";
 
 const event = (overrides: Partial<ViewingEvent> = {}): ViewingEvent => ({
   id: crypto.randomUUID(),
@@ -134,5 +135,88 @@ describe("OnThisDaySection", () => {
     expect(screen.getByText(/Three Years Ago/)).toBeInTheDocument();
     expect(screen.queryByText(/Four Years Ago/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Duplicate Same Year/)).not.toBeInTheDocument();
+  });
+});
+
+describe("OnThisDayInviteBanner", () => {
+  const updatePreferenceMock = vi.fn();
+
+  beforeAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  beforeEach(() => {
+    usePreferencesMock.mockReset();
+    useOnThisDayMock.mockReset();
+    updatePreferenceMock.mockReset();
+    localStorage.removeItem(ON_THIS_DAY_INVITE_DISMISSED_KEY);
+  });
+
+  it("renders nothing when the preference is already on", () => {
+    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: true }, updatePreference: updatePreferenceMock });
+    useOnThisDayMock.mockReturnValue({ data: [event()] });
+
+    const { container } = render(<OnThisDayInviteBanner />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(useOnThisDayMock).toHaveBeenCalledWith(false);
+  });
+
+  it("renders nothing while preferences are still loading", () => {
+    usePreferencesMock.mockReturnValue({ data: undefined, updatePreference: updatePreferenceMock });
+    useOnThisDayMock.mockReturnValue({ data: undefined });
+
+    const { container } = render(<OnThisDayInviteBanner />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders nothing when there is no match for today", () => {
+    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    useOnThisDayMock.mockReturnValue({ data: [] });
+
+    const { container } = render(<OnThisDayInviteBanner />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows the invite with an Enable CTA when there is a match and the preference is off", () => {
+    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    useOnThisDayMock.mockReturnValue({ data: [event()] });
+
+    render(<OnThisDayInviteBanner />);
+
+    expect(screen.getByText('You have an "On this day" memory')).toBeInTheDocument();
+  });
+
+  it("enables the preference when the CTA is clicked", () => {
+    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    useOnThisDayMock.mockReturnValue({ data: [event()] });
+
+    render(<OnThisDayInviteBanner />);
+    fireEvent.click(screen.getByRole("button", { name: 'Enable "On this day"' }));
+
+    expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "onThisDayEnabled", value: true });
+  });
+
+  it("dismisses the banner for the day without touching the preference", () => {
+    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    useOnThisDayMock.mockReturnValue({ data: [event()] });
+
+    render(<OnThisDayInviteBanner />);
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    expect(updatePreferenceMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem(ON_THIS_DAY_INVITE_DISMISSED_KEY)).toBe(new Date().toISOString().slice(0, 10));
+  });
+
+  it("stays dismissed for the remainder of the day on a fresh render", () => {
+    localStorage.setItem(ON_THIS_DAY_INVITE_DISMISSED_KEY, new Date().toISOString().slice(0, 10));
+    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    useOnThisDayMock.mockReturnValue({ data: [event()] });
+
+    const { container } = render(<OnThisDayInviteBanner />);
+
+    expect(container).toBeEmptyDOMElement();
   });
 });

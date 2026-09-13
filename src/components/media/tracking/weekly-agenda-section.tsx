@@ -14,7 +14,7 @@ import { errorMessage } from "@/shared/lib/errors";
  * same convention as WatchNextSection — an empty agenda isn't worth a
  * dedicated empty state on the home dashboard.
  */
-export function WeeklyAgendaSection({ index }: { index: number }) {
+export function WeeklyAgendaSection({ index, id }: { index: number; id?: string }) {
   const { t } = useTranslation();
   const agenda = useWeeklyAgenda();
   const entries = agenda.data ?? [];
@@ -32,7 +32,7 @@ export function WeeklyAgendaSection({ index }: { index: number }) {
   if (agenda.isLoading || agenda.isError || !entries.length) return null;
 
   return (
-    <section>
+    <section id={id}>
       <SectionHeader title={t("home.thisWeekTitle")} subtitle={t("home.thisWeekSubtitle")} index={index} />
       <div className="grid gap-2 lg:grid-cols-2">
         {entries.map((entry) => (

@@ -42,7 +42,7 @@ const WATCH_TONIGHT_TEASER_LIMIT = 3;
  * prop-driven presentational component (same split WatchNextSection/
  * PeopleYouWatchRails already used).
  */
-export function TodayHub({ index }: { index: number }) {
+export function TodayHub({ index, id }: { index: number; id?: string }) {
   const { t } = useTranslation();
   const trackedSeriesQuery = useTrackedSeries();
   const trackedSeries = useMemo(() => trackedSeriesQuery.data ?? [], [trackedSeriesQuery.data]);
@@ -113,7 +113,7 @@ export function TodayHub({ index }: { index: number }) {
   if (!hasHubContent && !hasPartialFailure) return null;
 
   return (
-    <section>
+    <section id={id}>
       <SectionHeader title={t("home.todayHubTitle")} subtitle={t("home.todayHubSubtitle")} index={index} />
       <Panel tone="highlight" className="space-y-8">
         {episodes.continueWatching.length > 0 ? (

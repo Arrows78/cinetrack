@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useOnThisDay } from "@/features/stats/use-stats";
 import { formatDate } from "@/shared/utils/format";
+import { ON_THIS_DAY_INVITE_DISMISSED_KEY } from "@/shared/constants/local-storage-keys";
 import type { ViewingEvent } from "@/types/media";
 
 interface YearEntry {
@@ -48,7 +51,7 @@ function groupByYear(events: ViewingEvent[]): YearEntry[] {
  * today — unlike a real empty state elsewhere in the app, an empty "on this
  * day" isn't itself informative and would just be noise on an ordinary day.
  */
-export function OnThisDaySection() {
+export function OnThisDaySection({ id }: { id?: string }) {
   const { t } = useTranslation();
   const preferencesQuery = usePreferences();
   const enabled = preferencesQuery.data?.onThisDayEnabled ?? false;
@@ -62,7 +65,7 @@ export function OnThisDaySection() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <Panel tone="highlight" className="flex flex-col gap-4 animate-in-up">
+    <Panel id={id} tone="highlight" className="flex flex-col gap-4 animate-in-up">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
         <p className="font-display text-heading-sm font-bold tracking-tight">{t("home.onThisDayTitle")}</p>
@@ -89,6 +92,72 @@ export function OnThisDaySection() {
           );
         })}
       </ul>
+    </Panel>
+  );
+}
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Discoverability counterpart to OnThisDaySection: while the preference is
+ * off, this is the only Home-page hint that the feature exists at all (it's
+ * otherwise a single toggle among many in Settings — see settings-page.tsx).
+ * Only shows up when there's an actual match for today, same "no noise on an
+ * ordinary day" rule as the real card, and can be dismissed for the day
+ * (see ON_THIS_DAY_INVITE_DISMISSED_KEY) without disabling the underlying
+ * preference — dismissing the invite isn't the same as opting out forever.
+ */
+export function OnThisDayInviteBanner({ id }: { id?: string }) {
+  const { t } = useTranslation();
+  const preferencesQuery = usePreferences();
+  const enabled = preferencesQuery.data?.onThisDayEnabled ?? false;
+  const [dismissedAt, setDismissedAt] = useState(() => localStorage.getItem(ON_THIS_DAY_INVITE_DISMISSED_KEY));
+
+  const canShow = preferencesQuery.data !== undefined && !enabled && dismissedAt !== todayKey();
+  const onThisDayQuery = useOnThisDay(canShow);
+
+  if (!canShow) return null;
+
+  const entries = groupByYear(onThisDayQuery.data ?? []).slice(0, MAX_ENTRIES);
+  if (entries.length === 0) return null;
+
+  const dismiss = () => {
+    const key = todayKey();
+    localStorage.setItem(ON_THIS_DAY_INVITE_DISMISSED_KEY, key);
+    setDismissedAt(key);
+  };
+
+  return (
+    <Panel id={id} tone="highlight" className="flex flex-wrap items-center justify-between gap-4 animate-in-up">
+      <div className="flex items-center gap-3">
+        <Sparkles className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+        <div>
+          <p className="font-semibold">{t("home.onThisDayInviteTitle")}</p>
+          <p className="mt-1 text-body-sm text-muted-foreground">
+            {t("home.onThisDayInviteDesc", { count: entries.length })}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => void preferencesQuery.updatePreference({ key: "onThisDayEnabled", value: true })}
+        >
+          {t("home.onThisDayInviteCta")}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t("home.onThisDayInviteDismiss")}
+          onClick={dismiss}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
     </Panel>
   );
 }

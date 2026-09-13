@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, BarChart3, CalendarDays, CircleCheck, History, LibraryBig, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
+import { SectionNav } from "@/components/ui/section-nav";
 import { Tile } from "@/components/ui/tile";
 import { EmptyState } from "@/components/states/empty-state";
 import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
@@ -23,9 +24,15 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useLibrary } from "@/features/library/use-library";
 import { useHomeFeed } from "@/features/media/use-media";
+import { usePresentSectionIds } from "@/hooks/use-present-section-ids";
 import { TodayHub } from "@/components/media/home/today-hub";
 import { WeeklyAgendaSection } from "@/components/media/tracking/weekly-agenda-section";
-import { OnThisDaySection } from "@/components/media/activity/on-this-day-section";
+import { OnThisDayInviteBanner, OnThisDaySection } from "@/components/media/activity/on-this-day-section";
+
+const HOME_ON_THIS_DAY_ID = "home-on-this-day";
+const HOME_TODAY_HUB_ID = "home-today-hub";
+const HOME_AGENDA_ID = "home-agenda";
+const HOME_DISCOVER_ID = "home-discover";
 
 // Shared by the hero (main feed loaded) and the offline-summary branch
 // below — both showed the exact same three cards as two independent,
@@ -100,6 +107,23 @@ function HomePageContent() {
   const preferences = usePreferences();
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
   const library = libraryQuery.data ?? [];
+
+  // In-page jump nav for the zones below the hero (see SectionNav) — each
+  // candidate can render nothing of its own accord (an empty Today Hub, an
+  // agenda with nothing due this week, …), so the nav only lists whichever
+  // of them actually mounted, rather than always showing all four.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const candidateNavSections = [
+    { id: HOME_ON_THIS_DAY_ID, label: t("home.onThisDayTitle") },
+    { id: HOME_TODAY_HUB_ID, label: t("home.todayHubTitle") },
+    { id: HOME_AGENDA_ID, label: t("home.thisWeekTitle") },
+    { id: HOME_DISCOVER_ID, label: t("home.navDiscover") },
+  ];
+  const presentSectionIds = usePresentSectionIds(
+    candidateNavSections.map((section) => section.id),
+    contentRef
+  );
+  const navItems = candidateNavSections.filter((section) => presentSectionIds.includes(section.id));
 
   if (!hasTmdbToken && !dismissedTokenPrompt) {
     return (
@@ -222,7 +246,7 @@ function HomePageContent() {
   let sectionIndex = 0;
 
   return (
-    <div className="space-y-8">
+    <div ref={contentRef} className="space-y-8">
       {homeQuery.isRefetchError ? <DegradedModeBadge /> : null}
       {hero ? (
         <section className="relative overflow-hidden rounded-hero border border-border animate-in-up">
@@ -287,37 +311,45 @@ function HomePageContent() {
         </section>
       ) : null}
 
+      <SectionNav items={navItems} ariaLabel={t("home.navSectionsLabel")} />
+
       {/* Opt-in "On this day" delight card (see UserPreferences.onThisDayEnabled,
           toggled in Settings) — not a numbered rail like the sections below,
           same treatment as the hero above it. Self-contained: renders
-          nothing at all when disabled or when there's no match for today. */}
-      <OnThisDaySection />
+          nothing at all when disabled or when there's no match for today.
+          OnThisDayInviteBanner is its mutually-exclusive counterpart while
+          the preference is off — the two never render at once, so sharing
+          an id between them is safe. */}
+      <OnThisDaySection id={HOME_ON_THIS_DAY_ID} />
+      <OnThisDayInviteBanner id={HOME_ON_THIS_DAY_ID} />
 
       {/* Today Hub — the daily cockpit: continue watching, up next, new
           episodes, availability, alerts, a Watch Tonight teaser, a
           personalized recommendation, and items needing action.
           Self-contained: renders nothing when every card is empty. */}
-      <TodayHub index={++sectionIndex} />
+      <TodayHub index={++sectionIndex} id={HOME_TODAY_HUB_ID} />
 
       {/* Compact "this week" personal agenda — releases, new episodes, and
           availability changes for the active profile (see
           src/features/tracking/use-weekly-agenda.ts). Renders nothing when
           there's nothing to show, same as the rails above. */}
-      <WeeklyAgendaSection index={++sectionIndex} />
+      <WeeklyAgendaSection index={++sectionIndex} id={HOME_AGENDA_ID} />
 
-      <div className="flex justify-end">
-        <HideWatchedToggle />
+      <div id={HOME_DISCOVER_ID} className="space-y-8">
+        <div className="flex justify-end">
+          <HideWatchedToggle />
+        </div>
+        <CatalogueSections
+          feed={homeQuery.data}
+          startIndex={sectionIndex + 1}
+          hideWatched={hideWatched}
+          library={library}
+        />
+
+        <BrowseByGenre startIndex={sectionIndex + 1 + CATALOGUE_SECTIONS.length} />
+        <BrowseByPlatform startIndex={sectionIndex + 2 + CATALOGUE_SECTIONS.length} />
+        <BrowseByStudio startIndex={sectionIndex + 3 + CATALOGUE_SECTIONS.length} />
       </div>
-      <CatalogueSections
-        feed={homeQuery.data}
-        startIndex={sectionIndex + 1}
-        hideWatched={hideWatched}
-        library={library}
-      />
-
-      <BrowseByGenre startIndex={sectionIndex + 1 + CATALOGUE_SECTIONS.length} />
-      <BrowseByPlatform startIndex={sectionIndex + 2 + CATALOGUE_SECTIONS.length} />
-      <BrowseByStudio startIndex={sectionIndex + 3 + CATALOGUE_SECTIONS.length} />
     </div>
   );
 }

@@ -1378,6 +1378,14 @@ export const componentInventory = [
     "Wraps the accessible Radix progress primitive."
   ),
   component(
+    "SectionNav",
+    "components/ui/section-nav.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Sticky pill-style jump nav for a long id-anchored page, highlighting whichever section is in view."
+  ),
+  component(
     "Select",
     "components/ui/select.tsx",
     "UI primitives",

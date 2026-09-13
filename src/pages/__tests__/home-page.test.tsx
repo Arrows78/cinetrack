@@ -82,10 +82,15 @@ vi.mock("@/components/media/tracking/weekly-agenda-section", () => ({
 
 vi.mock("@/components/media/activity/on-this-day-section", () => ({
   OnThisDaySection: () => <div data-testid="on-this-day-section" />,
+  OnThisDayInviteBanner: () => <div data-testid="on-this-day-invite-banner" />,
 }));
 
 vi.mock("@/components/media/home/today-hub", () => ({
   TodayHub: ({ index }: { index: number }) => <div data-testid="today-hub" data-index={index} />,
+}));
+
+vi.mock("@/components/ui/section-nav", () => ({
+  SectionNav: () => <div data-testid="section-nav" />,
 }));
 
 function buildMovie(overrides: Partial<Movie> = {}): Movie {

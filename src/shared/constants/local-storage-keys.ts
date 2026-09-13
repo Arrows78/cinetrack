@@ -15,3 +15,6 @@ export const AUTH_SESSION_STORAGE_KEY = "cinetrack.auth.session";
 
 /** Legacy react-query persister slot (no longer written, kept for cleanup). */
 export const LEGACY_QUERY_CACHE_KEY = "cinetrack.query-cache.v1";
+
+/** Last date (YYYY-MM-DD) the Home "On this day" invite banner was dismissed. */
+export const ON_THIS_DAY_INVITE_DISMISSED_KEY = "cinetrack.on-this-day-invite-dismissed-at";

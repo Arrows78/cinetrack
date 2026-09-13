@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 // Loaded only here, not from src/main.tsx (see that file's comment): Playfair
@@ -66,6 +66,7 @@ import {
   type SheetSide,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SectionNav } from "@/components/ui/section-nav";
 import { Textarea } from "@/components/ui/textarea";
 import { Tile } from "@/components/ui/tile";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -121,8 +122,6 @@ import {
 // This page intentionally documents the implementation in English so token,
 // prop and source-file names match the code exactly.
 
-const navSectionIds = navSections.map((section) => section.id);
-
 const sheetSideIcons: Record<SheetSide, typeof ArrowRight> = {
   left: ArrowLeft,
   right: ArrowRight,
@@ -140,34 +139,6 @@ const tintClasses: Record<(typeof tintScale)[number]["value"], string> = {
   "10": "bg-foreground/10",
   "20": "bg-foreground/20",
 };
-
-function useActiveSection(sectionIds: readonly string[]) {
-  const [activeSection, setActiveSection] = useState(sectionIds[0] ?? "");
-  const stableSectionIds = useMemo(() => [...sectionIds], [sectionIds]);
-
-  useEffect(() => {
-    const sections = stableSectionIds
-      .map((id) => document.getElementById(id))
-      .filter((section): section is HTMLElement => section !== null);
-
-    if (sections.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]?.target.id) setActiveSection(visible[0].target.id);
-      },
-      { rootMargin: "-18% 0px -72% 0px", threshold: [0, 1] }
-    );
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, [stableSectionIds]);
-
-  return activeSection;
-}
 
 function RuleTable({ columns, rows }: { columns: string[]; rows: { key: string; cells: React.ReactNode[] }[] }) {
   return (
@@ -215,7 +186,6 @@ export function DesignSystemPage() {
   const theme = preferences.data?.theme ?? "dark";
   const accent = preferences.data?.accentColor ?? "violet";
   const activePreset = COLOR_PRESETS[accent];
-  const activeSection = useActiveSection(navSectionIds);
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryGroup, setInventoryGroup] = useState("all");
   const [patternFilter, setPatternFilter] = useState<"all" | "movies" | "series">("all");
@@ -296,26 +266,7 @@ export function DesignSystemPage() {
         </div>
       </header>
 
-      <nav
-        className="sticky top-20 z-sticky -mx-4 flex gap-1 overflow-x-auto border-y border-border bg-background/90 px-4 py-2 backdrop-blur-md lg:top-0 lg:-mx-6 lg:px-6"
-        aria-label="Design system sections"
-      >
-        {navSections.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            aria-current={activeSection === item.id ? "location" : undefined}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              activeSection === item.id
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-            )}
-          >
-            {item.label}
-          </a>
-        ))}
-      </nav>
+      <SectionNav items={navSections} ariaLabel="Design system sections" />
 
       <Section
         id="overview"
