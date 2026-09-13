@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { TodayHub } from "../today-hub";
 import type * as NeedsAttentionModule from "../needs-attention-section";
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
+}));
 
 const trackedSeriesMock = vi.fn();
 vi.mock("@/features/progress/use-progress", () => ({
@@ -116,8 +121,27 @@ describe("TodayHub", () => {
     });
   });
 
-  it("renders nothing when every card would be empty", () => {
+  it("nudges a brand new user to add their first title when library and tracked series are both empty", () => {
+    render(<TodayHub index={1} />);
+
+    expect(screen.getByText(i18n.t("home.todayHubEmptyTitle"))).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: i18n.t("home.todayHubEmptyCta") })).toHaveAttribute("href", "/search");
+  });
+
+  it("renders nothing when an existing user is simply caught up, rather than the new-user nudge", () => {
+    libraryMock.mockReturnValue({ data: [{ status: "completed" }] });
+
     const { container } = render(<TodayHub index={1} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("does not show the new-user nudge while library/tracked-series reads are still pending", () => {
+    libraryMock.mockReturnValue({ data: undefined, isPending: true });
+    trackedSeriesMock.mockReturnValue({ data: undefined, isPending: true });
+
+    const { container } = render(<TodayHub index={1} />);
+
     expect(container).toBeEmptyDOMElement();
   });
 

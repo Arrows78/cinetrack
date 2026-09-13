@@ -1,6 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { Compass } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
+import { EmptyState } from "@/components/states/empty-state";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { WatchNextSection } from "@/components/media/tracking/watch-next-section";
@@ -107,10 +111,39 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
     backlog.length > 0 ||
     stale.length > 0;
 
+  // Distinguishes "brand new install, nothing tracked yet" from "caught up
+  // with everything" — an experienced user with an empty backlog shouldn't
+  // get told to go add a first show, so this only fires once the library
+  // and tracked-series reads have actually settled, not while still loading.
+  const isNewUser =
+    !libraryQuery.isPending &&
+    !trackedSeriesQuery.isPending &&
+    (libraryQuery.data ?? []).length === 0 &&
+    trackedSeries.length === 0;
+
   // A total secondary-fetch outage would otherwise empty every card and
   // take the whole hub down with it, wordlessly — keep it mounted so the
   // note below is actually reachable.
-  if (!hasHubContent && !hasPartialFailure) return null;
+  if (!hasHubContent && !hasPartialFailure) {
+    if (!isNewUser) return null;
+    return (
+      <section id={id} className="scroll-mt-28">
+        <SectionHeader title={t("home.todayHubTitle")} subtitle={t("home.todayHubSubtitle")} index={index} />
+        <Panel tone="highlight">
+          <EmptyState
+            icon={Compass}
+            title={t("home.todayHubEmptyTitle")}
+            description={t("home.todayHubEmptyDesc")}
+            action={
+              <Button asChild>
+                <Link to="/search">{t("home.todayHubEmptyCta")}</Link>
+              </Button>
+            }
+          />
+        </Panel>
+      </section>
+    );
+  }
 
   return (
     <section id={id} className="scroll-mt-28">

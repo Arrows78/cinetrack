@@ -1,8 +1,19 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, BarChart3, CalendarDays, CircleCheck, History, LibraryBig, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  CircleCheck,
+  History,
+  LibraryBig,
+  Sparkles,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { Panel } from "@/components/ui/panel";
 import { SectionNav } from "@/components/ui/section-nav";
 import { Tile } from "@/components/ui/tile";
@@ -90,6 +101,7 @@ export function HomePage() {
 function HomePageContent() {
   const { t } = useTranslation();
   const [dismissedTokenPrompt, setDismissedTokenPrompt] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
   // The vault's own live "configured" flag, not a build-time env check —
   // folding isTauriApp() into this check previously made it permanently
   // true in the real desktop app regardless of whether a token was
@@ -241,7 +253,11 @@ function HomePageContent() {
     return <RemoteErrorState error={homeQuery.error} onRetry={() => void homeQuery.refetch()} />;
   }
 
-  const hero = homeQuery.data?.trendingMovies[0];
+  // Only the first handful of trending movies get a hero slot — this is a
+  // quick rotating spotlight, not a full browse of the trending list (that's
+  // what /search and the catalogue rails below are for).
+  const heroMovies = homeQuery.data?.trendingMovies.slice(0, 5) ?? [];
+  const hero = heroMovies[heroIndex] ?? heroMovies[0];
 
   let sectionIndex = 0;
 
@@ -307,6 +323,45 @@ function HomePageContent() {
                 <Link to="/search">{t("home.exploreCatalog")}</Link>
               </Button>
             </div>
+
+            {heroMovies.length > 1 ? (
+              <div className="mt-6 flex items-center gap-3 animate-in delay-700">
+                <IconTooltip label={t("home.heroPrevious")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setHeroIndex((index) => (index - 1 + heroMovies.length) % heroMovies.length)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
+                <div className="flex items-center gap-1.5" role="group" aria-label={t("home.heroPicker")}>
+                  {heroMovies.map((movie, index) => (
+                    <button
+                      key={movie.id}
+                      type="button"
+                      aria-label={t("home.heroGoTo", { index: index + 1, count: heroMovies.length })}
+                      aria-current={index === heroIndex ? "true" : undefined}
+                      onClick={() => setHeroIndex(index)}
+                      className={`h-2 rounded-full transition-all duration-base ${
+                        index === heroIndex ? "w-6 bg-primary" : "w-2 bg-foreground/20 hover:bg-foreground/35"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <IconTooltip label={t("home.heroNext")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setHeroIndex((index) => (index + 1) % heroMovies.length)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
+              </div>
+            ) : null}
           </div>
         </section>
       ) : null}
