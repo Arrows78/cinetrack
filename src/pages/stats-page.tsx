@@ -470,6 +470,11 @@ export function StatsPage() {
                     <ChevronLeft className="size-4" />
                   </Button>
                 </IconTooltip>
+                {/* The year itself, not just the chevrons either side of it —
+                    a bare "‹ ›" pair read as barely a control at all. */}
+                <span className="min-w-[3ch] text-center font-display text-body-sm font-bold tabular-nums">
+                  {selectedYear}
+                </span>
                 <IconTooltip label={t("stats.nextYear")}>
                   <Button
                     type="button"

@@ -472,5 +472,16 @@ describe("HistoryPage", () => {
       const link = screen.getByRole("link", { name: "The Wire" });
       expect(link).toHaveAttribute("href", "/series/77");
     });
+
+    it("shows each tracked series' own last-activity date, distinct from the episode count", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [makeTrackedSeries({ seriesId: 77, title: "The Wire", updatedAt: new Date().toISOString() })],
+        })
+      );
+      renderPage();
+
+      expect(screen.getByText(/^Last activity: /)).toBeInTheDocument();
+    });
   });
 });

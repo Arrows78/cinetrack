@@ -242,6 +242,7 @@
     "noTrackedSeries": "No tracked series",
     "noTrackedSeriesDesc": "Your progress appears here as soon as you check an episode.",
     "episodesWatched": "episodes watched",
+    "lastActivity": "Last activity: {{date}}",
     "actions": {
       "movieWatched": "Movie watched",
       "movieUnwatched": "Movie unwatched",

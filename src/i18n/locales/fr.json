@@ -242,6 +242,7 @@
     "noTrackedSeries": "Aucune série suivie",
     "noTrackedSeriesDesc": "La progression apparaîtra dès qu'un épisode sera coché.",
     "episodesWatched": "épisodes vus",
+    "lastActivity": "Dernière activité : {{date}}",
     "actions": {
       "movieWatched": "Film vu",
       "movieUnwatched": "Film dé-vu",

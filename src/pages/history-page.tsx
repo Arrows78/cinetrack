@@ -333,6 +333,12 @@ export function HistoryPage() {
                         <p className="mt-0.5 text-caption text-muted-foreground">
                           {item.watchedEpisodes}/{displayTotal} {t("history.episodesWatched")}
                         </p>
+                        {/* Distinguishes this from the Today Hub's own
+                            continue-watching card, which has no timestamp of
+                            its own. */}
+                        <p className="mt-0.5 text-caption text-muted-foreground/70">
+                          {t("history.lastActivity", { date: formatRelativeDate(item.updatedAt) })}
+                        </p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="font-display text-heading-lg font-bold text-primary leading-none">
