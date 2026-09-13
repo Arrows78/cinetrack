@@ -116,7 +116,10 @@
     "sizeMB": "{{value}} MB",
     "sizeGB": "{{value}} GB",
     "delete": "Delete",
-    "remove": "Remove"
+    "remove": "Remove",
+    "pullToRefresh": "Pull to refresh",
+    "releaseToRefresh": "Release to refresh",
+    "refreshing": "Refreshing…"
   },
   "theme": {
     "dark": "Dark",

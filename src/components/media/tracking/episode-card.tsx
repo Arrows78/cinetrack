@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Calendar, Check, Clock4, EyeOff, ImageOff, NotebookPen } from "lucide-react";
+import { Calendar, Check, Clock4, EyeOff, ImageOff, NotebookPen, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
+import { motion, useMotionValue, useTransform } from "framer-motion";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
@@ -9,10 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { hasAired } from "@/features/progress/use-progress";
+import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
 import { cn } from "@/shared/lib/cn";
 import { MEDIA_POSTER_OVERLAY_CLASSNAME } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
+
+// Drag distance (px) past which onDragEnd treats the swipe as a deliberate
+// mark-seen/unseen rather than an accidental nudge while scrolling the list.
+const SWIPE_TOGGLE_THRESHOLD_PX = 72;
 export function EpisodeCard({
   episode,
   onToggleSeen,
@@ -40,6 +46,17 @@ export function EpisodeCard({
   // must stay toggleable back off.
   const isUnreleased = !watched && !hasAired(episode);
   const stillUrl = buildTmdbImageUrl(episode.stillPath, "w342");
+
+  // Swipe-to-toggle is touch-only (see useIsTouchDevice) — a mouse/trackpad
+  // user already has the SeenToggleButton below, and a drag gesture on
+  // those inputs would just fight text selection/scrolling for no gain.
+  const isTouch = useIsTouchDevice();
+  const swipeEnabled = isTouch && !disabled && !isUnreleased;
+  const dragX = useMotionValue(0);
+  const revealOpacity = useTransform(dragX, [-SWIPE_TOGGLE_THRESHOLD_PX, 0, SWIPE_TOGGLE_THRESHOLD_PX], [1, 0, 1]);
+  const handleSwipeEnd = () => {
+    if (Math.abs(dragX.get()) >= SWIPE_TOGGLE_THRESHOLD_PX) onToggleSeen();
+  };
 
   const detailsBlock = (
     <>
@@ -106,11 +123,16 @@ export function EpisodeCard({
     </>
   );
 
-  return (
-    <div
+  const row = (
+    <motion.div
+      drag={swipeEnabled ? "x" : false}
+      style={swipeEnabled ? { x: dragX } : undefined}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.5}
+      onDragEnd={swipeEnabled ? handleSwipeEnd : undefined}
       className={cn(
         "group flex items-center gap-3 rounded-2xl p-3 transition",
-        watched ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.04]"
+        swipeEnabled ? "bg-card" : watched ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.04]"
       )}
     >
       {seriesId !== undefined && seasonNumber !== undefined ? (
@@ -159,6 +181,28 @@ export function EpisodeCard({
           onToggleSeen(note || undefined);
         }}
       />
+    </motion.div>
+  );
+
+  if (!swipeEnabled) return row;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      {/* Revealed behind `row` as it's dragged away — opacity ramps with
+          drag distance rather than snapping in, so the gesture reads as
+          continuous instead of a hard toggle at the threshold. */}
+      <motion.div
+        aria-hidden="true"
+        style={{ opacity: revealOpacity }}
+        className={cn(
+          "absolute inset-0 flex items-center justify-center gap-2 rounded-2xl text-body-sm font-semibold",
+          watched ? "bg-muted text-muted-foreground" : "bg-success text-success-foreground"
+        )}
+      >
+        {watched ? <X className="size-5" /> : <Check className="size-5" />}
+        {watched ? t("media.markUnseen") : t("media.markSeen")}
+      </motion.div>
+      {row}
     </div>
   );
 }

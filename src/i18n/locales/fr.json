@@ -116,7 +116,10 @@
     "sizeMB": "{{value}} Mo",
     "sizeGB": "{{value}} Go",
     "delete": "Supprimer",
-    "remove": "Retirer"
+    "remove": "Retirer",
+    "pullToRefresh": "Tirer pour actualiser",
+    "releaseToRefresh": "Relâcher pour actualiser",
+    "refreshing": "Actualisation…"
   },
   "theme": {
     "dark": "Sombre",

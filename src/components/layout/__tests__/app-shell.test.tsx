@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { AppShell } from "../app-shell";
 
@@ -34,6 +35,10 @@ vi.mock("@/components/desktop/command-palette", () => ({
 
 vi.mock("@/components/layout/mobile-tab-bar", () => ({
   MobileTabBar: () => <div data-testid="mobile-tab-bar" />,
+}));
+
+vi.mock("@/components/layout/pull-to-refresh", () => ({
+  PullToRefresh: ({ children }: PropsWithChildren) => <>{children}</>,
 }));
 
 vi.mock("@/components/layout/profile-switcher", () => ({

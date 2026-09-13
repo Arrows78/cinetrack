@@ -44,3 +44,25 @@ if (typeof window !== "undefined" && !window.localStorage) {
     configurable: true,
   });
 }
+
+// jsdom doesn't implement matchMedia at all — anything that reads it
+// (useIsTouchDevice, prefers-reduced-motion checks) would otherwise throw
+// under test. Defaults to "no match" (mouse/keyboard, no reduced motion),
+// matching a typical CI/dev environment; tests that need a specific query
+// to match override this per-call.
+if (typeof window !== "undefined" && !window.matchMedia) {
+  Object.defineProperty(window, "matchMedia", {
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }),
+    writable: true,
+    configurable: true,
+  });
+}

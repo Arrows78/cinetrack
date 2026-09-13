@@ -9,6 +9,7 @@ import { CommandPalette } from "@/components/desktop/command-palette";
 import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
+import { PullToRefresh } from "@/components/layout/pull-to-refresh";
 import { usePreferences } from "@/features/preferences/use-preferences";
 
 // `router.history.back()` has nowhere sensible to go when this window has no
@@ -122,28 +123,33 @@ export function AppShell() {
               inset) below lg; above it the tab bar doesn't render, so pb-10
               matches the desktop back-button/content rhythm instead. */}
           <main id="main-content" className="pb-24 lg:pb-10">
-            {/* No `mode="wait"`: it holds the incoming page unmounted until
-                the outgoing one's exit animation resolves, and a lazy-loaded
-                route component (most pages here are `lazyRouteComponent`) can
-                leave that exit promise unresolved on a fast series-to-series
-                navigation — the new page then never mounts, leaving the
-                content area permanently blank while the shell around it
-                (sidebar, back button) stays visible, since neither is inside
-                this AnimatePresence. Default mode lets the two cross-fade
-                instead of strictly sequencing them — barely visible at 180ms
-                — trading a fixable near-invisible overlap for an unfixable
-                stuck page. */}
-            <AnimatePresence>
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
+            {/* Touch-only (see PullToRefresh/useIsTouchDevice) — refetches
+                whatever's mounted underneath rather than anything page-
+                specific, so every route gets it for free. */}
+            <PullToRefresh>
+              {/* No `mode="wait"`: it holds the incoming page unmounted until
+                  the outgoing one's exit animation resolves, and a lazy-loaded
+                  route component (most pages here are `lazyRouteComponent`) can
+                  leave that exit promise unresolved on a fast series-to-series
+                  navigation — the new page then never mounts, leaving the
+                  content area permanently blank while the shell around it
+                  (sidebar, back button) stays visible, since neither is inside
+                  this AnimatePresence. Default mode lets the two cross-fade
+                  instead of strictly sequencing them — barely visible at 180ms
+                  — trading a fixable near-invisible overlap for an unfixable
+                  stuck page. */}
+              <AnimatePresence>
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <Outlet />
+                </motion.div>
+              </AnimatePresence>
+            </PullToRefresh>
           </main>
         </div>
       </div>
