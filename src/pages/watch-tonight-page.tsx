@@ -10,10 +10,12 @@ import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { MediaGrid } from "@/components/media/primitives/media-grid";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
@@ -35,6 +37,14 @@ type WatchTonightMedia = (Movie | Series) & { watchTonightReason: WatchTonightRe
 const DEFAULT_RUNTIME = "120";
 
 const MY_SERVICES_VALUE = "mine";
+
+// Quick presets for the duration field — the raw number input stays for
+// precise values, these just save the common cases a click instead of typing.
+const DURATION_PRESETS = [
+  { minutes: 30, labelKey: "watchTonight.durationPreset30" },
+  { minutes: 60, labelKey: "watchTonight.durationPreset60" },
+  { minutes: 90, labelKey: "watchTonight.durationPreset90" },
+] as const;
 
 // Two separate <Link> branches (rather than one with a conditional `to`) so
 // each Link's `to`/`params` pair stays a matched literal — same pattern
@@ -110,7 +120,10 @@ export function WatchTonightPage() {
   // pin the exact same pick forever.
   const routeSearch = useRouteSearch({ from: "/watch-tonight" });
   const genreId = routeSearch.genreId ?? "";
-  const provider = routeSearch.provider ?? "";
+  // Comma-separated provider ids (plus the "mine" pseudo-value) rather than a
+  // schema array — keeps the route's validateSearch untouched (still a plain
+  // string) while letting several platforms be selected at once.
+  const selectedProviderKeys = routeSearch.provider ? routeSearch.provider.split(",").filter(Boolean) : [];
   const originCountry = routeSearch.originCountry ?? "";
   // runtime=0 in the URL is the explicit "no cap" the duration chip's
   // remove action writes; an absent param is the untouched 120 default.
@@ -127,8 +140,17 @@ export function WatchTonightPage() {
 
   const setGenreId = (value: string) =>
     void navigate({ search: (prev) => ({ ...prev, genreId: value || undefined }), replace: true });
-  const setProvider = (value: string) =>
-    void navigate({ search: (prev) => ({ ...prev, provider: value || undefined }), replace: true });
+  const setProviderKeys = (keys: string[]) =>
+    void navigate({
+      search: (prev) => ({ ...prev, provider: keys.length ? keys.join(",") : undefined }),
+      replace: true,
+    });
+  const toggleProviderKey = (key: string) =>
+    setProviderKeys(
+      selectedProviderKeys.includes(key)
+        ? selectedProviderKeys.filter((existing) => existing !== key)
+        : [...selectedProviderKeys, key]
+    );
   const setOriginCountry = (value: string) =>
     void navigate({ search: (prev) => ({ ...prev, originCountry: value || undefined }), replace: true });
 
@@ -154,10 +176,19 @@ export function WatchTonightPage() {
   }, [debouncedRuntime, navigate]);
 
   const [seed, setSeed] = useState(0);
+  const [platformSheetOpen, setPlatformSheetOpen] = useState(false);
   const selectedGenre = genres.find((genre) => String(genre.id) === genreId);
   const preferredProviderIds = preferences.data?.preferredProviderIds ?? [];
-  const resolvedProvider: number | number[] | undefined =
-    provider === MY_SERVICES_VALUE ? preferredProviderIds : provider ? Number(provider) : undefined;
+  const resolvedProvider: number | number[] | undefined = (() => {
+    if (!selectedProviderKeys.length) return undefined;
+    const ids = new Set<number>();
+    for (const key of selectedProviderKeys) {
+      if (key === MY_SERVICES_VALUE) preferredProviderIds.forEach((id) => ids.add(id));
+      else ids.add(Number(key));
+    }
+    if (!ids.size) return undefined;
+    return ids.size === 1 ? [...ids][0] : [...ids];
+  })();
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
 
   const query = useWatchTonightPicks(
@@ -184,10 +215,19 @@ export function WatchTonightPage() {
   const alternates = combined.filter((_item, index) => index !== heroIndex);
 
   const selectedCountry = ORIGIN_COUNTRIES.find((country) => country.code === originCountry);
-  const selectedProviderLabel =
-    provider === MY_SERVICES_VALUE
-      ? t("watchTonight.myServices")
-      : PLATFORMS.find((item) => String(item.id) === provider)?.label;
+  const selectedProviderLabels = selectedProviderKeys
+    .map((key) =>
+      key === MY_SERVICES_VALUE
+        ? t("watchTonight.myServices")
+        : PLATFORMS.find((item) => String(item.id) === key)?.label
+    )
+    .filter((label): label is string => Boolean(label));
+  const platformButtonLabel =
+    selectedProviderLabels.length === 0
+      ? t("watchTonight.allPlatforms")
+      : selectedProviderLabels.length === 1
+        ? selectedProviderLabels[0]
+        : t("watchTonight.platformsSelectedCount", { count: selectedProviderLabels.length });
 
   // Only the two filters with an actual "no-op" value get a chip: genre and
   // provider are both already unselected by an empty string, but duration
@@ -201,11 +241,11 @@ export function WatchTonightPage() {
           onRemove: () => setGenreId(""),
         }
       : null,
-    selectedProviderLabel
+    selectedProviderLabels.length
       ? {
           key: "provider",
-          label: t("filters.chips.provider", { value: selectedProviderLabel }),
-          onRemove: () => setProvider(""),
+          label: t("filters.chips.provider", { value: selectedProviderLabels.join(", ") }),
+          onRemove: () => setProviderKeys([]),
         }
       : null,
     // Shown for the 120-minute default too, not just an edited value: the
@@ -231,7 +271,7 @@ export function WatchTonightPage() {
   ].filter((chip): chip is ActiveFilterChip => chip !== null);
   const clearAllFilters = () => {
     setGenreId("");
-    setProvider("");
+    setProviderKeys([]);
     // Clears the cap rather than restoring 120 — "clear all" has to agree
     // with what removing the duration chip on its own does.
     setRuntime("");
@@ -261,29 +301,64 @@ export function WatchTonightPage() {
         </FormField>
         <FormField label={t("watchTonight.platform")}>
           {() => (
-            <Select value={provider} onChange={(e) => setProvider(e.target.value)}>
-              <option value="">{t("watchTonight.allPlatforms")}</option>
-              {preferredProviderIds.length > 0 ? (
-                <option value={MY_SERVICES_VALUE}>{t("watchTonight.myServices")}</option>
-              ) : null}
-              {PLATFORMS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
+            <Sheet open={platformSheetOpen} onOpenChange={setPlatformSheetOpen}>
+              <SheetTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="justify-between">
+                  {platformButtonLabel}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" size="sm" closeLabel={t("common.close")}>
+                <SheetTitle>{t("watchTonight.platform")}</SheetTitle>
+                <SheetDescription>{t("watchTonight.platformsSheetDescription")}</SheetDescription>
+                <div className="mt-4 space-y-3 overflow-y-auto">
+                  {preferredProviderIds.length > 0 ? (
+                    <label className="flex items-center gap-2 text-body-sm">
+                      <Checkbox
+                        checked={selectedProviderKeys.includes(MY_SERVICES_VALUE)}
+                        onChange={() => toggleProviderKey(MY_SERVICES_VALUE)}
+                      />
+                      {t("watchTonight.myServices")}
+                    </label>
+                  ) : null}
+                  {PLATFORMS.map((platform) => (
+                    <label key={platform.id} className="flex items-center gap-2 text-body-sm">
+                      <Checkbox
+                        checked={selectedProviderKeys.includes(String(platform.id))}
+                        onChange={() => toggleProviderKey(String(platform.id))}
+                      />
+                      {platform.label}
+                    </label>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
           )}
         </FormField>
         <FormField label={t("watchTonight.maxDuration")}>
           {() => (
-            <Input
-              size="sm"
-              type="number"
-              min="30"
-              step="15"
-              value={runtime}
-              onChange={(e) => setRuntime(e.target.value)}
-            />
+            <div className="flex flex-col gap-2">
+              <Input
+                size="sm"
+                type="number"
+                min="30"
+                step="15"
+                value={runtime}
+                onChange={(e) => setRuntime(e.target.value)}
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {DURATION_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.minutes}
+                    type="button"
+                    variant={runtime === String(preset.minutes) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRuntime(String(preset.minutes))}
+                  >
+                    {t(preset.labelKey)}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
         </FormField>
         <FormField label={t("watchTonight.originCountry")}>

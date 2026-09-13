@@ -281,8 +281,8 @@ describe("WatchTonightPage", () => {
 
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
 
-    const platformSelect = screen.getByLabelText("Platform");
-    fireEvent.change(platformSelect, { target: { value: "8" } }); // Netflix
+    fireEvent.click(screen.getByRole("button", { name: "Platform" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Netflix" }));
 
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
     expect(pickMock).toHaveBeenLastCalledWith({
@@ -293,6 +293,22 @@ describe("WatchTonightPage", () => {
       hideWatched: false,
       originCountry: undefined,
     });
+  });
+
+  it("shows several selected platforms as a count, and fetches every one of them", async () => {
+    renderPage();
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Platform" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Netflix" }));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Netflix" })).toBeChecked());
+    fireEvent.click(screen.getByRole("checkbox", { name: "Prime Video" }));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Prime Video" })).toBeChecked());
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(3));
+    expect(pickMock).toHaveBeenLastCalledWith(expect.objectContaining({ provider: [8, 119] }));
+    expect(screen.getByRole("button", { name: "Platform" })).toHaveTextContent("2 platforms");
   });
 
   it("re-fetches with the selected origin country when the origin filter changes", async () => {
@@ -318,7 +334,8 @@ describe("WatchTonightPage", () => {
     renderPage();
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
 
-    expect(screen.queryByRole("option", { name: "My services" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Platform" }));
+    expect(screen.queryByRole("checkbox", { name: "My services" })).not.toBeInTheDocument();
   });
 
   it("re-fetches with every preferred provider id when 'My services' is selected", async () => {
@@ -327,9 +344,9 @@ describe("WatchTonightPage", () => {
 
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
 
-    const platformSelect = screen.getByLabelText("Platform");
-    expect(screen.getByRole("option", { name: "My services" })).toBeInTheDocument();
-    fireEvent.change(platformSelect, { target: { value: "mine" } });
+    fireEvent.click(screen.getByRole("button", { name: "Platform" }));
+    expect(screen.getByRole("checkbox", { name: "My services" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "My services" }));
 
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
     expect(pickMock).toHaveBeenLastCalledWith({
@@ -359,6 +376,17 @@ describe("WatchTonightPage", () => {
       hideWatched: false,
       originCountry: undefined,
     });
+  });
+
+  it("sets the runtime from a quick duration preset button", async () => {
+    renderPage();
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("button", { name: "< 30 min" }));
+
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(2));
+    expect(pickMock).toHaveBeenLastCalledWith(expect.objectContaining({ maxRuntime: 30 }));
+    expect(screen.getByLabelText("Max duration")).toHaveValue(30);
   });
 
   it("passes the persistent hideWatchedInDiscovery preference through to pick(), reflected in the toggle's pressed state", async () => {
@@ -394,7 +422,9 @@ describe("WatchTonightPage", () => {
     fireEvent.change(screen.getByLabelText("Genre"), { target: { value: "28" } });
     await waitFor(() => expect(getRouterSearch()).toContain("genreId=28"));
 
-    fireEvent.change(screen.getByLabelText("Platform"), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: "Platform" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Netflix" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     await waitFor(() => expect(getRouterSearch()).toContain("provider=8"));
 
     fireEvent.change(screen.getByLabelText("Origin"), { target: { value: "KR" } });
@@ -417,6 +447,7 @@ describe("WatchTonightPage", () => {
       originCountry: "KR",
     });
     expect(screen.getByLabelText("Max duration")).toHaveValue(45);
+    expect(screen.getByRole("button", { name: "Platform" })).toHaveTextContent("Netflix");
   });
 
   it("debounces the runtime filter's push to the URL, without delaying the pick() re-fetch itself", async () => {

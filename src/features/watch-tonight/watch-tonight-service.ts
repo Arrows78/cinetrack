@@ -30,7 +30,7 @@ export interface WatchTonightPicks {
   series: Array<Series & { watchTonightReason: WatchTonightReason | null }>;
 }
 
-const PICKS_PER_TYPE = 4;
+const PICKS_PER_TYPE = 8;
 const PLANNED_CANDIDATE_CAP = 20;
 // How many of the profile's most-recently-completed titles feed the genre
 // affinity signal below — same recency-biased pool size and rationale as

@@ -331,7 +331,7 @@ describe("watchTonightService", () => {
     expect(result.series.map((item) => item.id)).not.toContain(3);
   });
 
-  it("caps picks at PICKS_PER_TYPE (4) when more planned candidates match than that, for both movies and series", async () => {
+  it("caps picks at PICKS_PER_TYPE (8) when more planned candidates match than that, for both movies and series", async () => {
     seedLibrary([
       { mediaId: 60, mediaType: "movie", status: "planned" },
       { mediaId: 61, mediaType: "movie", status: "planned" },
@@ -339,19 +339,25 @@ describe("watchTonightService", () => {
       { mediaId: 63, mediaType: "movie", status: "planned" },
       { mediaId: 64, mediaType: "movie", status: "planned" },
       { mediaId: 65, mediaType: "movie", status: "planned" },
+      { mediaId: 66, mediaType: "movie", status: "planned" },
+      { mediaId: 67, mediaType: "movie", status: "planned" },
+      { mediaId: 68, mediaType: "movie", status: "planned" },
       { mediaId: 70, mediaType: "series", status: "planned" },
       { mediaId: 71, mediaType: "series", status: "planned" },
       { mediaId: 72, mediaType: "series", status: "planned" },
       { mediaId: 73, mediaType: "series", status: "planned" },
       { mediaId: 74, mediaType: "series", status: "planned" },
+      { mediaId: 75, mediaType: "series", status: "planned" },
+      { mediaId: 76, mediaType: "series", status: "planned" },
+      { mediaId: 77, mediaType: "series", status: "planned" },
     ]);
     mocks.getMovieDetails.mockImplementation((id: number) => Promise.resolve(movie(id)));
     mocks.getSeriesDetails.mockImplementation((id: number) => Promise.resolve(series(id)));
 
     const result = await watchTonightService.pick({});
 
-    expect(result.movies).toHaveLength(4);
-    expect(result.series).toHaveLength(4);
+    expect(result.movies).toHaveLength(8);
+    expect(result.series).toHaveLength(8);
     expect(mocks.discoverMovies).not.toHaveBeenCalled();
     expect(mocks.discoverSeries).not.toHaveBeenCalled();
   });
