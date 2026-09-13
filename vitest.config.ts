@@ -222,13 +222,6 @@ export default defineConfig({
         // callbacks here.
         "src/pages/season-page.tsx": { statements: 93, branches: 93, functions: 100, lines: 93 },
         "src/pages/movie-detail-page.tsx": { statements: 100, branches: 100, functions: 100, lines: 100 },
-        "src/pages/upcoming-page.tsx": { statements: 100, branches: 90, functions: 100, lines: 100 },
-        "src/components/media/tracking/upcoming-entry-row.tsx": {
-          statements: 100,
-          branches: 75,
-          functions: 100,
-          lines: 100,
-        },
         "src/components/stats/export-preview-dialog.tsx": {
           statements: 100,
           branches: 100,

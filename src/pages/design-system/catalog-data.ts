@@ -1079,7 +1079,7 @@ export const componentInventory = [
     "Media",
     "feature",
     "reference",
-    "Shared release/episode/availability row for TrackingList and the Today Hub's dashboard rails."
+    "Shared release/episode/availability row for TrackingList and the Today Hub's dashboard rails — optionally shows an Aired badge and, for episodes, an inline New/Aired badge plus quick-check (showAiredStatus)."
   ),
   component(
     "TrackingList",
@@ -1088,14 +1088,6 @@ export const componentInventory = [
     "feature",
     "live",
     "Groups upcoming releases, episodes and availability alerts, shared by /tracking and the /movies and /series 'Upcoming' tab."
-  ),
-  component(
-    "UpcomingEntryRow",
-    "components/media/tracking/upcoming-entry-row.tsx",
-    "Media",
-    "feature",
-    "live",
-    "TV-Time-style row for the /upcoming page — a countdown badge before an episode airs, a New/Aired badge plus inline quick-check once it has."
   ),
   component(
     "AddWatchNoteDialog",

@@ -213,7 +213,7 @@ export function TrackingList({
               </div>
               <div className="mt-3 grid gap-2">
                 {entries.map((entry) => (
-                  <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} />
+                  <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} showAiredStatus />
                 ))}
               </div>
             </Panel>
@@ -222,7 +222,13 @@ export function TrackingList({
             <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
               <div className="grid gap-2">
                 {sortedByTitle.map((entry) => (
-                  <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} showCountdown />
+                  <TrackingEntryRow
+                    key={entry.id}
+                    entry={entry}
+                    showScopeBadge={showScopeBadge}
+                    showCountdown
+                    showAiredStatus
+                  />
                 ))}
               </div>
             </Panel>

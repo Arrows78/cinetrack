@@ -98,11 +98,6 @@ const trackingRoute = createRoute({
   }),
   component: lazyRouteComponent(() => import("@/pages/tracking-page"), "TrackingPage"),
 });
-const upcomingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/upcoming",
-  component: lazyRouteComponent(() => import("@/pages/upcoming-page"), "UpcomingPage"),
-});
 const peopleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/people",
@@ -169,7 +164,6 @@ const routeTree = rootRoute.addChildren([
   libraryRoute,
   historyRoute,
   trackingRoute,
-  upcomingRoute,
   peopleRoute,
   personDetailRoute,
   watchTonightRoute,

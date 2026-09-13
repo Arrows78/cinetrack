@@ -4,11 +4,14 @@ import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
 import { TrackingList } from "@/components/media/tracking/tracking-list";
-import type { TrackingEntry } from "@/types/media";
+import type { Episode, EpisodeProgress, TrackingEntry } from "@/types/media";
 
 const useTrackingMock = vi.fn();
 const useAvailabilityAlertsMock = vi.fn();
 const removeMock = vi.fn();
+const useSeasonDetailsMock = vi.fn();
+const useEpisodeProgressMock = vi.fn();
+const toggleEpisodeSeenMock = vi.fn();
 
 vi.mock("@/features/tracking/use-tracking", () => ({
   useTracking: () => useTrackingMock(),
@@ -16,6 +19,16 @@ vi.mock("@/features/tracking/use-tracking", () => ({
 
 vi.mock("@/features/availability/use-availability-alerts", () => ({
   useAvailabilityAlerts: () => useAvailabilityAlertsMock(),
+}));
+
+// Backs TrackingEntryRow's EpisodeAiredStatus (showAiredStatus, always on for
+// TrackingList) — defaults to "season still loading" so every existing test
+// below that doesn't care about aired-episode behavior stays unaffected.
+vi.mock("@/features/media/use-media", () => ({
+  useSeasonDetails: () => useSeasonDetailsMock(),
+}));
+vi.mock("@/features/progress/use-progress", () => ({
+  useEpisodeProgress: () => useEpisodeProgressMock(),
 }));
 
 // Same pattern as design-system-page.test.tsx: no RouterProvider exists in
@@ -136,6 +149,13 @@ describe("TrackingList", () => {
     removeMock.mockReset().mockResolvedValue(undefined);
     mockTracking();
     mockAlerts();
+    useSeasonDetailsMock.mockReset().mockReturnValue({ data: undefined });
+    useEpisodeProgressMock.mockReset().mockReturnValue({
+      data: [] as EpisodeProgress[],
+      isSaving: false,
+      toggleEpisodeSeen: toggleEpisodeSeenMock,
+    });
+    toggleEpisodeSeenMock.mockReset();
   });
 
   afterEach(() => {
@@ -391,5 +411,88 @@ describe("TrackingList", () => {
       within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "My titles" })
     );
     expect(onScopeFilterChange).toHaveBeenCalledExactlyOnceWith("mine");
+  });
+
+  // These absorb what used to be the standalone /upcoming page's own
+  // behavior (UpcomingEntryRow) — merged in via showAiredStatus instead of
+  // duplicating TrackingList's data/layout in a second page.
+  describe("aired status (merged from the former standalone Upcoming page)", () => {
+    const airedRelease = makeEntry({
+      id: "aired-release",
+      mediaId: 50,
+      mediaType: "movie",
+      title: "Past Movie",
+      type: "release",
+      scope: "mine",
+      date: "2020-01-01",
+    });
+
+    const airedEpisode = makeEntry({
+      id: "aired-episode",
+      mediaId: 60,
+      mediaType: "series",
+      title: "Aired Series",
+      type: "episode",
+      scope: "mine",
+      date: "2020-01-01",
+      seasonNumber: 1,
+      episodeNumber: 1,
+    });
+
+    function episodeFixture(overrides: Partial<Episode> = {}): Episode {
+      return { id: 700, seasonNumber: 1, episodeNumber: 1, title: "Pilot", overview: "", ...overrides };
+    }
+
+    it("shows an Aired badge instead of a countdown for a past release", () => {
+      mockTracking({ data: [airedRelease] });
+      render(<TrackingList />);
+
+      expect(screen.getByText("Past Movie")).toBeInTheDocument();
+      expect(screen.getByText("Aired")).toBeInTheDocument();
+    });
+
+    it("shows a New badge and an unwatched quick-check for an aired, unwatched episode", () => {
+      useSeasonDetailsMock.mockReturnValue({ data: { episodes: [episodeFixture()] } });
+      mockTracking({ data: [airedEpisode] });
+      render(<TrackingList />);
+
+      expect(screen.getByText("New")).toBeInTheDocument();
+      const toggle = screen.getByRole("button", { name: "Mark watched" });
+      expect(toggle).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("shows an Aired badge and a checked quick-check for an aired, watched episode, and toggling calls through", () => {
+      useSeasonDetailsMock.mockReturnValue({ data: { episodes: [episodeFixture()] } });
+      useEpisodeProgressMock.mockReturnValue({
+        data: [{ episodeId: 700 } as EpisodeProgress],
+        isSaving: false,
+        toggleEpisodeSeen: toggleEpisodeSeenMock,
+      });
+      mockTracking({ data: [airedEpisode] });
+      render(<TrackingList />);
+
+      const toggle = screen.getByRole("button", { name: "Mark unwatched" });
+      expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+      fireEvent.click(toggle);
+      expect(toggleEpisodeSeenMock).toHaveBeenCalledWith({
+        series: { id: 60, mediaType: "series", title: "Aired Series", overview: "", genres: [], cast: [] },
+        episode: episodeFixture(),
+        watched: false,
+      });
+    });
+
+    it("shows a plain countdown badge, no Aired/New badge, for an episode still to come", () => {
+      mockTracking({
+        data: [makeEntry({ ...airedEpisode, id: "future-episode", date: "2099-01-01" })],
+      });
+      render(<TrackingList />);
+
+      fireEvent.click(within(screen.getByRole("group", { name: "Sort by" })).getByRole("button", { name: "Title" }));
+
+      expect(screen.queryByText("New")).not.toBeInTheDocument();
+      expect(screen.queryByText("Aired")).not.toBeInTheDocument();
+      expect(screen.getByText(/^(Today|Tomorrow|In \d+ (day|days|week|weeks))$/)).toBeInTheDocument();
+    });
   });
 });

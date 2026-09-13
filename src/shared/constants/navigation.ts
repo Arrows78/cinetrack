@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  CalendarClock,
   CalendarDays,
   Dices,
   Film,
@@ -36,7 +35,6 @@ export const navigationConfig: NavigationItem[] = [
   { label: "Tonight", to: "/watch-tonight", icon: Dices, category: "discover", translationKey: "watchTonight" },
   { label: "Library", to: "/library", icon: LibraryBig, category: "library", translationKey: "library" },
   { label: "Tracking", to: "/tracking", icon: CalendarDays, category: "library", translationKey: "tracking" },
-  { label: "Upcoming", to: "/upcoming", icon: CalendarClock, category: "library", translationKey: "upcoming" },
   { label: "Stats", to: "/stats", icon: BarChart3, category: "insights", translationKey: "stats" },
   { label: "Activity", to: "/history", icon: History, category: "insights", translationKey: "history" },
   { label: "Settings", to: "/settings", icon: Settings, category: "account", translationKey: "settings" },
