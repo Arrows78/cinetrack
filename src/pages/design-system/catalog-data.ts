@@ -522,6 +522,14 @@ export const componentInventory = [
     "Offers to restore the last automatic backup after the database had to be reset at startup."
   ),
   component(
+    "AmbientMotionController",
+    "components/layout/ambient-motion-controller.tsx",
+    "Layout",
+    "infrastructure",
+    "internal",
+    "Pauses the background breathe animation while the tab is hidden, so it doesn't keep ticking unseen."
+  ),
+  component(
     "AppShell",
     "components/layout/app-shell.tsx",
     "Layout",
@@ -536,6 +544,14 @@ export const componentInventory = [
     "primitive",
     "reference",
     "The app's icon mark — shared between the sidebar and the auth screens so the brand doesn't change identity across the sign-in boundary."
+  ),
+  component(
+    "MilestoneCelebrationController",
+    "components/layout/milestone-celebration-controller.tsx",
+    "Layout",
+    "infrastructure",
+    "internal",
+    "Celebrates a just-crossed watch milestone with confetti and a toast, wherever the triggering mutation happened."
   ),
   component(
     "MobileTabBar",
@@ -560,6 +576,14 @@ export const componentInventory = [
     "pattern",
     "reference",
     "Lets the user switch the active local profile from a trigger embedded in the sidebar's account card."
+  ),
+  component(
+    "PullToRefresh",
+    "components/layout/pull-to-refresh.tsx",
+    "Layout",
+    "pattern",
+    "live",
+    "Touch-drag-to-refresh gesture wrapper for scrollable pages on touch devices."
   ),
   component(
     "RootErrorBoundary",
@@ -1208,6 +1232,14 @@ export const componentInventory = [
     "feature",
     "reference",
     "Lets the user search TMDB and manually match a title the automatic import couldn't resolve."
+  ),
+  component(
+    "DegradedModeBadge",
+    "components/states/degraded-mode-badge.tsx",
+    "States",
+    "pattern",
+    "live",
+    "Flags that a refetch failed but cached content is still shown, rather than blanking the page."
   ),
   component(
     "EmptyState",
