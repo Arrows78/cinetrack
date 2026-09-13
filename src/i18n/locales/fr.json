@@ -258,7 +258,13 @@
       "libraryUpdate": "Bibliothèque mise à jour",
       "listAdd": "Ajouté à une liste personnalisée",
       "listRemove": "Retiré d'une liste personnalisée"
-    }
+    },
+    "libraryUpdateStatus": "Statut changé en {{status}}",
+    "libraryUpdateFields": "Mis à jour : {{fields}}",
+    "libraryUpdateFieldNotes": "notes",
+    "libraryUpdateFieldTags": "tags",
+    "libraryUpdateFieldRating": "note",
+    "libraryUpdateFieldFavourite": "favori"
   },
   "search": {
     "globalSearch": "Recherche globale",

@@ -140,8 +140,6 @@ pub(super) async fn upsert_impl(
     .await
     .map_err(ApiError::from)?;
 
-    // Only the first time an item is created, never on a plain
-    // status/rating/notes update.
     if is_new {
         let timestamp = now_iso(&mut *tx).await?;
         let history_item = ViewingHistoryItem {
@@ -157,6 +155,47 @@ pub(super) async fn upsert_impl(
             metadata: Some(json!({ "profileId": profile_id })),
         };
         add_history_item_impl(&mut *tx, pool, history_item).await?;
+    } else if let Some(previous) = current.as_ref() {
+        // A plain re-save of already-current values (retry, double-click,
+        // an editor submitting unchanged fields) must never append a
+        // duplicate history row — see CLAUDE.md's idempotent-mutations rule.
+        let mut changed_fields: Vec<&'static str> = Vec::new();
+        if previous.status != item.status {
+            changed_fields.push("status");
+        }
+        if previous.notes != item.notes {
+            changed_fields.push("notes");
+        }
+        if previous.tags != item.tags {
+            changed_fields.push("tags");
+        }
+        if previous.user_rating != item.user_rating {
+            changed_fields.push("userRating");
+        }
+        if previous.favourite != item.favourite {
+            changed_fields.push("favourite");
+        }
+
+        if !changed_fields.is_empty() {
+            let timestamp = now_iso(&mut *tx).await?;
+            let mut metadata = json!({ "profileId": profile_id, "changedFields": changed_fields });
+            if changed_fields.contains(&"status") {
+                metadata["status"] = json!(item.status.as_db_str());
+            }
+            let history_item = ViewingHistoryItem {
+                id: new_uuid(),
+                media_id: item.media_id,
+                media_type: item.media_type,
+                title: item.title.clone(),
+                action: HistoryAction::LibraryUpdate,
+                timestamp,
+                season_number: None,
+                episode_number: None,
+                episode_title: None,
+                metadata: Some(metadata),
+            };
+            add_history_item_impl(&mut *tx, pool, history_item).await?;
+        }
     }
 
     tx.commit().await.map_err(ApiError::from)?;
@@ -985,7 +1024,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn records_a_history_entry_only_the_first_time_an_item_is_created() {
+    async fn records_an_add_entry_on_creation_and_an_update_entry_when_a_field_actually_changes() {
         let pool = migrated_pool().await;
 
         upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
@@ -996,6 +1035,36 @@ mod tests {
             ..Default::default()
         };
         upsert_impl(&pool, media(7), updated_patch, "default")
+            .await
+            .unwrap();
+
+        let history = list_history_impl(&pool, 50, None).await.unwrap();
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0].action, HistoryAction::LibraryUpdate);
+        assert_eq!(
+            history[0]
+                .metadata
+                .as_ref()
+                .and_then(|value| value.get("changedFields")),
+            Some(&serde_json::json!(["status"]))
+        );
+        assert_eq!(history[1].action, HistoryAction::LibraryAdd);
+    }
+
+    #[tokio::test]
+    async fn does_not_reapply_an_update_history_entry_when_nothing_actually_changed() {
+        let pool = migrated_pool().await;
+        let patch = LibraryPatch {
+            status: Some(LibraryStatus::Watching),
+            ..Default::default()
+        };
+
+        upsert_impl(&pool, media(7), patch.clone(), "default")
+            .await
+            .unwrap();
+        // Re-submitting the exact same patch (a retry, or an editor form
+        // re-saved without any real edit) must not append a second entry.
+        upsert_impl(&pool, media(7), patch, "default")
             .await
             .unwrap();
 

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Virtuoso } from "react-virtuoso";
@@ -141,6 +142,38 @@ const actionConfig: Record<HistoryAction, { icon: LucideIcon; dot: string; ring:
   },
 };
 
+const LIBRARY_UPDATE_FIELD_LABEL_KEYS: Record<string, string> = {
+  notes: "history.libraryUpdateFieldNotes",
+  tags: "history.libraryUpdateFieldTags",
+  userRating: "history.libraryUpdateFieldRating",
+  favourite: "history.libraryUpdateFieldFavourite",
+};
+
+/**
+ * "Library updated" alone never said what changed (see
+ * library/repository.rs's upsert_impl, which now logs the changed field
+ * names — and the new status, when that's one of them — as metadata rather
+ * than nothing at all). Falls back to the plain generic label for any
+ * legacy entry recorded before this metadata existed.
+ */
+function describeLibraryUpdate(item: ViewingHistoryItem, t: TFunction) {
+  if (item.action !== "library:update") return null;
+  const metadata = item.metadata as { changedFields?: string[]; status?: string } | undefined;
+  const changedFields = metadata?.changedFields ?? [];
+  if (changedFields.length === 0) return null;
+
+  if (changedFields.length === 1 && changedFields[0] === "status" && metadata?.status) {
+    return t("history.libraryUpdateStatus", { status: t(`library.statuses.${metadata.status}`) });
+  }
+
+  const fieldLabels = changedFields.map((field) => {
+    if (field === "status" && metadata?.status) return t(`library.statuses.${metadata.status}`);
+    const labelKey = LIBRARY_UPDATE_FIELD_LABEL_KEYS[field];
+    return labelKey ? t(labelKey) : field;
+  });
+  return t("history.libraryUpdateFields", { fields: fieldLabels.join(", ") });
+}
+
 export function HistoryPage() {
   const { t } = useTranslation();
   const historyQuery = useHistory();
@@ -265,7 +298,7 @@ export function HistoryPage() {
                           </p>
                         ) : null}
                         <p className="mt-1 text-caption text-muted-foreground">
-                          {t(`history.actions.${labelByAction[action]}`)}
+                          {describeLibraryUpdate(item, t) ?? t(`history.actions.${labelByAction[action]}`)}
                         </p>
                       </div>
                       <time className="shrink-0 text-caption text-muted-foreground pt-0.5">

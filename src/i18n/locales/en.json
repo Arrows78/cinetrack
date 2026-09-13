@@ -258,7 +258,13 @@
       "libraryUpdate": "Library updated",
       "listAdd": "Added to a list",
       "listRemove": "Removed from a list"
-    }
+    },
+    "libraryUpdateStatus": "Status changed to {{status}}",
+    "libraryUpdateFields": "Updated: {{fields}}",
+    "libraryUpdateFieldNotes": "notes",
+    "libraryUpdateFieldTags": "tags",
+    "libraryUpdateFieldRating": "rating",
+    "libraryUpdateFieldFavourite": "favourite"
   },
   "search": {
     "globalSearch": "Global search",

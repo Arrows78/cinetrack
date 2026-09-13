@@ -244,6 +244,60 @@ describe("HistoryPage", () => {
       expect(screen.getAllByText(/•/)).toHaveLength(1);
     });
 
+    it("shows the new status rather than a generic label for a library:update status change", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: {
+            pages: [
+              [
+                makeHistoryItem({
+                  action: "library:update",
+                  title: "Dune",
+                  metadata: { changedFields: ["status"], status: "watching" },
+                }),
+              ],
+            ],
+          },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByText("Status changed to Watching")).toBeInTheDocument();
+      expect(screen.queryByText("Library updated")).not.toBeInTheDocument();
+    });
+
+    it("lists every changed field for a library:update entry touching more than one", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: {
+            pages: [
+              [
+                makeHistoryItem({
+                  action: "library:update",
+                  title: "Dune",
+                  metadata: { changedFields: ["notes", "tags"] },
+                }),
+              ],
+            ],
+          },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByText("Updated: notes, tags")).toBeInTheDocument();
+    });
+
+    it("falls back to the generic label for a legacy library:update entry with no metadata", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: [[makeHistoryItem({ action: "library:update", title: "Dune" })]] },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByText("Library updated")).toBeInTheDocument();
+    });
+
     function mockedMixedHistory() {
       mockUseHistory.mockReturnValue(
         historyQueryResult({
