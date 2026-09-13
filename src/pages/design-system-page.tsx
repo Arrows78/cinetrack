@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+// Loaded only here, not from src/main.tsx (see that file's comment): Playfair
+// Display backs the `font-serif` token, which nothing in the shipped product
+// actually renders — only this catalog's own type-family sample below does.
+import "@fontsource/playfair-display/400.css";
+import "@fontsource/playfair-display/600.css";
+import "@fontsource/playfair-display/700.css";
+import "@fontsource/playfair-display/900.css";
+import "@fontsource/playfair-display/400-italic.css";
 import {
   AlertTriangle,
   ArrowDown,

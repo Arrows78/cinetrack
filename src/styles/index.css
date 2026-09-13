@@ -347,6 +347,13 @@
     animation: breathe var(--duration-ambient) ease-in-out infinite;
   }
 
+  /* Paused by AmbientMotionController while the tab is hidden/backgrounded —
+     a hidden tab still ticks CSS animations, wasting battery for a gradient
+     nobody is seeing. */
+  body.tab-hidden::after {
+    animation-play-state: paused;
+  }
+
   @keyframes breathe {
     0%,
     100% {

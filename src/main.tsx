@@ -14,12 +14,14 @@ import { i18nReady } from "@/i18n";
 // Self-hosted fonts (see src/styles/index.css's comment for why these are
 // imported here rather than via a CSS @import) — offline, no third-party
 // CDN, and no CSP allowance needed for fonts.googleapis.com/fontshare.com.
+//
+// Playfair Display is *not* imported here: the `font-serif` token it backs
+// isn't used anywhere in the actual product (see docs/design-system.md),
+// only in the /design-system catalog's own type-family sample. Bundling its
+// 5 font files into every session's initial load for a face only the catalog
+// route ever renders was dead weight — that page imports them itself instead
+// (see design-system-page.tsx), so they load only if someone opens it.
 import "@fontsource-variable/dm-sans/opsz.css";
-import "@fontsource/playfair-display/400.css";
-import "@fontsource/playfair-display/600.css";
-import "@fontsource/playfair-display/700.css";
-import "@fontsource/playfair-display/900.css";
-import "@fontsource/playfair-display/400-italic.css";
 import "@fontsource/syne/400.css";
 import "@fontsource/syne/500.css";
 import "@fontsource/syne/600.css";
