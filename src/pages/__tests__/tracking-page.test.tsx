@@ -82,6 +82,11 @@ vi.mock("@/features/saved-filters/use-saved-filters", () => ({
 // attributes, and a button per setter, so tests can assert wiring without
 // needing FilterBar's real markup.
 vi.mock("@/components/media/tracking/tracking-list", () => ({
+  // TrackingFilterBar's own rendering is covered by tracking-list.test.tsx;
+  // stubbed here to a marker div so this suite can assert TrackingPage puts
+  // it before SavedFiltersBar/tracking-list without pulling in FilterBar's
+  // real markup.
+  TrackingFilterBar: () => <div data-testid="tracking-filter-bar" />,
   TrackingList: ({
     scopeFilter,
     onScopeFilterChange,
@@ -130,6 +135,19 @@ describe("TrackingPage", () => {
       screen.getByText("Release dates, upcoming episodes, and availability alerts for what you're following.")
     ).toBeInTheDocument();
     expect(screen.getByTestId("tracking-list")).toBeInTheDocument();
+  });
+
+  it("orders the filter bar, then the saved-filters bar, then the results — consistent with other library pages", () => {
+    render(<TrackingPage />);
+
+    const filterBar = screen.getByTestId("tracking-filter-bar");
+    const saveViewButton = screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") });
+    const trackingList = screen.getByTestId("tracking-list");
+
+    const isBefore = (a: Element, b: Element) =>
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect(isBefore(filterBar, saveViewButton)).toBe(true);
+    expect(isBefore(saveViewButton, trackingList)).toBe(true);
   });
 
   it("defaults scope/type/sort and reads them back from the URL on a deep link", () => {

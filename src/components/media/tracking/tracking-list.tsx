@@ -85,11 +85,76 @@ function AvailabilityTile({ entry, onRemove }: { entry: TrackingEntry; onRemove:
   );
 }
 
-// Reusable across /tracking (every type) and the /movies and /series
-// "Upcoming" tab (lockedMediaType pre-constrains it, same releases/episodes/
-// availability filters otherwise). onBrowseAll/browseAllLabel are only set
-// by the /movies and /series tab hosts, which can jump their own tab state
-// to Discover — the standalone /tracking page has no such tab to jump to.
+// Split out so a host that also renders a SavedFiltersBar (TrackingPage) can
+// place it before that bar (filters, then "Save view", then results — see
+// TrackingList's own filterBar prop) instead of only ever getting it bundled
+// with the results below.
+export function TrackingFilterBar({
+  lockedMediaType,
+  scopeFilter,
+  onScopeFilterChange,
+  typeFilter,
+  onTypeFilterChange,
+  sort,
+  onSortChange,
+}: {
+  lockedMediaType?: "movie" | "series";
+  scopeFilter: ScopeFilter;
+  onScopeFilterChange: (value: ScopeFilter) => void;
+  typeFilter: TypeFilter;
+  onTypeFilterChange: (value: TypeFilter) => void;
+  sort: SortOption;
+  onSortChange: (value: SortOption) => void;
+}) {
+  const { t } = useTranslation();
+  // A movie entry is never tagged "episode" and a series entry is never
+  // tagged "release" (see calendar-service.ts) — offering the other type's
+  // filter here would just be a button that always empties the list.
+  const typeFilterOptions: { value: TypeFilter; label: string }[] = [
+    { value: "all", label: t("filters.all") },
+    ...(lockedMediaType === "series" ? [] : [{ value: "release" as const, label: t("tracking.typeRelease") }]),
+    ...(lockedMediaType === "movie" ? [] : [{ value: "episode" as const, label: t("tracking.typeEpisode") }]),
+    { value: "availability", label: t("tracking.typeAvailability") },
+  ];
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <FilterBar
+        value={scopeFilter}
+        onChange={onScopeFilterChange}
+        groupLabel={t("tracking.filterScope")}
+        options={[
+          { value: "mine", label: t("tracking.scopeMine") },
+          { value: "all", label: t("filters.all") },
+        ]}
+      />
+      <FilterBar
+        value={typeFilter}
+        onChange={onTypeFilterChange}
+        groupLabel={t("tracking.filterType")}
+        options={typeFilterOptions}
+      />
+      <FilterBar
+        value={sort}
+        onChange={onSortChange}
+        groupLabel={t("tracking.sortBy")}
+        options={[
+          { value: "date", label: t("tracking.sortDate") },
+          { value: "title", label: t("tracking.sortTitle") },
+          { value: "platform", label: t("tracking.sortPlatform") },
+        ]}
+      />
+    </div>
+  );
+}
+
+// Reusable across /tracking (every type) and, in principle, a locked-media
+// embed (lockedMediaType pre-constrains it, same releases/episodes/
+// availability filters otherwise) — /movies and /series dropped their
+// "Upcoming" tab embedding (see media-hub-page.tsx) since it duplicated this
+// page, but the prop stayed generic rather than being narrowed back down.
+// onBrowseAll/browseAllLabel are for a future such embed to jump its own tab
+// state to Discover — the standalone /tracking page has no such tab to jump to.
 export function TrackingList({
   lockedMediaType,
   onBrowseAll,
@@ -100,21 +165,24 @@ export function TrackingList({
   onTypeFilterChange,
   sort: controlledSort,
   onSortChange,
+  filterBar = "inline",
 }: {
   lockedMediaType?: "movie" | "series";
   onBrowseAll?: () => void;
   browseAllLabel?: string;
   // Controlled scope/type/sort are only ever passed by the standalone
-  // /tracking page (TrackingPage), which persists them to the URL — the
-  // /movies and /series "Upcoming" tab embeddings leave these unset and
-  // fall back to their own local, non-URL state, since they don't own that
-  // route.
+  // /tracking page (TrackingPage), which persists them to the URL — an
+  // uncontrolled embed would fall back to local, non-URL state, since it
+  // wouldn't own that route.
   scopeFilter?: ScopeFilter;
   onScopeFilterChange?: (value: ScopeFilter) => void;
   typeFilter?: TypeFilter;
   onTypeFilterChange?: (value: TypeFilter) => void;
   sort?: SortOption;
   onSortChange?: (value: SortOption) => void;
+  // "external" lets a host render <TrackingFilterBar> itself (e.g. before its
+  // own SavedFiltersBar) instead of getting one bundled in here.
+  filterBar?: "inline" | "external";
 }) {
   const { t } = useTranslation();
   const tracking = useTracking();
@@ -169,45 +237,20 @@ export function TrackingList({
   }, {});
   const sortedByTitle = [...dated].sort((a, b) => a.title.localeCompare(b.title));
   const showScopeBadge = scopeFilter === "all";
-  // A movie entry is never tagged "episode" and a series entry is never
-  // tagged "release" (see calendar-service.ts) — offering the other type's
-  // filter here would just be a button that always empties the list.
-  const typeFilterOptions: { value: TypeFilter; label: string }[] = [
-    { value: "all", label: t("filters.all") },
-    ...(lockedMediaType === "series" ? [] : [{ value: "release" as const, label: t("tracking.typeRelease") }]),
-    ...(lockedMediaType === "movie" ? [] : [{ value: "episode" as const, label: t("tracking.typeEpisode") }]),
-    { value: "availability", label: t("tracking.typeAvailability") },
-  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <FilterBar
-          value={scopeFilter}
-          onChange={setScopeFilter}
-          groupLabel={t("tracking.filterScope")}
-          options={[
-            { value: "mine", label: t("tracking.scopeMine") },
-            { value: "all", label: t("filters.all") },
-          ]}
+      {filterBar === "inline" ? (
+        <TrackingFilterBar
+          lockedMediaType={lockedMediaType}
+          scopeFilter={scopeFilter}
+          onScopeFilterChange={setScopeFilter}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          sort={sort}
+          onSortChange={setSort}
         />
-        <FilterBar
-          value={typeFilter}
-          onChange={setTypeFilter}
-          groupLabel={t("tracking.filterType")}
-          options={typeFilterOptions}
-        />
-        <FilterBar
-          value={sort}
-          onChange={setSort}
-          groupLabel={t("tracking.sortBy")}
-          options={[
-            { value: "date", label: t("tracking.sortDate") },
-            { value: "title", label: t("tracking.sortTitle") },
-            { value: "platform", label: t("tracking.sortPlatform") },
-          ]}
-        />
-      </div>
+      ) : null}
 
       {tracking.isLoading ? <LoadingState label={t("tracking.loading")} /> : null}
       {tracking.isError ? <RemoteErrorState error={tracking.error} onRetry={() => void tracking.refetch()} /> : null}

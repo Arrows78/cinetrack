@@ -1119,7 +1119,7 @@ export const componentInventory = [
     "Media",
     "feature",
     "live",
-    "Groups upcoming releases, episodes and availability alerts, shared by /tracking and the /movies and /series 'Upcoming' tab."
+    "Groups upcoming releases, episodes and availability alerts for the /tracking page."
   ),
   component(
     "AddWatchNoteDialog",

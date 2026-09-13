@@ -4,7 +4,7 @@ import { CalendarDays } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
-import { TrackingList } from "@/components/media/tracking/tracking-list";
+import { TrackingFilterBar, TrackingList } from "@/components/media/tracking/tracking-list";
 import type { TrackingFilterState, TrackingScope } from "@/types/media";
 
 export function TrackingPage() {
@@ -87,6 +87,14 @@ export function TrackingPage() {
   return (
     <div className="space-y-8">
       <SectionHeader title={t("tracking.title")} subtitle={t("tracking.description")} icon={CalendarDays} isPageTitle />
+      <TrackingFilterBar
+        scopeFilter={scopeFilter}
+        onScopeFilterChange={setScopeFilter}
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
+        sort={sort}
+        onSortChange={setSort}
+      />
       <div className="space-y-3">
         <SavedFiltersBar page="tracking" currentFilters={currentFilters} onApply={applySavedFilters} />
         <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
@@ -98,6 +106,7 @@ export function TrackingPage() {
         onTypeFilterChange={setTypeFilter}
         sort={sort}
         onSortChange={setSort}
+        filterBar="external"
       />
     </div>
   );
