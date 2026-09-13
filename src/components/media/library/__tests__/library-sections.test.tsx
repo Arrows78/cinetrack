@@ -174,6 +174,17 @@ describe("SeriesLibrarySections / MovieLibrarySections", () => {
       expect(screen.queryByText("Fully Finished")).not.toBeInTheDocument();
     });
 
+    it("treats watched > 0 with a not-yet-synced total (0) as in-progress rather than dropping it", () => {
+      const items: MediaGridItem[] = [
+        makeMediaItem({ id: 1, title: "Unsynced Total", progress: { watched: 2, total: 0 } }),
+      ];
+
+      render(<SeriesLibrarySections items={items} trackedSeries={[]} viewMode="grid" />);
+
+      const grids = screen.getAllByTestId("grid");
+      expect(within(grids[0]!).getByText("Unsynced Total")).toBeInTheDocument();
+    });
+
     it("uses the real tracked-series entry when present, and synthesizes an untracked stand-in otherwise", () => {
       const items: MediaGridItem[] = [
         makeMediaItem({ id: 1, title: "Tracked", progress: { watched: 3, total: 10 } }),

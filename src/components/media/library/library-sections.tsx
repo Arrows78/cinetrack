@@ -286,8 +286,17 @@ export function SeriesLibrarySections({
   const haventStarted: MediaGridItem[] = [];
   for (const item of items) {
     const progress = item.progress;
-    if (progress && progress.watched > 0 && progress.watched < progress.total) inProgress.push(item);
-    else if (!progress || progress.watched === 0) haventStarted.push(item);
+    if (!progress || progress.watched === 0) {
+      haventStarted.push(item);
+    } else if (progress.total > 0 && progress.watched >= progress.total) {
+      // Finished — deliberately excluded here, still visible on /library.
+    } else {
+      // Covers the normal partial-progress case, and also a series whose
+      // total hasn't synced yet (TMDB reporting 0 episodes for a newly
+      // announced show — see auto_sync_target's own zero-total guard):
+      // better to surface it as in-progress than to silently drop it.
+      inProgress.push(item);
+    }
   }
 
   const watchNext = useNextEpisodes(inProgress.map((item) => toTrackedSeriesItem(item, trackedById.get(item.id))));
