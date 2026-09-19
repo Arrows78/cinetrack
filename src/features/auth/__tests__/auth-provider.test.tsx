@@ -69,9 +69,15 @@ vi.mock("@tauri-apps/plugin-deep-link", () => ({
   getCurrent: vi.fn(async () => null),
 }));
 
-const listenMock = vi.fn(async () => () => undefined);
+type DeepLinkEvent = { payload: string };
+type DeepLinkListener = (event: DeepLinkEvent) => void;
+
+const listenMock = vi.hoisted(() =>
+  vi.fn<(event: string, handler: DeepLinkListener) => Promise<() => void>>(async () => () => undefined)
+);
+
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: (...args: unknown[]) => listenMock(...args),
+  listen: listenMock,
 }));
 
 const openUrlMock = vi.fn();
@@ -382,6 +388,10 @@ describe("AuthProvider", () => {
       await act(async () => listener?.([url]));
     }
 
+    function listenerFor(eventName: string): DeepLinkListener | undefined {
+      return listenMock.mock.calls.find((call) => call[0] === eventName)?.[1];
+    }
+
     it("activates the session from a single-instance cinetrack:deep-link event", async () => {
       mockIsTauriApp = true;
       const reloaded = { createdSessionId: "sess_si", firstFactorVerification: { status: "verified" } };
@@ -396,10 +406,10 @@ describe("AuthProvider", () => {
       renderHook(() => useAuth(), { wrapper: createWrapper() });
       await waitFor(() => expect(listenMock).toHaveBeenCalled());
 
-      const listener = listenMock.mock.calls.find((call) => call[0] === "cinetrack:deep-link")?.[1] as
-        ((event: { payload: string }) => void) | undefined;
       await act(async () =>
-        listener?.({ payload: "https://cinetrack.app/auth/callback?rotating_token_nonce=nonce-si" })
+        listenerFor("cinetrack:deep-link")?.({
+          payload: "https://cinetrack.app/auth/callback?rotating_token_nonce=nonce-si",
+        })
       );
 
       expect(signInWithReload.reload).toHaveBeenCalledWith({ rotatingTokenNonce: "nonce-si" });
@@ -575,11 +585,10 @@ describe("AuthProvider", () => {
       renderHook(() => useAuth(), { wrapper: createWrapper() });
       await waitFor(() => expect(listenMock).toHaveBeenCalled());
 
-      const listener = listenMock.mock.calls.find((call) => call[0] === "cinetrack:deep-link")?.[1] as
-        | ((event: { payload: string }) => void)
-        | undefined;
       await act(async () =>
-        listener?.({ payload: "http://127.0.0.1:7420/auth/callback?rotating_token_nonce=nonce-loop" })
+        listenerFor("cinetrack:deep-link")?.({
+          payload: "http://127.0.0.1:7420/auth/callback?rotating_token_nonce=nonce-loop",
+        })
       );
 
       expect(signInWithReload.reload).toHaveBeenCalledWith({ rotatingTokenNonce: "nonce-loop" });
