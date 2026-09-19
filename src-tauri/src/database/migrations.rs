@@ -18,6 +18,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/018-add-sync-outbox.sql"),
     include_str!("migrations/019-add-rating-to-episode-progress.sql"),
     include_str!("migrations/020-add-dismissed-recommendations.sql"),
+    include_str!("migrations/021-sync-activity-log-and-episode-rating.sql"),
 ];
 
 #[derive(Debug)]
@@ -204,7 +205,7 @@ mod tests {
                 .iter()
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
-            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
         );
         assert_eq!(
             migrations
@@ -225,6 +226,7 @@ mod tests {
                 "add cloud sync outbox and change capture",
                 "add rating to episode_progress",
                 "add dismissed recommendations",
+                "sync activity log and episode ratings",
             ]
         );
         assert!(
@@ -282,7 +284,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 20);
+        assert_eq!(version.0, 21);
     }
 
     #[tokio::test]
@@ -302,7 +304,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 20);
+        assert_eq!(version.0, 21);
     }
 
     #[tokio::test]

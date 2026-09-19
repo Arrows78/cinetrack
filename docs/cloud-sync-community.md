@@ -49,7 +49,8 @@ append-oriented.
 Migration 018 creates triggers only for future writes. `prepare_sync` performs
 a one-time, profile-scoped bootstrap by executing no-op updates that fire those
 triggers, plus explicit seeding for append-only viewing events and saved
-filters. The bootstrap marker is stored in `sync_metadata`.
+filters. A later `bootstrap:v2:<profile>` pass seeds History and re-queues
+episode rows so their ratings travel. The markers live in `sync_metadata`.
 
 This is why an existing desktop library is uploaded instead of being replaced
 by an empty new-device state.
@@ -71,26 +72,31 @@ Do not use `auth.uid()`: Clerk ids are not UUIDs.
 
 - library items
 - seen movies
-- episode progress
+- episode progress, including the 1-5 episode rating
 - tracked series
 - viewing events
+- History (`activity_log`)
 - custom lists and items
 - smart lists
 - saved filters
 - availability alerts
+- dismissed recommendations
+- account-scoped preferences (`language`, `region`, `preferredProviderIds`,
+  `spoilerProtection`, `hideWatchedInDiscovery`, `accentColor`,
+  `onThisDayEnabled`)
 
-Not synchronized intentionally:
+Not synchronized intentionally (device or cache, not user library data):
 
-- `activity_log` (internal/noisy; community activities are explicit)
 - availability snapshots / TMDB cache
 - diagnostics
-- backup directory
+- backup directory (absolute local path)
 - `activeProfileId`
+- theme, compact/sidebar chrome, library view mode
 - OS notification permission/state
+- onboarding completed flag
 
-Account preferences should be moved into the `account_preferences` sync
-document once their current mixed account/device model is split. Do not sync
-absolute backup paths or device layout state.
+Do not sync absolute backup paths or device layout state. Profile
+name/avatar travel through `account_profiles`, not the outbox.
 
 ## Community boundary
 

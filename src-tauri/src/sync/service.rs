@@ -23,6 +23,10 @@ fn bootstrap_key(profile_id: &str) -> String {
     format!("bootstrap:{profile_id}")
 }
 
+fn bootstrap_v2_key(profile_id: &str) -> String {
+    format!("bootstrap:v2:{profile_id}")
+}
+
 fn last_synced_key(profile_id: &str) -> String {
     format!("lastSyncedAt:{profile_id}")
 }
@@ -69,7 +73,7 @@ pub async fn prepare(pool: &SqlitePool) -> Result<(), ApiError> {
             .await
             .map_err(ApiError::from)?;
     if already_done.is_some() {
-        return Ok(());
+        return seed_activity_log_and_episode_ratings(pool, &profile_id).await;
     }
 
     // No-op updates intentionally fire migration 018's AFTER UPDATE triggers,
@@ -85,6 +89,7 @@ pub async fn prepare(pool: &SqlitePool) -> Result<(), ApiError> {
         "smart_lists",
         "availability_alerts",
         "dismissed_recommendations",
+        "activity_log",
     ] {
         let query = format!("UPDATE {table} SET uuid = uuid WHERE profile_id = ?1");
         sqlx::query(sqlx::AssertSqlSafe(query))
@@ -162,6 +167,45 @@ pub async fn prepare(pool: &SqlitePool) -> Result<(), ApiError> {
         .await
         .map_err(ApiError::from)?;
 
+    let now = now_iso(&mut *tx).await?;
+    sqlx::query("INSERT INTO sync_metadata(key,value,updated_at) VALUES (?1,'1',?2)")
+        .bind(key)
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+    tx.commit().await.map_err(ApiError::from)?;
+    seed_activity_log_and_episode_ratings(pool, &profile_id).await
+}
+
+/// Profiles that already ran the v1 bootstrap before activity_log / episode
+/// ratings were part of the protocol still need a one-shot outbox seed.
+/// Fresh installs run this immediately after v1; the no-op UPDATEs just
+/// refresh the same outbox rows.
+async fn seed_activity_log_and_episode_ratings(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<(), ApiError> {
+    let key = bootstrap_v2_key(profile_id);
+    let already_done: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM sync_metadata WHERE key = ?1")
+            .bind(&key)
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
+    if already_done.is_some() {
+        return Ok(());
+    }
+
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    for table in ["activity_log", "episode_progress"] {
+        let query = format!("UPDATE {table} SET uuid = uuid WHERE profile_id = ?1");
+        sqlx::query(sqlx::AssertSqlSafe(query))
+            .bind(profile_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+    }
     let now = now_iso(&mut *tx).await?;
     sqlx::query("INSERT INTO sync_metadata(key,value,updated_at) VALUES (?1,'1',?2)")
         .bind(key)
@@ -365,6 +409,7 @@ async fn delete_entity(
         "dismissed_recommendation" => {
             "DELETE FROM dismissed_recommendations WHERE profile_id=?1 AND uuid=?2"
         }
+        "activity_log" => "DELETE FROM activity_log WHERE profile_id=?1 AND uuid=?2",
         "custom_list_item" => {
             "DELETE FROM custom_list_items WHERE uuid=?2 AND list_id IN (SELECT uuid FROM custom_lists WHERE profile_id=?1)"
         }
@@ -433,9 +478,9 @@ async fn upsert_entity(
           ON CONFLICT(profile_id,movie_id) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,watched_at=excluded.watched_at,updated_at=excluded.updated_at"#
         }
         "episode_progress" => {
-            r#"INSERT INTO episode_progress(uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at)
-          VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.seriesId'),json_extract(?1,'$.episodeId'),json_extract(?1,'$.seasonNumber'),json_extract(?1,'$.episodeNumber'),coalesce(json_extract(?1,'$.watched'),1),json_extract(?1,'$.watchedAt'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(profile_id,series_id,episode_id) DO UPDATE SET season_number=excluded.season_number,episode_number=excluded.episode_number,watched=excluded.watched,watched_at=excluded.watched_at,updated_at=excluded.updated_at"#
+            r#"INSERT INTO episode_progress(uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,rating,created_at,updated_at)
+          VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.seriesId'),json_extract(?1,'$.episodeId'),json_extract(?1,'$.seasonNumber'),json_extract(?1,'$.episodeNumber'),coalesce(json_extract(?1,'$.watched'),1),json_extract(?1,'$.watchedAt'),json_extract(?1,'$.rating'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
+          ON CONFLICT(profile_id,series_id,episode_id) DO UPDATE SET season_number=excluded.season_number,episode_number=excluded.episode_number,watched=excluded.watched,watched_at=excluded.watched_at,rating=excluded.rating,updated_at=excluded.updated_at"#
         }
         "tracked_series" => {
             r#"INSERT INTO tracked_series(uuid,profile_id,series_id,title,poster_path,backdrop_path,total_episodes,created_at,updated_at,status)
@@ -476,7 +521,12 @@ async fn upsert_entity(
         "dismissed_recommendation" => {
             r#"INSERT INTO dismissed_recommendations(uuid,profile_id,media_id,media_type,title,poster_path,dismissed_at,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.dismissedAt'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,poster_path=excluded.poster_path,dismissed_at=excluded.dismissed_at,updated_at=excluded.updated_at"#
+          ON CONFLICT(profile_id,media_id,media_type) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,dismissed_at=excluded.dismissed_at,updated_at=excluded.updated_at"#
+        }
+        "activity_log" => {
+            r#"INSERT INTO activity_log(uuid,profile_id,media_id,media_type,title,action,season_number,episode_number,episode_title,metadata,timestamp,created_at,updated_at)
+          VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.action'),json_extract(?1,'$.seasonNumber'),json_extract(?1,'$.episodeNumber'),json_extract(?1,'$.episodeTitle'),json_extract(?1,'$.metadata'),json_extract(?1,'$.timestamp'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
+          ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,action=excluded.action,season_number=excluded.season_number,episode_number=excluded.episode_number,episode_title=excluded.episode_title,metadata=excluded.metadata,timestamp=excluded.timestamp,updated_at=excluded.updated_at"#
         }
         _ => return Err(ApiError::bad_request("Unsupported sync entity type")),
     };
@@ -907,6 +957,143 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!(count.0, 0);
+    }
+
+    #[tokio::test]
+    async fn applies_a_remote_activity_log_upsert_and_delete() {
+        let pool = pool().await;
+        let change = RemoteSyncChange {
+            sequence: 1,
+            entity_type: "activity_log".to_string(),
+            entity_id: "hist-1".to_string(),
+            operation: "upsert".to_string(),
+            version: 1,
+            data: Some(serde_json::json!({
+                "uuid": "hist-1",
+                "mediaId": 9,
+                "mediaType": "movie",
+                "title": "Remote Title",
+                "action": "movie:watched",
+                "timestamp": "2026-01-01T00:00:00.000Z",
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "updatedAt": "2026-01-01T00:00:00.000Z",
+            })),
+        };
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let (title, action): (String, String) = sqlx::query_as(
+            "SELECT title, action FROM activity_log WHERE profile_id='default' AND uuid='hist-1'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(title, "Remote Title");
+        assert_eq!(action, "movie:watched");
+
+        let delete_change = RemoteSyncChange {
+            sequence: 2,
+            entity_type: "activity_log".to_string(),
+            entity_id: "hist-1".to_string(),
+            operation: "delete".to_string(),
+            version: 2,
+            data: None,
+        };
+        apply_remote_changes(&pool, &[delete_change]).await.unwrap();
+
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM activity_log WHERE uuid='hist-1'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count.0, 0);
+    }
+
+    #[tokio::test]
+    async fn applies_a_remote_episode_progress_rating() {
+        let pool = pool().await;
+        let change = RemoteSyncChange {
+            sequence: 1,
+            entity_type: "episode_progress".to_string(),
+            entity_id: "ep-1".to_string(),
+            operation: "upsert".to_string(),
+            version: 1,
+            data: Some(serde_json::json!({
+                "uuid": "ep-1",
+                "seriesId": 10,
+                "episodeId": 20,
+                "seasonNumber": 1,
+                "episodeNumber": 2,
+                "watched": 1,
+                "rating": 4,
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "updatedAt": "2026-01-01T00:00:00.000Z",
+            })),
+        };
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let (rating,): (i64,) = sqlx::query_as(
+            "SELECT rating FROM episode_progress WHERE profile_id='default' AND uuid='ep-1'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(rating, 4);
+    }
+
+    #[tokio::test]
+    async fn episode_progress_outbox_payload_includes_rating() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, rating, created_at, updated_at) \
+             VALUES ('ep-1','default',10,20,1,2,1,5,'t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let (payload,): (String,) = sqlx::query_as(
+            "SELECT payload FROM sync_outbox WHERE entity_type='episode_progress' AND entity_id='ep-1'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        let value: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        assert_eq!(value["rating"], 5);
+    }
+
+    #[tokio::test]
+    async fn prepare_v2_seeds_activity_log_after_v1_already_ran() {
+        let pool = pool().await;
+        sqlx::query("UPDATE sync_control SET suppress_outbox=1 WHERE id=1")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO activity_log (uuid, profile_id, media_id, media_type, title, action, timestamp, created_at, updated_at) \
+             VALUES ('hist-legacy','default',1,'movie','Legacy','movie:watched','t','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query("UPDATE sync_control SET suppress_outbox=0 WHERE id=1")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO sync_metadata(key,value,updated_at) VALUES ('bootstrap:default','1','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        prepare(&pool).await.unwrap();
+
+        let (count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM sync_outbox WHERE entity_type='activity_log' AND entity_id='hist-legacy'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(count, 1);
     }
 
     #[tokio::test]

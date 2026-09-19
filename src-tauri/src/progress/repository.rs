@@ -462,15 +462,13 @@ pub(super) async fn refresh_tracked_series_status_impl(
     Ok(())
 }
 
-/// Local-only rating (1-5) on an already-watched episode — plain UPDATE, no
-/// upsert: rating a never-watched episode is a no-op (0 rows affected),
-/// same "unreachable in practice" shape as other guards in this file, since
-/// the frontend only shows the rating control once an episode is marked
-/// watched. Deliberately excluded from the sync_outbox payload (see
-/// docs/database-schema.md's episode_progress entry) — updating this
-/// column still fires the AFTER UPDATE sync trigger (it fires regardless of
-/// which column changed), which just re-queues the episode's existing
-/// fields; harmless, but the rating itself never actually reaches sync.
+/// Rating (1-5) on an already-watched episode — plain UPDATE, no upsert:
+/// rating a never-watched episode is a no-op (0 rows affected), same
+/// "unreachable in practice" shape as other guards in this file, since the
+/// frontend only shows the rating control once an episode is marked
+/// watched. The AFTER UPDATE sync trigger includes `rating` in the outbox
+/// payload (migration 021), so the value travels with the rest of the
+/// episode row.
 pub(crate) async fn set_episode_rating_impl(
     pool: &SqlitePool,
     profile_id: &str,

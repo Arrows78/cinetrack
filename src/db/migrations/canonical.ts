@@ -11,6 +11,7 @@ import m017 from "../../../src-tauri/src/database/migrations/017-library-cursor-
 import m018 from "../../../src-tauri/src/database/migrations/018-add-sync-outbox.sql?raw";
 import m019 from "../../../src-tauri/src/database/migrations/019-add-rating-to-episode-progress.sql?raw";
 import m020 from "../../../src-tauri/src/database/migrations/020-add-dismissed-recommendations.sql?raw";
+import m021 from "../../../src-tauri/src/database/migrations/021-sync-activity-log-and-episode-rating.sql?raw";
 import type { Migration } from "./types";
 
 const statementMarker = "-- cinetrack:statement";
@@ -70,4 +71,5 @@ export const migrations = extractCanonicalMigrations([
   m018,
   m019,
   m020,
+  m021,
 ]);
