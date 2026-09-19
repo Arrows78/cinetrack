@@ -54,6 +54,14 @@ describe("MediaListRow", () => {
     expect(screen.queryByRole("button", { name: "Mark watched" })).not.toBeInTheDocument();
   });
 
+  it("shows an add-to-library action for both movies and series, matching the grid card", async () => {
+    renderRow(<MediaListRow media={makeMedia({ id: 9, mediaType: "movie" })} />);
+    expect(await screen.findByRole("button", { name: "Add to library" })).toBeInTheDocument();
+
+    renderRow(<MediaListRow media={makeMedia({ id: 8, mediaType: "series" })} />);
+    expect(await screen.findAllByRole("button", { name: "Add to library" })).not.toHaveLength(0);
+  });
+
   it("shows an Up to date badge for a still-airing series caught up on every aired episode", () => {
     renderRow(
       <MediaListRow

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AddToLibraryIconButton } from "@/components/media/tracking/add-to-library-icon-button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
@@ -106,11 +107,14 @@ export function MediaListRow({
           ) : null}
         </div>
       </Link>
-      {media.mediaType === "movie" ? (
-        <MovieSeenToggle media={media} />
-      ) : (
-        <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      )}
+      <div className="flex shrink-0 items-center gap-2">
+        <AddToLibraryIconButton media={media} size="sm" />
+        {media.mediaType === "movie" ? (
+          <MovieSeenToggle media={media} />
+        ) : (
+          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        )}
+      </div>
     </div>
   );
 }

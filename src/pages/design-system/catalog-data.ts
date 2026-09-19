@@ -1074,6 +1074,14 @@ export const componentInventory = [
     "Adds or removes a title from the library."
   ),
   component(
+    "AddToLibraryIconButton",
+    "components/media/tracking/add-to-library-icon-button.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Compact bordered-circle counterpart to AddToLibraryButton, for list rows."
+  ),
+  component(
     "FavouriteButton",
     "components/media/tracking/favourite-button.tsx",
     "Media",
