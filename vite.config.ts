@@ -40,6 +40,9 @@ export default defineConfig(() => ({
       : undefined,
   },
   build: {
+    // `@clerk/clerk-js/no-rhc` is already a lazy chunk (~830 kB minified).
+    // It cannot be split further without dropping email/OAuth FAPI.
+    chunkSizeWarningLimit: 850,
     rollupOptions: {
       output: {
         // Bare-specifier object form (`{ "vendor-react": ["react"] }`) silently

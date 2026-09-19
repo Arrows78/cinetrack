@@ -160,7 +160,9 @@ async function patchFetchForFrontendApi(): Promise<void> {
 // Dynamically imported: @clerk/clerk-js is a large dependency that a build
 // with auth unconfigured should never have to fetch at all — same
 // reasoning as @supabase/supabase-js before it (see auth-client.ts's git
-// history). Bundled via npm, not hot-loaded from Clerk's CDN:
+// history). `/no-rhc` drops Clerk's hosted-component UI (SignIn, wallets,
+// Stripe) that this app never mounts; the custom auth screens talk to the
+// same Clerk class. Bundled via npm, not hot-loaded from Clerk's CDN:
 // tauri.conf.json's `script-src 'self'` only allows this because clerk-js
 // ships as part of this app's own Vite bundle instead of a separately
 // injected <script> tag.
@@ -185,7 +187,7 @@ export function bootstrapClerkInstance(): Promise<ClerkClass | null> {
         await patchFetchForFrontendApi();
       }
 
-      const { Clerk } = await import("@clerk/clerk-js");
+      const { Clerk } = await import("@clerk/clerk-js/no-rhc");
       const clerk = new Clerk(clerkPublishableKey);
 
       if (nativeWebview) {

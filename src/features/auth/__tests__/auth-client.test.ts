@@ -5,7 +5,7 @@ const clerkLoadMock = vi.fn();
 const onBeforeRequestMock = vi.fn();
 const onAfterResponseMock = vi.fn();
 
-vi.mock("@clerk/clerk-js", () => ({
+vi.mock("@clerk/clerk-js/no-rhc", () => ({
   Clerk: class {
     frontendApi = "test.clerk.accounts.dev";
     load = clerkLoadMock;
