@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
@@ -275,5 +275,73 @@ describe("PersonDetailPage", () => {
       "href",
       expect.stringContaining("/series/$seriesId")
     );
+  });
+
+  it("groups the filmography into cast and crew sections", () => {
+    personQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: personDetail({
+        filmography: [
+          {
+            id: 10,
+            mediaType: "series",
+            title: "Directed Show",
+            overview: "",
+            genres: [],
+            cast: [],
+            role: "Director",
+            department: "crew",
+          },
+          {
+            id: 11,
+            mediaType: "movie",
+            title: "Acted Movie",
+            overview: "",
+            genres: [],
+            cast: [],
+            role: "Hero",
+            department: "cast",
+          },
+        ],
+      }),
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    const castHeading = screen.getByText("As cast");
+    const crewHeading = screen.getByText("As crew");
+    // Cast is rendered before crew.
+    expect(castHeading.compareDocumentPosition(crewHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(castHeading.nextElementSibling as HTMLElement).getByText("Acted Movie")).toBeInTheDocument();
+    expect(within(crewHeading.nextElementSibling as HTMLElement).getByText("Directed Show")).toBeInTheDocument();
+  });
+
+  it("omits the crew heading entirely when the person has no crew credits", () => {
+    personQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: personDetail({
+        filmography: [
+          {
+            id: 11,
+            mediaType: "movie",
+            title: "Acted Movie",
+            overview: "",
+            genres: [],
+            cast: [],
+            role: "Hero",
+            department: "cast",
+          },
+        ],
+      }),
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(screen.getByText("As cast")).toBeInTheDocument();
+    expect(screen.queryByText("As crew")).not.toBeInTheDocument();
   });
 });

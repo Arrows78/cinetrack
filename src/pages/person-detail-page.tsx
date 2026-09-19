@@ -83,6 +83,13 @@ export function PersonDetailPage() {
 
   const person = query.data;
   const age = ageFromBirthday(person.birthday, person.deathday);
+  // Grouped rather than one flat, TMDB-ordered list — each group keeps the
+  // overall reverse-chronological order mapPersonDetail already sorted by
+  // (releaseDate desc), just split by department.
+  const filmographyGroups = [
+    { department: "cast" as const, label: t("person.castCredits") },
+    { department: "crew" as const, label: t("person.crewCredits") },
+  ].map((group) => ({ ...group, credits: person.filmography.filter((item) => item.department === group.department) }));
 
   return (
     <div className="space-y-8">
@@ -143,13 +150,21 @@ export function PersonDetailPage() {
       ) : null}
 
       {person.filmography.length > 0 ? (
-        <section>
+        <section className="space-y-6">
           <SectionHeader title={t("person.fullFilmography")} />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {person.filmography.map((item, index) => (
-              <FilmographyCard key={`${item.department}-${item.mediaType}-${item.id}-${index}`} item={item} />
-            ))}
-          </div>
+          {filmographyGroups.map(
+            (group) =>
+              group.credits.length > 0 && (
+                <div key={group.department}>
+                  <h3 className="mb-3 text-overline font-bold uppercase text-muted-foreground">{group.label}</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.credits.map((item, index) => (
+                      <FilmographyCard key={`${group.department}-${item.mediaType}-${item.id}-${index}`} item={item} />
+                    ))}
+                  </div>
+                </div>
+              )
+          )}
         </section>
       ) : null}
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
@@ -166,6 +166,40 @@ describe("PeoplePage", () => {
     expect(screen.getByText("John Smith")).toBeInTheDocument();
     // The default view is driven by the popular-people query, not a search.
     expect(usePeopleSearchMock).toHaveBeenCalledWith("");
+  });
+
+  it("filters the browse list by department", () => {
+    const people = [
+      makePerson({ id: 1, name: "Jane Doe", knownForDepartment: "Acting" }),
+      makePerson({ id: 2, name: "Jane Director", knownForDepartment: "Directing" }),
+    ];
+    usePopularPeopleMock.mockReturnValue({ ...idleResult(), data: { results: people } });
+
+    renderPage();
+
+    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+    expect(screen.getByText("Jane Director")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by department" })).getByRole("button", { name: "Directors" })
+    );
+
+    expect(screen.queryByText("Jane Doe")).not.toBeInTheDocument();
+    expect(screen.getByText("Jane Director")).toBeInTheDocument();
+  });
+
+  it("shows an empty state when the department filter narrows real results down to none", () => {
+    usePopularPeopleMock.mockReturnValue({
+      ...idleResult(),
+      data: { results: [makePerson({ id: 1, name: "Jane Doe", knownForDepartment: "Acting" })] },
+    });
+
+    renderPage();
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by department" })).getByRole("button", { name: "Writers" })
+    );
+
+    expect(screen.getByText("No people found")).toBeInTheDocument();
   });
 
   it("switches to the trending-people list when that mode is selected", async () => {

@@ -78,6 +78,7 @@ function PersonCard({ person, index }: { person: PersonSummary; index: number })
 }
 
 type BrowseMode = "popular" | "trending";
+type DepartmentFilter = "all" | "Acting" | "Directing" | "Writing";
 
 export function PeoplePage() {
   const { t } = useTranslation();
@@ -114,16 +115,40 @@ export function PeoplePage() {
   const trending = useTrendingPeople();
   const browsing = mode === "trending" ? trending : popular;
   const active = isSearching ? search : browsing;
-  const results = active.data?.results ?? [];
-  const showEmpty = isSearching && !active.isPending && !active.isError && results.length === 0;
+  const [departmentFilter, setDepartmentFilter] = useState<DepartmentFilter>("all");
+  const allResults = active.data?.results ?? [];
+  const results =
+    departmentFilter === "all"
+      ? allResults
+      : allResults.filter((person) => person.knownForDepartment === departmentFilter);
+  const isSettled = !active.isPending && !active.isError;
+  // Two distinct "nothing to show" reasons: the search itself came back
+  // empty (unrelated to the department filter), or the department filter
+  // narrowed otherwise-real results down to none.
+  const showEmpty =
+    isSettled && ((isSearching && allResults.length === 0) || (allResults.length > 0 && results.length === 0));
 
   return (
     <div className="space-y-8">
       <SectionHeader title={t("people.title")} subtitle={t("people.description")} icon={Users} isPageTitle />
-      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
+      <div
+        className="flex flex-col gap-3 animate-in sm:flex-row sm:flex-wrap sm:items-center"
+        style={{ animationDelay: `${staggerDelayMs(1)}ms` }}
+      >
         <div className="w-full sm:w-64">
           <SearchBar value={query} onChange={setQuery} placeholder={t("people.searchPlaceholder")} />
         </div>
+        <FilterBar
+          value={departmentFilter}
+          onChange={setDepartmentFilter}
+          groupLabel={t("people.filterDepartment")}
+          options={[
+            { value: "all", label: t("filters.all") },
+            { value: "Acting", label: t("people.departmentActing") },
+            { value: "Directing", label: t("people.departmentDirecting") },
+            { value: "Writing", label: t("people.departmentWriting") },
+          ]}
+        />
       </div>
       {!isSearching ? (
         <SectionHeader
