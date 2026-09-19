@@ -53,58 +53,69 @@ export function AuthProvidersStep({
 
   return (
     <>
-      <div className="text-center">
-        <h1 className="text-page-title font-black tracking-tight sm:text-display-title">{title}</h1>
-        <p className="mt-2 text-body-sm text-auth-foreground/55">{t("auth.continueWithProviderOrEmail")}</p>
+      <div>
+        <h1 className="text-heading-lg font-bold tracking-tight">{title}</h1>
+        <p className="mt-2 text-body-sm leading-6 text-auth-foreground/55">{t("auth.continueWithProviderOrEmail")}</p>
       </div>
 
-      <div className="mt-8 flex flex-wrap justify-center gap-4">
-        {visibleProviders.map(({ provider, className, style }) => (
-          <button
-            key={provider}
-            type="button"
-            aria-label={t("auth.provider.continueWith", { label: provider === "x" ? "X" : provider })}
-            title={t("auth.provider.continueWith", { label: provider === "x" ? "X" : provider })}
-            disabled={pendingAction !== null || providerSettingsStatus === "loading"}
-            onClick={() => onProvider(provider)}
-            style={style}
-            className={cn(
-              "flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition hover:-translate-y-1 disabled:cursor-wait disabled:opacity-60 sm:h-[4.5rem] sm:w-[4.5rem]",
-              className
-            )}
-          >
-            {pendingAction === provider ? (
-              <LoaderCircle className="h-7 w-7 animate-spin" />
-            ) : (
-              <ProviderIcon provider={provider} className="h-8 w-8" />
-            )}
-          </button>
-        ))}
+      <div className="mt-8 flex flex-col gap-2.5">
+        {visibleProviders.map(({ provider, className, style }) => {
+          const label = t(`auth.provider.names.${provider}`);
+          const isPending = pendingAction === provider;
 
-        <button
-          type="button"
-          aria-label={t("auth.emailButton.ariaLabel")}
-          title={t("auth.emailButton.title")}
-          disabled={pendingAction !== null}
-          onClick={onEmail}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition hover:-translate-y-1 disabled:opacity-60 sm:h-[4.5rem] sm:w-[4.5rem]"
-        >
-          <Mail className="h-8 w-8" />
-        </button>
+          return (
+            <button
+              key={provider}
+              type="button"
+              aria-label={t("auth.provider.continueWith", { label })}
+              disabled={pendingAction !== null || providerSettingsStatus === "loading"}
+              onClick={() => onProvider(provider)}
+              style={style}
+              className={cn(
+                "flex h-12 w-full items-center justify-center gap-3 rounded-xl text-body-sm font-semibold transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60",
+                className
+              )}
+            >
+              {isPending ? (
+                <LoaderCircle className="size-5 animate-spin" />
+              ) : (
+                <ProviderIcon provider={provider} className="size-5" />
+              )}
+              <span>{t("auth.provider.continueWith", { label })}</span>
+            </button>
+          );
+        })}
       </div>
+
+      <div className="my-6 flex items-center gap-3 text-caption uppercase tracking-wider text-auth-foreground/40">
+        <span className="h-px flex-1 bg-auth-foreground/10" />
+        {t("auth.or")}
+        <span className="h-px flex-1 bg-auth-foreground/10" />
+      </div>
+
+      <button
+        type="button"
+        aria-label={t("auth.emailButton.ariaLabel")}
+        disabled={pendingAction !== null}
+        onClick={onEmail}
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-auth-foreground/15 bg-auth-background/40 text-body-sm font-semibold text-auth-foreground transition hover:bg-auth-foreground/5 disabled:opacity-60"
+      >
+        <Mail className="size-5" aria-hidden="true" />
+        {t("auth.emailButton.title")}
+      </button>
 
       {providerSettingsStatus === "loading" ? (
         <p className="mt-4 text-center text-caption text-auth-foreground/45">{t("auth.status.checkingProviders")}</p>
       ) : null}
 
       {providerSettingsStatus === "ready" && enabledSocialProviders.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-caption leading-5 text-auth-foreground/90">
+        <p className="mt-4 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-caption leading-5 text-auth-foreground/90">
           {t("auth.status.noProvidersEnabled")}
         </p>
       ) : null}
 
       {providerSettingsStatus === "unavailable" ? (
-        <p className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-caption leading-5 text-auth-foreground/90">
+        <p className="mt-4 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-center text-caption leading-5 text-auth-foreground/90">
           {t("auth.status.providerConfigError")}
         </p>
       ) : null}

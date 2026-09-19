@@ -35,42 +35,47 @@ export function AuthEmailStep({
     <form onSubmit={onSubmit}>
       <AuthBackLink onClick={onBack}>{t("auth.email.back")}</AuthBackLink>
 
-      <h1 className="text-page-title font-black">
+      <h1 className="text-heading-lg font-bold tracking-tight">
         {mode === "signin" ? t("auth.email.signInByEmail") : t("auth.email.createAccountTitle")}
       </h1>
-      <p className="mt-2 text-body-sm text-auth-foreground/55">
+      <p className="mt-2 text-body-sm leading-6 text-auth-foreground/55">
         {t("auth.email.sendCodeDescription", { length: authConfig.otpLength })}
       </p>
 
-      <AuthTextField
-        rowClassName="mt-7"
-        icon={Mail}
-        // This step's sole field: autofocusing it is the expected behavior for
-        // a single-field auth step, not a distraction.
-        // eslint-disable-next-line jsx-a11y/no-autofocus
-        autoFocus
-        required
-        type="email"
-        autoComplete="email"
-        value={email}
-        onChange={(event) => onEmailChange(event.target.value)}
-        placeholder={t("auth.email.placeholder")}
-        aria-label={t("auth.email.emailLabel")}
-      />
+      <label className="mt-7 block">
+        <span className="mb-2 block text-body-sm font-medium text-auth-foreground/70">
+          {t("auth.email.emailLabel")}
+        </span>
+        <AuthTextField
+          icon={Mail}
+          // This step's sole field: autofocusing it is the expected behavior for
+          // a single-field auth step, not a distraction.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+          required
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(event) => onEmailChange(event.target.value)}
+          placeholder={t("auth.email.placeholder")}
+        />
+      </label>
 
       {mode === "signup" ? (
-        <label className="mt-7 flex cursor-pointer items-start gap-3 text-body-sm text-auth-foreground/75">
+        <label className="mt-5 flex cursor-pointer items-start gap-3 text-body-sm text-auth-foreground/75">
           <button
             type="button"
             role="checkbox"
             aria-checked={marketingOptIn}
             onClick={onMarketingOptInToggle}
             className={cn(
-              "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-xl border transition",
-              marketingOptIn ? "border-primary bg-primary text-primary-foreground" : "border-white/60 bg-transparent"
+              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition",
+              marketingOptIn
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-auth-foreground/35 bg-transparent"
             )}
           >
-            {marketingOptIn ? <Check className="h-4 w-4" /> : null}
+            {marketingOptIn ? <Check className="size-3.5" /> : null}
           </button>
           <span>{t("auth.email.marketingOptIn")}</span>
         </label>
@@ -80,7 +85,7 @@ export function AuthEmailStep({
         type="submit"
         variant="authPrimary"
         size="auth"
-        className="mt-10"
+        className="mt-7"
         disabled={pendingAction !== null}
         isLoading={pendingAction === "email"}
       >

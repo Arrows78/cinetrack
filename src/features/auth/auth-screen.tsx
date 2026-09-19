@@ -6,8 +6,7 @@ import { authConfig, type SocialAuthProvider } from "@/features/auth/auth-client
 import { useAuth } from "@/features/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import { getEnabledSocialProviders } from "@/features/auth/provider-availability";
-import { AuthBackdrop } from "@/features/auth/atoms/auth-backdrop";
-import { AuthBrandMark } from "@/features/auth/atoms/auth-brand-mark";
+import { AuthStage } from "@/features/auth/atoms/auth-stage";
 import { AuthEmailStep } from "@/features/auth/auth-email-step";
 import { AuthOtpStep } from "@/features/auth/auth-otp-step";
 import { AuthProvidersStep, type ProviderSettingsStatus } from "@/features/auth/auth-providers-step";
@@ -187,118 +186,114 @@ export function AuthScreen() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-auth-background text-auth-foreground lg:flex-row">
-      <div className="relative order-1 min-h-56 flex-1 sm:min-h-72 lg:h-auto lg:w-2/3 lg:flex-none">
-        <AuthBackdrop />
-      </div>
-
-      <div className="relative z-10 order-2 flex shrink-0 flex-col justify-start bg-auth-surface px-5 py-8 sm:px-8 lg:w-1/3 lg:flex-none lg:justify-center lg:px-10">
-        <div className="mb-7">
-          <AuthBrandMark />
+    <AuthStage>
+      <section>
+        <div
+          role="tablist"
+          aria-label={t("auth.tabs.listLabel")}
+          className="mb-6 grid grid-cols-2 gap-1 rounded-xl border border-auth-foreground/10 bg-auth-background/40 p-1"
+        >
+          {AUTH_MODES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="tab"
+              aria-selected={mode === option}
+              onClick={() => changeMode(option)}
+              className={cn(
+                "rounded-lg px-3 py-2 text-body-sm font-semibold transition",
+                mode === option
+                  ? "bg-primary text-primary-foreground"
+                  : "text-auth-foreground/55 hover:text-auth-foreground"
+              )}
+            >
+              {option === "signin" ? t("auth.tabs.signIn") : t("auth.tabs.signUp")}
+            </button>
+          ))}
         </div>
 
-        <section>
-          <div className="mb-7 grid grid-cols-2 rounded-2xl bg-auth-background/30 p-1">
-            {AUTH_MODES.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => changeMode(option)}
-                className={cn(
-                  "rounded-xl px-4 py-2.5 text-body-sm font-semibold transition",
-                  mode === option
-                    ? "bg-auth-foreground text-auth-background"
-                    : "text-auth-foreground/60 hover:text-auth-foreground"
-                )}
-              >
-                {option === "signin" ? t("auth.tabs.signIn") : t("auth.tabs.signUp")}
-              </button>
-            ))}
-          </div>
+        {step === "providers" ? (
+          <AuthProvidersStep
+            title={title}
+            pendingAction={pendingAction}
+            providerSettingsStatus={providerSettingsStatus}
+            enabledSocialProviders={enabledSocialProviders}
+            onProvider={(provider) => void handleProvider(provider)}
+            onEmail={() => {
+              resetError();
+              setStep("email");
+            }}
+          />
+        ) : null}
 
-          {step === "providers" ? (
-            <AuthProvidersStep
-              title={title}
-              pendingAction={pendingAction}
-              providerSettingsStatus={providerSettingsStatus}
-              enabledSocialProviders={enabledSocialProviders}
-              onProvider={(provider) => void handleProvider(provider)}
-              onEmail={() => {
-                resetError();
-                setStep("email");
-              }}
-            />
-          ) : null}
+        {step === "email" ? (
+          <AuthEmailStep
+            mode={mode}
+            email={email}
+            marketingOptIn={marketingOptIn}
+            pendingAction={pendingAction}
+            onEmailChange={setEmail}
+            onMarketingOptInToggle={() => setMarketingOptIn((value) => !value)}
+            onSubmit={(event) => void handleEmailSubmit(event)}
+            onBack={() => {
+              resetError();
+              setStep("providers");
+            }}
+          />
+        ) : null}
 
-          {step === "email" ? (
-            <AuthEmailStep
-              mode={mode}
-              email={email}
-              marketingOptIn={marketingOptIn}
-              pendingAction={pendingAction}
-              onEmailChange={setEmail}
-              onMarketingOptInToggle={() => setMarketingOptIn((value) => !value)}
-              onSubmit={(event) => void handleEmailSubmit(event)}
-              onBack={() => {
-                resetError();
-                setStep("providers");
-              }}
-            />
-          ) : null}
+        {step === "otp" ? (
+          <AuthOtpStep
+            email={email}
+            token={token}
+            pendingAction={pendingAction}
+            resendSeconds={resendSeconds}
+            onTokenChange={setToken}
+            onSubmit={(event) => void handleOtpSubmit(event)}
+            onResend={() => void handleResend()}
+            onBack={() => {
+              resetError();
+              setToken("");
+              setStep("email");
+            }}
+          />
+        ) : null}
 
-          {step === "otp" ? (
-            <AuthOtpStep
-              email={email}
-              token={token}
-              pendingAction={pendingAction}
-              resendSeconds={resendSeconds}
-              onTokenChange={setToken}
-              onSubmit={(event) => void handleOtpSubmit(event)}
-              onResend={() => void handleResend()}
-              onBack={() => {
-                resetError();
-                setToken("");
-                setStep("email");
-              }}
-            />
-          ) : null}
-
-          {visibleError ? (
-            <div
-              role="alert"
-              aria-live="polite"
-              className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-body-sm text-auth-foreground/90"
-            >
-              <p>{visibleError}</p>
-              {/* Only for the generic fallback message (see AuthContextValue's
+        {visibleError ? (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-auth-destructive/25 bg-auth-destructive/10 px-4 py-3 text-body-sm text-auth-foreground/90"
+          >
+            <p>{visibleError}</p>
+            {/* Only for the generic fallback message (see AuthContextValue's
                   errorDetail doc comment) — every other error is already
                   specific and actionable enough on its own. */}
-              {!localError && errorDetail ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0 text-auth-foreground/90 hover:bg-auth-destructive/15"
-                  onClick={() => void navigator.clipboard.writeText(errorDetail)}
-                >
-                  <Copy className="mr-2 size-4" aria-hidden="true" />
-                  {t("auth.copyErrorDetails")}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+            {!localError && errorDetail ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 text-auth-foreground/90 hover:bg-auth-destructive/15"
+                onClick={() => void navigator.clipboard.writeText(errorDetail)}
+              >
+                <Copy className="mr-2 size-4" aria-hidden="true" />
+                {t("auth.copyErrorDetails")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
-          <p className="mt-8 text-center text-caption leading-5 text-auth-foreground/50">
-            <Trans
-              i18nKey="auth.legal.agreeTo"
-              components={{
-                1: <PolicyLink href={authConfig.termsUrl} />,
-                3: <PolicyLink href={authConfig.privacyUrl} />,
-              }}
-            />
-          </p>
-        </section>
-      </div>
-    </div>
+        <p className="mt-8 text-center text-caption leading-5 text-auth-foreground/45">
+          <Trans
+            i18nKey="auth.legal.agreeTo"
+            components={{
+              1: <PolicyLink href={authConfig.termsUrl} />,
+              3: <PolicyLink href={authConfig.privacyUrl} />,
+            }}
+          />
+        </p>
+      </section>
+    </AuthStage>
   );
 }

@@ -3,10 +3,9 @@ import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/shared/lib/cn";
 
-// Not used by the OTP step, which has its own boxed (not underlined) input
-// design. The underline itself is drawn by this row, not by the Input — the
-// "underline" size just strips Input's own box/ring so the row's border
-// reads as one continuous line under both the icon and the text.
+// Boxed to match the provider / email rows on the auth panel. The Input
+// "underline" size still strips its own box/ring so this row is the only
+// chrome around the icon and the text.
 export function AuthTextField({
   icon: Icon,
   rowClassName,
@@ -15,15 +14,15 @@ export function AuthTextField({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 border-b border-white/45 px-2 pb-3 focus-within:border-primary",
+        "flex h-12 items-center gap-3 rounded-xl border border-auth-foreground/15 bg-auth-background/40 px-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary",
         rowClassName
       )}
     >
-      <Icon className="h-5 w-5 shrink-0 text-auth-foreground/75" aria-hidden="true" />
+      <Icon className="size-5 shrink-0 text-auth-foreground/55" aria-hidden="true" />
       <Input
         size="underline"
         {...inputProps}
-        className="w-full min-w-0 flex-1 text-auth-foreground placeholder:text-auth-foreground/35"
+        className="w-full min-w-0 flex-1 text-body-sm text-auth-foreground placeholder:text-auth-foreground/35"
       />
     </div>
   );

@@ -996,7 +996,9 @@
     "createAccount": "Create your account",
     "copyErrorDetails": "Copy details",
     "continueWithProviderOrEmail": "Continue with a provider or use a one-time code by email.",
+    "or": "or",
     "tabs": {
+      "listLabel": "Account",
       "signIn": "Sign in",
       "signUp": "Sign up"
     },
@@ -1020,7 +1022,13 @@
       "resendCode": "Resend code"
     },
     "provider": {
-      "continueWith": "Continue with {{label}}"
+      "continueWith": "Continue with {{label}}",
+      "names": {
+        "apple": "Apple",
+        "facebook": "Facebook",
+        "google": "Google",
+        "x": "X"
+      }
     },
     "emailButton": {
       "ariaLabel": "Continue with email",

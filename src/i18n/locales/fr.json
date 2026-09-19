@@ -996,7 +996,9 @@
     "createAccount": "Créez votre compte",
     "copyErrorDetails": "Copier les détails",
     "continueWithProviderOrEmail": "Continuez avec un fournisseur ou utilisez un code à usage unique par e-mail.",
+    "or": "ou",
     "tabs": {
+      "listLabel": "Compte",
       "signIn": "Connexion",
       "signUp": "Inscription"
     },
@@ -1020,7 +1022,13 @@
       "resendCode": "Renvoyer le code"
     },
     "provider": {
-      "continueWith": "Continuer avec {{label}}"
+      "continueWith": "Continuer avec {{label}}",
+      "names": {
+        "apple": "Apple",
+        "facebook": "Facebook",
+        "google": "Google",
+        "x": "X"
+      }
     },
     "emailButton": {
       "ariaLabel": "Continuer avec e-mail",

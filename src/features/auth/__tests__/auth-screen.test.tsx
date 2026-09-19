@@ -260,7 +260,7 @@ describe("mode toggle", () => {
 
     expect(screen.getByTestId("providers-title")).toHaveTextContent("Welcome back");
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Sign up" }));
     expect(screen.getByTestId("providers-title")).toHaveTextContent("Create your account");
   });
 
@@ -277,7 +277,7 @@ describe("mode toggle", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid email address.");
 
     // Switching mode should clear the error and reset to providers step.
-    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Sign up" }));
 
     expect(screen.getByTestId("providers-step")).toBeInTheDocument();
     expect(screen.queryByTestId("email-step")).not.toBeInTheDocument();
@@ -488,7 +488,7 @@ describe("sendEmailOtp / handleEmailSubmit", () => {
     render(<AuthScreen />);
     await flushMicrotasks();
 
-    fireEvent.click(screen.getByRole("button", { name: "Sign up" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Sign up" }));
     fireEvent.click(screen.getByText("go-email"));
     fireEvent.click(screen.getByText("toggle-marketing"));
     fireEvent.change(screen.getByLabelText("email-input"), { target: { value: "person@example.com" } });

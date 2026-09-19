@@ -6,7 +6,7 @@ import i18n from "@/i18n";
 import { AuthBackLink } from "../auth-back-link";
 import { AuthBackdrop } from "../auth-backdrop";
 import { AuthBrandMark } from "../auth-brand-mark";
-import { AuthStepIcon } from "../auth-step-icon";
+import { AuthStage } from "../auth-stage";
 import { AuthTextField } from "../auth-text-field";
 import { ProviderIcon } from "../provider-icon";
 
@@ -22,12 +22,15 @@ describe("auth atoms", () => {
     expect(screen.getByText("CineTrack")).toBeInTheDocument();
   });
 
-  it("renders the given LucideIcon inside its badge", () => {
-    const { container } = render(<AuthStepIcon icon={ShieldCheck} />);
+  it("renders its children next to the decorative backdrop", () => {
+    render(
+      <AuthStage>
+        <p>Panel copy</p>
+      </AuthStage>
+    );
 
-    const svg = container.querySelector("svg");
-    expect(svg).toBeInTheDocument();
-    expect(svg).toHaveClass("h-6", "w-6");
+    expect(screen.getByText("Panel copy")).toBeInTheDocument();
+    expect(screen.getByText("Midnight")).toBeInTheDocument();
   });
 
   it("renders an icon-prefixed Input, forwards input props, and applies rowClassName", () => {

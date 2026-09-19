@@ -206,18 +206,18 @@ describe("AuthProvidersStep", () => {
       <AuthProvidersStep {...baseProps} providerSettingsStatus="ready" enabledSocialProviders={["google", "apple"]} />
     );
 
-    expect(screen.getByRole("button", { name: providerButtonName("google") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: providerButtonName("apple") })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: providerButtonName("facebook") })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Google") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Apple") })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: providerButtonName("Facebook") })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: providerButtonName("X") })).not.toBeInTheDocument();
   });
 
   it("falls back to showing all providers when status is 'loading', with its status message", () => {
     render(<AuthProvidersStep {...baseProps} providerSettingsStatus="loading" enabledSocialProviders={["google"]} />);
 
-    expect(screen.getByRole("button", { name: providerButtonName("apple") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: providerButtonName("facebook") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: providerButtonName("google") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Apple") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Facebook") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Google") })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: providerButtonName("X") })).toBeInTheDocument();
     expect(screen.getByText("Checking configured sign-in providers…")).toBeInTheDocument();
   });
@@ -225,9 +225,9 @@ describe("AuthProvidersStep", () => {
   it("falls back to showing all providers when status is 'unavailable', with its status message", () => {
     render(<AuthProvidersStep {...baseProps} providerSettingsStatus="unavailable" enabledSocialProviders={[]} />);
 
-    expect(screen.getByRole("button", { name: providerButtonName("apple") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: providerButtonName("facebook") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: providerButtonName("google") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Apple") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Facebook") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: providerButtonName("Google") })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: providerButtonName("X") })).toBeInTheDocument();
     expect(screen.getByText("CineTrack could not verify the provider configuration.")).toBeInTheDocument();
   });
@@ -238,14 +238,14 @@ describe("AuthProvidersStep", () => {
     expect(
       screen.getByText("No social provider is enabled. Configure one in Clerk or continue with email.")
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: providerButtonName("google") })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: providerButtonName("Google") })).not.toBeInTheDocument();
   });
 
   it("calls onProvider with the clicked provider", () => {
     const onProvider = vi.fn();
     render(<AuthProvidersStep {...baseProps} onProvider={onProvider} />);
 
-    fireEvent.click(screen.getByRole("button", { name: providerButtonName("google") }));
+    fireEvent.click(screen.getByRole("button", { name: providerButtonName("Google") }));
     expect(onProvider).toHaveBeenCalledWith("google");
   });
 
@@ -253,22 +253,22 @@ describe("AuthProvidersStep", () => {
     const { rerender } = render(
       <AuthProvidersStep {...baseProps} pendingAction="google" providerSettingsStatus="ready" />
     );
-    expect(screen.getByRole("button", { name: providerButtonName("apple") })).toBeDisabled();
+    expect(screen.getByRole("button", { name: providerButtonName("Apple") })).toBeDisabled();
 
     rerender(<AuthProvidersStep {...baseProps} pendingAction={null} providerSettingsStatus="loading" />);
-    expect(screen.getByRole("button", { name: providerButtonName("apple") })).toBeDisabled();
+    expect(screen.getByRole("button", { name: providerButtonName("Apple") })).toBeDisabled();
 
     rerender(<AuthProvidersStep {...baseProps} pendingAction={null} providerSettingsStatus="ready" />);
-    expect(screen.getByRole("button", { name: providerButtonName("apple") })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: providerButtonName("Apple") })).not.toBeDisabled();
   });
 
   it("shows a spinner instead of the icon on the currently-pending provider button", () => {
     render(<AuthProvidersStep {...baseProps} pendingAction="google" />);
 
-    const googleButton = screen.getByRole("button", { name: providerButtonName("google") });
+    const googleButton = screen.getByRole("button", { name: providerButtonName("Google") });
     expect(googleButton.querySelector("svg.animate-spin")).not.toBeNull();
 
-    const appleButton = screen.getByRole("button", { name: providerButtonName("apple") });
+    const appleButton = screen.getByRole("button", { name: providerButtonName("Apple") });
     expect(appleButton.querySelector("svg.animate-spin")).toBeNull();
   });
 
