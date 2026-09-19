@@ -1,7 +1,3 @@
-import { listen } from "@tauri-apps/api/event";
-// onOpenUrl is dynamically imported below to avoid conflicting with the
-// dynamic import in auth-provider (Vite warning about static + dynamic).
-import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { router } from "@/app/router-config";
 import { isTauriApp } from "@/shared/lib/platform";
 
@@ -25,6 +21,7 @@ const navigate = (path: string) => void router.navigate({ to: path as never });
 export const desktopService = {
   async initialize(): Promise<() => void> {
     if (!isTauriApp()) return () => undefined;
+    const { register, unregister, onOpenUrl, listen } = await import("@/shared/lib/tauri-desktop");
     const cleanups: Array<() => void> = [];
     try {
       await register(SHORTCUT, () => window.dispatchEvent(new Event("cinetrack:command-palette")));
@@ -33,7 +30,6 @@ export const desktopService = {
       console.warn("Global shortcut unavailable", error);
     }
     try {
-      const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
       cleanups.push(
         await onOpenUrl((urls) => {
           const route = urls.map(routeFromUrl).find(Boolean);

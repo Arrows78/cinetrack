@@ -249,7 +249,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     async function readQueuedDeepLinks() {
       try {
-        const { getCurrent } = await import("@tauri-apps/plugin-deep-link");
+        const { getCurrent } = await import("@/shared/lib/tauri-desktop");
 
         for (const url of (await getCurrent()) ?? []) {
           await handleDeepLinkCallback(url);
@@ -277,7 +277,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       try {
         if (isTauriApp()) {
-          const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
+          const { onOpenUrl, listen } = await import("@/shared/lib/tauri-desktop");
 
           try {
             retainCleanup(
@@ -298,7 +298,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
           // fire, which left the login screen up after OAuth. Rust also
           // re-emits RunEvent::Opened on this same channel.
           try {
-            const { listen } = await import("@tauri-apps/api/event");
             retainCleanup(
               await listen<string>(EVENTS.DEEP_LINK, (event) => {
                 void handleDeepLinkCallback(event.payload);
@@ -377,7 +376,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
             throw new UserFacingError(i18next.t("auth.errors.invalidOAuthUrl"));
           }
 
-          const { openUrl } = await import("@tauri-apps/plugin-opener");
+          const { openUrl } = await import("@/shared/lib/tauri-desktop");
           await openUrl(externalUrl.toString());
         } else {
           await clerk.client.signIn.authenticateWithRedirect({

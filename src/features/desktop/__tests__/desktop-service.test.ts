@@ -9,17 +9,20 @@ const { registerMock, unregisterMock, onOpenUrlMock, listenMock, navigateMock, i
   isTauriAppMock: vi.fn(),
 }));
 
+vi.mock("@/shared/lib/tauri-desktop", () => ({
+  register: registerMock,
+  unregister: unregisterMock,
+  onOpenUrl: onOpenUrlMock,
+  listen: listenMock,
+}));
+
 vi.mock("@tauri-apps/plugin-global-shortcut", () => ({
   register: registerMock,
   unregister: unregisterMock,
 }));
-
-// Mocking the dynamic import target this way also satisfies the static
-// `import("@tauri-apps/plugin-deep-link")` inside desktop-service.ts.
 vi.mock("@tauri-apps/plugin-deep-link", () => ({
   onOpenUrl: onOpenUrlMock,
 }));
-
 vi.mock("@tauri-apps/api/event", () => ({
   listen: listenMock,
 }));

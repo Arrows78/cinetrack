@@ -62,27 +62,33 @@ vi.mock("@/shared/lib/platform", () => ({
   isTauriApp: () => mockIsTauriApp,
 }));
 
-// Without this, the init effect's Tauri branch calls the real plugin, which
-// throws outside an actual Tauri webview.
-vi.mock("@tauri-apps/plugin-deep-link", () => ({
-  onOpenUrl: vi.fn(async () => () => undefined),
-  getCurrent: vi.fn(async () => null),
-}));
-
 type DeepLinkEvent = { payload: string };
 type DeepLinkListener = (event: DeepLinkEvent) => void;
 
-const listenMock = vi.hoisted(() =>
-  vi.fn<(event: string, handler: DeepLinkListener) => Promise<() => void>>(async () => () => undefined)
-);
+const { listenMock, onOpenUrlMock, getCurrentMock, openUrlMock } = vi.hoisted(() => ({
+  listenMock: vi.fn<(event: string, handler: DeepLinkListener) => Promise<() => void>>(
+    async () => () => undefined
+  ),
+  onOpenUrlMock: vi.fn(async () => () => undefined),
+  getCurrentMock: vi.fn(async () => null as string[] | null),
+  openUrlMock: vi.fn(),
+}));
 
+vi.mock("@/shared/lib/tauri-desktop", () => ({
+  listen: listenMock,
+  onOpenUrl: onOpenUrlMock,
+  getCurrent: getCurrentMock,
+  openUrl: openUrlMock,
+}));
 vi.mock("@tauri-apps/api/event", () => ({
   listen: listenMock,
 }));
-
-const openUrlMock = vi.fn();
+vi.mock("@tauri-apps/plugin-deep-link", () => ({
+  onOpenUrl: onOpenUrlMock,
+  getCurrent: getCurrentMock,
+}));
 vi.mock("@tauri-apps/plugin-opener", () => ({
-  openUrl: (...args: unknown[]) => openUrlMock(...args),
+  openUrl: openUrlMock,
 }));
 
 function createWrapper() {
@@ -383,7 +389,7 @@ describe("AuthProvider", () => {
 
   describe("OAuth deep-link callback", () => {
     async function openDeepLink(url: string) {
-      const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
+      const { onOpenUrl } = await import("@/shared/lib/tauri-desktop");
       const listener = vi.mocked(onOpenUrl).mock.calls[0]?.[0];
       await act(async () => listener?.([url]));
     }
@@ -520,7 +526,7 @@ describe("AuthProvider", () => {
         signOut: signOutMock,
         handleRedirectCallback: handleRedirectCallbackMock,
       };
-      const { getCurrent } = await import("@tauri-apps/plugin-deep-link");
+      const { getCurrent } = await import("@/shared/lib/tauri-desktop");
       vi.mocked(getCurrent).mockResolvedValueOnce([
         "https://cinetrack.app/auth/callback?rotating_token_nonce=nonce-cold",
       ]);
@@ -533,7 +539,7 @@ describe("AuthProvider", () => {
     it("does not touch the deep-link plugin when Clerk isn't bootstrapped", async () => {
       mockIsTauriApp = true;
       mockClerkInstance = null;
-      const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
+      const { onOpenUrl } = await import("@/shared/lib/tauri-desktop");
 
       renderHook(() => useAuth(), { wrapper: createWrapper() });
       await waitFor(() => expect(onOpenUrl).not.toHaveBeenCalled());
@@ -541,7 +547,7 @@ describe("AuthProvider", () => {
 
     it("keeps listening for single-instance deep links when onOpenUrl fails", async () => {
       mockIsTauriApp = true;
-      const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
+      const { onOpenUrl } = await import("@/shared/lib/tauri-desktop");
       vi.mocked(onOpenUrl).mockRejectedValueOnce(new Error("plugin unavailable"));
 
       const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() });
@@ -606,7 +612,7 @@ describe("AuthProvider", () => {
         signOut: signOutMock,
         handleRedirectCallback: handleRedirectCallbackMock,
       };
-      const { getCurrent } = await import("@tauri-apps/plugin-deep-link");
+      const { getCurrent } = await import("@/shared/lib/tauri-desktop");
       vi.mocked(getCurrent).mockResolvedValue([]);
 
       renderHook(() => useAuth(), { wrapper: createWrapper() });
