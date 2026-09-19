@@ -12,6 +12,7 @@
     "notification:allow-request-permission",
     "notification:allow-notify",
     "opener:allow-default-urls",
+    "opener:allow-open-url",
     "os:allow-os-type",
     "stronghold:allow-initialize",
     "stronghold:allow-create-client",
