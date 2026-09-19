@@ -1,145 +1,169 @@
 # Authentication setup
 
-CineTrack can remain local-only, or require an account backed by Supabase Auth. The implementation uses PKCE for OAuth, a `cinetrack://auth/callback` deep link in Tauri, and six-digit email OTPs for passwordless email sign-in.
+CineTrack can remain local-only, or require an account backed by Clerk.
+Supabase Postgres stays the sync/community backend; it no longer issues
+identity. Clerk issues the session JWT, Supabase validates it through its
+native Third-Party Auth integration, and RLS scopes every cloud row to
+`requesting_user_id()` (the JWT `sub`, a Clerk id like `user_xxx`).
 
-Authentication identifies the current user and gates the interface. Existing library, progress, activity, and preferences remain stored locally, partitioned by profile: each Supabase account is linked to exactly one local profile (see `docs/database-schema.md`) — the first account to sign in on a machine claims the pre-existing `'default'` profile, every account after that gets its own. This does not sync data across devices: a machine's SQLite file stays local to that machine. Add a remote sync layer before promising cross-device continuity.
+Authentication identifies the current user and gates the interface.
+Existing library, progress, activity, and preferences remain stored
+locally, partitioned by profile: each Clerk account is linked to exactly
+one local profile (see `docs/database-schema.md`) — the first account to
+sign in on a machine claims the pre-existing `'default'` profile, every
+account after that gets its own. The SQLite column and Tauri command
+names still say `supabase_user_id`; that string is now the Clerk `sub`.
+Cross-device continuity is the sync engine (`docs/cloud-sync-community.md`),
+not this identity layer.
 
-## 1. Create and configure the Supabase project
+The desktop app talks to Clerk in native mode inside the Tauri webview
+(`standardBrowser: false`, client JWT in `localStorage`, FAPI via
+`tauri-plugin-http`). Use `pnpm tauri dev` for real auth+sync testing.
+`pnpm dev` in a browser tab can sign in, but SQLite/IPC is unavailable
+there.
 
-1. Create a Supabase project and copy its project URL and publishable key.
-2. In **Authentication → URL Configuration**, set:
-   - **Site URL**: `http://localhost:1420/` for development.
-   - **Redirect URLs**: `cinetrack://auth/callback` and `http://localhost:1420/`, plus the production web URL when a web build is deployed.
+## 1. Create and configure Clerk
 
-   The `redirectTo` sent by the application must match an allowed entry exactly. Avoid wildcards in production when an exact URL is sufficient.
+1. Create a Clerk application and copy the **publishable** key
+   (`pk_test_...` / `pk_live_...`).
+2. In **Configure → SSO connections**, enable every social provider
+   CineTrack should offer: Google, Apple, Facebook, X.
+3. Enable **Email** with a one-time code (Clerk's email factor is a fixed
+   6-digit code).
+4. In **Configure → Native applications** (or Redirect URLs), add exactly:
+   - `http://127.0.0.1:7420/auth/callback` (desktop OAuth loopback)
+   - `cinetrack://auth/callback` (iOS / installed macOS `.app` bundle)
+   - `http://localhost:1420/`
+   - the production web URL if a web build is deployed
 
-3. In **Authentication → Sign In / Providers**, configure and enable every social provider CineTrack should offer: Google, Apple, Facebook, X (see provider-specific steps below).
-4. Keep **Email** enabled — see [Email OTP](#2-email-otp-authentication) below.
+   The `redirectUrl` sent by the application must match an allowed entry
+   exactly. Clerk production instances are stricter than development
+   about allowed redirect URLs — reconfirm before a general release.
 
-Two different redirect URLs are involved, and mixing them up is the most common setup mistake:
+5. In **User & authentication**, keep "sign-in does not create an
+   account" (or the equivalent). CineTrack's Sign in tab calls Clerk
+   `signIn`; Sign up calls `signUp`. A sign-in must never silently create
+   a user.
 
-- The OAuth provider redirects to **Supabase**: `https://<project-ref>.supabase.co/auth/v1/callback`.
-- Supabase redirects back to **CineTrack**: `cinetrack://auth/callback`.
+Provider client secrets stay in the Clerk Dashboard. Never put them in
+the desktop application's `.env` file.
 
-Provider client secrets stay in Supabase. Never put them in the desktop application's `.env` file.
+## 2. Connect Clerk to Supabase (Third-Party Auth)
 
-## 2. Email OTP authentication
+Do this before any end-to-end sync test. The old Clerk "Supabase" JWT
+template is deprecated (1 April 2025) and is not used.
 
-In **Authentication → Sign In / Providers → Email**:
+1. In the Clerk Dashboard, open the **Supabase** integration setup and
+   activate it. That stamps `"role": "authenticated"` on every session
+   token. Without this claim, PostgREST stays `anon` and the
+   `apply_sync_batch` / `pull_sync_changes` grants never match.
+2. Copy the revealed **Clerk domain** (JWKS issuer).
+3. In the Supabase Dashboard: **Authentication → Sign In / Providers →
+   Third-Party Auth** (or the equivalent Third-Party Auth page) → add
+   **Clerk** → paste the Clerk domain.
 
-1. Enable the Email provider.
-2. Keep the code length consistent with `VITE_AUTH_OTP_LENGTH`.
-3. Configure the code expiration.
-4. Keep the resend interval consistent with `VITE_AUTH_OTP_RESEND_SECONDS`; Supabase uses 60 seconds by default.
+The TypeScript client then does `session.getToken()` with **no**
+`{ template: "supabase" }` and passes the result through
+`createClient(..., { accessToken })`
+(`src/shared/lib/supabase-data-client.ts`).
 
-In **Authentication → Email Templates → Magic Link**, replace the magic link with the code, since CineTrack expects a 6-digit OTP, not a clickable link:
+Apply `supabase/migrations/20260919120000_clerk_identity.sql` on a
+**test** project first (`supabase db push`). It is a one-shot cutover:
+identity columns become `text`, FKs to `auth.users` are dropped, and
+every policy reads `requesting_user_id()`. Existing `sync_*` rows owned
+by a Supabase Auth UUID will no longer match any Clerk `sub` — reconcile
+or wipe before a production push.
 
-```html
-<h2>Your CineTrack code</h2>
-<p>Enter this code in the application: <strong>{{ .Token }}</strong></p>
-```
+A two-user isolation check lives in
+`supabase/tests/clerk_identity_isolation.sql`.
 
-Supabase uses the same mechanism for Magic Link and Email OTP — without `{{ .Token }}` in the template, the CineTrack interface will expect a code that never appears in the email.
+## 3. Email code
 
-**Sign in** sends `shouldCreateUser: false`. **Sign up** sends `shouldCreateUser: true`. This prevents a sign-in attempt from silently creating an account.
+Clerk sends a 6-digit email code. `VITE_AUTH_OTP_LENGTH` is gone;
+`authConfig.otpLength` is hard-coded to 6.
 
-For production, configure custom SMTP in **Authentication → SMTP Settings** to control deliverability and sending limits.
+**Sign in** uses `signIn.create` + `prepareFirstFactor({ strategy:
+'email_code' })`. If the identifier has no email-code factor, the UI
+shows "no account" — it does not create one.
 
-## 3. OAuth providers
+**Sign up** uses `signUp.create` + `prepareEmailAddressVerification`.
 
-All external providers use the same provider-side callback:
+For production, configure Clerk's email/SMTP settings for deliverability
+and sending limits.
 
-```text
-https://<project-ref>.supabase.co/auth/v1/callback
-```
+## 4. OAuth providers
+
+OAuth does **not** run inside the Tauri webview. The app opens the
+system browser, then comes back through a loopback HTTP server on
+`http://127.0.0.1:7420/auth/callback` (RFC 8252). That is required for
+`pnpm tauri dev` on macOS: Launch Services only associates `cinetrack://`
+with an installed `.app` bundle, and `tauri dev` does not produce one.
+Runtime `register()` is unsupported on macOS. `cinetrack://auth/callback`
+stays registered for iOS and for a bundled desktop build.
+
+Flow (same idea as Clerk Expo `startSSOFlow`):
+
+1. `signIn.create({ strategy: 'oauth_<provider>', redirectUrl })`
+2. Open `externalVerificationRedirectURL` with
+   `@tauri-apps/plugin-opener` (https only)
+3. Clerk redirects the browser to
+   `http://127.0.0.1:7420/auth/callback?rotating_token_nonce=...`
+4. The Rust loopback server emits `cinetrack:deep-link` and focuses the
+   window
+5. `signIn.reload({ rotatingTokenNonce })`; if the factor is
+   `transferable`, `signUp.create({ transfer: true })`
+6. `setActive({ session: createdSessionId })`
+
+Each provider's callback URL in Google / Apple / Facebook / X is
+Clerk's, not Supabase's and not `cinetrack://`. Copy that URL from the
+Clerk Dashboard connection for the provider.
 
 ### Google
 
-In Google Cloud Console:
-
-1. Create and configure the OAuth consent screen.
-2. Create an OAuth client of type **Web application**.
-3. Add the Supabase callback URL above to **Authorized redirect URIs**.
-4. Copy the Client ID and Client Secret to **Supabase → Authentication → Sign In / Providers → Google**.
+Web application OAuth client. Authorized redirect URI = Clerk's Google
+callback (Dashboard → SSO → Google).
 
 ### Facebook
 
-In Meta for Developers:
-
-1. Create an application and add Facebook Login.
-2. Add the Supabase callback URL to **Valid OAuth Redirect URIs**.
-3. Allow access to the email address, which the standard Supabase flow requires.
-4. Copy the App ID and App Secret to the Facebook provider in Supabase.
+Facebook Login. Valid OAuth Redirect URI = Clerk's Facebook callback.
+Request the email address.
 
 ### Apple
 
-For the web flow opened by Tauri:
-
-1. Create and configure a Services ID for Sign in with Apple.
-2. Declare the Supabase domain and the Supabase callback URL.
-3. Create the Apple key and retrieve the Team ID, Key ID, and private key.
-4. Generate and configure the secret required by Supabase.
-5. Plan for Apple secret rotation when it applies to your web configuration.
-
-Apple only provides the full name during the first authorization and does not always include it in later tokens — do not rely on `full_name` to identify an account.
+Services ID for Sign in with Apple, pointed at the Clerk domain and
+Clerk callback. Apple only provides the full name on the first
+authorization — do not rely on `full_name` to identify an account.
 
 ### X
 
-Use the **X / Twitter OAuth 2.0** provider, not the legacy OAuth 1.0a provider:
+Use Clerk's `oauth_x` connection (X / Twitter OAuth 2.0). CineTrack's
+UI value is `x`.
 
-1. Create a project and application in the X Developer Portal.
-2. Select a Web application.
-3. Enable the email address request if needed.
-4. Add the Supabase callback URL.
-5. Copy the Client ID and Client Secret to the **X / Twitter OAuth 2.0** provider in Supabase.
-
-The current Supabase SDK expects the provider value `x`, so CineTrack's UI layer also uses `x` — `twitter` is the legacy OAuth 1.0a provider and will not work.
-
-## 4. Configure CineTrack
+## 5. Configure CineTrack
 
 Copy `.env.example` to `.env` and set:
 
 ```dotenv
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 VITE_AUTH_REQUIRED=true
-VITE_AUTH_DESKTOP_REDIRECT_URL=cinetrack://auth/callback
+VITE_AUTH_DESKTOP_REDIRECT_URL=http://127.0.0.1:7420/auth/callback
 VITE_AUTH_WEB_REDIRECT_URL=http://localhost:1420/
-VITE_AUTH_OTP_LENGTH=6
 VITE_AUTH_OTP_RESEND_SECONDS=60
 VITE_TERMS_URL=https://example.com/terms
 VITE_PRIVACY_URL=https://example.com/privacy
 ```
 
-Only use the public **publishable** key. Never place a `secret` or `service_role` key in a Vite variable — it would be inlined into the distributed application's bundle (see the security note in the main README about `VITE_TMDB_API_TOKEN`, which has the same failure mode).
+Only use public publishable keys. Never place a Clerk secret or a
+Supabase `service_role` key in a Vite variable.
 
-Set `VITE_AUTH_REQUIRED=false` to preserve the account-free, local-only experience.
+Set `VITE_AUTH_REQUIRED=false` to keep the account-free, local-only
+experience.
 
-CineTrack reads Supabase's public Auth settings endpoint and only displays social providers that are enabled there. If the settings endpoint cannot be reached, the buttons remain visible and the screen displays a warning.
-
-## 5. Verify the provider configuration
-
-Use the publishable key to inspect the public Auth settings:
-
-```bash
-curl --silent \
-  --header "apikey: <publishable-key>" \
-  "https://<project-ref>.supabase.co/auth/v1/settings"
-```
-
-The `external` object must contain `true` for each configured social provider, for example:
-
-```json
-{
-  "external": {
-    "facebook": true,
-    "google": true,
-    "x": true
-  }
-}
-```
-
-When Supabase returns `Unsupported provider: provider is not enabled`, the request reached the correct Supabase project, but that provider is disabled or its OAuth credentials were not saved — this cannot be fixed by changing `redirectTo` in the desktop app.
+CineTrack reads Clerk's public `/v1/environment` and only displays
+social providers that are enabled there. If that request fails, the
+buttons stay visible and the screen shows a warning.
 
 ## 6. Tauri and deep links
 
@@ -147,22 +171,43 @@ The repository already wires up:
 
 - The `cinetrack` desktop scheme in `tauri.conf.json`.
 - `tauri-plugin-deep-link`.
-- `tauri-plugin-single-instance` with the `deep-link` feature — it must remain the first registered plugin, and also brings the main window to the foreground when the browser completes an OAuth flow.
+- `tauri-plugin-single-instance` with the `deep-link` feature — it must
+  remain the first registered plugin, and also brings the main window to
+  the foreground when the browser completes an OAuth flow.
+- `tauri-plugin-http`, scoped in `capabilities/default.json` to
+  `https://*.clerk.accounts.dev/*`.
 - Runtime deep-link registration for development on Windows and Linux.
+- A localhost OAuth callback server on `127.0.0.1:7420` (desktop only),
+  started at boot, because macOS cannot deliver `cinetrack://` to
+  `pnpm tauri dev`.
 
-The callback protocol, host, and path are validated before the PKCE exchange. Test deep links with an installed or bundled application, especially on macOS, where protocol association depends on the bundle.
+The callback protocol, host, and path are validated before the nonce is
+exchanged. `cinetrack://` movie/series/person links still need an
+installed or bundled application on macOS (Launch Services + Info.plist).
+OAuth no longer depends on that. Email-code does not need a bundle.
 
-## 7. Supabase security checklist
+Production Clerk instances may reject a `redirectUrl` that was allowed
+in development. Confirm the allow-list before release.
+
+A custom Clerk Frontend API domain (not `*.clerk.accounts.dev`) must be
+added to CSP `connect-src` and to the `http:default` allow list.
+
+## 7. Security checklist
 
 - Never use `service_role` in the frontend.
-- Users can modify `user_metadata` fields, including `marketing_opt_in` — do not use them for authorization decisions.
-- Enable RLS (row level security) on every remote table that contains user data.
-- Use policies based on `auth.uid()`.
-- Limit Redirect URLs to addresses that are actually used.
-- Enable CAPTCHA if public endpoints are targeted by abuse.
-- Check Auth logs and rate limits before releasing to production.
+- `unsafeMetadata.marketing_opt_in` is user-writable — do not use it for
+  authorization decisions.
+- Enable RLS on every remote table that contains user data.
+- Scope policies with `(select requesting_user_id())`, never a
+  client-supplied `user_id` and never `auth.uid()` (Clerk ids are not
+  UUIDs; `auth.uid()` cannot hold them).
+- Limit Clerk Redirect URLs to addresses that are actually used.
+- `script-src 'self'` must stay intact. clerk-js is bundled. If Clerk
+  bot-protection starts injecting Cloudflare/Turnstile scripts, add those
+  hosts explicitly rather than opening `script-src` to the network.
+- Check Clerk and Supabase logs and rate limits before releasing.
 
-Minimal policy example for a table with a `user_id` column:
+Minimal policy example:
 
 ```sql
 alter table public.example enable row level security;
@@ -170,12 +215,12 @@ alter table public.example enable row level security;
 create policy "Users can read their own rows"
 on public.example
 for select
-using (auth.uid() = user_id);
+using ((select requesting_user_id()) = user_id);
 
 create policy "Users can insert their own rows"
 on public.example
 for insert
-with check (auth.uid() = user_id);
+with check ((select requesting_user_id()) = user_id);
 ```
 
 ## 8. Install, build, and test
@@ -190,12 +235,15 @@ cargo check --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-Manual test flow:
+Manual test flow (`pnpm tauri dev`):
 
-1. Run `pnpm dev` and test the email code in Sign up mode.
-2. Sign out, then test the same email in Sign in mode.
-3. Test an unknown email in Sign in mode — no account should be created.
-4. Verify the resend button stays disabled for the configured delay.
-5. Test each enabled provider in the browser.
-6. Run `pnpm tauri dev`, start an OAuth flow, and verify the return to CineTrack.
-7. Test with CineTrack already open, minimized, and closed — desktop deep links are registered by installed application bundles, so this matters most on a real bundled build, not just `pnpm tauri dev`.
+1. Sign up with email code, then sign out and sign in with the same email.
+2. Test an unknown email in Sign in mode — no account should be created.
+3. Verify the resend button stays disabled for the configured delay.
+4. Test Google and at least one other enabled provider in
+   `pnpm tauri dev`. After the browser signs in, Safari should land on
+   `127.0.0.1:7420` and CineTrack should become the signed-in session.
+   `cinetrack://` movie/series links still need a debug `.app` bundle on
+   macOS.
+5. Sync: device A with an existing library, device B empty, run sync,
+   confirm convergence (`docs/cloud-sync-community.md`).

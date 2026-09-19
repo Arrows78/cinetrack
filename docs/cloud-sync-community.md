@@ -56,13 +56,16 @@ by an empty new-device state.
 
 ## Profile IDs
 
-Supabase authentication (`auth.uid()`) is the global account identity. Local
-`profiles.uuid` remains a local SQLite partition key. Synced payloads keep the
-entity UUIDs but the Rust apply layer deliberately replaces their profile
-scope with the receiving installation's active local profile.
+Clerk (`requesting_user_id()`, the JWT `sub`) is the global account identity.
+Local `profiles.uuid` remains a local SQLite partition key. The SQLite column
+`profiles.supabase_user_id` stores that Clerk `sub` (name kept so backups and
+Tauri commands stay stable). Synced payloads keep the entity UUIDs but the
+Rust apply layer deliberately replaces their profile scope with the receiving
+installation's active local profile.
 
 Never authorize cloud rows from a `supabase_user_id` string passed through
-Tauri IPC. Cloud authorization is entirely RLS + `auth.uid()`.
+Tauri IPC. Cloud authorization is entirely RLS + `requesting_user_id()`.
+Do not use `auth.uid()`: Clerk ids are not UUIDs.
 
 ## What synchronizes
 
@@ -107,11 +110,17 @@ Defaults remain private. Followers cannot query private library/progress rows.
 ## Supabase setup
 
 1. Link the repository to a Supabase project.
-2. Apply both migrations in chronological order.
-3. Enable Email/OAuth providers and the existing CineTrack callback URLs.
+2. Apply migrations in chronological order, including
+   `20260919120000_clerk_identity.sql` on a **test** project first
+   (`docs/auth.md`). That cutover is one-way if `sync_*` rows already
+   exist under Supabase Auth UUIDs.
+3. Activate Clerk's Supabase integration (stamps `role: authenticated`)
+   and add the Clerk domain under Supabase Third-Party Auth. Email/OAuth
+   providers and Redirect URLs live in the Clerk Dashboard, not here.
 4. Keep only the publishable key in `VITE_SUPABASE_PUBLISHABLE_KEY`.
 5. Never ship the service-role key in Tauri or Vite environment variables.
 6. Confirm `sync_changes` is in the `supabase_realtime` publication.
+7. Isolation check: `supabase/tests/clerk_identity_isolation.sql`.
 
 ## Recommended verification before merge
 

@@ -81,7 +81,7 @@ A migration failure at launch (corrupt file, a stale `PRAGMA user_version` left 
 
 Not bugs — findings that were looked at and had a real tradeoff, decided against for now. Listed so a future pass doesn't re-flag them without the context of why.
 
-- **Supabase session in plain `localStorage` vs. the TMDB token's Stronghold vault:** see the comment on `getAuthClient` in `src/features/auth/auth-client.ts`. Moving the session behind Stronghold would mean either a password prompt on every launch or a second bootstrap secret (OS keychain) to unlock it silently — a real feature, not a mechanical change — and this app's CSP already closes off the classic-XSS path that would matter here. Revisit if the CSP loosens or the app starts rendering untrusted HTML.
+- **Clerk `__client` JWT in `localStorage` (`cinetrack.clerk.clientJwt`) vs. the TMDB token's Stronghold vault:** native-mode clerk-js needs that token to survive a reload (`src/shared/lib/clerk-instance.ts`). Moving it behind Stronghold would mean either a password prompt on every launch or a second bootstrap secret (OS keychain) to unlock it silently — a real feature, not a mechanical change — and this app's CSP already closes off the classic-XSS path that would matter here. Revisit if the CSP loosens or the app starts rendering untrusted HTML.
 - **No remote error/crash reporting in production** (only the local rotating log in `src/features/diagnostics/logger.ts`): would add a real network dependency and telemetry to an app whose only other one is TMDB — a privacy/product decision, explicitly deferred rather than picking a vendor unprompted.
 
 ## Open items from the 2026-08-15 audit (not yet fixed)
