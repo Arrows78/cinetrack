@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mapCollectionDto,
+  mapEpisodeStillPaths,
   mapMovieDto,
   mapPage,
   mapPerson,
@@ -14,6 +15,7 @@ import type {
   TmdbCollectionDto,
   TmdbCrewDto,
   TmdbEpisodeDto,
+  TmdbEpisodeImagesDto,
   TmdbMovieDto,
   TmdbPersonDto,
   TmdbTvDto,
@@ -479,6 +481,46 @@ describe("mapSeasonDetailsDto", () => {
 
     expect(season.episodeCount).toBe(2);
     expect(season.episodes[1]).toMatchObject({ id: 2, episodeNumber: 2, title: "Winter Is Coming" });
+  });
+
+  it("maps each episode's own guest stars", () => {
+    const season = mapSeasonDetailsDto({
+      id: 3624,
+      air_date: "2011-04-17",
+      episodes: [
+        episodeDto({ guest_stars: [{ id: 42, name: "Guest Actor", character: "Marshal", order: 0 }] }),
+        episodeDto({ id: 2, episode_number: 2 }),
+      ],
+      name: "Saison 1",
+      overview: "",
+      poster_path: null,
+      season_number: 1,
+    });
+
+    expect(season.episodes[0]!.guestStars).toEqual([
+      { id: 42, name: "Guest Actor", character: "Marshal", profilePath: undefined, order: 0 },
+    ]);
+    expect(season.episodes[1]!.guestStars).toEqual([]);
+  });
+});
+
+describe("mapEpisodeStillPaths", () => {
+  it("maps each still's file_path, capped at 12", () => {
+    const dto: TmdbEpisodeImagesDto = {
+      stills: Array.from({ length: 15 }, (_, index) => ({
+        file_path: `/still-${index}.jpg`,
+        width: 300,
+        height: 168,
+        vote_average: 0,
+      })),
+    };
+
+    expect(mapEpisodeStillPaths(dto)).toHaveLength(12);
+    expect(mapEpisodeStillPaths(dto)[0]).toBe("/still-0.jpg");
+  });
+
+  it("returns an empty array when there are no stills", () => {
+    expect(mapEpisodeStillPaths({ stills: [] })).toEqual([]);
   });
 });
 

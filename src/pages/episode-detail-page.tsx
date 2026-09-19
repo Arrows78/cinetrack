@@ -7,7 +7,9 @@ import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-pre
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
 import { EpisodeRatingControl } from "@/components/media/tracking/episode-rating-control";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
+import { CastList } from "@/components/media/detail/cast-list";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
+import { MediaGallery } from "@/components/media/detail/media-gallery";
 import { WatchHistoryPanel } from "@/components/media/activity/watch-history-panel";
 import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -22,7 +24,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { hasAired, useEpisodeProgress } from "@/features/progress/use-progress";
-import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
+import { useEpisodeImages, useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
 import type { Season } from "@/types/media";
 import { buildTmdbImageUrl, formatDate, formatEpisodeCode, formatRating, formatRuntime } from "@/shared/utils/format";
 
@@ -37,6 +39,11 @@ export function EpisodeDetailPage() {
   const seriesQuery = useSeriesDetails(parsedSeriesId);
   const seasonQuery = useSeasonDetails(parsedSeriesId, parsedSeasonNumber);
   const progressQuery = useEpisodeProgress(parsedSeriesId);
+  // A dedicated fetch (see getEpisodeImages' own comment) rather than
+  // something the season query already carries — called with the route's
+  // own params, not the resolved `episode` below, so it can run alongside
+  // the other queries instead of waiting on them.
+  const imagesQuery = useEpisodeImages(parsedSeriesId, parsedSeasonNumber, parsedEpisodeNumber);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
 
   // Same backlog-prompt pattern as season-page.tsx/season-accordion.tsx:
@@ -212,6 +219,14 @@ export function EpisodeDetailPage() {
           </div>
         </div>
       </Card>
+
+      {episode.guestStars?.length ? (
+        <section>
+          <SectionHeader title={t("media.guestStars")} />
+          <CastList cast={episode.guestStars} />
+        </section>
+      ) : null}
+      <MediaGallery backdropPaths={imagesQuery.data} />
 
       <WatchHistoryPanel mediaId={series.id} mediaType="series" episodeId={episode.id} />
 

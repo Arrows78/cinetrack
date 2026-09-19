@@ -58,6 +58,15 @@ export function useSeasonDetails(seriesId: number, seasonNumber: number) {
   });
 }
 
+export function useEpisodeImages(seriesId: number, seasonNumber: number, episodeNumber: number) {
+  return useQuery({
+    queryKey: queryKeys.remote.episodeImages(seriesId, seasonNumber, episodeNumber),
+    queryFn: () => mediaRepository.getEpisodeImages(seriesId, seasonNumber, episodeNumber),
+    enabled: Number.isFinite(seriesId) && Number.isFinite(seasonNumber) && Number.isFinite(episodeNumber),
+    staleTime: STALE_1_HOUR,
+  });
+}
+
 export function useSeriesSeasons(seriesId: number, seasonNumbers: number[]) {
   return useQueries({
     queries: seasonNumbers.map((seasonNumber) => ({

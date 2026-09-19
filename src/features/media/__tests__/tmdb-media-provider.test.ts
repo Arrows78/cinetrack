@@ -593,6 +593,22 @@ describe("TmdbMediaProvider", () => {
     });
   });
 
+  describe("getEpisodeImages", () => {
+    it("fetches the episode-level images endpoint and maps the stills' file paths", async () => {
+      mocks.tmdbFetch.mockResolvedValue({
+        stills: [
+          { file_path: "/still-a.jpg", width: 300, height: 168, vote_average: 5 },
+          { file_path: "/still-b.jpg", width: 300, height: 168, vote_average: 4 },
+        ],
+      });
+
+      const result = await provider.getEpisodeImages(88, 2, 5);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith("/tv/88/season/2/episode/5/images");
+      expect(result).toEqual(["/still-a.jpg", "/still-b.jpg"]);
+    });
+  });
+
   describe("getPerson", () => {
     it("fetches /person/:id with combined_credits and external_ids appended and maps the result", async () => {
       mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));

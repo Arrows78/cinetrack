@@ -33,6 +33,7 @@ const getSeriesDetailsMock = vi.fn(async () => ({ id: 1 }) as never);
 const getSeasonDetailsMock = vi.fn(
   async (seriesId: number, seasonNumber: number) => ({ seriesId, seasonNumber }) as never
 );
+const getEpisodeImagesMock = vi.fn(async () => ["/still-a.jpg"]);
 
 vi.mock("@/features/media/media-repository", () => ({
   mediaRepository: {
@@ -43,6 +44,7 @@ vi.mock("@/features/media/media-repository", () => ({
     getMovieDetails: getMovieDetailsMock,
     getSeriesDetails: getSeriesDetailsMock,
     getSeasonDetails: getSeasonDetailsMock,
+    getEpisodeImages: getEpisodeImagesMock,
   },
 }));
 
@@ -61,6 +63,7 @@ beforeEach(() => {
   getMovieDetailsMock.mockClear();
   getSeriesDetailsMock.mockClear();
   getSeasonDetailsMock.mockClear();
+  getEpisodeImagesMock.mockClear();
 });
 
 describe("useHomeFeed", () => {
@@ -139,6 +142,25 @@ describe("useMovieDetails / useSeriesDetails / useSeasonDetails", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(getSeasonDetailsMock).toHaveBeenCalledWith(10, 1);
+  });
+});
+
+describe("useEpisodeImages", () => {
+  it("is disabled when any of series/season/episode number is not finite", async () => {
+    const { useEpisodeImages } = await import("../use-media");
+    const { result } = renderHook(() => useEpisodeImages(10, 1, Number.NaN), { wrapper: createWrapper() });
+
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(getEpisodeImagesMock).not.toHaveBeenCalled();
+  });
+
+  it("fetches images for finite series/season/episode numbers", async () => {
+    const { useEpisodeImages } = await import("../use-media");
+    const { result } = renderHook(() => useEpisodeImages(10, 1, 5), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(getEpisodeImagesMock).toHaveBeenCalledWith(10, 1, 5);
+    expect(result.current.data).toEqual(["/still-a.jpg"]);
   });
 });
 

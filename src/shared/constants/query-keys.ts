@@ -6,6 +6,8 @@ export const queryKeys = {
     seriesDetails: (seriesId: number) => ["remote", "series", seriesId] as const,
     seasonDetails: (seriesId: number, seasonNumber: number) =>
       ["remote", "series", seriesId, "season", seasonNumber] as const,
+    episodeImages: (seriesId: number, seasonNumber: number, episodeNumber: number) =>
+      ["remote", "series", seriesId, "season", seasonNumber, "episode", episodeNumber, "images"] as const,
     search: (query: string, scope: string) => ["remote", "search", scope, query] as const,
     discover: (
       genreMovie?: string,

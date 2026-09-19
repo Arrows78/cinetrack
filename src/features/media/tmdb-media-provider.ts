@@ -18,6 +18,7 @@ import type { DiscoverArgs, MediaProvider } from "./media-provider";
 import { tmdbFetch } from "@/features/media/api/client";
 import {
   mapCollectionDto,
+  mapEpisodeStillPaths,
   mapMovieDto,
   mapPage,
   mapSearchResult,
@@ -30,6 +31,7 @@ import {
 } from "@/features/media/api/mapper";
 import type {
   TmdbCollectionDto,
+  TmdbEpisodeImagesDto,
   TmdbListResponse,
   TmdbMovieDto,
   TmdbMultiSearchResultDto,
@@ -235,6 +237,13 @@ export class TmdbMediaProvider implements MediaProvider {
     const { language } = await this.context();
     const response = await tmdbFetch<TmdbSeasonDetailsDto>(`/tv/${seriesId}/season/${seasonNumber}`, { language });
     return mapSeasonDetailsDto(response);
+  }
+
+  async getEpisodeImages(seriesId: number, seasonNumber: number, episodeNumber: number): Promise<string[]> {
+    const response = await tmdbFetch<TmdbEpisodeImagesDto>(
+      `/tv/${seriesId}/season/${seasonNumber}/episode/${episodeNumber}/images`
+    );
+    return mapEpisodeStillPaths(response);
   }
 
   async search(query: string, scope: SearchScope = "all", page = 1): Promise<PageResult<MediaSummary>> {

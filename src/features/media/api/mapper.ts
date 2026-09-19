@@ -26,6 +26,7 @@ import type {
   TmdbContentRatingsDto,
   TmdbCrewDto,
   TmdbEpisodeDto,
+  TmdbEpisodeImagesDto,
   TmdbImagesDto,
   TmdbListResponse,
   TmdbMovieDto,
@@ -238,7 +239,11 @@ export const mapEpisodeDto = (dto: TmdbEpisodeDto): Episode => ({
   runtime: dto.runtime,
   stillPath: dto.still_path,
   rating: dto.vote_average,
+  guestStars: mapCast(dto.guest_stars),
 });
+
+export const mapEpisodeStillPaths = (dto: TmdbEpisodeImagesDto): string[] =>
+  (dto.stills ?? []).slice(0, MAX_GALLERY_BACKDROPS).map((image) => image.file_path);
 
 export const mapSeasonDetailsDto = (dto: TmdbSeasonDetailsDto): Season => ({
   id: dto.id,

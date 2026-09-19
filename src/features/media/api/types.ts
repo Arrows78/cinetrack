@@ -157,6 +157,15 @@ export interface TmdbEpisodeDto {
   season_number: number;
   still_path: string | null;
   vote_average: number;
+  // TMDB's season-details endpoint includes each episode's own guest cast
+  // inline, unlike the movie/series-level `credits` sub-resource, which
+  // needs an explicit append_to_response — absent from the lighter episode
+  // object embedded as a series' next_episode_to_air.
+  guest_stars?: TmdbCastDto[];
+}
+
+export interface TmdbEpisodeImagesDto {
+  stills: TmdbImageDto[];
 }
 
 export interface TmdbSeasonDetailsDto {

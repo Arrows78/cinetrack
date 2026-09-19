@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -25,9 +25,11 @@ vi.mock("@tanstack/react-router", () => ({
 
 const seriesQueryMock = vi.fn();
 const seasonQueryMock = vi.fn();
+const episodeImagesQueryMock = vi.fn();
 vi.mock("@/features/media/use-media", () => ({
   useSeriesDetails: () => seriesQueryMock(),
   useSeasonDetails: () => seasonQueryMock(),
+  useEpisodeImages: () => episodeImagesQueryMock(),
 }));
 
 const progressQueryMock = vi.fn();
@@ -151,6 +153,7 @@ describe("EpisodeDetailPage", () => {
     paramsHolder.episodeNumber = "2";
     seriesQueryMock.mockReset().mockReturnValue(makeQuery(defaultSeries));
     seasonQueryMock.mockReset().mockReturnValue(makeQuery(makeSeason([episode1, episode2, episode3])));
+    episodeImagesQueryMock.mockReset().mockReturnValue({ data: undefined });
     toggleEpisodeSeenMock.mockReset();
     markEpisodesSeenMock.mockReset();
     setEpisodeRatingMock.mockReset();
@@ -282,6 +285,42 @@ describe("EpisodeDetailPage", () => {
     expect(screen.getByText("Half Loop")).toBeInTheDocument();
     expect(screen.getByText("The middle one.")).toBeInTheDocument();
     expect(screen.getByText(/S01E02/)).toBeInTheDocument();
+  });
+
+  it("shows the episode's own guest stars, and omits the section when there are none", () => {
+    seasonQueryMock.mockReturnValue(
+      makeQuery(
+        makeSeason([
+          episode1,
+          { ...episode2, guestStars: [{ id: 501, name: "Guest Actor", character: "Marshal" }] },
+          episode3,
+        ])
+      )
+    );
+    renderPage();
+
+    expect(screen.getByText("Guest stars")).toBeInTheDocument();
+    expect(screen.getByText("Guest Actor")).toBeInTheDocument();
+
+    cleanup();
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason([episode1, episode2, episode3])));
+    renderPage();
+    expect(screen.queryByText("Guest stars")).not.toBeInTheDocument();
+  });
+
+  it("shows an episode-specific photo gallery when TMDB has extra stills", () => {
+    episodeImagesQueryMock.mockReturnValue({ data: ["/still-a.jpg", "/still-b.jpg"] });
+    renderPage();
+
+    const gallerySection = screen.getByText("Gallery").closest("section")!;
+    expect(within(gallerySection).getAllByRole("button")).toHaveLength(2);
+  });
+
+  it("renders no gallery section when there are no extra stills", () => {
+    episodeImagesQueryMock.mockReturnValue({ data: [] });
+    renderPage();
+
+    expect(screen.queryByText("Gallery")).not.toBeInTheDocument();
   });
 
   it("links the season name in the subtitle to that season's own page", () => {

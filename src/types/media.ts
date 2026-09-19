@@ -137,6 +137,7 @@ export interface Episode {
   rating?: number | null;
   watched?: boolean;
   watchedAt?: string | null;
+  guestStars?: CastMember[];
 }
 
 export interface Season {

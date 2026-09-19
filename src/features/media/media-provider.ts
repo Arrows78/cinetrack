@@ -49,6 +49,10 @@ export interface MediaProvider {
   getCollection(collectionId: number): Promise<MovieCollection>;
   getSeriesDetails(seriesId: number): Promise<Series>;
   getSeasonDetails(seriesId: number, seasonNumber: number): Promise<Season>;
+  // Not part of getSeasonDetails' own response (TMDB has no append_to_response
+  // for per-episode stills at the season level) — a dedicated call, fetched
+  // lazily on the episode detail page rather than once per episode up front.
+  getEpisodeImages(seriesId: number, seasonNumber: number, episodeNumber: number): Promise<string[]>;
   search(query: string, scope?: SearchScope, page?: number): Promise<PageResult<MediaSummary>>;
   /** Resolves a TheTVDB series id (used by TV Time exports) to a TMDB series. */
   findSeriesByTvdbId(tvdbId: number): Promise<Series | null>;
