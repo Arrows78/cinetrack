@@ -108,13 +108,13 @@ Relations: a profile has `0..n` movies marked as seen.
 
 One row per watched episode. This is the source of truth for where a profile stands in a show — the displayed count is recomputed on read, not stored. Used to be called `profile_episode_progress` before the single schema.
 
-| Column                                              | Type       | Notes                                                                                                                                                                                                                 |
-| --------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `uuid` **PK**                                       | TEXT       | public identifier of the row                                                                                                                                                                                          |
-| `profile_id`, `series_id`, `episode_id` `FK` **UK** | …          | → `profiles.uuid` ; natural composite key                                                                                                                                                                             |
-| `season_number`, `episode_number`                   | INT        | locates the episode (both `>= 0`)                                                                                                                                                                                     |
-| `watched`, `watched_at`                             | BOOL, TEXT | defaults to watched                                                                                                                                                                                                   |
-| `created_at`, `updated_at`                          | TEXT       | ISO dates                                                                                                                                                                                                             |
+| Column                                              | Type       | Notes                                                                                         |
+| --------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------- |
+| `uuid` **PK**                                       | TEXT       | public identifier of the row                                                                  |
+| `profile_id`, `series_id`, `episode_id` `FK` **UK** | …          | → `profiles.uuid` ; natural composite key                                                     |
+| `season_number`, `episode_number`                   | INT        | locates the episode (both `>= 0`)                                                             |
+| `watched`, `watched_at`                             | BOOL, TEXT | defaults to watched                                                                           |
+| `created_at`, `updated_at`                          | TEXT       | ISO dates                                                                                     |
 | `rating`                                            | INT        | 1-5, nullable (migration 19); included in the `sync_outbox` payload from migration 21 onwards |
 
 Indexes: `(profile_id, series_id, watched)`, `(episode_id)`.

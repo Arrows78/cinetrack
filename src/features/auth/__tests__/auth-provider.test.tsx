@@ -66,9 +66,7 @@ type DeepLinkEvent = { payload: string };
 type DeepLinkListener = (event: DeepLinkEvent) => void;
 
 const { listenMock, onOpenUrlMock, getCurrentMock, openUrlMock } = vi.hoisted(() => ({
-  listenMock: vi.fn<(event: string, handler: DeepLinkListener) => Promise<() => void>>(
-    async () => () => undefined
-  ),
+  listenMock: vi.fn<(event: string, handler: DeepLinkListener) => Promise<() => void>>(async () => () => undefined),
   onOpenUrlMock: vi.fn(async () => () => undefined),
   getCurrentMock: vi.fn(async () => null as string[] | null),
   openUrlMock: vi.fn(),
