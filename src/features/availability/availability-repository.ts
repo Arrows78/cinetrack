@@ -22,6 +22,13 @@ export const availabilityRepository = {
     await invokeTypedCommand(availabilityCommands.removeAlert, { id });
   },
 
+  // No batch command exists on the Rust side — a purge is always a handful
+  // of alerts (whatever's currently "available now"), so parallel individual
+  // removals stay well within normal command-latency territory.
+  async removeMany(ids: string[]): Promise<void> {
+    await Promise.all(ids.map((id) => this.remove(id)));
+  },
+
   async getSnapshot(
     mediaId: number,
     mediaType: MediaSummary["mediaType"],

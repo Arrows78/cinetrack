@@ -295,6 +295,8 @@ export interface TrackingFilterState {
   scopeFilter: TrackingScope | "all";
   typeFilter: TrackingEntryType | "all";
   sort: "date" | "title" | "platform";
+  /** A PLATFORMS id, or "all" — optional so a filter saved before this field existed still applies cleanly. */
+  platformFilter?: number | "all";
 }
 
 // HistoryPage's own filter-control state (src/pages/history-page.tsx).

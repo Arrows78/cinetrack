@@ -95,6 +95,10 @@ const trackingRoute = createRoute({
     // expose a sort without abandoning its cursor) — a real, cheap re-sort
     // of what's already loaded, not a decorative control.
     sort: z.enum(["date", "title", "platform"]).optional(),
+    // Only ever meaningful for "availability" entries (see calendar-service.ts
+    // — release/episode entries never carry a provider), so this only
+    // narrows the Available now/Awaiting availability sections.
+    platform: z.coerce.number().optional(),
   }),
   component: lazyRouteComponent(() => import("@/pages/tracking-page"), "TrackingPage"),
 });

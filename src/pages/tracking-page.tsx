@@ -5,6 +5,7 @@ import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/lib
 import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { TrackingFilterBar, TrackingList } from "@/components/media/tracking/tracking-list";
+import { PLATFORMS } from "@/shared/constants/discover";
 import type { TrackingFilterState, TrackingScope } from "@/types/media";
 
 export function TrackingPage() {
@@ -18,6 +19,7 @@ export function TrackingPage() {
   const scopeFilter = routeSearch.scope ?? "mine";
   const typeFilter = routeSearch.type ?? "all";
   const sort = routeSearch.sort ?? "date";
+  const platformFilter = routeSearch.platform ?? "all";
 
   // Widened to TrackingScope | "all" (not just "mine" | "all") to match
   // TrackingList's own onScopeFilterChange signature — the UI here only ever
@@ -32,12 +34,18 @@ export function TrackingPage() {
     void navigate({ search: (prev) => ({ ...prev, type: value === "all" ? undefined : value }), replace: true });
   const setSort = (value: typeof sort) =>
     void navigate({ search: (prev) => ({ ...prev, sort: value === "date" ? undefined : value }), replace: true });
+  const setPlatformFilter = (value: typeof platformFilter) =>
+    void navigate({
+      search: (prev) => ({ ...prev, platform: value === "all" ? undefined : value }),
+      replace: true,
+    });
 
-  const currentFilters: TrackingFilterState = { scopeFilter, typeFilter, sort };
+  const currentFilters: TrackingFilterState = { scopeFilter, typeFilter, sort, platformFilter };
   const applySavedFilters = (filters: TrackingFilterState) => {
     setScopeFilter(filters.scopeFilter);
     setTypeFilter(filters.typeFilter);
     setSort(filters.sort);
+    setPlatformFilter(filters.platformFilter ?? "all");
   };
 
   const chips: ActiveFilterChip[] = [
@@ -77,11 +85,23 @@ export function TrackingPage() {
           },
         ]
       : []),
+    ...(platformFilter !== "all"
+      ? [
+          {
+            key: "platform",
+            label: t("filters.chips.provider", {
+              value: PLATFORMS.find((platform) => platform.id === platformFilter)?.label ?? platformFilter,
+            }),
+            onRemove: () => setPlatformFilter("all"),
+          },
+        ]
+      : []),
   ];
   const clearAllFilters = () => {
     setScopeFilter("mine");
     setTypeFilter("all");
     setSort("date");
+    setPlatformFilter("all");
   };
 
   return (
@@ -94,6 +114,8 @@ export function TrackingPage() {
         onTypeFilterChange={setTypeFilter}
         sort={sort}
         onSortChange={setSort}
+        platformFilter={platformFilter}
+        onPlatformFilterChange={setPlatformFilter}
       />
       <div className="space-y-3">
         <SavedFiltersBar page="tracking" currentFilters={currentFilters} onApply={applySavedFilters} />
@@ -106,6 +128,8 @@ export function TrackingPage() {
         onTypeFilterChange={setTypeFilter}
         sort={sort}
         onSortChange={setSort}
+        platformFilter={platformFilter}
+        onPlatformFilterChange={setPlatformFilter}
         filterBar="external"
       />
     </div>

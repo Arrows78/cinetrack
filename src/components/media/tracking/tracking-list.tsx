@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { Panel } from "@/components/ui/panel";
+import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { TrackingEntryRow } from "@/components/media/tracking/tracking-entry-row";
@@ -23,6 +24,7 @@ import type { TrackingEntry, TrackingEntryType, TrackingScope } from "@/types/me
 type ScopeFilter = TrackingScope | "all";
 type TypeFilter = TrackingEntryType | "all";
 type SortOption = "date" | "title" | "platform";
+type PlatformFilter = number | "all";
 
 function providerNames(providerIds: number[] = []): string[] {
   return providerIds.map((id) => PLATFORMS.find((platform) => platform.id === id)?.label ?? String(id));
@@ -97,6 +99,8 @@ export function TrackingFilterBar({
   onTypeFilterChange,
   sort,
   onSortChange,
+  platformFilter,
+  onPlatformFilterChange,
 }: {
   lockedMediaType?: "movie" | "series";
   scopeFilter: ScopeFilter;
@@ -105,6 +109,8 @@ export function TrackingFilterBar({
   onTypeFilterChange: (value: TypeFilter) => void;
   sort: SortOption;
   onSortChange: (value: SortOption) => void;
+  platformFilter: PlatformFilter;
+  onPlatformFilterChange: (value: PlatformFilter) => void;
 }) {
   const { t } = useTranslation();
   // A movie entry is never tagged "episode" and a series entry is never
@@ -144,6 +150,19 @@ export function TrackingFilterBar({
           { value: "platform", label: t("tracking.sortPlatform") },
         ]}
       />
+      <Select
+        aria-label={t("tracking.filterPlatform")}
+        value={String(platformFilter)}
+        onChange={(event) => onPlatformFilterChange(event.target.value === "all" ? "all" : Number(event.target.value))}
+        className="max-w-48"
+      >
+        <option value="all">{t("tracking.allPlatforms")}</option>
+        {PLATFORMS.map((platform) => (
+          <option key={platform.id} value={platform.id}>
+            {platform.label}
+          </option>
+        ))}
+      </Select>
     </div>
   );
 }
@@ -165,21 +184,25 @@ export function TrackingList({
   onTypeFilterChange,
   sort: controlledSort,
   onSortChange,
+  platformFilter: controlledPlatformFilter,
+  onPlatformFilterChange,
   filterBar = "inline",
 }: {
   lockedMediaType?: "movie" | "series";
   onBrowseAll?: () => void;
   browseAllLabel?: string;
-  // Controlled scope/type/sort are only ever passed by the standalone
-  // /tracking page (TrackingPage), which persists them to the URL — an
-  // uncontrolled embed would fall back to local, non-URL state, since it
-  // wouldn't own that route.
+  // Controlled scope/type/sort/platform are only ever passed by the
+  // standalone /tracking page (TrackingPage), which persists them to the
+  // URL — an uncontrolled embed would fall back to local, non-URL state,
+  // since it wouldn't own that route.
   scopeFilter?: ScopeFilter;
   onScopeFilterChange?: (value: ScopeFilter) => void;
   typeFilter?: TypeFilter;
   onTypeFilterChange?: (value: TypeFilter) => void;
   sort?: SortOption;
   onSortChange?: (value: SortOption) => void;
+  platformFilter?: PlatformFilter;
+  onPlatformFilterChange?: (value: PlatformFilter) => void;
   // "external" lets a host render <TrackingFilterBar> itself (e.g. before its
   // own SavedFiltersBar) instead of getting one bundled in here.
   filterBar?: "inline" | "external";
@@ -190,7 +213,9 @@ export function TrackingList({
   const [localScopeFilter, setLocalScopeFilter] = useState<ScopeFilter>("mine");
   const [localTypeFilter, setLocalTypeFilter] = useState<TypeFilter>("all");
   const [localSort, setLocalSort] = useState<SortOption>("date");
+  const [localPlatformFilter, setLocalPlatformFilter] = useState<PlatformFilter>("all");
   const [pendingRemoval, setPendingRemoval] = useState<TrackingEntry | null>(null);
+  const [confirmingPurge, setConfirmingPurge] = useState(false);
 
   const scopeFilter = controlledScopeFilter ?? localScopeFilter;
   const setScopeFilter = onScopeFilterChange ?? setLocalScopeFilter;
@@ -198,6 +223,8 @@ export function TrackingList({
   const setTypeFilter = onTypeFilterChange ?? setLocalTypeFilter;
   const sort = controlledSort ?? localSort;
   const setSort = onSortChange ?? setLocalSort;
+  const platformFilter = controlledPlatformFilter ?? localPlatformFilter;
+  const setPlatformFilter = onPlatformFilterChange ?? setLocalPlatformFilter;
 
   const filtered = useMemo(
     () =>
@@ -219,10 +246,20 @@ export function TrackingList({
     setScopeFilter("all");
     setTypeFilter("all");
     setSort("date");
+    setPlatformFilter("all");
   };
 
-  const availableNowUnsorted = filtered.filter((entry) => entry.type === "availability" && entry.available);
-  const pendingUnsorted = filtered.filter((entry) => entry.type === "availability" && !entry.available);
+  // Only "availability" entries ever carry providerIds (see
+  // sortByProviderName's own comment) — the platform filter is a no-op on
+  // dated release/episode entries below, by design.
+  const matchesPlatform = (entry: TrackingEntry) =>
+    platformFilter === "all" || (entry.providerIds ?? []).includes(platformFilter);
+  const availableNowUnsorted = filtered.filter(
+    (entry) => entry.type === "availability" && entry.available && matchesPlatform(entry)
+  );
+  const pendingUnsorted = filtered.filter(
+    (entry) => entry.type === "availability" && !entry.available && matchesPlatform(entry)
+  );
   const availableNow = sort === "platform" ? sortByProviderName(availableNowUnsorted) : availableNowUnsorted;
   const pending = sort === "platform" ? sortByProviderName(pendingUnsorted) : pendingUnsorted;
   const dated = filtered.filter((entry) => entry.type !== "availability");
@@ -237,6 +274,7 @@ export function TrackingList({
   }, {});
   const sortedByTitle = [...dated].sort((a, b) => a.title.localeCompare(b.title));
   const showScopeBadge = scopeFilter === "all";
+  const triggeredAlertIds = availableNow.map((entry) => entry.alertId).filter((id): id is string => Boolean(id));
 
   return (
     <div className="space-y-6">
@@ -249,6 +287,8 @@ export function TrackingList({
           onTypeFilterChange={setTypeFilter}
           sort={sort}
           onSortChange={setSort}
+          platformFilter={platformFilter}
+          onPlatformFilterChange={setPlatformFilter}
         />
       ) : null}
 
@@ -257,7 +297,21 @@ export function TrackingList({
 
       {availableNow.length ? (
         <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(1)}ms` }}>
-          <h2 className="font-semibold">{t("tracking.availableNow")}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">{t("tracking.availableNow")}</h2>
+            {triggeredAlertIds.length > 1 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmingPurge(true)}
+                disabled={alerts.isRemovingMany}
+              >
+                <Trash2 className="size-4" />
+                {t("tracking.purgeTriggeredAlerts", { count: triggeredAlertIds.length })}
+              </Button>
+            ) : null}
+          </div>
           <div className="mt-3 grid gap-2">
             {availableNow.map((entry) => (
               <AvailabilityTile key={entry.id} entry={entry} onRemove={() => setPendingRemoval(entry)} />
@@ -359,6 +413,22 @@ export function TrackingList({
           void alerts
             .remove(pendingRemoval.alertId)
             .then(() => setPendingRemoval(null))
+            .catch(() => {});
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmingPurge}
+        onOpenChange={(open) => !open && !alerts.isRemovingMany && setConfirmingPurge(false)}
+        title={t("tracking.purgeConfirmTitle", { count: triggeredAlertIds.length })}
+        description={t("tracking.purgeConfirmDescription")}
+        confirmLabel={t("tracking.purgeTriggeredAlerts", { count: triggeredAlertIds.length })}
+        cancelLabel={t("common.cancel")}
+        isConfirming={alerts.isRemovingMany}
+        onConfirm={() => {
+          void alerts
+            .removeMany(triggeredAlertIds)
+            .then(() => setConfirmingPurge(false))
             .catch(() => {});
         }}
       />

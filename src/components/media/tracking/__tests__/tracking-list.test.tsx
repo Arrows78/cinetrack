@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
@@ -9,6 +9,7 @@ import type { Episode, EpisodeProgress, TrackingEntry } from "@/types/media";
 const useTrackingMock = vi.fn();
 const useAvailabilityAlertsMock = vi.fn();
 const removeMock = vi.fn();
+const removeManyMock = vi.fn();
 const useSeasonDetailsMock = vi.fn();
 const useEpisodeProgressMock = vi.fn();
 const toggleEpisodeSeenMock = vi.fn();
@@ -162,6 +163,8 @@ function mockAlerts(overrides: Partial<ReturnType<typeof useAvailabilityAlertsMo
     isLoading: false,
     remove: removeMock,
     isRemoving: false,
+    removeMany: removeManyMock,
+    isRemovingMany: false,
     ...overrides,
   });
 }
@@ -175,6 +178,7 @@ describe("TrackingList", () => {
     useTrackingMock.mockReset();
     useAvailabilityAlertsMock.mockReset();
     removeMock.mockReset().mockResolvedValue(undefined);
+    removeManyMock.mockReset().mockResolvedValue(undefined);
     mockTracking();
     mockAlerts();
     useSeasonDetailsMock.mockReset().mockReturnValue({ data: undefined });
@@ -226,9 +230,12 @@ describe("TrackingList", () => {
       within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
     );
 
-    // Available-now panel.
+    // Available-now panel. The heading now sits in its own header row
+    // (alongside the bulk-purge button), so the panel is the heading's
+    // grandparent, not its direct parent.
     const availableHeading = screen.getByRole("heading", { name: "Available now" });
-    expect(within(availableHeading.parentElement as HTMLElement).getByText("Available Movie")).toBeInTheDocument();
+    const availablePanel = availableHeading.parentElement?.parentElement as HTMLElement;
+    expect(within(availablePanel).getByText("Available Movie")).toBeInTheDocument();
 
     // Awaiting-availability panel.
     const pendingHeading = screen.getByRole("heading", { name: "Waiting for availability" });
@@ -436,6 +443,40 @@ describe("TrackingList", () => {
 
     const titles = screen.getAllByText(/Zeta Movie|Alpha Movie/).map((el) => el.textContent);
     expect(titles).toEqual(["Alpha Movie", "Zeta Movie"]);
+  });
+
+  it("filters availability entries down to a single platform", () => {
+    mockTracking({ data: [availableOnNetflix, availableOnDisneyPlus] });
+    render(<TrackingList />);
+
+    expect(screen.getByText("Zeta Movie")).toBeInTheDocument();
+    expect(screen.getByText("Alpha Movie")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Filter by platform"), { target: { value: "337" } });
+
+    expect(screen.getByText("Alpha Movie")).toBeInTheDocument();
+    expect(screen.queryByText("Zeta Movie")).not.toBeInTheDocument();
+  });
+
+  it("offers to purge triggered alerts only when more than one is available now, and clears them on confirm", async () => {
+    mockTracking({ data: [availableOnNetflix, availableOnDisneyPlus] });
+    render(<TrackingList />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear 2 triggered alerts" }));
+    expect(screen.getByText("Clear 2 triggered alerts?")).toBeInTheDocument();
+
+    // Radix marks the rest of the page aria-hidden while the dialog is open,
+    // so only the dialog's own confirm button is reachable by role here.
+    fireEvent.click(screen.getByRole("button", { name: "Clear 2 triggered alerts" }));
+    expect(removeManyMock).toHaveBeenCalledWith(["alert-netflix", "alert-disney"]);
+    await waitFor(() => expect(screen.queryByText("Clear 2 triggered alerts?")).not.toBeInTheDocument());
+  });
+
+  it("does not offer a bulk purge when only one alert is triggered", () => {
+    mockTracking({ data: [availableOnNetflix] });
+    render(<TrackingList />);
+
+    expect(screen.queryByRole("button", { name: /Clear .* triggered alert/ })).not.toBeInTheDocument();
   });
 
   it("defaults to controlled scope/type/sort when passed, instead of its own local state", () => {

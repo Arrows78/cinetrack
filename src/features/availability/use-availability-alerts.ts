@@ -16,7 +16,17 @@ export function useAvailabilityAlerts() {
     (id: string) => availabilityRepository.remove(id),
     [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
   );
-  return { ...query, remove: removeMutation.mutateAsync, isRemoving: removeMutation.isPending };
+  const removeManyMutation = useInvalidatingMutation(
+    (ids: string[]) => availabilityRepository.removeMany(ids),
+    [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
+  );
+  return {
+    ...query,
+    remove: removeMutation.mutateAsync,
+    isRemoving: removeMutation.isPending,
+    removeMany: removeManyMutation.mutateAsync,
+    isRemovingMany: removeManyMutation.isPending,
+  };
 }
 
 // Not profile-scoped (see queryKeys.local.availabilitySnapshots's own
