@@ -94,22 +94,23 @@ and sending limits.
 ## 4. OAuth providers
 
 OAuth does **not** run inside the Tauri webview. The app opens the
-system browser, then comes back through a loopback HTTP server on
-`http://127.0.0.1:7420/auth/callback` (RFC 8252). That is required for
-`pnpm tauri dev` on macOS: Launch Services only associates `cinetrack://`
-with an installed `.app` bundle, and `tauri dev` does not produce one.
-Runtime `register()` is unsupported on macOS. `cinetrack://auth/callback`
-stays registered for iOS and for a bundled desktop build.
+system browser, then comes back through:
+
+- `pnpm tauri dev`: `http://127.0.0.1:7420/auth/callback` (RFC 8252).
+  Launch Services will not deliver `cinetrack://` to a raw `tauri dev`
+  binary. Runtime `register()` is unsupported on macOS.
+- Bundled `.app` / iOS: `cinetrack://auth/callback`. The scheme is in
+  `src-tauri/Info.plist` and `plugins.deep-link.desktop.schemes`. Install
+  the app under `/Applications` once so macOS indexes it.
 
 Flow (same idea as Clerk Expo `startSSOFlow`):
 
 1. `signIn.create({ strategy: 'oauth_<provider>', redirectUrl })`
 2. Open `externalVerificationRedirectURL` with
    `@tauri-apps/plugin-opener` (https only)
-3. Clerk redirects the browser to
-   `http://127.0.0.1:7420/auth/callback?rotating_token_nonce=...`
-4. The Rust loopback server emits `cinetrack:deep-link` and focuses the
-   window
+3. Clerk redirects the browser to the URL from step 1
+   (`127.0.0.1:7420` in Vite dev, `cinetrack://` in a bundle)
+4. The loopback server or `RunEvent::Opened` emits `cinetrack:deep-link`
 5. `signIn.reload({ rotatingTokenNonce })`; if the factor is
    `transferable`, `signUp.create({ transfer: true })`
 6. `setActive({ session: createdSessionId })`
@@ -148,7 +149,7 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 VITE_AUTH_REQUIRED=true
-VITE_AUTH_DESKTOP_REDIRECT_URL=http://127.0.0.1:7420/auth/callback
+VITE_AUTH_DESKTOP_REDIRECT_URL=cinetrack://auth/callback
 VITE_AUTH_WEB_REDIRECT_URL=http://localhost:1420/
 VITE_AUTH_OTP_RESEND_SECONDS=60
 VITE_TERMS_URL=https://example.com/terms
@@ -182,9 +183,10 @@ The repository already wires up:
   `pnpm tauri dev`.
 
 The callback protocol, host, and path are validated before the nonce is
-exchanged. `cinetrack://` movie/series/person links still need an
-installed or bundled application on macOS (Launch Services + Info.plist).
-OAuth no longer depends on that. Email-code does not need a bundle.
+exchanged. A bundled `.app` (plus `src-tauri/Info.plist`) is what makes
+`cinetrack://` work on macOS — OAuth in that build, and movie/series
+links. `pnpm tauri dev` OAuth stays on the loopback server. Email-code
+does not need a bundle.
 
 Production Clerk instances may reject a `redirectUrl` that was allowed
 in development. Confirm the allow-list before release.
@@ -241,9 +243,8 @@ Manual test flow (`pnpm tauri dev`):
 2. Test an unknown email in Sign in mode — no account should be created.
 3. Verify the resend button stays disabled for the configured delay.
 4. Test Google and at least one other enabled provider in
-   `pnpm tauri dev`. After the browser signs in, Safari should land on
-   `127.0.0.1:7420` and CineTrack should become the signed-in session.
-   `cinetrack://` movie/series links still need a debug `.app` bundle on
-   macOS.
+   `pnpm tauri dev` (Safari lands on `127.0.0.1:7420`) and on a bundled
+   `.app` installed in `/Applications` (`cinetrack://auth/callback`).
+   Movie/series `cinetrack://` links also need that bundle on macOS.
 5. Sync: device A with an existing library, device B empty, run sync,
    confirm convergence (`docs/cloud-sync-community.md`).

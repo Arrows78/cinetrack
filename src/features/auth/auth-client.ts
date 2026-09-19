@@ -26,25 +26,24 @@ export const authConfig = {
 };
 
 // Keep in sync with `LISTEN_ADDR` + `CALLBACK_PATH` in
-// `src-tauri/src/auth/oauth_callback.rs`. macOS Launch Services will not
-// deliver `cinetrack://` to a `tauri dev` binary (no `.app` bundle), so
-// desktop OAuth returns through this loopback URL instead.
+// `src-tauri/src/auth/oauth_callback.rs`. Used only by `pnpm tauri dev`:
+// a bundled `.app` owns `cinetrack://` via Info.plist / Launch Services.
 export const DESKTOP_OAUTH_LOOPBACK_URL = "http://127.0.0.1:7420/auth/callback";
+export const DESKTOP_OAUTH_SCHEME_URL = "cinetrack://auth/callback";
 
 export function getAuthRedirectUrl(): string {
   if (isTauriApp()) {
-    const configured = import.meta.env.VITE_AUTH_DESKTOP_REDIRECT_URL?.trim();
-
-    if (configured) return configured;
-
-    // Custom-scheme registration is unsupported at runtime on iOS too, but
-    // the bundled Info.plist *does* own `cinetrack://` there. Desktop
-    // `tauri dev` has no bundle, so it must use the loopback server.
     if (/iphone|ipad|ipod|android/i.test(navigator.userAgent)) {
-      return "cinetrack://auth/callback";
+      return import.meta.env.VITE_AUTH_DESKTOP_REDIRECT_URL?.trim() || DESKTOP_OAUTH_SCHEME_URL;
     }
 
-    return DESKTOP_OAUTH_LOOPBACK_URL;
+    // Vite `tauri dev` / `vitest` are not `production`. A bundled
+    // `tauri build` is, and that `.app` owns `cinetrack://`.
+    if (import.meta.env.MODE !== "production") {
+      return DESKTOP_OAUTH_LOOPBACK_URL;
+    }
+
+    return import.meta.env.VITE_AUTH_DESKTOP_REDIRECT_URL?.trim() || DESKTOP_OAUTH_SCHEME_URL;
   }
 
   const configuredRedirect = import.meta.env.VITE_AUTH_WEB_REDIRECT_URL?.trim();

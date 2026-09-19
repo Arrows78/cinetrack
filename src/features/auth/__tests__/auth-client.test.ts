@@ -179,6 +179,23 @@ describe("auth-client", () => {
       expect(forwarded?.method).toBe("POST");
       expect(new Headers(forwarded?.headers).get("Authorization")).toBe("Bearer cached-client-jwt");
 
+      await window.fetch(new Request("https://test.clerk.accounts.dev/v1/environment"), {
+        headers: { "X-Extra": "1" },
+      });
+      expect(tauriFetch).toHaveBeenCalledTimes(4);
+      expect(new Headers((tauriFetch as ReturnType<typeof vi.fn>).mock.calls[3]?.[1]?.headers).get("X-Extra")).toBe(
+        "1"
+      );
+
+      await window.fetch("not-a-url");
+      expect(browserFetchSpy).toHaveBeenCalledWith("not-a-url", undefined);
+
+      vi.mocked(tauriFetch).mockResolvedValueOnce(
+        new Response(null, { headers: { authorization: "Bearer from-fapi" } })
+      );
+      await window.fetch("https://test.clerk.accounts.dev/v1/client");
+      expect(window.localStorage.getItem("cinetrack.clerk.clientJwt")).toBe("from-fapi");
+
       window.fetch = originalFetch;
     });
 
@@ -187,7 +204,8 @@ describe("auth-client", () => {
       vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "pk_test_example");
       window.localStorage.setItem("cinetrack.clerk.clientJwt", "cached-client-jwt");
 
-      let beforeRequest: ((request: { headers?: HeadersInit; credentials?: RequestCredentials; url?: URL }) => void) | undefined;
+      let beforeRequest:
+        ((request: { headers?: HeadersInit; credentials?: RequestCredentials; url?: URL }) => void) | undefined;
       let afterResponse: ((_request: unknown, response: Response) => void) | undefined;
       onBeforeRequestMock.mockImplementation((callback: typeof beforeRequest) => {
         beforeRequest = callback;
@@ -239,11 +257,22 @@ describe("auth-client", () => {
       userAgent.mockRestore();
     });
 
-    it("honors VITE_AUTH_DESKTOP_REDIRECT_URL inside a Tauri webview", async () => {
+    it("keeps the loopback callback in Vite dev even if the env points at cinetrack://", async () => {
       (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+      vi.stubEnv("VITE_AUTH_DESKTOP_REDIRECT_URL", "cinetrack://auth/callback");
+      const { DESKTOP_OAUTH_LOOPBACK_URL, getAuthRedirectUrl } = await importFresh();
+      expect(getAuthRedirectUrl()).toBe(DESKTOP_OAUTH_LOOPBACK_URL);
+    });
+
+    it("uses the custom protocol (or the env override) in a production desktop bundle", async () => {
+      (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+      vi.stubEnv("MODE", "production");
+      const { DESKTOP_OAUTH_SCHEME_URL, getAuthRedirectUrl } = await importFresh();
+      expect(getAuthRedirectUrl()).toBe(DESKTOP_OAUTH_SCHEME_URL);
+
       vi.stubEnv("VITE_AUTH_DESKTOP_REDIRECT_URL", "cinetrack://custom/callback");
-      const { getAuthRedirectUrl } = await importFresh();
-      expect(getAuthRedirectUrl()).toBe("cinetrack://custom/callback");
+      const { getAuthRedirectUrl: getOverridden } = await importFresh();
+      expect(getOverridden()).toBe("cinetrack://custom/callback");
     });
 
     it("defaults to the current origin in a browser context", async () => {
@@ -255,6 +284,18 @@ describe("auth-client", () => {
       vi.stubEnv("VITE_AUTH_WEB_REDIRECT_URL", "https://cinetrack.app/callback");
       const { getAuthRedirectUrl } = await importFresh();
       expect(getAuthRedirectUrl()).toBe("https://cinetrack.app/callback");
+    });
+
+    it("falls back to the Vite preview origin when window is unavailable", async () => {
+      const previousWindow = globalThis.window;
+      Reflect.deleteProperty(globalThis, "window");
+
+      try {
+        const { getAuthRedirectUrl } = await importFresh();
+        expect(getAuthRedirectUrl()).toBe("http://localhost:1420/");
+      } finally {
+        globalThis.window = previousWindow;
+      }
     });
   });
 });

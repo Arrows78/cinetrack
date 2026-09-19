@@ -30,10 +30,9 @@ The working stack:
   Cloudflare Turnstile) is not opened until a live instance proves it
   injects frames or scripts.
 
-`pnpm tauri dev` is the development surface. A production/debug bundle is
-only needed to reconfirm macOS `cinetrack://` movie/series links (Launch
-Services will not associate a custom scheme with the raw `tauri dev`
-binary). OAuth does not wait on that bundle.
+`pnpm tauri dev` is the development surface and uses the loopback OAuth
+callback. A production or debug `.app` in `/Applications` owns
+`cinetrack://` (Info.plist) for OAuth and for movie/series links.
 
 ## OAuth — implemented (required)
 
@@ -43,9 +42,8 @@ pattern is ported, not `authenticateWithRedirect` inside the webview:
 1. `signIn.create({ strategy: oauth_*, redirectUrl })`
 2. Open `firstFactorVerification.externalVerificationRedirectURL` in the
    system browser (`plugin-opener`)
-3. Clerk redirects to `http://127.0.0.1:7420/auth/callback?rotating_token_nonce=...`
-   (loopback server in `src-tauri/src/auth/oauth_callback.rs`). `cinetrack://`
-   is not delivered to `tauri dev` on macOS.
+3. Clerk redirects to the loopback URL in `tauri dev`, or
+   `cinetrack://auth/callback?rotating_token_nonce=...` in a bundled app.
 4. `signIn.reload({ rotatingTokenNonce })`, transfer into `signUp.create`
    when the identity is new, then `setActive({ session })`
 
