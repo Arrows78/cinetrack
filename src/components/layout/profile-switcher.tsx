@@ -95,9 +95,9 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
             currentProfile ? (
               <Tile className="px-3 py-3">
                 <p className="font-medium">{currentLabel}</p>
-                {user?.email ? (
+                {user?.primaryEmailAddress?.emailAddress ? (
                   <p className="mt-1 text-body-sm text-muted-foreground">
-                    {t("settings.profiles.linkedTo", { email: user.email })}
+                    {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
                   </p>
                 ) : null}
               </Tile>

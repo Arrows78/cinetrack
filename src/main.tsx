@@ -8,6 +8,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { App } from "@/app/App";
 import { BootRecoveryGate } from "@/components/desktop/boot-recovery-gate";
 import { AuthRoot } from "@/features/auth/auth-root";
+import { bootstrapClerkInstance } from "@/features/auth";
 import { RootErrorBoundary } from "@/components/layout/root-error-boundary";
 import { queryClient } from "@/app/query-client";
 import { i18nReady } from "@/i18n";
@@ -37,9 +38,12 @@ import "@/styles/index.css";
 window.localStorage.removeItem("cinetrack.query-cache.v1");
 
 // Waits for the active language's locale chunk (see i18n/index.ts's
-// dynamically-imported backend) so first paint never briefly shows raw
-// translation keys instead of real copy.
-void i18nReady.then(() => {
+// dynamically-imported backend) and for Clerk's bundled clerk-js to finish
+// constructing (see auth-client.ts's bootstrapClerkInstance doc comment)
+// so ClerkAppProvider's first render already has a resolved instance —
+// like i18nReady, this must resolve before the app's first render, not
+// race against it.
+void Promise.all([i18nReady, bootstrapClerkInstance()]).then(() => {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <RootErrorBoundary>

@@ -379,7 +379,7 @@ describe("handleProvider", () => {
 
     fireEvent.click(screen.getByText("provider-apple"));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("apple sign-in is not enabled in Supabase.");
+    expect(screen.getByRole("alert")).toHaveTextContent("apple sign-in is not enabled in Clerk.");
     expect(signInWithProvider).not.toHaveBeenCalled();
   });
 
@@ -393,7 +393,7 @@ describe("handleProvider", () => {
 
     fireEvent.click(screen.getByText("provider-x"));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("X sign-in is not enabled in Supabase.");
+    expect(screen.getByRole("alert")).toHaveTextContent("X sign-in is not enabled in Clerk.");
     expect(signInWithProvider).not.toHaveBeenCalled();
   });
 

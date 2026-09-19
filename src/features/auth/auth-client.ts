@@ -1,11 +1,9 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
+import { clerkConfig, bootstrapClerkInstance, getClerkInstance } from "@/shared/lib/clerk-instance";
 import { isTauriApp } from "@/shared/lib/platform";
 
 export type SocialAuthProvider = "apple" | "facebook" | "google" | "x";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+export { bootstrapClerkInstance, getClerkInstance };
 
 function readInteger(value: string | undefined, fallback: number, minimum: number, maximum: number): number {
   const parsed = Number.parseInt(value ?? "", 10);
@@ -16,20 +14,37 @@ function readInteger(value: string | undefined, fallback: number, minimum: numbe
 }
 
 export const authConfig = {
-  configured: Boolean(supabaseUrl && supabasePublishableKey),
+  configured: clerkConfig.configured,
   required: import.meta.env.VITE_AUTH_REQUIRED === "true",
-  otpLength: readInteger(import.meta.env.VITE_AUTH_OTP_LENGTH, 6, 6, 10),
+  // Clerk's email one-time code is a fixed 6-digit code — unlike Supabase's
+  // Auth settings, Clerk doesn't expose a per-instance configurable length,
+  // so this is no longer read from an env var (VITE_AUTH_OTP_LENGTH is gone).
+  otpLength: 6,
   otpResendSeconds: readInteger(import.meta.env.VITE_AUTH_OTP_RESEND_SECONDS, 60, 30, 300),
   termsUrl: import.meta.env.VITE_TERMS_URL?.trim() || undefined,
   privacyUrl: import.meta.env.VITE_PRIVACY_URL?.trim() || undefined,
 };
 
-let authClient: SupabaseClient | null = null;
-let authClientPromise: Promise<SupabaseClient | null> | null = null;
+// Keep in sync with `LISTEN_ADDR` + `CALLBACK_PATH` in
+// `src-tauri/src/auth/oauth_callback.rs`. macOS Launch Services will not
+// deliver `cinetrack://` to a `tauri dev` binary (no `.app` bundle), so
+// desktop OAuth returns through this loopback URL instead.
+export const DESKTOP_OAUTH_LOOPBACK_URL = "http://127.0.0.1:7420/auth/callback";
 
 export function getAuthRedirectUrl(): string {
   if (isTauriApp()) {
-    return import.meta.env.VITE_AUTH_DESKTOP_REDIRECT_URL?.trim() || "cinetrack://auth/callback";
+    const configured = import.meta.env.VITE_AUTH_DESKTOP_REDIRECT_URL?.trim();
+
+    if (configured) return configured;
+
+    // Custom-scheme registration is unsupported at runtime on iOS too, but
+    // the bundled Info.plist *does* own `cinetrack://` there. Desktop
+    // `tauri dev` has no bundle, so it must use the loopback server.
+    if (/iphone|ipad|ipod|android/i.test(navigator.userAgent)) {
+      return "cinetrack://auth/callback";
+    }
+
+    return DESKTOP_OAUTH_LOOPBACK_URL;
   }
 
   const configuredRedirect = import.meta.env.VITE_AUTH_WEB_REDIRECT_URL?.trim();
@@ -38,44 +53,4 @@ export function getAuthRedirectUrl(): string {
   if (typeof window !== "undefined") return `${window.location.origin}/`;
 
   return "http://localhost:1420/";
-}
-
-// persistSession defaults Supabase's storage to plain window.localStorage —
-// unencrypted, unlike the TMDB bearer token in token-vault.ts, which sits
-// behind a Stronghold vault requiring a password. Evaluated moving this
-// session behind Stronghold too and deliberately didn't: autoRefreshToken
-// needs to read it silently on every launch to restore the signed-in state,
-// and Stronghold requires an unlocked, password-derived vault — putting the
-// session behind it means either a password prompt on every launch (a much
-// worse UX than the risk it defends against) or a second secret (an
-// auto-unlock key in the OS keychain) to bootstrap Stronghold silently,
-// which is a real feature in its own right, not a mechanical move. Given
-// this app's CSP (script-src 'self', no eval, no third-party JS) already
-// closes off the common classic-XSS path that this would defend against,
-// the risk doesn't currently justify that cost. Revisit if the CSP ever
-// loosens or this app starts rendering untrusted HTML/scripts.
-// Dynamically imported: @supabase/supabase-js is a ~200KB dependency that a
-// build with auth unconfigured or optional-and-unused should never have to
-// fetch at all. The promise is cached so concurrent/repeated calls share one
-// in-flight import instead of re-triggering it.
-export function getAuthClient(): Promise<SupabaseClient | null> {
-  if (!authConfig.configured || !supabaseUrl || !supabasePublishableKey) {
-    return Promise.resolve(null);
-  }
-
-  authClientPromise ??= import("@supabase/supabase-js").then(({ createClient }) => {
-    authClient ??= createClient(supabaseUrl, supabasePublishableKey, {
-      auth: {
-        autoRefreshToken: true,
-        detectSessionInUrl: false,
-        flowType: "pkce",
-        persistSession: true,
-        storageKey: "cinetrack.auth.session",
-      },
-    });
-
-    return authClient;
-  });
-
-  return authClientPromise;
 }

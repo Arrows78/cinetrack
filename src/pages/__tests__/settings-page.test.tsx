@@ -16,7 +16,7 @@ vi.mock("@/components/settings/hidden-titles-card", () => ({ HiddenTitlesCard: (
 // jump nav's scroll-spy behavior.
 vi.mock("@/components/ui/section-nav", () => ({ SectionNav: () => <div data-testid="section-nav" /> }));
 
-let currentUser: { email: string } | null = null;
+let currentUser: { primaryEmailAddress: { emailAddress: string } } | null = null;
 vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
 let authRequired = false;
@@ -193,7 +193,7 @@ describe("SettingsPage — local profile management", () => {
 
   it("auth-required mode: shows the linked email for a non-default active profile", async () => {
     authRequired = true;
-    currentUser = { email: "alex@example.com" };
+    currentUser = { primaryEmailAddress: { emailAddress: "alex@example.com" } };
     getPreferencesMock.mockReset().mockResolvedValue({ ...preferencesData, activeProfileId: "alex-id" });
     renderPage();
 

@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getAuthClientMock } = vi.hoisted(() => ({ getAuthClientMock: vi.fn() }));
-vi.mock("@/features/auth/auth-client", () => ({ getAuthClient: () => getAuthClientMock() }));
+const { getDataClientMock, getCurrentUserIdMock } = vi.hoisted(() => ({
+  getDataClientMock: vi.fn(),
+  getCurrentUserIdMock: vi.fn(),
+}));
+vi.mock("@/shared/lib/supabase-data-client", () => ({
+  getDataClient: () => getDataClientMock(),
+  getCurrentUserId: () => getCurrentUserIdMock(),
+}));
 
 import { cloudProfileRepository } from "@/features/auth/cloud-profile-repository";
 
-function makeClient(profile: unknown = { user_id: "user-1", display_name: "Alice", avatar_path: "avatar.png" }) {
+function makeClient(profile: unknown = { user_id: "user_1", display_name: "Alice", avatar_path: "avatar.png" }) {
   let response = { data: profile, error: null as Error | null };
   const builder = {
     select: vi.fn(),
@@ -20,10 +26,7 @@ function makeClient(profile: unknown = { user_id: "user-1", display_name: "Alice
   builder.maybeSingle.mockImplementation(() => Promise.resolve(response));
   builder.upsert.mockImplementation(() => builder);
 
-  const client = {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }) },
-    from: vi.fn(() => builder),
-  };
+  const client = { from: vi.fn(() => builder) };
 
   return {
     client,
@@ -34,15 +37,18 @@ function makeClient(profile: unknown = { user_id: "user-1", display_name: "Alice
   };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  getCurrentUserIdMock.mockReturnValue("user_1");
+});
 
 describe("cloudProfileRepository", () => {
   it("reads and maps the private account profile", async () => {
     const { client } = makeClient();
-    getAuthClientMock.mockResolvedValue(client);
+    getDataClientMock.mockResolvedValue(client);
 
     await expect(cloudProfileRepository.get()).resolves.toEqual({
-      userId: "user-1",
+      userId: "user_1",
       displayName: "Alice",
       avatarPath: "avatar.png",
     });
@@ -50,33 +56,27 @@ describe("cloudProfileRepository", () => {
 
   it("returns null when no account profile has been seeded yet", async () => {
     const { client } = makeClient(null);
-    getAuthClientMock.mockResolvedValue(client);
+    getDataClientMock.mockResolvedValue(client);
     await expect(cloudProfileRepository.get()).resolves.toBeNull();
   });
 
   it("trims and persists the local profile identity", async () => {
     const { client, builder } = makeClient();
-    getAuthClientMock.mockResolvedValue(client);
+    getDataClientMock.mockResolvedValue(client);
 
     await cloudProfileRepository.save(" Alice ", "avatar.png");
     expect(builder.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: "user-1", display_name: "Alice", avatar_path: "avatar.png" })
+      expect.objectContaining({ user_id: "user_1", display_name: "Alice", avatar_path: "avatar.png" })
     );
   });
 
-  it("rejects missing configuration, auth errors and missing users", async () => {
-    getAuthClientMock.mockResolvedValueOnce(null);
+  it("rejects missing configuration and a missing Clerk user id", async () => {
+    getDataClientMock.mockResolvedValueOnce(null);
     await expect(cloudProfileRepository.get()).rejects.toThrow("Supabase is not configured");
 
-    const authFailure = makeClient();
-    const failure = new Error("auth failed");
-    authFailure.client.auth.getUser.mockResolvedValue({ data: { user: null }, error: failure });
-    getAuthClientMock.mockResolvedValueOnce(authFailure.client);
-    await expect(cloudProfileRepository.get()).rejects.toBe(failure);
-
-    const noUser = makeClient();
-    noUser.client.auth.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    getAuthClientMock.mockResolvedValueOnce(noUser.client);
+    const { client } = makeClient();
+    getDataClientMock.mockResolvedValueOnce(client);
+    getCurrentUserIdMock.mockReturnValueOnce(null);
     await expect(cloudProfileRepository.get()).rejects.toThrow("Authentication required");
   });
 
@@ -84,13 +84,13 @@ describe("cloudProfileRepository", () => {
     const readFailure = makeClient();
     const firstError = new Error("read failed");
     readFailure.fail(firstError);
-    getAuthClientMock.mockResolvedValueOnce(readFailure.client);
+    getDataClientMock.mockResolvedValueOnce(readFailure.client);
     await expect(cloudProfileRepository.get()).rejects.toBe(firstError);
 
     const writeFailure = makeClient();
     const secondError = new Error("write failed");
     writeFailure.fail(secondError);
-    getAuthClientMock.mockResolvedValueOnce(writeFailure.client);
+    getDataClientMock.mockResolvedValueOnce(writeFailure.client);
     await expect(cloudProfileRepository.save("Alice")).rejects.toBe(secondError);
   });
 });

@@ -71,6 +71,10 @@ pub(crate) async fn get_by_id_impl(
     Ok(row.map(Into::into))
 }
 
+/// `supabase_user_id` is the linked identity provider account id — a
+/// Clerk `sub` ("user_xxx") since the Clerk migration, not necessarily a
+/// Supabase Auth uuid. See models.rs's doc comment on the field for why
+/// the name itself wasn't changed.
 pub(super) async fn find_by_supabase_user_id_impl(
     pool: &SqlitePool,
     supabase_user_id: &str,
@@ -347,21 +351,21 @@ mod tests {
     #[tokio::test]
     async fn auto_claims_the_unclaimed_default_profile_for_the_first_account() {
         let pool = migrated_pool().await;
-        let resolved = resolve_for_supabase_user_impl(&pool, "user-1")
+        let resolved = resolve_for_supabase_user_impl(&pool, "user_2abc")
             .await
             .unwrap()
             .unwrap();
         assert_eq!(resolved.id, "default");
-        assert_eq!(resolved.supabase_user_id.as_deref(), Some("user-1"));
+        assert_eq!(resolved.supabase_user_id.as_deref(), Some("user_2abc"));
     }
 
     #[tokio::test]
     async fn returns_the_already_linked_profile_on_subsequent_resolutions() {
         let pool = migrated_pool().await;
-        resolve_for_supabase_user_impl(&pool, "user-1")
+        resolve_for_supabase_user_impl(&pool, "user_2abc")
             .await
             .unwrap();
-        let second = resolve_for_supabase_user_impl(&pool, "user-1")
+        let second = resolve_for_supabase_user_impl(&pool, "user_2abc")
             .await
             .unwrap()
             .unwrap();
@@ -371,11 +375,11 @@ mod tests {
     #[tokio::test]
     async fn returns_none_for_a_second_account_once_default_is_claimed() {
         let pool = migrated_pool().await;
-        resolve_for_supabase_user_impl(&pool, "user-1")
+        resolve_for_supabase_user_impl(&pool, "user_2abc")
             .await
             .unwrap();
         assert!(
-            resolve_for_supabase_user_impl(&pool, "user-2")
+            resolve_for_supabase_user_impl(&pool, "user_2def")
                 .await
                 .unwrap()
                 .is_none()
@@ -385,14 +389,14 @@ mod tests {
     #[tokio::test]
     async fn the_unique_index_rejects_linking_a_second_profile_to_an_already_claimed_account() {
         let pool = migrated_pool().await;
-        resolve_for_supabase_user_impl(&pool, "user-1")
+        resolve_for_supabase_user_impl(&pool, "user_2abc")
             .await
             .unwrap();
-        let second = create_impl(&pool, "Camille", None, Some("user-2".to_string()))
+        let second = create_impl(&pool, "Camille", None, Some("user_2def".to_string()))
             .await
             .unwrap();
 
-        let result = link_to_supabase_user_impl(&pool, &second.id, "user-1").await;
+        let result = link_to_supabase_user_impl(&pool, &second.id, "user_2abc").await;
         assert!(result.is_err());
     }
 }

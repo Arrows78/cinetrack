@@ -22,6 +22,8 @@ mod sync;
 // on iOS/Android even though tray::build() is only ever invoked inside a
 // `#[cfg(desktop)]` block in run().
 #[cfg(desktop)]
+mod auth;
+#[cfg(desktop)]
 mod tray;
 
 use tauri::{Emitter, Manager};
@@ -114,6 +116,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
@@ -255,6 +258,7 @@ pub fn run() {
                 }
 
                 tray::build(app.handle())?;
+                auth::start_oauth_callback_server(app.handle().clone());
             }
 
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
@@ -265,7 +269,7 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .unwrap_or_else(|error| {
             #[cfg(desktop)]
             {
@@ -275,5 +279,23 @@ pub fn run() {
 
             #[cfg(mobile)]
             panic!("error while running tauri application: {error}");
+        })
+        .run(|app_handle, event| {
+            // macOS/iOS deliver custom-scheme opens as Apple Events
+            // (`RunEvent::Opened`), not argv. The deep-link plugin emits
+            // `deep-link://new-url` for that; we also emit the same URL on
+            // `cinetrack:deep-link` so the login screen can finish OAuth
+            // even if the plugin event name is blocked in the webview.
+            match event {
+                #[cfg(any(target_os = "macos", target_os = "ios"))]
+                tauri::RunEvent::Opened { urls } => {
+                    for url in urls {
+                        let _ = app_handle.emit("cinetrack:deep-link", url.to_string());
+                    }
+                }
+                _ => {
+                    let _ = app_handle;
+                }
+            }
         });
 }

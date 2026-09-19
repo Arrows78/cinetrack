@@ -1,43 +1,36 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { getClerkInstanceMock } = vi.hoisted(() => ({ getClerkInstanceMock: vi.fn() }));
+
+vi.mock("@/features/auth/auth-client", () => ({ getClerkInstance: () => getClerkInstanceMock() }));
+
 import { getEnabledSocialProviders } from "../provider-availability";
 
 describe("getEnabledSocialProviders", () => {
   beforeEach(() => {
-    vi.unstubAllEnvs();
-    vi.stubEnv("VITE_SUPABASE_URL", "https://example.supabase.co");
-    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test");
+    getClerkInstanceMock.mockReturnValue({ frontendApi: "example.clerk.accounts.dev" });
     vi.stubGlobal("fetch", vi.fn());
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
-  it("returns null when Supabase isn't configured", async () => {
-    vi.stubEnv("VITE_SUPABASE_URL", "");
+  it("returns null when Clerk isn't configured/bootstrapped", async () => {
+    getClerkInstanceMock.mockReturnValue(null);
     expect(await getEnabledSocialProviders()).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("requests the Supabase auth settings endpoint with the publishable key", async () => {
+  it("requests Clerk's public environment endpoint for the bootstrapped Frontend API host", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
 
     await getEnabledSocialProviders();
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://example.supabase.co/auth/v1/settings",
-      expect.objectContaining({ headers: expect.objectContaining({ apikey: "sb_publishable_test" }) })
+      "https://example.clerk.accounts.dev/v1/environment",
+      expect.objectContaining({ headers: expect.objectContaining({ Accept: "application/json" }) })
     );
-  });
-
-  it("strips a trailing slash from the configured Supabase URL", async () => {
-    vi.stubEnv("VITE_SUPABASE_URL", "https://example.supabase.co/");
-    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
-
-    await getEnabledSocialProviders();
-
-    expect(fetch).toHaveBeenCalledWith("https://example.supabase.co/auth/v1/settings", expect.anything());
   });
 
   it("returns null when the request fails", async () => {
@@ -45,14 +38,25 @@ describe("getEnabledSocialProviders", () => {
     expect(await getEnabledSocialProviders()).toBeNull();
   });
 
-  it("returns an empty list when no external providers are configured", async () => {
+  it("returns an empty list when no social connections are configured", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
     expect(await getEnabledSocialProviders()).toEqual([]);
   });
 
-  it("returns only the providers Supabase reports as enabled", async () => {
+  it("returns only the providers Clerk reports as enabled", async () => {
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ external: { google: true, apple: false, facebook: true } }), { status: 200 })
+      new Response(
+        JSON.stringify({
+          user_settings: {
+            social: {
+              oauth_google: { enabled: true },
+              oauth_apple: { enabled: false },
+              oauth_facebook: { enabled: true },
+            },
+          },
+        }),
+        { status: 200 }
+      )
     );
     const providers = await getEnabledSocialProviders();
     expect(providers).toEqual(expect.arrayContaining(["google", "facebook"]));
@@ -60,8 +64,10 @@ describe("getEnabledSocialProviders", () => {
     expect(providers).toHaveLength(2);
   });
 
-  it("treats the 'x' provider as enabled via either the 'x' or 'twitter' settings key", async () => {
-    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ external: { twitter: true } }), { status: 200 }));
+  it("maps oauth_x to the 'x' provider", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ user_settings: { social: { oauth_x: { enabled: true } } } }), { status: 200 })
+    );
     expect(await getEnabledSocialProviders()).toEqual(["x"]);
   });
 

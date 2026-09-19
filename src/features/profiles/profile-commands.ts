@@ -1,6 +1,10 @@
 import { defineCommand } from "@/shared/lib/invoke";
 import type { UserProfile } from "@/types/media";
 
+// Every `supabaseUserId` field/command name below carries Clerk's user id
+// ("user_xxx", the JWT `sub`) since the Clerk migration — kept unrenamed
+// deliberately, see profiles/models.rs's doc comment in src-tauri and
+// docs/auth.md's Clerk migration section.
 type CreateProfileArgs = {
   name: string;
   avatar: string | null;

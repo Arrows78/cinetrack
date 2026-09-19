@@ -65,6 +65,8 @@
   },
   "dependencies": {
     "@choochmeque/tauri-plugin-sharekit-api": "0.3.1",
+    "@clerk/clerk-js": "^6.32.1",
+    "@clerk/react": "^6.16.1",
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource/playfair-display": "^5.3.0",
     "@fontsource/syne": "^5.3.0",
@@ -87,6 +89,7 @@
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-fs": "^2.5.2",
     "@tauri-apps/plugin-global-shortcut": "^2.3.2",
+    "@tauri-apps/plugin-http": "^2.6.1",
     "@tauri-apps/plugin-notification": "^2.4.0",
     "@tauri-apps/plugin-opener": "^2.5.5",
     "@tauri-apps/plugin-os": "^2.3.2",

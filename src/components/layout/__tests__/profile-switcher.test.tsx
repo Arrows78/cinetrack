@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { ProfileSwitcher } from "../profile-switcher";
 
-let currentUser: { email: string } | null = null;
+let currentUser: { primaryEmailAddress: { emailAddress: string } } | null = null;
 vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
 let authRequired = false;
@@ -127,7 +127,7 @@ describe("ProfileSwitcher", () => {
 
   it("auth-required mode: shows only the current profile, read-only, no switch targets", async () => {
     authRequired = true;
-    currentUser = { email: "alex@example.com" };
+    currentUser = { primaryEmailAddress: { emailAddress: "alex@example.com" } };
     getPreferencesMock.mockReset().mockResolvedValue({ ...preferencesData, activeProfileId: "alex-id" });
     renderSwitcher();
 

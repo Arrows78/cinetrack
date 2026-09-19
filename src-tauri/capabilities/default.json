@@ -8,6 +8,10 @@
     "core:event:default",
     "deep-link:allow-get-current",
     "dialog:allow-open",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://*.clerk.accounts.dev/*" }]
+    },
     "notification:allow-is-permission-granted",
     "notification:allow-request-permission",
     "notification:allow-notify",

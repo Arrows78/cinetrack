@@ -50,6 +50,12 @@ tauri-plugin-opener = "2"
 tauri-plugin-os = "2"
 tauri-plugin-process = "2"
 tauri-plugin-stronghold = "2"
+# `unsafe-headers` lets the frontend send an empty Origin so the plugin
+# strips the webview Origin it otherwise injects (http://localhost:1420
+# in `tauri dev`). Clerk FAPI rejects Origin + Authorization together;
+# native mode must send Authorization and no Origin. Scoped by
+# capabilities/default.json to https://*.clerk.accounts.dev/* only.
+tauri-plugin-http = { version = "2.6.1", features = ["unsafe-headers"] }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-autostart = "2"

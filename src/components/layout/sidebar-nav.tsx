@@ -126,7 +126,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
   const { data: preferences, updatePreference } = usePreferences();
   const { signOut, user } = useAuth();
   const activeTheme = preferences?.theme ?? "dark";
-  const userName = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? user?.email ?? null;
+  const userName = user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? null;
 
   const groupedSections = navigationSections.map((section) => ({
     ...section,
@@ -270,13 +270,10 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-body-sm font-medium">
-                    {user?.user_metadata?.full_name ??
-                      user?.user_metadata?.name ??
-                      user?.email ??
-                      t("sidebar.defaultAccount")}
+                    {user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? t("sidebar.defaultAccount")}
                   </p>
                   <p className="truncate text-overline uppercase text-muted-foreground">
-                    {user?.user_metadata?.role ?? t("sidebar.defaultMember")}
+                    {(user?.publicMetadata as { role?: string } | undefined)?.role ?? t("sidebar.defaultMember")}
                   </p>
                 </div>
               </button>

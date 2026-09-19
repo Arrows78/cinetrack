@@ -49,7 +49,10 @@ impl<'a> PreferencesService<'a> {
     /// `profiles::resolve_profile_for_supabase_user` already relies on
     /// elsewhere in this codebase.
     ///
-    /// This is *not* cryptographic verification — `supabase_user_id` is a bare
+    /// `supabase_user_id` holds whichever identity provider's user id is
+    /// linked — Clerk's `sub` claim since the Clerk migration, not
+    /// specifically Supabase (see profiles/models.rs's doc comment and
+    /// docs/auth.md). This is *not* cryptographic verification — it's a bare
     /// string over the same untrusted `invoke()` boundary as everything else
     /// here, exactly like `resolve_profile_for_supabase_user` already trusts
     /// it. What it closes is the gap where `update_preference` accepted

@@ -2,7 +2,8 @@ import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getAuthClient: vi.fn(),
+  getDataClient: vi.fn(),
+  getCurrentUserId: vi.fn(),
   isTauriApp: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
@@ -17,7 +18,10 @@ const mocks = vi.hoisted(() => ({
   applyRemote: vi.fn(),
 }));
 
-vi.mock("@/features/auth", () => ({ getAuthClient: () => mocks.getAuthClient() }));
+vi.mock("@/shared/lib/supabase-data-client", () => ({
+  getDataClient: () => mocks.getDataClient(),
+  getCurrentUserId: () => mocks.getCurrentUserId(),
+}));
 vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => mocks.isTauriApp() }));
 vi.mock("@/shared/lib/logger", () => ({
   logger: {
@@ -62,9 +66,6 @@ function makeClient() {
     subscribe: vi.fn(() => channel),
   };
   const client = {
-    auth: {
-      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-1" } } }, error: null }),
-    },
     rpc: vi.fn(),
     channel: vi.fn(() => channel),
     removeChannel: vi.fn().mockResolvedValue(undefined),
@@ -80,6 +81,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   mocks.isTauriApp.mockReturnValue(true);
+  mocks.getCurrentUserId.mockReturnValue("user_1");
   mocks.getDeviceId.mockResolvedValue("device-1");
   mocks.prepare.mockResolvedValue(undefined);
   mocks.getStatus.mockResolvedValue({
@@ -106,35 +108,26 @@ describe("syncService.run", () => {
   it("is a no-op outside Tauri or while offline", async () => {
     mocks.isTauriApp.mockReturnValue(false);
     await expect(syncService.run()).resolves.toEqual({ pushed: 0, pulled: 0, conflicts: 0 });
-    expect(mocks.getAuthClient).not.toHaveBeenCalled();
+    expect(mocks.getDataClient).not.toHaveBeenCalled();
 
     mocks.isTauriApp.mockReturnValue(true);
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     await expect(syncService.run()).resolves.toEqual({ pushed: 0, pulled: 0, conflicts: 0 });
   });
 
-  it("is a no-op when Supabase or a session is unavailable", async () => {
-    mocks.getAuthClient.mockResolvedValueOnce(null);
+  it("is a no-op when Supabase or the current Clerk user id is unavailable", async () => {
+    mocks.getDataClient.mockResolvedValueOnce(null);
     await expect(syncService.run()).resolves.toEqual({ pushed: 0, pulled: 0, conflicts: 0 });
 
     const { client } = makeClient();
-    client.auth.getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.getCurrentUserId.mockReturnValueOnce(null);
     await expect(syncService.run()).resolves.toEqual({ pushed: 0, pulled: 0, conflicts: 0 });
-  });
-
-  it("propagates session lookup failures", async () => {
-    const { client } = makeClient();
-    const failure = new Error("session failed");
-    client.auth.getSession.mockResolvedValue({ data: { session: null }, error: failure });
-    mocks.getAuthClient.mockResolvedValue(client);
-
-    await expect(syncService.run()).rejects.toBe(failure);
   });
 
   it("pushes, pulls, applies remote changes and invalidates local queries", async () => {
     const { client } = makeClient();
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
     mocks.listOutbox.mockResolvedValueOnce([mutation]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     client.rpc.mockImplementation(async (name: string) => {
       if (name === "apply_sync_batch") {
@@ -176,7 +169,7 @@ describe("syncService.run", () => {
 
   it("records completion even when nothing was pushed or pulled", async () => {
     const { client } = makeClient();
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
     mocks.listOutbox.mockResolvedValue([]);
     client.rpc.mockResolvedValue({ data: [], error: null });
 
@@ -186,7 +179,7 @@ describe("syncService.run", () => {
 
   it("rebases optimistic conflicts and retries them", async () => {
     const { client } = makeClient();
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
     mocks.listOutbox
       .mockResolvedValueOnce([mutation])
       .mockResolvedValueOnce([mutation])
@@ -225,7 +218,7 @@ describe("syncService.run", () => {
 
   it("rejects a non-empty batch when the server makes no progress", async () => {
     const { client } = makeClient();
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
     mocks.listOutbox.mockResolvedValueOnce([mutation]);
     client.rpc.mockResolvedValue({ data: { acks: [], conflicts: [], cursor: 0 }, error: null });
 
@@ -234,7 +227,7 @@ describe("syncService.run", () => {
 
   it("propagates remote pull errors", async () => {
     const { client } = makeClient();
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
     mocks.listOutbox.mockResolvedValue([]);
     const failure = new Error("pull failed");
     client.rpc.mockResolvedValue({ data: null, error: failure });
@@ -247,14 +240,14 @@ describe("syncService.initialize", () => {
   it("wires realtime/online wakeups and releases every resource", async () => {
     vi.useFakeTimers();
     const { client, channel, wake } = makeClient();
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
     mocks.listOutbox.mockResolvedValue([]);
     client.rpc.mockResolvedValue({ data: [], error: null });
     const queryClient = queryClientMock();
 
     const cleanup = await syncService.initialize(queryClient);
     expect(channel.subscribe).toHaveBeenCalledTimes(1);
-    expect(client.channel).toHaveBeenCalledWith("cinetrack-sync-user-1");
+    expect(client.channel).toHaveBeenCalledWith("cinetrack-sync-user_1");
 
     wake();
     await vi.advanceTimersByTimeAsync(251);
@@ -266,7 +259,7 @@ describe("syncService.initialize", () => {
   it("wakes on visibilitychange when the document becomes visible again", async () => {
     vi.useFakeTimers();
     const { client } = makeClient();
-    mocks.getAuthClient.mockResolvedValue(client);
+    mocks.getDataClient.mockResolvedValue(client);
     mocks.listOutbox.mockResolvedValue([]);
     client.rpc.mockResolvedValue({ data: [], error: null });
 
@@ -288,12 +281,12 @@ describe("syncService.initialize", () => {
     await vi.advanceTimersByTimeAsync(251);
   });
 
-  it("does not initialize outside Tauri or without an authenticated client", async () => {
+  it("does not initialize outside Tauri or without a current Clerk user id", async () => {
     mocks.isTauriApp.mockReturnValue(false);
     await expect(syncService.initialize(queryClientMock())).resolves.toBeUndefined();
 
     mocks.isTauriApp.mockReturnValue(true);
-    mocks.getAuthClient.mockResolvedValue(null);
+    mocks.getDataClient.mockResolvedValue(null);
     await expect(syncService.initialize(queryClientMock())).resolves.toBeUndefined();
   });
 });

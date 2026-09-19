@@ -126,7 +126,7 @@ mod tests {
         let app = tauri::test::mock_app();
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
-        let found = find_profile_by_supabase_user_id("user-1".to_string(), state)
+        let found = find_profile_by_supabase_user_id("user_2abc".to_string(), state)
             .await
             .unwrap();
         assert!(found.is_none());
@@ -139,10 +139,10 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
         let linked =
-            link_profile_to_supabase_user("default".to_string(), "user-1".to_string(), state)
+            link_profile_to_supabase_user("default".to_string(), "user_2abc".to_string(), state)
                 .await
                 .unwrap();
-        assert_eq!(linked.supabase_user_id.as_deref(), Some("user-1"));
+        assert_eq!(linked.supabase_user_id.as_deref(), Some("user_2abc"));
     }
 
     #[tokio::test]
@@ -151,7 +151,7 @@ mod tests {
         let app = tauri::test::mock_app();
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
-        let resolved = resolve_profile_for_supabase_user("user-1".to_string(), state)
+        let resolved = resolve_profile_for_supabase_user("user_2abc".to_string(), state)
             .await
             .unwrap()
             .unwrap();

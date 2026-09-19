@@ -1,1 +1,1 @@
-export { authConfig, getAuthClient } from "./auth-client";
+export { authConfig, bootstrapClerkInstance, getClerkInstance } from "./auth-client";

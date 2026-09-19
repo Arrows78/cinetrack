@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import type { SignedInSessionResource, UserResource } from "@clerk/react/types";
 
 import type { SocialAuthProvider } from "@/features/auth/auth-client";
 
@@ -20,8 +20,8 @@ export interface AuthContextValue {
   configured: boolean;
   required: boolean;
   status: AuthStatus;
-  session: Session | null;
-  user: User | null;
+  session: SignedInSessionResource | null;
+  user: UserResource | null;
   error: string | null;
   // Raw error code/message behind an unrecognized `error` — only set when
   // `error` itself fell back to the generic translated message, so a user

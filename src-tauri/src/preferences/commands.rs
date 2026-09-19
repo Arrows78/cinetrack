@@ -193,7 +193,7 @@ mod tests {
         let pool = migrated_pool().await;
         sqlx::query(
             "INSERT INTO profiles (uuid, name, created_at, updated_at, supabase_user_id)
-             VALUES ('alex', 'Alex', 'now', 'now', 'user-1')",
+             VALUES ('alex', 'Alex', 'now', 'now', 'user_2abc')",
         )
         .execute(&pool)
         .await
@@ -229,7 +229,7 @@ mod tests {
         let pool = migrated_pool().await;
         sqlx::query(
             "INSERT INTO profiles (uuid, name, created_at, updated_at, supabase_user_id)
-             VALUES ('alex', 'Alex', 'now', 'now', 'user-1')",
+             VALUES ('alex', 'Alex', 'now', 'now', 'user_2abc')",
         )
         .execute(&pool)
         .await
@@ -242,7 +242,7 @@ mod tests {
 
         let updated = set_active_profile(
             "alex".to_string(),
-            Some("user-1".to_string()),
+            Some("user_2abc".to_string()),
             pool_state,
             cache_state,
         )
@@ -254,7 +254,7 @@ mod tests {
     #[tokio::test]
     async fn set_active_profile_always_allows_switching_to_default_even_if_claimed() {
         let pool = migrated_pool().await;
-        sqlx::query("UPDATE profiles SET supabase_user_id = 'user-1' WHERE uuid = 'default'")
+        sqlx::query("UPDATE profiles SET supabase_user_id = 'user_2abc' WHERE uuid = 'default'")
             .execute(&pool)
             .await
             .unwrap();

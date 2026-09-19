@@ -236,7 +236,7 @@ describe("AuthProvidersStep", () => {
     render(<AuthProvidersStep {...baseProps} providerSettingsStatus="ready" enabledSocialProviders={[]} />);
 
     expect(
-      screen.getByText("No social provider is enabled. Configure one in Supabase or continue with email.")
+      screen.getByText("No social provider is enabled. Configure one in Clerk or continue with email.")
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: providerButtonName("google") })).not.toBeInTheDocument();
   });

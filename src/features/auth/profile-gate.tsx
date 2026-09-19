@@ -13,10 +13,18 @@ import { LoadingScreen } from "@/components/states/loading-screen";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 
 // Which local profile is active is derived from who is signed in, not
-// picked freely — accessing a profile now requires being the Supabase
-// account it's linked to. AuthGate already blocks everything here until a
-// session exists whenever auth is required, so this only has real work to
-// do in that case.
+// picked freely — accessing a profile now requires being the account it's
+// linked to. AuthGate already blocks everything here until a session
+// exists whenever auth is required, so this only has real work to do in
+// that case.
+//
+// `session.user.id` is Clerk's user id (a "user_xxx" string, the JWT `sub`
+// claim) — the prop/param below is still named `supabaseUserId` throughout
+// this feature and `profiles.supabase_user_id` in SQLite keeps its name
+// too (see profiles/models.rs and preferences/service.rs in src-tauri):
+// both predate Clerk and were deliberately left as-is rather than renamed,
+// since it's a bare correlation string agnostic of which identity
+// provider issued it — see docs/auth.md's Clerk migration section.
 export function ProfileGate({ children }: PropsWithChildren) {
   const { session } = useAuth();
 

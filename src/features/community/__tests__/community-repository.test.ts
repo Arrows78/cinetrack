@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getAuthClientMock } = vi.hoisted(() => ({ getAuthClientMock: vi.fn() }));
+const { getDataClientMock, getCurrentUserIdMock } = vi.hoisted(() => ({
+  getDataClientMock: vi.fn(),
+  getCurrentUserIdMock: vi.fn(),
+}));
 
-vi.mock("@/features/auth", () => ({ getAuthClient: () => getAuthClientMock() }));
+vi.mock("@/shared/lib/supabase-data-client", () => ({
+  getDataClient: () => getDataClientMock(),
+  getCurrentUserId: () => getCurrentUserIdMock(),
+}));
 
 import { communityRepository } from "@/features/community/community-repository";
 
 const profileRow = {
-  user_id: "user-1",
+  user_id: "user_1",
   handle: "alice",
   display_name: "Alice",
   avatar_path: null,
@@ -20,7 +26,7 @@ const profileRow = {
 
 const reviewRow = {
   id: "review-1",
-  user_id: "user-1",
+  user_id: "user_1",
   media_type: "movie",
   media_id: 42,
   rating: 9,
@@ -34,7 +40,7 @@ const reviewRow = {
 const commentRow = {
   id: "comment-1",
   review_id: "review-1",
-  user_id: "user-1",
+  user_id: "user_1",
   body: "Nice",
   created_at: "2026-08-30T20:00:00.000Z",
   updated_at: "2026-08-30T20:00:00.000Z",
@@ -42,8 +48,8 @@ const commentRow = {
 
 const notificationRow = {
   id: "notification-1",
-  user_id: "user-1",
-  actor_id: "user-2",
+  user_id: "user_1",
+  actor_id: "user_2",
   notification_type: "follow",
   object_id: null,
   created_at: "2026-08-30T20:00:00.000Z",
@@ -105,13 +111,12 @@ function makeClient() {
   });
 
   const client = {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } }, error: null }) },
     from,
     rpc: vi.fn().mockResolvedValue({
       data: [
         {
           id: "activity-1",
-          user_id: "user-2",
+          user_id: "user_2",
           activity_type: "review_published",
           media_type: "movie",
           media_id: 42,
@@ -130,14 +135,15 @@ function makeClient() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getCurrentUserIdMock.mockReturnValue("user_1");
 });
 
 describe("communityRepository", () => {
   it("covers the complete successful social data workflow", async () => {
     const { client, builders } = makeClient();
-    getAuthClientMock.mockResolvedValue(client);
+    getDataClientMock.mockResolvedValue(client);
 
-    await expect(communityRepository.getMyProfile()).resolves.toMatchObject({ userId: "user-1", handle: "alice" });
+    await expect(communityRepository.getMyProfile()).resolves.toMatchObject({ userId: "user_1", handle: "alice" });
     await expect(communityRepository.getProfileByHandle("ALICE")).resolves.toMatchObject({ displayName: "Alice" });
     await expect(
       communityRepository.saveMyProfile({
@@ -147,15 +153,15 @@ describe("communityRepository", () => {
         isPrivate: true,
         activityVisibility: "private",
       })
-    ).resolves.toMatchObject({ userId: "user-1" });
+    ).resolves.toMatchObject({ userId: "user_1" });
 
-    await communityRepository.follow("user-2");
-    await communityRepository.acceptFollow("user-2");
-    await communityRepository.unfollow("user-2");
-    await communityRepository.block("user-2");
-    await communityRepository.unblock("user-2");
-    await communityRepository.mute("user-2");
-    await communityRepository.unmute("user-2");
+    await communityRepository.follow("user_2");
+    await communityRepository.acceptFollow("user_2");
+    await communityRepository.unfollow("user_2");
+    await communityRepository.block("user_2");
+    await communityRepository.unblock("user_2");
+    await communityRepository.mute("user_2");
+    await communityRepository.unmute("user_2");
 
     await expect(
       communityRepository.publishReview({
@@ -172,7 +178,7 @@ describe("communityRepository", () => {
     await expect(communityRepository.addComment("review-1", " Nice ")).resolves.toMatchObject({ id: "comment-1" });
     await expect(communityRepository.listComments("review-1")).resolves.toHaveLength(1);
     await expect(communityRepository.feed(undefined, 999)).resolves.toEqual([
-      expect.objectContaining({ id: "activity-1", userId: "user-2", mediaId: 42 }),
+      expect.objectContaining({ id: "activity-1", userId: "user_2", mediaId: 42 }),
     ]);
     await expect(communityRepository.notifications(999)).resolves.toEqual([
       expect.objectContaining({ id: "notification-1", notificationType: "follow" }),
@@ -199,24 +205,18 @@ describe("communityRepository", () => {
       }
       return builder;
     });
-    getAuthClientMock.mockResolvedValue(client);
+    getDataClientMock.mockResolvedValue(client);
 
     await expect(communityRepository.getMyProfile()).resolves.toBeNull();
   });
 
-  it("rejects missing configuration, auth failures and unauthenticated sessions", async () => {
-    getAuthClientMock.mockResolvedValueOnce(null);
+  it("rejects missing configuration and a missing Clerk user id", async () => {
+    getDataClientMock.mockResolvedValueOnce(null);
     await expect(communityRepository.getMyProfile()).rejects.toThrow("Supabase is not configured");
 
-    const authFailure = makeClient();
-    const failure = new Error("auth failed");
-    authFailure.client.auth.getUser.mockResolvedValue({ data: { user: null }, error: failure });
-    getAuthClientMock.mockResolvedValueOnce(authFailure.client);
-    await expect(communityRepository.getMyProfile()).rejects.toBe(failure);
-
-    const noUser = makeClient();
-    noUser.client.auth.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    getAuthClientMock.mockResolvedValueOnce(noUser.client);
+    const { client } = makeClient();
+    getDataClientMock.mockResolvedValueOnce(client);
+    getCurrentUserIdMock.mockReturnValueOnce(null);
     await expect(communityRepository.getMyProfile()).rejects.toThrow("Authentication required");
   });
 
@@ -224,13 +224,13 @@ describe("communityRepository", () => {
     const database = makeClient();
     const databaseFailure = new Error("follow failed");
     database.tableErrors.set("community_follows", databaseFailure);
-    getAuthClientMock.mockResolvedValueOnce(database.client);
-    await expect(communityRepository.follow("user-2")).rejects.toBe(databaseFailure);
+    getDataClientMock.mockResolvedValueOnce(database.client);
+    await expect(communityRepository.follow("user_2")).rejects.toBe(databaseFailure);
 
     const rpc = makeClient();
     const rpcFailure = new Error("feed failed");
     rpc.client.rpc.mockResolvedValue({ data: null, error: rpcFailure });
-    getAuthClientMock.mockResolvedValueOnce(rpc.client);
+    getDataClientMock.mockResolvedValueOnce(rpc.client);
     await expect(communityRepository.feed()).rejects.toBe(rpcFailure);
   });
 });

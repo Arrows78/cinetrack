@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren, ReactNode } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { UserResource } from "@clerk/react/types";
 import i18n from "@/i18n";
 import { SidebarNav } from "../sidebar-nav";
 
@@ -19,7 +19,7 @@ vi.mock("@tanstack/react-router", () => ({
     select({ location: { pathname: routerState.pathname } }),
 }));
 
-let authUser: User | null = null;
+let authUser: UserResource | null = null;
 const signOutMock = vi.fn();
 vi.mock("@/features/auth/use-auth", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -182,8 +182,9 @@ describe("SidebarNav", () => {
 
     it("shows the user's full name, role, and two-letter initials when expanded", () => {
       authUser = {
-        user_metadata: { full_name: "Ada Lovelace", role: "Admin" },
-      } as unknown as User;
+        fullName: "Ada Lovelace",
+        publicMetadata: { role: "Admin" },
+      } as unknown as UserResource;
       renderSidebar();
 
       expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
@@ -192,7 +193,10 @@ describe("SidebarNav", () => {
     });
 
     it("falls back to the email and a single initial when no name is set", () => {
-      authUser = { email: "ada@example.com", user_metadata: {} } as User;
+      authUser = {
+        fullName: null,
+        primaryEmailAddress: { emailAddress: "ada@example.com" },
+      } as unknown as UserResource;
       renderSidebar();
 
       expect(screen.getByText("ada@example.com")).toBeInTheDocument();
@@ -200,14 +204,14 @@ describe("SidebarNav", () => {
     });
 
     it("falls back to 'U' initials when the name is only whitespace", () => {
-      authUser = { user_metadata: { full_name: "   " } } as unknown as User;
+      authUser = { fullName: "   " } as unknown as UserResource;
       renderSidebar();
 
       expect(screen.getByText("U")).toBeInTheDocument();
     });
 
     it("shows the user's initials in the collapsed avatar-only card, behind the profile-switch trigger", () => {
-      authUser = { user_metadata: { full_name: "Ada Lovelace" } } as unknown as User;
+      authUser = { fullName: "Ada Lovelace" } as unknown as UserResource;
       renderSidebar({ collapsed: true });
 
       expect(screen.getByText("AL")).toBeInTheDocument();

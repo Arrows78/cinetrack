@@ -3,6 +3,9 @@ import { render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { AuthRoot } from "../auth-root";
 
+vi.mock("@/features/auth/clerk-app-provider", () => ({
+  ClerkAppProvider: ({ children }: PropsWithChildren) => <div data-testid="clerk-app-provider">{children}</div>,
+}));
 vi.mock("@/features/auth/auth-provider", () => ({
   AuthProvider: ({ children }: PropsWithChildren) => <div data-testid="auth-provider">{children}</div>,
 }));
@@ -17,19 +20,21 @@ vi.mock("@/features/onboarding", () => ({
 }));
 
 describe("AuthRoot", () => {
-  it("nests AuthProvider > AuthGate > ProfileGate > OnboardingGate around its children", () => {
+  it("nests ClerkAppProvider > AuthProvider > AuthGate > ProfileGate > OnboardingGate around its children", () => {
     render(
       <AuthRoot>
         <div data-testid="app-content" />
       </AuthRoot>
     );
 
+    const clerkAppProvider = screen.getByTestId("clerk-app-provider");
     const provider = screen.getByTestId("auth-provider");
     const gate = screen.getByTestId("auth-gate");
     const profileGate = screen.getByTestId("profile-gate");
     const onboardingGate = screen.getByTestId("onboarding-gate");
     const content = screen.getByTestId("app-content");
 
+    expect(clerkAppProvider).toContainElement(provider);
     expect(provider).toContainElement(gate);
     expect(gate).toContainElement(profileGate);
     expect(profileGate).toContainElement(onboardingGate);

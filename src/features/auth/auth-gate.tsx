@@ -27,7 +27,6 @@ export function AuthGate({ children }: PropsWithChildren) {
               components={{
                 1: <code />,
                 3: <code />,
-                5: <code />,
               }}
             />
           </p>

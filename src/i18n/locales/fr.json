@@ -1028,7 +1028,7 @@
     },
     "status": {
       "checkingProviders": "Vérification des fournisseurs configurés…",
-      "noProvidersEnabled": "Aucun fournisseur social n'est activé. Configurez-en un dans Supabase ou continuez avec e-mail.",
+      "noProvidersEnabled": "Aucun fournisseur social n'est activé. Configurez-en un dans Clerk ou continuez avec e-mail.",
       "providerConfigError": "CineTrack n'a pas pu vérifier la configuration du fournisseur."
     },
     "legal": {
@@ -1037,20 +1037,22 @@
     "errors": {
       "rateLimited": "Tentatives d'authentification trop nombreuses. Patientez un moment avant de réessayer.",
       "otpExpired": "Ce code a expiré. Demandez-en un nouveau et réessayez.",
+      "otpIncorrect": "Ce code est incorrect. Vérifiez-le et réessayez.",
       "invalidEmail": "Saisissez une adresse e-mail valide.",
       "noAccount": "Aucun compte CineTrack n'existe pour cette adresse e-mail.",
-      "badCodeVerifier": "La demande de connexion n'a pas pu être vérifiée. Redémarrez le flux de connexion.",
+      "accountExists": "Un compte existe déjà pour cette adresse e-mail. Essayez plutôt de vous connecter.",
       "default": "L'authentification a échoué. Veuillez réessayer.",
-      "notConfigured": "Supabase Auth n'est pas configuré.",
-      "noOAuthUrl": "Supabase n'a pas retourné d'URL d'autorisation OAuth.",
-      "invalidOAuthUrl": "Supabase a retourné une URL d'autorisation OAuth invalide.",
-      "providerNotEnabled": "La connexion via {{provider}} n'est pas activée dans Supabase.",
+      "notConfigured": "Clerk n'est pas configuré.",
+      "noOAuthUrl": "Clerk n'a pas retourné d'URL d'autorisation OAuth.",
+      "invalidOAuthUrl": "Clerk a retourné une URL d'autorisation OAuth invalide.",
+      "oauthCallbackIncomplete": "La connexion s'est terminee dans le navigateur, mais CineTrack n'a pas recu de session. Reessayez.",
+      "providerNotEnabled": "La connexion via {{provider}} n'est pas activée dans Clerk.",
       "enterOtpCode": "Saisissez le code à {{length}} chiffres envoyé à votre e-mail."
     },
     "gate": {
       "restoringSession": "Restauration de votre session…",
       "needsConfiguration": "L'authentification nécessite une configuration",
-      "configInstruction": "Ajoutez <1>VITE_SUPABASE_URL</1> et <3>VITE_SUPABASE_PUBLISHABLE_KEY</3> à votre fichier .env, ou définissez <5>VITE_AUTH_REQUIRED=false</5> pour garder CineTrack en mode local uniquement."
+      "configInstruction": "Ajoutez <1>VITE_CLERK_PUBLISHABLE_KEY</1> à votre fichier .env, ou définissez <3>VITE_AUTH_REQUIRED=false</3> pour garder CineTrack en mode local uniquement."
     },
     "backdrop": {
       "midnight": "Minuit",

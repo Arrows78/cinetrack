@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import { getAuthClient } from "@/features/auth";
+import { getCurrentUserId, getDataClient } from "@/shared/lib/supabase-data-client";
 import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 
@@ -17,13 +17,15 @@ const MAX_PUSH_ROUNDS = 20;
 
 let running: Promise<SyncRunResult> | null = null;
 
+// The Clerk user id (the same `sub` requesting_user_id() reads server-side)
+// is the current-user check now — there is no local Supabase Auth session
+// to read (see supabase-data-client.ts's accessToken doc comment).
 async function requireSession() {
-  const client = await getAuthClient();
+  const client = await getDataClient();
   if (!client) return null;
-  const { data, error } = await client.auth.getSession();
-  if (error) throw error;
-  if (!data.session) return null;
-  return { client, session: data.session };
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  return { client, userId };
 }
 
 async function pushOutbox(): Promise<{ pushed: number; conflicts: number }> {
@@ -167,16 +169,18 @@ export const syncService = {
 
     // Realtime is deliberately not the transport. Missing this notification
     // while the app sleeps/offline is harmless because pull_sync_changes is
-    // cursor-based and durable.
+    // cursor-based and durable. The channel/filter use the Clerk user id —
+    // the same value requesting_user_id() reads server-side off the JWT
+    // `sub` claim, so this filter still only ever matches this user's rows.
     const channel = auth.client
-      .channel(`cinetrack-sync-${auth.session.user.id}`)
+      .channel(`cinetrack-sync-${auth.userId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "sync_changes",
-          filter: `user_id=eq.${auth.session.user.id}`,
+          filter: `user_id=eq.${auth.userId}`,
         },
         wake
       )

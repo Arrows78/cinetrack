@@ -1085,7 +1085,7 @@ mod tests {
     #[tokio::test]
     async fn export_and_reimport_preserves_the_profiles_supabase_link() {
         let pool = migrated_pool().await;
-        sqlx::query("UPDATE profiles SET supabase_user_id = 'user-1' WHERE uuid = 'default'")
+        sqlx::query("UPDATE profiles SET supabase_user_id = 'user_2abc' WHERE uuid = 'default'")
             .execute(&pool)
             .await
             .unwrap();
@@ -1094,7 +1094,7 @@ mod tests {
         assert_eq!(exported.profiles.len(), 1);
         assert_eq!(
             exported.profiles[0].supabase_user_id.as_deref(),
-            Some("user-1")
+            Some("user_2abc")
         );
 
         import_impl(&pool, exported).await.unwrap();
@@ -1104,7 +1104,7 @@ mod tests {
                 .fetch_one(&pool)
                 .await
                 .unwrap();
-        assert_eq!(supabase_user_id.0.as_deref(), Some("user-1"));
+        assert_eq!(supabase_user_id.0.as_deref(), Some("user_2abc"));
     }
 
     #[tokio::test]

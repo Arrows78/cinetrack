@@ -91,9 +91,13 @@ export default defineConfig({
         // in Rust (export_impl/import_impl, src-tauri/src/commands/backup.rs)
         // — this file only validates and orchestrates the invoke() calls.
         "src/features/backup/portable-data.ts": { statements: 90, branches: 60, functions: 95, lines: 90 },
-        // Config module read at import time (authConfig/getAuthClient); the
-        // OAuth-error-mapping branch inside getAuthClient itself is thin.
+        // Config module read at import time (authConfig/bootstrapClerkInstance);
+        // the Tauri-only fetch-patch branch is exercised by asserting it's a
+        // no-op outside Tauri (see auth-client.test.ts) rather than
+        // constructing a real webview to prove the patched fetch itself works.
         "src/features/auth/auth-client.ts": { statements: 90, branches: 80, functions: 100, lines: 90 },
+        "src/shared/lib/clerk-instance.ts": { statements: 85, branches: 75, functions: 100, lines: 85 },
+        "src/shared/lib/supabase-data-client.ts": { statements: 90, branches: 80, functions: 100, lines: 90 },
         // Covers init/session/OAuth/OTP/signOut; excludes the Tauri deep-link
         // import branch (dynamic import, needs a real webview to exercise —
         // mocking it in-suite was tried and dropped: it changes the Tauri

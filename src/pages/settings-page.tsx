@@ -86,9 +86,9 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
               <p className="font-medium">
                 {currentProfile.id === "default" ? t("settings.profiles.defaultName") : currentProfile.name}
               </p>
-              {user?.email ? (
+              {user?.primaryEmailAddress?.emailAddress ? (
                 <p className="mt-1 text-body-sm text-muted-foreground">
-                  {t("settings.profiles.linkedTo", { email: user.email })}
+                  {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
                 </p>
               ) : null}
             </Tile>
@@ -96,7 +96,7 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
             <p className="text-body-sm text-muted-foreground">{t("settings.profiles.none")}</p>
           )
         ) : (
-          // No Supabase account is in play at all offline — set_active_profile
+          // No account is in play at all offline — set_active_profile
           // (src-tauri/src/preferences/) only ever rejects a switch
           // into a profile that's linked to one, so free switching between
           // these local-only profiles is safe.

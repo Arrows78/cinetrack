@@ -1028,7 +1028,7 @@
     },
     "status": {
       "checkingProviders": "Checking configured sign-in providers…",
-      "noProvidersEnabled": "No social provider is enabled. Configure one in Supabase or continue with email.",
+      "noProvidersEnabled": "No social provider is enabled. Configure one in Clerk or continue with email.",
       "providerConfigError": "CineTrack could not verify the provider configuration."
     },
     "legal": {
@@ -1037,20 +1037,22 @@
     "errors": {
       "rateLimited": "Too many authentication attempts. Wait a moment before trying again.",
       "otpExpired": "This code has expired. Request a new one and try again.",
+      "otpIncorrect": "That code is incorrect. Check it and try again.",
       "invalidEmail": "Enter a valid email address.",
       "noAccount": "No CineTrack account exists for this email address.",
-      "badCodeVerifier": "The sign-in request could not be verified. Restart the sign-in flow.",
+      "accountExists": "An account already exists for this email address. Try signing in instead.",
       "default": "Authentication failed. Please try again.",
-      "notConfigured": "Supabase Auth is not configured.",
-      "noOAuthUrl": "Supabase did not return an OAuth authorization URL.",
-      "invalidOAuthUrl": "Supabase returned an invalid OAuth authorization URL.",
-      "providerNotEnabled": "{{provider}} sign-in is not enabled in Supabase.",
+      "notConfigured": "Clerk is not configured.",
+      "noOAuthUrl": "Clerk did not return an OAuth authorization URL.",
+      "invalidOAuthUrl": "Clerk returned an invalid OAuth authorization URL.",
+      "oauthCallbackIncomplete": "Sign-in finished in the browser, but CineTrack did not receive a session. Try again.",
+      "providerNotEnabled": "{{provider}} sign-in is not enabled in Clerk.",
       "enterOtpCode": "Enter the {{length}}-digit code sent to your email."
     },
     "gate": {
       "restoringSession": "Restoring your session…",
       "needsConfiguration": "Authentication needs configuration",
-      "configInstruction": "Add <1>VITE_SUPABASE_URL</1> and <3>VITE_SUPABASE_PUBLISHABLE_KEY</3> to your .env file, or set <5>VITE_AUTH_REQUIRED=false</5> to keep CineTrack in local-only mode."
+      "configInstruction": "Add <1>VITE_CLERK_PUBLISHABLE_KEY</1> to your .env file, or set <3>VITE_AUTH_REQUIRED=false</3> to keep CineTrack in local-only mode."
     },
     "backdrop": {
       "midnight": "Midnight",

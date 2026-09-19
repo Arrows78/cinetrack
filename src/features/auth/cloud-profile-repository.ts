@@ -1,4 +1,4 @@
-import { getAuthClient } from "./auth-client";
+import { getCurrentUserId, getDataClient } from "@/shared/lib/supabase-data-client";
 
 export type CloudAccountProfile = {
   userId: string;
@@ -6,19 +6,18 @@ export type CloudAccountProfile = {
   avatarPath: string | null;
 };
 
-async function clientAndUser() {
-  const client = await getAuthClient();
+async function clientAndUserId() {
+  const client = await getDataClient();
   if (!client) throw new Error("Supabase is not configured");
-  const { data, error } = await client.auth.getUser();
-  if (error) throw error;
-  if (!data.user) throw new Error("Authentication required");
-  return { client, user: data.user };
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error("Authentication required");
+  return { client, userId };
 }
 
 export const cloudProfileRepository = {
   async get(): Promise<CloudAccountProfile | null> {
-    const { client, user } = await clientAndUser();
-    const { data, error } = await client.from("account_profiles").select("*").eq("user_id", user.id).maybeSingle();
+    const { client, userId } = await clientAndUserId();
+    const { data, error } = await client.from("account_profiles").select("*").eq("user_id", userId).maybeSingle();
     if (error) throw error;
     if (!data) return null;
     return {
@@ -29,9 +28,9 @@ export const cloudProfileRepository = {
   },
 
   async save(displayName: string, avatarPath?: string | null): Promise<void> {
-    const { client, user } = await clientAndUser();
+    const { client, userId } = await clientAndUserId();
     const { error } = await client.from("account_profiles").upsert({
-      user_id: user.id,
+      user_id: userId,
       display_name: displayName.trim(),
       avatar_path: avatarPath ?? null,
       updated_at: new Date().toISOString(),

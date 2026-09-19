@@ -40,7 +40,7 @@ export function CreateProfileScreen({ supabaseUserId }: { supabaseUserId: string
         <AuthStepIcon icon={UserPlus} />
         <h1 className="mt-5 text-heading-lg font-black">{t("profileGate.createTitle")}</h1>
         <p className="mt-3 text-body-sm leading-6 text-auth-foreground/55">
-          {t("profileGate.createDescription", { email: user?.email ?? "" })}
+          {t("profileGate.createDescription", { email: user?.primaryEmailAddress?.emailAddress ?? "" })}
         </p>
 
         <form className="mt-7" onSubmit={handleSubmit}>

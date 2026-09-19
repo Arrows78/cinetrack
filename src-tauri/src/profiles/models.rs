@@ -7,6 +7,14 @@ pub struct UserProfile {
     pub name: String,
     pub avatar: Option<String>,
     pub created_at: String,
+    /// The linked identity provider account id — despite the name, no
+    /// longer specifically a Supabase Auth id: since the Clerk migration
+    /// (see docs/auth.md) this holds Clerk's `sub` claim ("user_xxx",
+    /// a string, never a UUID). Left unrenamed deliberately: renaming
+    /// would also touch the SQLite migration, every Tauri command name
+    /// below, and the literal `"supabase_user_id"` JSON key backup exports
+    /// already use (see backup/repository.rs) — see docs/auth.md's Clerk
+    /// migration section for why that trade wasn't taken.
     pub supabase_user_id: Option<String>,
 }
 

@@ -149,7 +149,7 @@ describe("AuthGate", () => {
     );
 
     expect(screen.getByText(i18n.t("auth.gate.needsConfiguration"))).toBeInTheDocument();
-    expect(screen.getByText("VITE_SUPABASE_URL")).toBeInTheDocument();
+    expect(screen.getByText("VITE_CLERK_PUBLISHABLE_KEY")).toBeInTheDocument();
     expect(screen.queryByTestId("child")).not.toBeInTheDocument();
   });
 

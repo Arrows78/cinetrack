@@ -1,4 +1,4 @@
-import { getAuthClient } from "@/features/auth";
+import { getCurrentUserId, getDataClient } from "@/shared/lib/supabase-data-client";
 
 import type {
   CommunityActivity,
@@ -11,12 +11,11 @@ import type {
 } from "./community-types";
 
 async function authenticated() {
-  const client = await getAuthClient();
+  const client = await getDataClient();
   if (!client) throw new Error("Supabase is not configured");
-  const { data, error } = await client.auth.getUser();
-  if (error) throw error;
-  if (!data.user) throw new Error("Authentication required");
-  return { client, user: data.user };
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error("Authentication required");
+  return { client, userId };
 }
 
 function profile(row: Record<string, unknown>): CommunityProfile {
@@ -50,8 +49,8 @@ function review(row: Record<string, unknown>): CommunityReview {
 
 export const communityRepository = {
   async getMyProfile(): Promise<CommunityProfile | null> {
-    const { client, user } = await authenticated();
-    const { data, error } = await client.from("community_profiles").select("*").eq("user_id", user.id).maybeSingle();
+    const { client, userId } = await authenticated();
+    const { data, error } = await client.from("community_profiles").select("*").eq("user_id", userId).maybeSingle();
     if (error) throw error;
     return data ? profile(data as Record<string, unknown>) : null;
   },
@@ -68,11 +67,11 @@ export const communityRepository = {
   },
 
   async saveMyProfile(input: CommunityProfileInput): Promise<CommunityProfile> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const { data, error } = await client
       .from("community_profiles")
       .upsert({
-        user_id: user.id,
+        user_id: userId,
         handle: input.handle.trim().toLowerCase(),
         display_name: input.displayName.trim(),
         avatar_path: input.avatarPath ?? null,
@@ -88,64 +87,68 @@ export const communityRepository = {
   },
 
   async follow(userId: string): Promise<void> {
-    const { client, user } = await authenticated();
-    const { error } = await client.from("community_follows").insert({ follower_id: user.id, following_id: userId });
+    const { client, userId: followerId } = await authenticated();
+    const { error } = await client.from("community_follows").insert({ follower_id: followerId, following_id: userId });
     if (error) throw error;
   },
 
   async acceptFollow(followerId: string): Promise<void> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const { error } = await client
       .from("community_follows")
       .update({ status: "accepted" })
       .eq("follower_id", followerId)
-      .eq("following_id", user.id)
+      .eq("following_id", userId)
       .eq("status", "pending");
     if (error) throw error;
   },
 
   async unfollow(userId: string): Promise<void> {
-    const { client, user } = await authenticated();
+    const { client, userId: followerId } = await authenticated();
     const { error } = await client
       .from("community_follows")
       .delete()
-      .eq("follower_id", user.id)
+      .eq("follower_id", followerId)
       .eq("following_id", userId);
     if (error) throw error;
   },
 
   async block(userId: string): Promise<void> {
-    const { client, user } = await authenticated();
-    const { error } = await client.from("community_blocks").upsert({ blocker_id: user.id, blocked_id: userId });
+    const { client, userId: blockerId } = await authenticated();
+    const { error } = await client.from("community_blocks").upsert({ blocker_id: blockerId, blocked_id: userId });
     if (error) throw error;
   },
 
   async unblock(userId: string): Promise<void> {
-    const { client, user } = await authenticated();
-    const { error } = await client.from("community_blocks").delete().eq("blocker_id", user.id).eq("blocked_id", userId);
+    const { client, userId: blockerId } = await authenticated();
+    const { error } = await client
+      .from("community_blocks")
+      .delete()
+      .eq("blocker_id", blockerId)
+      .eq("blocked_id", userId);
     if (error) throw error;
   },
 
   async mute(userId: string): Promise<void> {
-    const { client, user } = await authenticated();
-    const { error } = await client.from("community_mutes").upsert({ muter_id: user.id, muted_id: userId });
+    const { client, userId: muterId } = await authenticated();
+    const { error } = await client.from("community_mutes").upsert({ muter_id: muterId, muted_id: userId });
     if (error) throw error;
   },
 
   async unmute(userId: string): Promise<void> {
-    const { client, user } = await authenticated();
-    const { error } = await client.from("community_mutes").delete().eq("muter_id", user.id).eq("muted_id", userId);
+    const { client, userId: muterId } = await authenticated();
+    const { error } = await client.from("community_mutes").delete().eq("muter_id", muterId).eq("muted_id", userId);
     if (error) throw error;
   },
 
   async publishReview(input: PublishReviewInput): Promise<CommunityReview> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const now = new Date().toISOString();
     const { data, error } = await client
       .from("community_reviews")
       .upsert(
         {
-          user_id: user.id,
+          user_id: userId,
           media_type: input.mediaType,
           media_id: input.mediaId,
           rating: input.rating ?? null,
@@ -163,7 +166,7 @@ export const communityRepository = {
 
     const mapped = review(data as Record<string, unknown>);
     await client.from("community_activities").insert({
-      user_id: user.id,
+      user_id: userId,
       activity_type: "review_published",
       media_type: input.mediaType,
       media_id: input.mediaId,
@@ -189,28 +192,28 @@ export const communityRepository = {
   },
 
   async likeReview(reviewId: string): Promise<void> {
-    const { client, user } = await authenticated();
-    const { error } = await client.from("community_review_likes").upsert({ review_id: reviewId, user_id: user.id });
+    const { client, userId } = await authenticated();
+    const { error } = await client.from("community_review_likes").upsert({ review_id: reviewId, user_id: userId });
     if (error) throw error;
   },
 
   async unlikeReview(reviewId: string): Promise<void> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const { error } = await client
       .from("community_review_likes")
       .delete()
       .eq("review_id", reviewId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
     if (error) throw error;
   },
 
   async addComment(reviewId: string, body: string): Promise<CommunityComment> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const { data, error } = await client
       .from("community_comments")
       .insert({
         review_id: reviewId,
-        user_id: user.id,
+        user_id: userId,
         body: body.trim(),
       })
       .select("*")
@@ -266,11 +269,11 @@ export const communityRepository = {
   },
 
   async notifications(limit = 50): Promise<CommunityNotification[]> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const { data, error } = await client
       .from("community_notifications")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(Math.min(Math.max(limit, 1), 100));
     if (error) throw error;
@@ -286,19 +289,19 @@ export const communityRepository = {
   },
 
   async markNotificationRead(notificationId: string): Promise<void> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const { error } = await client
       .from("community_notifications")
       .update({ read_at: new Date().toISOString() })
       .eq("id", notificationId)
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
     if (error) throw error;
   },
 
   async report(targetType: "profile" | "review" | "comment" | "list", targetId: string, reason: string): Promise<void> {
-    const { client, user } = await authenticated();
+    const { client, userId } = await authenticated();
     const { error } = await client.from("community_reports").insert({
-      reporter_id: user.id,
+      reporter_id: userId,
       target_type: targetType,
       target_id: targetId,
       reason: reason.trim(),
