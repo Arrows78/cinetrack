@@ -786,6 +786,14 @@ export const componentInventory = [
     "Links out to a title's or person's IMDb page; renders nothing without an IMDb id."
   ),
   component(
+    "ShareButton",
+    "components/media/detail/share-button.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Shares a title's public TMDB page via the Web Share API, falling back to a clipboard copy with a toast."
+  ),
+  component(
     "KeywordChips",
     "components/media/detail/keyword-chips.tsx",
     "Media",

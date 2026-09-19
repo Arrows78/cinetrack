@@ -16,6 +16,7 @@ import { MediaGallery } from "@/components/media/detail/media-gallery";
 import { ReviewsPanel } from "@/components/media/detail/reviews-panel";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/tracking/next-episode-card";
+import { ShareButton } from "@/components/media/detail/share-button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
@@ -127,6 +128,7 @@ export function SeriesDetailPage() {
             <AddToLibraryButton media={series} />
             <FavouriteButton media={series} />
             <AvailabilityAlertButton media={series} />
+            <ShareButton media={series} />
           </>
         }
         extra={
