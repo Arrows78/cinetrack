@@ -6,8 +6,9 @@ use super::models::{
 };
 use super::queries::{
     get_best_recommendation_seed_impl, get_impl, get_items_by_keys_impl, has_impl,
-    list_completed_candidates_impl, list_ids_matching_filters_impl, list_impl,
-    list_media_keys_impl, list_page_impl, list_planned_candidates_impl, list_status_counts_impl,
+    list_completed_candidates_impl, list_distinct_tags_impl, list_ids_matching_filters_impl,
+    list_impl, list_media_keys_impl, list_page_impl, list_planned_candidates_impl,
+    list_status_counts_impl,
 };
 use super::repository::{
     refresh_catalog_metadata_impl, remove_if_planned_impl, remove_impl, upsert_impl,
@@ -145,5 +146,10 @@ impl<'a> LibraryService<'a> {
     ) -> Result<Vec<LibraryMediaKey>, ApiError> {
         let profile_id = self.profile_id().await?;
         list_ids_matching_filters_impl(self.pool, &profile_id, filters).await
+    }
+
+    pub(super) async fn distinct_tags(&self) -> Result<Vec<String>, ApiError> {
+        let profile_id = self.profile_id().await?;
+        list_distinct_tags_impl(self.pool, &profile_id).await
     }
 }

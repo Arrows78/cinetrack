@@ -86,6 +86,7 @@ export const queryKeys = {
     // mine-vs-discovery) instead of each deriving its own set from a full
     // useLibrary() read.
     libraryMediaKeys: (profileId: string) => ["local", "libraryMediaKeys", profileId] as const,
+    libraryDistinctTags: (profileId: string) => ["local", "libraryDistinctTags", profileId] as const,
     completedLibraryCandidates: (profileId: string) => ["local", "completedLibraryCandidates", profileId] as const,
     bestRecommendationSeed: (profileId: string) => ["local", "bestRecommendationSeed", profileId] as const,
     // Cursor/pending/failed counts are scoped by the active local profile

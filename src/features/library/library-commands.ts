@@ -55,5 +55,6 @@ export const libraryCommands = {
   completedCandidates: defineCommand<CompletedCandidatesArgs, LibraryItem[]>("list_completed_library_candidates"),
   bestRecommendationSeed: defineCommand<undefined, LibraryItem | null>("get_best_recommendation_seed"),
   idsMatchingFilters: defineCommand<IdsMatchingFiltersArgs, LibraryMediaKey[]>("list_library_ids_matching_filters"),
+  distinctTags: defineCommand<undefined, string[]>("list_library_distinct_tags"),
   refreshCatalogMetadata: defineCommand<RefreshCatalogMetadataArgs, void>("refresh_library_catalog_metadata"),
 } as const;

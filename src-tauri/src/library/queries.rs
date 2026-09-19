@@ -505,6 +505,43 @@ pub(super) async fn get_best_recommendation_seed_impl(
     Ok(None)
 }
 
+/// Every distinct tag already used somewhere in the profile's library, case-
+/// deduplicated (first-seen casing wins) and sorted — backs the tag editor's
+/// autocomplete so a user reuses "Sci-Fi" instead of accidentally creating a
+/// second "sci-fi". `tags` is a JSON-serialized string array (no relational
+/// tags table), so dedup/sort happens in Rust after parsing each row rather
+/// than in SQL.
+pub(super) async fn list_distinct_tags_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<Vec<String>, ApiError> {
+    // ORDER BY makes "first-seen casing wins" below actually deterministic —
+    // SELECT DISTINCT alone gives SQLite no reason to preserve insertion
+    // order.
+    let rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT DISTINCT tags FROM library_items WHERE profile_id = $1 AND tags != '[]'
+         ORDER BY created_at ASC, media_id ASC",
+    )
+    .bind(profile_id)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    let mut seen = std::collections::HashSet::new();
+    let mut tags = Vec::new();
+    for (raw,) in rows {
+        let parsed: Vec<String> =
+            serde_json::from_str(&raw).map_err(|e| ApiError::internal(e.to_string()))?;
+        for tag in parsed {
+            if seen.insert(tag.to_lowercase()) {
+                tags.push(tag);
+            }
+        }
+    }
+    tags.sort_by_key(|tag| tag.to_lowercase());
+    Ok(tags)
+}
+
 /// Ids matching a narrow set of purely-relational `library_items` filters —
 /// never a full rule DSL. See `LibraryFilterParams`'s own doc comment for
 /// why this stays this narrow: a caller with a richer rule set (e.g. a

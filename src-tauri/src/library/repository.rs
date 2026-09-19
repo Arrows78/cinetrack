@@ -13,8 +13,9 @@ use super::queries::get_impl;
 #[cfg(test)]
 use super::queries::{
     get_best_recommendation_seed_impl, get_items_by_keys_impl, has_impl,
-    list_completed_candidates_impl, list_ids_matching_filters_impl, list_impl,
-    list_media_keys_impl, list_page_impl, list_planned_candidates_impl, list_status_counts_impl,
+    list_completed_candidates_impl, list_distinct_tags_impl, list_ids_matching_filters_impl,
+    list_impl, list_media_keys_impl, list_page_impl, list_planned_candidates_impl,
+    list_status_counts_impl,
 };
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
@@ -2028,5 +2029,80 @@ mod tests {
             .unwrap();
 
         assert_eq!(ids.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn list_distinct_tags_impl_dedupes_case_insensitively_keeping_first_seen_casing_and_sorts()
+     {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                tags: Some(vec!["Sci-Fi".to_string(), "Family".to_string()]),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                // Same tag, different casing — should not appear twice, and
+                // the first-seen "Sci-Fi" casing above should win.
+                tags: Some(vec!["sci-fi".to_string(), "Comedy".to_string()]),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(&pool, media(3), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        let tags = list_distinct_tags_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(tags, vec!["Comedy", "Family", "Sci-Fi"]);
+    }
+
+    #[tokio::test]
+    async fn list_distinct_tags_impl_only_returns_the_requested_profiles_tags() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(1),
+            LibraryPatch {
+                tags: Some(vec!["Mine".to_string()]),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                tags: Some(vec!["TheirsOnly".to_string()]),
+                ..Default::default()
+            },
+            "other",
+        )
+        .await
+        .unwrap();
+
+        let tags = list_distinct_tags_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(tags, vec!["Mine"]);
     }
 }

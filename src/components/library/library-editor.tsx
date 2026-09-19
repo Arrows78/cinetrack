@@ -4,25 +4,26 @@ import { Save, Trash2 } from "lucide-react";
 import { AddToListButton } from "@/components/library/add-to-list-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StarRating } from "@/components/ui/star-rating";
+import { TagInput } from "@/components/ui/tag-input";
 import { Textarea } from "@/components/ui/textarea";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { toast } from "@/components/ui/use-toast";
-import { useLibraryItem } from "@/features/library/use-library";
+import { useLibraryDistinctTags, useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
 export function LibraryEditor({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const library = useLibraryItem(media);
+  const distinctTags = useLibraryDistinctTags();
   const [status, setStatus] = useState<LibraryStatus>("planned");
   const [userRating, setUserRating] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [rewatchCount, setRewatchCount] = useState(0);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   // Deliberately *not* seeded from `library.data`: if the query already has
@@ -38,7 +39,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     setStatus(library.data.status);
     setUserRating(library.data.userRating ?? null);
     setNotes(library.data.notes ?? "");
-    setTags(library.data.tags.join(", "));
+    setTags(library.data.tags);
     setRewatchCount(library.data.rewatchCount);
   }
 
@@ -80,23 +81,6 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     );
   }
 
-  // Trimmed, emptied entries dropped, and deduplicated case-insensitively
-  // (keeping the first-seen casing) — otherwise "Action" typed once and
-  // "action" typed later become two distinct tags that never match each
-  // other in a filter.
-  const normalizeTags = (raw: string): string[] => {
-    const seen = new Set<string>();
-    const result: string[] = [];
-    for (const tag of raw.split(",").map((t) => t.trim())) {
-      if (!tag) continue;
-      const key = tag.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push(tag);
-    }
-    return result;
-  };
-
   const save = () =>
     library
       .save({
@@ -107,7 +91,9 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         // combined save avoids two components fighting over the same field.
         userRating,
         notes: notes.trim() || null,
-        tags: normalizeTags(tags),
+        // Trimmed and case-insensitively deduplicated by TagInput itself as
+        // tags are added — nothing left to normalize here.
+        tags,
         rewatchCount: Math.max(0, rewatchCount),
       })
       .then(() => {
@@ -166,18 +152,16 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         </label>
       </div>
 
-      <div className="mt-4">
-        <FormField label={t("library.tags")} help={t("library.tagsHelp")}>
-          {(describedById) => (
-            <Input
-              size="sm"
-              value={tags}
-              onChange={(event) => setTags(event.target.value)}
-              placeholder={t("library.tagsPlaceholder")}
-              aria-describedby={describedById}
-            />
-          )}
-        </FormField>
+      <div className="mt-4 grid gap-1 text-body-sm">
+        <span className="font-medium text-muted-foreground">{t("library.tags")}</span>
+        <TagInput
+          value={tags}
+          onChange={setTags}
+          suggestions={distinctTags.data ?? []}
+          placeholder={t("library.tagsPlaceholder")}
+          ariaLabel={t("library.tags")}
+        />
+        <span className="text-caption text-muted-foreground">{t("library.tagsHelp")}</span>
       </div>
       <label className="mt-4 grid gap-1 text-body-sm">
         <span className="text-muted-foreground">{t("library.privateNotes")}</span>

@@ -27,6 +27,17 @@ export function useLibraryMediaKeys() {
   });
 }
 
+// Every tag already used somewhere in the library — backs the tag editor's
+// autocomplete (see TagInput). Invalidated alongside everything else a
+// library save touches (see useLibraryItem's save mutation above).
+export function useLibraryDistinctTags() {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    queryKey: queryKeys.local.libraryDistinctTags(profileId),
+    queryFn: () => libraryRepository.distinctTags(),
+  });
+}
+
 // Batch lookup for a caller-bounded set of specific keys (a TMDB
 // collection's parts, one custom list's items) — nested under the plain
 // library() key (like useIsInLibrary below) so it's invalidated for free
@@ -130,6 +141,7 @@ export function useLibraryItem(media: MediaSummary) {
         // "discovery" to "mine" on the tracking feed (see tracking-service.ts).
         queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryMediaKeys(profileId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryDistinctTags(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.completedLibraryCandidates(profileId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.local.bestRecommendationSeed(profileId) }),
       ]);

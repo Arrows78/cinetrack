@@ -220,3 +220,13 @@ pub async fn list_library_ids_matching_filters(
     })
     .await
 }
+
+#[tauri::command]
+pub async fn list_library_distinct_tags(
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<String>, ApiError> {
+    timed("list_library_distinct_tags", async {
+        LibraryService::new(pool.inner()).distinct_tags().await
+    })
+    .await
+}

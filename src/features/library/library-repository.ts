@@ -107,6 +107,10 @@ export const libraryRepository = {
     return invokeTypedCommand(libraryCommands.idsMatchingFilters, { filters });
   },
 
+  async distinctTags(): Promise<string[]> {
+    return invokeTypedCommand(libraryCommands.distinctTags);
+  },
+
   // Corrects an existing library entry's cached year/rating against fresh
   // TMDB data — a no-op if this title isn't actually in the library, see
   // refresh_catalog_metadata_impl in src-tauri/src/library/repository.rs.

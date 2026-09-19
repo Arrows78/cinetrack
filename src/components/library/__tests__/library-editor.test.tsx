@@ -12,6 +12,7 @@ const useLibraryItemMock = vi.fn();
 
 vi.mock("@/features/library/use-library", () => ({
   useLibraryItem: () => useLibraryItemMock(),
+  useLibraryDistinctTags: () => ({ data: [] }),
 }));
 
 const toastMock = vi.fn();
@@ -294,13 +295,15 @@ describe("LibraryEditor", () => {
     });
 
     renderLoaded();
-    fireEvent.change(screen.getByPlaceholderText("family, sci-fi, sunday"), {
-      target: { value: " comfort watch ,  rewatch , " },
-    });
+    const tagsInput = screen.getByLabelText("Tags");
+    fireEvent.change(tagsInput, { target: { value: " comfort watch ,  rewatch , " } });
+    fireEvent.keyDown(tagsInput, { key: "Enter" });
     fireEvent.change(screen.getByLabelText("Private notes"), { target: { value: "   " } });
     screen.getByRole("button", { name: /save/i }).click();
 
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({ tags: ["comfort watch", "rewatch"], notes: null }));
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ tags: ["favourite-director", "comfort watch", "rewatch"], notes: null })
+    );
   });
 
   it("renders the form with no Remove button for a title that isn't in the library yet", () => {
@@ -317,7 +320,7 @@ describe("LibraryEditor", () => {
     renderLoaded();
 
     expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /remove/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
   });
 
   it("sends a null rating and null notes when the loaded entry has neither and they're left untouched", () => {
@@ -350,7 +353,7 @@ describe("LibraryEditor", () => {
     });
 
     renderLoaded();
-    screen.getByRole("button", { name: /remove/i }).click();
+    screen.getByRole("button", { name: "Remove" }).click();
 
     // Scoped to the dialog: the page's own "Remove" trigger stays mounted
     // behind it and shares the exact same accessible name as the confirm
@@ -376,7 +379,7 @@ describe("LibraryEditor", () => {
     });
 
     renderLoaded();
-    screen.getByRole("button", { name: /remove/i }).click();
+    screen.getByRole("button", { name: "Remove" }).click();
 
     const dialogCancel = await screen.findByRole("button", { name: "Cancel" });
     dialogCancel.click();

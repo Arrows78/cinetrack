@@ -1474,6 +1474,14 @@ export const componentInventory = [
     "Radix-backed hover label; IconTooltip covers the common icon-only-button case in one call."
   ),
   component(
+    "TagInput",
+    "components/ui/tag-input.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Chip-based tag editor with an autocomplete dropdown over existing tags."
+  ),
+  component(
     "Textarea",
     "components/ui/textarea.tsx",
     "UI primitives",
