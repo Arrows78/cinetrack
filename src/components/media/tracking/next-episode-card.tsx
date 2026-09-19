@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, NotebookPen, Play } from "lucide-react";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { formatEpisodeCode } from "@/shared/utils/format";
+import { formatEpisodeCode, formatRelativeCountdown } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 
 export function NextEpisodeCard({
@@ -30,7 +31,10 @@ export function NextEpisodeCard({
     <Panel tone="highlight">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-caption font-semibold uppercase tracking-wider text-primary">{t("media.nextEpisode")}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-caption font-semibold uppercase tracking-wider text-primary">{t("media.nextEpisode")}</p>
+            {episode.airDate ? <Badge variant="secondary">{formatRelativeCountdown(episode.airDate)}</Badge> : null}
+          </div>
           <h3 className="mt-1 line-clamp-2 font-display text-heading-lg font-bold">
             {formatEpisodeCode(episode.seasonNumber, episode.episodeNumber, { padded: true })} · {episode.title}
           </h3>

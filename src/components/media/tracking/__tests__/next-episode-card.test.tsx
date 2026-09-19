@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { addDays, format } from "date-fns";
 
 import i18n from "@/i18n";
 import type { Episode } from "@/types/media";
@@ -37,6 +38,20 @@ describe("NextEpisodeCard", () => {
     // formatEpisodeCode(1, 3, { padded: true }) -> "S01E03"
     expect(screen.getByText("S01E03 · The Buys")).toBeInTheDocument();
     expect(screen.getByText("A tense stakeout goes sideways.")).toBeInTheDocument();
+  });
+
+  it("shows a countdown badge when the episode has an air date", () => {
+    const episode = makeEpisode({ airDate: format(addDays(new Date(), 2), "yyyy-MM-dd") });
+    render(<NextEpisodeCard episode={episode} isSaving={false} onWatched={vi.fn()} />);
+
+    expect(screen.getByText("In 2 days")).toBeInTheDocument();
+  });
+
+  it("shows no countdown badge when the episode has no air date", () => {
+    render(<NextEpisodeCard episode={makeEpisode({ airDate: null })} isSaving={false} onWatched={vi.fn()} />);
+
+    expect(screen.queryByText(/^In \d/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Today")).not.toBeInTheDocument();
   });
 
   it("calls onWatched with the exact episode object when the mark-seen button is clicked", () => {
