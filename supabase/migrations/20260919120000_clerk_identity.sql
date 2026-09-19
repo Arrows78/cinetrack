@@ -26,8 +26,17 @@ returns text
 language sql
 stable
 as $$
-  select nullif(current_setting('request.jwt.claims', true)::json->>'sub', '')
+  select nullif(trim(coalesce(auth.jwt()->>'sub', '')), '')
 $$;
+
+-- Every policy below calls this — PostgREST executes as `anon` for
+-- unauthenticated requests and `authenticated` once the Clerk-issued JWT's
+-- `role` claim is set (see the Clerk Dashboard's Supabase integration,
+-- docs/auth.md). Postgres grants EXECUTE to PUBLIC by default, so this is
+-- belt-and-suspenders rather than a fix for a real gap — explicit here so
+-- a future `revoke all on function ... from public` elsewhere in this
+-- schema doesn't silently break every policy that calls it.
+grant execute on function public.requesting_user_id() to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 2. Drop every policy that depends on an identity column or on auth.uid() —
@@ -100,16 +109,30 @@ alter table public.account_profiles drop constraint if exists account_profiles_u
 
 -- ---------------------------------------------------------------------------
 -- 4. Convert every identity column from uuid to text.
+--
+-- Paired identity columns (follows / blocks / mutes) have a table-level
+-- CHECK (a <> b). Altering one column first rewrites that CHECK as
+-- `text <> uuid` and Postgres aborts (42883). Drop those CHECKs, change
+-- both columns in one ALTER TABLE, then put a named CHECK back.
 -- ---------------------------------------------------------------------------
 alter table public.sync_devices alter column user_id type text using user_id::text;
 alter table public.sync_documents alter column user_id type text using user_id::text;
 alter table public.sync_changes alter column user_id type text using user_id::text;
 alter table public.sync_mutations alter column user_id type text using user_id::text;
 alter table public.community_profiles alter column user_id type text using user_id::text;
-alter table public.community_follows alter column follower_id type text using follower_id::text;
-alter table public.community_follows alter column following_id type text using following_id::text;
-alter table public.community_blocks alter column blocker_id type text using blocker_id::text;
-alter table public.community_blocks alter column blocked_id type text using blocked_id::text;
+
+alter table public.community_follows drop constraint if exists community_follows_check;
+alter table public.community_follows
+  alter column follower_id type text using follower_id::text,
+  alter column following_id type text using following_id::text,
+  add constraint community_follows_not_self check (follower_id <> following_id);
+
+alter table public.community_blocks drop constraint if exists community_blocks_check;
+alter table public.community_blocks
+  alter column blocker_id type text using blocker_id::text,
+  alter column blocked_id type text using blocked_id::text,
+  add constraint community_blocks_not_self check (blocker_id <> blocked_id);
+
 alter table public.community_reviews alter column user_id type text using user_id::text;
 alter table public.community_review_likes alter column user_id type text using user_id::text;
 alter table public.community_comments alter column user_id type text using user_id::text;
@@ -118,8 +141,13 @@ alter table public.community_activities alter column user_id type text using use
 alter table public.community_notifications alter column user_id type text using user_id::text;
 alter table public.community_notifications alter column actor_id type text using actor_id::text;
 alter table public.community_reports alter column reporter_id type text using reporter_id::text;
-alter table public.community_mutes alter column muter_id type text using muter_id::text;
-alter table public.community_mutes alter column muted_id type text using muted_id::text;
+
+alter table public.community_mutes drop constraint if exists community_mutes_check;
+alter table public.community_mutes
+  alter column muter_id type text using muter_id::text,
+  alter column muted_id type text using muted_id::text,
+  add constraint community_mutes_not_self check (muter_id <> muted_id);
+
 alter table public.account_profiles alter column user_id type text using user_id::text;
 
 -- ---------------------------------------------------------------------------
@@ -127,46 +155,46 @@ alter table public.account_profiles alter column user_id type text using user_id
 --    requesting_user_id() instead of auth.uid().
 -- ---------------------------------------------------------------------------
 create policy sync_devices_owner on public.sync_devices
-  for all using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for all using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 create policy sync_documents_owner on public.sync_documents
-  for all using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for all using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 create policy sync_changes_owner on public.sync_changes
-  for select using (requesting_user_id() = user_id);
+  for select using ((select requesting_user_id()) = user_id);
 create policy sync_mutations_owner on public.sync_mutations
-  for select using (requesting_user_id() = user_id);
+  for select using ((select requesting_user_id()) = user_id);
 
 create policy community_profiles_read on public.community_profiles
   for select using (
-    requesting_user_id() = user_id
+    (select requesting_user_id()) = user_id
     or not exists (
       select 1 from public.community_blocks b
-      where (b.blocker_id = requesting_user_id() and b.blocked_id = user_id)
-         or (b.blocker_id = user_id and b.blocked_id = requesting_user_id())
+      where (b.blocker_id = (select requesting_user_id()) and b.blocked_id = user_id)
+         or (b.blocker_id = user_id and b.blocked_id = (select requesting_user_id()))
     )
   );
 create policy community_profiles_owner_write on public.community_profiles
-  for all using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for all using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 
 create policy community_follows_visible on public.community_follows
-  for select using (requesting_user_id() in (follower_id, following_id) or status = 'accepted');
+  for select using ((select requesting_user_id()) in (follower_id, following_id) or status = 'accepted');
 create policy community_follows_create on public.community_follows
-  for insert with check (requesting_user_id() = follower_id);
+  for insert with check ((select requesting_user_id()) = follower_id);
 create policy community_follows_delete on public.community_follows
-  for delete using (requesting_user_id() in (follower_id, following_id));
+  for delete using ((select requesting_user_id()) in (follower_id, following_id));
 create policy community_follows_accept on public.community_follows
-  for update using (requesting_user_id() = following_id) with check (requesting_user_id() = following_id);
+  for update using ((select requesting_user_id()) = following_id) with check ((select requesting_user_id()) = following_id);
 
 create policy community_blocks_owner on public.community_blocks
-  for all using (requesting_user_id() = blocker_id) with check (requesting_user_id() = blocker_id);
+  for all using ((select requesting_user_id()) = blocker_id) with check ((select requesting_user_id()) = blocker_id);
 
 create or replace function public.can_view_community_content(p_owner text, p_visibility text)
 returns boolean language sql stable security definer set search_path = public as $$
-  select requesting_user_id() = p_owner
+  select (select requesting_user_id()) = p_owner
     or (
       not exists (
         select 1 from public.community_blocks b
-        where (b.blocker_id = requesting_user_id() and b.blocked_id = p_owner)
-           or (b.blocker_id = p_owner and b.blocked_id = requesting_user_id())
+        where (b.blocker_id = (select requesting_user_id()) and b.blocked_id = p_owner)
+           or (b.blocker_id = p_owner and b.blocked_id = (select requesting_user_id()))
       )
       and (
         p_visibility = 'public'
@@ -174,7 +202,7 @@ returns boolean language sql stable security definer set search_path = public as
           p_visibility = 'followers'
           and exists (
             select 1 from public.community_follows f
-            where f.follower_id = requesting_user_id()
+            where f.follower_id = (select requesting_user_id())
               and f.following_id = p_owner
               and f.status = 'accepted'
           )
@@ -183,16 +211,20 @@ returns boolean language sql stable security definer set search_path = public as
     )
 $$;
 
+-- Dropped earlier as can_view_community_content(uuid, text); CREATE OR REPLACE
+-- cannot preserve grants across a signature change.
+grant execute on function public.can_view_community_content(text, text) to authenticated;
+
 create policy community_reviews_read on public.community_reviews
   for select using (deleted_at is null and public.can_view_community_content(user_id, visibility));
 create policy community_reviews_owner_write on public.community_reviews
-  for all using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for all using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 
 create policy community_review_likes_read on public.community_review_likes for select using (true);
 create policy community_review_likes_write on public.community_review_likes
-  for insert with check (requesting_user_id() = user_id);
+  for insert with check ((select requesting_user_id()) = user_id);
 create policy community_review_likes_delete on public.community_review_likes
-  for delete using (requesting_user_id() = user_id);
+  for delete using ((select requesting_user_id()) = user_id);
 
 create policy community_comments_read on public.community_comments
   for select using (
@@ -202,12 +234,12 @@ create policy community_comments_read on public.community_comments
     )
   );
 create policy community_comments_owner_write on public.community_comments
-  for all using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for all using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 
 create policy community_lists_read on public.community_public_lists
   for select using (deleted_at is null and public.can_view_community_content(user_id, 'public'));
 create policy community_lists_owner_write on public.community_public_lists
-  for all using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for all using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 create policy community_list_items_read on public.community_public_list_items
   for select using (exists (
     select 1 from public.community_public_lists l
@@ -217,36 +249,36 @@ create policy community_list_items_read on public.community_public_list_items
 create policy community_list_items_owner_write on public.community_public_list_items
   for all using (exists (
     select 1 from public.community_public_lists l
-    where l.id = list_id and l.user_id = requesting_user_id()
+    where l.id = list_id and l.user_id = (select requesting_user_id())
   )) with check (exists (
     select 1 from public.community_public_lists l
-    where l.id = list_id and l.user_id = requesting_user_id()
+    where l.id = list_id and l.user_id = (select requesting_user_id())
   ));
 
 create policy community_activities_read on public.community_activities
   for select using (public.can_view_community_content(user_id, visibility));
 create policy community_activities_owner_write on public.community_activities
-  for all using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for all using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 
 create policy community_notifications_owner on public.community_notifications
-  for select using (requesting_user_id() = user_id);
+  for select using ((select requesting_user_id()) = user_id);
 create policy community_notifications_owner_update on public.community_notifications
-  for update using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for update using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 
 create policy community_reports_create on public.community_reports
-  for insert with check (requesting_user_id() = reporter_id);
+  for insert with check ((select requesting_user_id()) = reporter_id);
 
 create policy community_mutes_owner on public.community_mutes
-  for all using (requesting_user_id() = muter_id) with check (requesting_user_id() = muter_id);
+  for all using ((select requesting_user_id()) = muter_id) with check ((select requesting_user_id()) = muter_id);
 
 create policy account_profiles_owner_select on public.account_profiles
-  for select using (requesting_user_id() = user_id);
+  for select using ((select requesting_user_id()) = user_id);
 create policy account_profiles_owner_insert on public.account_profiles
-  for insert with check (requesting_user_id() = user_id);
+  for insert with check ((select requesting_user_id()) = user_id);
 create policy account_profiles_owner_update on public.account_profiles
-  for update using (requesting_user_id() = user_id) with check (requesting_user_id() = user_id);
+  for update using ((select requesting_user_id()) = user_id) with check ((select requesting_user_id()) = user_id);
 create policy account_profiles_owner_delete on public.account_profiles
-  for delete using (requesting_user_id() = user_id);
+  for delete using ((select requesting_user_id()) = user_id);
 
 -- ---------------------------------------------------------------------------
 -- 6. Recreate security definer / trigger functions that read auth.uid()
@@ -458,6 +490,25 @@ begin
   end if;
   select is_private into target_private from public.community_profiles where user_id = new.following_id;
   new.status := case when coalesce(target_private, false) then 'pending' else 'accepted' end;
+  return new;
+end $$;
+
+-- Doesn't read auth.uid()/requesting_user_id() and has no locally-typed
+-- uuid variable — new.following_id/new.follower_id are already text by the
+-- time this trigger runs (step 4 above), so this recreation is not
+-- strictly required. Kept anyway, alongside every other community_ops.sql
+-- trigger function touched here, so a future reader auditing this file for
+-- "every function this migration recreates" doesn't have to also go
+-- prove this one specific function didn't need it.
+create or replace function public.community_notify_follow()
+returns trigger language plpgsql security definer set search_path=public as $$
+begin
+  insert into public.community_notifications(user_id, actor_id, notification_type)
+  values (
+    new.following_id,
+    new.follower_id,
+    case when new.status='pending' then 'follow_request' else 'follow' end
+  );
   return new;
 end $$;
 
