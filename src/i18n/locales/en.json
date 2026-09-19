@@ -777,6 +777,10 @@
     "recent": "Recent",
     "title": "Title",
     "rating": "Rating",
+    "dateAdded": "Date added",
+    "dateCompleted": "Date completed",
+    "filterGenre": "Filter by genre",
+    "allGenres": "All genres",
     "emptyTitle": "Your library is empty",
     "emptyDesc": "Add a movie or series to your library from its detail page to track status, ratings and progress here.",
     "exploreCta": "Discover movies & series",
@@ -797,6 +801,7 @@
       "dropped": "Dropped"
     },
     "myRating": "My rating / 10",
+    "notRated": "Not rated",
     "rewatches": "Rewatches",
     "tags": "Tags",
     "tagsHelp": "Comma-separated",

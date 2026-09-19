@@ -11,6 +11,7 @@ import {
 } from "@/components/media/library/library-filtering";
 import { useAllCustomListItems, useCustomListItems, useCustomLists } from "@/features/custom-lists/use-custom-lists";
 import { useLibrary, useLibraryMediaKeys, useLibraryPage } from "@/features/library/use-library";
+import { useMergedGenres } from "@/features/media/use-merged-genres";
 import { useSmartLists } from "@/features/smart-lists/use-smart-lists";
 import { useSmartListMatches } from "@/components/media/library/use-smart-list-matches";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -38,6 +39,8 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
   const [typeFilter, setTypeFilter] = useState<LibraryTypeFilter>(lockedMediaType ?? "all");
   const [statusFilter, setStatusFilter] = useState<LibraryStatusFilter>("all");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const [genreFilter, setGenreFilter] = useState("all");
+  const mergedGenres = useMergedGenres();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<LibrarySortMode>("recent");
   // Persisted (not local state) — a user's grid/list choice should survive
@@ -90,6 +93,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
       favouritesOnly,
       search: debouncedSearch,
       sort,
+      genre: genreFilter === "all" ? undefined : genreFilter,
     },
     { enabled: isServerPaginated }
   );
@@ -149,6 +153,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
       favouritesOnly,
       search,
       sort,
+      genreFilter,
       listMediaKeys,
       smartListMediaKeys,
     });
@@ -160,6 +165,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     favouritesOnly,
     search,
     sort,
+    genreFilter,
     listFilter,
     listItems.data,
     allListItems.data,
@@ -178,6 +184,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     setTypeFilter(lockedMediaType ?? "all");
     setStatusFilter("all");
     setFavouritesOnly(false);
+    setGenreFilter("all");
     setListFilter("all");
     setSmartListFilter("all");
     setSearch("");
@@ -187,7 +194,15 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
   // src/types/media.ts's LibraryFilterState doc comment) — reused as-is
   // rather than a parallel shape, so saving "the current filters" and
   // reopening a saved one are both plain assignments, no translation layer.
-  const currentFilters: LibraryFilterState = { typeFilter, statusFilter, favouritesOnly, listFilter, sort, search };
+  const currentFilters: LibraryFilterState = {
+    typeFilter,
+    statusFilter,
+    favouritesOnly,
+    listFilter,
+    sort,
+    search,
+    genreFilter,
+  };
   const applySavedFilters = (saved: LibraryFilterState) => {
     setTypeFilter(lockedMediaType ?? saved.typeFilter);
     setStatusFilter(saved.statusFilter);
@@ -195,6 +210,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     setListFilter(saved.listFilter);
     setSort(saved.sort);
     setSearch(saved.search);
+    setGenreFilter(saved.genreFilter ?? "all");
   };
 
   // One removable chip per non-default filter condition currently applied —
@@ -222,6 +238,17 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
       : []),
     ...(favouritesOnly
       ? [{ key: "favourites", label: t("filters.chips.favourites"), onRemove: () => setFavouritesOnly(false) }]
+      : []),
+    ...(genreFilter !== "all"
+      ? [
+          {
+            key: "genre",
+            label: t("filters.chips.genre", {
+              value: t(mergedGenres.find((genre) => genre.label === genreFilter)?.labelKey ?? genreFilter),
+            }),
+            onRemove: () => setGenreFilter("all"),
+          },
+        ]
       : []),
     ...(listFilter !== "all"
       ? [
@@ -261,6 +288,8 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     setStatusFilter,
     favouritesOnly,
     setFavouritesOnly,
+    genreFilter,
+    setGenreFilter,
     search,
     setSearch,
     sort,

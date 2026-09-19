@@ -4,4 +4,4 @@
  * How a paginated library listing is ordered — mirrors the `sort` union
  * already used by the frontend's (now server-side) Library filters.
  */
-export type LibrarySort = "recent" | "title" | "rating";
+export type LibrarySort = "recent" | "title" | "rating" | "dateAdded" | "dateCompleted";

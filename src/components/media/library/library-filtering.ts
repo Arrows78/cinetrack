@@ -3,7 +3,7 @@ import type { CustomListItem, LibraryItem, LibraryStatus } from "@/types/media";
 
 export type LibraryTypeFilter = "all" | "movie" | "series";
 export type LibraryStatusFilter = LibraryStatus | "all";
-export type LibrarySortMode = "recent" | "title" | "rating";
+export type LibrarySortMode = "recent" | "title" | "rating" | "dateAdded" | "dateCompleted";
 
 export interface LibraryFilterCriteria {
   typeFilter: LibraryTypeFilter;
@@ -11,6 +11,8 @@ export interface LibraryFilterCriteria {
   favouritesOnly: boolean;
   search: string;
   sort: LibrarySortMode;
+  /** Canonical genre label (see shared/constants/discover.ts's GENRES), or "all" for no filter. */
+  genreFilter: string;
   /** Media keys ("movie-123") the currently selected custom list contains — `null` when no list filter is active. */
   listMediaKeys: Set<string> | null;
   /** Media keys the currently selected smart list matches — `null` when no smart list filter is active. */
@@ -37,7 +39,8 @@ export function filterAndSortLibrary(
   progressBySeries: Map<number, { watched: number; total: number; seriesStatus: string | null }>,
   criteria: LibraryFilterCriteria
 ): MediaGridItem[] {
-  const { typeFilter, statusFilter, favouritesOnly, search, sort, listMediaKeys, smartListMediaKeys } = criteria;
+  const { typeFilter, statusFilter, favouritesOnly, search, sort, genreFilter, listMediaKeys, smartListMediaKeys } =
+    criteria;
   const libraryByKey = new Map(libraryItems.map((item) => [libraryMediaKey(item.mediaType, item.mediaId), item]));
   const normalizedSearch = search.trim().toLowerCase();
   const matchesSearch = (text: string) => (normalizedSearch ? text.toLowerCase().includes(normalizedSearch) : true);
@@ -51,13 +54,15 @@ export function filterAndSortLibrary(
     .filter((item) => (typeFilter === "all" ? true : item.mediaType === typeFilter))
     .filter((item) => (statusFilter === "all" ? true : item.status === statusFilter))
     .filter((item) => (favouritesOnly ? item.favourite : true))
+    .filter((item) => (genreFilter === "all" ? true : item.genres.includes(genreFilter)))
     .filter((item) => (listMediaKeys ? listMediaKeys.has(libraryMediaKey(item.mediaType, item.mediaId)) : true))
     .filter((item) =>
       smartListMediaKeys ? smartListMediaKeys.has(libraryMediaKey(item.mediaType, item.mediaId)) : true
     )
     .filter((item) => matchesLibrarySearch(item))
     .map((item) => ({
-      sortKey: item.updatedAt,
+      sortKey:
+        sort === "dateAdded" ? item.createdAt : sort === "dateCompleted" ? (item.completedAt ?? "") : item.updatedAt,
       media: {
         id: item.mediaId,
         mediaType: item.mediaType,
@@ -88,7 +93,7 @@ export function filterAndSortLibrary(
       : listItems
           .filter((li) => !libraryByKey.has(libraryMediaKey(li.mediaType, li.mediaId)))
           .filter((li) => (typeFilter === "all" ? true : li.mediaType === typeFilter))
-          .filter(() => statusFilter === "all" && !favouritesOnly)
+          .filter(() => statusFilter === "all" && !favouritesOnly && genreFilter === "all")
           .filter((li) => matchesSearch(li.title))
           .filter((li) => {
             // The same title can live in more than one list — one card, not
@@ -99,7 +104,9 @@ export function filterAndSortLibrary(
             return true;
           })
           .map((li) => ({
-            sortKey: li.addedAt,
+            // Never completed (not a library item at all) — sorts last under
+            // "dateCompleted", same as a library item with no completedAt.
+            sortKey: sort === "dateCompleted" ? "" : li.addedAt,
             media: {
               id: li.mediaId,
               mediaType: li.mediaType,

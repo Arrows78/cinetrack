@@ -45,6 +45,7 @@ const BASE_CRITERIA: LibraryFilterCriteria = {
   favouritesOnly: false,
   search: "",
   sort: "recent",
+  genreFilter: "all",
   listMediaKeys: null,
   smartListMediaKeys: null,
 };
@@ -234,6 +235,44 @@ describe("filterAndSortLibrary", () => {
     ]);
   });
 
+  it("sorts by date added descending", () => {
+    const items = [
+      libraryItem({ id: "1", mediaId: 1, title: "AddedFirst", createdAt: "2026-01-01T00:00:00.000Z" }),
+      libraryItem({ id: "2", mediaId: 2, title: "AddedLast", createdAt: "2026-01-03T00:00:00.000Z" }),
+      libraryItem({ id: "3", mediaId: 3, title: "AddedMiddle", createdAt: "2026-01-02T00:00:00.000Z" }),
+    ];
+
+    expect(titlesOf(filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, sort: "dateAdded" }))).toEqual([
+      "AddedLast",
+      "AddedMiddle",
+      "AddedFirst",
+    ]);
+  });
+
+  it("sorts by date completed descending, with never-completed items last", () => {
+    const items = [
+      libraryItem({ id: "1", mediaId: 1, title: "NeverCompleted", completedAt: null }),
+      libraryItem({ id: "2", mediaId: 2, title: "CompletedRecently", completedAt: "2026-01-03T00:00:00.000Z" }),
+      libraryItem({ id: "3", mediaId: 3, title: "CompletedEarlier", completedAt: "2026-01-01T00:00:00.000Z" }),
+    ];
+
+    expect(titlesOf(filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, sort: "dateCompleted" }))).toEqual(
+      ["CompletedRecently", "CompletedEarlier", "NeverCompleted"]
+    );
+  });
+
+  it("filters by genre, matching any item whose genres include the selected one", () => {
+    const items = [
+      libraryItem({ id: "1", mediaId: 1, title: "Funny", genres: ["Comedy"] }),
+      libraryItem({ id: "2", mediaId: 2, title: "FunnyDrama", genres: ["Drama", "Comedy"] }),
+      libraryItem({ id: "3", mediaId: 3, title: "Scary", genres: ["Horror"] }),
+    ];
+
+    expect(titlesOf(filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, genreFilter: "Comedy" }))).toEqual(
+      ["Funny", "FunnyDrama"]
+    );
+  });
+
   it("attaches series progress only to series items, from the progressBySeries map", () => {
     const items = [
       libraryItem({ id: "1", mediaId: 1, title: "AMovie", mediaType: "movie" }),
@@ -308,7 +347,7 @@ describe("filterAndSortLibrary", () => {
       expect(titlesOf(result)).toEqual(["Rated", "Unrated"]);
     });
 
-    it("hides list-only items once a status or favourites filter is active, since they carry neither", () => {
+    it("hides list-only items once a status, favourites or genre filter is active, since they carry neither", () => {
       const listItems = [listItem({ id: "li-1", mediaId: 9, title: "OnlyInList" })];
       const listMediaKeys = new Set([libraryMediaKey("movie", 9)]);
 
@@ -322,9 +361,15 @@ describe("filterAndSortLibrary", () => {
         listMediaKeys,
         favouritesOnly: true,
       });
+      const byGenre = filterAndSortLibrary([], listItems, NO_PROGRESS, {
+        ...BASE_CRITERIA,
+        listMediaKeys,
+        genreFilter: "Comedy",
+      });
 
       expect(byStatus).toHaveLength(0);
       expect(byFavourites).toHaveLength(0);
+      expect(byGenre).toHaveLength(0);
     });
 
     it("does not surface list-only items when a smart list filter is also active", () => {

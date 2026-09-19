@@ -30,6 +30,7 @@ pub async fn list_library_page(
     favourites_only: bool,
     search: Option<String>,
     sort: LibrarySort,
+    genre: Option<String>,
     cursor: Option<String>,
     limit: i64,
     pool: State<'_, SqlitePool>,
@@ -41,6 +42,7 @@ pub async fn list_library_page(
             favourites_only,
             search,
             sort,
+            genre,
             cursor,
             limit,
         };

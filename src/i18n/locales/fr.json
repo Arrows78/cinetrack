@@ -777,6 +777,10 @@
     "recent": "Récent",
     "title": "Titre",
     "rating": "Note",
+    "dateAdded": "Date d'ajout",
+    "dateCompleted": "Date de complétion",
+    "filterGenre": "Filtrer par genre",
+    "allGenres": "Tous les genres",
     "emptyTitle": "Votre bibliothèque est vide",
     "emptyDesc": "Ajoutez un film ou une série à votre bibliothèque depuis sa fiche pour suivre ici statut, note et progression.",
     "exploreCta": "Découvrir des films et séries",
@@ -797,6 +801,7 @@
       "dropped": "Abandonné"
     },
     "myRating": "Ma note / 10",
+    "notRated": "Pas encore noté",
     "rewatches": "Revisionnages",
     "tags": "Tags",
     "tagsHelp": "Séparés par des virgules",

@@ -1442,6 +1442,14 @@ export const componentInventory = [
     "Represents a single loading placeholder shape."
   ),
   component(
+    "StarRating",
+    "components/ui/star-rating.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Sets a 0-10 rating via five half-star-accurate stars, one keyboard stop."
+  ),
+  component(
     "Toast",
     "components/ui/toast.tsx",
     "UI primitives",

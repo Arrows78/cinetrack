@@ -14,6 +14,8 @@ pub enum LibrarySort {
     Recent,
     Title,
     Rating,
+    DateAdded,
+    DateCompleted,
 }
 
 /// Filters + cursor for a single page of `list_library_page`. `limit` is
@@ -33,6 +35,8 @@ pub struct LibraryListParams {
     pub search: Option<String>,
     #[serde(default)]
     pub sort: LibrarySort,
+    #[ts(optional)]
+    pub genre: Option<String>,
     #[ts(optional)]
     pub cursor: Option<String>,
     pub limit: i64,
@@ -70,6 +74,16 @@ pub(super) enum LibraryCursorPayload {
         media_id: i64,
         media_type: String,
     },
+    DateAdded {
+        created_at: String,
+        media_id: i64,
+        media_type: String,
+    },
+    DateCompleted {
+        completed_at: String,
+        media_id: i64,
+        media_type: String,
+    },
 }
 
 impl LibraryCursorPayload {
@@ -85,6 +99,14 @@ impl LibraryCursorPayload {
             (LibraryCursorPayload::Recent { .. }, LibrarySort::Recent)
                 | (LibraryCursorPayload::Title { .. }, LibrarySort::Title)
                 | (LibraryCursorPayload::Rating { .. }, LibrarySort::Rating)
+                | (
+                    LibraryCursorPayload::DateAdded { .. },
+                    LibrarySort::DateAdded
+                )
+                | (
+                    LibraryCursorPayload::DateCompleted { .. },
+                    LibrarySort::DateCompleted
+                )
         );
         if !matches {
             return Err(ApiError::bad_request(

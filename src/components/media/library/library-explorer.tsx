@@ -19,12 +19,15 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { EmptyState } from "@/components/states/empty-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useCustomListItems } from "@/features/custom-lists/use-custom-lists";
 import type { useCustomLists } from "@/features/custom-lists/use-custom-lists";
+import { useMergedGenres } from "@/features/media/use-merged-genres";
+import { isDegradedRemoteError } from "@/shared/lib/errors";
 
 function ListItemRow({ listId }: { listId: string }) {
   const { t } = useTranslation();
@@ -258,6 +261,8 @@ export function LibraryExplorer({
     setStatusFilter,
     favouritesOnly,
     setFavouritesOnly,
+    genreFilter,
+    setGenreFilter,
     search,
     setSearch,
     sort,
@@ -284,6 +289,7 @@ export function LibraryExplorer({
     applySavedFilters,
     chips,
   } = useLibraryExplorer(lockedMediaType);
+  const genres = useMergedGenres();
 
   // Shared between the server-paginated and client-filtered branches below —
   // "library has nothing at all" vs. "these filters just don't match" reads
@@ -313,8 +319,18 @@ export function LibraryExplorer({
     />
   );
 
+  // smartListMatches aggregates several underlying queries (see
+  // use-smart-list-matches.ts) into a single isError/error pair with no
+  // isRefetchError of its own to check here — left out of this degraded-mode
+  // check for that reason, unlike the three single-query sources below.
+  const isDegraded = isServerPaginated
+    ? libraryPageQuery.isRefetchError && isDegradedRemoteError(libraryPageQuery.error)
+    : (libraryQuery.isRefetchError && isDegradedRemoteError(libraryQuery.error)) ||
+      (isFilteredToList && listItems.isRefetchError && isDegradedRemoteError(listItems.error));
+
   return (
     <div className="space-y-6">
+      {isDegraded ? <DegradedModeBadge /> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="w-full sm:w-64">
           <SearchBar value={search} onChange={setSearch} placeholder={t("library.searchPlaceholder")} />
@@ -340,6 +356,19 @@ export function LibraryExplorer({
             label: status === "all" ? t("filters.all") : t(`library.statuses.${status}`),
           }))}
         />
+        <Select
+          aria-label={t("library.filterGenre")}
+          value={genreFilter}
+          onChange={(event) => setGenreFilter(event.target.value)}
+          className="max-w-48"
+        >
+          <option value="all">{t("library.allGenres")}</option>
+          {genres.map((genre) => (
+            <option key={genre.label} value={genre.label}>
+              {t(genre.labelKey)}
+            </option>
+          ))}
+        </Select>
         <FilterBar
           value={sort}
           onChange={setSort}
@@ -348,6 +377,8 @@ export function LibraryExplorer({
             { value: "recent", label: t("library.recent") },
             { value: "title", label: t("library.title") },
             { value: "rating", label: t("library.rating") },
+            { value: "dateAdded", label: t("library.dateAdded") },
+            { value: "dateCompleted", label: t("library.dateCompleted") },
           ]}
         />
         <Button

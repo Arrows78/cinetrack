@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StarRating } from "@/components/ui/star-rating";
 import { Textarea } from "@/components/ui/textarea";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { toast } from "@/components/ui/use-toast";
@@ -19,7 +20,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const library = useLibraryItem(media);
   const [status, setStatus] = useState<LibraryStatus>("planned");
-  const [userRating, setUserRating] = useState("");
+  const [userRating, setUserRating] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState("");
   const [rewatchCount, setRewatchCount] = useState(0);
@@ -35,7 +36,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   if (library.data && library.data !== loadedLibraryData) {
     setLoadedLibraryData(library.data);
     setStatus(library.data.status);
-    setUserRating(library.data.userRating?.toString() ?? "");
+    setUserRating(library.data.userRating ?? null);
     setNotes(library.data.notes ?? "");
     setTags(library.data.tags.join(", "));
     setRewatchCount(library.data.rewatchCount);
@@ -104,7 +105,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         // (in the page hero) owns it now, saving immediately on its own; see
         // that component's doc comment for why splitting it out of this
         // combined save avoids two components fighting over the same field.
-        userRating: userRating ? Math.min(10, Math.max(0, Number(userRating))) : null,
+        userRating,
         notes: notes.trim() || null,
         tags: normalizeTags(tags),
         rewatchCount: Math.max(0, rewatchCount),
@@ -144,18 +145,15 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
             ))}
           </Select>
         </label>
-        <label className="grid gap-1 text-body-sm">
+        <div className="grid gap-1 text-body-sm">
           <span className="text-muted-foreground">{t("library.myRating")}</span>
-          <Input
-            size="sm"
-            type="number"
-            min="0"
-            max="10"
-            step="0.5"
+          <StarRating
             value={userRating}
-            onChange={(event) => setUserRating(event.target.value)}
+            onChange={setUserRating}
+            ariaLabel={t("library.myRating")}
+            noneLabel={t("library.notRated")}
           />
-        </label>
+        </div>
         <label className="grid gap-1 text-body-sm">
           <span className="text-muted-foreground">{t("library.rewatches")}</span>
           <Input

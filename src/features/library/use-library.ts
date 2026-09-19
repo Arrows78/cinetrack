@@ -67,6 +67,7 @@ export interface LibraryPageFilters {
   favouritesOnly: boolean;
   search: string;
   sort: LibraryPageSort;
+  genre?: string;
 }
 
 // Cursor-paginated, server-filtered/sorted Library listing — backs the
@@ -83,7 +84,14 @@ export function useLibraryPage(filters: LibraryPageFilters, options?: { enabled?
   return useInfiniteQuery({
     queryKey: [
       ...queryKeys.local.libraryPage(profileId),
-      { mediaType: filters.mediaType, status, favouritesOnly: filters.favouritesOnly, search, sort: filters.sort },
+      {
+        mediaType: filters.mediaType,
+        status,
+        favouritesOnly: filters.favouritesOnly,
+        search,
+        sort: filters.sort,
+        genre: filters.genre,
+      },
     ],
     queryFn: ({ pageParam }: { pageParam?: string }) =>
       libraryRepository.listPage({
@@ -92,6 +100,7 @@ export function useLibraryPage(filters: LibraryPageFilters, options?: { enabled?
         favouritesOnly: filters.favouritesOnly,
         search,
         sort: filters.sort,
+        genre: filters.genre,
         cursor: pageParam,
         limit: LIBRARY_PAGE_SIZE,
       }),

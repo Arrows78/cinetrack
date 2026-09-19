@@ -14,6 +14,7 @@ export type LibraryListParams = {
   favouritesOnly: boolean;
   search?: string;
   sort: LibrarySort;
+  genre?: string;
   cursor?: string;
   limit: number;
 };

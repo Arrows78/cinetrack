@@ -551,6 +551,15 @@ mod tests {
             .unwrap();
     }
 
+    async fn set_created_at(pool: &SqlitePool, media_id: i64, created_at: &str) {
+        sqlx::query("UPDATE library_items SET created_at = $1 WHERE media_id = $2")
+            .bind(created_at)
+            .bind(media_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
     fn media_titled(id: i64, title: &str, rating: Option<f64>) -> MediaSummaryInput {
         MediaSummaryInput {
             id,
@@ -571,6 +580,7 @@ mod tests {
             favourites_only: false,
             search: None,
             sort,
+            genre: None,
             cursor,
             limit,
         }
@@ -590,6 +600,7 @@ mod tests {
         assert_eq!(params.status, None);
         assert!(!params.favourites_only);
         assert_eq!(params.search, None);
+        assert_eq!(params.genre, None);
         assert_eq!(params.cursor, None);
         assert_eq!(params.sort, LibrarySort::Recent);
         assert_eq!(params.limit, 20);
@@ -641,6 +652,86 @@ mod tests {
             vec![1]
         );
         assert!(second_page.next_cursor.is_none());
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_paginates_date_added_sorted_items_across_pages_via_the_cursor() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(3), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        set_created_at(&pool, 1, "2026-01-01T00:00:00.000Z").await;
+        set_created_at(&pool, 2, "2026-01-02T00:00:00.000Z").await;
+        set_created_at(&pool, 3, "2026-01-03T00:00:00.000Z").await;
+
+        let first_page = list_page_impl(
+            &pool,
+            "default",
+            page_params(LibrarySort::DateAdded, None, 2),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            first_page
+                .items
+                .iter()
+                .map(|i| i.media_id)
+                .collect::<Vec<_>>(),
+            vec![3, 2]
+        );
+        assert!(first_page.next_cursor.is_some());
+
+        let second_page = list_page_impl(
+            &pool,
+            "default",
+            page_params(LibrarySort::DateAdded, first_page.next_cursor, 2),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            second_page
+                .items
+                .iter()
+                .map(|i| i.media_id)
+                .collect::<Vec<_>>(),
+            vec![1]
+        );
+        assert!(second_page.next_cursor.is_none());
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_sorts_by_date_completed_with_never_completed_items_last() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(2), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(&pool, media(3), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        set_completed_at(&pool, 1, "2026-01-01T00:00:00.000Z").await;
+        set_completed_at(&pool, 2, "2026-01-02T00:00:00.000Z").await;
+        // media 3 stays never-completed (completed_at IS NULL).
+
+        let page = list_page_impl(
+            &pool,
+            "default",
+            page_params(LibrarySort::DateCompleted, None, 10),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            page.items.iter().map(|i| i.media_id).collect::<Vec<_>>(),
+            vec![2, 1, 3]
+        );
     }
 
     #[tokio::test]
@@ -728,6 +819,7 @@ mod tests {
             favourites_only: true,
             search: Some("test".to_string()),
             sort: LibrarySort::Recent,
+            genre: None,
             cursor: None,
             limit: 10,
         };
@@ -735,6 +827,52 @@ mod tests {
 
         assert_eq!(page.items.len(), 1);
         assert_eq!(page.items[0].media_id, 1);
+    }
+
+    #[tokio::test]
+    async fn list_page_impl_filters_by_genre() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                genres: vec!["Comedy".to_string()],
+                ..media(1)
+            },
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                genres: vec!["Drama".to_string(), "Comedy".to_string()],
+                ..media(2)
+            },
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                genres: vec!["Horror".to_string()],
+                ..media(3)
+            },
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let mut params = page_params(LibrarySort::Recent, None, 10);
+        params.genre = Some("Comedy".to_string());
+        let page = list_page_impl(&pool, "default", params).await.unwrap();
+
+        let mut media_ids = page.items.iter().map(|i| i.media_id).collect::<Vec<_>>();
+        media_ids.sort();
+        assert_eq!(media_ids, vec![1, 2]);
     }
 
     #[tokio::test]

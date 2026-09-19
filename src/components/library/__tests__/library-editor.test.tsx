@@ -243,9 +243,9 @@ describe("LibraryEditor", () => {
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
   });
 
-  it("clamps an out-of-range rating into 0..10 on save", () => {
+  it("moves the star rating via the keyboard and saves the new value", () => {
     useLibraryItemMock.mockReturnValue({
-      data: libraryItem,
+      data: libraryItem, // userRating: 8
       isLoading: false,
       isError: false,
       save,
@@ -255,7 +255,10 @@ describe("LibraryEditor", () => {
     });
 
     renderLoaded();
-    fireEvent.change(screen.getByLabelText("My rating / 10"), { target: { value: "42" } });
+    const slider = screen.getByRole("slider", { name: "My rating / 10" });
+    expect(slider).toHaveAttribute("aria-valuenow", "8");
+    fireEvent.keyDown(slider, { key: "End" });
+    expect(slider).toHaveAttribute("aria-valuenow", "10");
     screen.getByRole("button", { name: /save/i }).click();
 
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ userRating: 10 }));

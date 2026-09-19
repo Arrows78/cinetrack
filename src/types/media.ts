@@ -275,6 +275,8 @@ export interface LibraryFilterState {
   listFilter: string;
   sort: LibrarySort;
   search: string;
+  /** Canonical genre label, or "all" — optional so a filter saved before this field existed still applies cleanly. */
+  genreFilter?: string;
 }
 
 // SearchPage's own filter-control state (src/pages/search-page.tsx) — a

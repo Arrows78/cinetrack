@@ -100,6 +100,17 @@ pub(super) async fn list_page_impl(
     if params.favourites_only {
         qb.push(" AND favourite = 1");
     }
+    if let Some(genre) = params
+        .genre
+        .as_deref()
+        .map(str::trim)
+        .filter(|g| !g.is_empty())
+    {
+        // Same quoted substring match as list_ids_matching_filters_impl —
+        // genres is a JSON-serialized string array, no relational table.
+        qb.push(" AND genres LIKE ")
+            .push_bind(format!("%\"{genre}\"%"));
+    }
     if let Some(search) = params
         .search
         .as_deref()
@@ -168,6 +179,38 @@ pub(super) async fn list_page_impl(
                 .push_bind(media_type.clone())
                 .push(")");
         }
+        (
+            LibrarySort::DateAdded,
+            Some(LibraryCursorPayload::DateAdded {
+                created_at,
+                media_id,
+                media_type,
+            }),
+        ) => {
+            qb.push(" AND (created_at, media_id, media_type) < (")
+                .push_bind(created_at.clone())
+                .push(", ")
+                .push_bind(*media_id)
+                .push(", ")
+                .push_bind(media_type.clone())
+                .push(")");
+        }
+        (
+            LibrarySort::DateCompleted,
+            Some(LibraryCursorPayload::DateCompleted {
+                completed_at,
+                media_id,
+                media_type,
+            }),
+        ) => {
+            qb.push(" AND (COALESCE(completed_at, ''), media_id, media_type) < (")
+                .push_bind(completed_at.clone())
+                .push(", ")
+                .push_bind(*media_id)
+                .push(", ")
+                .push_bind(media_type.clone())
+                .push(")");
+        }
         (_, None) => {}
         // Guarded against by LibraryCursorPayload::decode's tag check above —
         // a mismatched (sort, cursor variant) pair never reaches this match.
@@ -180,6 +223,14 @@ pub(super) async fn list_page_impl(
         LibrarySort::Rating => qb.push(
             " ORDER BY COALESCE(user_rating, rating, -1.0) DESC, media_id DESC, media_type DESC",
         ),
+        LibrarySort::DateAdded => {
+            qb.push(" ORDER BY created_at DESC, media_id DESC, media_type DESC")
+        }
+        // Never-completed items (completed_at NULL) sort after every real
+        // date — '' is lexically smaller than any ISO timestamp.
+        LibrarySort::DateCompleted => {
+            qb.push(" ORDER BY COALESCE(completed_at, '') DESC, media_id DESC, media_type DESC")
+        }
     };
     qb.push(" LIMIT ").push_bind(limit + 1);
 
@@ -210,6 +261,16 @@ pub(super) async fn list_page_impl(
                     },
                     LibrarySort::Rating => LibraryCursorPayload::Rating {
                         rating: row.user_rating.or(row.rating).unwrap_or(-1.0),
+                        media_id: row.media_id,
+                        media_type: row.media_type.clone(),
+                    },
+                    LibrarySort::DateAdded => LibraryCursorPayload::DateAdded {
+                        created_at: row.created_at.clone(),
+                        media_id: row.media_id,
+                        media_type: row.media_type.clone(),
+                    },
+                    LibrarySort::DateCompleted => LibraryCursorPayload::DateCompleted {
+                        completed_at: row.completed_at.clone().unwrap_or_default(),
                         media_id: row.media_id,
                         media_type: row.media_type.clone(),
                     },
