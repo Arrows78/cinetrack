@@ -41,12 +41,14 @@ vi.mock("@/components/media/detail/media-details-hero", () => ({
     media,
     actions,
     extra,
+    posterPathOverride,
   }: {
     media: MediaSummary;
     actions: React.ReactNode;
     extra: React.ReactNode;
+    posterPathOverride?: string | null;
   }) => (
-    <div data-testid="hero">
+    <div data-testid="hero" data-poster-override={posterPathOverride ?? ""}>
       <span>{media.title}</span>
       {actions}
       {extra}
@@ -274,12 +276,30 @@ describe("SeasonPage", () => {
     expect(screen.getByText(i18n.t("offline.message"))).toBeInTheDocument();
   });
 
+  it("shows a breadcrumb linking back to the series, with the season as the current page", () => {
+    renderPage();
+
+    const seriesLink = screen.getByRole("link", { name: "Severance" });
+    expect(seriesLink).toHaveAttribute("href", "/series/9");
+    const currentCrumb = screen.getAllByText("Season One").find((el) => el.hasAttribute("aria-current"));
+    expect(currentCrumb).toHaveAttribute("aria-current", "page");
+  });
+
+  it("passes the season's own poster to the hero, not the series poster", () => {
+    seasonQueryMock.mockReturnValue(
+      makeQuery({ ...makeSeason("Season One", [episode1]), posterPath: "/season-one.jpg" })
+    );
+    renderPage();
+
+    expect(screen.getByTestId("hero")).toHaveAttribute("data-poster-override", "/season-one.jpg");
+  });
+
   it("renders the season title, episode count subtitle, and each episode card's watched flag", () => {
     seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
     progressQueryMock.mockReturnValue(makeProgressQuery([1, 3]));
     renderPage();
 
-    expect(screen.getByText("Season One")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Season One" })).toBeInTheDocument();
     expect(screen.getByText(i18n.t("media.episodesAvailable", { count: 3 }))).toBeInTheDocument();
 
     expect(screen.getByTestId("episode-1")).toHaveAttribute("data-watched", "true");
@@ -303,7 +323,7 @@ describe("SeasonPage", () => {
     seasonQueryMock.mockReturnValue(makeQuery(makeSeason("", [episode1])));
     renderPage();
 
-    expect(screen.getByText(i18n.t("media.fallbackTitle", { number: 1 }))).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: i18n.t("media.fallbackTitle", { number: 1 }) })).toBeInTheDocument();
   });
 
   it("marks the SeenToggle as seen only when every episode in the season is watched", () => {

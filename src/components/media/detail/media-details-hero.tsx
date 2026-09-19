@@ -10,14 +10,21 @@ export function MediaDetailsHero({
   media,
   actions,
   extra,
+  posterPathOverride,
 }: {
   media: MediaSummary;
   actions?: React.ReactNode;
   extra?: React.ReactNode;
+  // SeasonPage's own poster (Season.posterPath) when it has one — the series
+  // poster otherwise (media.posterPath), same as every other host of this
+  // component. Only the poster image swaps; title/rating/genres/etc. still
+  // come from `media` since a season isn't a full MediaSummary of its own.
+  posterPathOverride?: string | null;
 }) {
   const { t } = useTranslation();
   const backdrop = buildTmdbImageUrl(media.backdropPath, "original");
-  const poster = buildTmdbImageUrl(media.posterPath, "w500");
+  const posterPath = posterPathOverride ?? media.posterPath;
+  const poster = buildTmdbImageUrl(posterPath, "w500");
 
   return (
     <section className="relative overflow-hidden rounded-shell border border-border">
@@ -40,7 +47,7 @@ export function MediaDetailsHero({
         <div className="hidden lg:block">
           <img
             src={poster ?? fallbackPoster}
-            srcSet={buildTmdbPosterSrcSet(media.posterPath)}
+            srcSet={buildTmdbPosterSrcSet(posterPath)}
             sizes="220px"
             alt=""
             className="w-full rounded-card border border-border object-cover shadow-2xl"

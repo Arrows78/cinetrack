@@ -30,4 +30,21 @@ describe("MediaDetailsHero", () => {
     render(<MediaDetailsHero media={buildMedia({ certification: null })} />);
     expect(screen.queryByText("PG-13")).not.toBeInTheDocument();
   });
+
+  it("uses posterPathOverride's image instead of the media's own poster when given", () => {
+    const { container } = render(
+      <MediaDetailsHero
+        media={buildMedia({ posterPath: "/series-poster.jpg" })}
+        posterPathOverride="/season-poster.jpg"
+      />
+    );
+    const poster = container.querySelector("img[src*='season-poster.jpg']");
+    expect(poster).toBeInTheDocument();
+    expect(container.querySelector("img[src*='series-poster.jpg']")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the media's own poster when no override is given", () => {
+    const { container } = render(<MediaDetailsHero media={buildMedia({ posterPath: "/series-poster.jpg" })} />);
+    expect(container.querySelector("img[src*='series-poster.jpg']")).toBeInTheDocument();
+  });
 });

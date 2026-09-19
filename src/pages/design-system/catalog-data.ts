@@ -986,6 +986,14 @@ export const componentInventory = [
     "Introduces repeated page sections with optional copy and actions."
   ),
   component(
+    "Breadcrumbs",
+    "components/media/primitives/breadcrumbs.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Ancestor trail (e.g. Series › Season X on SeasonPage) — each item is caller-supplied markup, not a typed route, so it stays reusable across pages."
+  ),
+  component(
     "SeenToggle",
     "components/media/tracking/seen-toggle.tsx",
     "Media",

@@ -94,6 +94,7 @@
   },
   "common": {
     "skipToContent": "Skip to content",
+    "breadcrumbLabel": "Breadcrumb",
     "back": "Back",
     "close": "Close",
     "more": "More",

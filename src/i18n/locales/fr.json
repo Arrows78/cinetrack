@@ -94,6 +94,7 @@
   },
   "common": {
     "skipToContent": "Aller au contenu",
+    "breadcrumbLabel": "Fil d'Ariane",
     "back": "Retour",
     "close": "Fermer",
     "more": "Plus",

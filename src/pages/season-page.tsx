@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { EpisodeCard } from "@/components/media/tracking/episode-card";
 import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
+import { Breadcrumbs } from "@/components/media/primitives/breadcrumbs";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -89,8 +90,24 @@ export function SeasonPage() {
   return (
     <div className="space-y-8">
       {seriesQuery.isRefetchError || seasonQuery.isRefetchError ? <DegradedModeBadge /> : null}
+      <Breadcrumbs
+        items={[
+          <Link
+            key="series"
+            to="/series/$seriesId"
+            params={{ seriesId: String(series.id) }}
+            className="truncate hover:text-foreground"
+          >
+            {series.title}
+          </Link>,
+          <span key="season" aria-current="page" className="truncate font-medium text-foreground">
+            {season.name || t("media.fallbackTitle", { number: season.seasonNumber })}
+          </span>,
+        ]}
+      />
       <MediaDetailsHero
         media={series}
+        posterPathOverride={season.posterPath}
         actions={<AddToLibraryButton media={series} />}
         extra={
           <div className="flex flex-col gap-2">
