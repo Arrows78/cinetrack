@@ -9,6 +9,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
+import { SectionHeader } from "@/components/media/primitives/section-header";
 import { maintenanceService } from "@/features/backup";
 import { diagnosticsService, tokenVault, updateService, type DiagnosticsSummary } from "@/features/desktop";
 import { logger } from "@/shared/lib/logger";
@@ -95,256 +96,268 @@ export function DesktopSettings() {
     }
   };
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("desktop.tmdbVault")}</CardTitle>
-          <CardDescription>{t("desktop.vaultDesc")}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-2">
-          <FormField label={t("desktop.vaultPassword")} help={t("desktop.vaultPasswordHint")}>
-            {(describedBy) => (
-              <Input
-                size="sm"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                aria-describedby={describedBy}
-              />
-            )}
-          </FormField>
-          <FormField label={t("desktop.newToken")} help={t("desktop.newTokenHint")}>
-            {(describedBy) => (
-              <Textarea
-                className="min-h-24 text-body-sm"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                aria-describedby={describedBy}
-              />
-            )}
-          </FormField>
-          <div className="flex gap-2">
-            <Button
-              disabled={busy || !password || !token.trim()}
-              onClick={() => void run(() => tokenVault.save(password, token))}
-            >
-              {t("desktop.save")}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy || !password}
-              onClick={() =>
-                void run(async () =>
-                  (await tokenVault.unlock(password)) ? t("desktop.unlockSuccess") : t("desktop.unlockNoToken")
-                )
-              }
-            >
-              {t("desktop.unlock")}
-            </Button>
-            <Button variant="ghost" onClick={() => tokenVault.lock()}>
-              {t("desktop.lock")}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-8">
+      <div>
+        <SectionHeader size="sub" headingLevel={3} title={t("desktop.categorySecurity")} />
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("desktop.tmdbVault")}</CardTitle>
+            <CardDescription>{t("desktop.vaultDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <FormField label={t("desktop.vaultPassword")} help={t("desktop.vaultPasswordHint")}>
+              {(describedBy) => (
+                <Input
+                  size="sm"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  aria-describedby={describedBy}
+                />
+              )}
+            </FormField>
+            <FormField label={t("desktop.newToken")} help={t("desktop.newTokenHint")}>
+              {(describedBy) => (
+                <Textarea
+                  className="min-h-24 text-body-sm"
+                  value={token}
+                  onChange={(event) => setToken(event.target.value)}
+                  aria-describedby={describedBy}
+                />
+              )}
+            </FormField>
+            <div className="flex gap-2">
+              <Button
+                disabled={busy || !password || !token.trim()}
+                onClick={() => void run(() => tokenVault.save(password, token))}
+              >
+                {t("desktop.save")}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy || !password}
+                onClick={() =>
+                  void run(async () =>
+                    (await tokenVault.unlock(password)) ? t("desktop.unlockSuccess") : t("desktop.unlockNoToken")
+                  )
+                }
+              >
+                {t("desktop.unlock")}
+              </Button>
+              <Button variant="ghost" onClick={() => tokenVault.lock()}>
+                {t("desktop.lock")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {isTauriApp() ? (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("desktop.systemIntegration")}</CardTitle>
-              <CardDescription>{t("desktop.systemIntegrationDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {isDesktopApp() ? (
-                  <>
-                    <Button
-                      variant={autoStart ? "secondary" : "outline"}
-                      aria-pressed={autoStart}
-                      disabled={busy}
-                      onClick={() =>
-                        void run(async () => {
-                          if (autoStart) await disable();
-                          else await enable();
-                          setAutoStart(!autoStart);
-                          return !autoStart ? t("desktop.autostartEnabled") : t("desktop.autostartDisabled");
-                        })
-                      }
-                    >
-                      {autoStart ? t("desktop.autostartOff") : t("desktop.autostartOn")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => void run(() => updateService.checkAndInstall())}
-                    >
-                      {t("desktop.checkUpdate")}
-                    </Button>
-                  </>
-                ) : null}
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      const check = await maintenanceService.checkDataIntegrity();
-                      return check.healthy
-                        ? `${t("desktop.databaseHealthy")} ${check.detail}`
-                        : `${t("desktop.databaseDamaged")} ${check.detail}`;
-                    })
-                  }
-                >
-                  {t("desktop.checkDatabase")}
-                </Button>
-              </div>
-              {isDesktopApp() ? (
-                <p className="mt-3 text-caption text-muted-foreground">{t("desktop.shortcuts")}</p>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("desktop.automaticBackupTitle")}</CardTitle>
-              <CardDescription>{t("desktop.automaticBackupDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      await maintenanceService.createAutomaticBackup(true);
-                      return t("desktop.backupUpdated");
-                    }).then(refreshBackupStatus)
-                  }
-                >
-                  {t("desktop.emergencyBackup")}
-                </Button>
-                <Button variant="outline" disabled={busy} onClick={() => void startRestore()}>
-                  {t("desktop.restoreBackup")}
-                </Button>
-              </div>
-              {backupStatus ? (
-                <p
-                  className={`mt-2 text-caption ${backupStatus.failed ? "text-destructive" : "text-muted-foreground"}`}
-                >
-                  {backupStatus.failed
-                    ? t("desktop.lastBackupFailed")
-                    : backupStatus.exportedAt
-                      ? t("desktop.lastBackupSuccess", { date: formatRelativeDate(backupStatus.exportedAt) })
-                      : t("desktop.noBackupYet")}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>{t("desktop.diagnostics")}</CardTitle>
-              <CardDescription>{t("desktop.diagnosticsDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={refreshLogs}>
-                  {t("desktop.diagnosticsRefresh")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!logLines?.length}
-                  onClick={() => void navigator.clipboard.writeText((logLines ?? []).join("\n"))}
-                >
-                  {t("desktop.diagnosticsCopy")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!logLines?.length || busy}
-                  onClick={() => setPendingClearLogs(true)}
-                >
-                  {t("desktop.diagnosticsClear")}
-                </Button>
-              </div>
-              {logLines?.length ? (
-                <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-border bg-card p-3 font-mono text-caption whitespace-pre-wrap">
-                  {logLines.join("\n")}
-                </pre>
-              ) : (
-                <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsEmpty")}</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2">
-            {/* Collapsed by default — a developer-facing diagnostics tool,
-                not something most users need open at a glance. */}
-            <Accordion type="single" collapsible>
-              <AccordionItem value="timing" className="border-none bg-transparent">
-                <CardHeader className="pb-0">
-                  <AccordionTrigger className="p-0 hover:no-underline">
-                    <div className="text-left">
-                      <CardTitle>{t("desktop.diagnosticsTimingTitle")}</CardTitle>
-                      <CardDescription>{t("desktop.diagnosticsTimingDesc")}</CardDescription>
-                    </div>
-                  </AccordionTrigger>
-                </CardHeader>
-                <AccordionContent>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" size="sm" onClick={refreshTimingSummary}>
-                        {t("desktop.diagnosticsTimingRefresh")}
+          <div>
+            <SectionHeader size="sub" headingLevel={3} title={t("desktop.categorySystem")} />
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("desktop.systemIntegration")}</CardTitle>
+                <CardDescription>{t("desktop.systemIntegrationDesc")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {isDesktopApp() ? (
+                    <>
+                      <Button
+                        variant={autoStart ? "secondary" : "outline"}
+                        aria-pressed={autoStart}
+                        disabled={busy}
+                        onClick={() =>
+                          void run(async () => {
+                            if (autoStart) await disable();
+                            else await enable();
+                            setAutoStart(!autoStart);
+                            return !autoStart ? t("desktop.autostartEnabled") : t("desktop.autostartDisabled");
+                          })
+                        }
+                      >
+                        {autoStart ? t("desktop.autostartOff") : t("desktop.autostartOn")}
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
-                        disabled={!timingSummary?.commands.length}
-                        onClick={() => void navigator.clipboard.writeText(JSON.stringify(timingSummary, null, 2))}
+                        disabled={busy}
+                        onClick={() => void run(() => updateService.checkAndInstall())}
                       >
-                        {t("desktop.diagnosticsTimingCopy")}
+                        {t("desktop.checkUpdate")}
                       </Button>
-                    </div>
-                    {timingSummary?.commands.length ? (
-                      <div className="mt-3 overflow-x-auto rounded-xl border border-border">
-                        <table className="w-full text-left text-caption">
-                          <thead className="bg-card text-muted-foreground">
-                            <tr>
-                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingLayer")}</th>
-                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCommand")}</th>
-                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCount")}</th>
-                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingAvg")}</th>
-                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingP95")}</th>
-                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingMax")}</th>
-                              <th className="p-2 font-medium">{t("desktop.diagnosticsTimingErrors")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {[...timingSummary.commands]
-                              .sort((a, b) => b.p95DurationMs - a.p95DurationMs)
-                              .map((row) => (
-                                <tr key={`${row.layer}-${row.command}`} className="border-t border-border">
-                                  <td className="p-2 font-mono">{row.layer}</td>
-                                  <td className="p-2 font-mono">{row.command}</td>
-                                  <td className="p-2">{row.count}</td>
-                                  <td className="p-2">{Math.round(row.avgDurationMs)}</td>
-                                  <td className="p-2">{row.p95DurationMs}</td>
-                                  <td className="p-2">{row.maxDurationMs}</td>
-                                  <td className="p-2">{row.errorCount}</td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
+                    </>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        const check = await maintenanceService.checkDataIntegrity();
+                        return check.healthy
+                          ? `${t("desktop.databaseHealthy")} ${check.detail}`
+                          : `${t("desktop.databaseDamaged")} ${check.detail}`;
+                      })
+                    }
+                  >
+                    {t("desktop.checkDatabase")}
+                  </Button>
+                </div>
+                {isDesktopApp() ? (
+                  <p className="mt-3 text-caption text-muted-foreground">{t("desktop.shortcuts")}</p>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <SectionHeader size="sub" headingLevel={3} title={t("desktop.categoryBackup")} />
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("desktop.automaticBackupTitle")}</CardTitle>
+                <CardDescription>{t("desktop.automaticBackupDesc")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        await maintenanceService.createAutomaticBackup(true);
+                        return t("desktop.backupUpdated");
+                      }).then(refreshBackupStatus)
+                    }
+                  >
+                    {t("desktop.emergencyBackup")}
+                  </Button>
+                  <Button variant="outline" disabled={busy} onClick={() => void startRestore()}>
+                    {t("desktop.restoreBackup")}
+                  </Button>
+                </div>
+                {backupStatus ? (
+                  <p
+                    className={`mt-2 text-caption ${backupStatus.failed ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {backupStatus.failed
+                      ? t("desktop.lastBackupFailed")
+                      : backupStatus.exportedAt
+                        ? t("desktop.lastBackupSuccess", { date: formatRelativeDate(backupStatus.exportedAt) })
+                        : t("desktop.noBackupYet")}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-4">
+            <SectionHeader size="sub" headingLevel={3} title={t("desktop.categoryDiagnostics")} />
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("desktop.diagnostics")}</CardTitle>
+                <CardDescription>{t("desktop.diagnosticsDesc")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={refreshLogs}>
+                    {t("desktop.diagnosticsRefresh")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!logLines?.length}
+                    onClick={() => void navigator.clipboard.writeText((logLines ?? []).join("\n"))}
+                  >
+                    {t("desktop.diagnosticsCopy")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!logLines?.length || busy}
+                    onClick={() => setPendingClearLogs(true)}
+                  >
+                    {t("desktop.diagnosticsClear")}
+                  </Button>
+                </div>
+                {logLines?.length ? (
+                  <pre className="mt-3 max-h-48 overflow-auto rounded-xl border border-border bg-card p-3 font-mono text-caption whitespace-pre-wrap">
+                    {logLines.join("\n")}
+                  </pre>
+                ) : (
+                  <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsEmpty")}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              {/* Collapsed by default — a developer-facing diagnostics tool,
+                not something most users need open at a glance. */}
+              <Accordion type="single" collapsible>
+                <AccordionItem value="timing" className="border-none bg-transparent">
+                  <CardHeader className="pb-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                      <div className="text-left">
+                        <CardTitle>{t("desktop.diagnosticsTimingTitle")}</CardTitle>
+                        <CardDescription>{t("desktop.diagnosticsTimingDesc")}</CardDescription>
                       </div>
-                    ) : (
-                      <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsTimingEmpty")}</p>
-                    )}
-                  </CardContent>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </Card>
+                    </AccordionTrigger>
+                  </CardHeader>
+                  <AccordionContent>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={refreshTimingSummary}>
+                          {t("desktop.diagnosticsTimingRefresh")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!timingSummary?.commands.length}
+                          onClick={() => void navigator.clipboard.writeText(JSON.stringify(timingSummary, null, 2))}
+                        >
+                          {t("desktop.diagnosticsTimingCopy")}
+                        </Button>
+                      </div>
+                      {timingSummary?.commands.length ? (
+                        <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+                          <table className="w-full text-left text-caption">
+                            <thead className="bg-card text-muted-foreground">
+                              <tr>
+                                <th className="p-2 font-medium">{t("desktop.diagnosticsTimingLayer")}</th>
+                                <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCommand")}</th>
+                                <th className="p-2 font-medium">{t("desktop.diagnosticsTimingCount")}</th>
+                                <th className="p-2 font-medium">{t("desktop.diagnosticsTimingAvg")}</th>
+                                <th className="p-2 font-medium">{t("desktop.diagnosticsTimingP95")}</th>
+                                <th className="p-2 font-medium">{t("desktop.diagnosticsTimingMax")}</th>
+                                <th className="p-2 font-medium">{t("desktop.diagnosticsTimingErrors")}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[...timingSummary.commands]
+                                .sort((a, b) => b.p95DurationMs - a.p95DurationMs)
+                                .map((row) => (
+                                  <tr key={`${row.layer}-${row.command}`} className="border-t border-border">
+                                    <td className="p-2 font-mono">{row.layer}</td>
+                                    <td className="p-2 font-mono">{row.command}</td>
+                                    <td className="p-2">{row.count}</td>
+                                    <td className="p-2">{Math.round(row.avgDurationMs)}</td>
+                                    <td className="p-2">{row.p95DurationMs}</td>
+                                    <td className="p-2">{row.maxDurationMs}</td>
+                                    <td className="p-2">{row.errorCount}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-caption text-muted-foreground">{t("desktop.diagnosticsTimingEmpty")}</p>
+                      )}
+                    </CardContent>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </Card>
+          </div>
         </>
       ) : null}
 
