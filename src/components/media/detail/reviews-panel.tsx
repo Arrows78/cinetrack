@@ -47,11 +47,11 @@ function ReviewCard({ review }: { review: MediaReview }) {
   );
 }
 
-export function ReviewsPanel({ reviews }: { reviews?: MediaReview[] }) {
+export function ReviewsPanel({ reviews, id }: { reviews?: MediaReview[]; id?: string }) {
   const { t } = useTranslation();
   if (!reviews?.length) return null;
   return (
-    <section>
+    <section id={id} className={id ? "scroll-mt-28" : undefined}>
       <SectionHeader title={t("media.reviews")} />
       <div className="grid gap-4 md:grid-cols-2">
         {reviews.map((review) => (

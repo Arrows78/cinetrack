@@ -42,6 +42,12 @@ describe("WatchHistoryPanel", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("applies the given id and scroll-margin class for jump-nav targeting", () => {
+    eventsQueryMock.mockReturnValue({ isError: false, data: [makeEvent({ note: "Loved it" })], refetch: vi.fn() });
+    const { container } = render(<WatchHistoryPanel mediaId={7} mediaType="movie" id="series-history" />);
+    expect(container.querySelector("#series-history")).toHaveClass("scroll-mt-28");
+  });
+
   it("skips unwatched rollback events even if they somehow carry a note", () => {
     eventsQueryMock.mockReturnValue({
       isError: false,

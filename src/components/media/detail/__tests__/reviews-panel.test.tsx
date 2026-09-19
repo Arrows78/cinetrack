@@ -44,6 +44,11 @@ describe("ReviewsPanel", () => {
     );
   });
 
+  it("applies the given id and scroll-margin class for jump-nav targeting", () => {
+    const { container } = render(<ReviewsPanel reviews={[buildReview()]} id="series-reviews" />);
+    expect(container.querySelector("#series-reviews")).toHaveClass("scroll-mt-28");
+  });
+
   it("omits the rating badge when the reviewer left none", () => {
     render(<ReviewsPanel reviews={[buildReview({ rating: null })]} />);
     expect(screen.queryByText(/\/10/)).not.toBeInTheDocument();

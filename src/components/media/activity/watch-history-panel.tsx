@@ -3,6 +3,7 @@ import { NotebookText } from "lucide-react";
 import { Panel } from "@/components/ui/panel";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { useViewingEventsForMedia } from "@/features/progress/use-progress";
+import { cn } from "@/shared/lib/cn";
 import { formatFullDate } from "@/shared/utils/format";
 import type { MediaType } from "@/types/media";
 
@@ -20,6 +21,7 @@ export function WatchHistoryPanel({
   mediaId,
   mediaType,
   episodeId,
+  id,
 }: {
   mediaId: number;
   mediaType: MediaType;
@@ -28,6 +30,7 @@ export function WatchHistoryPanel({
   // episodeId, so this is a client-side filter over the same query, no new
   // Rust command needed.
   episodeId?: number;
+  id?: string;
 }) {
   const { t } = useTranslation();
   const eventsQuery = useViewingEventsForMedia(mediaId, mediaType);
@@ -44,7 +47,7 @@ export function WatchHistoryPanel({
   if (!notedEvents.length) return null;
 
   return (
-    <Panel tone="subtle" className="p-6">
+    <Panel id={id} tone="subtle" className={cn("p-6", id && "scroll-mt-28")}>
       <div className="flex items-center gap-2">
         <NotebookText className="size-4 text-primary" />
         <h2 className="font-semibold">{t("media.watchHistoryTitle")}</h2>

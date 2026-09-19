@@ -54,6 +54,11 @@ describe("MediaGallery", () => {
     expect(dialog.querySelector("img")).toHaveAttribute("src", "https://image.tmdb.org/t/p/original/b.jpg");
   });
 
+  it("applies the given id and scroll-margin class for jump-nav targeting", () => {
+    const { container } = render(<MediaGallery backdropPaths={["/a.jpg"]} id="series-gallery" />);
+    expect(container.querySelector("#series-gallery")).toHaveClass("scroll-mt-28");
+  });
+
   it("omits prev/next navigation for a single-image gallery", async () => {
     render(<MediaGallery backdropPaths={["/a.jpg"]} />);
 

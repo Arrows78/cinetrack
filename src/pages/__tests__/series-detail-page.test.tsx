@@ -16,6 +16,12 @@ vi.mock("@tanstack/react-router", () => ({
   useSearch: () => ({}),
 }));
 
+// Real SectionNav's useActiveSection needs a real IntersectionObserver
+// (jsdom has none) — stubbed the same way settings-page.test.tsx/
+// home-page.test.tsx already do, since this suite's own assertions are
+// about the page's content, not the jump nav's scroll-spy behavior.
+vi.mock("@/components/ui/section-nav", () => ({ SectionNav: () => <div data-testid="section-nav" /> }));
+
 const seriesQueryMock = vi.fn();
 const seasonQueriesMock = vi.fn();
 vi.mock("@/features/media/use-media", () => ({
@@ -525,10 +531,13 @@ describe("SeriesDetailPage", () => {
     expect(screen.getByText("67")).toBeInTheDocument();
     expect(screen.getByText("2/3 ep.")).toBeInTheDocument();
 
-    expect(seasonAccordionPropsMock).toHaveBeenCalledTimes(1);
-    const [[seasonAccordionProps]] = seasonAccordionPropsMock.mock.calls as [
-      [{ seasons: Season[]; watchedEpisodes: EpisodeProgress[] }],
-    ];
+    // usePresentSectionIds' own mount-time effect (the section-nav jump
+    // list) can trigger one extra render once it sees the always-present
+    // sections mount — the props passed down are unaffected, so this reads
+    // the most recent call rather than asserting an exact render count.
+    expect(seasonAccordionPropsMock).toHaveBeenCalled();
+    const calls = seasonAccordionPropsMock.mock.calls as [{ seasons: Season[]; watchedEpisodes: EpisodeProgress[] }][];
+    const [seasonAccordionProps] = calls[calls.length - 1]!;
     expect(seasonAccordionProps.seasons).toEqual([buildSeason()]);
     expect(seasonAccordionProps.watchedEpisodes).toEqual(watchedProgress);
 

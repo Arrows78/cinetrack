@@ -447,6 +447,7 @@
   },
   "series": {
     "subtitle": "Parcourez les saisons et suivez votre progression.",
+    "navSectionsLabel": "Sections de la fiche série",
     "seriesInfo": "Informations",
     "currentProgress": "Progression actuelle",
     "episodesFraction": "{{watched}}/{{total}} ép.",

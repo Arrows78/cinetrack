@@ -5,13 +5,13 @@ import { useVideos } from "@/features/media/use-discovery";
 import { VIDEO_EMBED_BACKGROUND_CLASSNAME } from "@/shared/constants/decorative-gradients";
 import { cn } from "@/shared/lib/cn";
 import type { MediaType } from "@/types/media";
-export function TrailerPanel({ mediaType, mediaId }: { mediaType: MediaType; mediaId: number }) {
+export function TrailerPanel({ mediaType, mediaId, id }: { mediaType: MediaType; mediaId: number; id?: string }) {
   const { t } = useTranslation();
   const query = useVideos(mediaType, mediaId);
   const video = query.data?.find((item) => item.type === "Trailer") ?? query.data?.[0];
   if (!video) return null;
   return (
-    <Panel>
+    <Panel id={id} className={id ? "scroll-mt-28" : undefined}>
       <div className="flex items-center gap-2">
         <PlayCircle className="size-5 text-primary" />
         <h2 className="font-semibold">{t("media.trailer")}</h2>

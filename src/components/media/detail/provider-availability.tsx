@@ -32,7 +32,7 @@ function ProviderGroup({ label, providers }: { label: string; providers: WatchPr
   );
 }
 
-export function ProviderAvailability({ media }: { media: MediaSummary }) {
+export function ProviderAvailability({ media, id }: { media: MediaSummary; id?: string }) {
   const { t } = useTranslation();
   const preferences = usePreferences();
   const region = preferences.data?.region ?? DEFAULT_TMDB_REGION;
@@ -49,7 +49,7 @@ export function ProviderAvailability({ media }: { media: MediaSummary }) {
   const hasAny = Boolean(data && (data.flatrate.length || data.free.length || data.rent.length || data.buy.length));
   if (!data || !hasAny) return null;
   return (
-    <Panel>
+    <Panel id={id} className={id ? "scroll-mt-28" : undefined}>
       <SectionHeader title={`${t("media.whereToWatch")} · ${region}`} />
       <div className="space-y-4">
         <ProviderGroup label={t("media.streamingFlatrate")} providers={data.flatrate} />

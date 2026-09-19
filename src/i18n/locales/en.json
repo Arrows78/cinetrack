@@ -447,6 +447,7 @@
   },
   "series": {
     "subtitle": "Browse by season, track your progress and discover new series.",
+    "navSectionsLabel": "Series sections",
     "seriesInfo": "Series info",
     "currentProgress": "Current progress",
     "episodesFraction": "{{watched}}/{{total}} ep.",

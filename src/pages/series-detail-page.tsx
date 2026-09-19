@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
@@ -20,6 +20,7 @@ import { ShareButton } from "@/components/media/detail/share-button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import { SectionNav } from "@/components/ui/section-nav";
 import { SeasonAccordion } from "@/components/media/detail/season-accordion";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
@@ -32,6 +33,7 @@ import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { EmptyState } from "@/components/states/empty-state";
+import { usePresentSectionIds } from "@/hooks/use-present-section-ids";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { formatRelativeCountdown } from "@/shared/utils/format";
 import {
@@ -42,6 +44,16 @@ import {
   useTrackedSeries,
 } from "@/features/progress/use-progress";
 import { useSeriesDetails, useSeriesSeasons } from "@/features/media/use-media";
+
+const SERIES_INFO_ID = "series-info";
+const SERIES_CAST_ID = "series-cast";
+const SERIES_GALLERY_ID = "series-gallery";
+const SERIES_TRAILER_ID = "series-trailer";
+const SERIES_PROVIDERS_ID = "series-providers";
+const SERIES_SEASONS_ID = "series-seasons";
+const SERIES_HISTORY_ID = "series-history";
+const SERIES_REVIEWS_ID = "series-reviews";
+const SERIES_RECOMMENDATIONS_ID = "series-recommendations";
 
 export function SeriesDetailPage() {
   const { t } = useTranslation();
@@ -91,6 +103,27 @@ export function SeriesDetailPage() {
     allSeasonsLoaded,
     progress.totalEpisodes,
   ]);
+  // In-page jump nav for the sections below the hero (see SectionNav) — each
+  // candidate can render nothing of its own accord (no trailer, no reviews,
+  // …), so the nav only lists whichever of them actually mounted, same
+  // pattern as home-page.tsx's own candidateNavSections.
+  const contentRef = useRef<HTMLDivElement>(null);
+  const candidateNavSections = [
+    { id: SERIES_INFO_ID, label: t("series.seriesInfo") },
+    { id: SERIES_CAST_ID, label: t("media.cast") },
+    { id: SERIES_GALLERY_ID, label: t("media.gallery") },
+    { id: SERIES_TRAILER_ID, label: t("media.trailer") },
+    { id: SERIES_PROVIDERS_ID, label: t("media.whereToWatch") },
+    { id: SERIES_SEASONS_ID, label: t("series.seasonsAndEpisodes") },
+    { id: SERIES_HISTORY_ID, label: t("media.watchHistoryTitle") },
+    { id: SERIES_REVIEWS_ID, label: t("media.reviews") },
+    { id: SERIES_RECOMMENDATIONS_ID, label: t("media.similarSuggestions") },
+  ];
+  const presentSectionIds = usePresentSectionIds(
+    candidateNavSections.map((section) => section.id),
+    contentRef
+  );
+  const navItems = candidateNavSections.filter((section) => presentSectionIds.includes(section.id));
   // A malformed/non-numeric :seriesId never becomes a valid query (see
   // useSeriesDetails' `enabled: Number.isFinite(seriesId)`) — that used to
   // fall through every check below to a bare `return null`, a permanently
@@ -119,8 +152,9 @@ export function SeriesDetailPage() {
   const nextEpisode = getNextEpisode(seasons, progressQuery.data ?? []);
 
   return (
-    <div className="space-y-8">
+    <div ref={contentRef} className="space-y-8">
       {seriesQuery.isRefetchError ? <DegradedModeBadge /> : null}
+      <SectionNav items={navItems} ariaLabel={t("series.navSectionsLabel")} />
       <MediaDetailsHero
         media={series}
         actions={
@@ -158,7 +192,7 @@ export function SeriesDetailPage() {
           this is the most frequent action on the page (status, personal
           rating, tags), it shouldn't need a long scroll to reach. */}
       <LibraryEditor media={series} />
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <section id={SERIES_INFO_ID} className="scroll-mt-28 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <Panel tone="subtle" className="p-6">
           <SectionHeader title={t("media.overview")} />
           <p className="text-body-lg text-muted-foreground">{series.overview || t("media.noOverview")}</p>
@@ -220,15 +254,15 @@ export function SeriesDetailPage() {
           </Panel>
         </div>
       </section>
-      <section>
+      <section id={SERIES_CAST_ID} className="scroll-mt-28">
         <SectionHeader title={t("media.cast")} />
         <CastList cast={series.cast} />
       </section>
-      <MediaGallery backdropPaths={series.backdropPaths} />
-      <TrailerPanel mediaType="series" mediaId={series.id} />
-      <ProviderAvailability media={series} />
+      <MediaGallery id={SERIES_GALLERY_ID} backdropPaths={series.backdropPaths} />
+      <TrailerPanel id={SERIES_TRAILER_ID} mediaType="series" mediaId={series.id} />
+      <ProviderAvailability id={SERIES_PROVIDERS_ID} media={series} />
       <CatalogMetadataSync media={series} />
-      <section>
+      <section id={SERIES_SEASONS_ID} className="scroll-mt-28">
         <SectionHeader title={t("series.seasonsAndEpisodes")} subtitle={t("series.seasonsAndEpisodesDesc")} />
         {failedSeasonQueries.length > 0 ? (
           <PartialErrorState
@@ -249,9 +283,9 @@ export function SeriesDetailPage() {
           initialOpenSeason={initialOpenSeason}
         />
       </section>
-      <WatchHistoryPanel mediaId={series.id} mediaType="series" />
-      <ReviewsPanel reviews={series.reviews} />
-      <RecommendationsPanel media={series} />
+      <WatchHistoryPanel id={SERIES_HISTORY_ID} mediaId={series.id} mediaType="series" />
+      <ReviewsPanel id={SERIES_REVIEWS_ID} reviews={series.reviews} />
+      <RecommendationsPanel id={SERIES_RECOMMENDATIONS_ID} media={series} />
     </div>
   );
 }

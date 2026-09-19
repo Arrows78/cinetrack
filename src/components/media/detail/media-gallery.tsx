@@ -11,7 +11,7 @@ import { buildTmdbImageUrl } from "@/shared/utils/format";
 // Radix Dialog primitive ConfirmDialog is built on rather than a dedicated
 // image-viewer library, since all it needs is an overlay, a close button,
 // and prev/next.
-export function MediaGallery({ backdropPaths }: { backdropPaths?: string[] }) {
+export function MediaGallery({ backdropPaths, id }: { backdropPaths?: string[]; id?: string }) {
   const { t } = useTranslation();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   if (!backdropPaths?.length) return null;
@@ -21,7 +21,7 @@ export function MediaGallery({ backdropPaths }: { backdropPaths?: string[] }) {
   const showNext = () => setOpenIndex((index) => (index === null ? index : (index + 1) % backdropPaths.length));
 
   return (
-    <section>
+    <section id={id} className={id ? "scroll-mt-28" : undefined}>
       <SectionHeader title={t("media.gallery")} />
       <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {backdropPaths.map((path, index) => (
