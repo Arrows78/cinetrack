@@ -80,6 +80,10 @@ export function SeasonAccordion({
   const { celebrate } = useConfetti();
   const watchedSet = useMemo(() => new Set(watchedEpisodes.map((item) => item.episodeId)), [watchedEpisodes]);
   const progress = calculateSeriesProgress(series.id, seasons, watchedEpisodes);
+  // Every season's episodes, not just the one being toggled — lets the
+  // backlog prompt below offer to catch up an unfinished earlier season too,
+  // not only earlier episodes of the same season.
+  const allSeriesEpisodes = useMemo(() => seasons.flatMap((season) => season.episodes), [seasons]);
 
   const initialOpenItemRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -207,7 +211,7 @@ export function SeasonAccordion({
                         seriesId={series.id}
                         seasonNumber={season.seasonNumber}
                         onToggleSeen={(note) =>
-                          backlog.requestToggle(episode, !isWatched, season.episodes, watchedSet, note, season)
+                          backlog.requestToggle(episode, !isWatched, allSeriesEpisodes, watchedSet, note, season)
                         }
                       />
                     );

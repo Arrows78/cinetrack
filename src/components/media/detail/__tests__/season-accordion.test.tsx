@@ -203,7 +203,12 @@ describe("SeasonAccordion", () => {
   it("does not call celebrate when toggling an episode that is not the last unwatched one", () => {
     vi.useFakeTimers();
     try {
-      const { onToggleEpisode } = renderAccordion();
+      // Season 1's own last unwatched episode (103) is caught up here so
+      // this toggle exercises the plain "not the last one" path rather than
+      // the cross-season backlog prompt (covered separately below).
+      const { onToggleEpisode } = renderAccordion({
+        watchedEpisodes: [...watchedEpisodes, makeProgress(103, 1, 3)],
+      });
       openSeason("Season Three");
 
       const markWatchedButtons = screen.getAllByRole("button", { name: "Mark watched" });
@@ -217,6 +222,25 @@ describe("SeasonAccordion", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("offers to catch up an unfinished earlier season, not just earlier episodes of the same season", () => {
+    const { onToggleEpisodes } = renderAccordion();
+    openSeason("Season Three");
+
+    // Season 3's own S3E1 is already watched, so a same-season-only check
+    // would see no backlog here — Season 1's still-unwatched S1E3 (episode
+    // 103) is the one that should now trigger the prompt.
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark watched" })[0]!);
+
+    expect(screen.getByText("There's 1 unwatched episode before this one.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "This one and the previous one" }));
+
+    expect(onToggleEpisodes).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 103 }), expect.objectContaining({ id: 302 })],
+      expect.objectContaining({ id: 302 })
+    );
   });
 
   it("does not run the completion check at all when toggling an episode to unwatched", () => {
