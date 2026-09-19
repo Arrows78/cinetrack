@@ -139,6 +139,16 @@
     "rose": "Rose",
     "red": "Red"
   },
+  "avatars": {
+    "clapperboard": "Clapperboard",
+    "popcorn": "Popcorn",
+    "tv": "TV",
+    "star": "Star",
+    "ghost": "Ghost",
+    "alien": "Alien",
+    "robot": "Robot",
+    "cat": "Cat"
+  },
   "home": {
     "noTokenTitle": "Track without a TMDB token",
     "noTokenDesc": "A TMDB token isn't required to use CineTrack — it only unlocks browsing and discovering new titles.",
@@ -584,6 +594,7 @@
     "createDescription": "Signed in as {{email}}. This name will identify your library, history and lists.",
     "namePlaceholder": "Your name",
     "nameLabel": "Your name",
+    "avatarLabel": "Choose an avatar (optional)",
     "createSubmit": "Create my profile",
     "createError": "Couldn't create the profile. Please try again.",
     "signOut": "Sign out"
@@ -923,6 +934,10 @@
     "unlockSuccess": "Vault unlocked.",
     "unlockNoToken": "Vault opened, but no token registered.",
     "lock": "Lock",
+    "categorySecurity": "Security",
+    "categorySystem": "System",
+    "categoryBackup": "Backup",
+    "categoryDiagnostics": "Diagnostics",
     "systemIntegration": "System integration",
     "autostartOff": "Disable autostart",
     "autostartOn": "Launch at startup",

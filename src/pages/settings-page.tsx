@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { Select } from "@/components/ui/select";
 import { SettingToggle } from "@/components/ui/setting-toggle";
 import { Tile } from "@/components/ui/tile";
@@ -82,15 +83,24 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
           // account read another account's data. Only the current profile
           // is shown here now, read-only, whenever sign-in is required.
           currentProfile ? (
-            <Tile className="px-3 py-3">
-              <p className="font-medium">
-                {currentProfile.id === "default" ? t("settings.profiles.defaultName") : currentProfile.name}
-              </p>
-              {user?.primaryEmailAddress?.emailAddress ? (
-                <p className="mt-1 text-body-sm text-muted-foreground">
-                  {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
+            <Tile className="flex items-center gap-3 px-3 py-3">
+              <ProfileAvatar
+                name={
+                  currentProfile.id === "default" ? t("settings.profiles.defaultName") : (currentProfile.name ?? "?")
+                }
+                avatar={currentProfile.avatar}
+                className="size-9"
+              />
+              <div>
+                <p className="font-medium">
+                  {currentProfile.id === "default" ? t("settings.profiles.defaultName") : currentProfile.name}
                 </p>
-              ) : null}
+                {user?.primaryEmailAddress?.emailAddress ? (
+                  <p className="mt-1 text-body-sm text-muted-foreground">
+                    {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
+                  </p>
+                ) : null}
+              </div>
             </Tile>
           ) : (
             <p className="text-body-sm text-muted-foreground">{t("settings.profiles.none")}</p>
@@ -108,10 +118,11 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                 <Tile key={profile.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                   <button
                     type="button"
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-body-sm font-medium disabled:cursor-default"
+                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left text-body-sm font-medium disabled:cursor-default"
                     disabled={isActive || switchingProfileId !== null}
                     onClick={() => void switchToProfile(profile.id)}
                   >
+                    <ProfileAvatar name={label ?? "?"} avatar={profile.avatar} className="size-7 text-caption" />
                     <span className="truncate">{label}</span>
                     {isActive ? (
                       <Badge variant="success" className="gap-1">

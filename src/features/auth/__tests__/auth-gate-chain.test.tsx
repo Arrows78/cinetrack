@@ -437,13 +437,23 @@ describe("CreateProfileScreen", () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it("calls create with the trimmed name and supabaseUserId for a real name", () => {
+  it("calls create with the trimmed name, supabaseUserId and no avatar by default", () => {
     render(<CreateProfileScreen supabaseUserId={supabaseUserId} />);
 
     fireEvent.change(getNameInput(), { target: { value: "Alice" } });
     fireEvent.submit(getNameInput().closest("form")!);
 
-    expect(createMock).toHaveBeenCalledWith({ name: "Alice", supabaseUserId });
+    expect(createMock).toHaveBeenCalledWith({ name: "Alice", supabaseUserId, avatar: null });
+  });
+
+  it("includes the picked avatar preset when one is selected", () => {
+    render(<CreateProfileScreen supabaseUserId={supabaseUserId} />);
+
+    fireEvent.change(getNameInput(), { target: { value: "Alice" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("avatars.robot") }));
+    fireEvent.submit(getNameInput().closest("form")!);
+
+    expect(createMock).toHaveBeenCalledWith({ name: "Alice", supabaseUserId, avatar: "robot" });
   });
 
   it("disables the submit button while isSaving is true", () => {

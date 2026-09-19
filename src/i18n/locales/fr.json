@@ -139,6 +139,16 @@
     "rose": "Rose",
     "red": "Rouge"
   },
+  "avatars": {
+    "clapperboard": "Clap de cinéma",
+    "popcorn": "Pop-corn",
+    "tv": "Télévision",
+    "star": "Étoile",
+    "ghost": "Fantôme",
+    "alien": "Extraterrestre",
+    "robot": "Robot",
+    "cat": "Chat"
+  },
   "home": {
     "noTokenTitle": "Suivez vos contenus sans token TMDB",
     "noTokenDesc": "Un token TMDB n'est pas nécessaire pour utiliser CineTrack — il ne fait que déverrouiller la découverte de nouveaux titres.",
@@ -584,6 +594,7 @@
     "createDescription": "Connecté avec {{email}}. Ce nom identifiera votre bibliothèque, votre historique et vos listes.",
     "namePlaceholder": "Votre nom",
     "nameLabel": "Votre nom",
+    "avatarLabel": "Choisissez un avatar (facultatif)",
     "createSubmit": "Créer mon profil",
     "createError": "Impossible de créer le profil. Réessayez.",
     "signOut": "Se déconnecter"
@@ -923,6 +934,10 @@
     "unlockSuccess": "Coffre déverrouillé.",
     "unlockNoToken": "Coffre ouvert, mais aucun token enregistré.",
     "lock": "Verrouiller",
+    "categorySecurity": "Sécurité",
+    "categorySystem": "Système",
+    "categoryBackup": "Sauvegarde",
+    "categoryDiagnostics": "Diagnostics",
     "systemIntegration": "Intégration système",
     "autostartOff": "Désactiver le démarrage automatique",
     "autostartOn": "Lancer au démarrage",

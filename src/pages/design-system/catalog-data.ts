@@ -1378,6 +1378,14 @@ export const componentInventory = [
     "Groups related content on a flat semantic surface."
   ),
   component(
+    "ProfileAvatar",
+    "components/ui/profile-avatar.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Renders a profile's picked avatar preset, falling back to its initial."
+  ),
+  component(
     "Progress",
     "components/ui/progress.tsx",
     "UI primitives",

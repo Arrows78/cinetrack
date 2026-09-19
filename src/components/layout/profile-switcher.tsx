@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tile } from "@/components/ui/tile";
 import { authConfig } from "@/features/auth";
@@ -11,11 +12,6 @@ import { logger } from "@/shared/lib/logger";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useProfiles, useProfileSwitching } from "@/features/profiles/use-profiles";
 import { cn } from "@/shared/lib/cn";
-
-function profileInitial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? trimmed[0]!.toUpperCase() : "?";
-}
 
 // Profile switcher for the persistent nav chrome, so switching doesn't
 // require a trip to Settings. The switching logic itself (including the
@@ -59,9 +55,7 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
         collapsed ? "h-8 w-8 justify-center" : "h-8 pl-1 pr-2.5"
       )}
     >
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-caption font-semibold text-primary">
-        {profileInitial(currentLabel)}
-      </span>
+      <ProfileAvatar name={currentLabel} avatar={currentProfile?.avatar} className="size-6 text-caption" />
       {!collapsed && <span className="max-w-[6rem] truncate">{currentLabel}</span>}
       {!collapsed && <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
     </button>
@@ -93,13 +87,16 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
             // ProfileGate) — only the current profile is shown here, read-only,
             // exactly like ProfilesCard's own read-only branch.
             currentProfile ? (
-              <Tile className="px-3 py-3">
-                <p className="font-medium">{currentLabel}</p>
-                {user?.primaryEmailAddress?.emailAddress ? (
-                  <p className="mt-1 text-body-sm text-muted-foreground">
-                    {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
-                  </p>
-                ) : null}
+              <Tile className="flex items-center gap-3 px-3 py-3">
+                <ProfileAvatar name={currentLabel} avatar={currentProfile.avatar} className="size-8" />
+                <div>
+                  <p className="font-medium">{currentLabel}</p>
+                  {user?.primaryEmailAddress?.emailAddress ? (
+                    <p className="mt-1 text-body-sm text-muted-foreground">
+                      {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
+                    </p>
+                  ) : null}
+                </div>
               </Tile>
             ) : (
               <p className="text-body-sm text-muted-foreground">{t("settings.profiles.none")}</p>
@@ -116,7 +113,10 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
                     disabled={isActive || switchingProfileId !== null}
                     onClick={() => void switchToProfile(profile.id)}
                   >
-                    <span className="truncate">{label}</span>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <ProfileAvatar name={label ?? "?"} avatar={profile.avatar} className="size-7 text-caption" />
+                      <span className="truncate">{label}</span>
+                    </span>
                     {isActive ? (
                       <Badge variant="success" className="gap-1">
                         <Check className="size-3" aria-hidden="true" />

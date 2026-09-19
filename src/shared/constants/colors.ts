@@ -97,3 +97,31 @@ export const PLATFORM_BRAND_COLORS: Record<number, string> = {
   15: "#1CE783", // Hulu
   350: "#444444", // Apple TV+
 };
+
+export interface AvatarPreset {
+  /** Emoji glyph — no file upload/storage needed, same reasoning as color presets. */
+  emoji: string;
+  /** CSS hsl() background the emoji sits on. */
+  swatch: string;
+}
+
+/**
+ * Local-profile avatar presets (see ProfileAvatar and create-profile-screen.tsx).
+ * A profile's `avatar` column stores one of these keys as plain text — never a
+ * file path or upload, deliberately, to avoid the storage/sync surface that
+ * would come with user-uploaded images. Same preset-grid pattern as
+ * COLOR_PRESETS above; add entries here rather than inlining swatches at a
+ * call site.
+ */
+export const AVATAR_PRESETS = {
+  clapperboard: { emoji: "🎬", swatch: "hsl(252 80% 42%)" },
+  popcorn: { emoji: "🍿", swatch: "hsl(38 90% 24%)" },
+  tv: { emoji: "📺", swatch: "hsl(217 88% 39%)" },
+  star: { emoji: "⭐", swatch: "hsl(48 90% 30%)" },
+  ghost: { emoji: "👻", swatch: "hsl(280 60% 40%)" },
+  alien: { emoji: "👽", swatch: "hsl(142 60% 24%)" },
+  robot: { emoji: "🤖", swatch: "hsl(210 10% 35%)" },
+  cat: { emoji: "🐱", swatch: "hsl(22 88% 39%)" },
+} as const satisfies Record<string, AvatarPreset>;
+
+export type AvatarPresetKey = keyof typeof AVATAR_PRESETS;
