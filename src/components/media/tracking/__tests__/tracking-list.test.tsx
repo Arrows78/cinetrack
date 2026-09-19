@@ -479,6 +479,33 @@ describe("TrackingList", () => {
     expect(screen.queryByRole("button", { name: /Clear .* triggered alert/ })).not.toBeInTheDocument();
   });
 
+  it("switches the dated results to a month calendar view", () => {
+    mockTracking({ data: [releaseMine, episodeDiscovery] });
+    render(<TrackingList />);
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
+    );
+    expect(screen.getByRole("heading", { name: /1 September 2026/i })).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole("tablist", { name: "View" })).getByRole("tab", { name: "Calendar" }));
+
+    expect(screen.queryByRole("heading", { name: /1 September 2026/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Mine Movie")).toBeInTheDocument();
+    expect(screen.getByText("Discovery Series")).toBeInTheDocument();
+  });
+
+  it("hides the list/calendar toggle when only availability entries are shown", () => {
+    mockTracking({ data: [availableEntry] });
+    render(<TrackingList />);
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by type" })).getByRole("button", { name: "Availability" })
+    );
+
+    expect(screen.queryByRole("tablist", { name: "View" })).not.toBeInTheDocument();
+  });
+
   it("defaults to controlled scope/type/sort when passed, instead of its own local state", () => {
     const onScopeFilterChange = vi.fn();
     mockTracking({ data: [releaseMine, episodeDiscovery] });

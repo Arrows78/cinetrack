@@ -13,6 +13,7 @@ import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { TrackingCalendar } from "@/components/media/tracking/tracking-calendar";
 import { TrackingEntryRow } from "@/components/media/tracking/tracking-entry-row";
 import { useAvailabilityAlerts } from "@/features/availability/use-availability-alerts";
 import { useTracking } from "@/features/tracking/use-tracking";
@@ -25,6 +26,7 @@ type ScopeFilter = TrackingScope | "all";
 type TypeFilter = TrackingEntryType | "all";
 type SortOption = "date" | "title" | "platform";
 type PlatformFilter = number | "all";
+type ViewMode = "list" | "calendar";
 
 function providerNames(providerIds: number[] = []): string[] {
   return providerIds.map((id) => PLATFORMS.find((platform) => platform.id === id)?.label ?? String(id));
@@ -214,6 +216,11 @@ export function TrackingList({
   const [localTypeFilter, setLocalTypeFilter] = useState<TypeFilter>("all");
   const [localSort, setLocalSort] = useState<SortOption>("date");
   const [localPlatformFilter, setLocalPlatformFilter] = useState<PlatformFilter>("all");
+  // Display mode for the dated (release/episode) results, not URL-persisted —
+  // unlike scope/type/sort/platform, it doesn't change what's tracked, so an
+  // embed (e.g. the movies/series "Upcoming" tab) doesn't need a controlled
+  // variant either.
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [pendingRemoval, setPendingRemoval] = useState<TrackingEntry | null>(null);
   const [confirmingPurge, setConfirmingPurge] = useState(false);
 
@@ -320,35 +327,56 @@ export function TrackingList({
         </Panel>
       ) : null}
 
-      {sort === "date"
-        ? Object.entries(groups).map(([date, entries], index) => (
-            <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 2)}ms` }}>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
-                <Badge variant="secondary">{formatRelativeCountdown(date)}</Badge>
-              </div>
-              <div className="mt-3 grid gap-2">
-                {entries.map((entry) => (
-                  <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} showAiredStatus />
-                ))}
-              </div>
-            </Panel>
-          ))
-        : sortedByTitle.length > 0 && (
-            <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
-              <div className="grid gap-2">
-                {sortedByTitle.map((entry) => (
-                  <TrackingEntryRow
-                    key={entry.id}
-                    entry={entry}
-                    showScopeBadge={showScopeBadge}
-                    showCountdown
-                    showAiredStatus
-                  />
-                ))}
-              </div>
-            </Panel>
-          )}
+      {typeFilter !== "availability" && !tracking.isLoading && !tracking.isError ? (
+        <div className="flex justify-end">
+          <FilterBar
+            value={viewMode}
+            onChange={setViewMode}
+            groupLabel={t("tracking.viewMode")}
+            as="tabs"
+            options={[
+              { value: "list", label: t("tracking.viewList") },
+              { value: "calendar", label: t("tracking.viewCalendar") },
+            ]}
+          />
+        </div>
+      ) : null}
+
+      {viewMode === "calendar" ? (
+        <Panel className="animate-in">
+          <TrackingCalendar entries={dated} />
+        </Panel>
+      ) : sort === "date" ? (
+        Object.entries(groups).map(([date, entries], index) => (
+          <Panel key={date} className="animate-in" style={{ animationDelay: `${staggerDelayMs(index + 2)}ms` }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-semibold capitalize">{formatFullDate(date)}</h2>
+              <Badge variant="secondary">{formatRelativeCountdown(date)}</Badge>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {entries.map((entry) => (
+                <TrackingEntryRow key={entry.id} entry={entry} showScopeBadge={showScopeBadge} showAiredStatus />
+              ))}
+            </div>
+          </Panel>
+        ))
+      ) : (
+        sortedByTitle.length > 0 && (
+          <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(2)}ms` }}>
+            <div className="grid gap-2">
+              {sortedByTitle.map((entry) => (
+                <TrackingEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  showScopeBadge={showScopeBadge}
+                  showCountdown
+                  showAiredStatus
+                />
+              ))}
+            </div>
+          </Panel>
+        )
+      )}
 
       {pending.length ? (
         <Panel className="animate-in">

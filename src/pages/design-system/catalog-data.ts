@@ -1130,6 +1130,14 @@ export const componentInventory = [
     "Groups upcoming releases, episodes and availability alerts for the /tracking page."
   ),
   component(
+    "TrackingCalendar",
+    "components/media/tracking/tracking-calendar.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Month-grid alternative to TrackingList's chronological view for dated (release/episode) entries, with its own month navigation."
+  ),
+  component(
     "AddWatchNoteDialog",
     "components/media/tracking/add-watch-note-dialog.tsx",
     "Media",
