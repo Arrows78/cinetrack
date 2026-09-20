@@ -12,6 +12,7 @@ import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
 import { SearchBar } from "@/components/media/primitives/search-bar";
 import { SmartListsAccordionContent } from "@/components/media/library/smart-lists-panel";
 import { useLibraryExplorer } from "@/components/media/library/use-library-explorer";
+import type { LibrarySortMode } from "@/components/media/library/library-filtering";
 import { ViewModeToggle } from "@/components/media/primitives/view-mode-toggle";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -290,6 +291,16 @@ export function LibraryExplorer({
     chips,
   } = useLibraryExplorer(lockedMediaType);
   const genres = useMergedGenres();
+  const sortOptions: { value: LibrarySortMode; label: string }[] = [
+    { value: "recent", label: t("library.recent") },
+    { value: "title", label: t("library.title") },
+    { value: "rating", label: t("library.rating") },
+    { value: "dateAdded", label: t("library.dateAdded") },
+    { value: "dateCompleted", label: t("library.dateCompleted") },
+    // Only meaningful for a series-only view — a movie has no "next
+    // episode", and the standalone /library page mixes both types.
+    ...(lockedMediaType === "series" ? [{ value: "nextEpisode" as const, label: t("library.nextEpisode") }] : []),
+  ];
 
   // Shared between the server-paginated and client-filtered branches below —
   // "library has nothing at all" vs. "these filters just don't match" reads
@@ -369,18 +380,7 @@ export function LibraryExplorer({
             </option>
           ))}
         </Select>
-        <FilterBar
-          value={sort}
-          onChange={setSort}
-          groupLabel={t("library.sortBy")}
-          options={[
-            { value: "recent", label: t("library.recent") },
-            { value: "title", label: t("library.title") },
-            { value: "rating", label: t("library.rating") },
-            { value: "dateAdded", label: t("library.dateAdded") },
-            { value: "dateCompleted", label: t("library.dateCompleted") },
-          ]}
-        />
+        <FilterBar value={sort} onChange={setSort} groupLabel={t("library.sortBy")} options={sortOptions} />
         <Button
           type="button"
           variant={favouritesOnly ? "default" : "outline"}

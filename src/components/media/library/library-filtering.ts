@@ -3,7 +3,7 @@ import type { CustomListItem, LibraryItem, LibraryStatus } from "@/types/media";
 
 export type LibraryTypeFilter = "all" | "movie" | "series";
 export type LibraryStatusFilter = LibraryStatus | "all";
-export type LibrarySortMode = "recent" | "title" | "rating" | "dateAdded" | "dateCompleted";
+export type LibrarySortMode = "recent" | "title" | "rating" | "dateAdded" | "dateCompleted" | "nextEpisode";
 
 export interface LibraryFilterCriteria {
   typeFilter: LibraryTypeFilter;
@@ -17,6 +17,15 @@ export interface LibraryFilterCriteria {
   listMediaKeys: Set<string> | null;
   /** Media keys the currently selected smart list matches — `null` when no smart list filter is active. */
   smartListMediaKeys: Set<string> | null;
+  /**
+   * Series id -> its soonest upcoming episode's air date, from the same
+   * 60-day tracking calendar the /tracking page reads (see useTracking) —
+   * only ever populated for the series hub's own "nextEpisode" sort mode.
+   * A series with nothing airing in that window (on hiatus, between
+   * seasons, further out than 60 days) has no entry and sorts last, same
+   * as one with no completedAt under "dateCompleted".
+   */
+  nextEpisodeDateBySeriesId?: Map<number, string>;
 }
 
 export function libraryMediaKey(mediaType: string, mediaId: number): string {
@@ -39,8 +48,17 @@ export function filterAndSortLibrary(
   progressBySeries: Map<number, { watched: number; total: number; seriesStatus: string | null }>,
   criteria: LibraryFilterCriteria
 ): MediaGridItem[] {
-  const { typeFilter, statusFilter, favouritesOnly, search, sort, genreFilter, listMediaKeys, smartListMediaKeys } =
-    criteria;
+  const {
+    typeFilter,
+    statusFilter,
+    favouritesOnly,
+    search,
+    sort,
+    genreFilter,
+    listMediaKeys,
+    smartListMediaKeys,
+    nextEpisodeDateBySeriesId,
+  } = criteria;
   const libraryByKey = new Map(libraryItems.map((item) => [libraryMediaKey(item.mediaType, item.mediaId), item]));
   const normalizedSearch = search.trim().toLowerCase();
   const matchesSearch = (text: string) => (normalizedSearch ? text.toLowerCase().includes(normalizedSearch) : true);
@@ -62,7 +80,13 @@ export function filterAndSortLibrary(
     .filter((item) => matchesLibrarySearch(item))
     .map((item) => ({
       sortKey:
-        sort === "dateAdded" ? item.createdAt : sort === "dateCompleted" ? (item.completedAt ?? "") : item.updatedAt,
+        sort === "dateAdded"
+          ? item.createdAt
+          : sort === "dateCompleted"
+            ? (item.completedAt ?? "")
+            : sort === "nextEpisode"
+              ? (nextEpisodeDateBySeriesId?.get(item.mediaId) ?? "")
+              : item.updatedAt,
       media: {
         id: item.mediaId,
         mediaType: item.mediaType,
@@ -106,7 +130,12 @@ export function filterAndSortLibrary(
           .map((li) => ({
             // Never completed (not a library item at all) — sorts last under
             // "dateCompleted", same as a library item with no completedAt.
-            sortKey: sort === "dateCompleted" ? "" : li.addedAt,
+            sortKey:
+              sort === "dateCompleted"
+                ? ""
+                : sort === "nextEpisode"
+                  ? (nextEpisodeDateBySeriesId?.get(li.mediaId) ?? "")
+                  : li.addedAt,
             media: {
               id: li.mediaId,
               mediaType: li.mediaType,
@@ -122,6 +151,15 @@ export function filterAndSortLibrary(
     .sort((a, b) => {
       if (sort === "title") return a.media.title.localeCompare(b.media.title);
       if (sort === "rating") return (b.media.rating ?? 0) - (a.media.rating ?? 0);
+      if (sort === "nextEpisode") {
+        // Ascending (soonest first), unlike every other sort's newest/
+        // highest-first order — and an empty sortKey (nothing airing in the
+        // tracked window) always sorts last, never first.
+        if (!a.sortKey && !b.sortKey) return 0;
+        if (!a.sortKey) return 1;
+        if (!b.sortKey) return -1;
+        return a.sortKey.localeCompare(b.sortKey);
+      }
       return b.sortKey.localeCompare(a.sortKey);
     })
     .map((entry) => entry.media);

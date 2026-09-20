@@ -806,6 +806,7 @@
     "rating": "Rating",
     "dateAdded": "Date added",
     "dateCompleted": "Date completed",
+    "nextEpisode": "Next episode",
     "filterGenre": "Filter by genre",
     "allGenres": "All genres",
     "emptyTitle": "Your library is empty",

@@ -806,6 +806,7 @@
     "rating": "Note",
     "dateAdded": "Date d'ajout",
     "dateCompleted": "Date de complétion",
+    "nextEpisode": "Prochain épisode",
     "filterGenre": "Filtrer par genre",
     "allGenres": "Tous les genres",
     "emptyTitle": "Votre bibliothèque est vide",

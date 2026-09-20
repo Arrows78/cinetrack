@@ -261,6 +261,44 @@ describe("filterAndSortLibrary", () => {
     );
   });
 
+  it("sorts by soonest next episode, with unknown-next series last", () => {
+    const items = [
+      libraryItem({ id: "1", mediaId: 1, title: "NoUpcomingEpisode", mediaType: "series" }),
+      libraryItem({ id: "2", mediaId: 2, title: "AiringLater", mediaType: "series" }),
+      libraryItem({ id: "3", mediaId: 3, title: "AiringSoon", mediaType: "series" }),
+    ];
+    const nextEpisodeDateBySeriesId = new Map([
+      [2, "2026-02-15"],
+      [3, "2026-01-20"],
+    ]);
+
+    const result = titlesOf(
+      filterAndSortLibrary(items, [], NO_PROGRESS, {
+        ...BASE_CRITERIA,
+        sort: "nextEpisode",
+        nextEpisodeDateBySeriesId,
+      })
+    );
+
+    expect(result).toEqual(["AiringSoon", "AiringLater", "NoUpcomingEpisode"]);
+  });
+
+  it("sorts list-only items by next episode too, when the series is known", () => {
+    const items: LibraryItem[] = [];
+    const listOnly = [listItem({ id: "l1", mediaId: 5, title: "ListOnlySeries", mediaType: "series" })];
+    const nextEpisodeDateBySeriesId = new Map([[5, "2026-03-01"]]);
+
+    const result = titlesOf(
+      filterAndSortLibrary(items, listOnly, NO_PROGRESS, {
+        ...BASE_CRITERIA,
+        sort: "nextEpisode",
+        nextEpisodeDateBySeriesId,
+      })
+    );
+
+    expect(result).toEqual(["ListOnlySeries"]);
+  });
+
   it("filters by genre, matching any item whose genres include the selected one", () => {
     const items = [
       libraryItem({ id: "1", mediaId: 1, title: "Funny", genres: ["Comedy"] }),

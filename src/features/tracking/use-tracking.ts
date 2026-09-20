@@ -4,12 +4,13 @@ import { useActiveProfileId, usePreferences } from "@/features/preferences/use-p
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_30_MIN } from "@/shared/constants/query";
 
-export function useTracking() {
+export function useTracking(options?: { enabled?: boolean }) {
   const profileId = useActiveProfileId();
   const preferredProviderIds = usePreferences().data?.preferredProviderIds ?? [];
   return useQuery({
     queryKey: queryKeys.local.tracking(profileId),
     queryFn: () => trackingService.build(60, preferredProviderIds),
     staleTime: STALE_30_MIN,
+    enabled: options?.enabled ?? true,
   });
 }

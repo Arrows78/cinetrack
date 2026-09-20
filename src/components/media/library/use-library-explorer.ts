@@ -16,11 +16,22 @@ import { useSmartLists } from "@/features/smart-lists/use-smart-lists";
 import { useSmartListMatches } from "@/components/media/library/use-smart-list-matches";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useTracking } from "@/features/tracking/use-tracking";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
-import type { LibraryFilterState } from "@/types/media";
+import type { LibraryFilterState, LibrarySort } from "@/types/media";
 
 const statusOptions: LibraryStatusFilter[] = ["all", "planned", "watching", "paused", "completed", "dropped"];
+
+// "nextEpisode" is a client-only sort mode (see library-filtering.ts) with
+// no Rust-side counterpart — it's only ever reachable when isServerPaginated
+// is already false (the series hub, never the standalone /library page this
+// value actually reaches), so this fallback is never really exercised; it
+// exists only so LibrarySortMode stays assignable where the Rust-backed
+// LibrarySort contract (server queries, saved filters) is expected.
+function toLibrarySort(mode: LibrarySortMode): LibrarySort {
+  return mode === "nextEpisode" ? "recent" : mode;
+}
 
 /**
  * Owns every piece of LibraryExplorer's filter/sort interaction state, the
@@ -92,7 +103,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
       status: statusFilter,
       favouritesOnly,
       search: debouncedSearch,
-      sort,
+      sort: toLibrarySort(sort),
       genre: genreFilter === "all" ? undefined : genreFilter,
     },
     { enabled: isServerPaginated }
@@ -108,6 +119,20 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
       ),
     [trackedSeries]
   );
+
+  // Only fetched for the series hub's own "nextEpisode" sort — the same
+  // 60-day tracking calendar the /tracking page reads, reduced to each
+  // series' single soonest upcoming episode date.
+  const trackingQuery = useTracking({ enabled: sort === "nextEpisode" && lockedMediaType === "series" });
+  const nextEpisodeDateBySeriesId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const entry of trackingQuery.data ?? []) {
+      if (entry.type !== "episode" || !entry.date) continue;
+      const existing = map.get(entry.mediaId);
+      if (!existing || entry.date < existing) map.set(entry.mediaId, entry.date);
+    }
+    return map;
+  }, [trackingQuery.data]);
 
   const serverItems = useMemo<MediaGridItem[]>(() => {
     if (!isServerPaginated) return [];
@@ -156,6 +181,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
       genreFilter,
       listMediaKeys,
       smartListMediaKeys,
+      nextEpisodeDateBySeriesId,
     });
   }, [
     items,
@@ -171,6 +197,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     allListItems.data,
     smartListFilter,
     smartListMatches.items,
+    nextEpisodeDateBySeriesId,
   ]);
 
   const isFilteredToList = listFilter !== "all";
@@ -199,7 +226,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     statusFilter,
     favouritesOnly,
     listFilter,
-    sort,
+    sort: toLibrarySort(sort),
     search,
     genreFilter,
   };
