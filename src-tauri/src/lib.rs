@@ -50,7 +50,8 @@ use commands::{
 };
 use commands::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
-    get_sync_status, list_sync_outbox, mark_sync_completed, prepare_sync, rebase_sync_conflicts,
+    get_sync_status, list_sync_conflicts, list_sync_outbox, mark_sync_completed, prepare_sync,
+    rebase_sync_conflicts,
 };
 use commands::{create_saved_filter, list_saved_filters, rename_saved_filter};
 use commands::{dismiss_recommendation, list_dismissed_recommendations, undismiss_recommendation};
@@ -214,6 +215,7 @@ pub fn run() {
             get_sync_cursor,
             mark_sync_completed,
             list_sync_outbox,
+            list_sync_conflicts,
             ack_sync_mutations,
             rebase_sync_conflicts,
             apply_remote_sync_changes,

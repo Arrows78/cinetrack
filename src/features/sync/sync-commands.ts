@@ -1,6 +1,13 @@
 import { defineCommand } from "@/shared/lib/invoke";
 
-import type { RemoteSyncChange, SyncConflict, SyncMutationAck, SyncOutboxMutation, SyncStatus } from "./sync-types";
+import type {
+  RemoteSyncChange,
+  SyncConflict,
+  SyncConflictDetail,
+  SyncMutationAck,
+  SyncOutboxMutation,
+  SyncStatus,
+} from "./sync-types";
 
 type LimitArgs = { limit?: number };
 type AckArgs = { acks: SyncMutationAck[] };
@@ -14,6 +21,7 @@ export const syncCommands = {
   cursor: defineCommand<undefined, number>("get_sync_cursor"),
   markCompleted: defineCommand<undefined, void>("mark_sync_completed"),
   outbox: defineCommand<LimitArgs, SyncOutboxMutation[]>("list_sync_outbox"),
+  conflicts: defineCommand<LimitArgs, SyncConflictDetail[]>("list_sync_conflicts"),
   ack: defineCommand<AckArgs, void>("ack_sync_mutations"),
   rebase: defineCommand<ConflictArgs, void>("rebase_sync_conflicts"),
   applyRemote: defineCommand<RemoteArgs, void>("apply_remote_sync_changes"),

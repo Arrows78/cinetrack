@@ -4,7 +4,8 @@ use tauri::State;
 use crate::error::ApiError;
 
 use super::models::{
-    RemoteSyncChange, SyncConflict, SyncMutationAck, SyncOutboxMutation, SyncStatus,
+    RemoteSyncChange, SyncConflict, SyncConflictDetail, SyncMutationAck, SyncOutboxMutation,
+    SyncStatus,
 };
 use super::service;
 
@@ -42,6 +43,14 @@ pub async fn list_sync_outbox(
 }
 
 #[tauri::command]
+pub async fn list_sync_conflicts(
+    pool: State<'_, SqlitePool>,
+    limit: Option<i64>,
+) -> Result<Vec<SyncConflictDetail>, ApiError> {
+    service::list_conflicts(pool.inner(), limit.unwrap_or(50)).await
+}
+
+#[tauri::command]
 pub async fn ack_sync_mutations(
     pool: State<'_, SqlitePool>,
     acks: Vec<SyncMutationAck>,
@@ -68,6 +77,7 @@ pub async fn apply_remote_sync_changes(
 #[cfg(test)]
 mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
+    use tauri::Manager;
 
     use super::*;
 
@@ -89,6 +99,36 @@ mod tests {
         let first = service::device_id(&pool).await.unwrap();
         let second = service::device_id(&pool).await.unwrap();
         assert_eq!(first, second);
+    }
+
+    #[tokio::test]
+    async fn list_sync_conflicts_command_returns_rebased_rows() {
+        let pool = pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+
+        sqlx::query("INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at) VALUES ('local-1','default',42,'movie','Test','planned','t','t')")
+            .execute(state.inner())
+            .await
+            .unwrap();
+        let pending = list_sync_outbox(state.clone(), None).await.unwrap();
+
+        rebase_sync_conflicts(
+            state.clone(),
+            vec![SyncConflict {
+                mutation_id: pending[0].mutation_id.clone(),
+                entity_type: "library_item".to_string(),
+                entity_id: "local-1".to_string(),
+                server_version: 3,
+            }],
+        )
+        .await
+        .unwrap();
+
+        let conflicts = list_sync_conflicts(state, None).await.unwrap();
+        assert_eq!(conflicts.len(), 1);
+        assert_eq!(conflicts[0].entity_id, "local-1");
     }
 
     #[tokio::test]

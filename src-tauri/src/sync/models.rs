@@ -44,6 +44,15 @@ pub struct RemoteSyncChange {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SyncConflictDetail {
+    pub mutation_id: String,
+    pub entity_type: String,
+    pub entity_id: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
     pub device_id: String,
     pub cursor: i64,

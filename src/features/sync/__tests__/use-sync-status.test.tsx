@@ -4,8 +4,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 const getStatusMock = vi.fn();
+const listConflictsMock = vi.fn();
 vi.mock("@/features/sync/sync-repository", () => ({
-  syncRepository: { getStatus: (...args: unknown[]) => getStatusMock(...args) },
+  syncRepository: {
+    getStatus: (...args: unknown[]) => getStatusMock(...args),
+    listConflicts: (...args: unknown[]) => listConflictsMock(...args),
+  },
 }));
 
 const runMock = vi.fn();
@@ -21,7 +25,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   useActiveProfileId: () => "profile-1",
 }));
 
-import { useSyncStatus } from "../use-sync-status";
+import { useSyncConflicts, useSyncStatus } from "../use-sync-status";
 
 function createWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -41,6 +45,7 @@ beforeEach(() => {
   });
   runMock.mockReset().mockResolvedValue({ pushed: 0, pulled: 0, conflicts: 0 });
   isTauriAppMock.mockReset().mockReturnValue(true);
+  listConflictsMock.mockReset().mockResolvedValue([]);
 });
 
 describe("useSyncStatus", () => {
@@ -101,5 +106,27 @@ describe("useSyncStatus", () => {
 
     expect(runMock).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(result.current.data?.cursor).toBe(4));
+  });
+});
+
+describe("useSyncConflicts", () => {
+  it("fetches conflict details only when enabled", async () => {
+    const { rerender } = renderHook(({ enabled }) => useSyncConflicts(enabled), {
+      wrapper: createWrapper(),
+      initialProps: { enabled: false },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(listConflictsMock).not.toHaveBeenCalled();
+
+    rerender({ enabled: true });
+    await waitFor(() => expect(listConflictsMock).toHaveBeenCalledWith(20));
+  });
+
+  it("never calls the native command outside Tauri even when enabled", async () => {
+    isTauriAppMock.mockReturnValue(false);
+    renderHook(() => useSyncConflicts(true), { wrapper: createWrapper() });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(listConflictsMock).not.toHaveBeenCalled();
   });
 });

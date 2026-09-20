@@ -1,7 +1,7 @@
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 
 import { syncCommands } from "./sync-commands";
-import type { RemoteSyncChange, SyncConflict, SyncMutationAck } from "./sync-types";
+import type { RemoteSyncChange, SyncConflict, SyncConflictDetail, SyncMutationAck } from "./sync-types";
 
 export const syncRepository = {
   getDeviceId() {
@@ -26,6 +26,10 @@ export const syncRepository = {
 
   listOutbox(limit: number) {
     return invokeTypedCommand(syncCommands.outbox, { limit });
+  },
+
+  listConflicts(limit: number): Promise<SyncConflictDetail[]> {
+    return invokeTypedCommand(syncCommands.conflicts, { limit });
   },
 
   ack(acks: SyncMutationAck[]) {

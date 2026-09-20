@@ -93,6 +93,7 @@ export const tauriCommandNames = [
   "get_sync_cursor",
   "mark_sync_completed",
   "list_sync_outbox",
+  "list_sync_conflicts",
   "ack_sync_mutations",
   "rebase_sync_conflicts",
   "apply_remote_sync_changes",

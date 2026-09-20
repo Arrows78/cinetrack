@@ -1,13 +1,41 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tile } from "@/components/ui/tile";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useAuth } from "@/features/auth/use-auth";
-import { useSyncStatus } from "@/features/sync/use-sync-status";
+import { useSyncConflicts, useSyncStatus } from "@/features/sync/use-sync-status";
 import { isTauriApp } from "@/shared/lib/platform";
 import { formatRelativeDate } from "@/shared/utils/format";
+
+function ConflictHistory({ open }: { open: boolean }) {
+  const { t } = useTranslation();
+  const conflicts = useSyncConflicts(open);
+
+  if (!open) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {conflicts.isLoading ? (
+        <p className="text-caption text-muted-foreground">{t("settings.sync.conflictsLoading")}</p>
+      ) : conflicts.data?.length ? (
+        conflicts.data.map((conflict) => (
+          <Tile key={conflict.mutationId} className="flex items-center justify-between gap-3 px-3 py-2">
+            <span className="text-body-sm">
+              {t(`settings.sync.entityTypes.${conflict.entityType}`, { defaultValue: conflict.entityType })}
+            </span>
+            <span className="text-caption text-muted-foreground">{formatRelativeDate(conflict.createdAt)}</span>
+          </Tile>
+        ))
+      ) : (
+        <p className="text-caption text-muted-foreground">{t("settings.sync.conflictsEmpty")}</p>
+      )}
+    </div>
+  );
+}
 
 /**
  * Read-only status for the background sync loop App.tsx already starts on
@@ -21,6 +49,7 @@ export function SyncStatusCard() {
   const { t } = useTranslation();
   const { session } = useAuth();
   const status = useSyncStatus();
+  const [conflictsOpen, setConflictsOpen] = useState(false);
 
   if (!isTauriApp() || !session) return null;
 
@@ -59,9 +88,23 @@ export function SyncStatusCard() {
             {!status.isLoading && status.data && (
               <div className="flex flex-wrap items-center gap-2">
                 {status.data.conflictCount > 0 && (
-                  <Badge variant="destructive">
-                    {t("settings.sync.conflicts", { count: status.data.conflictCount })}
-                  </Badge>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto gap-1.5 px-0 py-0 hover:bg-transparent"
+                    aria-expanded={conflictsOpen}
+                    onClick={() => setConflictsOpen((value) => !value)}
+                  >
+                    <Badge variant="destructive">
+                      {t("settings.sync.conflicts", { count: status.data.conflictCount })}
+                    </Badge>
+                    {conflictsOpen ? (
+                      <ChevronUp className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    ) : (
+                      <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </Button>
                 )}
                 <span className="text-caption text-muted-foreground">
                   {status.data.lastSyncedAt
@@ -73,6 +116,7 @@ export function SyncStatusCard() {
                 </span>
               </div>
             )}
+            {status.data && status.data.conflictCount > 0 && <ConflictHistory open={conflictsOpen} />}
           </div>
         )}
       </CardContent>

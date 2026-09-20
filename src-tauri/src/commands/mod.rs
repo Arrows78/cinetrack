@@ -48,7 +48,8 @@ pub use crate::stats::{
 };
 pub use crate::sync::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
-    get_sync_status, list_sync_outbox, mark_sync_completed, prepare_sync, rebase_sync_conflicts,
+    get_sync_status, list_sync_conflicts, list_sync_outbox, mark_sync_completed, prepare_sync,
+    rebase_sync_conflicts,
 };
 pub use boot::get_boot_recovery;
 pub use updater::{has_updater_config, updater_is_configured};

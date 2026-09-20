@@ -5,8 +5,8 @@ use crate::error::ApiError;
 use crate::preferences::ACCOUNT_SCOPE_PREFERENCE_KEYS;
 
 use super::models::{
-    RemoteSyncChange, SyncConflict, SyncMutationAck, SyncOutboxMutation, SyncStatus,
-    validate_entity_type,
+    RemoteSyncChange, SyncConflict, SyncConflictDetail, SyncMutationAck, SyncOutboxMutation,
+    SyncStatus, validate_entity_type,
 };
 
 const DEVICE_ID_KEY: &str = "deviceId";
@@ -330,6 +330,38 @@ pub async fn list_outbox(
             })
         })
         .collect()
+}
+
+/// (mutation_id, entity_type, entity_id, created_at)
+type ConflictRow = (String, String, String, String);
+
+pub async fn list_conflicts(
+    pool: &SqlitePool,
+    limit: i64,
+) -> Result<Vec<SyncConflictDetail>, ApiError> {
+    let profile_id = current_profile_id(pool).await?;
+    let limit = limit.clamp(1, 200);
+    let rows: Vec<ConflictRow> = sqlx::query_as(
+        "SELECT mutation_id,entity_type,entity_id,created_at \
+         FROM sync_outbox WHERE profile_id=?1 AND last_error=?2 \
+         ORDER BY created_at DESC LIMIT ?3",
+    )
+    .bind(&profile_id)
+    .bind(CONFLICT_MARKER)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| SyncConflictDetail {
+            mutation_id: row.0,
+            entity_type: row.1,
+            entity_id: row.2,
+            created_at: row.3,
+        })
+        .collect())
 }
 
 pub async fn ack_mutations(pool: &SqlitePool, acks: &[SyncMutationAck]) -> Result<(), ApiError> {
@@ -1153,6 +1185,12 @@ mod tests {
             status.conflict_count, 1,
             "only the rebased row is a conflict, not the generic failure"
         );
+
+        let conflicts = list_conflicts(&pool, 10).await.unwrap();
+        assert_eq!(conflicts.len(), 1, "only the rebased row is listed");
+        assert_eq!(conflicts[0].entity_type, "library_item");
+        assert_eq!(conflicts[0].entity_id, "local-1");
+        assert_eq!(conflicts[0].mutation_id, local_1.mutation_id);
     }
 
     #[tokio::test]

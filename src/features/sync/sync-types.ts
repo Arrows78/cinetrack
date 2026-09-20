@@ -54,6 +54,13 @@ export type SyncStatus = {
   lastSyncedAt: string | null;
 };
 
+export type SyncConflictDetail = {
+  mutationId: string;
+  entityType: string;
+  entityId: string;
+  createdAt: string;
+};
+
 export type SyncRunResult = {
   pushed: number;
   pulled: number;

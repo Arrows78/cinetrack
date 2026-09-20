@@ -417,7 +417,24 @@
       "neverSynced": "Pas encore synchronisé.",
       "nextCheck_one": "prochaine vérification dans {{count}} min",
       "nextCheck_other": "prochaine vérification dans {{count}} min",
-      "syncNow": "Synchroniser maintenant"
+      "syncNow": "Synchroniser maintenant",
+      "conflictsLoading": "Chargement des conflits…",
+      "conflictsEmpty": "Aucun détail de conflit à afficher.",
+      "entityTypes": {
+        "library_item": "Élément de bibliothèque",
+        "seen_movie": "Film vu",
+        "episode_progress": "Progression d'épisode",
+        "tracked_series": "Série suivie",
+        "viewing_event": "Entrée d'historique de visionnage",
+        "custom_list": "Liste personnalisée",
+        "custom_list_item": "Élément de liste personnalisée",
+        "smart_list": "Liste intelligente",
+        "saved_filter": "Filtre enregistré",
+        "availability_alert": "Alerte de disponibilité",
+        "dismissed_recommendation": "Recommandation ignorée",
+        "activity_log": "Entrée du journal d'activité",
+        "account_preferences": "Préférences du compte"
+      }
     },
     "streaming": {
       "title": "Mes services de streaming",

@@ -96,5 +96,6 @@ export const queryKeys = {
     // same result is the one exception, shared across every profile on this
     // install.
     sync: (profileId: string) => ["local", "sync", profileId] as const,
+    syncConflicts: (profileId: string) => ["local", "syncConflicts", profileId] as const,
   },
 };

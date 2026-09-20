@@ -53,3 +53,13 @@ export function useSyncStatus() {
     },
   };
 }
+
+/** Conflict-detail listing for SyncStatusCard's expandable history — only fetched once there's at least one conflict to show. */
+export function useSyncConflicts(enabled: boolean) {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    queryKey: queryKeys.local.syncConflicts(profileId),
+    queryFn: () => syncRepository.listConflicts(20),
+    enabled: isTauriApp() && enabled,
+  });
+}
