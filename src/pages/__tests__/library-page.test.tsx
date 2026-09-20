@@ -6,6 +6,7 @@ import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { LibraryExplorer } from "@/components/media/library/library-explorer";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
+import type { LibraryItem } from "@/types/media";
 import { LibraryPage } from "../library-page";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -293,8 +294,10 @@ vi.mock("@/features/custom-lists/use-custom-lists", () => ({
   },
 }));
 
-// Succinct fixture builder for the sort/filter test groups below — only the
-// fields LibraryExplorer actually reads need to vary per test.
+// Succinct fixture builder for the sort/filter test groups below — returns a
+// full LibraryItem (rather than a hand-picked subset) so it can't silently
+// drift out of sync with fields the real filtering/sorting logic reads, the
+// way a partial shape once did for `tags`.
 function makeLibraryItem(overrides: {
   mediaId: number;
   mediaType?: "movie" | "series";
@@ -303,8 +306,10 @@ function makeLibraryItem(overrides: {
   status?: "planned" | "watching" | "paused" | "completed" | "dropped";
   favourite?: boolean;
   updatedAt?: string;
-}) {
+}): LibraryItem {
   return {
+    id: `item-${overrides.mediaId}`,
+    profileId: DEFAULT_PROFILE_ID,
     mediaId: overrides.mediaId,
     mediaType: overrides.mediaType ?? "movie",
     title: overrides.title,
@@ -316,6 +321,12 @@ function makeLibraryItem(overrides: {
     genres: [],
     status: overrides.status ?? "planned",
     favourite: overrides.favourite ?? false,
+    notes: null,
+    tags: [],
+    startedAt: null,
+    completedAt: null,
+    rewatchCount: 0,
+    createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: overrides.updatedAt ?? "2026-01-01T00:00:00.000Z",
   };
 }
@@ -348,34 +359,21 @@ beforeAll(async () => {
 beforeEach(() => {
   libraryQueryMock.mockReset().mockReturnValue({
     data: [
-      {
+      makeLibraryItem({
         mediaId: 1,
-        mediaType: "movie",
         title: "Dune",
-        posterPath: null,
-        backdropPath: null,
-        year: 2021,
         rating: 8,
-        userRating: null,
-        genres: [],
         status: "planned",
-        favourite: false,
         updatedAt: "2026-01-02T00:00:00.000Z",
-      },
-      {
+      }),
+      makeLibraryItem({
         mediaId: 2,
         mediaType: "series",
         title: "Severance",
-        posterPath: null,
-        backdropPath: null,
-        year: 2022,
         rating: 9,
-        userRating: null,
-        genres: [],
         status: "watching",
-        favourite: false,
         updatedAt: "2026-01-01T00:00:00.000Z",
-      },
+      }),
     ],
     isLoading: false,
     isError: false,
