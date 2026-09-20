@@ -365,7 +365,9 @@ export function DesktopSettings() {
                     variant="outline"
                     size="sm"
                     disabled={!logLines?.length}
-                    onClick={() => void navigator.clipboard.writeText((logLines ?? []).join("\n"))}
+                    // Non-null: disabled above whenever logLines is empty/null, same
+                    // guard the read-only <pre> block below already relies on.
+                    onClick={() => void navigator.clipboard.writeText(logLines!.join("\n"))}
                   >
                     {t("desktop.diagnosticsCopy")}
                   </Button>

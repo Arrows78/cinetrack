@@ -76,7 +76,7 @@ vi.mock("@/shared/lib/platform", () => ({
 
 let mockCommandPaletteShortcut = "mod+k";
 let mockGlobalCommandPaletteShortcut = "mod+shift+k";
-let mockBackupFrequency: "daily" | "weekly" | "off" = "daily";
+let mockBackupFrequency: "daily" | "weekly" | "off" | undefined = "daily";
 const updatePreferenceMock = vi.fn();
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
@@ -472,6 +472,13 @@ describe("DesktopSettings", () => {
       await waitFor(() =>
         expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "backupFrequency", value: "weekly" })
       );
+    });
+
+    it("defaults to daily when the preference hasn't loaded yet", () => {
+      mockBackupFrequency = undefined;
+      render(<DesktopSettings />);
+
+      expect(screen.getByLabelText("Automatic backup frequency")).toHaveValue("daily");
     });
 
     it("reflects the currently stored frequency", () => {

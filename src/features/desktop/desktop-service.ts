@@ -39,9 +39,10 @@ export const desktopService = {
       );
       await register(shortcut, openCommandPalette);
       registeredGlobalShortcut = shortcut;
-      cleanups.push(() => {
-        if (registeredGlobalShortcut) void unregister(registeredGlobalShortcut);
-      });
+      // Non-null: this closure is only ever pushed right after the
+      // assignment above, and nothing else in this module ever sets
+      // registeredGlobalShortcut back to null once it's held a value.
+      cleanups.push(() => void unregister(registeredGlobalShortcut!));
     } catch (error) {
       console.warn("Global shortcut unavailable", error);
     }
