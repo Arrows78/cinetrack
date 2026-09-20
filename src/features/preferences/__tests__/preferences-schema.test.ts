@@ -24,6 +24,7 @@ describe("preferencesSchema", () => {
       spoilerProtection: true,
       notificationsEnabled: false,
       notifyHoursBefore: 24,
+      availabilityCheckIntervalHours: 6,
       preferredProviderIds: [],
       activeProfileId: DEFAULT_PROFILE_ID,
       backupDirectory: null,
@@ -71,6 +72,26 @@ describe("preferencesSchema", () => {
     it("accepts the upper boundary of 168", () => {
       const parsed = preferencesSchema.parse({ notifyHoursBefore: 168, userProfile: {} });
       expect(parsed.notifyHoursBefore).toBe(168);
+    });
+  });
+
+  describe("availabilityCheckIntervalHours", () => {
+    it("rejects zero", () => {
+      expect(() => preferencesSchema.parse({ availabilityCheckIntervalHours: 0, userProfile: {} })).toThrow();
+    });
+
+    it("rejects a value beyond a day (24 hours)", () => {
+      expect(() => preferencesSchema.parse({ availabilityCheckIntervalHours: 25, userProfile: {} })).toThrow();
+    });
+
+    it("accepts the lower boundary of 1", () => {
+      const parsed = preferencesSchema.parse({ availabilityCheckIntervalHours: 1, userProfile: {} });
+      expect(parsed.availabilityCheckIntervalHours).toBe(1);
+    });
+
+    it("accepts the upper boundary of 24", () => {
+      const parsed = preferencesSchema.parse({ availabilityCheckIntervalHours: 24, userProfile: {} });
+      expect(parsed.availabilityCheckIntervalHours).toBe(24);
     });
   });
 

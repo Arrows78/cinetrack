@@ -21,6 +21,7 @@ export const preferencesSchema = z.object({
   spoilerProtection: z.boolean().default(true),
   notificationsEnabled: z.boolean().default(false),
   notifyHoursBefore: z.number().int().min(0).max(168).default(24),
+  availabilityCheckIntervalHours: z.number().int().min(1).max(24).default(6),
   preferredProviderIds: z.array(z.number().int().positive()).default([]),
   activeProfileId: z.string().default(DEFAULT_PROFILE_ID),
   backupDirectory: z.string().nullable().default(null),

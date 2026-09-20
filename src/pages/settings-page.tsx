@@ -243,6 +243,43 @@ function StreamingServicesCard({
   );
 }
 
+// Whole-hour presets only (matches availabilityCheckIntervalHours' own 1-24
+// validation range) — an arbitrary free-text number field would need its own
+// input validation UI for very little gain over a handful of sane presets.
+const AVAILABILITY_CHECK_INTERVAL_OPTIONS = [1, 3, 6, 12, 24] as const;
+
+function AvailabilityCheckCard({
+  intervalHours,
+  onChange,
+  isSaving,
+}: {
+  intervalHours: number;
+  onChange: (hours: number) => void;
+  isSaving: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.availabilityChecks.title")}</CardTitle>
+        <CardDescription>{t("settings.availabilityChecks.description")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <label className="grid gap-2 text-body-sm font-medium">
+          {t("settings.availabilityChecks.frequency")}
+          <Select value={intervalHours} disabled={isSaving} onChange={(event) => onChange(Number(event.target.value))}>
+            {AVAILABILITY_CHECK_INTERVAL_OPTIONS.map((hours) => (
+              <option key={hours} value={hours}>
+                {t("settings.availabilityChecks.frequencyOption", { count: hours })}
+              </option>
+            ))}
+          </Select>
+        </label>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { data: preferences, updatePreference, isSaving, isError, error, refetch } = usePreferences();
@@ -411,11 +448,18 @@ export function SettingsPage() {
           title={t("settings.sections.streaming")}
           subtitle={t("settings.sections.streamingDesc")}
         />
-        <StreamingServicesCard
-          providerIds={preferences?.preferredProviderIds ?? []}
-          onToggle={(providerId) => void toggleStreamingProvider(providerId)}
-          isSaving={isSaving}
-        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <StreamingServicesCard
+            providerIds={preferences?.preferredProviderIds ?? []}
+            onToggle={(providerId) => void toggleStreamingProvider(providerId)}
+            isSaving={isSaving}
+          />
+          <AvailabilityCheckCard
+            intervalHours={preferences?.availabilityCheckIntervalHours ?? 6}
+            onChange={(hours) => void updatePreference({ key: "availabilityCheckIntervalHours", value: hours })}
+            isSaving={isSaving}
+          />
+        </div>
       </section>
 
       <section id={SETTINGS_ACCOUNT_ID} className="scroll-mt-28">

@@ -63,6 +63,7 @@ const preferencesData = {
   spoilerProtection: true,
   notificationsEnabled: false,
   notifyHoursBefore: 24,
+  availabilityCheckIntervalHours: 6,
   preferredProviderIds: [],
   activeProfileId: "default",
   userProfile: { id: "default", name: null },
@@ -397,6 +398,16 @@ describe("SettingsPage — preferences", () => {
     netflixChip.click();
 
     await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("preferredProviderIds", [337]));
+  });
+
+  it("updates the availability check frequency preference", async () => {
+    renderPage();
+    await screen.findByText("Default profile");
+
+    const frequencySelect = screen.getByRole("combobox", { name: "Check frequency" });
+    fireEvent.change(frequencySelect, { target: { value: "12" } });
+
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("availabilityCheckIntervalHours", 12));
   });
 
   it("has no detectable accessibility violations once preferences have loaded", async () => {

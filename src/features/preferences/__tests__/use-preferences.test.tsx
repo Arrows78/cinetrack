@@ -19,6 +19,7 @@ const defaultPreferences: UserPreferences = {
   spoilerProtection: true,
   notificationsEnabled: false,
   notifyHoursBefore: 24,
+  availabilityCheckIntervalHours: 6,
   preferredProviderIds: [],
   activeProfileId: DEFAULT_PROFILE_ID,
   backupDirectory: null,

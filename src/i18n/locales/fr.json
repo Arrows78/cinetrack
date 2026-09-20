@@ -418,6 +418,13 @@
       "title": "Mes services de streaming",
       "description": "Choisissez les plateformes auxquelles vous êtes abonné·e — utilisé pour filtrer les alertes de disponibilité et les suggestions de « Ce soir »."
     },
+    "availabilityChecks": {
+      "title": "Vérifications de disponibilité",
+      "description": "À quelle fréquence CineTrack revérifie vos alertes de disponibilité activées auprès des plateformes de streaming.",
+      "frequency": "Fréquence de vérification",
+      "frequencyOption_one": "Toutes les {{count}} heure",
+      "frequencyOption_other": "Toutes les {{count}} heures"
+    },
     "about": {
       "versionTitle": "Version",
       "versionDesc": "Utile à joindre à un rapport de bug.",

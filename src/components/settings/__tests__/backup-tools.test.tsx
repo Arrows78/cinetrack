@@ -68,6 +68,7 @@ const BASE_PREFERENCES: UserPreferences = {
   spoilerProtection: true,
   notificationsEnabled: false,
   notifyHoursBefore: 24,
+  availabilityCheckIntervalHours: 6,
   preferredProviderIds: [],
   activeProfileId: "default",
   backupDirectory: null,

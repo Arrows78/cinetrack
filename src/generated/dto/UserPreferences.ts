@@ -23,6 +23,14 @@ export type UserPreferences = {
   spoilerProtection: boolean;
   notificationsEnabled: boolean;
   notifyHoursBefore: number;
+  /**
+   * How often the background loop in App.tsx re-checks every enabled
+   * availability alert against TMDB — previously a hardcoded 6 hours
+   * (STALE_6_HOURS). Device-scoped like `notify_hours_before`: it
+   * describes how chatty this installation's own polling is, not a
+   * taste/content preference tied to the person.
+   */
+  availabilityCheckIntervalHours: number;
   preferredProviderIds: Array<number>;
   activeProfileId: string;
   userProfile: UserProfile;

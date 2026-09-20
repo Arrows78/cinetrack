@@ -25,7 +25,32 @@ import type { BootRecovery } from "@/features/desktop/boot-recovery-repository";
 import { errorMessage } from "@/shared/lib/errors";
 import { isTauriApp } from "@/shared/lib/platform";
 import { appBootStartedAt } from "@/shared/lib/startup-timing";
-import { STALE_6_HOURS, TOOLTIP_DELAY_MS } from "@/shared/constants/query";
+import { TOOLTIP_DELAY_MS } from "@/shared/constants/query";
+import { usePreferences } from "@/features/preferences/use-preferences";
+
+// Module-level rather than declared inside App's effect: both the one-off
+// boot-time check and the recurring interval below (its own effect, so its
+// own re-checking availabilityCheckIntervalHours can take effect without
+// re-running the rest of App's boot sequence) need to call this same logic.
+async function checkBackgroundNotifications() {
+  const preferences = await preferencesRepository.getPreferences();
+  const availabilityOutcome = await availabilityMonitor.checkAll({
+    notificationsEnabled: preferences.notificationsEnabled,
+    preferredProviderIds: preferences.preferredProviderIds,
+  });
+  // Every single alert failing is a real outage (TMDB down, no network),
+  // not a quiet day — say so once, rather than letting the user believe
+  // their alerts are working. A partial failure stays log-only: the
+  // alerts that did succeed still did their job.
+  if (availabilityOutcome.checked > 0 && availabilityOutcome.failures === availabilityOutcome.checked) {
+    toast({ description: i18n.t("tracking.availabilityCheckFailed"), variant: "error" });
+  }
+  if (!preferences.notificationsEnabled) return;
+  // Only entries the user actually tracks (library movies, tracked-series
+  // episodes) can reach a notification — see buildNotifiableCalendarEntries.
+  const entries = await trackingService.buildNotifiableCalendarEntries();
+  await notificationService.notifyDue(entries, preferences);
+}
 
 // Module-level, not component state: React StrictMode intentionally mounts
 // this component's effect twice in dev (mount -> cleanup -> mount again) —
@@ -82,26 +107,6 @@ export function App() {
         logger.warn(`Cloud sync initialization failed: ${errorMessage(error)}`);
       });
 
-    const checkBackgroundNotifications = async () => {
-      const preferences = await preferencesRepository.getPreferences();
-      const availabilityOutcome = await availabilityMonitor.checkAll({
-        notificationsEnabled: preferences.notificationsEnabled,
-        preferredProviderIds: preferences.preferredProviderIds,
-      });
-      // Every single alert failing is a real outage (TMDB down, no network),
-      // not a quiet day — say so once, rather than letting the user believe
-      // their alerts are working. A partial failure stays log-only: the
-      // alerts that did succeed still did their job.
-      if (availabilityOutcome.checked > 0 && availabilityOutcome.failures === availabilityOutcome.checked) {
-        toast({ description: i18n.t("tracking.availabilityCheckFailed"), variant: "error" });
-      }
-      if (!preferences.notificationsEnabled) return;
-      // Only entries the user actually tracks (library movies, tracked-series
-      // episodes) can reach a notification — see buildNotifiableCalendarEntries.
-      const entries = await trackingService.buildNotifiableCalendarEntries();
-      await notificationService.notifyDue(entries, preferences);
-    };
-
     void (async () => {
       try {
         const check = await maintenanceService.checkDataIntegrity();
@@ -129,19 +134,32 @@ export function App() {
       }
     })();
 
-    const interval = window.setInterval(() => {
-      void checkBackgroundNotifications().catch((error: unknown) => {
-        logger.warn(`Background notification check failed: ${errorMessage(error)}`);
-      });
-    }, STALE_6_HOURS);
-
     return () => {
       disposed = true;
       cleanup?.();
       cleanupSync?.();
-      window.clearInterval(interval);
     };
   }, [queryClient]);
+
+  // Its own effect (rather than folded into the boot effect above) so
+  // changing availabilityCheckIntervalHours in Settings just re-schedules
+  // this interval, instead of re-running desktop/sync init and the
+  // integrity-check/backup sequence too.
+  const availabilityCheckIntervalHours = usePreferences().data?.availabilityCheckIntervalHours ?? 6;
+  useEffect(() => {
+    if (!isTauriApp()) return;
+
+    const interval = window.setInterval(
+      () => {
+        void checkBackgroundNotifications().catch((error: unknown) => {
+          logger.warn(`Background notification check failed: ${errorMessage(error)}`);
+        });
+      },
+      availabilityCheckIntervalHours * 60 * 60 * 1000
+    );
+
+    return () => window.clearInterval(interval);
+  }, [availabilityCheckIntervalHours]);
 
   return (
     <TooltipProvider delayDuration={TOOLTIP_DELAY_MS}>

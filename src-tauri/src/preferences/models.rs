@@ -101,6 +101,12 @@ pub struct UserPreferences {
     pub spoiler_protection: bool,
     pub notifications_enabled: bool,
     pub notify_hours_before: u32,
+    /// How often the background loop in App.tsx re-checks every enabled
+    /// availability alert against TMDB — previously a hardcoded 6 hours
+    /// (STALE_6_HOURS). Device-scoped like `notify_hours_before`: it
+    /// describes how chatty this installation's own polling is, not a
+    /// taste/content preference tied to the person.
+    pub availability_check_interval_hours: u32,
     pub preferred_provider_ids: Vec<i64>,
     pub active_profile_id: String,
     pub user_profile: UserProfile,
@@ -184,6 +190,7 @@ impl Default for UserPreferences {
             spoiler_protection: true,
             notifications_enabled: false,
             notify_hours_before: 24,
+            availability_check_interval_hours: 6,
             preferred_provider_ids: Vec::new(),
             active_profile_id: "default".to_string(),
             user_profile: UserProfile::default(),
@@ -214,6 +221,11 @@ pub(super) fn validate(prefs: &UserPreferences) -> Result<(), ApiError> {
     if prefs.preferred_provider_ids.iter().any(|id| *id <= 0) {
         return Err(ApiError::bad_request(
             "preferredProviderIds must all be positive",
+        ));
+    }
+    if prefs.availability_check_interval_hours < 1 || prefs.availability_check_interval_hours > 24 {
+        return Err(ApiError::bad_request(
+            "availabilityCheckIntervalHours must be between 1 and 24",
         ));
     }
     Ok(())
@@ -260,6 +272,33 @@ mod tests {
             ..UserPreferences::default()
         };
         assert!(validate(&prefs).is_err());
+    }
+
+    #[test]
+    fn rejects_an_availability_check_interval_of_zero() {
+        let prefs = UserPreferences {
+            availability_check_interval_hours: 0,
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_err());
+    }
+
+    #[test]
+    fn rejects_an_availability_check_interval_over_a_day() {
+        let prefs = UserPreferences {
+            availability_check_interval_hours: 25,
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_err());
+    }
+
+    #[test]
+    fn accepts_an_availability_check_interval_within_range() {
+        let prefs = UserPreferences {
+            availability_check_interval_hours: 12,
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_ok());
     }
 
     #[test]

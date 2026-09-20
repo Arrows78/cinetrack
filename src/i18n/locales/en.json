@@ -418,6 +418,13 @@
       "title": "My streaming services",
       "description": "Pick the platforms you're subscribed to — used to filter availability alerts and Watch Tonight picks."
     },
+    "availabilityChecks": {
+      "title": "Availability checks",
+      "description": "How often CineTrack re-checks your enabled availability alerts against streaming platforms.",
+      "frequency": "Check frequency",
+      "frequencyOption_one": "Every {{count}} hour",
+      "frequencyOption_other": "Every {{count}} hours"
+    },
     "about": {
       "versionTitle": "Version",
       "versionDesc": "Useful to include in a bug report.",
