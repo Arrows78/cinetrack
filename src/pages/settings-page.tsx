@@ -405,6 +405,7 @@ export function SettingsPage() {
                   { value: "all", label: t("filters.all") },
                   { value: "series", label: t("filters.typeSeries") },
                   { value: "movie", label: t("filters.typeMovies") },
+                  { value: "person", label: t("filters.typePeople") },
                 ]}
               />
             </div>

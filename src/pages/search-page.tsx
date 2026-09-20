@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
-import { Search, SearchX } from "lucide-react";
+import { useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
+import { History, Search, SearchX, X } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
@@ -9,7 +9,8 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { LoadMoreButton } from "@/components/media/primitives/load-more-button";
-import { MediaGrid } from "@/components/media/primitives/media-grid";
+import { MediaGrid, MEDIA_GRID_CLASS_NAME } from "@/components/media/primitives/media-grid";
+import { PersonCard } from "@/components/media/primitives/person-card";
 import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
 import { SearchBar } from "@/components/media/primitives/search-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -19,16 +20,40 @@ import { BrowseByGenre, BrowseByPlatform, BrowseByStudio } from "@/components/me
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSearch as useSearchHook } from "@/features/media/use-search";
+import { useSearchHistory } from "@/features/media/use-search-history";
+import { usePeopleSearch } from "@/features/media/use-discovery";
 import { useHomeFeed } from "@/features/media/use-media";
 import { GENRES, PLATFORMS, STUDIOS } from "@/shared/constants/discover";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
-import type { MediaSummary, SearchFilterState, SearchScope } from "@/types/media";
+import { cn } from "@/shared/lib/cn";
+import type { MediaSummary, PersonSummary, SearchFilterState, SearchScope } from "@/types/media";
 
 const ALL_GENRES = [...GENRES.movies, ...GENRES.series];
 const getGenreLabelKey = (id: string | undefined) =>
   id ? ALL_GENRES.find((genre) => String(genre.id) === id)?.labelKey : undefined;
 const getPlatformName = (id: string) => PLATFORMS.find((platform) => String(platform.id) === id)?.label ?? id;
 const getStudioName = (id: string) => STUDIOS.find((studio) => String(studio.id) === id)?.label ?? id;
+const scopeLabel = (scope: SearchScope, t: (key: string) => string) =>
+  scope === "movie" ? t("nav.movies") : scope === "series" ? t("nav.series") : t("nav.people");
+
+// The dropdown's flat item list, in the order rendered — history entries
+// while the field is empty, or a handful of live matches once there's
+// something to match against (never both at once, so keyboard Up/Down
+// always cycles one contiguous list).
+type DropdownItem =
+  | { kind: "history"; term: string }
+  | { kind: "media"; media: MediaSummary }
+  | { kind: "person"; person: PersonSummary };
+
+const dropdownItemKey = (item: DropdownItem) =>
+  item.kind === "history"
+    ? `history-${item.term}`
+    : item.kind === "media"
+      ? `media-${item.media.id}`
+      : `person-${item.person.id}`;
+
+const dropdownItemLabel = (item: DropdownItem) =>
+  item.kind === "history" ? item.term : item.kind === "media" ? item.media.title : item.person.name;
 
 export function SearchPage() {
   const { t } = useTranslation();
@@ -72,6 +97,7 @@ export function SearchPage() {
   }
 
   const scope = selectedScope ?? preferences?.defaultSearchType ?? "all";
+  const isPersonScope = scope === "person";
   const debouncedQuery = useDebouncedValue(localQuery, DEBOUNCE_MS);
 
   useEffect(() => {
@@ -82,13 +108,19 @@ export function SearchPage() {
     lastPushedScopeRef.current = nextScope;
     void navigate({ search: (prev) => ({ ...prev, q: nextQuery, scope: nextScope }), replace: true });
   }, [debouncedQuery, selectedScope, navigate]);
-  const searchQuery = useSearchHook(debouncedQuery, scope, {
+  // Person scope skips this entirely (empty query disables it) — people
+  // results come from usePeopleSearch below instead, a separate,
+  // non-paginated shape (PersonSummary, not MediaSummary) this hook was
+  // never built to merge in.
+  const searchQuery = useSearchHook(isPersonScope ? "" : debouncedQuery, scope, {
     genreMovie,
     genreSeries,
     provider,
     company,
     region: preferences?.region,
   });
+  const peopleQuery = usePeopleSearch(isPersonScope ? debouncedQuery : "");
+  const peopleResults = peopleQuery.data?.results ?? [];
 
   const hasFilters = Boolean(genreMovie || genreSeries || provider || company);
   const showResults = hasFilters || debouncedQuery.trim().length >= MIN_SEARCH_QUERY_LENGTH;
@@ -104,6 +136,79 @@ export function SearchPage() {
     }),
     [searchQuery.items]
   );
+
+  // Recent-searches history and the autocomplete dropdown built on top of
+  // it — closed by default, opened on focus, showing either the history
+  // (empty field) or a handful of already-fetched results (matching
+  // field), never both at once.
+  const searchHistory = useSearchHistory();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownId = useId();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const closeDropdown = () => {
+    setIsDropdownOpen(false);
+    setHighlightedIndex(-1);
+  };
+  const trimmedLocalQuery = localQuery.trim();
+  const dropdownItems: DropdownItem[] =
+    trimmedLocalQuery.length === 0
+      ? searchHistory.recentSearches.map((term) => ({ kind: "history", term }))
+      : trimmedLocalQuery.length >= MIN_SEARCH_QUERY_LENGTH
+        ? (isPersonScope ? peopleResults : searchQuery.items)
+            .slice(0, 5)
+            .map((item) => ("mediaType" in item ? { kind: "media", media: item } : { kind: "person", person: item }))
+        : [];
+  const isDropdownVisible = isDropdownOpen && dropdownItems.length > 0;
+
+  const selectDropdownItem = (item: DropdownItem) => {
+    if (item.kind === "history") {
+      setLocalQuery(item.term);
+      searchHistory.addSearch(item.term);
+      closeDropdown();
+      return;
+    }
+    searchHistory.addSearch(trimmedLocalQuery);
+    closeDropdown();
+    if (item.kind === "person") {
+      void navigate({ to: "/people/$personId", params: { personId: String(item.person.id) } });
+    } else {
+      void navigate(
+        item.media.mediaType === "movie"
+          ? { to: "/movies/$movieId", params: { movieId: String(item.media.id) } }
+          : { to: "/series/$seriesId", params: { seriesId: String(item.media.id) } }
+      );
+    }
+  };
+
+  const handleQueryChange = (value: string) => {
+    setLocalQuery(value);
+    setIsDropdownOpen(true);
+    setHighlightedIndex(-1);
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" && dropdownItems.length) {
+      event.preventDefault();
+      setIsDropdownOpen(true);
+      setHighlightedIndex((current) => (current + 1) % dropdownItems.length);
+    } else if (event.key === "ArrowUp" && dropdownItems.length) {
+      event.preventDefault();
+      setIsDropdownOpen(true);
+      setHighlightedIndex((current) => (current - 1 + dropdownItems.length) % dropdownItems.length);
+    } else if (event.key === "Enter") {
+      const highlighted = isDropdownVisible ? dropdownItems[highlightedIndex] : undefined;
+      if (highlighted) {
+        event.preventDefault();
+        selectDropdownItem(highlighted);
+      } else if (trimmedLocalQuery) {
+        searchHistory.addSearch(trimmedLocalQuery);
+        closeDropdown();
+      }
+    } else if (event.key === "Escape") {
+      closeDropdown();
+    }
+  };
 
   const genreName = (id: string | undefined) => {
     const labelKey = getGenreLabelKey(id);
@@ -143,6 +248,14 @@ export function SearchPage() {
     setSelectedScope("all");
     void navigate({ search: (prev) => ({ ...prev, scope: "all" }), replace: true });
   };
+  // The movie/series no-results empty state's own "search people instead"
+  // action — switches scope right here rather than navigating to the
+  // separate /people page, now that this page covers that scope itself.
+  const switchToPersonScope = () => {
+    lastPushedScopeRef.current = "person";
+    setSelectedScope("person");
+    void navigate({ search: (prev) => ({ ...prev, scope: "person" }), replace: true });
+  };
   const clearAllFilters = () => {
     lastPushedScopeRef.current = "all";
     setSelectedScope("all");
@@ -164,7 +277,7 @@ export function SearchPage() {
       ? [
           {
             key: "scope",
-            label: t("filters.chips.type", { value: scope === "movie" ? t("nav.movies") : t("nav.series") }),
+            label: t("filters.chips.type", { value: scopeLabel(scope, t) }),
             onRemove: removeScope,
           },
         ]
@@ -230,7 +343,85 @@ export function SearchPage() {
         <div className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="w-full sm:w-64">
-              <SearchBar value={localQuery} onChange={setLocalQuery} />
+              <SearchBar
+                value={localQuery}
+                onChange={handleQueryChange}
+                onFocus={() => setIsDropdownOpen(true)}
+                // Deferred so a dropdown item's onClick (mousedown-then-click)
+                // still lands before the list unmounts on blur.
+                onBlur={() => window.setTimeout(closeDropdown, 100)}
+                onKeyDown={handleSearchKeyDown}
+                inputRef={inputRef}
+                dropdownOpen={isDropdownVisible}
+                dropdownId={dropdownId}
+              >
+                {isDropdownVisible ? (
+                  <ul
+                    id={dropdownId}
+                    role="listbox"
+                    aria-label={t("search.suggestionsLabel")}
+                    className="absolute z-dropdown mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-elevation-lg"
+                  >
+                    {trimmedLocalQuery.length === 0 ? (
+                      <li className="flex items-center justify-between px-3 py-1.5 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t("search.recentSearches")}
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => searchHistory.clearHistory()}
+                          className="text-caption font-medium text-primary hover:underline"
+                        >
+                          {t("search.clearHistory")}
+                        </button>
+                      </li>
+                    ) : null}
+                    {dropdownItems.map((item, index) => (
+                      <li key={dropdownItemKey(item)} role="option" aria-selected={index === highlightedIndex}>
+                        {item.kind === "history" ? (
+                          <div
+                            className={cn(
+                              "flex items-center gap-2 rounded-md px-1 py-0.5",
+                              index === highlightedIndex ? "bg-accent/15" : "hover:bg-accent/10"
+                            )}
+                          >
+                            <button
+                              type="button"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => selectDropdownItem(item)}
+                              className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-body-sm"
+                            >
+                              <History className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                              <span className="truncate">{item.term}</span>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={t("search.removeRecentSearch", { query: item.term })}
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => searchHistory.removeSearch(item.term)}
+                              className="shrink-0 rounded-full p-1.5 hover:bg-foreground/10"
+                            >
+                              <X className="size-3" aria-hidden="true" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => selectDropdownItem(item)}
+                            className={cn(
+                              "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-body-sm",
+                              index === highlightedIndex ? "bg-accent/15" : "hover:bg-accent/10"
+                            )}
+                          >
+                            <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            <span className="truncate">{dropdownItemLabel(item)}</span>
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </SearchBar>
             </div>
             <FilterBar
               value={scope}
@@ -240,6 +431,7 @@ export function SearchPage() {
                 { value: "all", label: t("filters.all") },
                 { value: "series", label: t("filters.typeSeries") },
                 { value: "movie", label: t("filters.typeMovies") },
+                { value: "person", label: t("filters.typePeople") },
               ]}
             />
           </div>
@@ -264,6 +456,30 @@ export function SearchPage() {
             </>
           ) : null}
         </>
+      ) : isPersonScope ? (
+        <>
+          {peopleQuery.isPending ? <GridSkeleton count={8} /> : null}
+          {peopleQuery.isError ? (
+            <RemoteErrorState error={peopleQuery.error} onRetry={() => void peopleQuery.refetch()} />
+          ) : null}
+          {!peopleQuery.isPending && !peopleQuery.isError && !peopleResults.length ? (
+            <EmptyState icon={SearchX} title={t("pages.noResults")} description={t("search.noResultsDesc")} />
+          ) : null}
+          {!peopleQuery.isPending && !peopleQuery.isError && peopleResults.length > 0 ? (
+            <section>
+              <SectionHeader
+                title={t("nav.people")}
+                subtitle={t("search.resultsCount", { count: peopleResults.length })}
+                index={2}
+              />
+              <div className={MEDIA_GRID_CLASS_NAME}>
+                {peopleResults.map((person, index) => (
+                  <PersonCard key={person.id} person={person} index={index} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </>
       ) : (
         <>
           {searchQuery.isPending ? <GridSkeleton count={8} /> : null}
@@ -277,10 +493,8 @@ export function SearchPage() {
               description={t("search.noResultsDesc")}
               action={
                 debouncedQuery.trim() ? (
-                  <Button asChild variant="outline">
-                    <Link to="/people" search={{ q: debouncedQuery }}>
-                      {t("search.tryPeopleSearch", { query: debouncedQuery })}
-                    </Link>
+                  <Button type="button" variant="outline" onClick={switchToPersonScope}>
+                    {t("search.tryPeopleSearch", { query: debouncedQuery })}
                   </Button>
                 ) : undefined
               }

@@ -69,6 +69,7 @@ const BASE_PREFERENCES: UserPreferences = {
   notificationsEnabled: false,
   notifyHoursBefore: 24,
   availabilityCheckIntervalHours: 6,
+  recentSearches: [],
   preferredProviderIds: [],
   activeProfileId: "default",
   backupDirectory: null,

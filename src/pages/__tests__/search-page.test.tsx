@@ -29,7 +29,16 @@ const { getRouterSearch, setRouterSearch, mockNavigate } = vi.hoisted(() => {
     search = next;
   };
   const mockNavigate = vi.fn(
-    (opts: { search: (prev: Record<string, string | undefined>) => Record<string, string | undefined> }) => {
+    (opts: {
+      search?: (prev: Record<string, string | undefined>) => Record<string, string | undefined>;
+      to?: string;
+      params?: Record<string, string>;
+    }) => {
+      // A dropdown item selection navigates straight to a detail route
+      // ({ to, params }, no search transform) — nothing for this fake
+      // router's URL-search store to do; the call itself is still recorded
+      // on the vi.fn() for tests to assert against.
+      if (!opts.search) return;
       const prevParams = new URLSearchParams(search);
       const prevObj: Record<string, string | undefined> = {};
       prevParams.forEach((value, key) => {
@@ -122,6 +131,21 @@ vi.mock("@/features/media/use-search", () => ({
   useSearch: (...args: unknown[]) => searchHookMock(...args),
 }));
 
+const peopleSearchMock = vi.fn();
+vi.mock("@/features/media/use-discovery", () => ({
+  usePeopleSearch: (...args: unknown[]) => peopleSearchMock(...args),
+}));
+
+const searchHistoryState = {
+  recentSearches: [] as string[],
+  addSearch: vi.fn(),
+  removeSearch: vi.fn(),
+  clearHistory: vi.fn(),
+};
+vi.mock("@/features/media/use-search-history", () => ({
+  useSearchHistory: () => searchHistoryState,
+}));
+
 const homeFeedMock = vi.fn();
 vi.mock("@/features/media/use-media", () => ({
   useHomeFeed: () => homeFeedMock(),
@@ -159,6 +183,12 @@ vi.mock("@/components/media/primitives/media-grid", () => ({
     </div>
   ),
   MEDIA_GRID_CLASS_NAME: "grid",
+}));
+
+vi.mock("@/components/media/primitives/person-card", () => ({
+  PersonCard: ({ person }: { person: { id: number; name: string } }) => (
+    <div data-testid="person-card">{person.name}</div>
+  ),
 }));
 
 function buildSummary(overrides: Partial<MediaSummary> = {}): MediaSummary {
@@ -213,6 +243,18 @@ describe("SearchPage", () => {
 
     preferencesDataMock.mockReset().mockReturnValue({ region: "FR", defaultSearchType: "all" });
     searchHookMock.mockReset().mockReturnValue(defaultSearchResult());
+    peopleSearchMock.mockReset().mockReturnValue({
+      data: { results: [] },
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    searchHistoryState.recentSearches = [];
+    searchHistoryState.addSearch.mockReset();
+    searchHistoryState.removeSearch.mockReset();
+    searchHistoryState.clearHistory.mockReset();
     homeFeedMock.mockReset().mockReturnValue({
       isLoading: false,
       isPending: false,
@@ -309,21 +351,27 @@ describe("SearchPage", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the no-results empty state when the search resolves with no items, with a link to try people search", () => {
+  it("shows the no-results empty state when the search resolves with no items, offering to switch to the people scope in place", async () => {
     renderPage("?q=movie");
 
     expect(screen.getByText(i18n.t("pages.noResults"))).toBeInTheDocument();
     expect(screen.getByText(i18n.t("search.noResultsDesc"))).toBeInTheDocument();
 
-    const peopleLink = screen.getByRole("link", { name: i18n.t("search.tryPeopleSearch", { query: "movie" }) });
-    expect(peopleLink).toHaveAttribute("href", "/people?q=movie");
+    const tryPeopleButton = screen.getByRole("button", {
+      name: i18n.t("search.tryPeopleSearch", { query: "movie" }),
+    });
+    fireEvent.click(tryPeopleButton);
+
+    await waitFor(() => expect(getRouterSearch()).toBe("?q=movie&scope=person"));
   });
 
   it("does not offer the people-search suggestion when no-results comes from filters alone (no typed query)", () => {
     renderPage("?provider=8");
 
     expect(screen.getByText(i18n.t("pages.noResults"))).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /tryPeopleSearch|people/i })).not.toBeInTheDocument();
+    // Loosely matches the translated "...instead" action text without
+    // colliding with the scope FilterBar's own unrelated "People" button.
+    expect(screen.queryByRole("button", { name: /instead/i })).not.toBeInTheDocument();
   });
 
   it("groups results into separate Series and Movies sections when scope is 'all'", () => {
@@ -584,5 +632,343 @@ describe("SearchPage", () => {
         })
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe("SearchPage — person scope", () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    setRouterSearch("");
+    savedFiltersState.data = [];
+    preferencesDataMock.mockReset().mockReturnValue({ region: "FR", defaultSearchType: "all" });
+    searchHookMock.mockReset().mockReturnValue(defaultSearchResult());
+    peopleSearchMock.mockReset().mockReturnValue({
+      data: { results: [] },
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    searchHistoryState.recentSearches = [];
+    searchHistoryState.addSearch.mockReset();
+    searchHistoryState.removeSearch.mockReset();
+    searchHistoryState.clearHistory.mockReset();
+    homeFeedMock.mockReset().mockReturnValue({
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: undefined,
+    });
+  });
+
+  it("switching the scope filter to People navigates with scope=person", async () => {
+    renderPage("?q=streep");
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.typePeople") }));
+
+    await waitFor(() => expect(getRouterSearch()).toContain("scope=person"));
+  });
+
+  it("renders a person grid from usePeopleSearch instead of the movie/series grid", () => {
+    peopleSearchMock.mockReturnValue({
+      data: { results: [{ id: 31, name: "Meryl Streep" }] },
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPage("?q=streep&scope=person");
+
+    expect(screen.getByTestId("person-card")).toHaveTextContent("Meryl Streep");
+    expect(screen.queryByTestId("media-grid")).not.toBeInTheDocument();
+  });
+
+  it("shows the no-results empty state when the person search comes back empty", () => {
+    renderPage("?q=nobody&scope=person");
+
+    expect(screen.getByText(i18n.t("pages.noResults"))).toBeInTheDocument();
+  });
+
+  it("shows a loading skeleton while the person search is pending", () => {
+    peopleSearchMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isPending: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPage("?q=streep&scope=person");
+
+    expect(screen.queryByText(i18n.t("pages.noResults"))).not.toBeInTheDocument();
+    expect(screen.queryByTestId("person-card")).not.toBeInTheDocument();
+  });
+
+  it("shows a remote error state for the person search, and retry calls its own refetch", () => {
+    const refetch = vi.fn();
+    peopleSearchMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isPending: false,
+      isError: true,
+      error: new Error("network down"),
+      refetch,
+    });
+    renderPage("?q=streep&scope=person");
+
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("SearchPage — search history and suggestions dropdown", () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    setRouterSearch("");
+    savedFiltersState.data = [];
+    preferencesDataMock.mockReset().mockReturnValue({ region: "FR", defaultSearchType: "all" });
+    searchHookMock.mockReset().mockReturnValue(defaultSearchResult());
+    peopleSearchMock.mockReset().mockReturnValue({
+      data: { results: [] },
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    searchHistoryState.recentSearches = [];
+    searchHistoryState.addSearch.mockReset();
+    searchHistoryState.removeSearch.mockReset();
+    searchHistoryState.clearHistory.mockReset();
+    homeFeedMock.mockReset().mockReturnValue({
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: undefined,
+    });
+  });
+
+  it("shows recent searches when the empty field is focused", () => {
+    searchHistoryState.recentSearches = ["dune", "batman"];
+    renderPage();
+
+    fireEvent.focus(screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") }));
+
+    const listbox = screen.getByRole("listbox", { name: i18n.t("search.suggestionsLabel") });
+    expect(listbox).toHaveTextContent("dune");
+    expect(listbox).toHaveTextContent("batman");
+  });
+
+  it("does not show the dropdown on focus when there is no history and no query", () => {
+    renderPage();
+
+    fireEvent.focus(screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") }));
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("does not show a dropdown for a query shorter than the minimum search length", () => {
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "d" } });
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("closes the dropdown shortly after the field is blurred", async () => {
+    searchHistoryState.recentSearches = ["dune"];
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+  });
+
+  it("selecting a recent search fills the field and re-promotes it", () => {
+    searchHistoryState.recentSearches = ["dune", "batman"];
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    const historyButton = screen.getByRole("button", { name: "dune" });
+    fireEvent.mouseDown(historyButton);
+    fireEvent.click(historyButton);
+
+    expect(input).toHaveValue("dune");
+    expect(searchHistoryState.addSearch).toHaveBeenCalledWith("dune");
+  });
+
+  it("removes a single recent search without selecting it", () => {
+    searchHistoryState.recentSearches = ["dune", "batman"];
+    renderPage();
+
+    fireEvent.focus(screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") }));
+    const removeButton = screen.getByRole("button", { name: i18n.t("search.removeRecentSearch", { query: "dune" }) });
+    fireEvent.mouseDown(removeButton);
+    fireEvent.click(removeButton);
+
+    expect(searchHistoryState.removeSearch).toHaveBeenCalledWith("dune");
+    expect(searchHistoryState.addSearch).not.toHaveBeenCalled();
+  });
+
+  it("clears the whole history from the dropdown's own action", () => {
+    searchHistoryState.recentSearches = ["dune", "batman"];
+    renderPage();
+
+    fireEvent.focus(screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") }));
+    const clearButton = screen.getByRole("button", { name: i18n.t("search.clearHistory") });
+    fireEvent.mouseDown(clearButton);
+    fireEvent.click(clearButton);
+
+    expect(searchHistoryState.clearHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a handful of live matches as suggestions once there's a real query, and selecting one navigates and records history", async () => {
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [buildSummary({ id: 1, mediaType: "movie", title: "Dune" })],
+    });
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "dune" } });
+
+    await screen.findByRole("option", { name: "Dune" });
+    const suggestionButton = screen.getByRole("button", { name: "Dune" });
+    fireEvent.mouseDown(suggestionButton);
+    fireEvent.click(suggestionButton);
+
+    expect(searchHistoryState.addSearch).toHaveBeenCalledWith("dune");
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/movies/$movieId", params: { movieId: "1" } });
+  });
+
+  it("navigates a series suggestion to its detail page", async () => {
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [buildSummary({ id: 2, mediaType: "series", title: "Severance" })],
+    });
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "severance" } });
+
+    await screen.findByRole("option", { name: "Severance" });
+    fireEvent.click(screen.getByRole("button", { name: "Severance" }));
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/series/$seriesId", params: { seriesId: "2" } });
+  });
+
+  it("navigates a person suggestion to its detail page when scope is person", async () => {
+    peopleSearchMock.mockReturnValue({
+      data: { results: [{ id: 31, name: "Meryl Streep" }] },
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPage("?scope=person");
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "streep" } });
+
+    await screen.findByRole("option", { name: "Meryl Streep" });
+    fireEvent.click(screen.getByRole("button", { name: "Meryl Streep" }));
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/people/$personId", params: { personId: "31" } });
+  });
+
+  it("cycles the highlighted suggestion with arrow keys and selects it on Enter", async () => {
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [
+        buildSummary({ id: 1, mediaType: "movie", title: "Dune" }),
+        buildSummary({ id: 2, mediaType: "movie", title: "Dune Two" }),
+      ],
+    });
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "dune" } });
+    await screen.findByRole("option", { name: "Dune" });
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/movies/$movieId", params: { movieId: "2" } });
+  });
+
+  it("cycles the highlighted suggestion backwards with ArrowUp", async () => {
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [
+        buildSummary({ id: 1, mediaType: "movie", title: "Dune" }),
+        buildSummary({ id: 2, mediaType: "movie", title: "Dune Two" }),
+      ],
+    });
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "dune" } });
+    await screen.findByRole("option", { name: "Dune" });
+
+    // (-1 - 1 + length) % length lands on index 0 from the initial
+    // "nothing highlighted" (-1) state.
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/movies/$movieId", params: { movieId: "1" } });
+  });
+
+  it("records the typed query on Enter when nothing is highlighted", () => {
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "arrival" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(searchHistoryState.addSearch).toHaveBeenCalledWith("arrival");
+  });
+
+  it("does nothing on Enter with an empty field and no dropdown open", () => {
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(searchHistoryState.addSearch).not.toHaveBeenCalled();
+  });
+
+  it("closes the dropdown on Escape", () => {
+    searchHistoryState.recentSearches = ["dune"];
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 });

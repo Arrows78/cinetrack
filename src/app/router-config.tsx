@@ -63,7 +63,7 @@ const searchRoute = createRoute({
   path: "/search",
   validateSearch: z.object({
     q: z.string().optional(),
-    scope: z.enum(["all", "movie", "series"]).optional(),
+    scope: z.enum(["all", "movie", "series", "person"]).optional(),
     genreMovie: z.string().optional(),
     genreSeries: z.string().optional(),
     provider: z.string().optional(),

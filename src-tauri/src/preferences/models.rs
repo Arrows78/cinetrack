@@ -44,6 +44,7 @@ pub enum SearchScope {
     All,
     Movie,
     Series,
+    Person,
 }
 
 /// Generates `src/generated/dto/LibraryViewMode.ts`.
@@ -147,7 +148,19 @@ pub struct UserPreferences {
     /// established user doesn't see it just because this key was never set.
     #[serde(default)]
     pub onboarding_completed: bool,
+    /// Most-recent-first list of past search terms typed into the global
+    /// search bar, capped at MAX_RECENT_SEARCHES — powers the autocomplete
+    /// dropdown's "recent searches" section. Device-scoped like
+    /// `notify_hours_before`: a search history is closer to browser history
+    /// than to a taste preference, and this installation's own typed terms
+    /// aren't something to hand to a different device via cloud sync.
+    #[serde(default)]
+    pub recent_searches: Vec<String>,
 }
+
+/// Matches the frontend's own cap in use-search-history.ts, so neither side
+/// can silently grow the stored list past what the dropdown ever shows.
+pub(super) const MAX_RECENT_SEARCHES: usize = 8;
 
 /// Which `preferences` keys travel through cloud sync (see
 /// preferences::repository::write_preference's outbox insert and
@@ -198,6 +211,7 @@ impl Default for UserPreferences {
             hide_watched_in_discovery: false,
             on_this_day_enabled: false,
             onboarding_completed: false,
+            recent_searches: Vec::new(),
         }
     }
 }
@@ -227,6 +241,11 @@ pub(super) fn validate(prefs: &UserPreferences) -> Result<(), ApiError> {
         return Err(ApiError::bad_request(
             "availabilityCheckIntervalHours must be between 1 and 24",
         ));
+    }
+    if prefs.recent_searches.len() > MAX_RECENT_SEARCHES {
+        return Err(ApiError::bad_request(format!(
+            "recentSearches can't hold more than {MAX_RECENT_SEARCHES} entries"
+        )));
     }
     Ok(())
 }
@@ -296,6 +315,28 @@ mod tests {
     fn accepts_an_availability_check_interval_within_range() {
         let prefs = UserPreferences {
             availability_check_interval_hours: 12,
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_ok());
+    }
+
+    #[test]
+    fn rejects_more_recent_searches_than_the_cap() {
+        let prefs = UserPreferences {
+            recent_searches: (0..(MAX_RECENT_SEARCHES + 1))
+                .map(|i| format!("query {i}"))
+                .collect(),
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_err());
+    }
+
+    #[test]
+    fn accepts_recent_searches_at_the_cap() {
+        let prefs = UserPreferences {
+            recent_searches: (0..MAX_RECENT_SEARCHES)
+                .map(|i| format!("query {i}"))
+                .collect(),
             ..UserPreferences::default()
         };
         assert!(validate(&prefs).is_ok());

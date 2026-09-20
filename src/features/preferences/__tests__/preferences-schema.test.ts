@@ -31,6 +31,7 @@ describe("preferencesSchema", () => {
       hideWatchedInDiscovery: false,
       onThisDayEnabled: false,
       onboardingCompleted: false,
+      recentSearches: [],
       userProfile: {
         id: DEFAULT_PROFILE_ID,
         name: null,
@@ -92,6 +93,19 @@ describe("preferencesSchema", () => {
     it("accepts the upper boundary of 24", () => {
       const parsed = preferencesSchema.parse({ availabilityCheckIntervalHours: 24, userProfile: {} });
       expect(parsed.availabilityCheckIntervalHours).toBe(24);
+    });
+  });
+
+  describe("recentSearches", () => {
+    it("accepts a list at the 8-entry cap", () => {
+      const eight = Array.from({ length: 8 }, (_, i) => `query ${i}`);
+      const parsed = preferencesSchema.parse({ recentSearches: eight, userProfile: {} });
+      expect(parsed.recentSearches).toEqual(eight);
+    });
+
+    it("rejects a list beyond the 8-entry cap", () => {
+      const nine = Array.from({ length: 9 }, (_, i) => `query ${i}`);
+      expect(() => preferencesSchema.parse({ recentSearches: nine, userProfile: {} })).toThrow();
     });
   });
 

@@ -13,7 +13,7 @@ export const preferencesSchema = z.object({
     .string()
     .regex(/^[A-Z]{2}$/)
     .default(DEFAULT_TMDB_REGION),
-  defaultSearchType: z.enum(["all", "movie", "series"]).default("all"),
+  defaultSearchType: z.enum(["all", "movie", "series", "person"]).default("all"),
   reduceMotion: z.boolean().default(false),
   compactMode: z.boolean().default(false),
   sidebarCollapsed: z.boolean().default(false),
@@ -28,6 +28,7 @@ export const preferencesSchema = z.object({
   hideWatchedInDiscovery: z.boolean().default(false),
   onThisDayEnabled: z.boolean().default(false),
   onboardingCompleted: z.boolean().default(false),
+  recentSearches: z.array(z.string()).max(8).default([]),
   userProfile: z.object({
     id: z.string().default(DEFAULT_PROFILE_ID),
     name: z.string().nullable().default(null),

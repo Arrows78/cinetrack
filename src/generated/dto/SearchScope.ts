@@ -3,4 +3,4 @@
 /**
  * Generates `src/generated/dto/SearchScope.ts`, re-exported as `SearchScope` from `src/types/media.ts`.
  */
-export type SearchScope = "all" | "movie" | "series";
+export type SearchScope = "all" | "movie" | "series" | "person";

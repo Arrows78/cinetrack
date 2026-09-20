@@ -308,7 +308,11 @@
     "tryPeopleSearch": "Search people for \"{{query}}\" instead",
     "resultsCount_one": "{{count}} result",
     "resultsCount_other": "{{count}} results",
-    "showingResults": "Showing results for {{filters}}"
+    "showingResults": "Showing results for {{filters}}",
+    "suggestionsLabel": "Search suggestions",
+    "recentSearches": "Recent searches",
+    "clearHistory": "Clear",
+    "removeRecentSearch": "Remove \"{{query}}\" from recent searches"
   },
   "searchBar": {
     "placeholder": "Search for a movie or series..."
@@ -317,6 +321,7 @@
     "all": "All",
     "typeSeries": "Series",
     "typeMovies": "Movies",
+    "typePeople": "People",
     "byType": "Filter by type",
     "activeFiltersLabel": "Active filters",
     "removeFilter": "Remove filter {{filter}}",

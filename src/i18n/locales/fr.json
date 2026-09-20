@@ -308,7 +308,11 @@
     "tryPeopleSearch": "Rechercher plutôt « {{query}} » parmi les personnes",
     "resultsCount_one": "{{count}} résultat",
     "resultsCount_other": "{{count}} résultats",
-    "showingResults": "Résultats pour {{filters}}"
+    "showingResults": "Résultats pour {{filters}}",
+    "suggestionsLabel": "Suggestions de recherche",
+    "recentSearches": "Recherches récentes",
+    "clearHistory": "Effacer",
+    "removeRecentSearch": "Retirer « {{query}} » des recherches récentes"
   },
   "searchBar": {
     "placeholder": "Rechercher un film ou une série…"
@@ -317,6 +321,7 @@
     "all": "Tout",
     "typeSeries": "Séries",
     "typeMovies": "Films",
+    "typePeople": "Personnes",
     "byType": "Filtrer par type",
     "activeFiltersLabel": "Filtres actifs",
     "removeFilter": "Retirer le filtre {{filter}}",

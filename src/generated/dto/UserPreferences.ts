@@ -76,4 +76,13 @@ export type UserPreferences = {
    * established user doesn't see it just because this key was never set.
    */
   onboardingCompleted: boolean;
+  /**
+   * Most-recent-first list of past search terms typed into the global
+   * search bar, capped at MAX_RECENT_SEARCHES — powers the autocomplete
+   * dropdown's "recent searches" section. Device-scoped like
+   * `notify_hours_before`: a search history is closer to browser history
+   * than to a taste preference, and this installation's own typed terms
+   * aren't something to hand to a different device via cloud sync.
+   */
+  recentSearches: Array<string>;
 };

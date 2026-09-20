@@ -20,6 +20,7 @@ const defaultPreferences: UserPreferences = {
   notificationsEnabled: false,
   notifyHoursBefore: 24,
   availabilityCheckIntervalHours: 6,
+  recentSearches: [],
   preferredProviderIds: [],
   activeProfileId: DEFAULT_PROFILE_ID,
   backupDirectory: null,

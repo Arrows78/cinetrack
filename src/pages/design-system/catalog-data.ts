@@ -898,6 +898,14 @@ export const componentInventory = [
     "Discover rails built from the directors/actors the profile's completed library skews toward most."
   ),
   component(
+    "PersonCard",
+    "components/media/primitives/person-card.tsx",
+    "Media",
+    "pattern",
+    "live",
+    "Poster-fills-the-card person tile, shared by the People page and global search's person scope."
+  ),
+  component(
     "Pill",
     "components/media/primitives/pill.tsx",
     "Media",
