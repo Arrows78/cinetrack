@@ -28,6 +28,16 @@ interface NavLinkProps {
   onNavigate?: () => void;
 }
 
+// A handful of routes double as GuidedTour targets (see
+// guided-tour.tsx) — tagging them here, right where they're rendered,
+// keeps that pairing obvious instead of hand-duplicating this route list
+// in a second place.
+const TOUR_TARGET_BY_ROUTE: Partial<Record<string, string>> = {
+  "/library": "tour-library",
+  "/watch-tonight": "tour-watch-tonight",
+  "/settings": "tour-settings",
+};
+
 function NavLink({ item, collapsed, isActive, onNavigate }: NavLinkProps) {
   const Icon = item.icon;
   return (
@@ -37,6 +47,7 @@ function NavLink({ item, collapsed, isActive, onNavigate }: NavLinkProps) {
       aria-current={isActive ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
       title={collapsed ? item.label : undefined}
+      data-tour={TOUR_TARGET_BY_ROUTE[item.to]}
       className={cn(
         "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-body-sm font-medium transition-all duration-fast",
         isActive
@@ -263,6 +274,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 type="button"
                 aria-label={t("sidebar.switchProfile")}
                 title={t("sidebar.switchProfile")}
+                data-tour="tour-profile-switcher"
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left transition-colors hover:bg-foreground/5"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-body-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">
@@ -303,6 +315,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 type="button"
                 aria-label={t("sidebar.switchProfile")}
                 title={t("sidebar.switchProfile")}
+                data-tour="tour-profile-switcher"
                 className="flex h-9 w-full items-center justify-center rounded-xl transition-colors hover:bg-foreground/5"
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-body-sm font-semibold text-primary shadow-glow ring-2 ring-primary/10">

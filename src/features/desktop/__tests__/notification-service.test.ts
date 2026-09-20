@@ -62,6 +62,7 @@ const basePreferences: UserPreferences = {
   hideWatchedInDiscovery: false,
   onThisDayEnabled: false,
   onboardingCompleted: false,
+  tourCompleted: false,
   commandPaletteShortcut: "mod+k",
   globalCommandPaletteShortcut: "mod+shift+k",
   userProfile: { id: "profile-1", name: "Profile" },

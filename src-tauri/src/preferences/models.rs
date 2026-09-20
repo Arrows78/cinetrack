@@ -197,6 +197,17 @@ pub struct UserPreferences {
     /// aren't something to hand to a different device via cloud sync.
     #[serde(default)]
     pub recent_searches: Vec<String>,
+    /// Whether the post-onboarding guided tour (GuidedTour, highlighting
+    /// Library/Tonight/Settings/the profile switcher) has been seen or
+    /// explicitly skipped. Defaults to `false` like `onboarding_completed`,
+    /// but is only ever auto-triggered when `onboarding_completed` is
+    /// already `true` — an existing install upgrading into this field never
+    /// sees the tour pop up unprompted, since its `onboarding_completed` was
+    /// never set either (see that field's own doc comment). Settings still
+    /// exposes a "Take a tour" action that re-runs it regardless of this
+    /// flag.
+    #[serde(default)]
+    pub tour_completed: bool,
     /// The in-window command-palette shortcut, normalized as
     /// modifier-parts-joined-by-"+" (e.g. `"mod+k"`, where `"mod"` means
     /// Cmd on macOS / Ctrl elsewhere) — see
@@ -284,6 +295,7 @@ impl Default for UserPreferences {
             on_this_day_enabled: false,
             onboarding_completed: false,
             recent_searches: Vec::new(),
+            tour_completed: false,
             command_palette_shortcut: default_command_palette_shortcut(),
             global_command_palette_shortcut: default_global_command_palette_shortcut(),
         }

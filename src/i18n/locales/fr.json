@@ -493,6 +493,9 @@
       "manageAlerts": "Gérer les alertes"
     },
     "about": {
+      "tourTitle": "Visite guidée",
+      "tourDesc": "Un tour rapide de la bibliothèque, Ce soir, les Paramètres et le changement de profil.",
+      "takeTour": "Faire la visite",
       "versionTitle": "Version",
       "versionDesc": "Utile à joindre à un rapport de bug.",
       "versionLine": "CineTrack {{version}} (Tauri {{tauriVersion}})",
@@ -712,7 +715,30 @@
     "newLibraryDescription": "Cherchez un film ou une série à ajouter en premier.",
     "pickTonightTitle": "Aide-moi juste à choisir quelque chose ce soir",
     "pickTonightDescription": "Répondez à quelques questions rapides et obtenez une suggestion.",
-    "error": "Une erreur est survenue en enregistrant votre choix. Réessayez."
+    "error": "Une erreur est survenue en enregistrant votre choix. Réessayez.",
+    "tour": {
+      "stepCounter": "Étape {{current}} sur {{total}}",
+      "next": "Suivant",
+      "back": "Précédent",
+      "skip": "Passer",
+      "done": "Terminé",
+      "library": {
+        "title": "Votre bibliothèque",
+        "body": "Tout ce que vous suivez — films, séries, et où vous en êtes — se trouve ici."
+      },
+      "watchTonight": {
+        "title": "Pas d'idée pour ce soir ?",
+        "body": "Répondez à quelques questions rapides et obtenez une suggestion parmi vos services de streaming."
+      },
+      "settings": {
+        "title": "Paramètres",
+        "body": "Notifications, sauvegardes, import TV Time, raccourcis clavier — tout est là."
+      },
+      "profileSwitcher": {
+        "title": "Changer de profil",
+        "body": "Chaque membre du foyer a sa propre bibliothèque — changez de profil à tout moment."
+      }
+    }
   },
   "tracking": {
     "title": "Suivi",

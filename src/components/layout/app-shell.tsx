@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
@@ -10,6 +11,7 @@ import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { PullToRefresh } from "@/components/layout/pull-to-refresh";
+import { GuidedTour } from "@/features/onboarding/guided-tour";
 import { usePreferences } from "@/features/preferences/use-preferences";
 
 // `router.history.back()` has nowhere sensible to go when this window has no
@@ -37,6 +39,21 @@ export function AppShell() {
 
   const canGoBack = /^\/(movies|series|people)\/[^/]+/.test(location.pathname);
   const sidebarCollapsed = preferences?.sidebarCollapsed ?? false;
+
+  // "Take a tour" (AboutSettings) re-runs it on demand via this same event
+  // desktop-service.ts's own "cinetrack:command-palette" event already uses
+  // to reach across the tree from outside AppShell's own component subtree.
+  const [forceTour, setForceTour] = useState(false);
+  useEffect(() => {
+    const onRequestTour = () => setForceTour(true);
+    window.addEventListener("cinetrack:guided-tour", onRequestTour);
+    return () => window.removeEventListener("cinetrack:guided-tour", onRequestTour);
+  }, []);
+  // Auto-triggers exactly once, only for an install that actually went
+  // through OnboardingScreen (see tour_completed's own doc comment in
+  // src-tauri/src/preferences/models.rs for why an existing install
+  // upgrading into these fields never sees it pop up unprompted).
+  const showTour = forceTour || (Boolean(preferences?.onboardingCompleted) && preferences?.tourCompleted === false);
 
   const handleToggleSidebar = async () => {
     await updatePreference({ key: "sidebarCollapsed", value: !sidebarCollapsed });
@@ -156,6 +173,14 @@ export function AppShell() {
 
       <MobileTabBar />
       <CommandPalette />
+      {showTour && (
+        <GuidedTour
+          onFinish={() => {
+            setForceTour(false);
+            void updatePreference({ key: "tourCompleted", value: true });
+          }}
+        />
+      )}
     </div>
   );
 }

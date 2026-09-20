@@ -493,6 +493,9 @@
       "manageAlerts": "Manage alerts"
     },
     "about": {
+      "tourTitle": "Guided tour",
+      "tourDesc": "A quick walkthrough of the library, Watch Tonight, Settings and profile switching.",
+      "takeTour": "Take a tour",
       "versionTitle": "Version",
       "versionDesc": "Useful to include in a bug report.",
       "versionLine": "CineTrack {{version}} (Tauri {{tauriVersion}})",
@@ -712,7 +715,30 @@
     "newLibraryDescription": "Search for a movie or series to add first.",
     "pickTonightTitle": "Just help me pick something tonight",
     "pickTonightDescription": "Answer a couple of quick questions and get a pick.",
-    "error": "Something went wrong saving your choice. Try again."
+    "error": "Something went wrong saving your choice. Try again.",
+    "tour": {
+      "stepCounter": "Step {{current}} of {{total}}",
+      "next": "Next",
+      "back": "Back",
+      "skip": "Skip",
+      "done": "Done",
+      "library": {
+        "title": "Your library",
+        "body": "Everything you're tracking — movies, series, and where you left off — lives here."
+      },
+      "watchTonight": {
+        "title": "Stuck on what to watch?",
+        "body": "Answer a couple of quick questions and get a pick from your streaming services."
+      },
+      "settings": {
+        "title": "Settings",
+        "body": "Notifications, backups, TV Time import, keyboard shortcuts — it's all here."
+      },
+      "profileSwitcher": {
+        "title": "Switch profiles",
+        "body": "Everyone in the household gets their own library — switch between profiles anytime."
+      }
+    }
   },
   "tracking": {
     "title": "Tracking",

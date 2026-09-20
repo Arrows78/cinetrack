@@ -32,6 +32,7 @@ export const preferencesSchema = z.object({
   onThisDayEnabled: z.boolean().default(false),
   onboardingCompleted: z.boolean().default(false),
   recentSearches: z.array(z.string()).max(8).default([]),
+  tourCompleted: z.boolean().default(false),
   commandPaletteShortcut: z.string().min(1).default("mod+k"),
   globalCommandPaletteShortcut: z.string().min(1).default("mod+shift+k"),
   userProfile: z.object({

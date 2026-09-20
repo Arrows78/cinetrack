@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Trash2 } from "lucide-react";
+import { Compass, Copy, Trash2 } from "lucide-react";
 import { getTauriVersion, getVersion } from "@tauri-apps/api/app";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,8 +85,27 @@ export function AboutSettings() {
     }
   };
 
+  // Mirrors desktop-service.ts's own "cinetrack:command-palette" event —
+  // the same cross-tree-reach pattern, here so AboutSettings (inside
+  // SettingsPage) can re-trigger AppShell's GuidedTour without a prop path
+  // between two otherwise-unrelated component trees.
+  const requestTour = () => window.dispatchEvent(new Event("cinetrack:guided-tour"));
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.about.tourTitle")}</CardTitle>
+          <CardDescription>{t("settings.about.tourDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button type="button" variant="outline" onClick={requestTour}>
+            <Compass className="mr-2 size-4" aria-hidden="true" />
+            {t("settings.about.takeTour")}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>{t("settings.about.versionTitle")}</CardTitle>
