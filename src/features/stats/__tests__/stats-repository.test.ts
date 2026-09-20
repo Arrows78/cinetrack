@@ -18,9 +18,24 @@ vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: { list: libraryListMock },
 }));
 
-import { monthOverMonthComparison } from "../stats-repository";
+import { monthOverMonthComparison, yearOverYearComparison } from "../stats-repository";
+import type { YearSummary } from "../stats-repository";
 
 const libraryItem = makeLibraryItem;
+
+function makeYearSummary(overrides: Partial<YearSummary> = {}): YearSummary {
+  return {
+    year: 2026,
+    movies: 10,
+    episodes: 20,
+    minutes: 1000,
+    topTitles: [],
+    favouriteGenre: null,
+    activeDays: 15,
+    dailyCounts: {},
+    ...overrides,
+  };
+}
 
 // currentStreak/longestStreak/biggestBingeDay/viewingHeatmap/libraryExtras/
 // computeForecast used to be pure TS functions tested here directly — they
@@ -50,6 +65,30 @@ describe("monthOverMonthComparison", () => {
       previous: { count: 4, minutes: 200 },
       countDelta: 3,
       minutesDelta: -50,
+    });
+  });
+});
+
+describe("yearOverYearComparison", () => {
+  it("returns null when there is no previous year", () => {
+    expect(yearOverYearComparison(makeYearSummary(), undefined)).toBeNull();
+  });
+
+  it("returns null when the previous year has no recorded activity", () => {
+    const previous = makeYearSummary({ year: 2025, movies: 0, episodes: 0, activeDays: 0 });
+    expect(yearOverYearComparison(makeYearSummary(), previous)).toBeNull();
+  });
+
+  it("compares movies+episodes, minutes, and active days, and signs the deltas", () => {
+    const current = makeYearSummary({ year: 2026, movies: 12, episodes: 30, minutes: 1200, activeDays: 20 });
+    const previous = makeYearSummary({ year: 2025, movies: 10, episodes: 20, minutes: 1500, activeDays: 25 });
+
+    expect(yearOverYearComparison(current, previous)).toEqual({
+      current: { count: 42, minutes: 1200, activeDays: 20 },
+      previous: { count: 30, minutes: 1500, activeDays: 25 },
+      countDelta: 12,
+      minutesDelta: -300,
+      activeDaysDelta: -5,
     });
   });
 });

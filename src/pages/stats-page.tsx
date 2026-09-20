@@ -21,7 +21,7 @@ import {
   Trophy,
   Tv,
 } from "lucide-react";
-import { monthOverMonthComparison } from "@/features/stats/stats-repository";
+import { monthOverMonthComparison, yearOverYearComparison } from "@/features/stats/stats-repository";
 import { useStats, useWatchForecast, useWrapped, useYearlyActivity } from "@/features/stats/use-stats";
 import { ShareCancelledError, downloadWrappedCard, renderWrappedCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
@@ -45,21 +45,37 @@ import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
-function DeltaBadge({ delta, formatValue }: { delta: number; formatValue: (value: number) => string }) {
+function DeltaBadge({
+  delta,
+  formatValue,
+  period = "month",
+}: {
+  delta: number;
+  formatValue: (value: number) => string;
+  /** Which "vs last ___" wording to use — defaults to the month-over-month comparison's own wording. */
+  period?: "month" | "year";
+}) {
   const { t } = useTranslation();
   if (delta === 0) {
     return (
       <span className="mt-1 inline-flex items-center gap-1 text-caption text-muted-foreground">
         <Minus className="size-3.5" />
-        {t("stats.deltaFlat")}
+        {t(period === "year" ? "stats.deltaFlatYear" : "stats.deltaFlat")}
       </span>
     );
   }
   const isUp = delta > 0;
+  const key = isUp
+    ? period === "year"
+      ? "stats.deltaUpYear"
+      : "stats.deltaUp"
+    : period === "year"
+      ? "stats.deltaDownYear"
+      : "stats.deltaDown";
   return (
     <span className={`mt-1 inline-flex items-center gap-1 text-caption ${isUp ? "text-success" : "text-destructive"}`}>
       {isUp ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-      {t(isUp ? "stats.deltaUp" : "stats.deltaDown", { value: formatValue(Math.abs(delta)) })}
+      {t(key, { value: formatValue(Math.abs(delta)) })}
     </span>
   );
 }
@@ -78,6 +94,7 @@ export function StatsPage() {
   const [wrappedPreviewUrl, setWrappedPreviewUrl] = useState<string | null>(null);
   const stats = useStats();
   const wrapped = useWrapped(selectedYear);
+  const previousYearWrapped = useWrapped(selectedYear - 1);
   const forecast = useWatchForecast();
   const yearlyActivity = useYearlyActivity();
 
@@ -92,6 +109,15 @@ export function StatsPage() {
   useEffect(() => {
     if (yearlyActivity.isError) logger.warn("Yearly activity failed to load — that section will stay hidden.");
   }, [yearlyActivity.isError]);
+  // The Wrapped panel's own pending/error guard below only covers the
+  // selected year — the prior year is purely additive (the year-over-year
+  // comparison), so its failure just hides that comparison rather than the
+  // whole panel.
+  useEffect(() => {
+    if (previousYearWrapped.isError) {
+      logger.warn("Previous year's Wrapped summary failed to load — the year-over-year comparison will stay hidden.");
+    }
+  }, [previousYearWrapped.isError]);
 
   const closeWrappedPreview = () => {
     if (wrappedPreviewUrl) URL.revokeObjectURL(wrappedPreviewUrl);
@@ -172,6 +198,7 @@ export function StatsPage() {
     { label: t("stats.libraryCompleted"), value: `${stats.data.libraryCompletionPercent}%`, icon: BarChart3 },
   ];
   const comparison = monthOverMonthComparison(stats.data.monthlyActivity);
+  const yearComparison = yearOverYearComparison(wrapped.data, previousYearWrapped.data);
 
   const availableYears = yearlyActivity.data?.map((bucket) => bucket.year) ?? [];
   const minYear = availableYears.length ? Math.min(...availableYears, currentYear) : currentYear;
@@ -501,16 +528,35 @@ export function StatsPage() {
                 </IconTooltip>
               </div>
             </div>
-            <p className="mt-3 font-display text-display-title font-bold">
-              {formatWatchDurationBreakdown(wrapped.data.minutes)}
-            </p>
-            <p className="text-body-sm text-muted-foreground">
-              {t("stats.activeDays", { count: wrapped.data.activeDays })}
-            </p>
-            <div className="mt-4 grid gap-2 text-body-sm">
-              <p>
-                {wrapped.data.movies} {t("stats.films")} · {wrapped.data.episodes} {t("stats.episodes")}
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <p className="font-display text-display-title font-bold">
+                {formatWatchDurationBreakdown(wrapped.data.minutes)}
               </p>
+              {yearComparison ? (
+                <DeltaBadge delta={yearComparison.minutesDelta} formatValue={hours} period="year" />
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-body-sm text-muted-foreground">
+                {t("stats.activeDays", { count: wrapped.data.activeDays })}
+              </p>
+              {yearComparison ? (
+                <DeltaBadge
+                  delta={yearComparison.activeDaysDelta}
+                  formatValue={(value) => String(value)}
+                  period="year"
+                />
+              ) : null}
+            </div>
+            <div className="mt-4 grid gap-2 text-body-sm">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p>
+                  {wrapped.data.movies} {t("stats.films")} · {wrapped.data.episodes} {t("stats.episodes")}
+                </p>
+                {yearComparison ? (
+                  <DeltaBadge delta={yearComparison.countDelta} formatValue={(value) => String(value)} period="year" />
+                ) : null}
+              </div>
               <p>
                 {t("stats.favouriteGenre")} <strong>{wrapped.data.favouriteGenre ?? "—"}</strong>
               </p>

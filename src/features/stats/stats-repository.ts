@@ -26,7 +26,7 @@ function activeEvents(events: ViewingEvent[]): ViewingEvent[] {
   return events.filter((event) => event.eventType !== "unwatched");
 }
 
-interface YearSummary {
+export interface YearSummary {
   year: number;
   movies: number;
   episodes: number;
@@ -66,6 +66,35 @@ export function monthOverMonthComparison(
     previous: { count: previous.count, minutes: previous.minutes },
     countDelta: current.count - previous.count,
     minutesDelta: current.minutes - previous.minutes,
+  };
+}
+
+export interface YearComparison {
+  current: { count: number; minutes: number; activeDays: number };
+  previous: { count: number; minutes: number; activeDays: number };
+  countDelta: number;
+  minutesDelta: number;
+  activeDaysDelta: number;
+}
+
+/**
+ * The selected Wrapped year vs. the one right before it. Unlike
+ * `monthOverMonthComparison`, which reads trailing entries already present
+ * in `monthlyActivity`, this needs a second `getYearSummary` fetch — Wrapped
+ * only ever has the currently-selected year loaded. Returns `null` when the
+ * previous year has no activity at all (a profile too new, or a genuine gap
+ * year) — comparing against an all-zero year would just be noise.
+ */
+export function yearOverYearComparison(current: YearSummary, previous: YearSummary | undefined): YearComparison | null {
+  if (!previous || (previous.movies === 0 && previous.episodes === 0 && previous.activeDays === 0)) return null;
+  const currentCount = current.movies + current.episodes;
+  const previousCount = previous.movies + previous.episodes;
+  return {
+    current: { count: currentCount, minutes: current.minutes, activeDays: current.activeDays },
+    previous: { count: previousCount, minutes: previous.minutes, activeDays: previous.activeDays },
+    countDelta: currentCount - previousCount,
+    minutesDelta: current.minutes - previous.minutes,
+    activeDaysDelta: current.activeDays - previous.activeDays,
   };
 }
 

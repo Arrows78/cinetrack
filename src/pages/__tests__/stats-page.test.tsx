@@ -331,6 +331,55 @@ describe("StatsPage", () => {
     await waitFor(() => expect(wrappedMock).toHaveBeenCalledWith(CURRENT_YEAR - 1));
   });
 
+  describe("year-over-year comparison", () => {
+    function wrappedFor(year: number) {
+      return { data: makeWrapped(year), isPending: false, isError: false, error: null, refetch: vi.fn() };
+    }
+
+    it("shows signed deltas against the previous year's totals", async () => {
+      wrappedMock.mockReset().mockImplementation((year: number) => {
+        if (year === CURRENT_YEAR) {
+          return wrappedFor(CURRENT_YEAR);
+        }
+        return {
+          ...wrappedFor(CURRENT_YEAR - 1),
+          data: {
+            ...makeWrapped(CURRENT_YEAR - 1),
+            movies: 5,
+            episodes: 50,
+            minutes: 3000,
+            activeDays: 30,
+          },
+        };
+      });
+      renderPage();
+
+      await screen.findByText("Stats");
+
+      // current: 10 movies + 100 episodes = 110; previous: 5 + 50 = 55 -> +55
+      expect(screen.getByText("+55 vs last year")).toBeInTheDocument();
+      // current 6000 minutes vs previous 3000 -> +50h vs last year
+      expect(screen.getByText("+50h 0min vs last year")).toBeInTheDocument();
+      // current 50 active days vs previous 30 -> +20
+      expect(screen.getByText("+20 vs last year")).toBeInTheDocument();
+    });
+
+    it("hides the comparison when the previous year has no recorded activity", async () => {
+      wrappedMock.mockReset().mockImplementation((year: number) => {
+        if (year === CURRENT_YEAR) return wrappedFor(CURRENT_YEAR);
+        return {
+          ...wrappedFor(CURRENT_YEAR - 1),
+          data: { ...makeWrapped(CURRENT_YEAR - 1), movies: 0, episodes: 0, activeDays: 0 },
+        };
+      });
+      renderPage();
+
+      await screen.findByText("Stats");
+
+      expect(screen.queryByText(/vs last year/)).not.toBeInTheDocument();
+    });
+  });
+
   it("renders the wrapped card and opens a preview dialog before saving anything", async () => {
     renderPage();
     await screen.findByText("Stats");
