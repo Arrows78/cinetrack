@@ -108,4 +108,22 @@ export type UserPreferences = {
    * aren't something to hand to a different device via cloud sync.
    */
   recentSearches: Array<string>;
+  /**
+   * The in-window command-palette shortcut, normalized as
+   * modifier-parts-joined-by-"+" (e.g. `"mod+k"`, where `"mod"` means
+   * Cmd on macOS / Ctrl elsewhere) — see
+   * src/shared/lib/keyboard-shortcut.ts, the single place that both
+   * parses and formats this string. Device-scoped, not account-scoped:
+   * a remapped key is a statement about this keyboard/OS, not about the
+   * person using it.
+   */
+  commandPaletteShortcut: string;
+  /**
+   * The OS-level global shortcut that opens the command palette even
+   * when CineTrack isn't focused, in the same normalized form as
+   * `command_palette_shortcut` above — converted to
+   * `tauri-plugin-global-shortcut`'s own string format
+   * (`toTauriGlobalShortcut`) only at the point of registering it.
+   */
+  globalCommandPaletteShortcut: string;
 };

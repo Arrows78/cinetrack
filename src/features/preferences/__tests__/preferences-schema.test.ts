@@ -34,6 +34,8 @@ describe("preferencesSchema", () => {
       onThisDayEnabled: false,
       onboardingCompleted: false,
       recentSearches: [],
+      commandPaletteShortcut: "mod+k",
+      globalCommandPaletteShortcut: "mod+shift+k",
       userProfile: {
         id: DEFAULT_PROFILE_ID,
         name: null,

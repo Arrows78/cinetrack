@@ -20,6 +20,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useNavigationItems } from "@/shared/constants/navigation";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { defaultPreferences } from "@/features/preferences/preferences-repository";
+import { shortcutMatchesEvent } from "@/shared/lib/keyboard-shortcut";
 import { useSearch } from "@/features/media/use-search";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
@@ -257,6 +259,15 @@ export function CommandPalette() {
     stateRef.current = { open, results, selectedIndex };
   }, [open, results, selectedIndex]);
 
+  // Read via a ref (not a dependency on the keydown effect below, which
+  // intentionally only subscribes once) so a remapped shortcut in Settings
+  // takes effect immediately without tearing down and re-adding the
+  // window listener.
+  const shortcutRef = useRef(preferences.data?.commandPaletteShortcut ?? defaultPreferences.commandPaletteShortcut);
+  useEffect(() => {
+    shortcutRef.current = preferences.data?.commandPaletteShortcut ?? defaultPreferences.commandPaletteShortcut;
+  }, [preferences.data?.commandPaletteShortcut]);
+
   useEffect(() => {
     itemRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex]);
@@ -277,7 +288,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     const keyboard = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      if (shortcutMatchesEvent(shortcutRef.current, event)) {
         event.preventDefault();
         if (!stateRef.current.open) previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
         setOpen((value) => !value);

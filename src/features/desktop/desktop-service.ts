@@ -1,7 +1,16 @@
 import { router } from "@/app/router-config";
 import { isTauriApp } from "@/shared/lib/platform";
+import { defaultPreferences, preferencesRepository } from "@/features/preferences/preferences-repository";
+import { toTauriGlobalShortcut } from "@/shared/lib/keyboard-shortcut";
 
-const SHORTCUT = "CommandOrControl+Shift+K";
+const openCommandPalette = () => window.dispatchEvent(new Event("cinetrack:command-palette"));
+
+// Tracks whichever global-shortcut string is actually registered right now
+// (in tauri-plugin-global-shortcut's own format), so both initialize()'s
+// cleanup and a later updateGlobalShortcut() call agree on what to
+// unregister before registering the next one.
+let registeredGlobalShortcut: string | null = null;
+
 const routeFromUrl = (raw: string): string | null => {
   try {
     const url = new URL(raw);
@@ -24,8 +33,15 @@ export const desktopService = {
     const { register, unregister, onOpenUrl, listen } = await import("@/shared/lib/tauri-desktop");
     const cleanups: Array<() => void> = [];
     try {
-      await register(SHORTCUT, () => window.dispatchEvent(new Event("cinetrack:command-palette")));
-      cleanups.push(() => void unregister(SHORTCUT));
+      const preferences = await preferencesRepository.getPreferences();
+      const shortcut = toTauriGlobalShortcut(
+        preferences.globalCommandPaletteShortcut ?? defaultPreferences.globalCommandPaletteShortcut
+      );
+      await register(shortcut, openCommandPalette);
+      registeredGlobalShortcut = shortcut;
+      cleanups.push(() => {
+        if (registeredGlobalShortcut) void unregister(registeredGlobalShortcut);
+      });
     } catch (error) {
       console.warn("Global shortcut unavailable", error);
     }
@@ -55,5 +71,25 @@ export const desktopService = {
       console.warn("Single-instance deep links unavailable", error);
     }
     return () => cleanups.forEach((cleanup) => cleanup());
+  },
+
+  // Called by the Settings UI right after persisting a new
+  // globalCommandPaletteShortcut preference, so the OS-level binding
+  // updates live instead of only taking effect on the next app launch.
+  // `next` is the normalized preference-shape shortcut (e.g.
+  // "mod+shift+k"); converted to tauri-plugin-global-shortcut's format
+  // here, same as initialize() does.
+  async updateGlobalShortcut(next: string): Promise<void> {
+    if (!isTauriApp()) return;
+    const { register, unregister } = await import("@/shared/lib/tauri-desktop");
+    const nextShortcut = toTauriGlobalShortcut(next);
+    if (nextShortcut === registeredGlobalShortcut) return;
+    try {
+      if (registeredGlobalShortcut) await unregister(registeredGlobalShortcut);
+      await register(nextShortcut, openCommandPalette);
+      registeredGlobalShortcut = nextShortcut;
+    } catch (error) {
+      console.warn("Global shortcut unavailable", error);
+    }
   },
 };

@@ -22,3 +22,11 @@ export const isMobileApp = () => isTauriApp() && MOBILE_OS_TYPES.has(type());
  * isTauriApp().
  */
 export const isDesktopApp = () => isTauriApp() && !MOBILE_OS_TYPES.has(type());
+
+/**
+ * True on macOS specifically — used only to pick which modifier glyphs
+ * (⌘⇧⌥) a keyboard shortcut renders with (see keyboard-shortcut.ts's
+ * formatShortcutForDisplay); every other platform check in this file cares
+ * about desktop-vs-mobile or Tauri-vs-browser, not which desktop OS.
+ */
+export const isMacOs = () => isTauriApp() && type() === "macos";

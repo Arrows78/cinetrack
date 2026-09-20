@@ -1,22 +1,105 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
+import { RotateCcw } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { ShortcutInput } from "@/components/ui/shortcut-input";
 import { Textarea } from "@/components/ui/textarea";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { maintenanceService } from "@/features/backup";
 import { diagnosticsService, tokenVault, updateService, type DiagnosticsSummary } from "@/features/desktop";
+import { defaultPreferences } from "@/features/preferences/preferences-repository";
+import { usePreferences } from "@/features/preferences/use-preferences";
 import { logger } from "@/shared/lib/logger";
 import { isDesktopApp, isTauriApp } from "@/shared/lib/platform";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { errorMessage } from "@/shared/lib/errors";
 import { formatRelativeDate } from "@/shared/utils/format";
+import type { UserPreferences } from "@/types/media";
+
+type ShortcutKey = "commandPaletteShortcut" | "globalCommandPaletteShortcut";
+
+/** The two remappable shortcuts (in-window and system-wide command palette) — see desktop.shortcuts' surrounding copy for the non-remappable deep-link scheme. */
+function KeyboardShortcutsRow() {
+  const { t } = useTranslation();
+  const { data: preferences, updatePreference, isSaving } = usePreferences();
+  const [error, setError] = useState<string | null>(null);
+
+  const current: Record<ShortcutKey, string> = {
+    commandPaletteShortcut: preferences?.commandPaletteShortcut ?? defaultPreferences.commandPaletteShortcut,
+    globalCommandPaletteShortcut:
+      preferences?.globalCommandPaletteShortcut ?? defaultPreferences.globalCommandPaletteShortcut,
+  };
+
+  const applyShortcut = async (key: ShortcutKey, next: string) => {
+    setError(null);
+    const otherKey: ShortcutKey = key === "commandPaletteShortcut" ? "globalCommandPaletteShortcut" : "commandPaletteShortcut";
+    if (next === current[otherKey]) {
+      setError(t("desktop.shortcutsConflict"));
+      return;
+    }
+    try {
+      await updatePreference({ key, value: next as UserPreferences[ShortcutKey] });
+      if (key === "globalCommandPaletteShortcut") {
+        // Dynamically imported — desktop-service.ts pulls in the app router
+        // (for its deep-link navigation), which this settings page has no
+        // other reason to load eagerly just to remap a shortcut.
+        const { desktopService } = await import("@/features/desktop/desktop-service");
+        void desktopService.updateGlobalShortcut(next);
+      }
+    } catch (updateError) {
+      logger.warn(`Failed to update keyboard shortcut: ${errorMessage(updateError)}`);
+      setError(t("desktop.shortcutsUpdateFailed"));
+    }
+  };
+
+  const row = (key: ShortcutKey, label: string) => (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-40 shrink-0 text-body-sm text-muted-foreground">{label}</span>
+      <ShortcutInput
+        label={label}
+        recordingLabel={t("desktop.shortcutRecording")}
+        value={current[key]}
+        disabled={isSaving}
+        onChange={(next) => void applyShortcut(key, next)}
+      />
+      <IconTooltip label={t("desktop.shortcutReset")}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t("desktop.shortcutReset")}
+          disabled={isSaving || current[key] === defaultPreferences[key]}
+          onClick={() => void applyShortcut(key, defaultPreferences[key])}
+        >
+          <RotateCcw className="size-4" />
+        </Button>
+      </IconTooltip>
+    </div>
+  );
+
+  return (
+    <div className="mt-3 space-y-3">
+      <div className="space-y-2">
+        {row("commandPaletteShortcut", t("desktop.shortcutCommandPaletteLabel"))}
+        {row("globalCommandPaletteShortcut", t("desktop.shortcutGlobalLabel"))}
+      </div>
+      {error ? (
+        <p role="alert" aria-live="polite" className="text-caption text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <p className="text-caption text-muted-foreground">{t("desktop.shortcutsDeepLinksHint")}</p>
+    </div>
+  );
+}
 
 export function DesktopSettings() {
   const { t } = useTranslation();
@@ -204,9 +287,7 @@ export function DesktopSettings() {
                     {t("desktop.checkDatabase")}
                   </Button>
                 </div>
-                {isDesktopApp() ? (
-                  <p className="mt-3 text-caption text-muted-foreground">{t("desktop.shortcuts")}</p>
-                ) : null}
+                {isDesktopApp() ? <KeyboardShortcutsRow /> : null}
               </CardContent>
             </Card>
           </div>

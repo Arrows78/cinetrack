@@ -1,12 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { registerMock, unregisterMock, onOpenUrlMock, listenMock, navigateMock, isTauriAppMock } = vi.hoisted(() => ({
-  registerMock: vi.fn(),
-  unregisterMock: vi.fn(),
-  onOpenUrlMock: vi.fn(),
-  listenMock: vi.fn(),
-  navigateMock: vi.fn(),
-  isTauriAppMock: vi.fn(),
+const { registerMock, unregisterMock, onOpenUrlMock, listenMock, navigateMock, isTauriAppMock, getPreferencesMock } =
+  vi.hoisted(() => ({
+    registerMock: vi.fn(),
+    unregisterMock: vi.fn(),
+    onOpenUrlMock: vi.fn(),
+    listenMock: vi.fn(),
+    navigateMock: vi.fn(),
+    isTauriAppMock: vi.fn(),
+    getPreferencesMock: vi.fn(),
+  }));
+
+vi.mock("@/features/preferences/preferences-repository", () => ({
+  preferencesRepository: { getPreferences: getPreferencesMock },
+  defaultPreferences: { globalCommandPaletteShortcut: "mod+shift+k" },
 }));
 
 vi.mock("@/shared/lib/tauri-desktop", () => ({
@@ -55,6 +62,7 @@ describe("desktopService.initialize", () => {
 
     registerMock.mockResolvedValue(undefined);
     unregisterMock.mockResolvedValue(undefined);
+    getPreferencesMock.mockResolvedValue({ globalCommandPaletteShortcut: "mod+shift+k" });
 
     deepLinkUnlisten = vi.fn();
     onOpenUrlMock.mockImplementation(async (cb: (urls: string[]) => void) => {
@@ -232,5 +240,65 @@ describe("desktopService.initialize", () => {
     // `new URL(raw)` throws for a genuinely malformed string -> caught, returns null.
     deepLinkCallback({ payload: "not a url" });
     expect(navigateMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("registers whatever global shortcut is stored in preferences, converted to tauri-plugin-global-shortcut's format", async () => {
+    getPreferencesMock.mockResolvedValue({ globalCommandPaletteShortcut: "mod+shift+j" });
+
+    await desktopService.initialize();
+
+    expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+J", expect.any(Function));
+  });
+
+  it("warns and skips the cleanup when reading preferences for the global shortcut fails", async () => {
+    const error = new Error("preferences boom");
+    getPreferencesMock.mockRejectedValueOnce(error);
+
+    const cleanup = await desktopService.initialize();
+    cleanup();
+
+    expect(warnSpy).toHaveBeenCalledWith("Global shortcut unavailable", error);
+    expect(unregisterMock).not.toHaveBeenCalled();
+  });
+
+  describe("updateGlobalShortcut", () => {
+    it("unregisters the previously-registered shortcut and registers the new one", async () => {
+      await desktopService.initialize();
+      registerMock.mockClear();
+
+      await desktopService.updateGlobalShortcut("mod+shift+j");
+
+      expect(unregisterMock).toHaveBeenCalledWith("CommandOrControl+Shift+K");
+      expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+J", expect.any(Function));
+    });
+
+    it("is a no-op when the new shortcut is the same as the currently registered one", async () => {
+      await desktopService.initialize();
+      registerMock.mockClear();
+      unregisterMock.mockClear();
+
+      await desktopService.updateGlobalShortcut("mod+shift+k");
+
+      expect(unregisterMock).not.toHaveBeenCalled();
+      expect(registerMock).not.toHaveBeenCalled();
+    });
+
+    it("does nothing outside Tauri", async () => {
+      isTauriAppMock.mockReturnValue(false);
+
+      await desktopService.updateGlobalShortcut("mod+shift+j");
+
+      expect(registerMock).not.toHaveBeenCalled();
+    });
+
+    it("warns without throwing when registering the new shortcut fails", async () => {
+      await desktopService.initialize();
+      const error = new Error("register boom");
+      registerMock.mockRejectedValueOnce(error);
+
+      await desktopService.updateGlobalShortcut("mod+shift+j");
+
+      expect(warnSpy).toHaveBeenCalledWith("Global shortcut unavailable", error);
+    });
   });
 });

@@ -71,6 +71,21 @@ const isDesktopAppMock = vi.fn(() => true);
 vi.mock("@/shared/lib/platform", () => ({
   isTauriApp: () => isTauriAppMock(),
   isDesktopApp: () => isDesktopAppMock(),
+  isMacOs: () => false,
+}));
+
+let mockCommandPaletteShortcut = "mod+k";
+let mockGlobalCommandPaletteShortcut = "mod+shift+k";
+const updatePreferenceMock = vi.fn();
+vi.mock("@/features/preferences/use-preferences", () => ({
+  usePreferences: () => ({
+    data: {
+      commandPaletteShortcut: mockCommandPaletteShortcut,
+      globalCommandPaletteShortcut: mockGlobalCommandPaletteShortcut,
+    },
+    updatePreference: (...args: unknown[]) => updatePreferenceMock(...args),
+    isSaving: false,
+  }),
 }));
 
 const formatRelativeDateMock = vi.fn<(iso: string) => string>(() => "3 days ago");
@@ -111,6 +126,9 @@ describe("DesktopSettings", () => {
     isTauriAppMock.mockReset().mockReturnValue(true);
     isDesktopAppMock.mockReset().mockReturnValue(true);
     formatRelativeDateMock.mockReset().mockReturnValue("3 days ago");
+    updatePreferenceMock.mockReset().mockResolvedValue(undefined);
+    mockCommandPaletteShortcut = "mod+k";
+    mockGlobalCommandPaletteShortcut = "mod+shift+k";
 
     // jsdom doesn't implement the Clipboard API.
     Object.defineProperty(navigator, "clipboard", {
@@ -278,6 +296,67 @@ describe("DesktopSettings", () => {
 
       await Promise.resolve();
       expect(isEnabledMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("keyboard shortcuts", () => {
+    it("shows the current in-window and system-wide shortcuts, formatted for display", () => {
+      render(<DesktopSettings />);
+
+      expect(screen.getByRole("button", { name: "Palette (in window)" })).toHaveTextContent("Ctrl+K");
+      expect(screen.getByRole("button", { name: "Palette (system-wide)" })).toHaveTextContent("Ctrl+Shift+K");
+    });
+
+    it("captures a new in-window shortcut and persists it", async () => {
+      render(<DesktopSettings />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Palette (in window)" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Press a key combo…" }), { key: "j", ctrlKey: true });
+
+      await waitFor(() =>
+        expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "commandPaletteShortcut", value: "mod+j" })
+      );
+    });
+
+    it("shows a conflict error instead of saving when the new shortcut matches the other binding", async () => {
+      render(<DesktopSettings />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Palette (in window)" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Press a key combo…" }), {
+        key: "k",
+        ctrlKey: true,
+        shiftKey: true,
+      });
+
+      expect(await screen.findByText("The two shortcuts can't be the same.")).toBeInTheDocument();
+      expect(updatePreferenceMock).not.toHaveBeenCalled();
+    });
+
+    it("disables the reset button once a shortcut is already at its default", () => {
+      render(<DesktopSettings />);
+
+      const resetButtons = screen.getAllByRole("button", { name: "Reset to default" });
+      expect(resetButtons).toHaveLength(2);
+      expect(resetButtons[0]).toBeDisabled();
+      expect(resetButtons[1]).toBeDisabled();
+    });
+
+    it("resets a non-default global shortcut to its default", async () => {
+      mockGlobalCommandPaletteShortcut = "mod+shift+j";
+      render(<DesktopSettings />);
+
+      const globalShortcutButton = screen.getByRole("button", { name: "Palette (system-wide)" });
+      expect(globalShortcutButton).toHaveTextContent("Ctrl+Shift+J");
+
+      const resetButtons = screen.getAllByRole("button", { name: "Reset to default" });
+      fireEvent.click(resetButtons[1]!);
+
+      await waitFor(() =>
+        expect(updatePreferenceMock).toHaveBeenCalledWith({
+          key: "globalCommandPaletteShortcut",
+          value: "mod+shift+k",
+        })
+      );
     });
   });
 

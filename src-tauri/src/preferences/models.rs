@@ -175,6 +175,30 @@ pub struct UserPreferences {
     /// aren't something to hand to a different device via cloud sync.
     #[serde(default)]
     pub recent_searches: Vec<String>,
+    /// The in-window command-palette shortcut, normalized as
+    /// modifier-parts-joined-by-"+" (e.g. `"mod+k"`, where `"mod"` means
+    /// Cmd on macOS / Ctrl elsewhere) — see
+    /// src/shared/lib/keyboard-shortcut.ts, the single place that both
+    /// parses and formats this string. Device-scoped, not account-scoped:
+    /// a remapped key is a statement about this keyboard/OS, not about the
+    /// person using it.
+    #[serde(default = "default_command_palette_shortcut")]
+    pub command_palette_shortcut: String,
+    /// The OS-level global shortcut that opens the command palette even
+    /// when CineTrack isn't focused, in the same normalized form as
+    /// `command_palette_shortcut` above — converted to
+    /// `tauri-plugin-global-shortcut`'s own string format
+    /// (`toTauriGlobalShortcut`) only at the point of registering it.
+    #[serde(default = "default_global_command_palette_shortcut")]
+    pub global_command_palette_shortcut: String,
+}
+
+fn default_command_palette_shortcut() -> String {
+    "mod+k".to_string()
+}
+
+fn default_global_command_palette_shortcut() -> String {
+    "mod+shift+k".to_string()
 }
 
 /// Matches the frontend's own cap in use-search-history.ts, so neither side
@@ -233,6 +257,8 @@ impl Default for UserPreferences {
             on_this_day_enabled: false,
             onboarding_completed: false,
             recent_searches: Vec::new(),
+            command_palette_shortcut: default_command_palette_shortcut(),
+            global_command_palette_shortcut: default_global_command_palette_shortcut(),
         }
     }
 }
@@ -267,6 +293,18 @@ pub(super) fn validate(prefs: &UserPreferences) -> Result<(), ApiError> {
         return Err(ApiError::bad_request(format!(
             "recentSearches can't hold more than {MAX_RECENT_SEARCHES} entries"
         )));
+    }
+    if prefs.command_palette_shortcut.trim().is_empty()
+        || prefs.global_command_palette_shortcut.trim().is_empty()
+    {
+        return Err(ApiError::bad_request(
+            "Keyboard shortcuts must not be empty",
+        ));
+    }
+    if prefs.command_palette_shortcut == prefs.global_command_palette_shortcut {
+        return Err(ApiError::bad_request(
+            "The in-window and system-wide shortcuts must be different",
+        ));
     }
     Ok(())
 }
@@ -367,6 +405,35 @@ mod tests {
     fn accepts_positive_preferred_provider_ids() {
         let prefs = UserPreferences {
             preferred_provider_ids: vec![8, 337],
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_ok());
+    }
+
+    #[test]
+    fn rejects_an_empty_command_palette_shortcut() {
+        let prefs = UserPreferences {
+            command_palette_shortcut: "".to_string(),
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_err());
+    }
+
+    #[test]
+    fn rejects_identical_shortcuts_for_both_bindings() {
+        let prefs = UserPreferences {
+            command_palette_shortcut: "mod+k".to_string(),
+            global_command_palette_shortcut: "mod+k".to_string(),
+            ..UserPreferences::default()
+        };
+        assert!(validate(&prefs).is_err());
+    }
+
+    #[test]
+    fn accepts_distinct_non_empty_shortcuts() {
+        let prefs = UserPreferences {
+            command_palette_shortcut: "mod+j".to_string(),
+            global_command_palette_shortcut: "mod+shift+j".to_string(),
             ..UserPreferences::default()
         };
         assert!(validate(&prefs).is_ok());
