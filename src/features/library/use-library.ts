@@ -27,6 +27,15 @@ export function useLibraryMediaKeys() {
   });
 }
 
+// An imperative pick, not a cached query — every call should genuinely
+// re-roll, not replay a stale cached result. Read-only (no invalidation
+// needed): the "surprise me" shortcut in the /movies and /series hubs.
+export function useRandomLibraryItem() {
+  return useMutation({
+    mutationFn: (mediaType?: MediaSummary["mediaType"]) => libraryRepository.getRandom(mediaType),
+  });
+}
+
 // Every tag already used somewhere in the library — backs the tag editor's
 // autocomplete (see TagInput). Invalidated alongside everything else a
 // library save touches (see useLibraryItem's save mutation above).

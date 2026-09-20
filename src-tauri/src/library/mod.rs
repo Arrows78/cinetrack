@@ -7,10 +7,11 @@ mod service;
 
 pub use commands::{
     get_best_recommendation_seed, get_library_item, get_library_items_by_keys,
-    get_library_status_counts, has_library_item, list_completed_library_candidates, list_library,
-    list_library_distinct_tags, list_library_ids_matching_filters, list_library_media_keys,
-    list_library_page, list_planned_library_candidates, refresh_library_catalog_metadata,
-    remove_library_item, remove_planned_library_item, save_library_item,
+    get_library_status_counts, get_random_library_item, has_library_item,
+    list_completed_library_candidates, list_library, list_library_distinct_tags,
+    list_library_ids_matching_filters, list_library_media_keys, list_library_page,
+    list_planned_library_candidates, refresh_library_catalog_metadata, remove_library_item,
+    remove_planned_library_item, save_library_item,
 };
 pub(crate) use domain::LibraryStatus;
 pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};

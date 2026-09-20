@@ -437,7 +437,10 @@
   },
   "mediaHub": {
     "browseAllMovies": "Browse all movies",
-    "browseAllSeries": "Browse all series"
+    "browseAllSeries": "Browse all series",
+    "randomPick": "Surprise me",
+    "randomEmpty": "Nothing in your list yet to pick from.",
+    "randomFailed": "Couldn't pick a random title."
   },
   "movies": {
     "subtitle": "Posters, filters, and detailed pages.",

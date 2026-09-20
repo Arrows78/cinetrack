@@ -437,7 +437,10 @@
   },
   "mediaHub": {
     "browseAllMovies": "Parcourir tous les films",
-    "browseAllSeries": "Parcourir toutes les séries"
+    "browseAllSeries": "Parcourir toutes les séries",
+    "randomPick": "Surprends-moi",
+    "randomEmpty": "Rien dans votre liste pour l'instant.",
+    "randomFailed": "Impossible de choisir un titre au hasard."
   },
   "movies": {
     "subtitle": "Affiches, filtres et fiches détaillées.",

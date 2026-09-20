@@ -68,6 +68,13 @@ export const libraryRepository = {
     return invokeTypedCommand(libraryCommands.listMediaKeys);
   },
 
+  // Picks fairly across the whole matching set server-side (ORDER BY
+  // RANDOM()) rather than a random offset into whatever's already loaded
+  // client-side — the /movies and /series hubs' "surprise me" shortcut.
+  async getRandom(mediaType?: MediaSummary["mediaType"]): Promise<LibraryMediaKey | null> {
+    return invokeTypedCommand(libraryCommands.getRandom, { mediaType: mediaType ?? null });
+  },
+
   // Batch counterpart to get() — a caller-bounded set of specific
   // (mediaId, mediaType) pairs (a TMDB collection's parts, one custom
   // list's items), not "give me everything."

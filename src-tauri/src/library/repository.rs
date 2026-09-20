@@ -12,7 +12,7 @@ use super::models::{LibraryFilterParams, LibraryListParams, LibraryMediaKey, Lib
 use super::queries::get_impl;
 #[cfg(test)]
 use super::queries::{
-    get_best_recommendation_seed_impl, get_items_by_keys_impl, has_impl,
+    get_best_recommendation_seed_impl, get_items_by_keys_impl, get_random_impl, has_impl,
     list_completed_candidates_impl, list_distinct_tags_impl, list_ids_matching_filters_impl,
     list_impl, list_media_keys_impl, list_page_impl, list_planned_candidates_impl,
     list_status_counts_impl,
@@ -1587,6 +1587,66 @@ mod tests {
         assert_eq!(keys.len(), 1);
         assert_eq!(keys[0].media_id, 1);
         assert_eq!(keys[0].media_type, MediaType::Movie);
+    }
+
+    #[tokio::test]
+    async fn get_random_impl_returns_none_for_an_empty_library() {
+        let pool = migrated_pool().await;
+
+        assert_eq!(get_random_impl(&pool, "default", None).await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn get_random_impl_only_picks_from_the_requested_profile() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "other")
+            .await
+            .unwrap();
+
+        assert_eq!(get_random_impl(&pool, "default", None).await.unwrap(), None);
+        assert_eq!(
+            get_random_impl(&pool, "other", None).await.unwrap(),
+            Some(key(1, MediaType::Movie))
+        );
+    }
+
+    #[tokio::test]
+    async fn get_random_impl_filters_by_media_type_when_given() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(1), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        upsert_impl(
+            &pool,
+            MediaSummaryInput {
+                media_type: MediaType::Series,
+                ..media(2)
+            },
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            get_random_impl(&pool, "default", Some(MediaType::Movie))
+                .await
+                .unwrap(),
+            Some(key(1, MediaType::Movie))
+        );
+        assert_eq!(
+            get_random_impl(&pool, "default", Some(MediaType::Series))
+                .await
+                .unwrap(),
+            Some(key(2, MediaType::Series))
+        );
     }
 
     #[tokio::test]

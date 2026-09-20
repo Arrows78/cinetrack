@@ -60,7 +60,7 @@ use commands::{
 };
 use commands::{
     get_best_recommendation_seed, get_library_items_by_keys, get_library_status_counts,
-    list_completed_library_candidates, list_library_distinct_tags,
+    get_random_library_item, list_completed_library_candidates, list_library_distinct_tags,
     list_library_ids_matching_filters, list_library_media_keys, list_planned_library_candidates,
     refresh_library_catalog_metadata,
 };
@@ -139,6 +139,7 @@ pub fn run() {
             remove_library_item,
             remove_planned_library_item,
             list_library_media_keys,
+            get_random_library_item,
             get_library_items_by_keys,
             get_library_status_counts,
             list_planned_library_candidates,

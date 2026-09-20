@@ -37,6 +37,14 @@ vi.mock("@tanstack/react-router", async () => {
   };
 });
 
+const mutateRandomMock = vi.fn();
+vi.mock("@/features/library/use-library", () => ({
+  useRandomLibraryItem: () => ({ mutate: mutateRandomMock, isPending: false }),
+}));
+
+const toastMock = vi.fn();
+vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<SeriesPage />, {
@@ -51,6 +59,8 @@ describe("SeriesPage", () => {
 
   beforeEach(() => {
     navigateMock.mockReset();
+    mutateRandomMock.mockReset();
+    toastMock.mockReset();
   });
 
   it("renders LibraryExplorer locked to series, with no view-switching tabs", () => {
@@ -76,5 +86,30 @@ describe("SeriesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "library-explorer-browse-all" }));
 
     expect(navigateMock).toHaveBeenCalledWith({ to: "/search", search: { scope: "series" } });
+  });
+
+  it("navigates to the picked series when 'Surprise me' resolves with a key", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Surprise me" }));
+    const [, options] = mutateRandomMock.mock.calls[0] as [
+      unknown,
+      { onSuccess: (key: { mediaId: number; mediaType: string } | null) => void },
+    ];
+    options.onSuccess({ mediaId: 42, mediaType: "series" });
+
+    expect(mutateRandomMock).toHaveBeenCalledWith("series", expect.anything());
+    expect(navigateMock).toHaveBeenCalledWith({ to: "/series/$seriesId", params: { seriesId: "42" } });
+  });
+
+  it("toasts instead of navigating when 'Surprise me' finds nothing to pick", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Surprise me" }));
+    const [, options] = mutateRandomMock.mock.calls[0] as [unknown, { onSuccess: (key: null) => void }];
+    options.onSuccess(null);
+
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" }));
+    expect(navigateMock).not.toHaveBeenCalledWith(expect.objectContaining({ to: "/series/$seriesId" }));
   });
 });

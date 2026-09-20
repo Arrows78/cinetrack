@@ -72,6 +72,23 @@ describe("libraryRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("list_library_media_keys", undefined);
   });
 
+  it("getRandom() invokes get_random_library_item with an unscoped media type by default", async () => {
+    const key = { mediaId: 7, mediaType: "movie" as const };
+    invokeMock.mockResolvedValueOnce(key);
+    const { libraryRepository } = await import("../library-repository");
+
+    await expect(libraryRepository.getRandom()).resolves.toEqual(key);
+    expect(invokeMock).toHaveBeenCalledWith("get_random_library_item", { mediaType: null });
+  });
+
+  it("getRandom() scopes get_random_library_item by media type when requested", async () => {
+    invokeMock.mockResolvedValueOnce(null);
+    const { libraryRepository } = await import("../library-repository");
+
+    await expect(libraryRepository.getRandom("series")).resolves.toBeNull();
+    expect(invokeMock).toHaveBeenCalledWith("get_random_library_item", { mediaType: "series" });
+  });
+
   it("getItemsByKeys() invokes get_library_items_by_keys with the keys array", async () => {
     const items = [libraryItem()];
     invokeMock.mockResolvedValueOnce(items);

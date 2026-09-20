@@ -1,7 +1,14 @@
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
+import { Shuffle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { LibraryExplorer } from "@/components/media/library/library-explorer";
 import { SectionHeader } from "@/components/media/primitives/section-header";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import { useRandomLibraryItem } from "@/features/library/use-library";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import type { MediaType } from "@/types/media";
 
 /**
@@ -29,12 +36,45 @@ export function MediaHubPage({
   subtitle: string;
   browseAllLabel: string;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const browseAll = () => void navigate({ to: "/search", search: { scope: mediaType } });
+  const randomPick = useRandomLibraryItem();
+
+  const pickRandom = () => {
+    randomPick.mutate(mediaType, {
+      onSuccess: (key) => {
+        if (!key) {
+          toast({ description: t("mediaHub.randomEmpty"), variant: "error" });
+          return;
+        }
+        void navigate(
+          key.mediaType === "movie"
+            ? { to: "/movies/$movieId", params: { movieId: String(key.mediaId) } }
+            : { to: "/series/$seriesId", params: { seriesId: String(key.mediaId) } }
+        );
+      },
+      onError: (error: unknown) => {
+        logger.warn(`Failed to pick a random title: ${errorMessage(error)}`);
+        toast({ description: t("mediaHub.randomFailed"), variant: "error" });
+      },
+    });
+  };
 
   return (
     <div className="space-y-8">
-      <SectionHeader title={title} subtitle={subtitle} icon={icon} isPageTitle />
+      <SectionHeader
+        title={title}
+        subtitle={subtitle}
+        icon={icon}
+        isPageTitle
+        action={
+          <Button type="button" variant="outline" onClick={pickRandom} isLoading={randomPick.isPending}>
+            <Shuffle className="mr-2 size-4" />
+            {t("mediaHub.randomPick")}
+          </Button>
+        }
+      />
       <LibraryExplorer lockedMediaType={mediaType} onBrowseAll={browseAll} browseAllLabel={browseAllLabel} />
     </div>
   );

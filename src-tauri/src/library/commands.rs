@@ -146,6 +146,19 @@ pub async fn list_library_media_keys(
 }
 
 #[tauri::command]
+pub async fn get_random_library_item(
+    media_type: Option<MediaType>,
+    pool: State<'_, SqlitePool>,
+) -> Result<Option<LibraryMediaKey>, ApiError> {
+    timed("get_random_library_item", async {
+        LibraryService::new(pool.inner())
+            .get_random(media_type)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn get_library_items_by_keys(
     keys: Vec<LibraryMediaKey>,
     pool: State<'_, SqlitePool>,

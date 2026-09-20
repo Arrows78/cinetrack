@@ -37,6 +37,8 @@ const removeMock = vi.fn(async (mediaId: number, mediaType: string) => {
 const removeIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
 const hasMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => false);
 const listPageMock = vi.fn<(params: LibraryListParams) => Promise<LibraryPage>>();
+const getRandomMock =
+  vi.fn<(mediaType?: MediaSummary["mediaType"]) => Promise<{ mediaId: number; mediaType: string } | null>>();
 const refreshCatalogMetadataMock = vi.fn<
   (mediaId: number, mediaType: string, year: number | null, rating: number | null) => Promise<undefined>
 >(async () => undefined);
@@ -45,6 +47,7 @@ vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     list: listMock,
     listPage: (params: LibraryListParams) => listPageMock(params),
+    getRandom: (mediaType?: MediaSummary["mediaType"]) => getRandomMock(mediaType),
     get: getMock,
     save: saveMock,
     remove: removeMock,
@@ -273,5 +276,38 @@ describe("useLibraryPage", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(listPageMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("useRandomLibraryItem", () => {
+  beforeEach(() => {
+    getRandomMock.mockReset();
+  });
+
+  it("resolves with the repository's picked key", async () => {
+    getRandomMock.mockResolvedValueOnce({ mediaId: 7, mediaType: "movie" });
+    const { useRandomLibraryItem } = await import("../use-library");
+    const { result } = renderHook(() => useRandomLibraryItem(), { wrapper: createWrapper() });
+
+    let picked;
+    await act(async () => {
+      picked = await result.current.mutateAsync("movie");
+    });
+
+    expect(getRandomMock).toHaveBeenCalledWith("movie");
+    expect(picked).toEqual({ mediaId: 7, mediaType: "movie" });
+  });
+
+  it("resolves with null when the library has nothing matching", async () => {
+    getRandomMock.mockResolvedValueOnce(null);
+    const { useRandomLibraryItem } = await import("../use-library");
+    const { result } = renderHook(() => useRandomLibraryItem(), { wrapper: createWrapper() });
+
+    let picked;
+    await act(async () => {
+      picked = await result.current.mutateAsync(undefined);
+    });
+
+    expect(picked).toBeNull();
   });
 });

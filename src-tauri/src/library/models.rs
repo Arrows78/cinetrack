@@ -238,7 +238,7 @@ impl TryFrom<LibraryRow> for LibraryItem {
 /// know WHICH items are in the library (a membership set, a batch lookup by
 /// specific ids), not their full row. Much lighter over IPC than shipping
 /// whole `LibraryItem`s when the caller only ever reads the key.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, ts_rs::TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryMediaKey {

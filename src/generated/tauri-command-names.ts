@@ -18,6 +18,7 @@ export const tauriCommandNames = [
   "remove_library_item",
   "remove_planned_library_item",
   "list_library_media_keys",
+  "get_random_library_item",
   "get_library_items_by_keys",
   "get_library_status_counts",
   "list_planned_library_candidates",

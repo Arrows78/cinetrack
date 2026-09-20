@@ -350,6 +350,37 @@ pub(super) async fn list_media_keys_impl(
         .collect())
 }
 
+/// One random row for the "surprise me" shortcut in the /movies and /series
+/// hubs — `ORDER BY RANDOM()` over the whole matching set rather than
+/// picking a random offset client-side, so it's a fair pick across the
+/// entire library, not just whatever page happened to already be loaded.
+pub(super) async fn get_random_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    media_type: Option<MediaType>,
+) -> Result<Option<LibraryMediaKey>, ApiError> {
+    let mut qb: QueryBuilder<Sqlite> =
+        QueryBuilder::new("SELECT media_id, media_type FROM library_items WHERE profile_id = ");
+    qb.push_bind(profile_id.to_string());
+
+    if let Some(media_type) = media_type {
+        qb.push(" AND media_type = ")
+            .push_bind(media_type.as_db_str());
+    }
+
+    qb.push(" ORDER BY RANDOM() LIMIT 1");
+
+    let row: Option<(i64, String)> = qb
+        .build_query_as()
+        .fetch_optional(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(row.map(|(media_id, media_type)| LibraryMediaKey {
+        media_id,
+        media_type: MediaType::from_db_str(&media_type),
+    }))
+}
+
 /// Batch counterpart to `get_impl` — a caller-bounded set of specific
 /// `(media_id, media_type)` pairs (a collection's parts, one custom list's
 /// items), not "give me everything."
