@@ -28,17 +28,17 @@ describe("OnboardingScreen", () => {
 
     expect(screen.getByText(i18n.t("onboarding.title"))).toBeInTheDocument();
     expect(screen.getByText(i18n.t("onboarding.subtitle"))).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: new RegExp(i18n.t("onboarding.importTitle")) })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: new RegExp(i18n.t("onboarding.tvTimeTitle")) })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: new RegExp(i18n.t("onboarding.newLibraryTitle")) })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: new RegExp(i18n.t("onboarding.pickTonightTitle")) })).toBeInTheDocument();
   });
 
-  it("navigates to /settings and marks onboarding complete when 'importing my history' is chosen", async () => {
+  it("navigates to /settings#settings-data and marks onboarding complete when 'connect TV Time' is chosen", async () => {
     render(<OnboardingScreen />);
 
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(i18n.t("onboarding.importTitle")) }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(i18n.t("onboarding.tvTimeTitle")) }));
 
-    expect(navigateMock).toHaveBeenCalledWith({ to: "/settings" });
+    expect(navigateMock).toHaveBeenCalledWith({ to: "/settings", hash: "settings-data" });
     await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "onboardingCompleted", value: true }));
   });
 

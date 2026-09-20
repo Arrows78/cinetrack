@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, LibraryBig, Popcorn, Sparkles } from "lucide-react";
+import { LibraryBig, Popcorn, Sparkles, Tv } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Tile } from "@/components/ui/tile";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -11,18 +11,28 @@ interface OnboardingChoice {
   titleKey: string;
   descriptionKey: string;
   to: string;
+  // Only the TV Time choice needs this today — it deep-links straight to
+  // the TvTimeImportCard inside Settings' Data section (SETTINGS_DATA_ID)
+  // instead of just landing on top of the page, since that's the whole
+  // point of surfacing it here rather than leaving it "noyé dans les
+  // Paramètres" per the audit that added this choice.
+  hash?: string;
 }
 
 // Destinations all already exist and already handle a brand-new, empty
-// profile: /settings hosts the TV Time import card, /search is the
-// library's own existing empty-state CTA target, and /watch-tonight's
-// catalogue-discover fallback works with nothing planned yet.
+// profile: /settings#settings-data scrolls straight to the TV Time import
+// card, /search is the library's own existing empty-state CTA target, and
+// /watch-tonight's catalogue-discover fallback works with nothing planned
+// yet. This replaces a formerly generic "I'm importing my history" tile
+// that already only ever meant TV Time (its own description said so) but
+// buried that behind generic copy and a plain /settings landing.
 const CHOICES: OnboardingChoice[] = [
   {
-    icon: Download,
-    titleKey: "onboarding.importTitle",
-    descriptionKey: "onboarding.importDescription",
+    icon: Tv,
+    titleKey: "onboarding.tvTimeTitle",
+    descriptionKey: "onboarding.tvTimeDescription",
     to: "/settings",
+    hash: "settings-data",
   },
   {
     icon: LibraryBig,
@@ -48,14 +58,14 @@ export function OnboardingScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
 
-  const choose = (to: string) => {
+  const choose = (choice: OnboardingChoice) => {
     setError(false);
     setIsSaving(true);
     // The router isn't mounted yet while this screen shows (AppRouter only
     // renders once this gate lets `children` through) — navigating through
     // the singleton, same as desktop-service.ts's deep-link handler, rather
     // than useNavigate()/<Link>, which need a live router context.
-    void router.navigate({ to: to as never });
+    void router.navigate({ to: choice.to as never, hash: choice.hash });
     void updatePreference({ key: "onboardingCompleted", value: true })
       .catch(() => setError(true))
       .finally(() => setIsSaving(false));
@@ -82,7 +92,7 @@ export function OnboardingScreen() {
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={() => choose(choice.to)}
+                onClick={() => choose(choice)}
                 className="w-full text-left disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <choice.icon className="h-5 w-5 text-primary" aria-hidden="true" />
