@@ -9,7 +9,10 @@ import { toast } from "@/components/ui/use-toast";
 
 export function useProfiles() {
   const query = useQuery({ queryKey: queryKeys.local.profiles, queryFn: () => profileRepository.list() });
-  const create = useInvalidatingMutation((name: string) => profileRepository.create(name), [queryKeys.local.profiles]);
+  const create = useInvalidatingMutation(
+    ({ name, avatar }: { name: string; avatar?: string | null }) => profileRepository.create(name, avatar),
+    [queryKeys.local.profiles]
+  );
   // Removing a profile can also reset activeProfileId (see
   // profileRepository.remove) — ["local"] alone already covers every
   // profile-scoped key regardless of which profile it's keyed under, so

@@ -152,7 +152,7 @@ describe("SettingsPage — local profile management", () => {
     await waitFor(() => expect(createButton).toBeEnabled());
     createButton.click();
 
-    await waitFor(() => expect(createProfileMock).toHaveBeenCalledWith("Sam"));
+    await waitFor(() => expect(createProfileMock).toHaveBeenCalledWith("Sam", null));
   });
 
   it("offline mode: shows a loading spinner on the create-profile button while the mutation is pending", async () => {

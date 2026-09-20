@@ -17,7 +17,7 @@ vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toa
 const profile: UserProfile = { id: "profile-1", name: "Alice" } as UserProfile;
 
 const listMock = vi.fn(async (): Promise<UserProfile[]> => [profile]);
-const createMock = vi.fn<(name: string) => Promise<UserProfile>>(async () => profile);
+const createMock = vi.fn<(name: string, avatar?: string | null) => Promise<UserProfile>>(async () => profile);
 const removeMock = vi.fn<(id: string) => Promise<void>>(async () => undefined);
 const resolveForSupabaseUserMock = vi.fn<(supabaseUserId: string) => Promise<UserProfile | null>>(async () => profile);
 const createForSupabaseUserMock = vi.fn<
@@ -27,7 +27,7 @@ const createForSupabaseUserMock = vi.fn<
 vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
     list: () => listMock(),
-    create: (name: string) => createMock(name),
+    create: (name: string, avatar?: string | null) => createMock(name, avatar),
     remove: (id: string) => removeMock(id),
     resolveForSupabaseUser: (supabaseUserId: string) => resolveForSupabaseUserMock(supabaseUserId),
     createForSupabaseUser: (name: string, supabaseUserId: string, avatar?: string | null) =>
@@ -154,7 +154,7 @@ describe("useProfiles", () => {
 
     let createPromise!: Promise<unknown>;
     act(() => {
-      createPromise = result.current.create("Bob");
+      createPromise = result.current.create({ name: "Bob" });
     });
 
     await waitFor(() => expect(result.current.isSaving).toBe(true));

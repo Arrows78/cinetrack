@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { AccountSettingsCard } from "@/components/settings/account-settings-card";
+import { AvatarPicker } from "@/components/ui/avatar-picker";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { HiddenTitlesCard } from "@/components/settings/hidden-titles-card";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
@@ -28,7 +29,7 @@ import { useAuth } from "@/features/auth/use-auth";
 import { notificationService } from "@/features/desktop";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useProfiles, useProfileSwitching } from "@/features/profiles/use-profiles";
-import { COLOR_PRESETS, type AccentColor } from "@/shared/constants/colors";
+import { COLOR_PRESETS, type AccentColor, type AvatarPresetKey } from "@/shared/constants/colors";
 import { DEFAULT_LANGUAGE, DEFAULT_TMDB_REGION, PLATFORMS } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import type { UserPreferences, UserProfile } from "@/types/media";
@@ -50,6 +51,7 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
   const { user } = useAuth();
   const profiles = useProfiles();
   const [newProfileName, setNewProfileName] = useState("");
+  const [newProfileAvatar, setNewProfileAvatar] = useState<AvatarPresetKey | null>(null);
   const [pendingDeleteProfile, setPendingDeleteProfile] = useState<UserProfile | null>(null);
   // See useProfileSwitching's own doc comment for why a free switcher here
   // is safe (and only ever offered when auth isn't required — the read-only
@@ -62,8 +64,9 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
     const name = newProfileName.trim();
     if (!name) return;
     try {
-      await profiles.create(name);
+      await profiles.create({ name, avatar: newProfileAvatar });
       setNewProfileName("");
+      setNewProfileAvatar(null);
     } catch {
       // Failure toast is handled by the app-wide MutationCache error
       // handler (see query-client.ts).
@@ -159,25 +162,31 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                 </Tile>
               );
             })}
-            <div className="flex gap-2">
-              <Input
-                size="sm"
-                value={newProfileName}
-                onChange={(event) => setNewProfileName(event.target.value)}
-                placeholder={t("settings.profiles.newNamePlaceholder")}
-                aria-label={t("settings.profiles.newNameLabel")}
-                maxLength={60}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                isLoading={profiles.isSaving}
-                disabled={!newProfileName.trim() || profiles.isSaving}
-                onClick={() => void createProfile()}
-              >
-                <UserPlus className="mr-2 size-4" />
-                {t("settings.profiles.create")}
-              </Button>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  size="sm"
+                  value={newProfileName}
+                  onChange={(event) => setNewProfileName(event.target.value)}
+                  placeholder={t("settings.profiles.newNamePlaceholder")}
+                  aria-label={t("settings.profiles.newNameLabel")}
+                  maxLength={60}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  isLoading={profiles.isSaving}
+                  disabled={!newProfileName.trim() || profiles.isSaving}
+                  onClick={() => void createProfile()}
+                >
+                  <UserPlus className="mr-2 size-4" />
+                  {t("settings.profiles.create")}
+                </Button>
+              </div>
+              <div>
+                <p className="mb-2 text-caption text-muted-foreground">{t("profileGate.avatarLabel")}</p>
+                <AvatarPicker value={newProfileAvatar} onChange={setNewProfileAvatar} disabled={profiles.isSaving} />
+              </div>
             </div>
           </div>
         )}
