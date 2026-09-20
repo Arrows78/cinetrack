@@ -151,6 +151,10 @@ export const userProfileSchema = z.object({
   avatar: z.string().nullable().optional(),
   createdAt: z.string().optional(),
   supabaseUserId: z.string().nullable().optional(),
+  // Always false in an exported backup (a PIN lock is per-device, never
+  // carried across a restore — see backup/repository.rs) — optional here
+  // so older backup files without this field still validate.
+  hasPin: z.boolean().optional(),
 });
 
 export const customListSchema = z.object({

@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Check, Pencil, Settings, Trash2, UserPlus } from "lucide-react";
+import { Check, Lock, Pencil, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { AccountSettingsCard } from "@/components/settings/account-settings-card";
 import { AvatarPicker } from "@/components/ui/avatar-picker";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { HiddenTitlesCard } from "@/components/settings/hidden-titles-card";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
+import { PinPromptDialog } from "@/components/settings/pin-prompt-dialog";
 import { SyncStatusCard } from "@/components/settings/sync-status-card";
 import { TvTimeImportCard } from "@/components/settings/tvtime-import-card";
 import { FilterBar } from "@/components/media/library/filter-bar";
@@ -56,10 +57,43 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editAvatar, setEditAvatar] = useState<AvatarPresetKey | null>(null);
+  const [pinDraft, setPinDraft] = useState("");
+  const [pinPromptProfile, setPinPromptProfile] = useState<UserProfile | null>(null);
   // See useProfileSwitching's own doc comment for why a free switcher here
   // is safe (and only ever offered when auth isn't required — the read-only
   // branch below).
   const { switchingProfileId, switchToProfile } = useProfileSwitching();
+
+  // Only offered in the offline free-switcher branch below — the signed-in
+  // branch never shows a switcher at all (access is already gated by who's
+  // signed in), so a PIN there would protect nothing.
+  const requestSwitch = (profile: UserProfile) => {
+    if (profile.hasPin) {
+      setPinPromptProfile(profile);
+      return;
+    }
+    void switchToProfile(profile.id);
+  };
+
+  const savePin = async (id: string) => {
+    if (pinDraft.length < 4) return;
+    try {
+      await profiles.setPin({ id, pin: pinDraft });
+      setPinDraft("");
+    } catch {
+      // Failure toast is handled by the app-wide MutationCache error
+      // handler (see query-client.ts).
+    }
+  };
+  const removePin = async (id: string) => {
+    try {
+      await profiles.clearPin(id);
+      setPinDraft("");
+    } catch {
+      // Failure toast is handled by the app-wide MutationCache error
+      // handler (see query-client.ts).
+    }
+  };
 
   const currentProfile = profiles.data?.find((profile) => profile.id === activeProfileId);
 
@@ -84,8 +118,12 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
     setEditingProfileId(profile.id);
     setEditName(profile.name ?? "");
     setEditAvatar((profile.avatar as AvatarPresetKey | null) ?? null);
+    setPinDraft("");
   };
-  const cancelEdit = () => setEditingProfileId(null);
+  const cancelEdit = () => {
+    setEditingProfileId(null);
+    setPinDraft("");
+  };
   const saveEdit = async () => {
     const name = editName.trim();
     const id = editingProfileId;
@@ -146,9 +184,7 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
               <Tile className="flex items-center gap-3 px-3 py-3">
                 <ProfileAvatar
                   name={
-                    currentProfile.id === "default"
-                      ? t("settings.profiles.defaultName")
-                      : (currentProfile.name ?? "?")
+                    currentProfile.id === "default" ? t("settings.profiles.defaultName") : (currentProfile.name ?? "?")
                   }
                   avatar={currentProfile.avatar}
                   className="size-9"
@@ -202,6 +238,45 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                     />
                     <p className="text-caption text-muted-foreground">{t("profileGate.avatarLabel")}</p>
                     <AvatarPicker value={editAvatar} onChange={setEditAvatar} disabled={profiles.isSaving} />
+                    <div>
+                      <p className="mb-2 text-caption text-muted-foreground">{t("settings.profiles.pin.label")}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          size="sm"
+                          type="password"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          className="w-28"
+                          value={pinDraft}
+                          onChange={(event) => setPinDraft(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                          aria-label={t("settings.profiles.pin.inputLabel")}
+                          maxLength={6}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pinDraft.length < 4 || profiles.isSaving}
+                          isLoading={profiles.isSaving}
+                          onClick={() => void savePin(profile.id)}
+                        >
+                          {profile.hasPin
+                            ? t("settings.profiles.pin.changeLabel")
+                            : t("settings.profiles.pin.setLabel")}
+                        </Button>
+                        {profile.hasPin ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={profiles.isSaving}
+                            onClick={() => void removePin(profile.id)}
+                          >
+                            {t("settings.profiles.pin.removeLabel")}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <Button
                         type="button"
@@ -212,13 +287,7 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                       >
                         {t("settings.profiles.save")}
                       </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={profiles.isSaving}
-                        onClick={cancelEdit}
-                      >
+                      <Button type="button" size="sm" variant="ghost" disabled={profiles.isSaving} onClick={cancelEdit}>
                         {t("common.cancel")}
                       </Button>
                     </div>
@@ -231,10 +300,16 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-2.5 text-left text-body-sm font-medium disabled:cursor-default"
                     disabled={isActive || switchingProfileId !== null}
-                    onClick={() => void switchToProfile(profile.id)}
+                    onClick={() => requestSwitch(profile)}
                   >
                     <ProfileAvatar name={label ?? "?"} avatar={profile.avatar} className="size-7 text-caption" />
                     <span className="truncate">{label}</span>
+                    {profile.hasPin ? (
+                      <Lock
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                        aria-label={t("settings.profiles.pin.locked")}
+                      />
+                    ) : null}
                     {isActive ? (
                       <Badge variant="success" className="gap-1">
                         <Check className="size-3" aria-hidden="true" />
@@ -334,6 +409,20 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
             .remove(target.id)
             .then(() => setPendingDeleteProfile(null))
             .catch(() => {});
+        }}
+      />
+
+      <PinPromptDialog
+        open={pinPromptProfile !== null}
+        profileName={
+          pinPromptProfile?.id === "default" ? t("settings.profiles.defaultName") : (pinPromptProfile?.name ?? "")
+        }
+        onOpenChange={(open) => !open && setPinPromptProfile(null)}
+        onVerify={(pin) => profiles.verifyPin(pinPromptProfile!.id, pin)}
+        onSuccess={() => {
+          const target = pinPromptProfile;
+          setPinPromptProfile(null);
+          if (target) void switchToProfile(target.id);
         }}
       />
     </Card>

@@ -30,6 +30,15 @@ type UpdateProfileArgs = {
   avatar: string | null;
 };
 
+type ProfilePinArgs = {
+  profileId: string;
+  pin: string;
+};
+
+type ClearProfilePinArgs = {
+  profileId: string;
+};
+
 export const profileCommands = {
   list: defineCommand<undefined, UserProfile[]>("list_profiles"),
   create: defineCommand<CreateProfileArgs, UserProfile>("create_profile"),
@@ -38,4 +47,7 @@ export const profileCommands = {
   resolveForSupabaseUser: defineCommand<SupabaseUserArgs, UserProfile | null>("resolve_profile_for_supabase_user"),
   update: defineCommand<UpdateProfileArgs, UserProfile>("update_profile"),
   remove: defineCommand<RemoveProfileArgs, void>("remove_profile"),
+  setPin: defineCommand<ProfilePinArgs, UserProfile>("set_profile_pin"),
+  clearPin: defineCommand<ClearProfilePinArgs, UserProfile>("clear_profile_pin"),
+  verifyPin: defineCommand<ProfilePinArgs, boolean>("verify_profile_pin"),
 } as const;

@@ -405,7 +405,22 @@
       "delete": "Supprimer le profil {{name}}",
       "defaultCannotDelete": "Le profil par défaut ne peut pas être supprimé.",
       "deleteConfirmTitle": "Supprimer le profil « {{name}} » ?",
-      "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible."
+      "deleteConfirmDescription": "Ceci supprime définitivement la bibliothèque, l'historique et les listes de ce profil. C'est irréversible.",
+      "pin": {
+        "label": "Code PIN",
+        "inputLabel": "Code PIN (4 à 6 chiffres)",
+        "setLabel": "Définir un code PIN",
+        "changeLabel": "Changer le code PIN",
+        "removeLabel": "Retirer le code PIN",
+        "locked": "Protégé par un code PIN"
+      },
+      "pinPrompt": {
+        "title": "Saisissez le code PIN de {{name}}",
+        "description": "Ce profil est protégé par un code PIN.",
+        "inputLabel": "Code PIN",
+        "confirm": "Déverrouiller",
+        "error": "Code PIN incorrect. Veuillez réessayer."
+      }
     },
     "sync": {
       "title": "Synchronisation cloud",

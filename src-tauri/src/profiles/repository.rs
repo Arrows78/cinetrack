@@ -1,8 +1,26 @@
+use std::fmt::Write as _;
+
+use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 
 use super::models::{ProfileRow, UserProfile};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
+
+/// sha256(salt + pin), hex-encoded. Not a network-facing auth boundary —
+/// see the doc comment on the `sha2` dependency in Cargo.toml for why a
+/// plain salted hash (no argon2/bcrypt) is proportionate here.
+fn hash_pin(pin: &str, salt: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(salt.as_bytes());
+    hasher.update(pin.as_bytes());
+    let digest = hasher.finalize();
+    let mut hex = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        let _ = write!(hex, "{byte:02x}");
+    }
+    hex
+}
 
 pub(super) async fn list_impl(pool: &SqlitePool) -> Result<Vec<UserProfile>, ApiError> {
     let now = now_iso(pool).await?;
@@ -39,6 +57,7 @@ pub(super) async fn create_impl(
         avatar,
         created_at: now_iso(pool).await?,
         supabase_user_id,
+        has_pin: false,
     };
 
     sqlx::query(
@@ -204,6 +223,82 @@ pub(super) async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(
     Ok(())
 }
 
+/// A 4-6 digit PIN is the shape every OS-level "screen lock PIN" convention
+/// already uses — long enough to not be a coin-flip guess, short enough to
+/// type one-handed switching profiles.
+fn validate_pin_shape(pin: &str) -> Result<(), ApiError> {
+    if pin.len() < 4 || pin.len() > 6 || !pin.chars().all(|character| character.is_ascii_digit()) {
+        return Err(ApiError::bad_request("PIN must be 4 to 6 digits."));
+    }
+    Ok(())
+}
+
+pub(super) async fn set_pin_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    pin: &str,
+) -> Result<UserProfile, ApiError> {
+    validate_pin_shape(pin)?;
+    let salt = new_uuid();
+    let hash = hash_pin(pin, &salt);
+    let updated_at = now_iso(pool).await?;
+    sqlx::query(
+        "UPDATE profiles SET pin_hash = $1, pin_salt = $2, updated_at = $3 WHERE uuid = $4",
+    )
+    .bind(&hash)
+    .bind(&salt)
+    .bind(&updated_at)
+    .bind(profile_id)
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    get_by_id_impl(pool, profile_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Profile not found."))
+}
+
+pub(super) async fn clear_pin_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<UserProfile, ApiError> {
+    let updated_at = now_iso(pool).await?;
+    sqlx::query(
+        "UPDATE profiles SET pin_hash = NULL, pin_salt = NULL, updated_at = $1 WHERE uuid = $2",
+    )
+    .bind(&updated_at)
+    .bind(profile_id)
+    .execute(pool)
+    .await
+    .map_err(ApiError::from)?;
+
+    get_by_id_impl(pool, profile_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Profile not found."))
+}
+
+pub(super) async fn verify_pin_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    pin: &str,
+) -> Result<bool, ApiError> {
+    let row: Option<(Option<String>, Option<String>)> =
+        sqlx::query_as("SELECT pin_hash, pin_salt FROM profiles WHERE uuid = $1")
+            .bind(profile_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
+    let Some((Some(stored_hash), Some(salt))) = row else {
+        // No profile, or no PIN set on it: nothing to verify against, so
+        // treat it as "not protected" rather than an error — a caller
+        // checking `has_pin` first won't hit this in practice, but a
+        // profile whose PIN was cleared between the check and this call
+        // should just fail closed as "no PIN" rather than 404ing.
+        return Ok(false);
+    };
+    Ok(hash_pin(pin, &salt) == stored_hash)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,6 +375,53 @@ mod tests {
     async fn update_impl_returns_not_found_for_an_unknown_profile() {
         let pool = migrated_pool().await;
         assert!(update_impl(&pool, "ghost", "New Name", None).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn setting_a_pin_is_reflected_in_has_pin_but_never_leaks_the_hash() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        assert!(!created.has_pin);
+
+        let updated = set_pin_impl(&pool, &created.id, "1234").await.unwrap();
+        assert!(updated.has_pin);
+    }
+
+    #[tokio::test]
+    async fn rejects_a_malformed_pin() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        assert!(set_pin_impl(&pool, &created.id, "12").await.is_err());
+        assert!(set_pin_impl(&pool, &created.id, "12345678").await.is_err());
+        assert!(set_pin_impl(&pool, &created.id, "12a4").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn verifies_a_correct_pin_and_rejects_a_wrong_one() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        set_pin_impl(&pool, &created.id, "1234").await.unwrap();
+
+        assert!(verify_pin_impl(&pool, &created.id, "1234").await.unwrap());
+        assert!(!verify_pin_impl(&pool, &created.id, "9999").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn clearing_a_pin_removes_the_lock() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        set_pin_impl(&pool, &created.id, "1234").await.unwrap();
+
+        let cleared = clear_pin_impl(&pool, &created.id).await.unwrap();
+        assert!(!cleared.has_pin);
+        assert!(!verify_pin_impl(&pool, &created.id, "1234").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn verifying_a_profile_with_no_pin_set_fails_closed() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        assert!(!verify_pin_impl(&pool, &created.id, "1234").await.unwrap());
     }
 
     #[tokio::test]

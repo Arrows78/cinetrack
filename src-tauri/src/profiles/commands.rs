@@ -95,6 +95,47 @@ pub async fn remove_profile(
     .await
 }
 
+#[tauri::command]
+pub async fn set_profile_pin(
+    profile_id: String,
+    pin: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<UserProfile, ApiError> {
+    timed("set_profile_pin", async {
+        ProfileService::new(pool.inner())
+            .set_pin(&profile_id, &pin)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn clear_profile_pin(
+    profile_id: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<UserProfile, ApiError> {
+    timed("clear_profile_pin", async {
+        ProfileService::new(pool.inner())
+            .clear_pin(&profile_id)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn verify_profile_pin(
+    profile_id: String,
+    pin: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<bool, ApiError> {
+    timed("verify_profile_pin", async {
+        ProfileService::new(pool.inner())
+            .verify_pin(&profile_id, &pin)
+            .await
+    })
+    .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,5 +242,53 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
         assert!(remove_profile("default".to_string(), state).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn pin_commands_set_verify_and_clear_a_profile_lock() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let created = create_profile("Alex".to_string(), None, None, state.clone())
+            .await
+            .unwrap();
+
+        let with_pin = set_profile_pin(created.id.clone(), "4242".to_string(), state.clone())
+            .await
+            .unwrap();
+        assert!(with_pin.has_pin);
+
+        assert!(
+            verify_profile_pin(created.id.clone(), "4242".to_string(), state.clone())
+                .await
+                .unwrap()
+        );
+        assert!(
+            !verify_profile_pin(created.id.clone(), "0000".to_string(), state.clone())
+                .await
+                .unwrap()
+        );
+
+        let cleared = clear_profile_pin(created.id.clone(), state.clone())
+            .await
+            .unwrap();
+        assert!(!cleared.has_pin);
+    }
+
+    #[tokio::test]
+    async fn set_profile_pin_command_rejects_a_malformed_pin() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let created = create_profile("Alex".to_string(), None, None, state.clone())
+            .await
+            .unwrap();
+        assert!(
+            set_profile_pin(created.id, "12".to_string(), state)
+                .await
+                .is_err()
+        );
     }
 }

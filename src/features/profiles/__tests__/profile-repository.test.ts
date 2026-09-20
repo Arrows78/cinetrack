@@ -85,6 +85,30 @@ describe("profileRepository", () => {
     });
   });
 
+  it("setPin() invokes set_profile_pin with profileId/pin", async () => {
+    invokeMock.mockResolvedValueOnce(profile());
+    const { profileRepository } = await import("../profile-repository");
+
+    await profileRepository.setPin("profile-id", "1234");
+    expect(invokeMock).toHaveBeenCalledWith("set_profile_pin", { profileId: "profile-id", pin: "1234" });
+  });
+
+  it("clearPin() invokes clear_profile_pin with profileId", async () => {
+    invokeMock.mockResolvedValueOnce(profile());
+    const { profileRepository } = await import("../profile-repository");
+
+    await profileRepository.clearPin("profile-id");
+    expect(invokeMock).toHaveBeenCalledWith("clear_profile_pin", { profileId: "profile-id" });
+  });
+
+  it("verifyPin() invokes verify_profile_pin and resolves its boolean result", async () => {
+    invokeMock.mockResolvedValueOnce(true);
+    const { profileRepository } = await import("../profile-repository");
+
+    await expect(profileRepository.verifyPin("profile-id", "1234")).resolves.toBe(true);
+    expect(invokeMock).toHaveBeenCalledWith("verify_profile_pin", { profileId: "profile-id", pin: "1234" });
+  });
+
   it("resolveForSupabaseUser() invokes resolve_profile_for_supabase_user", async () => {
     invokeMock.mockResolvedValueOnce(null);
     const { profileRepository } = await import("../profile-repository");

@@ -52,12 +52,18 @@ const listProfilesMock = vi.fn();
 const createProfileMock = vi.fn();
 const updateProfileMock = vi.fn();
 const removeProfileMock = vi.fn();
+const setProfilePinMock = vi.fn();
+const clearProfilePinMock = vi.fn();
+const verifyProfilePinMock = vi.fn();
 vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
     list: (...args: unknown[]) => listProfilesMock(...args),
     create: (...args: unknown[]) => createProfileMock(...args),
     update: (...args: unknown[]) => updateProfileMock(...args),
     remove: (...args: unknown[]) => removeProfileMock(...args),
+    setPin: (...args: unknown[]) => setProfilePinMock(...args),
+    clearPin: (...args: unknown[]) => clearProfilePinMock(...args),
+    verifyPin: (...args: unknown[]) => verifyProfilePinMock(...args),
   },
 }));
 
@@ -114,6 +120,9 @@ describe("SettingsPage — local profile management", () => {
     createProfileMock.mockReset();
     updateProfileMock.mockReset();
     removeProfileMock.mockReset().mockResolvedValue(undefined);
+    setProfilePinMock.mockReset();
+    clearProfilePinMock.mockReset();
+    verifyProfilePinMock.mockReset();
     setActiveProfileMock.mockReset().mockResolvedValue(preferencesData);
     getPreferencesMock.mockReset().mockResolvedValue(preferencesData);
     updatePreferenceMock.mockReset().mockResolvedValue(preferencesData);
@@ -135,6 +144,45 @@ describe("SettingsPage — local profile management", () => {
     screen.getByText("Alex").click();
 
     await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id"));
+  });
+
+  it("offline mode: switching into a PIN-protected profile prompts for the PIN first, and unlocks on a correct one", async () => {
+    listProfilesMock.mockReset().mockResolvedValue([
+      { id: "default", name: "Default", avatar: null, createdAt: "2026-01-01", supabaseUserId: null },
+      { id: "alex-id", name: "Alex", avatar: null, createdAt: "2026-01-02", supabaseUserId: null, hasPin: true },
+    ]);
+    verifyProfilePinMock.mockResolvedValueOnce(true);
+    renderPage();
+
+    await screen.findByText("Default profile");
+    screen.getByText("Alex").click();
+
+    expect(setActiveProfileMock).not.toHaveBeenCalled();
+    const pinInput = await screen.findByLabelText("PIN");
+    fireEvent.change(pinInput, { target: { value: "4242" } });
+    screen.getByRole("button", { name: "Unlock" }).click();
+
+    await waitFor(() => expect(verifyProfilePinMock).toHaveBeenCalledWith("alex-id", "4242"));
+    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id"));
+  });
+
+  it("offline mode: an incorrect PIN shows an inline error and never switches", async () => {
+    listProfilesMock.mockReset().mockResolvedValue([
+      { id: "default", name: "Default", avatar: null, createdAt: "2026-01-01", supabaseUserId: null },
+      { id: "alex-id", name: "Alex", avatar: null, createdAt: "2026-01-02", supabaseUserId: null, hasPin: true },
+    ]);
+    verifyProfilePinMock.mockResolvedValueOnce(false);
+    renderPage();
+
+    await screen.findByText("Default profile");
+    screen.getByText("Alex").click();
+
+    const pinInput = await screen.findByLabelText("PIN");
+    fireEvent.change(pinInput, { target: { value: "0000" } });
+    screen.getByRole("button", { name: "Unlock" }).click();
+
+    expect(await screen.findByText("Incorrect PIN. Please try again.")).toBeInTheDocument();
+    expect(setActiveProfileMock).not.toHaveBeenCalled();
   });
 
   it("offline mode: creates a new unclaimed profile from the inline form", async () => {
@@ -179,6 +227,27 @@ describe("SettingsPage — local profile management", () => {
     fireEvent.click(within(editForm).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(updateProfileMock).toHaveBeenCalledWith("alex-id", "Alexandra", "cat"));
+  });
+
+  it("offline mode: sets a PIN on a profile from the inline edit form", async () => {
+    setProfilePinMock.mockResolvedValueOnce({
+      id: "alex-id",
+      name: "Alex",
+      avatar: null,
+      createdAt: "2026-01-02",
+      supabaseUserId: null,
+      hasPin: true,
+    });
+    renderPage();
+    await screen.findByText("Default profile");
+
+    screen.getByRole("button", { name: "Edit profile Alex" }).click();
+
+    const pinInput = await screen.findByLabelText("PIN (4 to 6 digits)");
+    fireEvent.change(pinInput, { target: { value: "1234" } });
+    fireEvent.click(within(pinInput.parentElement as HTMLElement).getByRole("button", { name: "Set PIN" }));
+
+    await waitFor(() => expect(setProfilePinMock).toHaveBeenCalledWith("alex-id", "1234"));
   });
 
   it("offline mode: shows a loading spinner on the create-profile button while the mutation is pending", async () => {

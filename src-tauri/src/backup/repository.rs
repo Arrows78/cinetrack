@@ -383,6 +383,12 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
                 avatar: row.avatar,
                 created_at: row.created_at,
                 supabase_user_id: row.supabase_user_id,
+                // A PIN lock is a per-device convenience, not something a
+                // portable backup file should carry (restoring on another
+                // device shouldn't silently re-lock a profile, and the
+                // hash/salt themselves never leave the backend regardless —
+                // see profiles/models.rs's doc comment on UserProfile).
+                has_pin: false,
             })
             .collect(),
         custom_lists: custom_lists
@@ -821,6 +827,8 @@ mod tests {
                     "name",
                     "avatar",
                     "supabase_user_id",
+                    "pin_hash",
+                    "pin_salt",
                     "created_at",
                     "updated_at",
                 ]),

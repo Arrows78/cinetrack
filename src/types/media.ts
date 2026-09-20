@@ -205,6 +205,9 @@ export interface UserProfile {
   avatar?: string | null;
   createdAt?: string;
   supabaseUserId?: string | null;
+  // Whether this profile has an optional PIN lock set — the hash/salt
+  // themselves never leave the backend (see profiles/models.rs).
+  hasPin?: boolean;
 }
 
 // Not UserProfile above: that hand-written interface is a loose superset

@@ -18,6 +18,11 @@ export function useProfiles() {
       profileRepository.update(id, name, avatar),
     [queryKeys.local.profiles]
   );
+  const setPin = useInvalidatingMutation(
+    ({ id, pin }: { id: string; pin: string }) => profileRepository.setPin(id, pin),
+    [queryKeys.local.profiles]
+  );
+  const clearPin = useInvalidatingMutation((id: string) => profileRepository.clearPin(id), [queryKeys.local.profiles]);
   // Removing a profile can also reset activeProfileId (see
   // profileRepository.remove) — ["local"] alone already covers every
   // profile-scoped key regardless of which profile it's keyed under, so
@@ -27,8 +32,14 @@ export function useProfiles() {
     ...query,
     create: create.mutateAsync,
     update: update.mutateAsync,
+    setPin: setPin.mutateAsync,
+    clearPin: clearPin.mutateAsync,
+    // A read-only check, not a mutation — nothing in the cache changes on
+    // either outcome, so this is a plain pass-through rather than another
+    // useInvalidatingMutation.
+    verifyPin: profileRepository.verifyPin,
     remove: remove.mutateAsync,
-    isSaving: create.isPending || update.isPending || remove.isPending,
+    isSaving: create.isPending || update.isPending || setPin.isPending || clearPin.isPending || remove.isPending,
   };
 }
 

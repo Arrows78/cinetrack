@@ -16,6 +16,10 @@ pub struct UserProfile {
     /// already use (see backup/repository.rs) — see docs/auth.md's Clerk
     /// migration section for why that trade wasn't taken.
     pub supabase_user_id: Option<String>,
+    /// Derived from `ProfileRow.pin_hash` — whether this profile has an
+    /// optional PIN lock set. The hash/salt themselves never leave the
+    /// backend (see `ProfileRow`), only this boolean.
+    pub has_pin: bool,
 }
 
 #[derive(sqlx::FromRow)]
@@ -25,6 +29,13 @@ pub(crate) struct ProfileRow {
     pub(crate) avatar: Option<String>,
     pub(crate) created_at: String,
     pub(crate) supabase_user_id: Option<String>,
+    pub(crate) pin_hash: Option<String>,
+    // Only read via the raw `SELECT pin_hash, pin_salt` in
+    // repository::verify_pin_impl, never through this struct — kept here
+    // so `SELECT *`'s `sqlx::FromRow` mapping (list_impl, get_by_id_impl)
+    // stays in sync with every column the `profiles` table actually has.
+    #[allow(dead_code)]
+    pub(crate) pin_salt: Option<String>,
 }
 
 impl From<ProfileRow> for UserProfile {
@@ -35,6 +46,7 @@ impl From<ProfileRow> for UserProfile {
             avatar: row.avatar,
             created_at: row.created_at,
             supabase_user_id: row.supabase_user_id,
+            has_pin: row.pin_hash.is_some(),
         }
     }
 }

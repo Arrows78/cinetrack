@@ -405,7 +405,22 @@
       "delete": "Delete profile {{name}}",
       "defaultCannotDelete": "The default profile can't be deleted.",
       "deleteConfirmTitle": "Delete the profile \"{{name}}\"?",
-      "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone."
+      "deleteConfirmDescription": "This permanently deletes this profile's library, history and lists. This can't be undone.",
+      "pin": {
+        "label": "PIN lock",
+        "inputLabel": "PIN (4 to 6 digits)",
+        "setLabel": "Set PIN",
+        "changeLabel": "Change PIN",
+        "removeLabel": "Remove PIN",
+        "locked": "PIN-protected"
+      },
+      "pinPrompt": {
+        "title": "Enter the PIN for {{name}}",
+        "description": "This profile is protected by a PIN.",
+        "inputLabel": "PIN",
+        "confirm": "Unlock",
+        "error": "Incorrect PIN. Please try again."
+      }
     },
     "sync": {
       "title": "Cloud sync",

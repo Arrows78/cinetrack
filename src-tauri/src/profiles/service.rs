@@ -2,8 +2,9 @@ use sqlx::SqlitePool;
 
 use super::models::UserProfile;
 use super::repository::{
-    create_impl, find_by_supabase_user_id_impl, link_to_supabase_user_impl, list_impl, remove_impl,
-    resolve_for_supabase_user_impl, update_impl,
+    clear_pin_impl, create_impl, find_by_supabase_user_id_impl, link_to_supabase_user_impl,
+    list_impl, remove_impl, resolve_for_supabase_user_impl, set_pin_impl, update_impl,
+    verify_pin_impl,
 };
 use crate::error::ApiError;
 
@@ -62,5 +63,21 @@ impl<'a> ProfileService<'a> {
 
     pub(super) async fn remove(&self, profile_id: &str) -> Result<(), ApiError> {
         remove_impl(self.pool, profile_id).await
+    }
+
+    pub(super) async fn set_pin(
+        &self,
+        profile_id: &str,
+        pin: &str,
+    ) -> Result<UserProfile, ApiError> {
+        set_pin_impl(self.pool, profile_id, pin).await
+    }
+
+    pub(super) async fn clear_pin(&self, profile_id: &str) -> Result<UserProfile, ApiError> {
+        clear_pin_impl(self.pool, profile_id).await
+    }
+
+    pub(super) async fn verify_pin(&self, profile_id: &str, pin: &str) -> Result<bool, ApiError> {
+        verify_pin_impl(self.pool, profile_id, pin).await
     }
 }

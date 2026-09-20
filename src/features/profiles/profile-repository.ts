@@ -50,6 +50,18 @@ export const profileRepository = {
     return invokeTypedCommand(profileCommands.update, { profileId, name, avatar: avatar ?? null });
   },
 
+  async setPin(profileId: string, pin: string): Promise<UserProfile> {
+    return invokeTypedCommand(profileCommands.setPin, { profileId, pin });
+  },
+
+  async clearPin(profileId: string): Promise<UserProfile> {
+    return invokeTypedCommand(profileCommands.clearPin, { profileId });
+  },
+
+  async verifyPin(profileId: string, pin: string): Promise<boolean> {
+    return invokeTypedCommand(profileCommands.verifyPin, { profileId, pin });
+  },
+
   async remove(profileId: string): Promise<void> {
     await invokeTypedCommand(profileCommands.remove, { profileId });
 

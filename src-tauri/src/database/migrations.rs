@@ -20,6 +20,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/020-add-dismissed-recommendations.sql"),
     include_str!("migrations/021-sync-activity-log-and-episode-rating.sql"),
     include_str!("migrations/022-split-notification-preferences.sql"),
+    include_str!("migrations/023-add-profile-pin.sql"),
 ];
 
 #[derive(Debug)]
@@ -206,7 +207,7 @@ mod tests {
                 .iter()
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
-            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
         );
         assert_eq!(
             migrations
@@ -229,6 +230,7 @@ mod tests {
                 "add dismissed recommendations",
                 "sync activity log and episode ratings",
                 "split notification preferences",
+                "add profile pin lock",
             ]
         );
         assert!(
@@ -286,7 +288,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 22);
+        assert_eq!(version.0, 23);
     }
 
     #[tokio::test]
@@ -306,7 +308,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 22);
+        assert_eq!(version.0, 23);
     }
 
     #[tokio::test]
@@ -440,11 +442,12 @@ mod tests {
                 .unwrap();
         assert_eq!(availability.0, "true");
 
-        let desktop: (String,) =
-            sqlx::query_as("SELECT value FROM preferences WHERE key = 'desktopNotificationsEnabled'")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let desktop: (String,) = sqlx::query_as(
+            "SELECT value FROM preferences WHERE key = 'desktopNotificationsEnabled'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(desktop.0, "true");
     }
 

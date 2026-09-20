@@ -22,6 +22,9 @@ const updateMock = vi.fn<(id: string, name: string, avatar?: string | null) => P
   async () => profile
 );
 const removeMock = vi.fn<(id: string) => Promise<void>>(async () => undefined);
+const setPinMock = vi.fn<(id: string, pin: string) => Promise<UserProfile>>(async () => profile);
+const clearPinMock = vi.fn<(id: string) => Promise<UserProfile>>(async () => profile);
+const verifyPinMock = vi.fn<(id: string, pin: string) => Promise<boolean>>(async () => true);
 const resolveForSupabaseUserMock = vi.fn<(supabaseUserId: string) => Promise<UserProfile | null>>(async () => profile);
 const createForSupabaseUserMock = vi.fn<
   (name: string, supabaseUserId: string, avatar?: string | null) => Promise<UserProfile>
@@ -33,6 +36,9 @@ vi.mock("@/features/profiles/profile-repository", () => ({
     create: (name: string, avatar?: string | null) => createMock(name, avatar),
     update: (id: string, name: string, avatar?: string | null) => updateMock(id, name, avatar),
     remove: (id: string) => removeMock(id),
+    setPin: (id: string, pin: string) => setPinMock(id, pin),
+    clearPin: (id: string) => clearPinMock(id),
+    verifyPin: (id: string, pin: string) => verifyPinMock(id, pin),
     resolveForSupabaseUser: (supabaseUserId: string) => resolveForSupabaseUserMock(supabaseUserId),
     createForSupabaseUser: (name: string, supabaseUserId: string, avatar?: string | null) =>
       createForSupabaseUserMock(name, supabaseUserId, avatar),
@@ -51,6 +57,9 @@ beforeEach(() => {
   createMock.mockClear().mockResolvedValue(profile);
   updateMock.mockClear().mockResolvedValue(profile);
   removeMock.mockClear().mockResolvedValue(undefined);
+  setPinMock.mockClear().mockResolvedValue(profile);
+  clearPinMock.mockClear().mockResolvedValue(profile);
+  verifyPinMock.mockClear().mockResolvedValue(true);
   resolveForSupabaseUserMock.mockClear().mockResolvedValue(profile);
   createForSupabaseUserMock.mockClear().mockResolvedValue(profile);
   setActiveProfileMock.mockClear().mockResolvedValue({} as UserPreferences);
@@ -229,6 +238,58 @@ describe("useProfiles", () => {
     });
 
     await waitFor(() => expect(result.current.isSaving).toBe(false));
+  });
+
+  it("isSaving is true while setPin is pending, even though clearPin/remove are idle", async () => {
+    let resolveSetPin!: (value: UserProfile) => void;
+    setPinMock.mockImplementation(
+      () =>
+        new Promise<UserProfile>((resolve) => {
+          resolveSetPin = resolve;
+        })
+    );
+
+    const { useProfiles } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfiles(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let setPinPromise!: Promise<unknown>;
+    act(() => {
+      setPinPromise = result.current.setPin({ id: "profile-1", pin: "1234" });
+    });
+
+    await waitFor(() => expect(result.current.isSaving).toBe(true));
+
+    resolveSetPin(profile);
+    await act(async () => {
+      await setPinPromise;
+    });
+
+    await waitFor(() => expect(result.current.isSaving).toBe(false));
+    expect(setPinMock).toHaveBeenCalledWith("profile-1", "1234");
+  });
+
+  it("clearPin delegates to the repository", async () => {
+    const { useProfiles } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfiles(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.clearPin("profile-1");
+    });
+
+    expect(clearPinMock).toHaveBeenCalledWith("profile-1");
+  });
+
+  it("verifyPin is a plain pass-through that doesn't affect isSaving", async () => {
+    verifyPinMock.mockResolvedValueOnce(false);
+    const { useProfiles } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfiles(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(result.current.verifyPin("profile-1", "0000")).resolves.toBe(false);
+    expect(verifyPinMock).toHaveBeenCalledWith("profile-1", "0000");
+    expect(result.current.isSaving).toBe(false);
   });
 });
 
