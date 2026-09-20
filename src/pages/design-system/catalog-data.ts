@@ -642,6 +642,14 @@ export const componentInventory = [
     "Creates or removes an alert for provider availability."
   ),
   component(
+    "ExportSeriesButton",
+    "components/media/detail/export-series-button.tsx",
+    "Media",
+    "feature",
+    "reference",
+    "Exports just this series' tracking data as its own small JSON file."
+  ),
+  component(
     "CastList",
     "components/media/detail/cast-list.tsx",
     "Media",
@@ -1258,6 +1266,22 @@ export const componentInventory = [
     "Read-only cloud-sync status (pending/failed counts) plus a manual sync-now action."
   ),
   component(
+    "AccountSettingsCard",
+    "components/settings/account-settings-card.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Change the signed-in account's email or delete the account, both through Clerk."
+  ),
+  component(
+    "PinPromptDialog",
+    "components/settings/pin-prompt-dialog.tsx",
+    "Settings",
+    "pattern",
+    "reference",
+    "Prompts for a profile's PIN before switching into it."
+  ),
+  component(
     "HiddenTitlesCard",
     "components/settings/hidden-titles-card.tsx",
     "Settings",
@@ -1520,6 +1544,22 @@ export const componentInventory = [
     "primitive",
     "live",
     "Chip-based tag editor with an autocomplete dropdown over existing tags."
+  ),
+  component(
+    "AvatarPicker",
+    "components/ui/avatar-picker.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Emoji+swatch avatar picker shared by profile creation/edit and the cloud sign-in flow."
+  ),
+  component(
+    "ShortcutInput",
+    "components/ui/shortcut-input.tsx",
+    "UI primitives",
+    "primitive",
+    "live",
+    "Captures a keyboard shortcut combo and displays it in platform-appropriate notation."
   ),
   component(
     "Textarea",

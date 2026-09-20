@@ -16,6 +16,7 @@ import { toast } from "@/components/ui/use-toast";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { maintenanceService } from "@/features/backup";
 import { diagnosticsService, tokenVault, updateService, type DiagnosticsSummary } from "@/features/desktop";
+import { useDesktopShortcuts } from "@/features/desktop/use-desktop-shortcuts";
 import { defaultPreferences } from "@/features/preferences/preferences-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { logger } from "@/shared/lib/logger";
@@ -32,6 +33,7 @@ function KeyboardShortcutsRow() {
   const { t } = useTranslation();
   const { data: preferences, updatePreference, isSaving } = usePreferences();
   const [error, setError] = useState<string | null>(null);
+  const { updateGlobalShortcut } = useDesktopShortcuts();
 
   const current: Record<ShortcutKey, string> = {
     commandPaletteShortcut: preferences?.commandPaletteShortcut ?? defaultPreferences.commandPaletteShortcut,
@@ -50,11 +52,7 @@ function KeyboardShortcutsRow() {
     try {
       await updatePreference({ key, value: next as UserPreferences[ShortcutKey] });
       if (key === "globalCommandPaletteShortcut") {
-        // Dynamically imported — desktop-service.ts pulls in the app router
-        // (for its deep-link navigation), which this settings page has no
-        // other reason to load eagerly just to remap a shortcut.
-        const { desktopService } = await import("@/features/desktop");
-        void desktopService.updateGlobalShortcut(next);
+        void updateGlobalShortcut(next);
       }
     } catch (updateError) {
       logger.warn(`Failed to update keyboard shortcut: ${errorMessage(updateError)}`);

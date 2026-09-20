@@ -11,7 +11,7 @@ import { ProfileSwitcher } from "@/components/layout/profile-switcher";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { PullToRefresh } from "@/components/layout/pull-to-refresh";
-import { GuidedTour } from "@/features/onboarding";
+import { GuidedTour } from "@/features/onboarding/use-guided-tour";
 import { usePreferences } from "@/features/preferences/use-preferences";
 
 // `router.history.back()` has nowhere sensible to go when this window has no

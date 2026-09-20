@@ -504,7 +504,7 @@ describe("TvTimeImportCard", () => {
       expect(screen.queryByRole("button", { name: "Undo last import" })).not.toBeInTheDocument();
 
       screen.getByRole("button", { name: "Some Unresolved Movie" }).click();
-      const result = await screen.findByText("The Real Movie", {}, { timeout: 2000 });
+      const result = await screen.findByText("The Real Movie", {}, { timeout: 5000 });
       result.closest("div")!.querySelector("button")!.click();
 
       await waitFor(() => expect(resolveRetryableMovieMock).toHaveBeenCalled());

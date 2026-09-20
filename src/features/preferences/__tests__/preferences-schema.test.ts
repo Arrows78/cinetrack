@@ -30,10 +30,12 @@ describe("preferencesSchema", () => {
       preferredProviderIds: [],
       activeProfileId: DEFAULT_PROFILE_ID,
       backupDirectory: null,
+      backupFrequency: "daily",
       hideWatchedInDiscovery: false,
       onThisDayEnabled: false,
       onboardingCompleted: false,
       recentSearches: [],
+      tourCompleted: false,
       commandPaletteShortcut: "mod+k",
       globalCommandPaletteShortcut: "mod+shift+k",
       userProfile: {
