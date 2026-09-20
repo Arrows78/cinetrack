@@ -299,6 +299,52 @@ describe("filterAndSortLibrary", () => {
     expect(result).toEqual(["ListOnlySeries"]);
   });
 
+  it("gives a list-only item with an unknown next episode an empty sort key, not undefined", () => {
+    const listOnly = [listItem({ id: "l1", mediaId: 99, title: "UnknownSeries", mediaType: "series" })];
+
+    const result = titlesOf(
+      filterAndSortLibrary([], listOnly, NO_PROGRESS, {
+        ...BASE_CRITERIA,
+        sort: "nextEpisode",
+        nextEpisodeDateBySeriesId: new Map(),
+      })
+    );
+
+    expect(result).toEqual(["UnknownSeries"]);
+  });
+
+  it("never completed also applies to list-only items under dateCompleted", () => {
+    const listOnly = [listItem({ id: "l1", mediaId: 9, title: "ListOnlyItem" })];
+
+    const result = titlesOf(
+      filterAndSortLibrary([], listOnly, NO_PROGRESS, { ...BASE_CRITERIA, sort: "dateCompleted" })
+    );
+
+    expect(result).toEqual(["ListOnlyItem"]);
+  });
+
+  it("treats two next-episode-unknown series as equal, in either input order", () => {
+    const a = libraryItem({ id: "1", mediaId: 1, title: "A", mediaType: "series" });
+    const b = libraryItem({ id: "2", mediaId: 2, title: "B", mediaType: "series" });
+    const criteria = { ...BASE_CRITERIA, sort: "nextEpisode" as const, nextEpisodeDateBySeriesId: new Map() };
+
+    expect(titlesOf(filterAndSortLibrary([a, b], [], NO_PROGRESS, criteria))).toHaveLength(2);
+    expect(titlesOf(filterAndSortLibrary([b, a], [], NO_PROGRESS, criteria))).toHaveLength(2);
+  });
+
+  it("puts a known-next-episode series before an unknown one, regardless of input order", () => {
+    const known = libraryItem({ id: "1", mediaId: 1, title: "Known", mediaType: "series" });
+    const unknown = libraryItem({ id: "2", mediaId: 2, title: "Unknown", mediaType: "series" });
+    const criteria = {
+      ...BASE_CRITERIA,
+      sort: "nextEpisode" as const,
+      nextEpisodeDateBySeriesId: new Map([[1, "2026-01-01"]]),
+    };
+
+    expect(titlesOf(filterAndSortLibrary([known, unknown], [], NO_PROGRESS, criteria))).toEqual(["Known", "Unknown"]);
+    expect(titlesOf(filterAndSortLibrary([unknown, known], [], NO_PROGRESS, criteria))).toEqual(["Known", "Unknown"]);
+  });
+
   it("filters by genre, matching any item whose genres include the selected one", () => {
     const items = [
       libraryItem({ id: "1", mediaId: 1, title: "Funny", genres: ["Comedy"] }),

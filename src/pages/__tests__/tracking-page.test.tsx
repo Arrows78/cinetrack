@@ -94,6 +94,8 @@ vi.mock("@/components/media/tracking/tracking-list", () => ({
     onTypeFilterChange,
     sort,
     onSortChange,
+    platformFilter,
+    onPlatformFilterChange,
   }: {
     scopeFilter: string;
     onScopeFilterChange: (value: string) => void;
@@ -101,8 +103,16 @@ vi.mock("@/components/media/tracking/tracking-list", () => ({
     onTypeFilterChange: (value: string) => void;
     sort: string;
     onSortChange: (value: string) => void;
+    platformFilter: string | number;
+    onPlatformFilterChange: (value: number) => void;
   }) => (
-    <div data-testid="tracking-list" data-scope={scopeFilter} data-type={typeFilter} data-sort={sort}>
+    <div
+      data-testid="tracking-list"
+      data-scope={scopeFilter}
+      data-type={typeFilter}
+      data-sort={sort}
+      data-platform={platformFilter}
+    >
       <button type="button" onClick={() => onScopeFilterChange("all")}>
         set-scope-all
       </button>
@@ -111,6 +121,9 @@ vi.mock("@/components/media/tracking/tracking-list", () => ({
       </button>
       <button type="button" onClick={() => onSortChange("title")}>
         set-sort-title
+      </button>
+      <button type="button" onClick={() => onPlatformFilterChange(8)}>
+        set-platform-8
       </button>
     </div>
   ),
@@ -225,6 +238,29 @@ describe("TrackingPage", () => {
     expect(
       screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) })
     ).toBeInTheDocument();
+  });
+
+  it("pushes a chosen platform into the URL", async () => {
+    render(<TrackingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "set-platform-8" }));
+
+    await waitFor(() => expect(getRouterSearch()).toContain("platform=8"));
+  });
+
+  it("removes just the platform chip", async () => {
+    setRouterSearch("?platform=8&type=release");
+    render(<TrackingPage />);
+
+    // This suite's fake useSearch (unlike the real, zod-validated route)
+    // returns every value as a raw URLSearchParams string, so `platform`
+    // never actually coerces to the number PLATFORMS.id compares against —
+    // the chip falls back to the raw value itself, same as an unknown id.
+    const chipLabel = i18n.t("filters.chips.provider", { value: "8" });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+    await waitFor(() => expect(getRouterSearch()).not.toContain("platform"));
+    expect(getRouterSearch()).toContain("type=release");
   });
 
   it("labels the type chip for the episode and availability filters", () => {
