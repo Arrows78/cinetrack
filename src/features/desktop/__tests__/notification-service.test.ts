@@ -50,6 +50,8 @@ const basePreferences: UserPreferences = {
   libraryViewMode: "grid",
   spoilerProtection: false,
   notificationsEnabled: true,
+  availabilityAlertsEnabled: true,
+  desktopNotificationsEnabled: true,
   notifyHoursBefore: 24,
   availabilityCheckIntervalHours: 6,
   recentSearches: [],
@@ -222,6 +224,15 @@ describe("notificationService", () => {
 
     it("returns 0 immediately when notifications are disabled", async () => {
       const preferences: UserPreferences = { ...basePreferences, notificationsEnabled: false };
+
+      const count = await notificationService.notifyDue([episodeEntry()], preferences);
+
+      expect(count).toBe(0);
+      expect(mocks.sendNotification).not.toHaveBeenCalled();
+    });
+
+    it("returns 0 immediately when desktop notifications are disabled, even with calendar reminders on", async () => {
+      const preferences: UserPreferences = { ...basePreferences, desktopNotificationsEnabled: false };
 
       const count = await notificationService.notifyDue([episodeEntry()], preferences);
 

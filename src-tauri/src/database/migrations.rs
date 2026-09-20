@@ -19,6 +19,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/019-add-rating-to-episode-progress.sql"),
     include_str!("migrations/020-add-dismissed-recommendations.sql"),
     include_str!("migrations/021-sync-activity-log-and-episode-rating.sql"),
+    include_str!("migrations/022-split-notification-preferences.sql"),
 ];
 
 #[derive(Debug)]
@@ -205,7 +206,7 @@ mod tests {
                 .iter()
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
-            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
         );
         assert_eq!(
             migrations
@@ -227,6 +228,7 @@ mod tests {
                 "add rating to episode_progress",
                 "add dismissed recommendations",
                 "sync activity log and episode ratings",
+                "split notification preferences",
             ]
         );
         assert!(
@@ -284,7 +286,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 21);
+        assert_eq!(version.0, 22);
     }
 
     #[tokio::test]
@@ -304,7 +306,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 21);
+        assert_eq!(version.0, 22);
     }
 
     #[tokio::test]
@@ -403,6 +405,61 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(table_exists, 0);
+    }
+
+    #[tokio::test]
+    async fn migration_022_backfills_notification_toggles_from_the_shared_flag() {
+        let pool = in_memory_pool().await;
+        sqlx::query("PRAGMA foreign_keys = ON")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let migrations = migrations().unwrap();
+        for statement in &migrations[0].statements {
+            sqlx::query(*statement).execute(&pool).await.unwrap();
+        }
+        sqlx::query("PRAGMA user_version = 1")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('notificationsEnabled', 'true', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        run_migrations(&pool).await.unwrap();
+
+        let availability: (String,) =
+            sqlx::query_as("SELECT value FROM preferences WHERE key = 'availabilityAlertsEnabled'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(availability.0, "true");
+
+        let desktop: (String,) =
+            sqlx::query_as("SELECT value FROM preferences WHERE key = 'desktopNotificationsEnabled'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(desktop.0, "true");
+    }
+
+    #[tokio::test]
+    async fn migration_022_backfills_nothing_when_notifications_were_never_explicitly_set() {
+        let pool = in_memory_pool().await;
+        run_migrations(&pool).await.unwrap();
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM preferences WHERE key IN ('availabilityAlertsEnabled','desktopNotificationsEnabled')",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(count, 0);
     }
 
     #[tokio::test]

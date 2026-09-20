@@ -37,6 +37,7 @@ import type { UserPreferences, UserProfile } from "@/types/media";
 // item list here is static, no usePresentSectionIds filtering needed.
 const SETTINGS_UI_ID = "settings-ui-preferences";
 const SETTINGS_STREAMING_ID = "settings-streaming";
+const SETTINGS_NOTIFICATIONS_ID = "settings-notifications";
 const SETTINGS_ACCOUNT_ID = "settings-account";
 const SETTINGS_DATA_ID = "settings-data";
 const SETTINGS_HIDDEN_TITLES_ID = "settings-hidden-titles";
@@ -294,10 +295,20 @@ export function SettingsPage() {
     await updatePreference({ key: "language", value: language });
     await i18n.changeLanguage(language);
   };
-  const toggleNotifications = async () => {
-    const enabled = !preferences?.notificationsEnabled;
+  const toggleCalendarNotifications = async () => {
+    await updatePreference({ key: "notificationsEnabled", value: !preferences?.notificationsEnabled });
+  };
+  const toggleAvailabilityAlerts = async () => {
+    await updatePreference({ key: "availabilityAlertsEnabled", value: !preferences?.availabilityAlertsEnabled });
+  };
+  // The only one of the three that actually needs the OS permission prompt
+  // — calendar reminders and availability alerts can both be "on" and stay
+  // silent (no desktop toast) if this one is off, per notifyDue's and
+  // availabilityMonitor.checkAll's own desktopNotificationsEnabled gating.
+  const toggleDesktopNotifications = async () => {
+    const enabled = !preferences?.desktopNotificationsEnabled;
     if (enabled && !(await notificationService.requestPermission())) return;
-    await updatePreference({ key: "notificationsEnabled", value: enabled });
+    await updatePreference({ key: "desktopNotificationsEnabled", value: enabled });
   };
   const toggleStreamingProvider = async (providerId: number) => {
     const current = preferences?.preferredProviderIds ?? [];
@@ -309,6 +320,7 @@ export function SettingsPage() {
   const navItems = [
     { id: SETTINGS_UI_ID, label: t("settings.uiPreferences") },
     { id: SETTINGS_STREAMING_ID, label: t("settings.sections.streaming") },
+    { id: SETTINGS_NOTIFICATIONS_ID, label: t("settings.sections.notifications") },
     { id: SETTINGS_ACCOUNT_ID, label: t("settings.sections.account") },
     { id: SETTINGS_DATA_ID, label: t("settings.sections.data") },
     { id: SETTINGS_HIDDEN_TITLES_ID, label: t("recommendations.hiddenTitles.title") },
@@ -430,11 +442,6 @@ export function SettingsPage() {
                 }
               />
               <SettingToggle
-                label={t("settings.calendarNotifications")}
-                pressed={preferences?.notificationsEnabled ?? false}
-                onPressedChange={() => void toggleNotifications()}
-              />
-              <SettingToggle
                 label={t("settings.onThisDay")}
                 pressed={preferences?.onThisDayEnabled ?? false}
                 onPressedChange={() =>
@@ -465,6 +472,34 @@ export function SettingsPage() {
             isSaving={isSaving}
           />
         </div>
+      </section>
+
+      <section id={SETTINGS_NOTIFICATIONS_ID} className="scroll-mt-28">
+        <SectionHeader
+          size="sub"
+          headingLevel={2}
+          title={t("settings.sections.notifications")}
+          subtitle={t("settings.sections.notificationsDesc")}
+        />
+        <Card>
+          <CardContent className="mt-0 flex flex-wrap gap-2">
+            <SettingToggle
+              label={t("settings.calendarNotifications")}
+              pressed={preferences?.notificationsEnabled ?? false}
+              onPressedChange={() => void toggleCalendarNotifications()}
+            />
+            <SettingToggle
+              label={t("settings.availabilityAlerts")}
+              pressed={preferences?.availabilityAlertsEnabled ?? false}
+              onPressedChange={() => void toggleAvailabilityAlerts()}
+            />
+            <SettingToggle
+              label={t("settings.desktopNotifications")}
+              pressed={preferences?.desktopNotificationsEnabled ?? false}
+              onPressedChange={() => void toggleDesktopNotifications()}
+            />
+          </CardContent>
+        </Card>
       </section>
 
       <section id={SETTINGS_ACCOUNT_ID} className="scroll-mt-28">

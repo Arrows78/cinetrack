@@ -43,6 +43,8 @@ const preferencesData = {
   libraryViewMode: "grid",
   spoilerProtection: true,
   notificationsEnabled: false,
+  availabilityAlertsEnabled: false,
+  desktopNotificationsEnabled: false,
   notifyHoursBefore: 24,
   preferredProviderIds: [],
   activeProfileId: "default",

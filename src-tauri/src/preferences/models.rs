@@ -100,7 +100,26 @@ pub struct UserPreferences {
     pub sidebar_collapsed: bool,
     pub library_view_mode: LibraryViewMode,
     pub spoiler_protection: bool,
+    /// Specifically calendar reminders (upcoming movie/episode releases) —
+    /// despite the name, no longer the single blanket notifications switch.
+    /// See `availability_alerts_enabled`/`desktop_notifications_enabled` for
+    /// the other two categories the Settings page now exposes separately.
     pub notifications_enabled: bool,
+    /// "This title just became available on a service you subscribe to"
+    /// alerts, independent of calendar reminders. Backfilled from
+    /// `notifications_enabled` for anyone who already had that on (see
+    /// migration 022) so existing opt-ins keep working after the split.
+    #[serde(default)]
+    pub availability_alerts_enabled: bool,
+    /// Master switch for whether any OS-level notification is actually
+    /// shown (see `notificationService.send`'s own gating in
+    /// notification-service.ts/availability-monitor.ts) — the two category
+    /// flags above still decide *whether an event is eligible* to notify,
+    /// this decides whether that notification is allowed to pop as a
+    /// desktop toast at all. Also backfilled from `notifications_enabled`
+    /// (migration 022).
+    #[serde(default)]
+    pub desktop_notifications_enabled: bool,
     pub notify_hours_before: u32,
     /// How often the background loop in App.tsx re-checks every enabled
     /// availability alert against TMDB — previously a hardcoded 6 hours
@@ -202,6 +221,8 @@ impl Default for UserPreferences {
             library_view_mode: LibraryViewMode::Grid,
             spoiler_protection: true,
             notifications_enabled: false,
+            availability_alerts_enabled: false,
+            desktop_notifications_enabled: false,
             notify_hours_before: 24,
             availability_check_interval_hours: 6,
             preferred_provider_ids: Vec::new(),

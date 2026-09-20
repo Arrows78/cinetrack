@@ -44,7 +44,12 @@ export const notificationService = {
   },
 
   async notifyDue(entries: CalendarEntry[], preferences: UserPreferences): Promise<number> {
-    if (!preferences.notificationsEnabled || !(await this.isPermissionGranted())) return 0;
+    if (
+      !preferences.notificationsEnabled ||
+      !preferences.desktopNotificationsEnabled ||
+      !(await this.isPermissionGranted())
+    )
+      return 0;
     const sent = readSentNotifications();
     let count = 0;
     const now = new Date();

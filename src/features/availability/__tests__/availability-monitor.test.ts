@@ -70,7 +70,7 @@ describe("availabilityMonitor.checkAll", () => {
   });
 
   it("sends a notification when a new provider appears and notifications are enabled", async () => {
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true });
 
     expect(mocks.send).toHaveBeenCalledTimes(1);
     expect(outcome.changes).toBe(1);
@@ -78,7 +78,7 @@ describe("availabilityMonitor.checkAll", () => {
   });
 
   it("still tracks the change and updates the snapshot but stays silent when notifications are disabled", async () => {
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: false });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: false });
 
     expect(mocks.send).not.toHaveBeenCalled();
     expect(outcome.changes).toBe(1);
@@ -91,10 +91,17 @@ describe("availabilityMonitor.checkAll", () => {
     expect(mocks.send).toHaveBeenCalledTimes(1);
   });
 
+  it("still tracks the change but stays silent when desktop notifications are disabled, even with alerts enabled", async () => {
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true, desktopNotificationsEnabled: false });
+
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(outcome.changes).toBe(1);
+  });
+
   it("does not notify when there is no previous snapshot to compare against", async () => {
     mocks.getSnapshot.mockResolvedValue(null);
 
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true });
 
     expect(mocks.send).not.toHaveBeenCalled();
     expect(outcome.changes).toBe(0);
@@ -109,7 +116,7 @@ describe("availabilityMonitor.checkAll", () => {
       return availability([8]);
     });
 
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true });
 
     // The failing alert never reaches saveSnapshot; the healthy one after it
     // still gets fully processed.
@@ -128,7 +135,7 @@ describe("availabilityMonitor.checkAll", () => {
     mocks.listAlerts.mockResolvedValue([alert({ id: "a", mediaId: 1 }), alert({ id: "b", mediaId: 2 })]);
     mocks.getWatchAvailability.mockRejectedValue(new Error("TMDB unreachable"));
 
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true });
 
     // failures === checked is what lets App.tsx distinguish this total
     // outage from a genuinely quiet run; changes: 0 alone cannot.
@@ -140,14 +147,14 @@ describe("availabilityMonitor.checkAll", () => {
   it("does not notify for a newly-available provider outside the profile's preferred providers, when the alert has none of its own", async () => {
     // Alert has no explicit providerIds; the profile only prefers 337, but
     // the new provider is 8 — that's not a match this alert should surface.
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true, preferredProviderIds: [337] });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true, preferredProviderIds: [337] });
 
     expect(mocks.send).not.toHaveBeenCalled();
     expect(outcome.changes).toBe(0);
   });
 
   it("notifies for a newly-available provider that is one of the profile's preferred providers", async () => {
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true, preferredProviderIds: [8] });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true, preferredProviderIds: [8] });
 
     expect(mocks.send).toHaveBeenCalledTimes(1);
     expect(outcome.changes).toBe(1);
@@ -156,7 +163,7 @@ describe("availabilityMonitor.checkAll", () => {
   it("reports nothing checked when no alert is enabled", async () => {
     mocks.listAlerts.mockResolvedValue([alert({ enabled: false })]);
 
-    const outcome = await availabilityMonitor.checkAll({ notificationsEnabled: true });
+    const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true });
 
     // checked: 0 must not read as a total outage (0 failures of 0 checks).
     expect(outcome).toEqual({ changes: 0, failures: 0, checked: 0 });

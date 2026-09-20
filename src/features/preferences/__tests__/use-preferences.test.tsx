@@ -18,6 +18,8 @@ const defaultPreferences: UserPreferences = {
   libraryViewMode: "grid",
   spoilerProtection: true,
   notificationsEnabled: false,
+  availabilityAlertsEnabled: false,
+  desktopNotificationsEnabled: false,
   notifyHoursBefore: 24,
   availabilityCheckIntervalHours: 6,
   recentSearches: [],

@@ -15,10 +15,16 @@ export interface AvailabilityCheckOutcome {
 
 export const availabilityMonitor = {
   async checkAll({
-    notificationsEnabled = true,
+    alertsEnabled = true,
+    desktopNotificationsEnabled = true,
     preferredProviderIds = [],
   }: {
-    notificationsEnabled?: boolean;
+    alertsEnabled?: boolean;
+    // Independent of alertsEnabled: alertsEnabled decides whether *this
+    // category* is eligible to notify at all, this decides whether any
+    // notification is allowed to pop as an OS desktop toast — same split as
+    // notification-service.ts's notifyDue for calendar reminders.
+    desktopNotificationsEnabled?: boolean;
     // Falls back to the profile's own preferred streaming services when an
     // alert has none of its own selected — previously fell back to "every
     // platform", so an alert with no explicit provider notified for a
@@ -42,7 +48,7 @@ export const availabilityMonitor = {
 
         if (previous && newProviders.length) {
           changes += 1;
-          if (notificationsEnabled) {
+          if (alertsEnabled && desktopNotificationsEnabled) {
             await notificationService.send(
               i18n.t("notifications.availabilityTitle", { title: alert.title }),
               i18n.t("notifications.availabilityBody", { region: alert.region })

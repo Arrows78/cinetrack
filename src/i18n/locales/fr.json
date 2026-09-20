@@ -371,6 +371,8 @@
     "compactMode": "Mode compact",
     "spoilerProtection": "Protection anti-spoiler",
     "calendarNotifications": "Notifications calendrier",
+    "availabilityAlerts": "Alertes de disponibilité",
+    "desktopNotifications": "Notifications bureau",
     "onThisDay": "Souvenirs « Ce jour-là »",
     "desktopSecurity": "Desktop et sécurité",
     "desktopSecurityDesc": "Token chiffré, raccourcis, démarrage, mises à jour et récupération.",
@@ -474,6 +476,8 @@
       "dataDesc": "Faites entrer et sortir vos données de CineTrack.",
       "streaming": "Services de streaming",
       "streamingDesc": "Indiquez à CineTrack les plateformes auxquelles vous êtes abonné·e.",
+      "notifications": "Notifications",
+      "notificationsDesc": "Choisissez ce dont CineTrack peut vous rappeler, et s'il peut afficher une notification bureau.",
       "about": "À propos",
       "aboutDesc": "Informations de version et entretien du cache local."
     }

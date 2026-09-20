@@ -21,7 +21,30 @@ export type UserPreferences = {
   sidebarCollapsed: boolean;
   libraryViewMode: LibraryViewMode;
   spoilerProtection: boolean;
+  /**
+   * Specifically calendar reminders (upcoming movie/episode releases) —
+   * despite the name, no longer the single blanket notifications switch.
+   * See `availability_alerts_enabled`/`desktop_notifications_enabled` for
+   * the other two categories the Settings page now exposes separately.
+   */
   notificationsEnabled: boolean;
+  /**
+   * "This title just became available on a service you subscribe to"
+   * alerts, independent of calendar reminders. Backfilled from
+   * `notifications_enabled` for anyone who already had that on (see
+   * migration 022) so existing opt-ins keep working after the split.
+   */
+  availabilityAlertsEnabled: boolean;
+  /**
+   * Master switch for whether any OS-level notification is actually
+   * shown (see `notificationService.send`'s own gating in
+   * notification-service.ts/availability-monitor.ts) — the two category
+   * flags above still decide *whether an event is eligible* to notify,
+   * this decides whether that notification is allowed to pop as a
+   * desktop toast at all. Also backfilled from `notifications_enabled`
+   * (migration 022).
+   */
+  desktopNotificationsEnabled: boolean;
   notifyHoursBefore: number;
   /**
    * How often the background loop in App.tsx re-checks every enabled

@@ -35,7 +35,8 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 async function checkBackgroundNotifications() {
   const preferences = await preferencesRepository.getPreferences();
   const availabilityOutcome = await availabilityMonitor.checkAll({
-    notificationsEnabled: preferences.notificationsEnabled,
+    alertsEnabled: preferences.availabilityAlertsEnabled,
+    desktopNotificationsEnabled: preferences.desktopNotificationsEnabled,
     preferredProviderIds: preferences.preferredProviderIds,
   });
   // Every single alert failing is a real outage (TMDB down, no network),

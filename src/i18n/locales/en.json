@@ -371,6 +371,8 @@
     "compactMode": "Compact mode",
     "spoilerProtection": "Spoiler protection",
     "calendarNotifications": "Calendar notifications",
+    "availabilityAlerts": "Availability alerts",
+    "desktopNotifications": "Desktop notifications",
     "onThisDay": "\"On this day\" memories",
     "desktopSecurity": "Desktop & Security",
     "desktopSecurityDesc": "Encrypted token, shortcuts, startup, updates and recovery.",
@@ -474,6 +476,8 @@
       "dataDesc": "Move your data in and out of CineTrack.",
       "streaming": "Streaming services",
       "streamingDesc": "Tell CineTrack which platforms you subscribe to.",
+      "notifications": "Notifications",
+      "notificationsDesc": "Choose what CineTrack can remind you about, and whether it can pop up a desktop toast.",
       "about": "About",
       "aboutDesc": "Version information and local cache maintenance."
     }

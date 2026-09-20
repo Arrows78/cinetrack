@@ -69,6 +69,8 @@ const preferencesData = {
   libraryViewMode: "grid",
   spoilerProtection: true,
   notificationsEnabled: false,
+  availabilityAlertsEnabled: false,
+  desktopNotificationsEnabled: false,
   notifyHoursBefore: 24,
   availabilityCheckIntervalHours: 6,
   preferredProviderIds: [],
@@ -364,26 +366,48 @@ describe("SettingsPage — preferences", () => {
     );
   });
 
-  it("enables calendar notifications once permission is granted", async () => {
+  it("enables calendar notifications directly, without requesting OS permission", async () => {
+    renderPage();
+    await screen.findByText("Default profile");
+
+    screen.getByRole("button", { name: "Calendar notifications" }).click();
+
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("notificationsEnabled", true));
+    expect(requestPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it("enables availability alerts directly, without requesting OS permission", async () => {
+    renderPage();
+    await screen.findByText("Default profile");
+
+    screen.getByRole("button", { name: "Availability alerts" }).click();
+
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("availabilityAlertsEnabled", true));
+    expect(requestPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it("enables desktop notifications once permission is granted", async () => {
     requestPermissionMock.mockResolvedValue(true);
     renderPage();
     await screen.findByText("Default profile");
 
-    screen.getByRole("button", { name: "Calendar notifications" }).click();
+    screen.getByRole("button", { name: "Desktop notifications" }).click();
 
     await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
-    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("notificationsEnabled", true));
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("desktopNotificationsEnabled", true));
   });
 
-  it("does not enable calendar notifications when permission is refused", async () => {
+  it("does not enable desktop notifications when permission is refused", async () => {
     requestPermissionMock.mockResolvedValue(false);
     renderPage();
     await screen.findByText("Default profile");
 
-    screen.getByRole("button", { name: "Calendar notifications" }).click();
+    screen.getByRole("button", { name: "Desktop notifications" }).click();
 
     await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
-    expect(updatePreferenceMock).not.toHaveBeenCalledWith(expect.objectContaining({ key: "notificationsEnabled" }));
+    expect(updatePreferenceMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ key: "desktopNotificationsEnabled" })
+    );
   });
 
   it("adds a streaming platform to preferredProviderIds when its chip is toggled on", async () => {
