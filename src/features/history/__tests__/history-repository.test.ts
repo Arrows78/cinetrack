@@ -54,6 +54,25 @@ describe("historyRepository", () => {
     });
   });
 
+  it("list() forwards search/from/to filters", async () => {
+    invokeMock.mockResolvedValueOnce([]);
+    const { historyRepository } = await import("../history-repository");
+
+    await historyRepository.list(50, undefined, {
+      search: "dune",
+      from: "2026-01-01T00:00:00.000Z",
+      to: "2026-01-31T23:59:59.999Z",
+    });
+    expect(invokeMock).toHaveBeenCalledWith("list_history", {
+      limit: 50,
+      beforeTimestamp: undefined,
+      beforeId: undefined,
+      search: "dune",
+      from: "2026-01-01T00:00:00.000Z",
+      to: "2026-01-31T23:59:59.999Z",
+    });
+  });
+
   it("wraps a rejected invoke() into an ApiCommandError", async () => {
     invokeMock.mockRejectedValueOnce({ message: "boom", status: 500 });
     const { historyRepository } = await import("../history-repository");

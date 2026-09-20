@@ -81,6 +81,9 @@ const historyRoute = createRoute({
   path: "/history",
   validateSearch: z.object({
     type: z.enum(["all", "movie", "series"]).optional(),
+    q: z.string().optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
   }),
   component: lazyRouteComponent(() => import("@/pages/history-page"), "HistoryPage"),
 });

@@ -10,4 +10,4 @@ pub(crate) use repository::add_history_item_impl;
 // tests) — HistoryService::list calls repository::list_history_impl
 // directly and never needs it re-exported for production code.
 #[cfg(test)]
-pub(crate) use repository::list_history_impl;
+pub(crate) use repository::{HistoryFilters, list_history_impl};

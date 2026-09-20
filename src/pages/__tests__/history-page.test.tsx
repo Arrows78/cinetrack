@@ -371,6 +371,47 @@ describe("HistoryPage", () => {
       await waitFor(() => expect(getRouterSearch()).not.toContain("type"));
     });
 
+    it("debounces the search input, pushes it into the URL, and calls useHistory with it", async () => {
+      renderPage();
+
+      fireEvent.change(screen.getByPlaceholderText("Search your activity"), { target: { value: "Dune" } });
+
+      await waitFor(() => expect(getRouterSearch()).toContain("q=Dune"));
+      const lastCall = mockUseHistory.mock.calls[mockUseHistory.mock.calls.length - 1] as [{ search?: string }];
+      expect(lastCall[0].search).toBe("Dune");
+    });
+
+    it("restores the search query from the URL on a deep link", () => {
+      renderPage("?q=Dune");
+
+      expect(screen.getByPlaceholderText("Search your activity")).toHaveValue("Dune");
+      const lastCall = mockUseHistory.mock.calls[mockUseHistory.mock.calls.length - 1] as [{ search?: string }];
+      expect(lastCall[0].search).toBe("Dune");
+    });
+
+    it("pushes a chosen date range into the URL as inclusive ISO bounds, with a removable chip", async () => {
+      renderPage();
+
+      fireEvent.change(screen.getByLabelText("From date"), { target: { value: "2026-01-01" } });
+      fireEvent.change(screen.getByLabelText("To date"), { target: { value: "2026-01-31" } });
+
+      await waitFor(() => expect(getRouterSearch()).toContain("from=2026-01-01"));
+      expect(getRouterSearch()).toContain("to=2026-01-31");
+      await waitFor(() => {
+        const lastCall = mockUseHistory.mock.calls[mockUseHistory.mock.calls.length - 1] as [
+          { from?: string; to?: string },
+        ];
+        expect(lastCall[0].from).toBe("2026-01-01T00:00:00.000Z");
+        expect(lastCall[0].to).toBe("2026-01-31T23:59:59.999Z");
+      });
+
+      const chipLabel = i18n.t("filters.chips.dateRange", { from: "2026-01-01", to: "2026-01-31" });
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.removeFilter", { filter: chipLabel }) }));
+
+      await waitFor(() => expect(getRouterSearch()).not.toContain("from"));
+      expect(getRouterSearch()).not.toContain("to");
+    });
+
     it("links a movie row to the movie detail page", () => {
       mockUseHistory.mockReturnValue(
         historyQueryResult({

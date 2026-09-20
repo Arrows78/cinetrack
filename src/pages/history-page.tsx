@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
@@ -26,16 +26,20 @@ import { EmptyState } from "@/components/states/empty-state";
 import { TimelineSkeleton, TrackedSeriesSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { LoadMoreButton } from "@/components/media/primitives/load-more-button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { SavedFiltersBar } from "@/components/media/library/saved-filters-bar";
+import { SearchBar } from "@/components/media/primitives/search-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { formatEpisodeCode, formatRelativeDate, percent } from "@/shared/utils/format";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
 import type { HistoryAction, HistoryFilterState, ViewingHistoryItem } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
@@ -216,7 +220,6 @@ function describeLibraryUpdate(item: ViewingHistoryItem, t: TFunction) {
 export function HistoryPage() {
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language.startsWith("fr") ? fr : enUS;
-  const historyQuery = useHistory();
   const trackedSeriesQuery = useTrackedSeries();
   const navigate = useNavigate({ from: "/history" });
   // Typed against historyRoute's own validateSearch (router-config.tsx) —
@@ -226,20 +229,79 @@ export function HistoryPage() {
   const typeFilter = routeSearch.type ?? "all";
   const setTypeFilter = (value: "all" | "movie" | "series") =>
     void navigate({ search: (prev) => ({ ...prev, type: value === "all" ? undefined : value }), replace: true });
+  const fromDate = routeSearch.from ?? "";
+  const toDate = routeSearch.to ?? "";
+  const setFromDate = (value: string) =>
+    void navigate({ search: (prev) => ({ ...prev, from: value || undefined }), replace: true });
+  const setToDate = (value: string) =>
+    void navigate({ search: (prev) => ({ ...prev, to: value || undefined }), replace: true });
 
-  const currentFilters: HistoryFilterState = { typeFilter };
-  const applySavedFilters = (filters: HistoryFilterState) => setTypeFilter(filters.typeFilter);
-  const chips: ActiveFilterChip[] =
-    typeFilter === "all"
-      ? []
-      : [
+  // Same debounced "don't clobber what the user is typing with our own
+  // round-trip" URL-sync as SearchPage/PeoplePage's own query state.
+  const urlQuery = routeSearch.q ?? "";
+  const lastPushedQueryRef = useRef<string | undefined>(urlQuery || undefined);
+  const [query, setQuery] = useState(urlQuery);
+  const [prevUrlQuery, setPrevUrlQuery] = useState(urlQuery);
+  if (urlQuery !== prevUrlQuery) {
+    setPrevUrlQuery(urlQuery);
+    if ((urlQuery || undefined) !== lastPushedQueryRef.current) setQuery(urlQuery);
+  }
+  const debouncedQuery = useDebouncedValue(query, DEBOUNCE_MS);
+  useEffect(() => {
+    const nextQuery = debouncedQuery || undefined;
+    if (nextQuery === lastPushedQueryRef.current) return;
+    lastPushedQueryRef.current = nextQuery;
+    void navigate({ search: (prev) => ({ ...prev, q: nextQuery }), replace: true });
+  }, [debouncedQuery, navigate]);
+
+  const historyQuery = useHistory({
+    search: debouncedQuery || undefined,
+    // Inclusive end-of-day bound — a plain date input only carries the day,
+    // and comparing it against full ISO timestamps at midnight would drop
+    // every entry logged later that same day.
+    from: fromDate ? `${fromDate}T00:00:00.000Z` : undefined,
+    to: toDate ? `${toDate}T23:59:59.999Z` : undefined,
+  });
+
+  const currentFilters: HistoryFilterState = { typeFilter, search: debouncedQuery, from: fromDate, to: toDate };
+  const applySavedFilters = (filters: HistoryFilterState) => {
+    setTypeFilter(filters.typeFilter);
+    setQuery(filters.search ?? "");
+    setFromDate(filters.from ?? "");
+    setToDate(filters.to ?? "");
+  };
+  const chips: ActiveFilterChip[] = [
+    ...(typeFilter !== "all"
+      ? [
           {
             key: "type",
             label: t("filters.chips.type", { value: typeFilter === "movie" ? t("nav.movies") : t("nav.series") }),
             onRemove: () => setTypeFilter("all"),
           },
-        ];
+        ]
+      : []),
+    ...(fromDate || toDate
+      ? [
+          {
+            key: "dateRange",
+            label: t("filters.chips.dateRange", { from: fromDate || "…", to: toDate || "…" }),
+            onRemove: () => {
+              setFromDate("");
+              setToDate("");
+            },
+          },
+        ]
+      : []),
+  ];
+  const clearAllFilters = () => {
+    setTypeFilter("all");
+    setFromDate("");
+    setToDate("");
+  };
 
+  // search/from/to are applied server-side (part of useHistory's own query
+  // key, above) — type stays a client-side filter over whatever pages are
+  // already loaded, same as before search/date filtering existed.
   const filteredHistory = useMemo(
     () =>
       (historyQuery.data?.pages.flat() ?? []).filter((item) =>
@@ -313,9 +375,34 @@ export function HistoryPage() {
           }
         />
 
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="w-full sm:w-64">
+            <SearchBar value={query} onChange={setQuery} placeholder={t("history.searchPlaceholder")} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              size="sm"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              aria-label={t("history.filterFromDate")}
+              className="max-w-40"
+            />
+            <span className="h-px w-3 shrink-0 bg-border" aria-hidden="true" />
+            <Input
+              type="date"
+              size="sm"
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+              aria-label={t("history.filterToDate")}
+              className="max-w-40"
+            />
+          </div>
+        </div>
+
         <div className="mb-4 space-y-3">
           <SavedFiltersBar page="history" currentFilters={currentFilters} onApply={applySavedFilters} />
-          <ActiveFilterChips chips={chips} onClearAll={() => setTypeFilter("all")} />
+          <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
         </div>
 
         {historyQuery.isLoading ? (

@@ -34,7 +34,17 @@ describe("useHistory", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.data?.pages).toEqual([[item]]);
-    expect(listMock).toHaveBeenCalledWith(50, undefined);
+    expect(listMock).toHaveBeenCalledWith(50, undefined, {});
+  });
+
+  it("passes search/date filters through to the repository, and keys the query by them", async () => {
+    const { useHistory } = await import("../use-history");
+    const filters = { search: "dune", from: "2026-01-01T00:00:00.000Z", to: "2026-01-31T23:59:59.999Z" };
+    const { result } = renderHook(() => useHistory(filters), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(listMock).toHaveBeenCalledWith(50, undefined, filters);
   });
 
   it("fetches the next page using the last item's timestamp/id as the cursor", async () => {
@@ -55,6 +65,6 @@ describe("useHistory", () => {
     await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
 
     const last = fullPage[fullPage.length - 1]!;
-    expect(listMock).toHaveBeenLastCalledWith(50, { beforeTimestamp: last.timestamp, beforeId: last.id });
+    expect(listMock).toHaveBeenLastCalledWith(50, { beforeTimestamp: last.timestamp, beforeId: last.id }, {});
   });
 });

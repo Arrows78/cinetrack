@@ -436,7 +436,7 @@ pub(super) async fn remove_if_planned_impl(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::history::list_history_impl;
+    use crate::history::{HistoryFilters, list_history_impl};
     use sqlx::sqlite::SqlitePoolOptions;
     use tauri::Manager;
 
@@ -1177,7 +1177,9 @@ mod tests {
             .await
             .unwrap();
 
-        let history = list_history_impl(&pool, 50, None).await.unwrap();
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(history.len(), 2);
         assert_eq!(history[0].action, HistoryAction::LibraryUpdate);
         assert_eq!(
@@ -1207,7 +1209,9 @@ mod tests {
             .await
             .unwrap();
 
-        let history = list_history_impl(&pool, 50, None).await.unwrap();
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].action, HistoryAction::LibraryAdd);
     }
@@ -1223,7 +1227,9 @@ mod tests {
             .await
             .unwrap();
 
-        let history = list_history_impl(&pool, 50, None).await.unwrap();
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(history.len(), 2);
         assert_eq!(history[0].action, HistoryAction::LibraryRemove);
     }
@@ -1236,7 +1242,12 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(list_history_impl(&pool, 50, None).await.unwrap().is_empty());
+        assert!(
+            list_history_impl(&pool, 50, None, &HistoryFilters::default())
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[tokio::test]
@@ -1257,7 +1268,9 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        let history = list_history_impl(&pool, 50, None).await.unwrap();
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(history[0].action, HistoryAction::LibraryRemove);
     }
 
@@ -1406,7 +1419,9 @@ mod tests {
             Some("2026-01-01T00:00:00.000Z")
         );
 
-        let history = list_history_impl(&pool, 50, None).await.unwrap();
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].action, HistoryAction::LibraryAdd);
     }
@@ -1467,7 +1482,9 @@ mod tests {
         .unwrap();
         tx.commit().await.unwrap();
 
-        let history = list_history_impl(&pool, 50, None).await.unwrap();
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(history.len(), 1);
     }
 

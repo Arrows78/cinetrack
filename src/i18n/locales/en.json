@@ -260,6 +260,9 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "filterType": "Filter by type",
+    "searchPlaceholder": "Search your activity",
+    "filterFromDate": "From date",
+    "filterToDate": "To date",
     "seriesInProgress": "Series in progress",
     "seriesInProgressSubtitle": "Your local progress on followed series.",
     "noActivity": "No activity yet",
@@ -328,7 +331,8 @@
       "provider": "Service: {{value}}",
       "studio": "Studio: {{value}}",
       "duration": "Max duration: {{value}}",
-      "origin": "Origin: {{value}}"
+      "origin": "Origin: {{value}}",
+      "dateRange": "Date: {{from}} → {{to}}"
     },
     "savedFilters": {
       "namePlaceholder": "Name this view…",

@@ -1,9 +1,22 @@
 use serde_json::Value;
-use sqlx::SqlitePool;
+use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
 use super::models::{HistoryRow, ViewingHistoryItem};
 use crate::database::current_profile_id;
 use crate::error::ApiError;
+
+/// Search/date-range filters layered on top of the cursor pagination below —
+/// all optional, `None`/empty leaves that dimension unfiltered. `from`/`to`
+/// are inclusive ISO timestamp bounds, compared as plain strings (like the
+/// cursor itself), which works because every stored timestamp shares the
+/// same ISO 8601 format and therefore the same lexicographic and
+/// chronological order.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct HistoryFilters {
+    pub(crate) search: Option<String>,
+    pub(crate) from: Option<String>,
+    pub(crate) to: Option<String>,
+}
 
 /// `before` is an exclusive `(timestamp, uuid)` cursor — the last item seen
 /// on a previous page — rather than an `OFFSET`. An offset would shift if a
@@ -16,36 +29,50 @@ pub(crate) async fn list_history_impl(
     pool: &SqlitePool,
     limit: u32,
     before: Option<(&str, &str)>,
+    filters: &HistoryFilters,
 ) -> Result<Vec<ViewingHistoryItem>, ApiError> {
     let profile_id = current_profile_id(pool).await?;
 
-    let rows: Vec<HistoryRow> = match before {
-        Some((before_timestamp, before_id)) => {
-            sqlx::query_as(
-                "SELECT uuid, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp
-                 FROM activity_log
-                 WHERE profile_id = $1 AND (timestamp < $2 OR (timestamp = $2 AND uuid < $3))
-                 ORDER BY timestamp DESC, uuid DESC LIMIT $4",
-            )
-            .bind(profile_id)
-            .bind(before_timestamp)
-            .bind(before_id)
-            .bind(limit)
-            .fetch_all(pool)
-            .await
-        }
-        None => {
-            sqlx::query_as(
-                "SELECT uuid, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp
-                 FROM activity_log WHERE profile_id = $1 ORDER BY timestamp DESC, uuid DESC LIMIT $2",
-            )
-            .bind(profile_id)
-            .bind(limit)
-            .fetch_all(pool)
-            .await
-        }
+    let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
+        "SELECT uuid, media_id, media_type, title, action, season_number, episode_number, episode_title, metadata, timestamp
+         FROM activity_log WHERE profile_id = ",
+    );
+    qb.push_bind(profile_id);
+
+    if let Some((before_timestamp, before_id)) = before {
+        qb.push(" AND (timestamp < ")
+            .push_bind(before_timestamp.to_string())
+            .push(" OR (timestamp = ")
+            .push_bind(before_timestamp.to_string())
+            .push(" AND uuid < ")
+            .push_bind(before_id.to_string())
+            .push("))");
     }
-    .map_err(ApiError::from)?;
+    if let Some(search) = filters
+        .search
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        qb.push(" AND title LIKE ")
+            .push_bind(format!("%{search}%"))
+            .push(" COLLATE NOCASE");
+    }
+    if let Some(from) = filters.from.as_deref().filter(|s| !s.is_empty()) {
+        qb.push(" AND timestamp >= ").push_bind(from.to_string());
+    }
+    if let Some(to) = filters.to.as_deref().filter(|s| !s.is_empty()) {
+        qb.push(" AND timestamp <= ").push_bind(to.to_string());
+    }
+
+    qb.push(" ORDER BY timestamp DESC, uuid DESC LIMIT ")
+        .push_bind(limit);
+
+    let rows: Vec<HistoryRow> = qb
+        .build_query_as()
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)?;
 
     rows.into_iter().map(ViewingHistoryItem::try_from).collect()
 }
@@ -178,7 +205,9 @@ mod tests {
         .await
         .unwrap();
 
-        let list = list_history_impl(&pool, 50, None).await.unwrap();
+        let list = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(
             list.into_iter().map(|item| item.title).collect::<Vec<_>>(),
             vec!["Recent", "Milieu", "Ancien"]
@@ -202,7 +231,13 @@ mod tests {
             .unwrap();
         }
 
-        assert_eq!(list_history_impl(&pool, 2, None).await.unwrap().len(), 2);
+        assert_eq!(
+            list_history_impl(&pool, 2, None, &HistoryFilters::default())
+                .await
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     #[tokio::test]
@@ -222,7 +257,9 @@ mod tests {
             .unwrap();
         }
 
-        let first_page = list_history_impl(&pool, 2, None).await.unwrap();
+        let first_page = list_history_impl(&pool, 2, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(
             first_page
                 .iter()
@@ -232,9 +269,14 @@ mod tests {
         );
 
         let last = first_page.last().unwrap();
-        let second_page = list_history_impl(&pool, 2, Some((&last.timestamp, &last.id)))
-            .await
-            .unwrap();
+        let second_page = list_history_impl(
+            &pool,
+            2,
+            Some((&last.timestamp, &last.id)),
+            &HistoryFilters::default(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             second_page
                 .iter()
@@ -260,13 +302,20 @@ mod tests {
             .await
             .unwrap();
 
-        let first_page = list_history_impl(&pool, 2, None).await.unwrap();
+        let first_page = list_history_impl(&pool, 2, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(first_page.len(), 2);
 
         let last = first_page.last().unwrap();
-        let second_page = list_history_impl(&pool, 2, Some((&last.timestamp, &last.id)))
-            .await
-            .unwrap();
+        let second_page = list_history_impl(
+            &pool,
+            2,
+            Some((&last.timestamp, &last.id)),
+            &HistoryFilters::default(),
+        )
+        .await
+        .unwrap();
 
         let mut all_ids: Vec<String> = first_page
             .iter()
@@ -294,7 +343,13 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(list_history_impl(&pool, 50, None).await.unwrap().len(), 1);
+        assert_eq!(
+            list_history_impl(&pool, 50, None, &HistoryFilters::default())
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
 
         sqlx::query(
             "INSERT INTO preferences (key, value, updated_at) VALUES ('activeProfileId', '\"guest\"', 'now')",
@@ -302,7 +357,13 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-        assert_eq!(list_history_impl(&pool, 50, None).await.unwrap().len(), 0);
+        assert_eq!(
+            list_history_impl(&pool, 50, None, &HistoryFilters::default())
+                .await
+                .unwrap()
+                .len(),
+            0
+        );
 
         add_history_item_impl(
             &pool,
@@ -311,7 +372,9 @@ mod tests {
         )
         .await
         .unwrap();
-        let guest_history = list_history_impl(&pool, 50, None).await.unwrap();
+        let guest_history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(guest_history.len(), 1);
         assert_eq!(
             guest_history[0]
@@ -337,7 +400,13 @@ mod tests {
         item.metadata = Some(serde_json::json!({ "profileId": "guest" }));
         add_history_item_impl(&pool, &pool, item).await.unwrap();
 
-        assert_eq!(list_history_impl(&pool, 50, None).await.unwrap().len(), 0);
+        assert_eq!(
+            list_history_impl(&pool, 50, None, &HistoryFilters::default())
+                .await
+                .unwrap()
+                .len(),
+            0
+        );
 
         sqlx::query(
             "INSERT INTO preferences (key, value, updated_at) VALUES ('activeProfileId', '\"guest\"', 'now')",
@@ -345,7 +414,13 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-        assert_eq!(list_history_impl(&pool, 50, None).await.unwrap().len(), 1);
+        assert_eq!(
+            list_history_impl(&pool, 50, None, &HistoryFilters::default())
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[tokio::test]
@@ -359,8 +434,97 @@ mod tests {
 
         add_history_item_impl(&pool, &pool, item).await.unwrap();
 
-        let list = list_history_impl(&pool, 50, None).await.unwrap();
+        let list = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].metadata, Some(serde_json::json!("not-an-object")));
+    }
+
+    #[tokio::test]
+    async fn search_matches_the_title_case_insensitively_as_a_substring() {
+        let pool = migrated_pool().await;
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("1", "2026-01-01T00:00:00.000Z", "The Matrix"),
+        )
+        .await
+        .unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("2", "2026-01-02T00:00:00.000Z", "Severance"),
+        )
+        .await
+        .unwrap();
+
+        let filters = HistoryFilters {
+            search: Some("matr".to_string()),
+            ..Default::default()
+        };
+        let list = list_history_impl(&pool, 50, None, &filters).await.unwrap();
+
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].title, "The Matrix");
+    }
+
+    #[tokio::test]
+    async fn date_range_bounds_are_inclusive_on_both_ends() {
+        let pool = migrated_pool().await;
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("1", "2026-01-01T00:00:00.000Z", "Before"),
+        )
+        .await
+        .unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("2", "2026-01-02T00:00:00.000Z", "InRange"),
+        )
+        .await
+        .unwrap();
+        add_history_item_impl(
+            &pool,
+            &pool,
+            entry("3", "2026-01-03T00:00:00.000Z", "After"),
+        )
+        .await
+        .unwrap();
+
+        let filters = HistoryFilters {
+            from: Some("2026-01-02T00:00:00.000Z".to_string()),
+            to: Some("2026-01-02T00:00:00.000Z".to_string()),
+            ..Default::default()
+        };
+        let list = list_history_impl(&pool, 50, None, &filters).await.unwrap();
+
+        assert_eq!(
+            list.into_iter().map(|item| item.title).collect::<Vec<_>>(),
+            vec!["InRange"]
+        );
+    }
+
+    #[tokio::test]
+    async fn search_and_date_range_combine_with_and_semantics() {
+        let pool = migrated_pool().await;
+        add_history_item_impl(&pool, &pool, entry("1", "2026-01-01T00:00:00.000Z", "Dune"))
+            .await
+            .unwrap();
+        add_history_item_impl(&pool, &pool, entry("2", "2026-01-05T00:00:00.000Z", "Dune"))
+            .await
+            .unwrap();
+
+        let filters = HistoryFilters {
+            search: Some("dune".to_string()),
+            from: Some("2026-01-03T00:00:00.000Z".to_string()),
+            to: None,
+        };
+        let list = list_history_impl(&pool, 50, None, &filters).await.unwrap();
+
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].id, "2");
     }
 }

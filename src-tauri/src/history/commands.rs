@@ -2,21 +2,27 @@ use sqlx::SqlitePool;
 use tauri::State;
 
 use super::models::ViewingHistoryItem;
+use super::repository::HistoryFilters;
 use super::service::HistoryService;
 use crate::diagnostics::timed;
 use crate::error::ApiError;
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn list_history(
     limit: Option<u32>,
     before_timestamp: Option<String>,
     before_id: Option<String>,
+    search: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingHistoryItem>, ApiError> {
     timed("list_history", async {
         let before = before_timestamp.as_deref().zip(before_id.as_deref());
+        let filters = HistoryFilters { search, from, to };
         HistoryService::new(pool.inner())
-            .list(limit.unwrap_or(50), before)
+            .list(limit.unwrap_or(50), before, &filters)
             .await
     })
     .await
@@ -86,7 +92,9 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let list = list_history(None, None, None, state).await.unwrap();
+        let list = list_history(None, None, None, None, None, None, state)
+            .await
+            .unwrap();
 
         assert_eq!(
             list.into_iter().map(|item| item.title).collect::<Vec<_>>(),
@@ -115,7 +123,9 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let list = list_history(Some(1), None, None, state).await.unwrap();
+        let list = list_history(Some(1), None, None, None, None, None, state)
+            .await
+            .unwrap();
 
         assert_eq!(list.len(), 1);
     }

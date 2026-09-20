@@ -260,6 +260,9 @@
     "today": "Aujourd'hui",
     "yesterday": "Hier",
     "filterType": "Filtrer par type",
+    "searchPlaceholder": "Rechercher dans votre activité",
+    "filterFromDate": "Depuis le",
+    "filterToDate": "Jusqu'au",
     "seriesInProgress": "Séries en cours",
     "seriesInProgressSubtitle": "Votre progression locale.",
     "noActivity": "Aucune activité",
@@ -328,7 +331,8 @@
       "provider": "Service : {{value}}",
       "studio": "Studio : {{value}}",
       "duration": "Durée max : {{value}}",
-      "origin": "Origine : {{value}}"
+      "origin": "Origine : {{value}}",
+      "dateRange": "Date : {{from}} → {{to}}"
     },
     "savedFilters": {
       "namePlaceholder": "Nommer cette vue…",

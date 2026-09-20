@@ -303,6 +303,10 @@ export interface TrackingFilterState {
 // HistoryPage's own filter-control state (src/pages/history-page.tsx).
 export interface HistoryFilterState {
   typeFilter: "all" | MediaType;
+  /** Optional so a filter saved before these fields existed still applies cleanly. */
+  search?: string;
+  from?: string;
+  to?: string;
 }
 
 export type SavedFilterState = LibraryFilterState | SearchFilterState | TrackingFilterState | HistoryFilterState;

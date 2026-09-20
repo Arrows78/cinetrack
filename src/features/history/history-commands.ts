@@ -5,6 +5,9 @@ type ListHistoryArgs = {
   limit: number | undefined;
   beforeTimestamp: string | undefined;
   beforeId: string | undefined;
+  search: string | undefined;
+  from: string | undefined;
+  to: string | undefined;
 };
 
 export const historyCommands = {

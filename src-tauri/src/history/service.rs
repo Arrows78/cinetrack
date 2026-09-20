@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 
 use super::models::ViewingHistoryItem;
-use super::repository::list_history_impl;
+use super::repository::{HistoryFilters, list_history_impl};
 use crate::error::ApiError;
 
 pub(super) struct HistoryService<'a> {
@@ -17,7 +17,8 @@ impl<'a> HistoryService<'a> {
         &self,
         limit: u32,
         before: Option<(&str, &str)>,
+        filters: &HistoryFilters,
     ) -> Result<Vec<ViewingHistoryItem>, ApiError> {
-        list_history_impl(self.pool, limit, before).await
+        list_history_impl(self.pool, limit, before, filters).await
     }
 }
