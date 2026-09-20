@@ -541,6 +541,7 @@
   "series": {
     "subtitle": "Parcourez les saisons et suivez votre progression.",
     "navSectionsLabel": "Sections de la fiche série",
+    "exportSeries": "Exporter cette série",
     "seriesInfo": "Informations",
     "currentProgress": "Progression actuelle",
     "episodesFraction": "{{watched}}/{{total}} ép.",
@@ -950,6 +951,7 @@
       "create": "Créer",
       "noLists": "Vous n'avez pas encore créé de liste.",
       "itemsEmpty": "Cette liste est vide.",
+      "export": "Exporter cette liste",
       "removeItem": "Retirer {{title}} de cette liste",
       "removeItemConfirmTitle": "Retirer {{title}} de cette liste ?",
       "deleteList": "Supprimer la liste {{name}}",

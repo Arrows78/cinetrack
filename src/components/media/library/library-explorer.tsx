@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { FolderHeart, Heart, LibraryBig, ListPlus, SearchX, Sparkles, Trash2 } from "lucide-react";
+import { Download, FolderHeart, Heart, LibraryBig, ListPlus, SearchX, Sparkles, Trash2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ActiveFilterChips } from "@/components/media/library/active-filter-chips";
 import { FilterBar } from "@/components/media/library/filter-bar";
@@ -28,9 +28,18 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useCustomListItems } from "@/features/custom-lists/use-custom-lists";
 import type { useCustomLists } from "@/features/custom-lists/use-custom-lists";
 import { useMergedGenres } from "@/features/media/use-merged-genres";
+import { partialExport } from "@/features/backup";
 import { isDegradedRemoteError } from "@/shared/lib/errors";
 
-function ListItemRow({ listId }: { listId: string }) {
+function ListItemRow({
+  listId,
+  listName,
+  listDescription,
+}: {
+  listId: string;
+  listName: string;
+  listDescription: string | null;
+}) {
   const { t } = useTranslation();
   const items = useCustomListItems(listId);
   const [pendingRemoval, setPendingRemoval] = useState<{
@@ -56,6 +65,19 @@ function ListItemRow({ listId }: { listId: string }) {
   }
   return (
     <div className="grid gap-2">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() =>
+            partialExport.exportList({ id: listId, name: listName, description: listDescription }, items.data ?? [])
+          }
+        >
+          <Download className="mr-2 size-4" />
+          {t("library.lists.export")}
+        </Button>
+      </div>
       {items.data.map((item) => (
         <Tile
           key={`${item.mediaType}-${item.mediaId}`}
@@ -203,7 +225,7 @@ function ListsAccordionContent({
               </div>
               {openedList === list.id ? (
                 <div id={`custom-list-items-${list.id}`} className="mt-3">
-                  <ListItemRow listId={list.id} />
+                  <ListItemRow listId={list.id} listName={list.name} listDescription={list.description} />
                 </div>
               ) : null}
             </Tile>

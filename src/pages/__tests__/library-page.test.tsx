@@ -599,6 +599,36 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
     await waitFor(() => expect(screen.queryByText("Only In List")).not.toBeInTheDocument());
   });
 
+  it("exports the opened list's own items (not another list's) as a downloaded JSON file", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+    // jsdom doesn't implement these; the export button calls them directly —
+    // same stubbing pattern as backup-tools.test.tsx's own export test.
+    URL.createObjectURL = vi.fn(() => "blob:mock-url");
+    URL.revokeObjectURL = vi.fn();
+    const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const blobSpy = vi.spyOn(global, "Blob");
+
+    screen.getByRole("button", { name: /Custom lists/i }).click();
+    (await screen.findByRole("button", { name: "Weekend" })).click();
+    await screen.findByText("Only In List");
+
+    fireEvent.click(screen.getByRole("button", { name: "Export this list" }));
+
+    expect(anchorClickSpy).toHaveBeenCalledTimes(1);
+    const parts = blobSpy.mock.calls[0]?.[0] as string[] | undefined;
+    const payload = JSON.parse(parts![0]!) as {
+      kind: string;
+      list: { name: string };
+      items: Array<{ mediaId: number }>;
+    };
+    expect(payload.kind).toBe("list-export");
+    expect(payload.list.name).toBe("Weekend");
+    expect(payload.items.map((item) => item.mediaId).sort()).toEqual([1, 10]);
+
+    blobSpy.mockRestore();
+  });
+
   it("removes an item after confirming, calling remove with the right mediaId/mediaType", async () => {
     customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
     renderPage();

@@ -17,6 +17,7 @@ import { ReviewsPanel } from "@/components/media/detail/reviews-panel";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
 import { NextEpisodeCard } from "@/components/media/tracking/next-episode-card";
 import { ShareButton } from "@/components/media/detail/share-button";
+import { ExportSeriesButton } from "@/components/media/detail/export-series-button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
@@ -163,6 +164,7 @@ export function SeriesDetailPage() {
             <FavouriteButton media={series} />
             <AvailabilityAlertButton media={series} />
             <ShareButton media={series} />
+            <ExportSeriesButton media={series} episodeProgress={progressQuery.data ?? []} />
           </>
         }
         extra={

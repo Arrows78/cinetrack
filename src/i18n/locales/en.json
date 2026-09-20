@@ -541,6 +541,7 @@
   "series": {
     "subtitle": "Browse by season, track your progress and discover new series.",
     "navSectionsLabel": "Series sections",
+    "exportSeries": "Export this series",
     "seriesInfo": "Series info",
     "currentProgress": "Current progress",
     "episodesFraction": "{{watched}}/{{total}} ep.",
@@ -950,6 +951,7 @@
       "create": "Create",
       "noLists": "You haven't created any lists yet.",
       "itemsEmpty": "This list is empty.",
+      "export": "Export this list",
       "removeItem": "Remove {{title}} from this list",
       "removeItemConfirmTitle": "Remove {{title}} from this list?",
       "deleteList": "Delete list {{name}}",
