@@ -61,6 +61,7 @@ export const tauriCommandNames = [
   "find_profile_by_supabase_user_id",
   "link_profile_to_supabase_user",
   "resolve_profile_for_supabase_user",
+  "update_profile",
   "remove_profile",
   "list_custom_lists",
   "create_custom_list",

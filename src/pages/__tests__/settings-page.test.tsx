@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
@@ -50,11 +50,13 @@ vi.mock("@/features/desktop/notification-service", () => ({
 
 const listProfilesMock = vi.fn();
 const createProfileMock = vi.fn();
+const updateProfileMock = vi.fn();
 const removeProfileMock = vi.fn();
 vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
     list: (...args: unknown[]) => listProfilesMock(...args),
     create: (...args: unknown[]) => createProfileMock(...args),
+    update: (...args: unknown[]) => updateProfileMock(...args),
     remove: (...args: unknown[]) => removeProfileMock(...args),
   },
 }));
@@ -110,6 +112,7 @@ describe("SettingsPage — local profile management", () => {
       { id: "alex-id", name: "Alex", avatar: null, createdAt: "2026-01-02", supabaseUserId: null },
     ]);
     createProfileMock.mockReset();
+    updateProfileMock.mockReset();
     removeProfileMock.mockReset().mockResolvedValue(undefined);
     setActiveProfileMock.mockReset().mockResolvedValue(preferencesData);
     getPreferencesMock.mockReset().mockResolvedValue(preferencesData);
@@ -153,6 +156,29 @@ describe("SettingsPage — local profile management", () => {
     createButton.click();
 
     await waitFor(() => expect(createProfileMock).toHaveBeenCalledWith("Sam", null));
+  });
+
+  it("offline mode: renames a profile and sets its avatar from the inline edit form", async () => {
+    updateProfileMock.mockResolvedValueOnce({
+      id: "alex-id",
+      name: "Alexandra",
+      avatar: "cat",
+      createdAt: "2026-01-02",
+      supabaseUserId: null,
+    });
+    renderPage();
+    await screen.findByText("Default profile");
+
+    const editButton = screen.getByRole("button", { name: "Edit profile Alex" });
+    editButton.click();
+
+    const nameInput = await screen.findByLabelText("Profile name");
+    fireEvent.change(nameInput, { target: { value: "Alexandra" } });
+    const editForm = nameInput.parentElement as HTMLElement;
+    fireEvent.click(within(editForm).getByRole("button", { name: "Cat" }));
+    fireEvent.click(within(editForm).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(updateProfileMock).toHaveBeenCalledWith("alex-id", "Alexandra", "cat"));
   });
 
   it("offline mode: shows a loading spinner on the create-profile button while the mutation is pending", async () => {

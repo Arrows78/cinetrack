@@ -46,6 +46,10 @@ export const profileRepository = {
     return invokeTypedCommand(profileCommands.resolveForSupabaseUser, { supabaseUserId });
   },
 
+  async update(profileId: string, name: string, avatar?: string | null): Promise<UserProfile> {
+    return invokeTypedCommand(profileCommands.update, { profileId, name, avatar: avatar ?? null });
+  },
+
   async remove(profileId: string): Promise<void> {
     await invokeTypedCommand(profileCommands.remove, { profileId });
 

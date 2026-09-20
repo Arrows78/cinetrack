@@ -70,6 +70,21 @@ pub async fn resolve_profile_for_supabase_user(
 }
 
 #[tauri::command]
+pub async fn update_profile(
+    profile_id: String,
+    name: String,
+    avatar: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<UserProfile, ApiError> {
+    timed("update_profile", async {
+        ProfileService::new(pool.inner())
+            .update(&profile_id, &name, avatar)
+            .await
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn remove_profile(
     profile_id: String,
     pool: State<'_, SqlitePool>,
@@ -156,6 +171,27 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(resolved.id, "default");
+    }
+
+    #[tokio::test]
+    async fn update_profile_command_renames_and_sets_avatar() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        let state: State<'_, SqlitePool> = app.state();
+        let created = create_profile("Alex".to_string(), None, None, state.clone())
+            .await
+            .unwrap();
+        let updated = update_profile(
+            created.id,
+            "Alexandra".to_string(),
+            Some("cat".to_string()),
+            state,
+        )
+        .await
+        .unwrap();
+        assert_eq!(updated.name, "Alexandra");
+        assert_eq!(updated.avatar.as_deref(), Some("cat"));
     }
 
     #[tokio::test]

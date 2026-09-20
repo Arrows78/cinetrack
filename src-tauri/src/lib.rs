@@ -46,7 +46,8 @@ use commands::{
     remove_profile, remove_saved_filter, remove_smart_list, resolve_profile_for_supabase_user,
     save_availability_snapshot, save_library_item, set_active_profile, set_episode_rating,
     tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
-    update_preference, update_smart_list, updater_is_configured, write_backup_to_path,
+    update_preference, update_profile, update_smart_list, updater_is_configured,
+    write_backup_to_path,
 };
 use commands::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
@@ -183,6 +184,7 @@ pub fn run() {
             find_profile_by_supabase_user_id,
             link_profile_to_supabase_user,
             resolve_profile_for_supabase_user,
+            update_profile,
             remove_profile,
             list_custom_lists,
             create_custom_list,

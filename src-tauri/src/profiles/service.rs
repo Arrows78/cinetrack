@@ -3,7 +3,7 @@ use sqlx::SqlitePool;
 use super::models::UserProfile;
 use super::repository::{
     create_impl, find_by_supabase_user_id_impl, link_to_supabase_user_impl, list_impl, remove_impl,
-    resolve_for_supabase_user_impl,
+    resolve_for_supabase_user_impl, update_impl,
 };
 use crate::error::ApiError;
 
@@ -49,6 +49,15 @@ impl<'a> ProfileService<'a> {
         supabase_user_id: &str,
     ) -> Result<Option<UserProfile>, ApiError> {
         resolve_for_supabase_user_impl(self.pool, supabase_user_id).await
+    }
+
+    pub(super) async fn update(
+        &self,
+        profile_id: &str,
+        name: &str,
+        avatar: Option<String>,
+    ) -> Result<UserProfile, ApiError> {
+        update_impl(self.pool, profile_id, name, avatar).await
     }
 
     pub(super) async fn remove(&self, profile_id: &str) -> Result<(), ApiError> {

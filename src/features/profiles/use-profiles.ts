@@ -13,6 +13,11 @@ export function useProfiles() {
     ({ name, avatar }: { name: string; avatar?: string | null }) => profileRepository.create(name, avatar),
     [queryKeys.local.profiles]
   );
+  const update = useInvalidatingMutation(
+    ({ id, name, avatar }: { id: string; name: string; avatar?: string | null }) =>
+      profileRepository.update(id, name, avatar),
+    [queryKeys.local.profiles]
+  );
   // Removing a profile can also reset activeProfileId (see
   // profileRepository.remove) — ["local"] alone already covers every
   // profile-scoped key regardless of which profile it's keyed under, so
@@ -21,8 +26,9 @@ export function useProfiles() {
   return {
     ...query,
     create: create.mutateAsync,
+    update: update.mutateAsync,
     remove: remove.mutateAsync,
-    isSaving: create.isPending || remove.isPending,
+    isSaving: create.isPending || update.isPending || remove.isPending,
   };
 }
 

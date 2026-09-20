@@ -24,11 +24,18 @@ type RemoveProfileArgs = {
   profileId: string;
 };
 
+type UpdateProfileArgs = {
+  profileId: string;
+  name: string;
+  avatar: string | null;
+};
+
 export const profileCommands = {
   list: defineCommand<undefined, UserProfile[]>("list_profiles"),
   create: defineCommand<CreateProfileArgs, UserProfile>("create_profile"),
   findBySupabaseUserId: defineCommand<SupabaseUserArgs, UserProfile | null>("find_profile_by_supabase_user_id"),
   linkToSupabaseUser: defineCommand<LinkProfileArgs, UserProfile>("link_profile_to_supabase_user"),
   resolveForSupabaseUser: defineCommand<SupabaseUserArgs, UserProfile | null>("resolve_profile_for_supabase_user"),
+  update: defineCommand<UpdateProfileArgs, UserProfile>("update_profile"),
   remove: defineCommand<RemoveProfileArgs, void>("remove_profile"),
 } as const;

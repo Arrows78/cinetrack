@@ -18,6 +18,9 @@ const profile: UserProfile = { id: "profile-1", name: "Alice" } as UserProfile;
 
 const listMock = vi.fn(async (): Promise<UserProfile[]> => [profile]);
 const createMock = vi.fn<(name: string, avatar?: string | null) => Promise<UserProfile>>(async () => profile);
+const updateMock = vi.fn<(id: string, name: string, avatar?: string | null) => Promise<UserProfile>>(
+  async () => profile
+);
 const removeMock = vi.fn<(id: string) => Promise<void>>(async () => undefined);
 const resolveForSupabaseUserMock = vi.fn<(supabaseUserId: string) => Promise<UserProfile | null>>(async () => profile);
 const createForSupabaseUserMock = vi.fn<
@@ -28,6 +31,7 @@ vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
     list: () => listMock(),
     create: (name: string, avatar?: string | null) => createMock(name, avatar),
+    update: (id: string, name: string, avatar?: string | null) => updateMock(id, name, avatar),
     remove: (id: string) => removeMock(id),
     resolveForSupabaseUser: (supabaseUserId: string) => resolveForSupabaseUserMock(supabaseUserId),
     createForSupabaseUser: (name: string, supabaseUserId: string, avatar?: string | null) =>
@@ -45,6 +49,7 @@ function createWrapper() {
 beforeEach(() => {
   listMock.mockClear().mockResolvedValue([profile]);
   createMock.mockClear().mockResolvedValue(profile);
+  updateMock.mockClear().mockResolvedValue(profile);
   removeMock.mockClear().mockResolvedValue(undefined);
   resolveForSupabaseUserMock.mockClear().mockResolvedValue(profile);
   createForSupabaseUserMock.mockClear().mockResolvedValue(profile);
@@ -165,6 +170,35 @@ describe("useProfiles", () => {
     });
 
     await waitFor(() => expect(result.current.isSaving).toBe(false));
+  });
+
+  it("isSaving is true while update is pending, even though create/remove are idle", async () => {
+    let resolveUpdate!: (value: UserProfile) => void;
+    updateMock.mockImplementation(
+      () =>
+        new Promise<UserProfile>((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+
+    const { useProfiles } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfiles(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let updatePromise!: Promise<unknown>;
+    act(() => {
+      updatePromise = result.current.update({ id: "profile-1", name: "Bobby" });
+    });
+
+    await waitFor(() => expect(result.current.isSaving).toBe(true));
+
+    resolveUpdate(profile);
+    await act(async () => {
+      await updatePromise;
+    });
+
+    await waitFor(() => expect(result.current.isSaving).toBe(false));
+    expect(updateMock).toHaveBeenCalledWith("profile-1", "Bobby", undefined);
   });
 
   it("isSaving is true while remove is pending, even though create is idle", async () => {

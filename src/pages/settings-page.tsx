@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Check, Settings, Trash2, UserPlus } from "lucide-react";
+import { Check, Pencil, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { AccountSettingsCard } from "@/components/settings/account-settings-card";
 import { AvatarPicker } from "@/components/ui/avatar-picker";
@@ -53,6 +53,9 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
   const [newProfileName, setNewProfileName] = useState("");
   const [newProfileAvatar, setNewProfileAvatar] = useState<AvatarPresetKey | null>(null);
   const [pendingDeleteProfile, setPendingDeleteProfile] = useState<UserProfile | null>(null);
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editAvatar, setEditAvatar] = useState<AvatarPresetKey | null>(null);
   // See useProfileSwitching's own doc comment for why a free switcher here
   // is safe (and only ever offered when auth isn't required — the read-only
   // branch below).
@@ -73,6 +76,30 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
     }
   };
 
+  // The "default" profile always displays a fixed, translated name (see
+  // both render branches below) regardless of what's stored — renaming it
+  // would change data that never visibly shows, so its edit control is
+  // disabled, same as its delete button already is.
+  const startEdit = (profile: UserProfile) => {
+    setEditingProfileId(profile.id);
+    setEditName(profile.name ?? "");
+    setEditAvatar((profile.avatar as AvatarPresetKey | null) ?? null);
+  };
+  const cancelEdit = () => setEditingProfileId(null);
+  const saveEdit = async () => {
+    const name = editName.trim();
+    const id = editingProfileId;
+    if (!id || !name) return;
+    try {
+      await profiles.update({ id, name, avatar: editAvatar });
+      setEditingProfileId(null);
+    } catch {
+      // Failure toast is handled by the app-wide MutationCache error
+      // handler (see query-client.ts) — the inline form stays open so the
+      // user can retry.
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -89,25 +116,68 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
           // account read another account's data. Only the current profile
           // is shown here now, read-only, whenever sign-in is required.
           currentProfile ? (
-            <Tile className="flex items-center gap-3 px-3 py-3">
-              <ProfileAvatar
-                name={
-                  currentProfile.id === "default" ? t("settings.profiles.defaultName") : (currentProfile.name ?? "?")
-                }
-                avatar={currentProfile.avatar}
-                className="size-9"
-              />
-              <div>
-                <p className="font-medium">
-                  {currentProfile.id === "default" ? t("settings.profiles.defaultName") : currentProfile.name}
-                </p>
-                {user?.primaryEmailAddress?.emailAddress ? (
-                  <p className="mt-1 text-body-sm text-muted-foreground">
-                    {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
+            editingProfileId === currentProfile.id ? (
+              <Tile className="space-y-3 px-3 py-3">
+                <Input
+                  size="sm"
+                  value={editName}
+                  onChange={(event) => setEditName(event.target.value)}
+                  aria-label={t("settings.profiles.editNameLabel")}
+                  maxLength={60}
+                />
+                <p className="text-caption text-muted-foreground">{t("profileGate.avatarLabel")}</p>
+                <AvatarPicker value={editAvatar} onChange={setEditAvatar} disabled={profiles.isSaving} />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    isLoading={profiles.isSaving}
+                    disabled={!editName.trim() || profiles.isSaving}
+                    onClick={() => void saveEdit()}
+                  >
+                    {t("settings.profiles.save")}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" disabled={profiles.isSaving} onClick={cancelEdit}>
+                    {t("common.cancel")}
+                  </Button>
+                </div>
+              </Tile>
+            ) : (
+              <Tile className="flex items-center gap-3 px-3 py-3">
+                <ProfileAvatar
+                  name={
+                    currentProfile.id === "default"
+                      ? t("settings.profiles.defaultName")
+                      : (currentProfile.name ?? "?")
+                  }
+                  avatar={currentProfile.avatar}
+                  className="size-9"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    {currentProfile.id === "default" ? t("settings.profiles.defaultName") : currentProfile.name}
                   </p>
+                  {user?.primaryEmailAddress?.emailAddress ? (
+                    <p className="mt-1 text-body-sm text-muted-foreground">
+                      {t("settings.profiles.linkedTo", { email: user.primaryEmailAddress.emailAddress })}
+                    </p>
+                  ) : null}
+                </div>
+                {currentProfile.id !== "default" ? (
+                  <IconTooltip label={t("settings.profiles.edit", { name: currentProfile.name })}>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t("settings.profiles.edit", { name: currentProfile.name })}
+                      onClick={() => startEdit(currentProfile)}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                  </IconTooltip>
                 ) : null}
-              </div>
-            </Tile>
+              </Tile>
+            )
           ) : (
             <p className="text-body-sm text-muted-foreground">{t("settings.profiles.none")}</p>
           )
@@ -120,6 +190,41 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
             {(profiles.data ?? []).map((profile) => {
               const isActive = profile.id === activeProfileId;
               const label = profile.id === "default" ? t("settings.profiles.defaultName") : profile.name;
+              if (editingProfileId === profile.id) {
+                return (
+                  <Tile key={profile.id} className="space-y-3 px-3 py-2.5">
+                    <Input
+                      size="sm"
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                      aria-label={t("settings.profiles.editNameLabel")}
+                      maxLength={60}
+                    />
+                    <p className="text-caption text-muted-foreground">{t("profileGate.avatarLabel")}</p>
+                    <AvatarPicker value={editAvatar} onChange={setEditAvatar} disabled={profiles.isSaving} />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        isLoading={profiles.isSaving}
+                        disabled={!editName.trim() || profiles.isSaving}
+                        onClick={() => void saveEdit()}
+                      >
+                        {t("settings.profiles.save")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={profiles.isSaving}
+                        onClick={cancelEdit}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                    </div>
+                  </Tile>
+                );
+              }
               return (
                 <Tile key={profile.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                   <button
@@ -137,6 +242,20 @@ function ProfilesCard({ activeProfileId }: { activeProfileId: string | undefined
                       </Badge>
                     ) : null}
                   </button>
+                  {profile.id !== "default" ? (
+                    <IconTooltip label={t("settings.profiles.edit", { name: label })}>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={t("settings.profiles.edit", { name: label })}
+                        disabled={switchingProfileId !== null}
+                        onClick={() => startEdit(profile)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                    </IconTooltip>
+                  ) : null}
                   <IconTooltip
                     label={
                       profile.id === "default"

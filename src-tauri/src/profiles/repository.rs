@@ -134,6 +134,31 @@ pub(super) async fn resolve_for_supabase_user_impl(
     Ok(None)
 }
 
+pub(super) async fn update_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    name: &str,
+    avatar: Option<String>,
+) -> Result<UserProfile, ApiError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(ApiError::bad_request("Profile name is required."));
+    }
+    let updated_at = now_iso(pool).await?;
+    sqlx::query("UPDATE profiles SET name = $1, avatar = $2, updated_at = $3 WHERE uuid = $4")
+        .bind(trimmed)
+        .bind(&avatar)
+        .bind(&updated_at)
+        .bind(profile_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
+
+    get_by_id_impl(pool, profile_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Profile not found."))
+}
+
 pub(super) async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(), ApiError> {
     if profile_id == "default" {
         return Err(ApiError::bad_request(
@@ -231,6 +256,30 @@ mod tests {
     async fn get_by_id_impl_returns_none_for_an_unknown_profile() {
         let pool = migrated_pool().await;
         assert!(get_by_id_impl(&pool, "ghost").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn updates_a_profile_name_and_avatar() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        let updated = update_impl(&pool, &created.id, "Alexandra", Some("cat".to_string()))
+            .await
+            .unwrap();
+        assert_eq!(updated.name, "Alexandra");
+        assert_eq!(updated.avatar.as_deref(), Some("cat"));
+    }
+
+    #[tokio::test]
+    async fn rejects_a_whitespace_only_rename() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        assert!(update_impl(&pool, &created.id, "   ", None).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn update_impl_returns_not_found_for_an_unknown_profile() {
+        let pool = migrated_pool().await;
+        assert!(update_impl(&pool, "ghost", "New Name", None).await.is_err());
     }
 
     #[tokio::test]

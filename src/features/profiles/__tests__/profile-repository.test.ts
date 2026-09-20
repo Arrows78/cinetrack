@@ -73,6 +73,18 @@ describe("profileRepository", () => {
     });
   });
 
+  it("update() invokes update_profile with name/avatar, defaulting avatar to null", async () => {
+    invokeMock.mockResolvedValueOnce(profile({ name: "Alexandra", avatar: "cat" }));
+    const { profileRepository } = await import("../profile-repository");
+
+    await profileRepository.update("profile-id", "Alexandra", "cat");
+    expect(invokeMock).toHaveBeenCalledWith("update_profile", {
+      profileId: "profile-id",
+      name: "Alexandra",
+      avatar: "cat",
+    });
+  });
+
   it("resolveForSupabaseUser() invokes resolve_profile_for_supabase_user", async () => {
     invokeMock.mockResolvedValueOnce(null);
     const { profileRepository } = await import("../profile-repository");

@@ -31,7 +31,7 @@ pub use crate::preferences::{
 };
 pub use crate::profiles::{
     create_profile, find_profile_by_supabase_user_id, link_profile_to_supabase_user, list_profiles,
-    remove_profile, resolve_profile_for_supabase_user,
+    remove_profile, resolve_profile_for_supabase_user, update_profile,
 };
 pub use crate::progress::{
     get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
