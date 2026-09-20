@@ -263,6 +263,7 @@
     "searchPlaceholder": "Rechercher dans votre activité",
     "filterFromDate": "Depuis le",
     "filterToDate": "Jusqu'au",
+    "undo": "Annuler",
     "seriesInProgress": "Séries en cours",
     "seriesInProgressSubtitle": "Votre progression locale.",
     "noActivity": "Aucune activité",

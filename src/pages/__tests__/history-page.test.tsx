@@ -18,6 +18,16 @@ vi.mock("@/features/progress/use-progress", () => ({
   useTrackedSeries: vi.fn(),
 }));
 
+const mutateAsyncMock = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/features/history/use-undo-history-item", () => ({
+  isHistoryItemUndoable: (item: ViewingHistoryItem) =>
+    item.action === "movie:watched" ||
+    item.action === "movie:unwatched" ||
+    item.action === "watchlist:add" ||
+    item.action === "watchlist:remove",
+  useUndoHistoryItem: () => ({ mutateAsync: mutateAsyncMock, isPending: false }),
+}));
+
 // Same fake router as search-page.test.tsx: `mockNavigate` mutates a shared
 // "current URL search string" and `useSearch` polls it, so HistoryPage's own
 // URL-sync behavior (SavedFiltersBar apply, chip removal, FilterBar clicks)
@@ -410,6 +420,26 @@ describe("HistoryPage", () => {
 
       await waitFor(() => expect(getRouterSearch()).not.toContain("from"));
       expect(getRouterSearch()).not.toContain("to");
+    });
+
+    it("shows an undo action for an undoable entry, and calls it with that entry", () => {
+      const item = makeHistoryItem({ id: "1", action: "movie:watched", title: "Dune" });
+      mockUseHistory.mockReturnValue(historyQueryResult({ data: { pages: [[item]] } }));
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      expect(mutateAsyncMock).toHaveBeenCalledWith(item);
+    });
+
+    it("hides the undo action for an entry with no well-defined reversal", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: [[makeHistoryItem({ id: "1", action: "episode:watched", title: "An Episode" })]] },
+        })
+      );
+      renderPage();
+
+      expect(screen.queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
     });
 
     it("links a movie row to the movie detail page", () => {

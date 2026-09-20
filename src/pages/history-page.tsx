@@ -20,6 +20,7 @@ import {
   LibraryBig,
   ListPlus,
   ListMinus,
+  Undo2,
 } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { EmptyState } from "@/components/states/empty-state";
@@ -29,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { LoadMoreButton } from "@/components/media/primitives/load-more-button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
@@ -37,6 +39,7 @@ import { SearchBar } from "@/components/media/primitives/search-bar";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { formatEpisodeCode, formatRelativeDate, percent } from "@/shared/utils/format";
 import { useHistory } from "@/features/history/use-history";
+import { isHistoryItemUndoable, useUndoHistoryItem } from "@/features/history/use-undo-history-item";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
@@ -221,6 +224,7 @@ export function HistoryPage() {
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language.startsWith("fr") ? fr : enUS;
   const trackedSeriesQuery = useTrackedSeries();
+  const undo = useUndoHistoryItem();
   const navigate = useNavigate({ from: "/history" });
   // Typed against historyRoute's own validateSearch (router-config.tsx) —
   // a plain useState here would lose the filter on refresh and make it
@@ -479,6 +483,25 @@ export function HistoryPage() {
                       <time className="shrink-0 text-caption text-muted-foreground pt-0.5">
                         {formatRelativeDate(item.timestamp)}
                       </time>
+                      {isHistoryItemUndoable(item) ? (
+                        <IconTooltip label={t("history.undo")}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="relative z-10 size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                            aria-label={t("history.undo")}
+                            disabled={undo.isPending}
+                            // Failure toast is handled by the app-wide
+                            // MutationCache error handler (see
+                            // query-client.ts) — this catch only prevents an
+                            // unhandled rejection.
+                            onClick={() => void undo.mutateAsync(item).catch(() => {})}
+                          >
+                            <Undo2 className="size-4" />
+                          </Button>
+                        </IconTooltip>
+                      ) : null}
                     </div>
                   </div>
                   <Link
