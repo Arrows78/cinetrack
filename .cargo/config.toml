@@ -31,3 +31,15 @@ TS_RS_LARGE_INT = "number"
 # the traditional non-fatal behavior for the build/link step itself.
 [build]
 warnings = "warn"
+
+# Belt-and-suspenders alongside the [build] setting above: `cargo check`
+# never links (so it never sees this), and `cargo clippy` skips real codegen
+# for its own diagnostics, so neither ever exercised whether the
+# [build].warnings override above actually reaches the linker's own
+# warnings — only `cargo test`/`cargo build` (which do link) do, and it
+# turned out not to on this Cargo version. Silencing LNK4099 ("PDB not
+# found" — libsodium-sys ships no debug symbols) and LNK4098 (CRT library
+# conflict warning from the same vendored build) directly at the linker is
+# the actually-effective fix, independent of how build.warnings behaves.
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = ["-C", "link-arg=/IGNORE:4099,4098"]
