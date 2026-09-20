@@ -105,6 +105,11 @@ const trackingRoute = createRoute({
   }),
   component: lazyRouteComponent(() => import("@/pages/tracking-page"), "TrackingPage"),
 });
+const availabilityAlertsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/availability-alerts",
+  component: lazyRouteComponent(() => import("@/pages/availability-alerts-page"), "AvailabilityAlertsPage"),
+});
 const peopleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/people",
@@ -171,6 +176,7 @@ const routeTree = rootRoute.addChildren([
   libraryRoute,
   historyRoute,
   trackingRoute,
+  availabilityAlertsRoute,
   peopleRoute,
   personDetailRoute,
   watchTonightRoute,

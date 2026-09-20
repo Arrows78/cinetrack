@@ -2,8 +2,15 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { SettingsPage } from "../settings-page";
+
+// Same pattern as tracking-list.test.tsx: no RouterProvider exists in this
+// render, so Link is stubbed down to a plain anchor.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
+}));
 
 vi.mock("@/components/settings/backup-tools", () => ({ BackupTools: () => <div /> }));
 vi.mock("@/components/settings/tvtime-import-card", () => ({ TvTimeImportCard: () => <div /> }));
@@ -408,6 +415,13 @@ describe("SettingsPage — preferences", () => {
     fireEvent.change(frequencySelect, { target: { value: "12" } });
 
     await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("availabilityCheckIntervalHours", 12));
+  });
+
+  it("links to the dedicated availability-alerts management page", async () => {
+    renderPage();
+    await screen.findByText("Default profile");
+
+    expect(screen.getByRole("link", { name: "Manage alerts" })).toHaveAttribute("href", "/availability-alerts");
   });
 
   it("has no detectable accessibility violations once preferences have loaded", async () => {

@@ -423,7 +423,8 @@
       "description": "À quelle fréquence CineTrack revérifie vos alertes de disponibilité activées auprès des plateformes de streaming.",
       "frequency": "Fréquence de vérification",
       "frequencyOption_one": "Toutes les {{count}} heure",
-      "frequencyOption_other": "Toutes les {{count}} heures"
+      "frequencyOption_other": "Toutes les {{count}} heures",
+      "manageAlerts": "Gérer les alertes"
     },
     "about": {
       "versionTitle": "Version",
@@ -689,6 +690,12 @@
     "emptyCta": "Découvrir films et séries",
     "badgeNew": "Nouveau",
     "badgeAired": "Diffusé"
+  },
+  "availabilityAlerts": {
+    "title": "Alertes de disponibilité",
+    "subtitle": "Tous les titres que vous attendez de voir arriver sur une plateforme de streaming, au même endroit.",
+    "emptyTitle": "Aucune alerte de disponibilité",
+    "emptyDesc": "Activez une alerte depuis la page d'un film ou d'une série pour être averti·e dès qu'il/elle est disponible en streaming."
   },
   "episode": {
     "rating": {

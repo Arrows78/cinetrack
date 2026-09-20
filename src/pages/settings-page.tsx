@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
 import { Check, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
 import { BackupTools } from "@/components/settings/backup-tools";
@@ -275,6 +276,9 @@ function AvailabilityCheckCard({
             ))}
           </Select>
         </label>
+        <Button asChild variant="outline" size="sm" className="mt-4">
+          <Link to="/availability-alerts">{t("settings.availabilityChecks.manageAlerts")}</Link>
+        </Button>
       </CardContent>
     </Card>
   );
