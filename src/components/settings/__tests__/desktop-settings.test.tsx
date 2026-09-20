@@ -343,6 +343,18 @@ describe("DesktopSettings", () => {
       expect(resetButtons[1]).toBeDisabled();
     });
 
+    it("shows an inline error and logs a warning when persisting the new shortcut fails", async () => {
+      const error = new Error("preferences boom");
+      updatePreferenceMock.mockRejectedValueOnce(error);
+      render(<DesktopSettings />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Palette (in window)" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Press a key combo…" }), { key: "j", ctrlKey: true });
+
+      expect(await screen.findByText("Couldn't update the shortcut. Try again.")).toBeInTheDocument();
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("preferences boom"));
+    });
+
     it("resets a non-default global shortcut to its default", async () => {
       mockGlobalCommandPaletteShortcut = "mod+shift+j";
       render(<DesktopSettings />);

@@ -250,6 +250,14 @@ describe("desktopService.initialize", () => {
     expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+J", expect.any(Function));
   });
 
+  it("falls back to the default global shortcut when preferences don't have one set", async () => {
+    getPreferencesMock.mockResolvedValue({});
+
+    await desktopService.initialize();
+
+    expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+K", expect.any(Function));
+  });
+
   it("warns and skips the cleanup when reading preferences for the global shortcut fails", async () => {
     const error = new Error("preferences boom");
     getPreferencesMock.mockRejectedValueOnce(error);
@@ -289,6 +297,16 @@ describe("desktopService.initialize", () => {
       await desktopService.updateGlobalShortcut("mod+shift+j");
 
       expect(registerMock).not.toHaveBeenCalled();
+    });
+
+    it("registers without unregistering when nothing was previously registered (initialize() never ran)", async () => {
+      vi.resetModules();
+      const { desktopService: freshDesktopService } = await import("../desktop-service");
+
+      await freshDesktopService.updateGlobalShortcut("mod+shift+j");
+
+      expect(unregisterMock).not.toHaveBeenCalled();
+      expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+J", expect.any(Function));
     });
 
     it("warns without throwing when registering the new shortcut fails", async () => {
