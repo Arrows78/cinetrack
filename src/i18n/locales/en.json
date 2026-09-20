@@ -438,6 +438,30 @@
         "account_preferences": "Account preferences"
       }
     },
+    "account": {
+      "title": "Account",
+      "description": "Change the email address linked to your account, or delete it permanently.",
+      "emailTitle": "Email address",
+      "currentEmail": "Currently {{email}}.",
+      "newEmailLabel": "New email address",
+      "sendCode": "Send verification code",
+      "codeLabel": "Code sent to {{email}}",
+      "verifyCode": "Confirm",
+      "emailUpdated": "Your email address has been updated.",
+      "dangerTitle": "Delete account",
+      "dangerDescription": "Permanently deletes your account and signs you out on every device. Your local library and history stay on this device unless you also remove them separately.",
+      "deleteAccount": "Delete my account",
+      "deleteConfirmTitle": "Delete your account?",
+      "deleteConfirmDescription": "This permanently deletes your account and signs you out everywhere. This can't be undone.",
+      "errors": {
+        "rateLimited": "Too many attempts. Wait a moment before trying again.",
+        "codeExpired": "This code has expired. Send a new one and try again.",
+        "codeIncorrect": "That code is incorrect. Check it and try again.",
+        "invalidEmail": "Enter a valid email address.",
+        "emailExists": "Another account already uses this email address.",
+        "default": "Something went wrong. Please try again."
+      }
+    },
     "streaming": {
       "title": "My streaming services",
       "description": "Pick the platforms you're subscribed to — used to filter availability alerts and Watch Tonight picks."

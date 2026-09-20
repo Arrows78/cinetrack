@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Check, Settings, Trash2, UserPlus } from "lucide-react";
 import { AboutSettings } from "@/components/settings/about-settings";
+import { AccountSettingsCard } from "@/components/settings/account-settings-card";
 import { BackupTools } from "@/components/settings/backup-tools";
 import { HiddenTitlesCard } from "@/components/settings/hidden-titles-card";
 import { DesktopSettings } from "@/components/settings/desktop-settings";
@@ -512,6 +513,7 @@ export function SettingsPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <ProfilesCard activeProfileId={preferences?.activeProfileId} />
           <SyncStatusCard />
+          <AccountSettingsCard />
         </div>
       </section>
 

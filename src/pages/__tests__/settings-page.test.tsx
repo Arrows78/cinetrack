@@ -24,7 +24,12 @@ vi.mock("@/components/settings/hidden-titles-card", () => ({ HiddenTitlesCard: (
 vi.mock("@/components/ui/section-nav", () => ({ SectionNav: () => <div data-testid="section-nav" /> }));
 
 let currentUser: { primaryEmailAddress: { emailAddress: string } } | null = null;
-vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser }) }));
+vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ user: currentUser, signOut: vi.fn() }) }));
+
+// AccountSettingsCard has its own dedicated test file — always render it as
+// signed-out here so this suite's assertions stay about the rest of the
+// page, not Clerk's account-management flows.
+vi.mock("@clerk/react", () => ({ useUser: () => ({ user: null }) }));
 
 let authRequired = false;
 vi.mock("@/features/auth", () => ({

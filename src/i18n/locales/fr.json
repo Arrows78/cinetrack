@@ -438,6 +438,30 @@
         "account_preferences": "Préférences du compte"
       }
     },
+    "account": {
+      "title": "Compte",
+      "description": "Modifiez l'adresse email liée à votre compte, ou supprimez-le définitivement.",
+      "emailTitle": "Adresse email",
+      "currentEmail": "Actuellement {{email}}.",
+      "newEmailLabel": "Nouvelle adresse email",
+      "sendCode": "Envoyer le code de vérification",
+      "codeLabel": "Code envoyé à {{email}}",
+      "verifyCode": "Confirmer",
+      "emailUpdated": "Votre adresse email a été mise à jour.",
+      "dangerTitle": "Supprimer le compte",
+      "dangerDescription": "Supprime définitivement votre compte et vous déconnecte de tous les appareils. Votre bibliothèque et votre historique locaux restent sur cet appareil, sauf si vous les supprimez aussi séparément.",
+      "deleteAccount": "Supprimer mon compte",
+      "deleteConfirmTitle": "Supprimer votre compte ?",
+      "deleteConfirmDescription": "Ceci supprime définitivement votre compte et vous déconnecte partout. C'est irréversible.",
+      "errors": {
+        "rateLimited": "Trop de tentatives. Patientez un instant avant de réessayer.",
+        "codeExpired": "Ce code a expiré. Envoyez-en un nouveau et réessayez.",
+        "codeIncorrect": "Ce code est incorrect. Vérifiez-le et réessayez.",
+        "invalidEmail": "Saisissez une adresse email valide.",
+        "emailExists": "Un autre compte utilise déjà cette adresse email.",
+        "default": "Une erreur est survenue. Veuillez réessayer."
+      }
+    },
     "streaming": {
       "title": "Mes services de streaming",
       "description": "Choisissez les plateformes auxquelles vous êtes abonné·e — utilisé pour filtrer les alertes de disponibilité et les suggestions de « Ce soir »."
