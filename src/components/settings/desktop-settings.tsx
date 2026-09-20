@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { ShortcutInput } from "@/components/ui/shortcut-input";
 import { Textarea } from "@/components/ui/textarea";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -40,7 +41,8 @@ function KeyboardShortcutsRow() {
 
   const applyShortcut = async (key: ShortcutKey, next: string) => {
     setError(null);
-    const otherKey: ShortcutKey = key === "commandPaletteShortcut" ? "globalCommandPaletteShortcut" : "commandPaletteShortcut";
+    const otherKey: ShortcutKey =
+      key === "commandPaletteShortcut" ? "globalCommandPaletteShortcut" : "commandPaletteShortcut";
     if (next === current[otherKey]) {
       setError(t("desktop.shortcutsConflict"));
       return;
@@ -103,6 +105,7 @@ function KeyboardShortcutsRow() {
 
 export function DesktopSettings() {
   const { t } = useTranslation();
+  const { data: preferences, updatePreference } = usePreferences();
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [autoStart, setAutoStart] = useState(false);
@@ -300,7 +303,23 @@ export function DesktopSettings() {
                 <CardDescription>{t("desktop.automaticBackupDesc")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2">
+                <label className="grid max-w-xs gap-2 text-body-sm font-medium">
+                  {t("desktop.automaticBackupFrequency")}
+                  <Select
+                    value={preferences?.backupFrequency ?? "daily"}
+                    onChange={(event) =>
+                      void updatePreference({
+                        key: "backupFrequency",
+                        value: event.target.value as UserPreferences["backupFrequency"],
+                      })
+                    }
+                  >
+                    <option value="daily">{t("desktop.automaticBackupFrequencyDaily")}</option>
+                    <option value="weekly">{t("desktop.automaticBackupFrequencyWeekly")}</option>
+                    <option value="off">{t("desktop.automaticBackupFrequencyOff")}</option>
+                  </Select>
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     disabled={busy}

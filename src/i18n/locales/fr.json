@@ -1119,6 +1119,10 @@
     "systemIntegrationDesc": "Comportement au démarrage, mises à jour natives et vérification d'intégrité de la base.",
     "automaticBackupTitle": "Sauvegarde automatique",
     "automaticBackupDesc": "Un instantané de secours local, distinct de l'export manuel ci-dessus.",
+    "automaticBackupFrequency": "Fréquence de la sauvegarde automatique",
+    "automaticBackupFrequencyDaily": "Quotidienne",
+    "automaticBackupFrequencyWeekly": "Hebdomadaire",
+    "automaticBackupFrequencyOff": "Désactivée",
     "diagnosticsDesc": "Journal local récent, pour diagnostiquer un problème.",
     "diagnosticsClearConfirmTitle": "Vider les journaux de diagnostic ?",
     "diagnosticsClearConfirmDescription": "Cette action supprime définitivement l'historique des journaux. Elle est irréversible."

@@ -75,6 +75,7 @@ const BASE_PREFERENCES: UserPreferences = {
   preferredProviderIds: [],
   activeProfileId: "default",
   backupDirectory: null,
+  backupFrequency: "daily",
   hideWatchedInDiscovery: false,
   onThisDayEnabled: false,
   onboardingCompleted: false,

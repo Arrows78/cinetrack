@@ -26,6 +26,7 @@ const defaultPreferences: UserPreferences = {
   preferredProviderIds: [],
   activeProfileId: DEFAULT_PROFILE_ID,
   backupDirectory: null,
+  backupFrequency: "daily",
   hideWatchedInDiscovery: false,
   onThisDayEnabled: false,
   onboardingCompleted: false,

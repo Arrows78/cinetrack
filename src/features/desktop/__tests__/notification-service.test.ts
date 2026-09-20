@@ -58,6 +58,7 @@ const basePreferences: UserPreferences = {
   preferredProviderIds: [],
   activeProfileId: "profile-1",
   backupDirectory: null,
+  backupFrequency: "daily",
   hideWatchedInDiscovery: false,
   onThisDayEnabled: false,
   onboardingCompleted: false,

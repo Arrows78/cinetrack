@@ -78,8 +78,14 @@ beforeEach(() => {
   exportMock.mockReset().mockResolvedValue(backup("default-snapshot"));
   importMock.mockReset();
   invokeCommandMock.mockReset();
-  getPreferencesMock.mockReset().mockResolvedValue({ backupDirectory: null });
+  getPreferencesMock.mockReset().mockResolvedValue({ backupDirectory: null, backupFrequency: "daily" });
 });
+
+// Mirrors maintenance-service.ts's own (unexported) LAST_BACKUP_KEY literal —
+// there's no public setter for "pretend a backup already ran N ms ago", so
+// this is the only way to seed that state from a test.
+const LAST_BACKUP_KEY = "cinetrack.last-auto-backup";
+const DAY_MS = 1000 * 60 * 60 * 24;
 
 const backup = (marker: string, extra: Record<string, unknown> = {}) => ({
   format: "cinetrack-backup" as const,
@@ -201,6 +207,55 @@ describe("maintenanceService automatic backup rotation", () => {
     const status = await maintenanceService.getLastBackupStatus();
     expect(status.failed).toBe(false);
     expect(status.exportedAt).not.toBeNull();
+  });
+});
+
+describe("maintenanceService automatic backup frequency", () => {
+  it("defaults to a daily cadence, matching the fixed interval this feature had before it was configurable", async () => {
+    exportMock.mockResolvedValue(backup("daily"));
+    getPreferencesMock.mockResolvedValue({ backupDirectory: null, backupFrequency: "daily" });
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now() - (DAY_MS - 1000)));
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await maintenanceService.createAutomaticBackup();
+    expect(exportMock).not.toHaveBeenCalled();
+
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now() - (DAY_MS + 1000)));
+    await maintenanceService.createAutomaticBackup();
+    expect(exportMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits a full week when set to weekly, even past the old daily interval", async () => {
+    exportMock.mockResolvedValue(backup("weekly"));
+    getPreferencesMock.mockResolvedValue({ backupDirectory: null, backupFrequency: "weekly" });
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now() - (DAY_MS + 1000)));
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await maintenanceService.createAutomaticBackup();
+    expect(exportMock).not.toHaveBeenCalled();
+
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now() - (DAY_MS * 7 + 1000)));
+    await maintenanceService.createAutomaticBackup();
+    expect(exportMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never triggers unprompted when turned off, no matter how stale the last backup is", async () => {
+    exportMock.mockResolvedValue(backup("off"));
+    getPreferencesMock.mockResolvedValue({ backupDirectory: null, backupFrequency: "off" });
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now() - DAY_MS * 365));
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await maintenanceService.createAutomaticBackup();
+    expect(exportMock).not.toHaveBeenCalled();
+  });
+
+  it("still lets the manual emergency-backup button force a backup while frequency is off", async () => {
+    exportMock.mockResolvedValue(backup("forced"));
+    getPreferencesMock.mockResolvedValue({ backupDirectory: null, backupFrequency: "off" });
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await maintenanceService.createAutomaticBackup(true);
+    expect(exportMock).toHaveBeenCalledTimes(1);
   });
 });
 

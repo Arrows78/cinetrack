@@ -1119,6 +1119,10 @@
     "systemIntegrationDesc": "Startup behavior, native updates and a database integrity check.",
     "automaticBackupTitle": "Automatic backup",
     "automaticBackupDesc": "A local safety-net snapshot, separate from the manual export above.",
+    "automaticBackupFrequency": "Automatic backup frequency",
+    "automaticBackupFrequencyDaily": "Daily",
+    "automaticBackupFrequencyWeekly": "Weekly",
+    "automaticBackupFrequencyOff": "Off",
     "diagnosticsDesc": "Recent local log entries, for troubleshooting a problem.",
     "diagnosticsClearConfirmTitle": "Clear the diagnostic logs?",
     "diagnosticsClearConfirmDescription": "This permanently deletes the stored log history. This can't be undone."

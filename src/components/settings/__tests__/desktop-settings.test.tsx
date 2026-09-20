@@ -76,12 +76,14 @@ vi.mock("@/shared/lib/platform", () => ({
 
 let mockCommandPaletteShortcut = "mod+k";
 let mockGlobalCommandPaletteShortcut = "mod+shift+k";
+let mockBackupFrequency: "daily" | "weekly" | "off" = "daily";
 const updatePreferenceMock = vi.fn();
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
     data: {
       commandPaletteShortcut: mockCommandPaletteShortcut,
       globalCommandPaletteShortcut: mockGlobalCommandPaletteShortcut,
+      backupFrequency: mockBackupFrequency,
     },
     updatePreference: (...args: unknown[]) => updatePreferenceMock(...args),
     isSaving: false,
@@ -443,6 +445,29 @@ describe("DesktopSettings", () => {
         expect(toastMock).toHaveBeenCalledWith({ description: "Emergency backup updated.", variant: "success" })
       );
       await waitFor(() => expect(getLastBackupStatusMock).toHaveBeenCalledTimes(2));
+    });
+  });
+
+  describe("automatic backup frequency", () => {
+    it("changing the frequency select updates the preference", async () => {
+      render(<DesktopSettings />);
+
+      const select = screen.getByLabelText("Automatic backup frequency");
+      expect(select).toHaveValue("daily");
+
+      fireEvent.change(select, { target: { value: "weekly" } });
+
+      await waitFor(() =>
+        expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "backupFrequency", value: "weekly" })
+      );
+    });
+
+    it("reflects the currently stored frequency", () => {
+      mockBackupFrequency = "off";
+      render(<DesktopSettings />);
+
+      expect(screen.getByLabelText("Automatic backup frequency")).toHaveValue("off");
+      mockBackupFrequency = "daily";
     });
   });
 

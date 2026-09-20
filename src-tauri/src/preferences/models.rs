@@ -56,6 +56,19 @@ pub enum LibraryViewMode {
     List,
 }
 
+/// Generates `src/generated/dto/BackupFrequency.ts`. How often
+/// `maintenanceService.createAutomaticBackup` (frontend) is allowed to run
+/// unprompted — `Off` only disables the unprompted trigger, the manual
+/// "emergency backup" button always works regardless of this setting.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
+#[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "export-bindings", ts(export))]
+pub enum BackupFrequency {
+    Daily,
+    Weekly,
+    Off,
+}
+
 /// Nested profile snapshot stored inside UserPreferences. Distinct from
 /// `profiles::models::UserProfile` (id/name/avatar/createdAt/supabaseUserId)
 /// — the two share a frontend name in `src/types/media.ts` as a loose
@@ -141,6 +154,15 @@ pub struct UserPreferences {
     /// `@tauri-apps/plugin-fs` JS API, whose capability scope is a static
     /// `$APPDATA/**` allow-list.
     pub backup_directory: Option<String>,
+    /// How often `maintenanceService.createAutomaticBackup` is allowed to
+    /// fire unprompted (see `BackupFrequency`). Defaults to `Daily`,
+    /// matching the fixed 24h interval this feature had before it became
+    /// configurable — an existing install upgrading into this field sees no
+    /// behavior change until it's touched. Device-scoped, like
+    /// `backup_directory`: it's a statement about this installation's
+    /// safety-net cadence, not the person's taste.
+    #[serde(default = "default_backup_frequency")]
+    pub backup_frequency: BackupFrequency,
     /// Persistent "Hide watched" toggle for Discover-style surfaces (home
     /// catalogue rails) and Watch Tonight — filters out titles already
     /// marked `completed` in the library. Defaults to `false` (off), same
@@ -205,6 +227,10 @@ fn default_global_command_palette_shortcut() -> String {
 /// can silently grow the stored list past what the dropdown ever shows.
 pub(super) const MAX_RECENT_SEARCHES: usize = 8;
 
+fn default_backup_frequency() -> BackupFrequency {
+    BackupFrequency::Daily
+}
+
 /// Which `preferences` keys travel through cloud sync (see
 /// preferences::repository::write_preference's outbox insert and
 /// sync::service::prepare's bootstrap seeding) versus stay strictly local to
@@ -253,6 +279,7 @@ impl Default for UserPreferences {
             active_profile_id: "default".to_string(),
             user_profile: UserProfile::default(),
             backup_directory: None,
+            backup_frequency: default_backup_frequency(),
             hide_watched_in_discovery: false,
             on_this_day_enabled: false,
             onboarding_completed: false,

@@ -27,6 +27,7 @@ export const preferencesSchema = z.object({
   preferredProviderIds: z.array(z.number().int().positive()).default([]),
   activeProfileId: z.string().default(DEFAULT_PROFILE_ID),
   backupDirectory: z.string().nullable().default(null),
+  backupFrequency: z.enum(["daily", "weekly", "off"]).default("daily"),
   hideWatchedInDiscovery: z.boolean().default(false),
   onThisDayEnabled: z.boolean().default(false),
   onboardingCompleted: z.boolean().default(false),

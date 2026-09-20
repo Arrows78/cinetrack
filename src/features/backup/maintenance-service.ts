@@ -16,6 +16,7 @@ import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { STALE_24_HOURS } from "@/shared/constants/query";
 import { logger } from "@/shared/lib/logger";
+import type { UserPreferences } from "@/types/media";
 
 const BACKUP_DIR = "backups";
 const AUTO_BACKUP_PREFIX = "auto-";
@@ -55,6 +56,21 @@ const autoBackupFileName = (exportedAt: string) =>
 async function customBackupDirectory(): Promise<string | null> {
   const { backupDirectory } = await preferencesRepository.getPreferences();
   return backupDirectory ?? null;
+}
+
+// "off" is represented as `null` (never due) rather than `Infinity` so a
+// naive `Date.now() - last < intervalFor(...)` comparison can't silently
+// evaluate to true through floating-point weirdness.
+function intervalForFrequency(frequency: UserPreferences["backupFrequency"]): number | null {
+  switch (frequency) {
+    case "weekly":
+      return STALE_24_HOURS * 7;
+    case "off":
+      return null;
+    case "daily":
+    default:
+      return STALE_24_HOURS;
+  }
 }
 
 // `fileName` is always one of the relative, "backups/..."-prefixed
@@ -159,8 +175,13 @@ export const maintenanceService = {
   },
 
   async createAutomaticBackup(force = false): Promise<void> {
-    const last = Number(window.localStorage.getItem(LAST_BACKUP_KEY) ?? 0);
-    if (!force && Date.now() - last < STALE_24_HOURS) return;
+    if (!force) {
+      const { backupFrequency } = await preferencesRepository.getPreferences();
+      const interval = intervalForFrequency(backupFrequency);
+      if (interval === null) return;
+      const last = Number(window.localStorage.getItem(LAST_BACKUP_KEY) ?? 0);
+      if (Date.now() - last < interval) return;
+    }
     try {
       const backup = await portableData.export();
       await writeNamedBackup(autoBackupFileName(backup.exportedAt), JSON.stringify(backup, null, 2));
