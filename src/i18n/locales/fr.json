@@ -257,6 +257,8 @@
   "history": {
     "recentActivity": "Activité récente",
     "recentActivitySubtitle": "Films vus, épisodes marqués et changements de bibliothèque.",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
     "filterType": "Filtrer par type",
     "seriesInProgress": "Séries en cours",
     "seriesInProgressSubtitle": "Votre progression locale.",
@@ -264,6 +266,12 @@
     "noActivityDesc": "Commencez à marquer des contenus comme vus ou ajoutez des titres à votre bibliothèque pour remplir cette section.",
     "noTrackedSeries": "Aucune série suivie",
     "noTrackedSeriesDesc": "La progression apparaîtra dès qu'un épisode sera coché.",
+    "noTrackedSeriesFiltered": "Aucune série ne correspond à ce filtre",
+    "noTrackedSeriesFilteredDesc": "Essayez un autre statut, ou réinitialisez le filtre.",
+    "seriesSortBy": "Trier les séries par",
+    "seriesSortRecent": "Activité récente",
+    "seriesSortProgress": "Progression",
+    "seriesFilterStatus": "Filtrer par statut",
     "episodesWatched": "épisodes vus",
     "lastActivity": "Dernière activité : {{date}}",
     "actions": {

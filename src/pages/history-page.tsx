@@ -1,9 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Virtuoso } from "react-virtuoso";
+import { format, isToday, isYesterday, parseISO } from "date-fns";
+import type { Locale } from "date-fns";
+import { enUS, fr } from "date-fns/locale";
 import {
   History,
   Clapperboard,
@@ -22,6 +25,8 @@ import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/lib
 import { EmptyState } from "@/components/states/empty-state";
 import { TimelineSkeleton, TrackedSeriesSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
 import { FilterBar } from "@/components/media/library/filter-bar";
 import { LoadMoreButton } from "@/components/media/primitives/load-more-button";
@@ -34,6 +39,40 @@ import { useTrackedSeries } from "@/features/progress/use-progress";
 import { cn } from "@/shared/lib/cn";
 import type { HistoryAction, HistoryFilterState, ViewingHistoryItem } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
+
+type TimelineRow =
+  | { kind: "header"; key: string; label: string }
+  | { kind: "entry"; key: string; item: ViewingHistoryItem; isLastOfDay: boolean };
+
+/**
+ * Flattens already-newest-first entries into a single row list carrying its
+ * own day-header rows — a plain (non-grouped) Virtuoso then just renders
+ * whichever row kind it hits, so day headers scroll and virtualize exactly
+ * like the entries around them, with no separate grouped-list API to keep
+ * in sync with an item array of a different length. A linear scan (not a
+ * full groupBy+re-sort) is correct only because the feed is already ordered
+ * by timestamp descending, so same-day rows are always adjacent.
+ */
+function buildTimelineRows(items: ViewingHistoryItem[], t: TFunction, locale: Locale): TimelineRow[] {
+  const rows: TimelineRow[] = [];
+  let currentDayKey: string | null = null;
+  items.forEach((item, index) => {
+    const date = parseISO(item.timestamp);
+    const dayKey = format(date, "yyyy-MM-dd");
+    if (dayKey !== currentDayKey) {
+      currentDayKey = dayKey;
+      const label = isToday(date)
+        ? t("history.today")
+        : isYesterday(date)
+          ? t("history.yesterday")
+          : format(date, "d MMMM yyyy", { locale });
+      rows.push({ kind: "header", key: `header-${dayKey}`, label });
+    }
+    const nextDayKey = items[index + 1] ? format(parseISO(items[index + 1]!.timestamp), "yyyy-MM-dd") : null;
+    rows.push({ kind: "entry", key: item.id, item, isLastOfDay: nextDayKey !== dayKey });
+  });
+  return rows;
+}
 
 /** Where a history row's whole-card link should go — episode > season > movie/series, whichever the entry actually carries. */
 function historyItemLink(item: ViewingHistoryItem) {
@@ -175,7 +214,8 @@ function describeLibraryUpdate(item: ViewingHistoryItem, t: TFunction) {
 }
 
 export function HistoryPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language.startsWith("fr") ? fr : enUS;
   const historyQuery = useHistory();
   const trackedSeriesQuery = useTrackedSeries();
   const navigate = useNavigate({ from: "/history" });
@@ -207,6 +247,43 @@ export function HistoryPage() {
       ),
     [historyQuery.data, typeFilter]
   );
+  const timelineRows = useMemo(
+    () => buildTimelineRows(filteredHistory, t, dateLocale),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t`/`dateLocale` change together with `i18n.language`, already a stable dep of neither; recomputed whenever filteredHistory itself does
+    [filteredHistory]
+  );
+  const [seriesSort, setSeriesSort] = useState<"recent" | "progress" | "title">("recent");
+  const [seriesStatusFilter, setSeriesStatusFilter] = useState("all");
+  const clearSeriesStatusFilter = () => setSeriesStatusFilter("all");
+  // TMDB's own status strings ("Returning Series", "Ended", …), not a fixed
+  // app-owned enum — derived from whichever shows up in the tracked list
+  // instead of a hardcoded list that could drift from what TMDB actually
+  // returns (see CLAUDE.md's "No hand-duplicated literal lists").
+  const trackedSeriesStatuses = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (trackedSeriesQuery.data ?? [])
+            .map((item) => item.status)
+            .filter((status): status is string => Boolean(status))
+        )
+      ).sort(),
+    [trackedSeriesQuery.data]
+  );
+  const displayedTrackedSeries = useMemo(() => {
+    const filtered = (trackedSeriesQuery.data ?? []).filter(
+      (item) => seriesStatusFilter === "all" || item.status === seriesStatusFilter
+    );
+    return [...filtered].sort((a, b) => {
+      if (seriesSort === "title") return a.title.localeCompare(b.title);
+      if (seriesSort === "progress") {
+        const aTotal = Math.max(a.totalEpisodes, a.watchedEpisodes);
+        const bTotal = Math.max(b.totalEpisodes, b.watchedEpisodes);
+        return percent(b.watchedEpisodes, bTotal) - percent(a.watchedEpisodes, aTotal);
+      }
+      return b.updatedAt.localeCompare(a.updatedAt);
+    });
+  }, [trackedSeriesQuery.data, seriesStatusFilter, seriesSort]);
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
@@ -248,19 +325,27 @@ export function HistoryPage() {
         ) : filteredHistory.length ? (
           <Virtuoso
             useWindowScroll
-            data={filteredHistory}
-            initialItemCount={Math.min(filteredHistory.length, 20)}
-            // `item` can momentarily be undefined here — Virtuoso's internal
-            // index bookkeeping trails one render behind when `data` shrinks
-            // (e.g. switching the type filter to a shorter list), not just
-            // when it grows via pagination.
-            computeItemKey={(index, item) => item?.id ?? index}
-            itemContent={(i, item) => {
-              if (!item) return null;
+            data={timelineRows}
+            initialItemCount={Math.min(timelineRows.length, 24)}
+            // `row` can momentarily be undefined here — Virtuoso's internal
+            // index bookkeeping trails one render behind when the underlying
+            // list shrinks (e.g. switching the type filter to a shorter
+            // list), not just when it grows via pagination.
+            computeItemKey={(index, row) => row?.key ?? index}
+            itemContent={(i, row) => {
+              if (!row) return null;
+              if (row.kind === "header") {
+                return (
+                  <p className="bg-background pb-2 pt-3 font-semibold capitalize text-muted-foreground first:pt-0">
+                    {row.label}
+                  </p>
+                );
+              }
+
+              const item = row.item;
               const action = item.action;
               const config = actionConfig[action];
               const Icon = config.icon;
-              const isLast = i === filteredHistory.length - 1;
 
               return (
                 <motion.div
@@ -273,9 +358,12 @@ export function HistoryPage() {
                       to the next row — each mounted row draws its own
                       segment instead of one absolutely-positioned line
                       spanning the whole (now virtualized, partially
-                      unmounted) list. */}
+                      unmounted) list. Omitted for the last row of a day, so
+                      it never bridges into the next day's own header. */}
                   <div className="relative shrink-0">
-                    {!isLast && <div className="absolute left-[1.1875rem] top-2 -bottom-5 w-px bg-foreground/[0.07]" />}
+                    {!row.isLastOfDay && (
+                      <div className="absolute left-[1.1875rem] top-2 -bottom-5 w-px bg-foreground/[0.07]" />
+                    )}
                     <div
                       className={cn(
                         "relative z-raised flex h-[2.375rem] w-[2.375rem] items-center justify-center rounded-full border",
@@ -333,13 +421,43 @@ export function HistoryPage() {
           index={2}
         />
 
+        {(trackedSeriesQuery.data ?? []).length > 0 ? (
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <FilterBar
+              value={seriesSort}
+              onChange={setSeriesSort}
+              groupLabel={t("history.seriesSortBy")}
+              options={[
+                { value: "recent", label: t("history.seriesSortRecent") },
+                { value: "progress", label: t("history.seriesSortProgress") },
+                { value: "title", label: t("library.title") },
+              ]}
+            />
+            {trackedSeriesStatuses.length > 1 ? (
+              <Select
+                aria-label={t("history.seriesFilterStatus")}
+                value={seriesStatusFilter}
+                onChange={(event) => setSeriesStatusFilter(event.target.value)}
+                className="max-w-48"
+              >
+                <option value="all">{t("filters.all")}</option>
+                {trackedSeriesStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+          </div>
+        ) : null}
+
         {trackedSeriesQuery.isLoading ? (
           <TrackedSeriesSkeleton />
         ) : trackedSeriesQuery.isError ? (
           <RemoteErrorState error={trackedSeriesQuery.error} onRetry={() => void trackedSeriesQuery.refetch()} />
-        ) : (trackedSeriesQuery.data ?? []).length ? (
+        ) : displayedTrackedSeries.length ? (
           <div className="space-y-3">
-            {trackedSeriesQuery.data?.map((item, i) => {
+            {displayedTrackedSeries.map((item, i) => {
               // total_episodes is a cache of TMDB's episode count, refreshed
               // only as a side effect of toggling an episode (see
               // apply_episodes_and_log_impl in src-tauri/src/progress/
@@ -395,6 +513,17 @@ export function HistoryPage() {
               );
             })}
           </div>
+        ) : (trackedSeriesQuery.data ?? []).length > 0 ? (
+          <EmptyState
+            icon={Clapperboard}
+            title={t("history.noTrackedSeriesFiltered")}
+            description={t("history.noTrackedSeriesFilteredDesc")}
+            action={
+              <Button type="button" variant="outline" onClick={clearSeriesStatusFilter}>
+                {t("library.clearFilters")}
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon={Clapperboard}

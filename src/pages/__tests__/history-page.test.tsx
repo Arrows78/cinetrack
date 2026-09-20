@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
@@ -536,6 +536,168 @@ describe("HistoryPage", () => {
       renderPage();
 
       expect(screen.getByText(/^Last activity: /)).toBeInTheDocument();
+    });
+
+    it("defaults to sorting by most recent activity", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [
+            makeTrackedSeries({ seriesId: 1, title: "Older", updatedAt: "2026-01-01T00:00:00.000Z" }),
+            makeTrackedSeries({ seriesId: 2, title: "Newer", updatedAt: "2026-02-01T00:00:00.000Z" }),
+          ],
+        })
+      );
+      renderPage();
+
+      const titles = screen.getAllByText(/^Older$|^Newer$/).map((el) => el.textContent);
+      expect(titles).toEqual(["Newer", "Older"]);
+    });
+
+    it("sorts tracked series by title", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [makeTrackedSeries({ seriesId: 1, title: "Zeta" }), makeTrackedSeries({ seriesId: 2, title: "Alpha" })],
+        })
+      );
+      renderPage();
+
+      fireEvent.click(
+        within(screen.getByRole("group", { name: "Sort series by" })).getByRole("button", { name: "Title" })
+      );
+
+      const titles = screen.getAllByText(/^Zeta$|^Alpha$/).map((el) => el.textContent);
+      expect(titles).toEqual(["Alpha", "Zeta"]);
+    });
+
+    it("sorts tracked series by progress, highest first", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [
+            makeTrackedSeries({ seriesId: 1, title: "LowProgress", totalEpisodes: 10, watchedEpisodes: 1 }),
+            makeTrackedSeries({ seriesId: 2, title: "HighProgress", totalEpisodes: 10, watchedEpisodes: 9 }),
+          ],
+        })
+      );
+      renderPage();
+
+      fireEvent.click(
+        within(screen.getByRole("group", { name: "Sort series by" })).getByRole("button", { name: "Progress" })
+      );
+
+      const titles = screen.getAllByText(/^LowProgress$|^HighProgress$/).map((el) => el.textContent);
+      expect(titles).toEqual(["HighProgress", "LowProgress"]);
+    });
+
+    it("filters tracked series by status", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [
+            makeTrackedSeries({ seriesId: 1, title: "Airing", status: "Returning Series" }),
+            makeTrackedSeries({ seriesId: 2, title: "Finished", status: "Ended" }),
+          ],
+        })
+      );
+      renderPage();
+
+      fireEvent.change(screen.getByLabelText("Filter by status"), { target: { value: "Ended" } });
+      expect(screen.queryByText("Airing")).not.toBeInTheDocument();
+      expect(screen.getByText("Finished")).toBeInTheDocument();
+    });
+
+    it("shows a distinct empty state, with a way back to 'all', when the selected status no longer matches anything", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [
+            makeTrackedSeries({ seriesId: 1, title: "Airing", status: "Returning Series" }),
+            makeTrackedSeries({ seriesId: 2, title: "Finished", status: "Ended" }),
+          ],
+        })
+      );
+      const { rerender } = renderPage();
+
+      fireEvent.change(screen.getByLabelText("Filter by status"), { target: { value: "Ended" } });
+      expect(screen.getByText("Finished")).toBeInTheDocument();
+
+      // The "Ended" series is no longer tracked at all — the filter, still
+      // set to "Ended" from before, now matches nothing.
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [makeTrackedSeries({ seriesId: 1, title: "Airing", status: "Returning Series" })],
+        })
+      );
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      rerender(
+        <QueryClientProvider client={client}>
+          <HistoryPage />
+        </QueryClientProvider>
+      );
+
+      expect(screen.getByText("No series match this filter")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+      expect(screen.getByText("Airing")).toBeInTheDocument();
+    });
+
+    it("hides the status filter when every tracked series shares the same status", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [
+            makeTrackedSeries({ seriesId: 1, title: "A", status: "Ended" }),
+            makeTrackedSeries({ seriesId: 2, title: "B", status: "Ended" }),
+          ],
+        })
+      );
+      renderPage();
+
+      expect(screen.queryByLabelText("Filter by status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("day grouping", () => {
+    it("groups today's entries under a 'Today' header", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({ data: { pages: [[makeHistoryItem({ id: "1", timestamp: new Date().toISOString() })]] } })
+      );
+      renderPage();
+
+      expect(screen.getByText("Today")).toBeInTheDocument();
+    });
+
+    it("labels an older entry with its full date instead of 'Today'/'Yesterday'", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: [[makeHistoryItem({ id: "1", timestamp: "2020-03-12T10:00:00.000Z" })]] },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByText("12 March 2020")).toBeInTheDocument();
+      expect(screen.queryByText("Today")).not.toBeInTheDocument();
+      expect(screen.queryByText("Yesterday")).not.toBeInTheDocument();
+    });
+
+    it("shows one header per distinct day, in the feed's own newest-first order", () => {
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: {
+            pages: [
+              [
+                makeHistoryItem({ id: "1", title: "Newest", timestamp: "2026-01-03T00:00:00.000Z" }),
+                makeHistoryItem({ id: "2", title: "MiddleA", timestamp: "2026-01-02T12:00:00.000Z" }),
+                makeHistoryItem({ id: "3", title: "MiddleB", timestamp: "2026-01-02T08:00:00.000Z" }),
+                makeHistoryItem({ id: "4", title: "Oldest", timestamp: "2026-01-01T00:00:00.000Z" }),
+              ],
+            ],
+          },
+        })
+      );
+      renderPage();
+
+      expect(screen.getByText("3 January 2026")).toBeInTheDocument();
+      expect(screen.getByText("2 January 2026")).toBeInTheDocument();
+      expect(screen.getByText("1 January 2026")).toBeInTheDocument();
+      // Only one header for the two same-day ("MiddleA"/"MiddleB") entries.
+      expect(screen.getAllByText("2 January 2026")).toHaveLength(1);
     });
   });
 });
