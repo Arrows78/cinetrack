@@ -53,4 +53,9 @@ pub use crate::sync::{
     rebase_sync_conflicts,
 };
 pub use boot::get_boot_recovery;
-pub use updater::{has_updater_config, updater_is_configured};
+// has_updater_config is only ever called from lib.rs's #[cfg(desktop)] plugin
+// setup — re-exporting it unconditionally makes it an unused import on
+// mobile builds (iOS), where that whole block is compiled out.
+#[cfg(desktop)]
+pub use updater::has_updater_config;
+pub use updater::updater_is_configured;
