@@ -21,3 +21,13 @@
 [env]
 TS_RS_EXPORT_DIR = { value = "src/generated/dto", relative = true }
 TS_RS_LARGE_INT = "number"
+
+# Cargo's own default for `build.warnings` now denies build-script/linker
+# output, not just compiler lints — on Windows this turns libsodium-sys's
+# harmless LNK4099 "PDB not found" linker warnings (a debug-build artifact
+# of that vendored C library, nothing in our own code) into a hard build
+# failure. `cargo clippy -- -D warnings` (see ci.yml) is still the
+# intentional warnings-as-errors gate for our own lints; this only restores
+# the traditional non-fatal behavior for the build/link step itself.
+[build]
+warnings = "warn"
