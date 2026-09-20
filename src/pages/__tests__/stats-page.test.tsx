@@ -267,6 +267,22 @@ describe("StatsPage", () => {
     expect(screen.queryByText("This month")).not.toBeInTheDocument();
   });
 
+  it("shows favourite genres as a chart, with the same data in an accessible sr-only table", async () => {
+    statsState.data = makeStats({
+      favouriteGenres: [
+        { name: "Drama", count: 10 },
+        { name: "Comedy", count: 4 },
+      ],
+    });
+    renderPage();
+
+    await screen.findByText("Stats");
+    const table = screen.getByRole("table", { name: "Favourite genres" });
+    expect(within(table).getByText("Drama")).toBeInTheDocument();
+    expect(within(table).getByText("10")).toBeInTheDocument();
+    expect(within(table).getByText("Comedy")).toBeInTheDocument();
+  });
+
   it("only renders the forecast section when there is a backlog", async () => {
     forecastState.data = { backlogEpisodes: 0, backlogMinutes: 0, episodesPerWeek: 0, catchUpDate: null };
     renderPage();

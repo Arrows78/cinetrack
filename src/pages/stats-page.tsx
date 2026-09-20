@@ -26,7 +26,6 @@ import { useStats, useWatchForecast, useWrapped, useYearlyActivity } from "@/fea
 import { ShareCancelledError, downloadWrappedCard, renderWrappedCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
-import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { ActivityBarChart } from "@/components/media/activity/activity-bar-chart";
@@ -427,15 +426,28 @@ export function StatsPage() {
         <Panel asChild className="min-w-0">
           <article>
             <SectionHeader title={t("stats.favouriteGenres")} size="sub" headingLevel={2} />
-            <div className="mt-4 grid gap-2">
-              {stats.data.favouriteGenres.map((genre) => (
-                <Tile key={genre.name} className="flex justify-between gap-3 px-3 py-2 text-body-sm">
-                  <span className="min-w-0 flex-1 truncate">{genre.name}</span>
-                  <strong className="shrink-0 text-muted-foreground">
-                    {t("stats.genreTitleCount", { count: genre.count })}
-                  </strong>
-                </Tile>
-              ))}
+            <ActivityBarChart
+              data={stats.data.favouriteGenres.map((genre) => ({ label: genre.name, value: genre.count }))}
+              tooltipLabel={t("stats.titles")}
+            />
+            <div className="sr-only">
+              <table>
+                <caption>{t("stats.favouriteGenres")}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{t("media.genres")}</th>
+                    <th scope="col">{t("stats.titles")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.data.favouriteGenres.map((genre) => (
+                    <tr key={genre.name}>
+                      <td>{genre.name}</td>
+                      <td>{genre.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </article>
         </Panel>

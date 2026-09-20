@@ -503,6 +503,7 @@
     "watches": "visionnages",
     "month": "Mois",
     "favouriteGenres": "Genres favoris",
+    "titles": "Titres",
     "genreTitleCount_one": "{{count}} titre",
     "genreTitleCount_other": "{{count}} titres",
     "watchCount_one": "{{count}} visionnage",

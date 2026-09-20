@@ -87,6 +87,25 @@ describe("WatchMilestonesSection", () => {
     expect(screen.getByText("40 / 100")).toBeInTheDocument();
   });
 
+  it("gives each milestone category its own icon, not one generic trophy/lock for every category", () => {
+    useWatchMilestonesMock.mockReturnValue({
+      data: [
+        makeMilestone({ id: "movies-10", category: "movies", threshold: 10, achieved: false }),
+        makeMilestone({ id: "series-5", category: "series", threshold: 5, achieved: true, achievedAt: null }),
+      ],
+      isError: false,
+      error: null,
+    });
+    const { container } = render(<WatchMilestonesSection />);
+
+    expect(container.querySelector(".lucide-clapperboard")).toBeInTheDocument();
+    expect(container.querySelector(".lucide-tv")).toBeInTheDocument();
+    // The achieved/locked distinction still shows, as a corner badge rather
+    // than replacing the whole icon.
+    expect(container.querySelector(".lucide-trophy")).toBeInTheDocument();
+    expect(container.querySelector(".lucide-lock")).toBeInTheDocument();
+  });
+
   it("shows the crossing date for an achieved milestone that has one", () => {
     useWatchMilestonesMock.mockReturnValue({
       data: [

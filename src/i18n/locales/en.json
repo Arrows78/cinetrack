@@ -503,6 +503,7 @@
     "watches": "watches",
     "month": "Month",
     "favouriteGenres": "Favourite genres",
+    "titles": "Titles",
     "genreTitleCount_one": "{{count}} title",
     "genreTitleCount_other": "{{count}} titles",
     "watchCount_one": "{{count}} watch",

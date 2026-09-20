@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Lock, Trophy } from "lucide-react";
 import { useWatchMilestones } from "@/features/stats/use-stats";
-import { MILESTONE_THRESHOLD_KEY } from "@/features/stats";
+import { MILESTONE_CATEGORY_ICON, MILESTONE_THRESHOLD_KEY } from "@/features/stats";
 import { ShareCancelledError, downloadMilestoneCard, renderMilestoneCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
@@ -17,6 +17,39 @@ import { displayMessage } from "@/shared/lib/user-facing-error";
 import { formatDate } from "@/shared/utils/format";
 import { cn } from "@/shared/lib/cn";
 import type { WatchMilestone } from "@/types/media";
+
+// A category icon (what this milestone tracks) plus a small achieved/locked
+// corner badge — every threshold in a category previously rendered the same
+// generic trophy/lock glyph, distinguishable only by its caption text.
+function MilestoneBadge({ milestone }: { milestone: WatchMilestone }) {
+  const CategoryIcon = MILESTONE_CATEGORY_ICON[milestone.category];
+  return (
+    <div className="relative shrink-0">
+      <div
+        className={cn(
+          "flex size-10 items-center justify-center rounded-full border",
+          milestone.achieved
+            ? "border-primary/30 bg-primary/10 text-primary"
+            : "border-border bg-foreground/5 text-muted-foreground"
+        )}
+      >
+        <CategoryIcon className="size-5" aria-hidden="true" />
+      </div>
+      <div
+        className={cn(
+          "absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-background",
+          milestone.achieved ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+        )}
+      >
+        {milestone.achieved ? (
+          <Trophy className="size-3" aria-hidden="true" />
+        ) : (
+          <Lock className="size-3" aria-hidden="true" />
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Watch milestones — threshold-crossing achievements, computed from the
@@ -121,11 +154,7 @@ export function WatchMilestonesSection() {
             key={milestone.id}
             className={cn("flex items-start gap-3 p-3", milestone.achieved && "border-primary/30 bg-primary/5")}
           >
-            {milestone.achieved ? (
-              <Trophy className="size-5 shrink-0 text-primary" aria-hidden="true" />
-            ) : (
-              <Lock className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            )}
+            <MilestoneBadge milestone={milestone} />
             <div className="min-w-0 flex-1">
               <p className="text-body-sm font-medium">
                 {t(MILESTONE_THRESHOLD_KEY[milestone.category], { count: milestone.threshold })}
