@@ -9,11 +9,17 @@ vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toa
 const loggerWarnMock = vi.fn();
 const loggerErrorMock = vi.fn();
 vi.mock("@/shared/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: (...args: unknown[]) => loggerWarnMock(...args), error: (...args: unknown[]) => loggerErrorMock(...args) },
+  logger: {
+    info: vi.fn(),
+    warn: (...args: unknown[]) => loggerWarnMock(...args),
+    error: (...args: unknown[]) => loggerErrorMock(...args),
+  },
 }));
 
 const signOutMock = vi.fn();
-vi.mock("@/features/auth/use-auth", () => ({ useAuth: () => ({ signOut: (...args: unknown[]) => signOutMock(...args) }) }));
+vi.mock("@/features/auth/use-auth", () => ({
+  useAuth: () => ({ signOut: (...args: unknown[]) => signOutMock(...args) }),
+}));
 
 const createEmailAddressMock = vi.fn();
 const prepareVerificationMock = vi.fn();
@@ -81,7 +87,11 @@ describe("AccountSettingsCard", () => {
   });
 
   it("walks through requesting and confirming an email change", async () => {
-    const pendingEmail = { id: "email-2", emailAddress: "new@example.com", prepareVerification: prepareVerificationMock };
+    const pendingEmail = {
+      id: "email-2",
+      emailAddress: "new@example.com",
+      prepareVerification: prepareVerificationMock,
+    };
     createEmailAddressMock.mockResolvedValue(pendingEmail);
     prepareVerificationMock.mockResolvedValue(pendingEmail);
     const verifiedEmail = { id: "email-2", attemptVerification: attemptVerificationMock };
@@ -108,11 +118,20 @@ describe("AccountSettingsCard", () => {
     await waitFor(() => expect(attemptVerificationMock).toHaveBeenCalledWith({ code: "123456" }));
     await waitFor(() => expect(updateMock).toHaveBeenCalledWith({ primaryEmailAddressId: "email-2" }));
     await waitFor(() => expect(destroyMock).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(toastMock).toHaveBeenCalledWith({ description: "Your email address has been updated.", variant: "success" }));
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith({
+        description: "Your email address has been updated.",
+        variant: "success",
+      })
+    );
   });
 
   it("shows a translated error instead of the raw Clerk message when the code is wrong", async () => {
-    const pendingEmail = { id: "email-2", emailAddress: "new@example.com", prepareVerification: prepareVerificationMock };
+    const pendingEmail = {
+      id: "email-2",
+      emailAddress: "new@example.com",
+      prepareVerification: prepareVerificationMock,
+    };
     createEmailAddressMock.mockResolvedValue(pendingEmail);
     prepareVerificationMock.mockResolvedValue(pendingEmail);
     currentUser = makeUser({
@@ -121,7 +140,9 @@ describe("AccountSettingsCard", () => {
         { id: "email-2", emailAddress: "new@example.com", attemptVerification: attemptVerificationMock },
       ],
     });
-    attemptVerificationMock.mockRejectedValue({ errors: [{ code: "form_code_incorrect", message: "raw clerk detail" }] });
+    attemptVerificationMock.mockRejectedValue({
+      errors: [{ code: "form_code_incorrect", message: "raw clerk detail" }],
+    });
 
     renderCard();
 

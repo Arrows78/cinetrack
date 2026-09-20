@@ -53,7 +53,7 @@ function KeyboardShortcutsRow() {
         // Dynamically imported — desktop-service.ts pulls in the app router
         // (for its deep-link navigation), which this settings page has no
         // other reason to load eagerly just to remap a shortcut.
-        const { desktopService } = await import("@/features/desktop/desktop-service");
+        const { desktopService } = await import("@/features/desktop");
         void desktopService.updateGlobalShortcut(next);
       }
     } catch (updateError) {
