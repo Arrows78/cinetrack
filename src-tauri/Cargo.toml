@@ -39,7 +39,7 @@ uuid = { version = "1", features = ["v4", "v7"] }
 # boundary, so a lightweight, pure-Rust, no-build-script hash is
 # proportionate; argon2/bcrypt would be needless weight for this threat
 # model.
-sha2 = "0.10"
+sha2 = "0.11"
 # Generates the TS mirror of an IPC DTO straight from its Rust struct/enum
 # (see docs/architecture.md's IPC boundary section) instead of hand-writing
 # it in src/types/media.ts and hoping check-contract-drift.mjs's field-name
