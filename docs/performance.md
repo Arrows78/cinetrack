@@ -144,3 +144,25 @@ marker at ±20% delta as a visual flag for a human skimming the table, not a
 build gate. If `main` has no successful run yet, or that run's artifact
 expired (30-day retention) or predates this feature, the comparison step is
 skipped with a warning rather than failing the job.
+
+## Known full-library reads (client-side filtering)
+
+`list_library` is bounded and scoped by media type for the locked /movies and
+/series hubs, but a few consumers still read the whole library and
+filter/aggregate in TypeScript. They are the remaining scalability work, in
+rough order of cost:
+
+- `stats-repository.ts`'s `getYearSummary` reads the full library only to
+  derive the year's favourite genre, with a nested scan
+  (`selected.some(...)` per library item) — a SQL aggregate over
+  `viewing_events` joined to `library_items` would replace both.
+- `home-page.tsx` and `today-hub.tsx` call `useLibrary()` at every launch, for
+  the planned count (`get_library_status_counts` already exists) and the
+  stale-planned-items card (`list_planned_library_candidates` is the likely
+  starting point).
+- The `/movies` and `/series` locked hubs, custom lists and smart lists
+  (`use-library-explorer.ts`) bucket by watch progress and filter client-side
+  on a full read.
+
+None of these is a correctness issue at realistic sizes; the 50k tier above
+measures the upper bound they pay.
