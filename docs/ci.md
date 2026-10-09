@@ -9,7 +9,16 @@ formatting, TypeScript, unit coverage, the production build, version
 consistency, and bundle budgets. `pnpm bundle:check` enforces a 4 MiB total
 `dist/` budget and a 450 KiB maximum JavaScript chunk.
 
-The Rust matrix runs on Linux, Windows, and macOS. It checks compilation,
+The budget exempts Clerk's vendor chunk (`dist/assets/clerk.*.js`): `clerk-js/no-rhc`
+is already the smallest entry point Clerk offers, so the exemption is scoped to
+that exact chunk rather than raising the per-chunk limit for everything — see
+`EXEMPT_LARGE_CHUNKS` in `scripts/check-bundle-budget.mjs`.
+
+The Rust matrix runs on Linux, Windows, and macOS. Build-script and linker
+warnings are not denied (`.cargo/config.toml` overrides `build.warnings` and
+passes `/IGNORE` for libsodium-sys's harmless LNK4098/LNK4099 on Windows); only
+the explicit `cargo clippy -- -D warnings` step is the warnings-as-errors gate
+for our own lints. It checks compilation,
 Clippy with warnings denied, formatting, the SQLite-backed test suite, and
 generated TypeScript bindings. The optional scale benchmark remains
 informational and is not a merge gate.
