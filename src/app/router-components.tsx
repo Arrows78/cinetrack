@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 
 export function RootLayout() {
@@ -18,7 +19,7 @@ export function ErrorComponent({ error }: ErrorComponentProps) {
   const { t } = useTranslation();
 
   useEffect(() => {
-    logger.error(`Route error: ${error.message}`);
+    logger.error(`Route error: ${errorMessage(error)}`);
   }, [error]);
 
   return (
