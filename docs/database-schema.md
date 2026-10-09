@@ -31,7 +31,7 @@ Relations: a profile has `0..n` rows in every table below. No dedicated index (t
 
 ### `preferences`
 
-Application settings: theme, accent color, language, TMDB region, spoiler protection, notifications, and `activeProfileId` — the currently selected profile. This is a **global** table, shared by every profile: they share the same app, not the same per-profile preferences.
+Application settings: theme, accent color, language, TMDB region, spoiler protection, notifications (`notificationsEnabled` for calendar reminders, plus `availabilityAlertsEnabled` and `desktopNotificationsEnabled` split out by migration 22), availability check frequency (`availabilityCheckIntervalHours`), automatic-backup frequency (`backupFrequency`), keyboard shortcuts (`commandPaletteShortcut`, `globalCommandPaletteShortcut`), onboarding/tour flags, recent searches, and `activeProfileId` — the currently selected profile. This is a **global** table, shared by every profile: they share the same app, not the same per-profile preferences.
 
 | Column       | Type | Notes                           |
 | ------------ | ---- | ------------------------------- |
@@ -41,7 +41,7 @@ Application settings: theme, accent color, language, TMDB region, spoiler protec
 
 No declared relation — table intentionally independent from profiles. No `uuid`: `key` is already a stable natural key, and nothing references an individual preference row.
 
-Only some keys leave this device at all. `ACCOUNT_SCOPE_PREFERENCE_KEYS` (`src-tauri/src/preferences/models.rs`) — currently `language`, `region`, `preferredProviderIds`, `spoilerProtection`, `hideWatchedInDiscovery`, `accentColor`, `onThisDayEnabled` — are the only rows cloud sync ever queues; the rest (`theme`, `compactMode`, `sidebarCollapsed`, `notificationsEnabled`, `notifyHoursBefore`, `backupDirectory`, `activeProfileId`, ...) describe this specific installation and stay local. See "Cloud sync" below.
+Only some keys leave this device at all. `ACCOUNT_SCOPE_PREFERENCE_KEYS` (`src-tauri/src/preferences/models.rs`) — currently `language`, `region`, `preferredProviderIds`, `spoilerProtection`, `hideWatchedInDiscovery`, `accentColor`, `onThisDayEnabled` — are the only rows cloud sync ever queues; the rest (`theme`, `compactMode`, `sidebarCollapsed`, the notification and availability-check keys, `notifyHoursBefore`, `backupDirectory`, `backupFrequency`, the shortcut keys, `activeProfileId`, ...) describe this specific installation and stay local. See "Cloud sync" below.
 
 ## Library & progress
 
