@@ -41,7 +41,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 - Create smart lists — automatically updated views defined by rules (status, genre, runtime, rating, streaming provider, or "series with episodes waiting") — evaluated live against your current library.
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
 - Review recent actions in a local activity timeline.
-- Manage multiple profiles, each with its own library and history — switch, create, or remove local-only profiles freely offline; with optional Supabase sign-in configured (see "Personalise" below), a profile can also be linked to an account so it's only reachable by that account.
+- Manage multiple profiles, each with its own library and history — switch, create, or remove local-only profiles freely offline; with optional Clerk sign-in configured (see "Personalise" below), a profile can also be linked to an account so it's only reachable by that account. Local profiles can pick an avatar and colour, be renamed, and be protected by an optional PIN.
 - Import a TV Time GDPR export (watched episodes and movies with their original dates, plus the to-watch list) as a one-time bulk migration.
 - Back up and restore your full library as a portable JSON file, optionally to a custom folder (e.g. one already synced by iCloud Drive, OneDrive, or Dropbox) instead of the default location.
 
@@ -59,7 +59,9 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 - Enable compact mode or reduced motion.
 - Set a default filter for search.
 - Declare which streaming services you subscribe to, used to prioritise Watch Tonight and Discover.
-- Sign in with Supabase (email OTP or social OAuth) when optional sign-in is configured; the app otherwise works fully offline with a local-only profile.
+- Sign in with Clerk (email code or social OAuth) when optional sign-in is configured; the app otherwise works fully offline with a local-only profile. A signed-in account can sync its library, history, episode ratings and preferences across devices (Supabase Postgres is the sync backend), with a status card showing the next check and any conflict history.
+- Manage your account (email, account deletion) from Settings, split notifications into calendar, availability and desktop toggles, and rebind the keyboard shortcuts.
+- Take a guided tour of the key features on first launch, with TV Time import offered right on the welcome screen.
 - Review viewing statistics and a yearly "wrapped" summary, plus a monthly recap, expanded rewatch analytics, personal rating distribution and evolution, watch milestones, and an opt-in "On this day" home surface revisiting past watches.
 
 ## 🧱 Technology stack
@@ -71,7 +73,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 | Styling and components | Tailwind CSS, Radix UI, local components inspired by shadcn/ui         |
 | Routing                | TanStack Router                                                        |
 | Remote data            | TanStack Query, TMDB API                                               |
-| Optional sign-in       | Supabase Auth (email OTP, OAuth)                                       |
+| Optional sign-in       | Clerk (email code, OAuth); Supabase Postgres as the sync backend       |
 | Desktop persistence    | SQLite via Rust (`sqlx`) behind Tauri commands, Stronghold for secrets |
 | UI state               | Zustand                                                                |
 | Validation             | Zod                                                                    |
@@ -154,9 +156,9 @@ The application expects the TMDB **API Read Access Token**, which is sent as a B
 
 > **Security note:** `VITE_TMDB_API_TOKEN` is inlined by Vite into the frontend bundle at build time. Keep it set in `.env` only for local/web development. Never set it when producing a desktop bundle for distribution (`pnpm tauri build`) — a value present at that time would ship in cleartext inside the built binary, bypassing the Stronghold vault. Distributed builds should rely solely on the in-app token vault (Settings → TMDB) or leave the variable unset.
 
-### 4. (Optional) Configure Supabase sign-in
+### 4. (Optional) Configure sign-in and sync
 
-CineTrack works fully offline with `VITE_AUTH_REQUIRED=false` (the default). To enable account sign-in (email OTP or social OAuth), follow [`docs/auth.md`](docs/auth.md) for the full Supabase project setup, redirect URLs, and provider configuration.
+CineTrack works fully offline with `VITE_AUTH_REQUIRED=false` (the default). To enable account sign-in (email code or social OAuth) and cloud sync, set `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env` (publishable keys only — never a secret or service-role key), and add the `cinetrack://auth/callback` and `http://127.0.0.1:7420/auth/callback` redirect URLs in the Clerk dashboard. [`docs/auth.md`](docs/auth.md) covers the full Clerk and Supabase project setup, and [`docs/cloud-sync-community.md`](docs/cloud-sync-community.md) the sync backend.
 
 ### 5. Start the desktop application
 
@@ -175,33 +177,40 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 
 ## 🛠️ Scripts
 
-| Command                   | Description                                                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`                | Starts the Vite development server.                                                                                       |
-| `pnpm build`              | Checks TypeScript types and creates the frontend production build.                                                        |
-| `pnpm preview`            | Serves the Vite production build locally.                                                                                 |
-| `pnpm lint`               | Analyses the project with ESLint.                                                                                         |
-| `pnpm lint:fix`           | Analyses the project with ESLint and applies automatic fixes.                                                             |
-| `pnpm format`             | Formats files with Prettier.                                                                                              |
-| `pnpm format:check`       | Checks formatting without writing changes (what CI runs).                                                                 |
-| `pnpm test`               | Runs the Vitest test suite.                                                                                               |
-| `pnpm test:watch`         | Runs the Vitest test suite in watch mode.                                                                                 |
-| `pnpm test:coverage`      | Runs the test suite with a coverage report.                                                                               |
-| `pnpm typecheck`          | Checks TypeScript types without emitting output.                                                                          |
-| `pnpm cargo:check`        | Runs `cargo check` on the Rust side.                                                                                      |
-| `pnpm cargo:clippy`       | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side.                                                        |
-| `pnpm cargo:clippy:fix`   | Runs `cargo clippy` on the Rust side and applies automatic fixes.                                                         |
-| `pnpm cargo:format`       | Formats the Rust side with `rustfmt`.                                                                                     |
-| `pnpm cargo:format:check` | Checks Rust formatting without writing changes (what CI runs).                                                            |
-| `pnpm cargo:test`         | Runs `cargo test` on the Rust side.                                                                                       |
-| `pnpm cargo:coverage`     | Runs `cargo llvm-cov --branch` for per-file Rust coverage (needs a `nightly` toolchain — see `CLAUDE.md`; not run in CI). |
-| `pnpm validate:frontend`  | Runs `lint`, `format:check`, `typecheck`, `test:coverage`, and `build`.                                                   |
-| `pnpm validate:backend`   | Runs `cargo:check`, `cargo:clippy`, `cargo:format:check`, and `cargo:test`.                                               |
-| `pnpm version:check`      | Ensures frontend, Cargo and Tauri manifest versions stay aligned.                                                         |
-| `pnpm bundle:check`       | Enforces the frontend `dist/` and JavaScript chunk size budgets.                                                          |
-| `pnpm validate`           | Runs `validate:frontend` then `validate:backend` — the full chain, and the same checks CI runs.                           |
-| `pnpm tauri dev`          | Starts the desktop application in development mode.                                                                       |
-| `pnpm tauri build`        | Creates desktop bundles for the current platform.                                                                         |
+| Command                                       | Description                                                                                                                 |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                    | Starts the Vite development server.                                                                                         |
+| `pnpm build`                                  | Checks TypeScript types and creates the frontend production build.                                                          |
+| `pnpm preview`                                | Serves the Vite production build locally.                                                                                   |
+| `pnpm lint`                                   | Analyses the project with ESLint.                                                                                           |
+| `pnpm lint:fix`                               | Analyses the project with ESLint and applies automatic fixes.                                                               |
+| `pnpm format`                                 | Formats files with Prettier.                                                                                                |
+| `pnpm format:check`                           | Checks formatting without writing changes (what CI runs).                                                                   |
+| `pnpm test`                                   | Runs the Vitest test suite.                                                                                                 |
+| `pnpm test:watch`                             | Runs the Vitest test suite in watch mode.                                                                                   |
+| `pnpm test:coverage`                          | Runs the test suite with a coverage report.                                                                                 |
+| `pnpm typecheck`                              | Checks TypeScript types without emitting output.                                                                            |
+| `pnpm cargo:check`                            | Runs `cargo check` on the Rust side.                                                                                        |
+| `pnpm cargo:clippy`                           | Runs `cargo clippy --all-targets -- -D warnings` on the Rust side.                                                          |
+| `pnpm cargo:clippy:fix`                       | Runs `cargo clippy` on the Rust side and applies automatic fixes.                                                           |
+| `pnpm cargo:format`                           | Formats the Rust side with `rustfmt`.                                                                                       |
+| `pnpm cargo:format:check`                     | Checks Rust formatting without writing changes (what CI runs).                                                              |
+| `pnpm cargo:test`                             | Runs `cargo test` on the Rust side.                                                                                         |
+| `pnpm cargo:coverage`                         | Runs `cargo llvm-cov --branch` for per-file Rust coverage (needs a `nightly` toolchain — see `CLAUDE.md`; not run in CI).   |
+| `pnpm validate:frontend`                      | Runs `lint`, `format:check`, `typecheck`, `test:coverage`, and `build`.                                                     |
+| `pnpm validate:backend`                       | Runs `cargo:check`, `cargo:clippy`, `cargo:format:check`, and `cargo:test`.                                                 |
+| `pnpm version:check`                          | Ensures frontend, Cargo and Tauri manifest versions stay aligned.                                                           |
+| `pnpm bundle:check`                           | Enforces the frontend `dist/` and JavaScript chunk size budgets.                                                            |
+| `pnpm validate`                               | Runs `validate:frontend` then `validate:backend` — the full chain, and the same checks CI runs.                             |
+| `pnpm coverage:changed`                       | Runs coverage scoped to the files changed against the base branch.                                                          |
+| `pnpm test:visual`                            | Runs the Playwright visual-regression suite (`test:visual:update` refreshes the baselines).                                 |
+| `pnpm contract:check`                         | Checks generated Tauri command names, opaque-DTO field names and command signatures (`contract:generate` regenerates them). |
+| `pnpm contract:check-ts-bindings`             | Regenerates the `ts-rs` DTO bindings and fails on drift (`contract:generate-ts-bindings` writes them).                      |
+| `pnpm architecture:check`                     | Enforces each feature's public surface — see `docs/architecture.md`.                                                        |
+| `pnpm perf:database`                          | Runs the opt-in 1k/10k/50k scale benchmark — see `docs/performance.md`.                                                     |
+| `pnpm ios:init` / `ios:dev` / `ios:build:sim` | Initialises the iOS project, runs it on a simulator/device, or builds an unsigned simulator bundle (what CI runs).          |
+| `pnpm tauri dev`                              | Starts the desktop application in development mode.                                                                         |
+| `pnpm tauri build`                            | Creates desktop bundles for the current platform.                                                                           |
 
 For the Rust side, use `pnpm cargo:check`, `pnpm cargo:clippy`, `pnpm cargo:format:check`, and `pnpm cargo:test` (all four also run in CI).
 
@@ -216,20 +225,27 @@ cinetrack/
 │   ├── components/             # Presentational UI: layout, media, ui/, states/, settings, collections, desktop, library
 │   ├── db/                     # Migration schema + real-SQLite test harness (production reads/writes go through src-tauri/src/commands, not this)
 │   ├── features/                # One folder per domain, each bundling its repository/service with the hooks that use it
-│   │   ├── auth/                #   Supabase session, OAuth, email OTP
+│   │   ├── auth/                #   Clerk session, OAuth, email code
 │   │   ├── availability/        #   Streaming-availability alerts and background monitor
 │   │   ├── backup/              #   Portable JSON export/import, automatic backups
 │   │   ├── calendar/            #   Release and episode calendar
-│   │   ├── collections/         #   Profiles and custom lists
+│   │   ├── community/           #   Social repository/types (backend only, no UI yet)
+│   │   ├── custom-lists/        #   User-curated lists
 │   │   ├── desktop/             #   Tray/deep-link wiring, updater, notifications, TMDB token vault
 │   │   ├── diagnostics/          #   In-app diagnostic logger
 │   │   ├── history/              #   Local activity timeline
 │   │   ├── library/              #   Unified watch status, ratings, tags
+│   │   ├── onboarding/           #   First-launch flow and guided tour
 │   │   ├── media/                #   TMDB client + MediaProvider, search/discovery hooks, image cache
+│   │   ├── profiles/             #   Local profiles, avatar/colour, PIN lock
 │   │   ├── preferences/          #   Theme, language, region, and other user settings
 │   │   ├── progress/              #   Movie/episode watched state and series progress
+│   │   ├── recommendations/      #   Rails built from your own library
 │   │   ├── saved-filters/         #   Reusable, named Library/Search filter views
+│   │   ├── smart-lists/          #   Rule-based, live-evaluated lists
 │   │   ├── stats/                #   Viewing statistics, insights, and yearly wrap-up
+│   │   ├── sync/                 #   Multi-device sync engine and status
+│   │   ├── tracking/             #   Release/availability tracking views
 │   │   ├── tvtime/                #   One-time bulk import from a TV Time export
 │   │   └── watch-tonight/        #   Random pick service
 │   ├── hooks/                   # Generic, repository-free hooks (debounce, confetti)
@@ -242,8 +258,9 @@ cinetrack/
 ├── src-tauri/
 │   ├── capabilities/           # Tauri permissions
 │   ├── src/
-│   │   ├── commands/            # One file per domain: SQL, transactions, cascades, active-profile resolution
-│   │   ├── database/             # Connection pool setup and the schema migrations (squashed initial schema + later fixes)
+│   │   ├── <domain>/            # One vertical slice per domain (library, progress, stats, backup, availability, history, preferences, profiles, recommendations, sync, auth, lists/, integrations/): commands.rs (Tauri adapter), service.rs, repository.rs/queries.rs
+│   │   ├── commands/            # IPC registry: re-exports every domain's commands, plus boot.rs and updater.rs
+│   │   ├── database/             # Connection pool setup and the SQL schema migrations
 │   │   ├── error.rs               # ApiError, the structured error every command returns
 │   │   ├── models.rs              # Shared types (MediaType, ...) used across commands
 │   │   ├── tray.rs                # System tray icon and menu
@@ -260,13 +277,14 @@ cinetrack/
 
 CineTrack does not require a user account or an application server to save personal data.
 
-The SQLite schema (a single migration, see `src/db/migrations/001-initial-schema.ts`) includes:
+The SQLite schema is defined by the SQL files in `src-tauri/src/database/migrations/` (`001-initial-schema.sql` plus later numbered migrations) and includes:
 
 - `profiles`, `preferences`;
 - `library_items`, `viewing_events`, `seen_movies`, `episode_progress`, `tracked_series`;
 - `custom_lists`, `custom_list_items`, `smart_lists`, `saved_filters`;
 - `availability_alerts`, `availability_snapshots`;
-- `activity_log`.
+- `activity_log`, `dismissed_recommendations`;
+- `sync_outbox`, `sync_metadata`, `sync_entity_state`, `sync_control` (local bookkeeping for the optional sync engine).
 
 Every table (other than `preferences`, keyed by `key`, and the pure-cache `availability_snapshots`, keyed by `(media_id, media_type, region)`) uses a single `uuid TEXT PRIMARY KEY` — generated app-side in Rust (`new_uuid()`, a UUIDv7), no separate internal integer id — plus `created_at`/`updated_at` timestamps. See [`docs/database-schema.md`](docs/database-schema.md) for the full table-by-table reference and ERD.
 
@@ -316,9 +334,6 @@ P1 should make CineTrack better at answering: **What can I watch now? What shoul
       Surface the existing lead-time capability with presets such as **At release**, **1 hour before**, **1 day before**, and **3 days before**.
 
 #### Watch Tonight & recommendations
-
-- [ ] **`DISCOVERY` — Add “Not interested” to Watch Tonight.**
-      Let users dismiss a suggestion without adding it to their library first. The title should stop resurfacing for that profile, with an immediate **Undo** action after dismissal.
 
 - [ ] **`DISCOVERY` — Add recommendation feedback.**
       Support signals such as **Already seen elsewhere**, **More like this**, and **Less like this**. Use this feedback alongside ratings, favourites, genres and viewing history to improve future recommendations.
@@ -373,14 +388,6 @@ P2 focuses on users with larger libraries and longer viewing histories, while ma
 These are real strengths of competitors worth acknowledging, but they are deliberately lower priority.
 
 Most require a durable online identity, backend infrastructure, moderation, or a larger shift away from CineTrack's current local-first model. They should only be pursued once the personal tracking experience is strong enough on its own.
-
-#### Multi-device
-
-- [ ] **`SYNC` — Add optional multi-device sync.**
-      Sync library items, viewing events, episode progress, lists, ratings, notes and profile preferences while keeping the local SQLite database fully usable offline.
-
-- [ ] **`SYNC` — Add visible conflict and sync-state management.**
-      Show **Last synced**, pending local changes, sync errors and conflicts instead of silently treating local and remote state as identical.
 
 #### Sharing
 
