@@ -191,6 +191,7 @@ describe("TrackingList", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -480,6 +481,10 @@ describe("TrackingList", () => {
   });
 
   it("switches the dated results to a month calendar view", () => {
+    // The calendar opens on the current month; pin "now" next to the fixtures'
+    // September 2026 dates so this doesn't start failing once that month is
+    // over. Only Date is faked, so nothing else in the render is affected.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-15T12:00:00Z") });
     mockTracking({ data: [releaseMine, episodeDiscovery] });
     render(<TrackingList />);
 
