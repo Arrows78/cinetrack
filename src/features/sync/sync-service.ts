@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import { getCurrentUserId, getDataClient } from "@/shared/lib/supabase-data-client";
+import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 
@@ -156,7 +157,7 @@ export const syncService = {
     const wake = () => {
       window.clearTimeout(debounce);
       debounce = window.setTimeout(() => {
-        void run(queryClient).catch((error: unknown) => logger.warn(`Cloud sync failed: ${String(error)}`));
+        void run(queryClient).catch((error: unknown) => logger.warn(`Cloud sync failed: ${errorMessage(error)}`));
       }, 250);
     };
 

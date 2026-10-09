@@ -11,6 +11,8 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { LoadingScreen } from "@/components/states/loading-screen";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 
 // Which local profile is active is derived from who is signed in, not
 // picked freely — accessing a profile now requires being the account it's
@@ -82,6 +84,12 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
     supabaseUserId,
   ]);
 
+  const cloudProfileError = cloudProfileQuery.error;
+  useEffect(() => {
+    if (cloudProfileError)
+      logger.warn(`Cloud account profile unavailable, continuing locally: ${errorMessage(cloudProfileError)}`);
+  }, [cloudProfileError]);
+
   useEffect(() => {
     if (!resolvedProfileId || activeProfileId === resolvedProfileId) return;
 
@@ -115,8 +123,20 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
   if (preferencesQuery.isError) {
     return <RemoteErrorState error={preferencesQuery.error} onRetry={() => void preferencesQuery.refetch()} />;
   }
-  if (cloudProfileQuery.isError) {
-    return <RemoteErrorState error={cloudProfileQuery.error} onRetry={() => void cloudProfileQuery.refetch()} />;
+  // The cloud account profile is a convergence layer on top of local data,
+  // not a prerequisite: when this device already has a local profile, an
+  // unreachable cloud (paused project, offline, DNS) must not lock the user
+  // out of their own library — it's logged and the app carries on locally.
+  // Only a device with no local profile yet genuinely needs the cloud read,
+  // to tell "new device" from "new account".
+  if (cloudProfileQuery.isError && !profileQuery.data) {
+    return (
+      <RemoteErrorState
+        error={cloudProfileQuery.error}
+        description={t("profileGate.cloudUnavailable")}
+        onRetry={() => void cloudProfileQuery.refetch()}
+      />
+    );
   }
 
   if (!profileQuery.data) {

@@ -696,6 +696,7 @@
   },
   "profileGate": {
     "resolving": "Chargement de votre profil…",
+    "cloudUnavailable": "Impossible de joindre votre compte CineTrack dans le cloud. Vérifiez votre connexion et réessayez.",
     "createTitle": "Créez votre profil",
     "createDescription": "Connecté avec {{email}}. Ce nom identifiera votre bibliothèque, votre historique et vos listes.",
     "namePlaceholder": "Votre nom",

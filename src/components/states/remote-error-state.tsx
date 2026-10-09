@@ -10,9 +10,12 @@ import { errorCategory, errorMessage } from "@/shared/lib/errors";
 interface RemoteErrorStateProps {
   error: unknown;
   onRetry: () => void;
+  // For callers whose failure isn't a TMDB one (e.g. the cloud account
+  // profile) — the default wording below blames the TMDB connection.
+  description?: string;
 }
 
-export function RemoteErrorState({ error, onRetry }: RemoteErrorStateProps) {
+export function RemoteErrorState({ error, onRetry, description }: RemoteErrorStateProps) {
   const { t } = useTranslation();
   const message = errorMessage(error);
   const category = errorCategory(error);
@@ -28,11 +31,12 @@ export function RemoteErrorState({ error, onRetry }: RemoteErrorStateProps) {
       icon={AlertTriangle}
       title={localDatabaseError ? t("errors.localDataUnavailable") : t("errors.catalogUnavailable")}
       description={
-        localDatabaseError
+        description ??
+        (localDatabaseError
           ? t("errors.localDatabase")
           : authenticationError
             ? t("errors.tmdbAuthentication")
-            : t("errors.tmdbConnection")
+            : t("errors.tmdbConnection"))
       }
       action={
         <div className="space-y-3 text-center">

@@ -112,7 +112,7 @@ describe("ProfileGate cloud continuity", () => {
     await waitFor(() => expect(screen.getByTestId("child")).toBeInTheDocument());
   });
 
-  it("surfaces cloud profile failures and allows retry", async () => {
+  it("keeps an existing local profile usable when the cloud profile can't be read", async () => {
     mocks.useProfile.mockReturnValue(profileQuery({ id: "profile-1", name: "Alice", avatar: null }));
     mocks.cloudGet.mockRejectedValue(new Error("cloud unavailable"));
 
@@ -123,6 +123,22 @@ describe("ProfileGate cloud continuity", () => {
       { wrapper: wrapper() }
     );
 
+    await waitFor(() => expect(screen.getByTestId("child")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: i18n.t("errors.retry") })).not.toBeInTheDocument();
+  });
+
+  it("surfaces cloud profile failures with a cloud-specific message on a device with no local profile, and allows retry", async () => {
+    mocks.useProfile.mockReturnValue(profileQuery(null));
+    mocks.cloudGet.mockRejectedValue(new Error("cloud unavailable"));
+
+    render(
+      <ProfileGate>
+        <div data-testid="child">child</div>
+      </ProfileGate>,
+      { wrapper: wrapper() }
+    );
+
+    expect(await screen.findByText(i18n.t("profileGate.cloudUnavailable"))).toBeInTheDocument();
     const retry = await screen.findByRole("button", { name: i18n.t("errors.retry") });
     fireEvent.click(retry);
     await waitFor(() => expect(mocks.cloudGet).toHaveBeenCalledTimes(2));
