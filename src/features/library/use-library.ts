@@ -137,39 +137,21 @@ export function useLibraryItem(media: MediaSummary) {
     queryKey: queryKeys.local.libraryItem(profileId, media.mediaType, media.id),
     queryFn: () => libraryRepository.get(media.id, media.mediaType),
   });
+  const itemKey = queryKeys.local.libraryItem(profileId, media.mediaType, media.id);
+  const invalidateEverythingTheLibraryFeeds = () =>
+    Promise.all(libraryInvalidationKeys(profileId).map((queryKey) => queryClient.invalidateQueries({ queryKey })));
   const save = useMutation({
     mutationFn: (patch: LibraryPatch) => libraryRepository.save(media, patch),
     onSuccess: async (item) => {
-      queryClient.setQueryData(queryKeys.local.libraryItem(profileId, media.mediaType, media.id), item);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryPage(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
-        // Adding a movie to the library can flip its calendar entry from
-        // "discovery" to "mine" on the tracking feed (see tracking-service.ts).
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryMediaKeys(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryDistinctTags(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.completedLibraryCandidates(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.bestRecommendationSeed(profileId) }),
-      ]);
+      queryClient.setQueryData(itemKey, item);
+      await invalidateEverythingTheLibraryFeeds();
     },
   });
   const remove = useMutation({
     mutationFn: () => libraryRepository.remove(media.id, media.mediaType),
     onSuccess: async () => {
-      queryClient.setQueryData(queryKeys.local.libraryItem(profileId, media.mediaType, media.id), null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryPage(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryMediaKeys(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.completedLibraryCandidates(profileId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.local.bestRecommendationSeed(profileId) }),
-      ]);
+      queryClient.setQueryData(itemKey, null);
+      await invalidateEverythingTheLibraryFeeds();
     },
   });
   return { ...query, save: save.mutateAsync, remove: remove.mutateAsync, isSaving: save.isPending || remove.isPending };
@@ -225,6 +207,9 @@ export function libraryInvalidationKeys(profileId: string) {
     queryKeys.local.watchTonight(profileId),
     queryKeys.local.tracking(profileId),
     queryKeys.local.libraryMediaKeys(profileId),
+    // A save can add or drop a tag and a removal drops the item's tags —
+    // the tag editor's autocomplete reads this list.
+    queryKeys.local.libraryDistinctTags(profileId),
     queryKeys.local.completedLibraryCandidates(profileId),
     queryKeys.local.bestRecommendationSeed(profileId),
   ];
