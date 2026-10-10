@@ -1,4 +1,6 @@
 mod commands;
+#[cfg(test)]
+mod concurrency_tests;
 mod domain;
 mod models;
 mod queries;

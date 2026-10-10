@@ -290,12 +290,15 @@ pub(super) async fn list_page_impl(
     Ok(LibraryPage { items, next_cursor })
 }
 
-pub(super) async fn get_impl(
-    pool: &SqlitePool,
+pub(super) async fn get_impl<'e, E>(
+    pool: E,
     profile_id: &str,
     media_id: i64,
     media_type: MediaType,
-) -> Result<Option<LibraryItem>, ApiError> {
+) -> Result<Option<LibraryItem>, ApiError>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
     let row: Option<LibraryRow> = sqlx::query_as(
         "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
     )

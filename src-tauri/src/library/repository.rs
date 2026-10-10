@@ -28,9 +28,19 @@ pub(super) async fn upsert_impl(
     patch: LibraryPatch,
     profile_id: &str,
 ) -> Result<LibraryItem, ApiError> {
-    let current = get_impl(pool, profile_id, media.id, media.media_type).await?;
+    // BEGIN IMMEDIATE before reading the current row: the read decides both
+    // which fields this write keeps and whether a history row is appended, so
+    // it has to sit under the same write lock as the write itself. Read
+    // outside the transaction, two concurrent saves of one title each saw "not
+    // in the library yet" (two `watchlist:add` rows), and two edits of
+    // different fields each wrote back the other's stale value.
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
+    let current = get_impl(&mut *tx, profile_id, media.id, media.media_type).await?;
     let is_new = current.is_none();
-    let now = now_iso(pool).await?;
+    let now = now_iso(&mut *tx).await?;
     let status = patch.status.unwrap_or_else(|| {
         current
             .as_ref()
@@ -92,8 +102,6 @@ pub(super) async fn upsert_impl(
             .map_or_else(|| now.clone(), |c| c.created_at.clone()),
         updated_at: now,
     };
-
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     sqlx::query(
         "INSERT INTO library_items (
@@ -311,9 +319,13 @@ pub(super) async fn remove_impl(
     media_id: i64,
     media_type: MediaType,
 ) -> Result<(), ApiError> {
-    let existing = get_impl(pool, profile_id, media_id, media_type).await?;
-
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    // Read and delete under one IMMEDIATE transaction (see upsert_impl): only
+    // the caller that actually removes the row logs the removal.
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
+    let existing = get_impl(&mut *tx, profile_id, media_id, media_type).await?;
 
     sqlx::query(
         "DELETE FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
@@ -421,7 +433,10 @@ pub(super) async fn remove_if_planned_impl(
     media_id: i64,
     media_type: MediaType,
 ) -> Result<bool, ApiError> {
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
     let existing: Option<LibraryRow> = sqlx::query_as(
         "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 AND status = 'planned' LIMIT 1",
     )
