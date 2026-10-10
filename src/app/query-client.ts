@@ -4,6 +4,7 @@ import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import i18n from "@/i18n";
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/shared/lib/logger";
+import { isTauriApp } from "@/shared/lib/platform";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { errorMessage } from "@/shared/lib/errors";
 import { GC_7_DAYS, STALE_5_MIN, STALE_24_HOURS } from "@/shared/constants/query";
@@ -59,7 +60,11 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: STALE_5_MIN,
       gcTime: GC_7_DAYS,
-      retry: 1,
+      // Outside the Tauri window (`pnpm dev`, the visual-regression suite)
+      // every local read is guaranteed to fail, so a retry only holds each
+      // page on its loading skeleton for an extra beat before the same
+      // error state — which makes screenshots race that delay.
+      retry: isTauriApp() ? 1 : false,
       refetchOnWindowFocus: false,
       networkMode: "offlineFirst",
     },
