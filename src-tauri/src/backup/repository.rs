@@ -542,7 +542,6 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
         "INSERT INTO episode_progress
               (uuid,profile_id,series_id,episode_id,season_number,episode_number,watched,watched_at,created_at,updated_at,rating) ",
         |b, item| {
-            let timestamp = item.watched_at.clone().unwrap_or_else(|| now.clone());
             b.push_bind(new_uuid())
                 .push_bind(item.profile_id.clone().unwrap_or_else(|| "default".to_string()))
                 .push_bind(item.series_id)
@@ -551,8 +550,8 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
                 .push_bind(item.episode_number)
                 .push_bind(item.watched)
                 .push_bind(item.watched_at.clone())
-                .push_bind(timestamp.clone())
-                .push_bind(timestamp)
+                .push_bind(&item.created_at)
+                .push_bind(&item.updated_at)
                 .push_bind(item.rating);
         }
     );
@@ -571,7 +570,7 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
                 .push_bind(&item.backdrop_path)
                 .push_bind(item.total_episodes)
                 .push_bind(&item.status)
-                .push_bind(&item.updated_at)
+                .push_bind(&item.created_at)
                 .push_bind(&item.updated_at);
         }
     );
@@ -686,7 +685,7 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
                 .push_bind(&item.poster_path)
                 .push_bind(item.position)
                 .push_bind(&item.added_at)
-                .push_bind(&item.added_at);
+                .push_bind(&item.updated_at);
         }
     );
 

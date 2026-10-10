@@ -4,6 +4,8 @@ mod filesystem;
 mod import;
 mod integrity;
 mod repository;
+#[cfg(test)]
+mod round_trip_tests;
 mod service;
 
 pub use commands::{
