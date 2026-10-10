@@ -36,6 +36,12 @@ async function gotoStable(page: Page, path: string, theme: (typeof THEMES)[numbe
   // real visual regression.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.waitForLoadState("networkidle");
+  // "networkidle" doesn't cover a query that's sitting in a retry delay: with
+  // no Tauri IPC every local read fails and retries, so for a moment a page
+  // is still showing its loading skeleton (a different height) before it
+  // settles on its error/empty state. A baseline captured in that window
+  // never matches one captured after it — wait for every skeleton to go.
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
 }
 
 for (const screen of SCREENS) {
