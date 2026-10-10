@@ -52,7 +52,11 @@ export function calculateSeriesProgress(
   // basically never happens. Up to date only requires nothing currently
   // aired and unwatched to be left — getNextEpisode returning null already
   // means exactly that.
-  const isUpToDate = !completed && getNextEpisode(seasons, watched) === null;
+  //
+  // Needs at least one aired episode: with none (seasons not loaded yet, or a
+  // series announced but not out) there is nothing to be caught up *on*, and
+  // "up to date" would read as true for a series the viewer hasn't started.
+  const isUpToDate = !completed && totalAiredEpisodes > 0 && getNextEpisode(seasons, watched) === null;
   return {
     seriesId,
     // The fraction/percentage shown to the user is against what's actually

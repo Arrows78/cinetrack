@@ -193,4 +193,68 @@ describe("hasAired", () => {
     vi.setSystemTime(new Date(2026, 6, 14, 0, 1));
     expect(hasAired(episode({ airDate: "2026-07-14" }))).toBe(true);
   });
+
+  describe("boundary values", () => {
+    it("never reports 'up to date' when no episode has aired — nothing loaded yet, or an announced series not out yet", () => {
+      // No season fetched yet (the detail page renders before they resolve).
+      const unloaded = calculateSeriesProgress(1, [], []);
+      expect(unloaded).toMatchObject({ totalEpisodes: 0, watchedEpisodes: 0, progressPercent: 0, completed: false });
+      expect(unloaded.isUpToDate).toBe(false);
+
+      // Every episode still in the future.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 0, 1));
+      const unaired = calculateSeriesProgress(
+        1,
+        [
+          season([
+            episode({ id: 1, airDate: "2026-06-01" }),
+            episode({ id: 2, episodeNumber: 2, airDate: "2026-06-08" }),
+          ]),
+        ],
+        []
+      );
+      expect(unaired).toMatchObject({ totalEpisodes: 0, watchedEpisodes: 0, progressPercent: 0, completed: false });
+      expect(unaired.isUpToDate).toBe(false);
+      expect(unaired.seasons[0]).toMatchObject({ totalEpisodes: 0, progressPercent: 0 });
+    });
+
+    it("a season with no episodes yields 0% and no NaN anywhere", () => {
+      const progress = calculateSeriesProgress(1, [season([])], []);
+      expect(progress.seasons[0]).toEqual({
+        seasonNumber: 1,
+        totalEpisodes: 0,
+        watchedEpisodes: 0,
+        progressPercent: 0,
+      });
+      expect(Number.isNaN(progress.progressPercent)).toBe(false);
+    });
+
+    it("still reports 'up to date' once every aired episode is watched and the rest are ahead", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 14));
+      const progress = calculateSeriesProgress(
+        1,
+        [
+          season([
+            episode({ id: 1, airDate: "2026-07-01" }),
+            episode({ id: 2, episodeNumber: 2, airDate: "2026-12-01" }),
+          ]),
+        ],
+        [{ episodeId: 1, watched: true } as EpisodeProgress]
+      );
+      expect(progress).toMatchObject({ totalEpisodes: 1, watchedEpisodes: 1, progressPercent: 100, completed: false });
+      expect(progress.isUpToDate).toBe(true);
+    });
+
+    it("an episode with no air date counts as aired, and a watched id from another series is ignored", () => {
+      const progress = calculateSeriesProgress(
+        1,
+        [season([episode({ id: 1 })])],
+        [{ episodeId: 999, watched: true } as EpisodeProgress]
+      );
+      expect(progress).toMatchObject({ totalEpisodes: 1, watchedEpisodes: 0, progressPercent: 0, completed: false });
+      expect(progress.isUpToDate).toBe(false);
+    });
+  });
 });
