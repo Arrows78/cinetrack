@@ -147,44 +147,63 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
 }
 
 pub(crate) async fn apply_pending_migrations(pool: &SqlitePool) -> Result<(), ApiError> {
+    apply_migrations_up_to(pool, i64::MAX).await
+}
+
+/// Applies every pending migration whose version is `<= max_version`, in
+/// order. Production always passes `i64::MAX`; the bound exists so tests can
+/// stop at an older schema, seed realistic data there, and upgrade from it.
+async fn apply_migrations_up_to(pool: &SqlitePool, max_version: i64) -> Result<(), ApiError> {
     let row: (i64,) = sqlx::query_as("PRAGMA user_version")
         .fetch_one(pool)
         .await
         .map_err(ApiError::from)?;
-    let mut current_version = row.0;
+    let current_version = row.0;
 
     for migration in migrations()? {
         if migration.version <= current_version {
             continue;
         }
-
-        let mut tx = pool.begin().await.map_err(ApiError::from)?;
-
-        for statement in &migration.statements {
-            if let Err(error) = sqlx::query(*statement).execute(&mut *tx).await
-                && !is_tolerable_duplicate_column(statement, &error)
-            {
-                return Err(ApiError::internal(format!(
-                    "Migration {} ({}) failed: {error}",
-                    migration.version, migration.name
-                )));
-            }
+        if migration.version > max_version {
+            break;
         }
-
-        sqlx::query(sqlx::AssertSqlSafe(format!(
-            "PRAGMA user_version = {}",
-            migration.version
-        )))
-        .execute(&mut *tx)
-        .await
-        .map_err(ApiError::from)?;
-
-        tx.commit().await.map_err(ApiError::from)?;
-        current_version = migration.version;
+        apply_migration(pool, &migration).await?;
     }
 
     Ok(())
 }
+
+/// One migration, entirely inside one transaction together with its
+/// `user_version` bump: SQLite DDL is transactional, so a failure (or a crash
+/// before the commit) rolls back every statement of this migration and leaves
+/// the file at the previous version, still fully usable.
+async fn apply_migration(pool: &SqlitePool, migration: &Migration) -> Result<(), ApiError> {
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
+    for statement in &migration.statements {
+        if let Err(error) = sqlx::query(*statement).execute(&mut *tx).await
+            && !is_tolerable_duplicate_column(statement, &error)
+        {
+            return Err(ApiError::internal(format!(
+                "Migration {} ({}) failed: {error}",
+                migration.version, migration.name
+            )));
+        }
+    }
+
+    sqlx::query(sqlx::AssertSqlSafe(format!(
+        "PRAGMA user_version = {}",
+        migration.version
+    )))
+    .execute(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    tx.commit().await.map_err(ApiError::from)
+}
+
+#[cfg(test)]
+mod path_tests;
 
 #[cfg(test)]
 mod tests {

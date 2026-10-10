@@ -8,8 +8,8 @@
 -- notificationsEnabled (still on its default) has no row to copy here, and
 -- the two new keys fall back to their own same false default.
 -- cinetrack:statement
-INSERT INTO preferences (key, value, updated_at)
+INSERT OR IGNORE INTO preferences (key, value, updated_at)
 SELECT 'availabilityAlertsEnabled', value, updated_at FROM preferences WHERE key = 'notificationsEnabled'
 -- cinetrack:statement
-INSERT INTO preferences (key, value, updated_at)
+INSERT OR IGNORE INTO preferences (key, value, updated_at)
 SELECT 'desktopNotificationsEnabled', value, updated_at FROM preferences WHERE key = 'notificationsEnabled'
