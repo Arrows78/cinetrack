@@ -16,6 +16,11 @@ function readSentNotifications(): Set<string> {
   }
 }
 
+// Passes run one after another: the boot-time check and the recurring
+// interval can overlap, and two passes reading the sent-set before either
+// has written it back would each show the same reminder.
+let dueQueue: Promise<unknown> = Promise.resolve();
+
 export const notificationService = {
   async isPermissionGranted(): Promise<boolean> {
     if (!isTauriApp()) return "Notification" in window && Notification.permission === "granted";
@@ -43,7 +48,13 @@ export const notificationService = {
     await Promise.resolve(sendNotification({ title, body }));
   },
 
-  async notifyDue(entries: CalendarEntry[], preferences: UserPreferences): Promise<number> {
+  notifyDue(entries: CalendarEntry[], preferences: UserPreferences): Promise<number> {
+    const run = dueQueue.then(() => this.deliverDue(entries, preferences));
+    dueQueue = run.catch(() => undefined);
+    return run;
+  },
+
+  async deliverDue(entries: CalendarEntry[], preferences: UserPreferences): Promise<number> {
     if (
       !preferences.notificationsEnabled ||
       !preferences.desktopNotificationsEnabled ||
