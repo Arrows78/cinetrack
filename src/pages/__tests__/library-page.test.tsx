@@ -456,6 +456,20 @@ describe("LibraryPage — lists", () => {
     await waitFor(() => expect(customListsState.create).toHaveBeenCalledWith({ name: "Weekend", description: "" }));
   });
 
+  it("disables Create while a list is being saved, so a double click cannot create it twice", async () => {
+    customListsState.isSaving = true;
+    try {
+      renderPage();
+
+      screen.getByRole("button", { name: /Custom lists/i }).click();
+      fireEvent.change(await screen.findByLabelText("List name"), { target: { value: "Weekend" } });
+
+      expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    } finally {
+      customListsState.isSaving = false;
+    }
+  });
+
   it("deleting a list goes through ConfirmDialog before calling remove", async () => {
     customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
     renderPage();

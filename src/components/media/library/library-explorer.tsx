@@ -159,7 +159,7 @@ function ListsAccordionContent({
         />
         <Button
           type="button"
-          disabled={!listName.trim()}
+          disabled={!listName.trim() || lists.isSaving}
           onClick={() => {
             setListActionError(null);
             void lists
