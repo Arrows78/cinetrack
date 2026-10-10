@@ -99,10 +99,22 @@ describe("TvTimeUnmatchedResolver", () => {
     getSeriesDetailsMock.mockReset();
     resolveRetryableSeriesMock.mockReset().mockResolvedValue({
       episodesImported: 1,
-      undo: { series: { id: 7 }, episodes: [{ id: 100, seasonNumber: 1, episodeNumber: 1 }] },
+      undo: {
+        movies: [],
+        series: [{ series: { id: 7 }, episodes: [{ id: 100, seasonNumber: 1, episodeNumber: 1 }] }],
+        createdLibraryItems: [],
+      },
     });
-    resolveRetryableMovieMock.mockReset().mockResolvedValue(true);
-    resolveRetryableWatchlistMock.mockReset().mockResolvedValue(true);
+    resolveRetryableMovieMock.mockReset().mockImplementation(async (_item: unknown, match: unknown) => ({
+      movies: [match],
+      series: [],
+      createdLibraryItems: [],
+    }));
+    resolveRetryableWatchlistMock.mockReset().mockResolvedValue({
+      movies: [],
+      series: [],
+      createdLibraryItems: [{ id: "lib-9", importedAt: "2026-10-10T10:00:00.000Z" }],
+    });
   });
 
   it("renders nothing when there are no retryable items", () => {
@@ -126,7 +138,7 @@ describe("TvTimeUnmatchedResolver", () => {
       expect(onResolved).toHaveBeenCalledWith(movieItem, {
         movies: [expect.objectContaining({ id: 42 })],
         series: [],
-        planned: [],
+        createdLibraryItems: [],
       })
     );
   });
@@ -186,7 +198,7 @@ describe("TvTimeUnmatchedResolver", () => {
       expect(onResolved).toHaveBeenCalledWith(seriesItem, {
         movies: [],
         series: [{ series: { id: 7 }, episodes: [{ id: 100, seasonNumber: 1, episodeNumber: 1 }] }],
-        planned: [],
+        createdLibraryItems: [],
       })
     );
   });
@@ -202,7 +214,7 @@ describe("TvTimeUnmatchedResolver", () => {
     const result = await screen.findByText("Bodyguard", {}, { timeout: 2000 });
     result.closest("div")!.querySelector("button")!.click();
 
-    await waitFor(() => expect(onResolved).toHaveBeenCalledWith(seriesItem, { movies: [], series: [], planned: [] }));
+    await waitFor(() => expect(onResolved).toHaveBeenCalledWith(seriesItem, null));
   });
 
   it("resolves an unmatched watchlist entry", async () => {
@@ -221,14 +233,14 @@ describe("TvTimeUnmatchedResolver", () => {
       expect(onResolved).toHaveBeenCalledWith(watchlistItem, {
         movies: [],
         series: [],
-        planned: [{ mediaId: 9, mediaType: "series" }],
+        createdLibraryItems: [{ id: "lib-9", importedAt: "2026-10-10T10:00:00.000Z" }],
       })
     );
   });
 
   it("does not report anything undoable when the watchlist match was already in the library", async () => {
     searchMock.mockResolvedValue(page([summary({ id: 9, mediaType: "series", title: "The Real Show" })]));
-    resolveRetryableWatchlistMock.mockResolvedValue(false);
+    resolveRetryableWatchlistMock.mockResolvedValue(null);
     const onResolved = vi.fn();
     renderResolver([watchlistItem], onResolved);
 
@@ -236,9 +248,7 @@ describe("TvTimeUnmatchedResolver", () => {
     const result = await screen.findByText("The Real Show", {}, { timeout: 2000 });
     result.closest("div")!.querySelector("button")!.click();
 
-    await waitFor(() =>
-      expect(onResolved).toHaveBeenCalledWith(watchlistItem, { movies: [], series: [], planned: [] })
-    );
+    await waitFor(() => expect(onResolved).toHaveBeenCalledWith(watchlistItem, null));
   });
 
   it("shows an error and keeps the item when resolving fails", async () => {

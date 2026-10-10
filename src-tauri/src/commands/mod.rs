@@ -11,7 +11,9 @@ pub use crate::backup::{
     read_backup_from_path, remove_backup_file, write_backup_to_path,
 };
 pub use crate::history::list_history;
-pub use crate::integrations::{import_movie_seen, import_series_progress, tmdb_request};
+pub use crate::integrations::{
+    import_movie_seen, import_series_progress, tmdb_request, undo_tvtime_import_library,
+};
 pub use crate::library::{
     add_planned_library_item, get_best_recommendation_seed, get_library_item,
     get_library_items_by_keys, get_library_status_counts, get_random_library_item,

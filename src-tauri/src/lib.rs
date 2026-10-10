@@ -46,8 +46,8 @@ use commands::{
     remove_profile, remove_saved_filter, remove_smart_list, resolve_profile_for_supabase_user,
     save_availability_snapshot, save_library_item, set_active_profile, set_episode_rating,
     set_profile_pin, tmdb_request, toggle_availability_alert, toggle_episodes_watched,
-    toggle_movie_seen, update_preference, update_profile, update_smart_list, updater_is_configured,
-    verify_profile_pin, write_backup_to_path,
+    toggle_movie_seen, undo_tvtime_import_library, update_preference, update_profile,
+    update_smart_list, updater_is_configured, verify_profile_pin, write_backup_to_path,
 };
 use commands::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
@@ -209,6 +209,7 @@ pub fn run() {
             remove_saved_filter,
             import_series_progress,
             import_movie_seen,
+            undo_tvtime_import_library,
             export_backup_data,
             import_backup_data,
             check_data_integrity,

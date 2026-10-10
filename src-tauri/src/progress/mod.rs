@@ -16,4 +16,7 @@ pub(crate) use models::{EpisodeInput, EpisodeProgress, SeriesInput, TrackedSerie
 
 // The TV Time importer intentionally reuses the exact same transactional
 // episode upsert/rollup implementation without exposing it over Tauri.
+pub(crate) use repository::apply_episodes_outcome_impl;
+// Other domains' tests seed progress through the log-free wrapper.
+#[cfg(test)]
 pub(crate) use repository::apply_episodes_impl;

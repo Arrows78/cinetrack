@@ -1,13 +1,15 @@
 use std::collections::HashSet;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
+#[cfg(test)]
+use crate::library::{CreatedLibraryItem, remove_untouched_items_impl};
 use crate::models::MediaType;
-use crate::progress::{EpisodeInput, SeriesInput, apply_episodes_impl};
+use crate::progress::{EpisodeInput, SeriesInput, apply_episodes_outcome_impl};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +36,29 @@ pub struct ImportableMovie {
     pub genres: Vec<String>,
 }
 
+/// Result of `import_series_progress_impl`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeriesImportOutcome {
+    /// The episodes this call really inserted (already-watched ones are
+    /// left out).
+    pub inserted_episode_ids: Vec<i64>,
+    /// uuid of the library entry this call created for the series — `None`
+    /// when the series was already in the library. The undo of the import
+    /// removes only entries listed here.
+    pub created_library_item_id: Option<String>,
+}
+
+/// Result of `import_movie_seen_impl`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MovieImportOutcome {
+    /// `false` when the movie was already seen, which skips the import.
+    pub inserted: bool,
+    /// See `SeriesImportOutcome::created_library_item_id`.
+    pub created_library_item_id: Option<String>,
+}
+
 /// Batch writes for the TV Time import. Unlike the interactive progress
 /// commands this preserves the original watch date of every episode
 /// (per-episode `watched_at` override, see `EpisodeInput`) and does not log
@@ -45,7 +70,8 @@ pub struct ImportableMovie {
 /// `apply_episodes_impl` (same upsert/rollup logic as the interactive
 /// episode/season/series toggles) instead of duplicating it.
 ///
-/// Returns the episode ids actually inserted — already-watched ones are
+/// Returns the episode ids actually inserted (plus the library entry it
+/// created, if any) — already-watched ones are
 /// skipped, so a re-import is idempotent, and the caller can tell "newly
 /// imported" from "already tracked" (the frontend surfaces the difference as
 /// a distinct duplicate count, and only the ids returned here are safe to
@@ -59,9 +85,12 @@ pub(super) async fn import_series_progress_impl(
     profile_id: &str,
     series: SeriesInput,
     episodes: Vec<ImportableEpisode>,
-) -> Result<Vec<i64>, ApiError> {
+) -> Result<SeriesImportOutcome, ApiError> {
     if episodes.is_empty() {
-        return Ok(vec![]);
+        return Ok(SeriesImportOutcome {
+            inserted_episode_ids: vec![],
+            created_library_item_id: None,
+        });
     }
     let latest_watched_at = episodes
         .iter()
@@ -98,24 +127,29 @@ pub(super) async fn import_series_progress_impl(
         })
         .collect();
 
-    apply_episodes_impl(
+    let applied = apply_episodes_outcome_impl(
         pool,
         profile_id,
         &series,
         &episode_inputs,
         true,
         &latest_watched_at,
+        None,
+        None,
     )
     .await?;
 
-    Ok(newly_inserted_ids)
+    Ok(SeriesImportOutcome {
+        inserted_episode_ids: newly_inserted_ids,
+        created_library_item_id: applied.created_library_item_id,
+    })
 }
 
 pub(super) async fn import_movie_seen_impl(
     pool: &SqlitePool,
     profile_id: &str,
     movie: ImportableMovie,
-) -> Result<bool, ApiError> {
+) -> Result<MovieImportOutcome, ApiError> {
     let already_seen: (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
             .bind(profile_id)
@@ -124,7 +158,10 @@ pub(super) async fn import_movie_seen_impl(
             .await
             .map_err(ApiError::from)?;
     if already_seen.0 > 0 {
-        return Ok(false);
+        return Ok(MovieImportOutcome {
+            inserted: false,
+            created_library_item_id: None,
+        });
     }
 
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
@@ -168,7 +205,7 @@ pub(super) async fn import_movie_seen_impl(
         rating: movie.rating,
         genres: movie.genres.clone(),
     };
-    auto_sync_status_impl(
+    let created_library_item_id = auto_sync_status_impl(
         &mut tx,
         pool,
         profile_id,
@@ -179,7 +216,10 @@ pub(super) async fn import_movie_seen_impl(
     .await?;
 
     tx.commit().await.map_err(ApiError::from)?;
-    Ok(true)
+    Ok(MovieImportOutcome {
+        inserted: true,
+        created_library_item_id,
+    })
 }
 
 #[cfg(test)]
@@ -235,7 +275,7 @@ mod tests {
         let inserted = import_series_progress_impl(&pool, "default", series(9), episodes)
             .await
             .unwrap();
-        assert_eq!(inserted, vec![1, 2]);
+        assert_eq!(inserted.inserted_episode_ids, vec![1, 2]);
 
         let watched_at: (String,) = sqlx::query_as(
             "SELECT watched_at FROM episode_progress WHERE series_id = 9 AND episode_id = 1",
@@ -253,7 +293,7 @@ mod tests {
         let inserted = import_series_progress_impl(&pool, "default", series(9), vec![])
             .await
             .unwrap();
-        assert!(inserted.is_empty());
+        assert!(inserted.inserted_episode_ids.is_empty());
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM episode_progress")
             .fetch_one(&pool)
@@ -273,7 +313,7 @@ mod tests {
         let second = import_series_progress_impl(&pool, "default", series(9), episodes)
             .await
             .unwrap();
-        assert!(second.is_empty());
+        assert!(second.inserted_episode_ids.is_empty());
     }
 
     #[tokio::test]
@@ -300,7 +340,7 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(inserted, vec![2]);
+        assert_eq!(inserted.inserted_episode_ids, vec![2]);
     }
 
     #[tokio::test]
@@ -379,7 +419,7 @@ mod tests {
         .await
         .unwrap();
 
-        assert!(imported);
+        assert!(imported.inserted);
     }
 
     #[tokio::test]
@@ -389,12 +429,12 @@ mod tests {
         let first = import_movie_seen_impl(&pool, "default", movie(1))
             .await
             .unwrap();
-        assert!(first);
+        assert!(first.inserted);
 
         let second = import_movie_seen_impl(&pool, "default", movie(1))
             .await
             .unwrap();
-        assert!(!second);
+        assert!(!second.inserted);
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE movie_id = 1")
             .fetch_one(&pool)
@@ -465,5 +505,141 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(status, Some("completed".to_string()));
+    }
+
+    async fn library_count(pool: &SqlitePool) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM library_items")
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    /// `imported_at` of an import that finished long after every write it
+    /// made (the import stamps rows with the historical watch dates).
+    fn finished(id: Option<String>) -> Vec<CreatedLibraryItem> {
+        id.into_iter()
+            .map(|id| CreatedLibraryItem {
+                id,
+                imported_at: "2030-01-01T00:00:00.000Z".to_string(),
+            })
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn the_import_reports_the_library_entries_it_creates_and_only_those() {
+        let pool = migrated_pool().await;
+        // Series 9 and movie 2 are in the library before the import.
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ('lib-9', 'default', 9, 'series', 'Old Show', 'planned', 'now', 'now'),
+                    ('lib-2', 'default', 2, 'movie', 'Old Movie', 'planned', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let known_series = import_series_progress_impl(
+            &pool,
+            "default",
+            series(9),
+            vec![episode(1, 1, "2020-01-01T00:00:00.000Z")],
+        )
+        .await
+        .unwrap();
+        let new_series = import_series_progress_impl(
+            &pool,
+            "default",
+            series(10),
+            vec![episode(11, 1, "2020-01-01T00:00:00.000Z")],
+        )
+        .await
+        .unwrap();
+        let known_movie = import_movie_seen_impl(&pool, "default", movie(2))
+            .await
+            .unwrap();
+        let new_movie = import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
+
+        assert_eq!(known_series.created_library_item_id, None);
+        assert_eq!(known_movie.created_library_item_id, None);
+        assert!(new_series.created_library_item_id.is_some());
+        assert!(new_movie.created_library_item_id.is_some());
+        // An already-seen movie is skipped outright, creating nothing.
+        let again = import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
+        assert!(!again.inserted);
+        assert_eq!(again.created_library_item_id, None);
+    }
+
+    #[tokio::test]
+    async fn undoing_removes_what_the_import_created_and_keeps_what_was_there_before() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ('lib-2', 'default', 2, 'movie', 'Old Movie', 'planned', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let known = import_movie_seen_impl(&pool, "default", movie(2))
+            .await
+            .unwrap();
+        let fresh = import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
+        let fresh_series = import_series_progress_impl(
+            &pool,
+            "default",
+            series(10),
+            vec![episode(11, 1, "2020-01-01T00:00:00.000Z")],
+        )
+        .await
+        .unwrap();
+        let mut created = finished(known.created_library_item_id);
+        created.extend(finished(fresh.created_library_item_id));
+        created.extend(finished(fresh_series.created_library_item_id));
+        assert_eq!(created.len(), 2);
+
+        let outcome = remove_untouched_items_impl(&pool, "default", &created)
+            .await
+            .unwrap();
+
+        assert_eq!((outcome.removed, outcome.kept), (2, 0));
+        let left: Vec<i64> = sqlx::query_scalar("SELECT media_id FROM library_items")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert_eq!(left, vec![2], "only the title present before survives");
+    }
+
+    #[tokio::test]
+    async fn an_interrupted_import_can_be_undone_for_what_it_got_through() {
+        let pool = migrated_pool().await;
+        // Two movies were imported, the process stopped before the third; the
+        // undo list is whatever was recorded, and an id that no longer
+        // exists (a previous partial undo) is simply skipped.
+        let first = import_movie_seen_impl(&pool, "default", movie(1))
+            .await
+            .unwrap();
+        let second = import_movie_seen_impl(&pool, "default", movie(2))
+            .await
+            .unwrap();
+        let mut recorded = finished(first.created_library_item_id);
+        recorded.extend(finished(second.created_library_item_id));
+        recorded.extend(finished(Some("lost-with-the-interruption".to_string())));
+        assert_eq!(library_count(&pool).await, 2);
+
+        let outcome = remove_untouched_items_impl(&pool, "default", &recorded)
+            .await
+            .unwrap();
+        let repeat = remove_untouched_items_impl(&pool, "default", &recorded)
+            .await
+            .unwrap();
+
+        assert_eq!((outcome.removed, outcome.kept), (2, 0));
+        assert_eq!((repeat.removed, repeat.kept), (0, 0));
+        assert_eq!(library_count(&pool).await, 0);
     }
 }

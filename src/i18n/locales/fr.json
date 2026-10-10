@@ -1357,9 +1357,11 @@
     "undo": {
       "button": "Annuler le dernier import",
       "confirmTitle": "Annuler cet import ?",
-      "confirmDescription": "Cela retire le statut « vu » de chaque film et épisode ajouté par cet import, et supprime les titres de la liste à voir qu'il a ajoutés et que vous n'avez pas encore commencés. Les titres regardés ou modifiés depuis cet import ne seront pas touchés.",
+      "confirmDescription": "Cela retire le statut « vu » de chaque film et épisode ajouté par cet import, et supprime les entrées de bibliothèque qu'il a créées. Les titres déjà présents dans votre bibliothèque avant l'import ne sont jamais touchés, ni une entrée que vous avez modifiée depuis (statut, note, favori, notes, tags) : elle reste, et vous êtes prévenu du nombre.",
       "confirm": "Annuler l'import",
       "success": "Import annulé.",
+      "successKept_one": "Import annulé. {{count}} entrée de la bibliothèque a été conservée car vous l'avez modifiée depuis.",
+      "successKept_other": "Import annulé. {{count}} entrées de la bibliothèque ont été conservées car vous les avez modifiées depuis.",
       "failed": "Impossible d'annuler l'import. Réessayez."
     }
   },

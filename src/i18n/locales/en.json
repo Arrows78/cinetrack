@@ -1357,9 +1357,11 @@
     "undo": {
       "button": "Undo last import",
       "confirmTitle": "Undo this import?",
-      "confirmDescription": "This unmarks every movie and episode this import added as watched, and removes any watchlist titles it added that you haven't started watching yet. Titles you've watched or edited since this import won't be touched.",
+      "confirmDescription": "This unmarks every movie and episode this import added as watched, and removes the library entries it created. Titles that were already in your library before the import are never touched, and neither is an entry you've edited since (status, rating, favourite, notes, tags): it stays, and you'll be told how many.",
       "confirm": "Undo import",
       "success": "Import undone.",
+      "successKept_one": "Import undone. {{count}} library entry was kept because you edited it since.",
+      "successKept_other": "Import undone. {{count}} library entries were kept because you edited them since.",
       "failed": "Couldn't undo the import. Try again."
     }
   },

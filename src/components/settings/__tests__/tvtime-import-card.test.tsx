@@ -22,7 +22,7 @@ function summaryFixture(overrides: Partial<TvTimeImportSummary> = {}): TvTimeImp
     unmatched: [],
     ambiguous: [],
     retryable: [],
-    undo: { movies: [], series: [], planned: [] },
+    undo: { movies: [], series: [], createdLibraryItems: [] },
     ...overrides,
   };
 }
@@ -98,8 +98,12 @@ describe("TvTimeImportCard", () => {
     toastMock.mockReset();
     loggerWarnMock.mockReset();
     applyTvTimeImportMock.mockReset().mockResolvedValue(summaryFixture());
-    undoTvTimeImportMock.mockReset().mockResolvedValue(undefined);
-    resolveRetryableMovieMock.mockReset().mockResolvedValue(true);
+    undoTvTimeImportMock.mockReset().mockResolvedValue({ keptLibraryItems: 0 });
+    resolveRetryableMovieMock.mockReset().mockImplementation(async (_item: unknown, match: unknown) => ({
+      movies: [match],
+      series: [],
+      createdLibraryItems: [],
+    }));
     searchMock.mockReset().mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
     const actualZip = await vi.importActual<typeof ZipModule>("@/features/tvtime/zip");
     extractCsvEntriesMock.mockReset().mockImplementation((file: File) => actualZip.extractCsvEntries(file));
@@ -396,7 +400,7 @@ describe("TvTimeImportCard", () => {
     const undoDescriptor = {
       movies: [{ id: 5, mediaType: "movie" as const, title: "Inception", overview: "", genres: [], cast: [] }],
       series: [],
-      planned: [],
+      createdLibraryItems: [{ id: "lib-5", importedAt: "2026-10-10T10:00:00.000Z" }],
     };
 
     it("does not show an undo button when nothing was actually newly imported", async () => {
@@ -430,6 +434,26 @@ describe("TvTimeImportCard", () => {
         expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ description: "Import undone." }))
       );
       await waitFor(() => expect(screen.queryByRole("button", { name: "Undo last import" })).not.toBeInTheDocument());
+    });
+
+    it("says how many library entries were kept because they were edited since", async () => {
+      applyTvTimeImportMock.mockResolvedValueOnce(summaryFixture({ moviesImported: 1, undo: undoDescriptor }));
+      undoTvTimeImportMock.mockResolvedValueOnce({ keptLibraryItems: 2 });
+      const { input } = renderCard();
+
+      fireEvent.change(input, { target: { files: [csvFile("tracking-prod-records-v2.csv", RECORDS_V2)] } });
+      (await screen.findByRole("button", { name: "Import" })).click();
+      fireEvent.click(await screen.findByRole("button", { name: "Undo last import" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Undo import" }));
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            description: "Import undone. 2 library entries were kept because you edited them since.",
+            variant: "warning",
+          })
+        )
+      );
     });
 
     it("shows a failure toast and keeps the undo button when undoing rejects", async () => {
@@ -512,7 +536,11 @@ describe("TvTimeImportCard", () => {
       fireEvent.click(await screen.findByRole("button", { name: "Undo import" }));
 
       await waitFor(() =>
-        expect(undoTvTimeImportMock).toHaveBeenCalledWith({ movies: [matchedMovie], series: [], planned: [] })
+        expect(undoTvTimeImportMock).toHaveBeenCalledWith({
+          movies: [matchedMovie],
+          series: [],
+          createdLibraryItems: [],
+        })
       );
     });
   });

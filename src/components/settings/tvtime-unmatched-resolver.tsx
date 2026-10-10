@@ -35,14 +35,13 @@ const scopeFor = (item: RetryableUnmatched): SearchScope => {
 // only by year (the year is already part of a series' label).
 const retryableItemKey = (item: RetryableUnmatched): string => `${item.kind}-${item.label}-${item.searchYear ?? ""}`;
 
-const NO_UNDO: TvTimeImportUndo = { movies: [], series: [], planned: [] };
-
 function UnmatchedItemRow({
   item,
   onResolved,
 }: {
   item: RetryableUnmatched;
-  onResolved: (item: RetryableUnmatched, undo: TvTimeImportUndo) => void;
+  /** `undo` is null when the resolution wrote nothing undoable. */
+  onResolved: (item: RetryableUnmatched, undo: TvTimeImportUndo | null) => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -77,18 +76,14 @@ function UnmatchedItemRow({
       // into its running "undo last import" state the same way either way,
       // regardless of whether a title was resolved automatically or by hand
       // here.
-      let undo = NO_UNDO;
+      let undo: TvTimeImportUndo | null;
       if (item.kind === "series") {
         const series = await mediaRepository.getSeriesDetails(match.id);
-        const result = await resolveRetryableSeries(item, series);
-        if (result.undo) undo = { movies: [], series: [result.undo], planned: [] };
+        undo = (await resolveRetryableSeries(item, series)).undo;
       } else if (item.kind === "movie") {
-        const inserted = await resolveRetryableMovie(item, match);
-        if (inserted) undo = { movies: [match], series: [], planned: [] };
+        undo = await resolveRetryableMovie(item, match);
       } else {
-        const wasNewlyPlanned = await resolveRetryableWatchlist(item, match);
-        if (wasNewlyPlanned)
-          undo = { movies: [], series: [], planned: [{ mediaId: match.id, mediaType: match.mediaType }] };
+        undo = await resolveRetryableWatchlist(item, match);
       }
       await invalidateTvTimeImportQueries(queryClient, profileId);
       toast({ description: t("tvtimeImport.retry.resolved", { title: match.title }), variant: "success" });
@@ -162,7 +157,8 @@ export function TvTimeUnmatchedResolver({
   onResolved,
 }: {
   items: RetryableUnmatched[];
-  onResolved: (item: RetryableUnmatched, undo: TvTimeImportUndo) => void;
+  /** `undo` is null when the resolution wrote nothing undoable. */
+  onResolved: (item: RetryableUnmatched, undo: TvTimeImportUndo | null) => void;
 }) {
   const { t } = useTranslation();
   if (!items.length) return null;

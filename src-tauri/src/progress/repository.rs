@@ -217,6 +217,35 @@ pub(crate) async fn apply_episodes_and_log_impl(
     history: Option<EpisodeHistoryInput>,
     note: Option<String>,
 ) -> Result<i64, ApiError> {
+    Ok(apply_episodes_outcome_impl(
+        pool, profile_id, series, episodes, watched, watched_at, history, note,
+    )
+    .await?
+    .changed)
+}
+
+/// What `apply_episodes_outcome_impl` did: how many episodes changed state,
+/// and the uuid of the library entry the write created (auto-sync brings a
+/// series into the library on its first watched episode), if any.
+#[derive(Debug, Default)]
+pub(crate) struct EpisodesOutcome {
+    pub(crate) changed: i64,
+    pub(crate) created_library_item_id: Option<String>,
+}
+
+/// The body of `apply_episodes_and_log_impl`, for the one caller (tvtime's
+/// importer) that also needs to know whether the library entry is new.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn apply_episodes_outcome_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    series: &SeriesInput,
+    episodes: &[EpisodeInput],
+    watched: bool,
+    watched_at: &str,
+    history: Option<EpisodeHistoryInput>,
+    note: Option<String>,
+) -> Result<EpisodesOutcome, ApiError> {
     // BEGIN IMMEDIATE up front, before reading which episodes are already
     // watched, for the same reason toggle_movie_seen_impl does: a plain
     // pool.begin() (deferred) or a read taken outside any transaction lets
@@ -252,7 +281,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
         .collect();
 
     if changed_episodes.is_empty() {
-        return Ok(0);
+        return Ok(EpisodesOutcome::default());
     }
 
     // Same rule as toggle_movie_seen_with_note_impl: a note only ever
@@ -368,6 +397,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
     // the tracked_series rollup above) so a series with an unknown TMDB
     // episode count can still register as "Watching" but never falsely
     // "Completed" from a single episode.
+    let mut created_library_item_id = None;
     if watched {
         let auto_sync_target = auto_sync_target(
             watched_episodes,
@@ -385,7 +415,9 @@ pub(crate) async fn apply_episodes_and_log_impl(
                 rating: series.rating,
                 genres: series.genres.clone(),
             };
-            auto_sync_status_impl(&mut tx, pool, profile_id, target, watched_at, &media).await?;
+            created_library_item_id =
+                auto_sync_status_impl(&mut tx, pool, profile_id, target, watched_at, &media)
+                    .await?;
         }
     }
 
@@ -412,11 +444,17 @@ pub(crate) async fn apply_episodes_and_log_impl(
     }
 
     tx.commit().await.map_err(ApiError::from)?;
-    Ok(changed_episodes.len() as i64)
+    Ok(EpisodesOutcome {
+        changed: changed_episodes.len() as i64,
+        created_library_item_id,
+    })
 }
 
 /// Thin wrapper over `apply_episodes_and_log_impl` for callers that never
-/// log history (tvtime's importer, and the existing test suite below).
+/// log history (the existing test suite below; tvtime's importer calls
+/// `apply_episodes_outcome_impl` directly, which also reports a created
+/// library entry).
+#[cfg(test)]
 pub(crate) async fn apply_episodes_impl(
     pool: &SqlitePool,
     profile_id: &str,

@@ -225,6 +225,11 @@ pub(super) async fn upsert_impl(
 /// episode of an already dropped/completed show, must not silently undo a
 /// manual status change. Only an explicit manual edit (`save_library_item`)
 /// can move an existing status back down.
+///
+/// Returns the uuid of the entry it created, `None` when it only left an
+/// existing one alone or moved its status up — which is how a caller (the TV
+/// Time import) tells "this write brought the title into the library" from
+/// "it was already there".
 pub(crate) async fn auto_sync_status_impl(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     pool: &SqlitePool,
@@ -232,7 +237,7 @@ pub(crate) async fn auto_sync_status_impl(
     target: LibraryStatus,
     now: &str,
     media: &AutoSyncMedia,
-) -> Result<(), ApiError> {
+) -> Result<Option<String>, ApiError> {
     let current: Option<LibraryRow> = sqlx::query_as(
         "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
     )
@@ -287,12 +292,12 @@ pub(crate) async fn auto_sync_status_impl(
             metadata: Some(json!({ "profileId": profile_id })),
         };
         add_history_item_impl(&mut **tx, pool, history_item).await?;
-        return Ok(());
+        return Ok(Some(uuid));
     };
 
     let current_status = LibraryStatus::from_db_str(&row.status)?;
     if auto_sync_rank(target) <= auto_sync_rank(current_status) {
-        return Ok(());
+        return Ok(None);
     }
 
     let completed_at = if target == LibraryStatus::Completed {
@@ -318,7 +323,7 @@ pub(crate) async fn auto_sync_status_impl(
     .execute(&mut **tx)
     .await
     .map_err(ApiError::from)?;
-    Ok(())
+    Ok(None)
 }
 
 /// History metadata for a library removal: carries a snapshot of the
@@ -478,13 +483,28 @@ pub(super) async fn remove_if_planned_impl(
         return Ok(false);
     };
 
+    delete_row_and_log_removal(&mut tx, pool, profile_id, row).await?;
+
+    tx.commit().await.map_err(ApiError::from)?;
+    Ok(true)
+}
+
+/// Deletes one already-read library row and logs the removal, with the
+/// snapshot an undo needs (see `removal_metadata`). The caller owns the
+/// transaction and has checked that this removal is wanted.
+async fn delete_row_and_log_removal(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    pool: &SqlitePool,
+    profile_id: &str,
+    row: LibraryRow,
+) -> Result<(), ApiError> {
     sqlx::query("DELETE FROM library_items WHERE uuid = $1")
         .bind(&row.uuid)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await
         .map_err(ApiError::from)?;
 
-    let timestamp = now_iso(&mut *tx).await?;
+    let timestamp = now_iso(&mut **tx).await?;
     let genres: serde_json::Value =
         serde_json::from_str(&row.genres).map_err(|e| ApiError::internal(e.to_string()))?;
     let metadata = removal_metadata(
@@ -501,8 +521,8 @@ pub(super) async fn remove_if_planned_impl(
     );
     let history_item = ViewingHistoryItem {
         id: new_uuid(),
-        media_id,
-        media_type,
+        media_id: row.media_id,
+        media_type: MediaType::from_db_str(&row.media_type),
         title: row.title,
         action: HistoryAction::LibraryRemove,
         timestamp,
@@ -511,10 +531,64 @@ pub(super) async fn remove_if_planned_impl(
         episode_title: None,
         metadata: Some(metadata),
     };
-    add_history_item_impl(&mut *tx, pool, history_item).await?;
+    add_history_item_impl(&mut **tx, pool, history_item).await
+}
 
+/// One library entry an import created, with the moment the import finished
+/// writing to it.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatedLibraryItem {
+    pub id: String,
+    pub imported_at: String,
+}
+
+/// What `remove_untouched_items_impl` did.
+#[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UntouchedRemoval {
+    /// Entries deleted: still exactly as the import left them.
+    pub removed: i64,
+    /// Entries kept because they were edited after the import
+    /// (`updated_at` later than `imported_at`: status, rating, favourite,
+    /// notes, tags, a later watch...).
+    pub kept: i64,
+}
+
+/// Undo half of a bulk import: removes, in one transaction, the library
+/// entries the import itself created — but only those of `profile_id` that
+/// nobody has touched since. An entry that is gone already (a second undo,
+/// or deleted by hand) or belongs to another profile counts as neither
+/// removed nor kept, so calling this twice is a no-op the second time.
+/// Every edit path bumps `updated_at`, which is what "touched" means here.
+pub(crate) async fn remove_untouched_items_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    items: &[CreatedLibraryItem],
+) -> Result<UntouchedRemoval, ApiError> {
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
+    let mut outcome = UntouchedRemoval::default();
+    for item in items {
+        let row: Option<LibraryRow> =
+            sqlx::query_as("SELECT * FROM library_items WHERE uuid = $1 AND profile_id = $2")
+                .bind(&item.id)
+                .bind(profile_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(ApiError::from)?;
+        let Some(row) = row else { continue };
+        if row.updated_at.as_str() > item.imported_at.as_str() {
+            outcome.kept += 1;
+            continue;
+        }
+        delete_row_and_log_removal(&mut tx, pool, profile_id, row).await?;
+        outcome.removed += 1;
+    }
     tx.commit().await.map_err(ApiError::from)?;
-    Ok(true)
+    Ok(outcome)
 }
 
 #[cfg(test)]
@@ -1661,6 +1735,242 @@ mod tests {
             rating: Some(8.2),
             genres: vec!["Sci-Fi".to_string()],
         }
+    }
+
+    const IMPORT_FINISHED_AT: &str = "2020-06-01T00:00:00.000Z";
+
+    /// Brings a title into the library the way a bulk import does (auto-sync
+    /// with a historical watch date as `now`), returning what the undo gets.
+    async fn created_by_import(pool: &SqlitePool, media_id: i64) -> CreatedLibraryItem {
+        let mut tx = pool.begin().await.unwrap();
+        let id = auto_sync_status_impl(
+            &mut tx,
+            pool,
+            "default",
+            LibraryStatus::Completed,
+            "2020-01-01T00:00:00.000Z",
+            &auto_sync_media(media_id, MediaType::Movie),
+        )
+        .await
+        .unwrap()
+        .expect("a missing title is created");
+        tx.commit().await.unwrap();
+        CreatedLibraryItem {
+            id,
+            imported_at: IMPORT_FINISHED_AT.to_string(),
+        }
+    }
+
+    #[tokio::test]
+    async fn auto_sync_reports_only_the_entries_it_creates() {
+        let pool = migrated_pool().await;
+        let created = created_by_import(&pool, 42).await;
+        let (stored,): (String,) =
+            sqlx::query_as("SELECT uuid FROM library_items WHERE media_id = 42")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(created.id, stored);
+
+        // Already there (even moved up in status): nothing created.
+        let mut tx = pool.begin().await.unwrap();
+        let again = auto_sync_status_impl(
+            &mut tx,
+            &pool,
+            "default",
+            LibraryStatus::Completed,
+            "2020-02-01T00:00:00.000Z",
+            &auto_sync_media(42, MediaType::Movie),
+        )
+        .await
+        .unwrap();
+        assert_eq!(again, None);
+    }
+
+    #[tokio::test]
+    async fn removes_an_untouched_import_entry_and_logs_the_removal() {
+        let pool = migrated_pool().await;
+        let created = created_by_import(&pool, 42).await;
+
+        let outcome = remove_untouched_items_impl(&pool, "default", &[created])
+            .await
+            .unwrap();
+
+        assert_eq!(
+            outcome,
+            UntouchedRemoval {
+                removed: 1,
+                kept: 0
+            }
+        );
+        assert!(
+            get_impl(&pool, "default", 42, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
+        assert_eq!(history[0].action, HistoryAction::LibraryRemove);
+    }
+
+    #[tokio::test]
+    async fn keeps_an_import_entry_the_user_edited_afterwards() {
+        let edits = [
+            LibraryPatch {
+                status: Some(LibraryStatus::Dropped),
+                ..Default::default()
+            },
+            LibraryPatch {
+                favourite: Some(true),
+                ..Default::default()
+            },
+            LibraryPatch {
+                user_rating: Some(Some(9.0)),
+                ..Default::default()
+            },
+            LibraryPatch {
+                notes: Some(Some("great".to_string())),
+                ..Default::default()
+            },
+            LibraryPatch {
+                tags: Some(vec!["rewatch".to_string()]),
+                ..Default::default()
+            },
+        ];
+        for patch in edits {
+            let pool = migrated_pool().await;
+            let created = created_by_import(&pool, 42).await;
+            upsert_impl(&pool, media(42), patch.clone(), "default")
+                .await
+                .unwrap();
+
+            let outcome = remove_untouched_items_impl(&pool, "default", &[created])
+                .await
+                .unwrap();
+
+            assert_eq!(
+                outcome,
+                UntouchedRemoval {
+                    removed: 0,
+                    kept: 1
+                },
+                "edit {patch:?} must keep the entry"
+            );
+            assert!(
+                get_impl(&pool, "default", 42, MediaType::Movie)
+                    .await
+                    .unwrap()
+                    .is_some()
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn never_touches_a_title_that_was_not_created_by_the_import() {
+        let pool = migrated_pool().await;
+        // In the library before the import: it is not in the created list.
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        let created = created_by_import(&pool, 42).await;
+
+        remove_untouched_items_impl(&pool, "default", &[created])
+            .await
+            .unwrap();
+
+        assert!(
+            get_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_second_undo_is_a_no_op_and_mixed_batches_are_counted_per_entry() {
+        let pool = migrated_pool().await;
+        let untouched = created_by_import(&pool, 1).await;
+        let edited = created_by_import(&pool, 2).await;
+        upsert_impl(
+            &pool,
+            media(2),
+            LibraryPatch {
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        let batch = [
+            untouched,
+            edited,
+            CreatedLibraryItem {
+                id: "never-existed".to_string(),
+                imported_at: IMPORT_FINISHED_AT.to_string(),
+            },
+        ];
+
+        let first = remove_untouched_items_impl(&pool, "default", &batch)
+            .await
+            .unwrap();
+        assert_eq!(
+            first,
+            UntouchedRemoval {
+                removed: 1,
+                kept: 1
+            }
+        );
+
+        let history_after_first = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap()
+            .len();
+        let second = remove_untouched_items_impl(&pool, "default", &batch)
+            .await
+            .unwrap();
+        // The edited entry is still there and still reported as kept; the
+        // removed one is gone and silently skipped, and nothing is logged.
+        assert_eq!(
+            second,
+            UntouchedRemoval {
+                removed: 0,
+                kept: 1
+            }
+        );
+        assert_eq!(
+            list_history_impl(&pool, 50, None, &HistoryFilters::default())
+                .await
+                .unwrap()
+                .len(),
+            history_after_first
+        );
+    }
+
+    #[tokio::test]
+    async fn an_undo_never_removes_another_profiles_entry() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('other', 'Other', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let created = created_by_import(&pool, 42).await;
+
+        let outcome = remove_untouched_items_impl(&pool, "other", &[created])
+            .await
+            .unwrap();
+
+        assert_eq!(outcome, UntouchedRemoval::default());
+        assert!(
+            get_impl(&pool, "default", 42, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[tokio::test]

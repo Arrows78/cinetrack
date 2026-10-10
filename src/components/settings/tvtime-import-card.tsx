@@ -11,10 +11,12 @@ import { logger } from "@/shared/lib/logger";
 import {
   applyTvTimeImport,
   extractCsvEntries,
+  hasTvTimeImportUndo,
   invalidateTvTimeImportQueries,
   MAX_TVTIME_FILE_BYTES,
   MAX_TVTIME_FILES,
   MAX_TVTIME_TOTAL_BYTES,
+  mergeTvTimeImportUndo,
   parseTvTimeFiles,
   undoTvTimeImport,
   ZipTooLargeError,
@@ -124,8 +126,7 @@ export function TvTimeImportCard() {
       await invalidateTvTimeImportQueries(queryClient, profileId);
       setRetryableItems(result.retryable);
       const duplicateTitles = result.moviesAlreadyInLibrary + result.plannedAlreadyInLibrary;
-      const hasUndo = result.undo.movies.length > 0 || result.undo.series.length > 0 || result.undo.planned.length > 0;
-      setLastImportUndo(hasUndo ? result.undo : null);
+      setLastImportUndo(hasTvTimeImportUndo(result.undo) ? result.undo : null);
       toast({
         description: (
           <div>
@@ -182,10 +183,16 @@ export function TvTimeImportCard() {
     setConfirmingUndo(false);
     setIsUndoing(true);
     try {
-      await undoTvTimeImport(lastImportUndo);
+      const { keptLibraryItems } = await undoTvTimeImport(lastImportUndo);
       await invalidateTvTimeImportQueries(queryClient, profileId);
       setLastImportUndo(null);
-      toast({ description: t("tvtimeImport.undo.success"), variant: "success" });
+      toast({
+        description:
+          keptLibraryItems > 0
+            ? t("tvtimeImport.undo.successKept", { count: keptLibraryItems })
+            : t("tvtimeImport.undo.success"),
+        variant: keptLibraryItems > 0 ? "warning" : "success",
+      });
     } catch (undoError) {
       logger.warn(`TV Time import undo failed: ${undoError instanceof Error ? undoError.message : String(undoError)}`);
       toast({ description: t("tvtimeImport.undo.failed"), variant: "error" });
@@ -323,18 +330,13 @@ export function TvTimeImportCard() {
         items={retryableItems}
         onResolved={(item, undo) => {
           setRetryableItems((current) => current.filter((entry) => entry !== item));
-          const wroteSomething = undo.movies.length > 0 || undo.series.length > 0 || undo.planned.length > 0;
-          if (!wroteSomething) return;
+          if (!undo || !hasTvTimeImportUndo(undo)) return;
           // A manual resolution is undoable exactly like the batch import's
           // own writes — merged into whatever's already pending rather than
           // replacing it, so undo covers the whole session's worth of
           // writes: the automatic pass and every title resolved by hand
           // afterward.
-          setLastImportUndo((current) => ({
-            movies: [...(current?.movies ?? []), ...undo.movies],
-            series: [...(current?.series ?? []), ...undo.series],
-            planned: [...(current?.planned ?? []), ...undo.planned],
-          }));
+          setLastImportUndo((current) => mergeTvTimeImportUndo(current, undo));
         }}
       />
     </>

@@ -86,6 +86,7 @@ export const tauriCommandNames = [
   "remove_saved_filter",
   "import_series_progress",
   "import_movie_seen",
+  "undo_tvtime_import_library",
   "export_backup_data",
   "import_backup_data",
   "check_data_integrity",

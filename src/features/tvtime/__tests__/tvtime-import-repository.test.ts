@@ -29,25 +29,35 @@ const series: Series = {
 };
 
 describe("tvTimeImportRepository", () => {
-  it("importSeriesProgress invokes import_series_progress and returns the newly inserted episode ids", async () => {
-    invokeCommandMock.mockResolvedValue([1]);
+  it("importSeriesProgress invokes import_series_progress and returns the inserted episode ids with the created library entry", async () => {
+    invokeCommandMock.mockResolvedValue({ insertedEpisodeIds: [1], createdLibraryItemId: "lib-9" });
     const episodes: ImportableEpisode[] = [
       { episodeId: 1, seasonNumber: 1, episodeNumber: 1, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: 42 },
     ];
 
     const result = await tvTimeImportRepository.importSeriesProgress(series, episodes);
 
-    expect(result).toEqual([1]);
+    expect(result).toEqual({ insertedEpisodeIds: [1], createdLibraryItemId: "lib-9" });
     expect(invokeCommandMock).toHaveBeenCalledWith("import_series_progress", { series, episodes });
   });
 
   it("importMovieSeen invokes import_movie_seen with the movie and returns whether it was inserted", async () => {
-    invokeCommandMock.mockResolvedValue(true);
+    invokeCommandMock.mockResolvedValue({ inserted: true, createdLibraryItemId: null });
     const movie: ImportableMovie = { movieId: 7, title: "Test Movie", watchedAt: "2026-01-01T00:00:00.000Z" };
 
     const result = await tvTimeImportRepository.importMovieSeen(movie);
 
-    expect(result).toBe(true);
+    expect(result).toEqual({ inserted: true, createdLibraryItemId: null });
     expect(invokeCommandMock).toHaveBeenCalledWith("import_movie_seen", { movie });
+  });
+
+  it("undoLibraryItems invokes undo_tvtime_import_library with the created entries and returns the counts", async () => {
+    invokeCommandMock.mockResolvedValue({ removed: 2, kept: 1 });
+    const items = [{ id: "lib-1", importedAt: "2026-10-10T10:00:00.000Z" }];
+
+    const result = await tvTimeImportRepository.undoLibraryItems(items);
+
+    expect(result).toEqual({ removed: 2, kept: 1 });
+    expect(invokeCommandMock).toHaveBeenCalledWith("undo_tvtime_import_library", { items });
   });
 });

@@ -22,7 +22,9 @@ pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
 // `#[cfg(test)]`-only — see that module's `timed_library_page`.
 #[cfg(test)]
 pub(crate) use models::LibrarySort;
-pub(crate) use repository::auto_sync_status_impl;
+pub(crate) use repository::{
+    CreatedLibraryItem, UntouchedRemoval, auto_sync_status_impl, remove_untouched_items_impl,
+};
 
 #[cfg(test)]
 mod sequence_tests;
