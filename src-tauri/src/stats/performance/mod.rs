@@ -1,5 +1,6 @@
 mod benchmark;
 mod fixtures;
+mod library_reads;
 mod memory;
 mod query_plans;
 mod report;

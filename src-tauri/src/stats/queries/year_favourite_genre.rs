@@ -179,7 +179,7 @@ mod tests {
                 }
             }
         }
-        counts.sort_by(|a, b| b.1.cmp(&a.1)); // stable, like Array#sort
+        counts.sort_by_key(|entry| std::cmp::Reverse(entry.1)); // stable, like Array#sort
         counts.into_iter().next().map(|(genre, _)| genre)
     }
 

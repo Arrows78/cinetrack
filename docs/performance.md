@@ -148,21 +148,42 @@ skipped with a warning rather than failing the job.
 ## Known full-library reads (client-side filtering)
 
 `list_library` is bounded and scoped by media type for the locked /movies and
-/series hubs, but a few consumers still read the whole library and
-filter/aggregate in TypeScript. They are the remaining scalability work, in
-rough order of cost:
+/series hubs. Home no longer reads the whole library at launch: the year's
+favourite genre, the "planned" counter, the Today Hub's stale-planned card and
+the "Hide watched" toggle each use a dedicated Rust query (see the table
+below). What remains:
 
-- `stats-repository.ts`'s `getYearSummary` reads the full library only to
-  derive the year's favourite genre, with a nested scan
-  (`selected.some(...)` per library item) — a SQL aggregate over
-  `viewing_events` joined to `library_items` would replace both.
-- `home-page.tsx` and `today-hub.tsx` call `useLibrary()` at every launch, for
-  the planned count (`get_library_status_counts` already exists) and the
-  stale-planned-items card (`list_planned_library_candidates` is the likely
-  starting point).
 - The `/movies` and `/series` locked hubs, custom lists and smart lists
   (`use-library-explorer.ts`) bucket by watch progress and filter client-side
-  on a full read.
+  on a full read of that media type. Replacing it means paginating each
+  watch-progress bucket (and merging list-only titles into them), which is a
+  UI decision rather than a query swap, so it was left as is.
 
-None of these is a correctness issue at realistic sizes; the 50k tier above
-measures the upper bound they pay.
+None of this is a correctness issue at realistic sizes; the 50k tier above
+measures the upper bound it pays.
+
+### Replaced reads: before / after
+
+`pnpm perf:library-reads` (an ignored benchmark in
+`stats/performance/library_reads.rs`, built with `--release`) seeds the same
+10k/50k fixtures with planned titles, stale titles and several genres, runs the
+old computation (the `list_library` command, its JSON serialization, and the
+TypeScript filtering ported literally) against the new command, and asserts
+both return the same answer. Median of 9 runs, in-memory SQLite, Rust only —
+the "before" column therefore excludes the IPC transfer and JSON parse of the
+rows in the webview and runs the scans faster than the JavaScript engine
+would, so it understates the real gain.
+
+| Consumer                               | Command                            | 10k library / 50k events | 50k library / 100k events |
+| -------------------------------------- | ---------------------------------- | ------------------------ | ------------------------- |
+| `getYearSummary` favourite genre       | `get_year_favourite_genre`         | 378 ms to 44 ms          | 2025 ms to 240 ms         |
+| Home "planned" counter                 | `get_library_status_counts`        | 60 ms to 0.5 ms          | 262 ms to 1.8 ms          |
+| Today Hub stale-planned card (first 4) | `list_stale_planned_library_items` | 59 ms to 0.1 ms          | 260 ms to 0.1 ms          |
+
+A full read also moves 4 MB (10k) to 20 MB (50k) of JSON over IPC at every
+launch; the replacements transfer a few bytes. Home's "Hide watched" toggle
+now loads only the completed titles' keys, and only while it is on.
+
+Each new query is proven equivalent to the computation it replaced on seeded
+data (ties, year and 30-day boundaries, other profiles, unwatched rollbacks):
+`stats/queries/year_favourite_genre.rs` and `library/stale_planned_tests.rs`.

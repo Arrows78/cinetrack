@@ -60,6 +60,20 @@ The one deliberate exception is `src/db/migrations/` — `sqlite-adapter.ts` dri
 - **Coverage**: `pnpm cargo:coverage` runs `cargo +nightly llvm-cov --branch` for a per-file statement/line/function/**branch** table, mirroring the TS side's `pnpm test:coverage`. Branch coverage is an unstable `cargo-llvm-cov` feature that only builds under the nightly toolchain (needs `rustup toolchain install nightly` plus `rustup component add llvm-tools-preview --toolchain nightly` once — this doesn't change the machine's default toolchain, `cargo:check`/`clippy`/`test` still build under stable). Not part of `pnpm validate` — it's a heavier, on-demand check, not a gate.
 - **Test-safe global state**: code with process-wide state that shouldn't have side effects under test (e.g. `src-tauri/src/diagnostics.rs`'s log-file `OnceLock<PathBuf>`) gates on `cfg!(test)` or checks whether the `OnceLock` was ever initialized, so `cargo test` runs don't write real files as a side effect of running.
 
+## Persistence across a restart
+
+"Do something, close the app, start it again, find everything back" is proven in Rust on a real SQLite _file_ (a temporary directory), through the real commands and the real boot path (`init_pool_at`: open, migrate, verify). `src-tauri/src/database/persistence_tests.rs` runs a realistic session (library, episodes and movies watched and unwatched, ratings, tags, custom and smart lists, saved filters, alerts, dismissals, preferences, a TV Time import, a second profile with a PIN), then compares the _whole_ state before and after: every table row by row, plus the answer of every read command (library, progress, history, statistics, Watch Next sources, lists, alerts, preferences, profiles). It does so after:
+
+- a clean close and reopen, then a second session and a second restart;
+- a hard kill (the files are copied while the pool is still open, so the copy holds the main file and a non-empty `-wal`, with and without `-shm`);
+- a pool dropped without `close()`;
+- a torn last write (the final WAL frame cut): the last transaction must disappear entirely;
+- seeded random sequences with clean restarts and hard kills in the middle, compared at every restart.
+
+`src-tauri/src/database/migrations/path_tests.rs` also upgrades populated file databases from every registered version through `init_pool_at`. Databases from before the migration squash (`user_version` 2 to 8, a different schema, kept in `migrations/fixtures/pre-squash-chain.sql`) are not upgradable: the test pins that boot reports them as blocked with the failing migration named, leaves the file and its data untouched, and never quarantines or replaces it. The blocked screen itself is covered by `boot-recovery-gate.test.tsx`.
+
+On the frontend, `src/features/preferences/__tests__/preferences-restart.test.tsx` simulates a restart with a new `QueryClient` over the same persisted store: values read back and applied, and a failed read writes nothing and resets nothing.
+
 ## What's deliberately not covered
 
 There is no _functional_ end-to-end test suite — no Cypress, no Tauri-driven Playwright. `e2e/visual/` does run Playwright, but purely for layout/responsive/theme screenshots against `pnpm dev`'s browser-preview shell (see `e2e/visual/README.md`); it never drives the real Tauri window, touches SQLite, or exercises a real user flow, so it doesn't close this gap. If you're adding a feature that genuinely needs an end-to-end functional check, that's a real, currently-open gap — flag it rather than assuming the visual suite covers it.
