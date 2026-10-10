@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { ProfileSwitcher } from "../profile-switcher";
@@ -121,6 +122,44 @@ describe("ProfileSwitcher", () => {
     fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
 
     await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id", null, "4242"));
+  });
+
+  it("offline mode: switches profile from the keyboard alone, PIN included", async () => {
+    listProfilesMock.mockResolvedValue([
+      { id: "default", name: "Default", avatar: null, createdAt: "2026-01-01", supabaseUserId: null },
+      { id: "alex-id", name: "Alex", avatar: null, createdAt: "2026-01-02", supabaseUserId: null, hasPin: true },
+    ]);
+    verifyPinMock.mockResolvedValueOnce(true);
+    renderSwitcher();
+    const trigger = await screen.findByRole("button", { name: "Switch profile" });
+    trigger.focus();
+    // Enter/Space on a native button is a click; Radix then moves focus into the sheet.
+    fireEvent.click(trigger);
+
+    const alex = (await screen.findByText("Alex")).closest("button") as HTMLButtonElement;
+    expect(alex).toBeEnabled();
+    alex.focus();
+    fireEvent.click(alex);
+
+    const pin = await screen.findByLabelText("PIN");
+    await waitFor(() => expect(pin).toHaveFocus());
+    fireEvent.change(pin, { target: { value: "4242" } });
+    fireEvent.submit(pin.closest("form") as HTMLFormElement);
+
+    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id", null, "4242"));
+  });
+
+  it("has no detectable accessibility violations with the profile sheet open", async () => {
+    listProfilesMock.mockResolvedValue([
+      { id: "default", name: "Default", avatar: null, createdAt: "2026-01-01", supabaseUserId: null },
+      { id: "alex-id", name: "Alex", avatar: null, createdAt: "2026-01-02", supabaseUserId: null, hasPin: true },
+    ]);
+    renderSwitcher();
+    fireEvent.click(await screen.findByRole("button", { name: "Switch profile" }));
+    const sheet = await screen.findByRole("dialog");
+    await screen.findByText("Alex");
+
+    expect(await axe(sheet)).toHaveNoViolations();
   });
 
   it("offline mode: marks the current profile active and disables switching into it", async () => {
