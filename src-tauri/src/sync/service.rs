@@ -1009,6 +1009,93 @@ pub(crate) async fn forget_profile(
     Ok(())
 }
 
+/// Applies one remote change (and records its remote version) inside the
+/// caller's savepoint. A local pending edit of the same entity is preserved
+/// and only rebased.
+async fn apply_one_remote_change(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    change: &RemoteSyncChange,
+) -> Result<(), ApiError> {
+    let pending: Option<(String,)> = sqlx::query_as(
+        "SELECT operation FROM sync_outbox WHERE profile_id=?1 AND entity_type=?2 AND entity_id=?3",
+    )
+    .bind(profile_id)
+    .bind(&change.entity_type)
+    .bind(&change.entity_id)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    // Recorded before the change is applied: re-capturing a row under a
+    // canonical uuid (see merge_duplicate_business_key) bases its
+    // mutation on this version.
+    let now = now_iso(&mut **tx).await?;
+    sqlx::query(
+        "INSERT INTO sync_entity_state(profile_id,entity_type,entity_id,remote_version,deleted,updated_at) \
+         VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(profile_id,entity_type,entity_id) DO UPDATE SET \
+         remote_version=excluded.remote_version,deleted=excluded.deleted,updated_at=excluded.updated_at",
+    ).bind(profile_id).bind(&change.entity_type).bind(&change.entity_id).bind(change.version)
+     .bind(if change.operation == "delete" { 1_i64 } else { 0_i64 }).bind(now)
+     .execute(&mut **tx).await.map_err(ApiError::from)?;
+
+    if pending.is_none() {
+        match change.operation.as_str() {
+            "delete" => {
+                delete_entity(tx, profile_id, &change.entity_type, &change.entity_id).await?;
+                if change.entity_type == "custom_list_item" {
+                    forget_orphaned_item(tx, profile_id, &change.entity_id).await?;
+                }
+            }
+            "upsert" => {
+                let data = change
+                    .data
+                    .as_ref()
+                    .ok_or_else(|| ApiError::bad_request("Remote upsert has no payload"))?;
+                let written = upsert_entity(tx, profile_id, &change.entity_type, data).await?;
+                if change.entity_type == "custom_list_item" {
+                    if written {
+                        forget_orphaned_item(tx, profile_id, &change.entity_id).await?;
+                    } else {
+                        stash_orphaned_item(tx, profile_id, &change.entity_id, data).await?;
+                    }
+                }
+            }
+            _ => return Err(ApiError::bad_request("Unsupported remote sync operation")),
+        }
+    } else {
+        // Preserve the local pending edit, but rebase it onto the version
+        // we just observed so its next push resolves the concurrent edit.
+        sqlx::query("UPDATE sync_outbox SET base_version=?1 WHERE profile_id=?2 AND entity_type=?3 AND entity_id=?4")
+            .bind(change.version).bind(profile_id).bind(&change.entity_type).bind(&change.entity_id)
+            .execute(&mut **tx).await.map_err(ApiError::from)?;
+        // A pending *delete* of this uuid may only be the retirement of
+        // a duplicate (see merge_duplicate_business_key), in which case
+        // the document still carries the latest value for a row that
+        // lives on under the canonical uuid. Never recreates a row the
+        // user deleted: only an existing duplicate is merged into.
+        if pending
+            .as_ref()
+            .is_some_and(|(operation,)| operation == "delete")
+            && change.operation == "upsert"
+            && let Some(data) = change.data.as_ref()
+            && let Some((keyed, local_uuid)) =
+                find_duplicate_by_business_key(tx, profile_id, &change.entity_type, data).await?
+        {
+            merge_duplicate_business_key(
+                tx,
+                profile_id,
+                &change.entity_type,
+                &keyed,
+                local_uuid,
+                data,
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn apply_remote_changes(
     pool: &SqlitePool,
     changes: &[RemoteSyncChange],
@@ -1039,79 +1126,26 @@ pub async fn apply_remote_changes(
             max_sequence = change.sequence;
             continue;
         }
-        let pending: Option<(String,)> = sqlx::query_as(
-            "SELECT operation FROM sync_outbox WHERE profile_id=?1 AND entity_type=?2 AND entity_id=?3",
-        ).bind(&profile_id).bind(&change.entity_type).bind(&change.entity_id)
-         .fetch_optional(&mut *tx).await.map_err(ApiError::from)?;
-
-        // Recorded before the change is applied: re-capturing a row under a
-        // canonical uuid (see merge_duplicate_business_key) bases its
-        // mutation on this version.
-        let now = now_iso(&mut *tx).await?;
-        sqlx::query(
-            "INSERT INTO sync_entity_state(profile_id,entity_type,entity_id,remote_version,deleted,updated_at) \
-             VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(profile_id,entity_type,entity_id) DO UPDATE SET \
-             remote_version=excluded.remote_version,deleted=excluded.deleted,updated_at=excluded.updated_at",
-        ).bind(&profile_id).bind(&change.entity_type).bind(&change.entity_id).bind(change.version)
-         .bind(if change.operation == "delete" { 1_i64 } else { 0_i64 }).bind(now)
-         .execute(&mut *tx).await.map_err(ApiError::from)?;
-
-        if pending.is_none() {
-            match change.operation.as_str() {
-                "delete" => {
-                    delete_entity(&mut tx, &profile_id, &change.entity_type, &change.entity_id)
-                        .await?;
-                    if change.entity_type == "custom_list_item" {
-                        forget_orphaned_item(&mut tx, &profile_id, &change.entity_id).await?;
-                    }
-                }
-                "upsert" => {
-                    let data = change
-                        .data
-                        .as_ref()
-                        .ok_or_else(|| ApiError::bad_request("Remote upsert has no payload"))?;
-                    let written =
-                        upsert_entity(&mut tx, &profile_id, &change.entity_type, data).await?;
-                    if change.entity_type == "custom_list_item" {
-                        if written {
-                            forget_orphaned_item(&mut tx, &profile_id, &change.entity_id).await?;
-                        } else {
-                            stash_orphaned_item(&mut tx, &profile_id, &change.entity_id, data)
-                                .await?;
-                        }
-                    }
-                }
-                _ => return Err(ApiError::bad_request("Unsupported remote sync operation")),
-            }
-        } else {
-            // Preserve the local pending edit, but rebase it onto the version
-            // we just observed so its next push resolves the concurrent edit.
-            sqlx::query("UPDATE sync_outbox SET base_version=?1 WHERE profile_id=?2 AND entity_type=?3 AND entity_id=?4")
-                .bind(change.version).bind(&profile_id).bind(&change.entity_type).bind(&change.entity_id)
-                .execute(&mut *tx).await.map_err(ApiError::from)?;
-            // A pending *delete* of this uuid may only be the retirement of
-            // a duplicate (see merge_duplicate_business_key), in which case
-            // the document still carries the latest value for a row that
-            // lives on under the canonical uuid. Never recreates a row the
-            // user deleted: only an existing duplicate is merged into.
-            if pending
-                .as_ref()
-                .is_some_and(|(operation,)| operation == "delete")
-                && change.operation == "upsert"
-                && let Some(data) = change.data.as_ref()
-                && let Some((keyed, local_uuid)) =
-                    find_duplicate_by_business_key(&mut tx, &profile_id, &change.entity_type, data)
-                        .await?
-            {
-                merge_duplicate_business_key(
-                    &mut tx,
-                    &profile_id,
-                    &change.entity_type,
-                    &keyed,
-                    local_uuid,
-                    data,
-                )
-                .await?;
+        // Each change is applied inside its own savepoint: one document that
+        // cannot be applied (invalid payload, a NOT NULL value missing, an
+        // unsupported operation) is logged and skipped instead of failing
+        // the whole pull, and the cursor still moves past it so the next
+        // pull does not fetch it again forever.
+        let mut savepoint = sqlx::Acquire::begin(&mut tx)
+            .await
+            .map_err(ApiError::from)?;
+        match apply_one_remote_change(&mut savepoint, &profile_id, change).await {
+            Ok(()) => savepoint.commit().await.map_err(ApiError::from)?,
+            Err(error) => {
+                savepoint.rollback().await.map_err(ApiError::from)?;
+                eprintln!(
+                    "sync: skipped remote change {} {} #{} (sequence {}): {}",
+                    change.operation,
+                    change.entity_type,
+                    change.entity_id,
+                    change.sequence,
+                    error.message
+                );
             }
         }
         max_sequence = max_sequence.max(change.sequence);
@@ -1471,6 +1505,77 @@ mod tests {
 
         assert_eq!(library_item_count(&pool).await, 1);
         assert_eq!(cursor(&pool).await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_remote_document_missing_a_required_value_is_skipped_and_the_cursor_still_advances() {
+        let pool = pool().await;
+        let mut broken = library_item_payload("remote-2", "completed");
+        broken["mediaId"] = serde_json::json!(43);
+        broken.as_object_mut().unwrap().remove("title");
+        let changes = [
+            upsert_change(
+                "remote-1",
+                1,
+                1,
+                library_item_payload("remote-1", "completed"),
+            ),
+            upsert_change("remote-2", 2, 1, broken),
+            RemoteSyncChange {
+                sequence: 3,
+                entity_type: "library_item".to_string(),
+                entity_id: "remote-3".to_string(),
+                operation: "upsert".to_string(),
+                version: 1,
+                data: None,
+            },
+            RemoteSyncChange {
+                sequence: 4,
+                entity_type: "library_item".to_string(),
+                entity_id: "remote-4".to_string(),
+                operation: "teleport".to_string(),
+                version: 1,
+                data: None,
+            },
+        ];
+
+        apply_remote_changes(&pool, &changes).await.unwrap();
+
+        assert_eq!(
+            library_item_count(&pool).await,
+            1,
+            "only the valid row lands"
+        );
+        assert_eq!(cursor(&pool).await.unwrap(), 4);
+        let (recorded,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM sync_entity_state WHERE entity_id IN ('remote-2','remote-3','remote-4')",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(recorded, 0, "a skipped change leaves no half-written state");
+    }
+
+    #[tokio::test]
+    async fn a_valid_change_after_a_skipped_one_is_still_applied() {
+        let pool = pool().await;
+        let mut broken = library_item_payload("remote-1", "completed");
+        broken["status"] = serde_json::json!("not-a-status");
+        let changes = [
+            upsert_change("remote-1", 1, 1, broken),
+            upsert_change(
+                "remote-2",
+                2,
+                1,
+                library_item_payload("remote-2", "planned"),
+            ),
+        ];
+
+        apply_remote_changes(&pool, &changes).await.unwrap();
+
+        assert_eq!(cursor(&pool).await.unwrap(), 2);
+        let (uuid, _) = library_item_row(&pool).await;
+        assert_eq!(uuid, "remote-2");
     }
 
     #[tokio::test]

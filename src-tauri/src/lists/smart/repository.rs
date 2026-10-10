@@ -1,5 +1,5 @@
 use serde_json::Value;
-use sqlx::SqlitePool;
+use sqlx::{FromRow, SqlitePool};
 
 use super::models::{SmartList, SmartListRow, validate_name, validate_rules};
 use crate::database::now_iso;
@@ -9,13 +9,27 @@ pub(super) async fn list_impl(
     pool: &SqlitePool,
     profile_id: &str,
 ) -> Result<Vec<SmartList>, ApiError> {
-    let rows: Vec<SmartListRow> =
-        sqlx::query_as("SELECT * FROM smart_lists WHERE profile_id = $1 ORDER BY updated_at DESC")
+    let rows =
+        sqlx::query("SELECT * FROM smart_lists WHERE profile_id = $1 ORDER BY updated_at DESC")
             .bind(profile_id)
             .fetch_all(pool)
             .await
             .map_err(ApiError::from)?;
-    rows.into_iter().map(SmartList::try_from).collect()
+    // A row that cannot be read (a NULL in a required column, rules that are
+    // not valid JSON) is skipped and logged rather than failing the whole
+    // command: one damaged row must not hide every other smart list.
+    Ok(rows
+        .iter()
+        .filter_map(|row| {
+            SmartListRow::from_row(row)
+                .map_err(|e| ApiError::internal(format!("Unreadable smart list row: {e}")))
+                .and_then(SmartList::try_from)
+                .map_err(|error| {
+                    eprintln!("smart lists: skipped a damaged row: {}", error.message);
+                })
+                .ok()
+        })
+        .collect())
 }
 
 pub(super) async fn create_impl(
@@ -172,6 +186,32 @@ mod tests {
         assert_eq!(smart_list.name, "Cozy horror night");
         assert_eq!(smart_list.rules, sample_rules());
         assert_eq!(list_impl(&pool, "default").await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_damaged_row_is_skipped_and_the_other_smart_lists_still_load() {
+        let pool = migrated_pool().await;
+        create_impl(&pool, "default", "Healthy", sample_rules())
+            .await
+            .unwrap();
+        // Replace the table by a copy without NOT NULL, to model a base
+        // damaged outside the app.
+        for statement in [
+            "ALTER TABLE smart_lists RENAME TO smart_lists_strict",
+            "CREATE TABLE smart_lists (uuid TEXT, profile_id TEXT, name TEXT, rules TEXT, created_at TEXT, updated_at TEXT)",
+            "INSERT INTO smart_lists SELECT uuid, profile_id, name, rules, created_at, updated_at FROM smart_lists_strict",
+            // Invalid JSON in `rules`.
+            "INSERT INTO smart_lists VALUES ('bad-json','default','Bad','{not json','t','t')",
+            // A NULL where the schema promises NOT NULL.
+            "INSERT INTO smart_lists VALUES ('no-name','default',NULL,'{}','t','t')",
+        ] {
+            sqlx::query(statement).execute(&pool).await.unwrap();
+        }
+
+        let lists = list_impl(&pool, "default").await.unwrap();
+
+        assert_eq!(lists.len(), 1);
+        assert_eq!(lists[0].name, "Healthy");
     }
 
     #[tokio::test]

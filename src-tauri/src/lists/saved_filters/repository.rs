@@ -1,5 +1,5 @@
 use serde_json::Value;
-use sqlx::SqlitePool;
+use sqlx::{FromRow, SqlitePool};
 
 use super::models::{SavedFilter, SavedFilterRow, validate_filters, validate_name, validate_page};
 use crate::database::{new_uuid, now_iso};
@@ -11,7 +11,7 @@ pub(super) async fn list_impl(
     page: String,
 ) -> Result<Vec<SavedFilter>, ApiError> {
     validate_page(&page)?;
-    let rows: Vec<SavedFilterRow> = sqlx::query_as(
+    let rows = sqlx::query(
         "SELECT * FROM saved_filters WHERE profile_id = $1 AND page = $2 ORDER BY updated_at DESC",
     )
     .bind(profile_id)
@@ -19,7 +19,21 @@ pub(super) async fn list_impl(
     .fetch_all(pool)
     .await
     .map_err(ApiError::from)?;
-    rows.into_iter().map(SavedFilter::try_from).collect()
+    // A row that cannot be read (a NULL in a required column, filters that
+    // are not valid JSON) is skipped and logged rather than failing the whole
+    // command: one damaged row must not hide every other saved filter.
+    Ok(rows
+        .iter()
+        .filter_map(|row| {
+            SavedFilterRow::from_row(row)
+                .map_err(|e| ApiError::internal(format!("Unreadable saved filter row: {e}")))
+                .and_then(SavedFilter::try_from)
+                .map_err(|error| {
+                    eprintln!("saved filters: skipped a damaged row: {}", error.message);
+                })
+                .ok()
+        })
+        .collect())
 }
 
 pub(super) async fn create_impl(
@@ -175,6 +189,34 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(search_filters.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn a_damaged_row_is_skipped_and_the_other_saved_filters_still_load() {
+        let pool = migrated_pool().await;
+        create_impl(&pool, "default", "library", "Healthy", json!({}))
+            .await
+            .unwrap();
+        // Replace the table by a copy without NOT NULL, to model a base
+        // damaged outside the app.
+        for statement in [
+            "ALTER TABLE saved_filters RENAME TO saved_filters_strict",
+            "CREATE TABLE saved_filters (uuid TEXT, profile_id TEXT, page TEXT, name TEXT, filters TEXT, created_at TEXT, updated_at TEXT)",
+            "INSERT INTO saved_filters SELECT uuid, profile_id, page, name, filters, created_at, updated_at FROM saved_filters_strict",
+            // Invalid JSON in `filters`.
+            "INSERT INTO saved_filters VALUES ('bad-json','default','library','Bad','{not json','t','t')",
+            // A NULL where the schema promises NOT NULL.
+            "INSERT INTO saved_filters VALUES ('no-name','default','library',NULL,'{}','t','t')",
+        ] {
+            sqlx::query(statement).execute(&pool).await.unwrap();
+        }
+
+        let filters = list_impl(&pool, "default", "library".to_string())
+            .await
+            .unwrap();
+
+        assert_eq!(filters.len(), 1);
+        assert_eq!(filters[0].name, "Healthy");
     }
 
     #[tokio::test]

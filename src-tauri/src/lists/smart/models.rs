@@ -45,6 +45,13 @@ impl TryFrom<SmartListRow> for SmartList {
     type Error = ApiError;
 
     fn try_from(row: SmartListRow) -> Result<Self, Self::Error> {
+        // SQLite hands a NULL back as an empty string here, so a missing
+        // required value shows up as an empty identifier or name.
+        if row.uuid.is_empty() || row.name.trim().is_empty() {
+            return Err(ApiError::internal(
+                "Corrupt smart list: a required value is missing.",
+            ));
+        }
         Ok(Self {
             id: row.uuid,
             profile_id: row.profile_id,
