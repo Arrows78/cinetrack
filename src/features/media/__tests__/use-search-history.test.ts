@@ -1,15 +1,37 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useSearchHistory } from "../use-search-history";
 
 const updatePreferenceMock = vi.fn();
 let recentSearches: string[] = [];
+// Simulates the preferences read not having succeeded (still loading, or failed).
+let preferencesUnavailable = false;
 
 vi.mock("@/features/preferences/use-preferences", () => ({
-  usePreferences: () => ({ data: { recentSearches }, updatePreference: updatePreferenceMock }),
+  usePreferences: () => ({
+    data: preferencesUnavailable ? undefined : { recentSearches },
+    updatePreference: updatePreferenceMock,
+  }),
 }));
 
 describe("useSearchHistory", () => {
+  beforeEach(() => {
+    preferencesUnavailable = false;
+  });
+
+  it("never overwrites the stored history with a lone entry when the preferences could not be read", () => {
+    preferencesUnavailable = true;
+    updatePreferenceMock.mockReset();
+    const { result } = renderHook(() => useSearchHistory());
+
+    result.current.addSearch("dune");
+    result.current.removeSearch("batman");
+
+    // An unread history looks empty: writing "dune" over it would erase the
+    // seven real entries behind the failed read.
+    expect(updatePreferenceMock).not.toHaveBeenCalled();
+  });
+
   it("adds a new query to the front of an empty history", () => {
     recentSearches = [];
     updatePreferenceMock.mockReset();

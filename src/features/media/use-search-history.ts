@@ -14,14 +14,18 @@ export function useSearchHistory() {
   const { data, updatePreference } = usePreferences();
   const recentSearches = data?.recentSearches ?? [];
 
+  // Both writes below rebuild the whole list from what was read: without a
+  // successful read that list is empty, and saving it would replace the real
+  // history with a single entry (or nothing).
   const addSearch = (query: string) => {
     const trimmed = query.trim();
-    if (!trimmed) return;
+    if (!trimmed || !data) return;
     const deduped = [trimmed, ...recentSearches.filter((entry) => entry.toLowerCase() !== trimmed.toLowerCase())];
     void updatePreference({ key: "recentSearches", value: deduped.slice(0, MAX_RECENT_SEARCHES) });
   };
 
   const removeSearch = (query: string) => {
+    if (!data) return;
     void updatePreference({ key: "recentSearches", value: recentSearches.filter((entry) => entry !== query) });
   };
 
