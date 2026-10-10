@@ -36,6 +36,28 @@ async function gotoStable(page: Page, path: string, theme: (typeof THEMES)[numbe
   // real visual regression.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.waitForLoadState("networkidle");
+  await waitForStableHeight(page);
+}
+
+// Long pages (/design-system especially) keep growing for a moment after
+// "networkidle" as lazy sections and fonts settle, so two consecutive
+// full-page frames can differ by a few dozen pixels of height and Playwright
+// never sees them as identical. Wait until the document height has stopped
+// changing before handing over to the screenshot.
+async function waitForStableHeight(page: Page) {
+  let last = -1;
+  let stableSince = Date.now();
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    if (height !== last) {
+      last = height;
+      stableSince = Date.now();
+    } else if (Date.now() - stableSince >= 1_500) {
+      return;
+    }
+    await page.waitForTimeout(250);
+  }
 }
 
 for (const screen of SCREENS) {
