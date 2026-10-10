@@ -212,14 +212,16 @@ export function normalizeExport(data: TvTimeExport): TvTimeExport {
 
   const movieMap = new Map<string, TvTimeMovie>();
   for (const movie of data.movies) {
-    const key = movie.title.toLowerCase();
+    // Title *and* year: two different films can share a title (remakes),
+    // and merging them silently dropped one from the import.
+    const key = `${movie.title.toLowerCase()}|${movie.year ?? ""}`;
     const existing = movieMap.get(key);
     if (!existing || movie.watchedAt < existing.watchedAt) movieMap.set(key, movie);
   }
 
   const watchlistMap = new Map<string, TvTimeWatchlistEntry>();
   for (const entry of data.watchlist) {
-    watchlistMap.set(`${entry.mediaType}|${entry.title.toLowerCase()}`, entry);
+    watchlistMap.set(`${entry.mediaType}|${entry.title.toLowerCase()}|${entry.year ?? ""}`, entry);
   }
 
   return {

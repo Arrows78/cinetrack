@@ -137,6 +137,63 @@ describe("parseTvTimeFile + normalizeExport", () => {
   });
 });
 
+describe("normalizeExport: same-titled movies", () => {
+  const record = (type: string, title: string, releaseDate: string, createdAt: string) =>
+    `1,,,x,${createdAt},${createdAt},${type}-x,${type},,,,movie,0,${title},${releaseDate},6000,,,,,,,,,,,,,,`;
+  const header = RECORDS_V1.split("\n")[0]!;
+
+  it("keeps two different films that share a title (remakes) instead of merging them into one", () => {
+    const data = emptyExport();
+    parseTvTimeFile(
+      [
+        header,
+        record("watch", "Halloween", "1978-10-25 00:00:00", "2020-01-01 10:00:00"),
+        record("watch", "Halloween", "2018-10-19 00:00:00", "2021-01-01 10:00:00"),
+      ].join("\n"),
+      data
+    );
+
+    const movies = normalizeExport(data).movies;
+
+    expect(movies.map((movie) => movie.year).sort()).toEqual([1978, 2018]);
+  });
+
+  it("still merges repeated watches of the same film (same title and year), keeping the earliest date", () => {
+    const data = emptyExport();
+    parseTvTimeFile(
+      [
+        header,
+        record("watch", "Fury", "2014-10-15 00:00:00", "2021-01-01 10:00:00"),
+        record("watch", "Fury", "2014-10-15 00:00:00", "2019-01-01 10:00:00"),
+      ].join("\n"),
+      data
+    );
+
+    const movies = normalizeExport(data).movies;
+
+    expect(movies).toHaveLength(1);
+    expect(movies[0]?.watchedAt).toBe("2019-01-01T10:00:00.000Z");
+  });
+
+  it("keeps same-titled watchlist films of different years apart", () => {
+    const data = emptyExport();
+    parseTvTimeFile(
+      [
+        header,
+        record("towatch", "Dune", "1984-12-14 00:00:00", "2022-01-01 10:00:00"),
+        record("towatch", "Dune", "2021-10-22 00:00:00", "2022-01-02 10:00:00"),
+      ].join("\n"),
+      data
+    );
+
+    expect(
+      normalizeExport(data)
+        .watchlist.map((entry) => entry.year)
+        .sort()
+    ).toEqual([1984, 2021]);
+  });
+});
+
 describe("parseTvTimeFiles", () => {
   it("parses every recognized file and lists the ones it couldn't identify", () => {
     const { data, unrecognizedFiles } = parseTvTimeFiles([
