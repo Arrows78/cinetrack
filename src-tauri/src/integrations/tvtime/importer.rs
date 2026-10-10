@@ -153,7 +153,7 @@ pub(super) async fn import_movie_seen_impl(
     .bind(movie.movie_id)
     .bind(&movie.title)
     .bind(&movie.watched_at)
-    .bind(movie.runtime)
+    .bind(crate::progress::known_runtime(movie.runtime))
     .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
@@ -362,6 +362,24 @@ mod tests {
             rating: Some(7.5),
             genres: vec!["Drama".to_string()],
         }
+    }
+
+    #[tokio::test]
+    async fn imports_a_movie_whose_runtime_tmdb_reports_as_zero() {
+        let pool = migrated_pool().await;
+
+        let imported = import_movie_seen_impl(
+            &pool,
+            "default",
+            ImportableMovie {
+                runtime: Some(0),
+                ..movie(1)
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(imported);
     }
 
     #[tokio::test]

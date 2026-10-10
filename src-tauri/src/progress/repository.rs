@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use serde_json::json;
 use sqlx::SqlitePool;
 
-use super::domain::auto_sync_target;
+use super::domain::{auto_sync_target, known_runtime};
 use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
 use super::queries::is_movie_seen_impl;
 #[cfg(test)]
@@ -117,7 +117,7 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
     .bind(&movie.title)
     .bind(if watched { "watched" } else { "unwatched" })
     .bind(watched_at)
-    .bind(movie.runtime)
+    .bind(known_runtime(movie.runtime))
     .bind(event_note)
     .execute(&mut *tx)
     .await
@@ -286,7 +286,7 @@ pub(crate) async fn apply_episodes_and_log_impl(
         .bind(&series.title)
         .bind(if watched { "watched" } else { "unwatched" })
         .bind(episode_watched_at)
-        .bind(episode.runtime.or(series.runtime))
+        .bind(known_runtime(episode.runtime).or(known_runtime(series.runtime)))
         .bind(episode.id)
         .bind(episode.season_number)
         .bind(episode.episode_number)
@@ -790,6 +790,48 @@ mod tests {
             library_status(&pool, 9, "series").await,
             Some("completed".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn a_zero_runtime_from_tmdb_still_marks_the_title_watched() {
+        // TMDB reports 0 for an unknown runtime; viewing_events only takes
+        // NULL or a positive duration.
+        let pool = migrated_pool().await;
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            MovieInput {
+                runtime: Some(0),
+                ..movie(55)
+            },
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &SeriesInput {
+                runtime: Some(0),
+                ..series(9, Some(2))
+            },
+            &[EpisodeInput {
+                runtime: Some(0),
+                ..episode(1, 1)
+            }],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        let durations: Vec<(Option<i64>,)> =
+            sqlx::query_as("SELECT duration_minutes FROM viewing_events")
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+        assert_eq!(durations, vec![(None,), (None,)]);
     }
 
     #[tokio::test]
