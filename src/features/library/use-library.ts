@@ -226,6 +226,8 @@ export function libraryInvalidationKeys(profileId: string) {
     queryKeys.local.libraryDistinctTags(profileId),
     queryKeys.local.completedLibraryCandidates(profileId),
     queryKeys.local.bestRecommendationSeed(profileId),
+    // Planning a title lifts its "not interested" dismissal in Rust.
+    queryKeys.local.dismissedRecommendations(profileId),
   ];
 }
 
