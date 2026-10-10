@@ -1,5 +1,8 @@
 pub mod migrations;
 
+#[cfg(test)]
+mod persistence_tests;
+
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};

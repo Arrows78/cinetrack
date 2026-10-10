@@ -672,3 +672,194 @@ async fn migration_23_leaves_every_existing_profile_without_a_pin() {
     .unwrap();
     assert_eq!(locked, 0);
 }
+
+// ---------------------------------------------------------------------------
+// File-backed upgrades through the real boot path
+// ---------------------------------------------------------------------------
+
+fn temp_file_db(label: &str) -> std::path::PathBuf {
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    std::env::temp_dir().join(format!("cinetrack-upgrade-{label}-{unique}.db"))
+}
+
+fn remove_db_files(path: &std::path::Path) {
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{suffix}", path.display()));
+    }
+}
+
+/// The same populated databases as the in-memory test above, but on a real
+/// file, closed, and reopened through `init_pool_at` — the code that runs at
+/// every launch — so what is proven is "an installed app updates", not only
+/// "the migration SQL is correct".
+#[tokio::test]
+async fn a_populated_file_database_upgrades_through_the_real_boot_path() {
+    let fresh = pool().await;
+    apply_pending_migrations(&fresh).await.unwrap();
+    let fresh_schema = schema_fingerprint(&fresh).await;
+    let latest = user_version(&fresh).await;
+
+    for start in REGISTERED_VERSIONS {
+        let path = temp_file_db(&format!("v{start}"));
+        let context = format!("file upgrade from version {start}");
+
+        let old = crate::database::open_pool(&path).await.unwrap();
+        apply_migrations_up_to(&old, 1).await.unwrap();
+        seed_version_one(&old, 700 + start as u64).await;
+        apply_migrations_up_to(&old, start).await.unwrap();
+        seed_newer_features(&old, start).await;
+        let before = snapshot(&old).await;
+        let library_before: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM library_items")
+            .fetch_one(&old)
+            .await
+            .unwrap();
+        let watchlist_only: i64 = if start < 10 {
+            sqlx::query_scalar(
+                "SELECT COUNT(*) FROM watchlist_items w WHERE NOT EXISTS (SELECT 1 FROM library_items l WHERE l.profile_id = w.profile_id AND l.media_id = w.media_id AND l.media_type = w.media_type)",
+            )
+            .fetch_one(&old)
+            .await
+            .unwrap()
+        } else {
+            0
+        };
+        old.close().await;
+
+        let (upgraded, recovery) = crate::database::init_pool_at(&path).await.unwrap();
+        assert!(!recovery.blocked && !recovery.recovered, "{context}");
+        assert_eq!(user_version(&upgraded).await, latest, "{context}");
+        assert_healthy(&upgraded, &context).await;
+        assert_eq!(
+            schema_fingerprint(&upgraded).await,
+            fresh_schema,
+            "{context}: schema differs from a fresh install"
+        );
+
+        let after = snapshot(&upgraded).await;
+        assert_tables_and_columns_survived(&before, &after, &context);
+        for (table, before_columns, before_rows) in &before {
+            if matches!(
+                table.as_str(),
+                "library_items"
+                    | "watchlist_items"
+                    | "availability_alerts"
+                    | "preferences"
+                    | "sync_outbox"
+                    | "sync_entity_state"
+            ) {
+                continue;
+            }
+            assert_eq!(
+                before_rows,
+                &dump(&upgraded, table, before_columns).await,
+                "{context}: table {table} changed"
+            );
+        }
+        let library_after: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM library_items")
+            .fetch_one(&upgraded)
+            .await
+            .unwrap();
+        assert_eq!(library_after, library_before + watchlist_only, "{context}");
+
+        // A second launch changes nothing.
+        let settled = snapshot(&upgraded).await;
+        upgraded.close().await;
+        let (again, recovery) = crate::database::init_pool_at(&path).await.unwrap();
+        assert!(!recovery.blocked && !recovery.recovered, "{context}");
+        assert_eq!(settled, snapshot(&again).await, "{context}: second launch");
+        again.close().await;
+        remove_db_files(&path);
+    }
+}
+
+/// The 8-step chain the app shipped to its first installs, before it was
+/// squashed into version 1 (see `src/db/migrations/index.ts`): a different
+/// schema (no `uuid` columns, `profile_`-prefixed tables), `user_version`
+/// 1 to 8. `fixtures/pre-squash-chain.sql` holds that chain, one
+/// `-- vN name` header per step.
+const PRE_SQUASH_CHAIN: &str = include_str!("fixtures/pre-squash-chain.sql");
+
+async fn build_pre_squash_database(path: &std::path::Path, version: i64) {
+    let pool = crate::database::open_pool(path).await.unwrap();
+    let mut applied = 0;
+    for section in PRE_SQUASH_CHAIN
+        .split("\n-- v")
+        .map(|s| s.trim_start_matches("-- v"))
+    {
+        let (header, sql) = section.split_once('\n').unwrap();
+        let step: i64 = header
+            .split_whitespace()
+            .next()
+            .and_then(|n| n.parse().ok())
+            .unwrap();
+        if step > version {
+            break;
+        }
+        sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_string()))
+            .execute(&pool)
+            .await
+            .unwrap_or_else(|error| panic!("pre-squash step {step}: {error}"));
+        applied = step;
+    }
+    assert_eq!(applied, version);
+    assert_eq!(user_version(&pool).await, version);
+    pool.close().await;
+}
+
+/// Pre-squash installs (`user_version` 2 to 8) are NOT supported: the squash
+/// replaced the whole schema "while the app had no shipped users", so
+/// registered migration 9 and later cannot run against it. What is
+/// guaranteed instead — and proven here for every one of those versions — is
+/// that boot refuses to start (blocked, no "continue anyway"), names the
+/// failing migration, leaves the user's file in place with its data,
+/// and does not quarantine or replace it with an empty database.
+#[tokio::test]
+async fn a_pre_squash_database_is_refused_with_a_blocking_message_and_its_data_kept() {
+    for version in 2..=8_i64 {
+        let path = temp_file_db(&format!("pre-squash-v{version}"));
+        build_pre_squash_database(&path, version).await;
+        // A row the user would care about, in every pre-squash schema.
+        let pool = crate::database::open_pool(&path).await.unwrap();
+        let (insert, count) = if version < 3 {
+            (
+                "INSERT INTO seen_movies (movie_id, title, watched_at) VALUES (1, 'Mine', 't')",
+                "SELECT COUNT(*) FROM seen_movies WHERE title = 'Mine'",
+            )
+        } else {
+            (
+                "INSERT INTO profiles (id, name, created_at) VALUES ('p1', 'Mine', 't')",
+                "SELECT COUNT(*) FROM profiles WHERE name = 'Mine'",
+            )
+        };
+        run(&pool, insert).await;
+        pool.close().await;
+
+        let (pool, recovery) = crate::database::init_pool_at(&path).await.unwrap();
+        let context = format!("pre-squash version {version}");
+        assert!(recovery.blocked, "{context}: boot must be blocked");
+        assert!(!recovery.recovered, "{context}");
+        assert!(recovery.quarantined_path.is_none(), "{context}");
+        let message = recovery.original_error.expect("an error message");
+        assert!(
+            message.contains("Migration ") && message.contains(" failed"),
+            "{context}: the message must name the failing migration, got: {message}"
+        );
+
+        // Not replaced by an empty database, not quarantined: the user's row
+        // is still there, readable.
+        let kept: i64 = sqlx::query_scalar(count)
+            .fetch_one(&pool)
+            .await
+            .unwrap_or_else(|error| panic!("{context}: table unreadable: {error}"));
+        assert_eq!(kept, 1, "{context}: the user's data must stay in place");
+        assert!(
+            user_version(&pool).await < 10,
+            "{context}: stopped before the merge migration"
+        );
+        pool.close().await;
+        remove_db_files(&path);
+    }
+}
