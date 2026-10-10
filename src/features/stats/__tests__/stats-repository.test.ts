@@ -131,8 +131,9 @@ describe("statsRepository.getYearSummary", () => {
     const summary = await repo.getYearSummary(year);
 
     expect(invokeCommandMock).toHaveBeenCalledWith("list_viewing_events_for_year", {
-      rangeStart: `${year}-01-01T00:00:00.000Z`,
-      rangeEnd: `${year + 1}-01-01T00:00:00.000Z`,
+      // Local year bounds (equal to the UTC ones when TZ=UTC).
+      rangeStart: new Date(year, 0, 1).toISOString(),
+      rangeEnd: new Date(year + 1, 0, 1).toISOString(),
     });
     expect(summary.movies).toBe(3);
     expect(summary.minutes).toBe(170);
@@ -301,6 +302,8 @@ describe("statsRepository.getYearlyActivity", () => {
 
     expect(buckets).toHaveLength(2);
     expect(buckets[0]).toEqual({ year: 2025, moviesWatched: 20, episodesWatched: 300, minutesWatched: 4000 });
-    expect(invokeCommandMock).toHaveBeenCalledWith("list_yearly_activity");
+    expect(invokeCommandMock).toHaveBeenCalledWith("list_yearly_activity", {
+      tzOffsetMinutes: new Date().getTimezoneOffset(),
+    });
   });
 });

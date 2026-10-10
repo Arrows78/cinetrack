@@ -2147,6 +2147,7 @@ mod tests {
                 let overview = crate::stats::get_stats_overview(
                     "2025-01-01T00:00:00.000Z".to_string(),
                     vec![],
+                    0,
                     pool_state,
                 )
                 .await

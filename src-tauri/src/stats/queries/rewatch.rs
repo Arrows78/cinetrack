@@ -23,6 +23,7 @@ pub(in crate::stats) async fn get_rewatch_stats_impl(
     profile_id: &str,
     window_start: &str,
     month_labels: &[String],
+    tz_offset_minutes: i64,
 ) -> Result<RewatchStats, ApiError> {
     let totals: RewatchTotalsRow = sqlx::query_as(
         "SELECT
@@ -50,13 +51,14 @@ pub(in crate::stats) async fn get_rewatch_stats_impl(
     .map_err(ApiError::from)?;
 
     let monthly_rows: Vec<MonthlyActivityRow> = sqlx::query_as(
-        "SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS count, SUM(duration_minutes) AS minutes
+        "SELECT strftime('%Y-%m', datetime(watched_at, printf('%+d minutes', -$3))) AS month, COUNT(*) AS count, SUM(duration_minutes) AS minutes
          FROM viewing_events
          WHERE profile_id = $1 AND event_type = 'rewatched' AND watched_at >= $2
          GROUP BY month",
     )
     .bind(profile_id)
     .bind(window_start)
+    .bind(tz_offset_minutes)
     .fetch_all(pool)
     .await
     .map_err(ApiError::from)?;

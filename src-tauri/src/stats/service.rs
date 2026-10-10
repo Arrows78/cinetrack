@@ -47,10 +47,11 @@ impl<'a> StatsService<'a> {
     pub(super) async fn list_on_this_day_events(
         &self,
         today: &str,
+        tz_offset_minutes: i64,
     ) -> Result<Vec<ViewingEvent>, ApiError> {
         self.repository()
             .await?
-            .list_on_this_day_events(today)
+            .list_on_this_day_events(today, tz_offset_minutes)
             .await
     }
 
@@ -69,15 +70,22 @@ impl<'a> StatsService<'a> {
         &self,
         window_start: &str,
         month_labels: &[String],
+        tz_offset_minutes: i64,
     ) -> Result<StatsOverview, ApiError> {
         self.repository()
             .await?
-            .get_stats_overview(window_start, month_labels)
+            .get_stats_overview(window_start, month_labels, tz_offset_minutes)
             .await
     }
 
-    pub(super) async fn list_yearly_activity(&self) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-        self.repository().await?.list_yearly_activity().await
+    pub(super) async fn list_yearly_activity(
+        &self,
+        tz_offset_minutes: i64,
+    ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+        self.repository()
+            .await?
+            .list_yearly_activity(tz_offset_minutes)
+            .await
     }
 
     pub(super) async fn get_monthly_recap(
@@ -97,20 +105,22 @@ impl<'a> StatsService<'a> {
         &self,
         window_start: &str,
         month_labels: &[String],
+        tz_offset_minutes: i64,
     ) -> Result<RewatchStats, ApiError> {
         self.repository()
             .await?
-            .get_rewatch_stats(window_start, month_labels)
+            .get_rewatch_stats(window_start, month_labels, tz_offset_minutes)
             .await
     }
 
     pub(super) async fn get_rating_distribution(
         &self,
         window_start: &str,
+        tz_offset_minutes: i64,
     ) -> Result<RatingDistribution, ApiError> {
         self.repository()
             .await?
-            .get_rating_distribution(window_start)
+            .get_rating_distribution(window_start, tz_offset_minutes)
             .await
     }
 

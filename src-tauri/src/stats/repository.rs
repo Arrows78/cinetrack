@@ -47,8 +47,9 @@ impl<'a> StatsRepository<'a> {
     pub(super) async fn list_on_this_day_events(
         &self,
         today: &str,
+        tz_offset_minutes: i64,
     ) -> Result<Vec<ViewingEvent>, ApiError> {
-        list_on_this_day_events_impl(self.pool, &self.profile_id, today).await
+        list_on_this_day_events_impl(self.pool, &self.profile_id, today, tz_offset_minutes).await
     }
 
     pub(super) async fn list_viewing_events_for_media(
@@ -63,12 +64,23 @@ impl<'a> StatsRepository<'a> {
         &self,
         window_start: &str,
         month_labels: &[String],
+        tz_offset_minutes: i64,
     ) -> Result<StatsOverview, ApiError> {
-        get_stats_overview_impl(self.pool, &self.profile_id, window_start, month_labels).await
+        get_stats_overview_impl(
+            self.pool,
+            &self.profile_id,
+            window_start,
+            month_labels,
+            tz_offset_minutes,
+        )
+        .await
     }
 
-    pub(super) async fn list_yearly_activity(&self) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-        list_yearly_activity_impl(self.pool, &self.profile_id).await
+    pub(super) async fn list_yearly_activity(
+        &self,
+        tz_offset_minutes: i64,
+    ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
+        list_yearly_activity_impl(self.pool, &self.profile_id, tz_offset_minutes).await
     }
 
     pub(super) async fn get_monthly_recap(
@@ -93,15 +105,25 @@ impl<'a> StatsRepository<'a> {
         &self,
         window_start: &str,
         month_labels: &[String],
+        tz_offset_minutes: i64,
     ) -> Result<RewatchStats, ApiError> {
-        get_rewatch_stats_impl(self.pool, &self.profile_id, window_start, month_labels).await
+        get_rewatch_stats_impl(
+            self.pool,
+            &self.profile_id,
+            window_start,
+            month_labels,
+            tz_offset_minutes,
+        )
+        .await
     }
 
     pub(super) async fn get_rating_distribution(
         &self,
         window_start: &str,
+        tz_offset_minutes: i64,
     ) -> Result<RatingDistribution, ApiError> {
-        get_rating_distribution_impl(self.pool, &self.profile_id, window_start).await
+        get_rating_distribution_impl(self.pool, &self.profile_id, window_start, tz_offset_minutes)
+            .await
     }
 
     pub(super) async fn get_watch_milestones(&self) -> Result<Vec<WatchMilestone>, ApiError> {

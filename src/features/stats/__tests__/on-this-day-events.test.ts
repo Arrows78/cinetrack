@@ -18,7 +18,10 @@ describe("statsRepository.getOnThisDayEvents", () => {
 
     await statsRepository.getOnThisDayEvents("2026-08-22T12:00:00.000Z");
 
-    expect(invokeCommandMock).toHaveBeenCalledWith("list_on_this_day_events", { today: "2026-08-22T12:00:00.000Z" });
+    expect(invokeCommandMock).toHaveBeenCalledWith("list_on_this_day_events", {
+      today: "2026-08-22T12:00:00.000Z",
+      tzOffsetMinutes: new Date("2026-08-22T12:00:00.000Z").getTimezoneOffset(),
+    });
   });
 
   it("defaults `today` to the current instant when not provided", async () => {

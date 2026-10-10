@@ -316,7 +316,7 @@ mod tests {
         )
         .await;
 
-        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z")
+        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z", 0)
             .await
             .unwrap();
 
@@ -370,7 +370,7 @@ mod tests {
         )
         .await;
 
-        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z")
+        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z", 0)
             .await
             .unwrap();
 
@@ -416,7 +416,7 @@ mod tests {
         )
         .await;
 
-        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z")
+        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z", 0)
             .await
             .unwrap();
 
@@ -462,7 +462,7 @@ mod tests {
         .await
         .unwrap();
 
-        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z")
+        let events = list_on_this_day_events_impl(&pool, "default", "2026-08-22T12:00:00.000Z", 0)
             .await
             .unwrap();
 
@@ -477,7 +477,7 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let events = list_on_this_day_events("2026-08-22T12:00:00.000Z".to_string(), state)
+        let events = list_on_this_day_events("2026-08-22T12:00:00.000Z".to_string(), 0, state)
             .await
             .unwrap();
 
@@ -545,10 +545,15 @@ mod tests {
             "2026-03".to_string(),
             "2026-04".to_string(),
         ];
-        let overview =
-            get_stats_overview_impl(&pool, "default", "2026-02-01T00:00:00.000Z", &month_labels)
-                .await
-                .unwrap();
+        let overview = get_stats_overview_impl(
+            &pool,
+            "default",
+            "2026-02-01T00:00:00.000Z",
+            &month_labels,
+            0,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(overview.totals.movies_watched, 1);
         assert_eq!(overview.totals.episodes_watched, 2);
@@ -626,10 +631,15 @@ mod tests {
         .unwrap();
 
         let month_labels = vec!["2026-03".to_string()];
-        let overview =
-            get_stats_overview_impl(&pool, "default", "2026-03-01T00:00:00.000Z", &month_labels)
-                .await
-                .unwrap();
+        let overview = get_stats_overview_impl(
+            &pool,
+            "default",
+            "2026-03-01T00:00:00.000Z",
+            &month_labels,
+            0,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(
             overview.totals.movies_watched, 1,
@@ -652,10 +662,15 @@ mod tests {
         let pool = migrated_pool().await;
         let month_labels = vec!["2026-03".to_string()];
 
-        let overview =
-            get_stats_overview_impl(&pool, "default", "2026-03-01T00:00:00.000Z", &month_labels)
-                .await
-                .unwrap();
+        let overview = get_stats_overview_impl(
+            &pool,
+            "default",
+            "2026-03-01T00:00:00.000Z",
+            &month_labels,
+            0,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(overview.totals.library_completion_percent, 0);
     }
@@ -714,7 +729,9 @@ mod tests {
         )
         .await;
 
-        let yearly = list_yearly_activity_impl(&pool, "default").await.unwrap();
+        let yearly = list_yearly_activity_impl(&pool, "default", 0)
+            .await
+            .unwrap();
 
         assert_eq!(
             yearly,
@@ -762,7 +779,9 @@ mod tests {
         .await
         .unwrap();
 
-        let yearly = list_yearly_activity_impl(&pool, "default").await.unwrap();
+        let yearly = list_yearly_activity_impl(&pool, "default", 0)
+            .await
+            .unwrap();
 
         assert_eq!(
             yearly,
@@ -835,6 +854,7 @@ mod tests {
         let overview = get_stats_overview(
             "2026-01-01T00:00:00.000Z".to_string(),
             vec!["2026-01".to_string()],
+            0,
             state,
         )
         .await
@@ -861,7 +881,7 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let yearly = list_yearly_activity(state).await.unwrap();
+        let yearly = list_yearly_activity(0, state).await.unwrap();
 
         assert!(yearly.is_empty());
     }
@@ -1086,6 +1106,70 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn every_calendar_bucket_uses_the_viewers_local_day() {
+        let pool = migrated_pool().await;
+        // 00:30 on Jan 1 2026 in Paris (UTC+1, getTimezoneOffset() = -60).
+        insert_event(
+            &pool,
+            "nye",
+            "2025-12-31T23:30:00.000Z",
+            "watched",
+            "movie",
+            Some(100),
+            None,
+        )
+        .await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, genres, user_rating, status, created_at, updated_at)
+             VALUES ('li', 'default', 1, 'movie', 'Test', '[]', 8.0, 'completed', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let labels = vec!["2025-12".to_string(), "2026-01".to_string()];
+        let overview =
+            get_stats_overview_impl(&pool, "default", "2025-12-01T00:00:00.000Z", &labels, -60)
+                .await
+                .unwrap();
+        let counts: Vec<i64> = overview.monthly_activity.iter().map(|m| m.count).collect();
+        assert_eq!(counts, vec![0, 1], "monthly activity");
+
+        let years = list_yearly_activity_impl(&pool, "default", -60)
+            .await
+            .unwrap();
+        assert_eq!(years.iter().map(|y| y.year).collect::<Vec<_>>(), vec![2026]);
+
+        let ratings =
+            get_rating_distribution_impl(&pool, "default", "2025-12-01T00:00:00.000Z", -60)
+                .await
+                .unwrap();
+        assert_eq!(
+            ratings
+                .average_by_month
+                .iter()
+                .map(|p| p.period.as_str())
+                .collect::<Vec<_>>(),
+            vec!["2026-01"]
+        );
+        assert_eq!(
+            ratings
+                .average_by_year
+                .iter()
+                .map(|p| p.period.as_str())
+                .collect::<Vec<_>>(),
+            vec!["2026"]
+        );
+
+        // "On this day" one year later, on Jan 1 2027 at 10:00 in Paris.
+        let on_this_day =
+            list_on_this_day_events_impl(&pool, "default", "2027-01-01T09:00:00.000Z", -60)
+                .await
+                .unwrap();
+        assert_eq!(on_this_day.len(), 1);
+    }
+
+    #[tokio::test]
     async fn monthly_recap_returns_none_fields_for_a_month_with_no_activity() {
         let pool = migrated_pool().await;
 
@@ -1185,6 +1269,7 @@ mod tests {
             "default",
             "2025-01-01T00:00:00.000Z",
             &["2026-01".to_string()],
+            0,
         )
         .await
         .unwrap();
@@ -1224,6 +1309,7 @@ mod tests {
             "default",
             "2025-01-01T00:00:00.000Z",
             &["2026-01".to_string()],
+            0,
         )
         .await
         .unwrap();
@@ -1263,6 +1349,7 @@ mod tests {
             "default",
             "2026-01-01T00:00:00.000Z",
             &["2026-01".to_string(), "2026-02".to_string()],
+            0,
         )
         .await
         .unwrap();
@@ -1307,6 +1394,7 @@ mod tests {
         let stats = get_rewatch_stats(
             "2025-01-01T00:00:00.000Z".to_string(),
             vec!["2026-01".to_string()],
+            0,
             state,
         )
         .await
@@ -1361,7 +1449,7 @@ mod tests {
         insert_library_item(&pool, "lib-4", 4, "movie", "D", "[]", None, "planned", None).await;
 
         let distribution =
-            get_rating_distribution_impl(&pool, "default", "2020-01-01T00:00:00.000Z")
+            get_rating_distribution_impl(&pool, "default", "2020-01-01T00:00:00.000Z", 0)
                 .await
                 .unwrap();
 
@@ -1405,7 +1493,7 @@ mod tests {
             .unwrap();
 
         let distribution =
-            get_rating_distribution_impl(&pool, "default", "2020-01-01T00:00:00.000Z")
+            get_rating_distribution_impl(&pool, "default", "2020-01-01T00:00:00.000Z", 0)
                 .await
                 .unwrap();
 
@@ -1470,7 +1558,7 @@ mod tests {
         .unwrap();
 
         let distribution =
-            get_rating_distribution_impl(&pool, "default", "2026-01-01T00:00:00.000Z")
+            get_rating_distribution_impl(&pool, "default", "2026-01-01T00:00:00.000Z", 0)
                 .await
                 .unwrap();
 
@@ -1513,7 +1601,7 @@ mod tests {
         // window_start is well after the 2020 watch — average_by_year must
         // still include it, unlike average_by_month which is window-bounded.
         let distribution =
-            get_rating_distribution_impl(&pool, "default", "2026-01-01T00:00:00.000Z")
+            get_rating_distribution_impl(&pool, "default", "2026-01-01T00:00:00.000Z", 0)
                 .await
                 .unwrap();
 
@@ -1547,9 +1635,10 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let distribution = get_rating_distribution("2020-01-01T00:00:00.000Z".to_string(), state)
-            .await
-            .unwrap();
+        let distribution =
+            get_rating_distribution("2020-01-01T00:00:00.000Z".to_string(), 0, state)
+                .await
+                .unwrap();
 
         assert_eq!(
             distribution.distribution,

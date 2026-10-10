@@ -91,6 +91,7 @@ describe("statsRepository.getRatingDistribution", () => {
 
     expect(invokeCommandMock).toHaveBeenCalledWith("get_rating_distribution", {
       windowStart: expect.any(String),
+      tzOffsetMinutes: new Date().getTimezoneOffset(),
     });
   });
 });

@@ -25,6 +25,7 @@ pub(in crate::stats) async fn get_stats_overview_impl(
     profile_id: &str,
     window_start: &str,
     month_labels: &[String],
+    tz_offset_minutes: i64,
 ) -> Result<StatsOverview, ApiError> {
     let event_totals = sqlx::query_as::<_, EventTotalsRow>(
         "WITH latest_events AS (
@@ -57,13 +58,14 @@ pub(in crate::stats) async fn get_stats_overview_impl(
     .fetch_one(pool);
 
     let monthly_rows = sqlx::query_as::<_, MonthlyActivityRow>(
-        "SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS count, SUM(duration_minutes) AS minutes
+        "SELECT strftime('%Y-%m', datetime(watched_at, printf('%+d minutes', -$3))) AS month, COUNT(*) AS count, SUM(duration_minutes) AS minutes
          FROM viewing_events
          WHERE profile_id = $1 AND event_type IN ('watched','rewatched') AND watched_at >= $2
          GROUP BY month",
     )
     .bind(profile_id)
     .bind(window_start)
+    .bind(tz_offset_minutes)
     .fetch_all(pool);
 
     // These reads are independent and read-only. Let the SQLite pool service
@@ -115,10 +117,11 @@ impl From<YearlyActivityRow> for YearlyActivityBucket {
 pub(in crate::stats) async fn list_yearly_activity_impl(
     pool: &SqlitePool,
     profile_id: &str,
+    tz_offset_minutes: i64,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
     let rows: Vec<YearlyActivityRow> = sqlx::query_as(
         "SELECT
-           CAST(strftime('%Y', watched_at) AS INTEGER) AS year,
+           CAST(strftime('%Y', datetime(watched_at, printf('%+d minutes', -$2))) AS INTEGER) AS year,
            COUNT(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
            COUNT(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
            SUM(CASE WHEN event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched
@@ -128,6 +131,7 @@ pub(in crate::stats) async fn list_yearly_activity_impl(
          ORDER BY year ASC",
     )
     .bind(profile_id)
+    .bind(tz_offset_minutes)
     .fetch_all(pool)
     .await
     .map_err(ApiError::from)?;

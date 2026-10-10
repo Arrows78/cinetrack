@@ -149,18 +149,22 @@ pub(in crate::stats) async fn list_on_this_day_events_impl(
     pool: &SqlitePool,
     profile_id: &str,
     today: &str,
+    tz_offset_minutes: i64,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
     let rows: Vec<ViewingEventRow> = sqlx::query_as(
         "SELECT uuid, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number
          FROM viewing_events
          WHERE profile_id = $1
            AND event_type IN ('watched','rewatched')
-           AND strftime('%m-%d', watched_at) = strftime('%m-%d', $2)
-           AND strftime('%Y', watched_at) < strftime('%Y', $2)
+           AND strftime('%m-%d', datetime(watched_at, printf('%+d minutes', -$3)))
+             = strftime('%m-%d', datetime($2, printf('%+d minutes', -$3)))
+           AND strftime('%Y', datetime(watched_at, printf('%+d minutes', -$3)))
+             < strftime('%Y', datetime($2, printf('%+d minutes', -$3)))
          ORDER BY watched_at DESC",
     )
     .bind(profile_id)
     .bind(today)
+    .bind(tz_offset_minutes)
     .fetch_all(pool)
     .await
     .map_err(ApiError::from)?;

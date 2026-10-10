@@ -20,6 +20,7 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
     pool: &SqlitePool,
     profile_id: &str,
     window_start: &str,
+    tz_offset_minutes: i64,
 ) -> Result<RatingDistribution, ApiError> {
     let distribution = sqlx::query_as::<_, RatingBucketRow>(
         "SELECT user_rating AS rating, COUNT(*) AS count
@@ -33,7 +34,7 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
 
     let average_by_month = sqlx::query_as::<_, RatingPeriodRow>(
         "WITH monthly_titles AS (
-           SELECT DISTINCT strftime('%Y-%m', ve.watched_at) AS period, ve.media_id, ve.media_type
+           SELECT DISTINCT strftime('%Y-%m', datetime(ve.watched_at, printf('%+d minutes', -$3))) AS period, ve.media_id, ve.media_type
            FROM viewing_events ve
            WHERE ve.profile_id = $1 AND ve.event_type IN ('watched','rewatched') AND ve.watched_at >= $2
          )
@@ -46,11 +47,12 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
     )
     .bind(profile_id)
     .bind(window_start)
+    .bind(tz_offset_minutes)
     .fetch_all(pool);
 
     let average_by_year = sqlx::query_as::<_, RatingPeriodRow>(
         "WITH yearly_titles AS (
-           SELECT DISTINCT strftime('%Y', ve.watched_at) AS period, ve.media_id, ve.media_type
+           SELECT DISTINCT strftime('%Y', datetime(ve.watched_at, printf('%+d minutes', -$2))) AS period, ve.media_id, ve.media_type
            FROM viewing_events ve
            WHERE ve.profile_id = $1 AND ve.event_type IN ('watched','rewatched')
          )
@@ -62,6 +64,7 @@ pub(in crate::stats) async fn get_rating_distribution_impl(
          ORDER BY yt.period ASC",
     )
     .bind(profile_id)
+    .bind(tz_offset_minutes)
     .fetch_all(pool);
 
     // Distribution/month/year aggregates do not depend on one another.

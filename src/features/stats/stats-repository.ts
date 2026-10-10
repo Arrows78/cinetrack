@@ -127,6 +127,7 @@ export const statsRepository = {
       invokeTypedCommand(statsCommands.getOverview, {
         windowStart: windowStart.toISOString(),
         monthLabels,
+        tzOffsetMinutes: now.getTimezoneOffset(),
       }),
       invokeTypedCommand(statsCommands.getActivityStats, {
         since,
@@ -158,9 +159,10 @@ export const statsRepository = {
   async getYearSummary(year = new Date().getFullYear()): Promise<YearSummary> {
     const [library, selected] = await Promise.all([
       libraryRepository.list(),
+      // Local year bounds, like the local days dailyCounts groups by below.
       invokeTypedCommand(statsCommands.listViewingEventsForYear, {
-        rangeStart: `${year}-01-01T00:00:00.000Z`,
-        rangeEnd: `${year + 1}-01-01T00:00:00.000Z`,
+        rangeStart: new Date(year, 0, 1).toISOString(),
+        rangeEnd: new Date(year + 1, 0, 1).toISOString(),
       }).then(activeEvents),
     ]);
     const titleCounts = new Map<string, number>();
@@ -200,22 +202,20 @@ export const statsRepository = {
   // page's year-over-year chart and bounds its year switcher, in one query
   // instead of probing getYearSummary one year at a time.
   async getYearlyActivity(): Promise<YearlyActivityBucket[]> {
-    return invokeTypedCommand(statsCommands.listYearlyActivity);
+    return invokeTypedCommand(statsCommands.listYearlyActivity, { tzOffsetMinutes: new Date().getTimezoneOffset() });
   },
   // Powers the opt-in "On this day" Home card — every past-year watch whose
   // watched_at falls on today's month-day, most recent year first. `today`
   // is passed explicitly (defaulting to right now) rather than letting the
-  // Rust side read its own clock, mirroring getYearSummary's rangeStart/
-  // rangeEnd above, so a fixed reference date stays trivial to test.
+  // Rust side read its own clock, so a fixed reference date stays trivial
+  // to test. The month-day is compared in the viewer's time zone.
   async getOnThisDayEvents(today = new Date().toISOString()): Promise<ViewingEvent[]> {
-    return invokeTypedCommand(statsCommands.listOnThisDayEvents, { today });
+    return invokeTypedCommand(statsCommands.listOnThisDayEvents, {
+      today,
+      tzOffsetMinutes: new Date(today).getTimezoneOffset(),
+    });
   },
-  // `month` is a "YYYY-MM" label; rangeStart/rangeEnd are built as literal
-  // UTC-midnight boundaries — like getYearSummary's rangeStart/rangeEnd
-  // above, deliberately NOT routed through a local `Date`/`toISOString()`
-  // round trip, which would shift the boundary by the caller's UTC offset
-  // and no longer line up with the UTC month buckets `watched_at` is stored
-  // and grouped in on the Rust side.
+  // `month` is a "YYYY-MM" label.
   async getMonthlyRecap(month: string): Promise<MonthlyRecap> {
     const year = Number(month.slice(0, 4));
     const monthNumber = Number(month.slice(5, 7));
@@ -235,12 +235,14 @@ export const statsRepository = {
     return invokeTypedCommand(statsCommands.getRewatchStats, {
       windowStart: windowStart.toISOString(),
       monthLabels,
+      tzOffsetMinutes: new Date().getTimezoneOffset(),
     });
   },
   async getRatingDistribution(): Promise<RatingDistribution> {
     const { windowStart } = trailing12MonthsWindow();
     return invokeTypedCommand(statsCommands.getRatingDistribution, {
       windowStart: windowStart.toISOString(),
+      tzOffsetMinutes: new Date().getTimezoneOffset(),
     });
   },
   async getWatchMilestones(): Promise<WatchMilestone[]> {

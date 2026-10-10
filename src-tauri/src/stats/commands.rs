@@ -47,11 +47,12 @@ pub async fn list_viewing_events_for_year(
 #[tauri::command]
 pub async fn list_on_this_day_events(
     today: String,
+    tz_offset_minutes: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
     timed("list_on_this_day_events", async {
         StatsService::new(pool.inner())
-            .list_on_this_day_events(&today)
+            .list_on_this_day_events(&today, tz_offset_minutes)
             .await
     })
     .await
@@ -80,11 +81,12 @@ pub async fn list_viewing_events_for_media(
 pub async fn get_stats_overview(
     window_start: String,
     month_labels: Vec<String>,
+    tz_offset_minutes: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<StatsOverview, ApiError> {
     timed("get_stats_overview", async {
         StatsService::new(pool.inner())
-            .get_stats_overview(&window_start, &month_labels)
+            .get_stats_overview(&window_start, &month_labels, tz_offset_minutes)
             .await
     })
     .await
@@ -92,10 +94,13 @@ pub async fn get_stats_overview(
 
 #[tauri::command]
 pub async fn list_yearly_activity(
+    tz_offset_minutes: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
     timed("list_yearly_activity", async {
-        StatsService::new(pool.inner()).list_yearly_activity().await
+        StatsService::new(pool.inner())
+            .list_yearly_activity(tz_offset_minutes)
+            .await
     })
     .await
 }
@@ -125,11 +130,12 @@ pub async fn get_monthly_recap(
 pub async fn get_rewatch_stats(
     window_start: String,
     month_labels: Vec<String>,
+    tz_offset_minutes: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<RewatchStats, ApiError> {
     timed("get_rewatch_stats", async {
         StatsService::new(pool.inner())
-            .get_rewatch_stats(&window_start, &month_labels)
+            .get_rewatch_stats(&window_start, &month_labels, tz_offset_minutes)
             .await
     })
     .await
@@ -142,11 +148,12 @@ pub async fn get_rewatch_stats(
 #[tauri::command]
 pub async fn get_rating_distribution(
     window_start: String,
+    tz_offset_minutes: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<RatingDistribution, ApiError> {
     timed("get_rating_distribution", async {
         StatsService::new(pool.inner())
-            .get_rating_distribution(&window_start)
+            .get_rating_distribution(&window_start, tz_offset_minutes)
             .await
     })
     .await

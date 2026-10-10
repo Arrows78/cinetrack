@@ -247,10 +247,15 @@ async fn benchmark_iteration(pool: &SqlitePool) -> BenchmarkIteration {
         .collect::<Vec<_>>();
 
     let started = Instant::now();
-    let overview =
-        get_stats_overview_impl(pool, "default", "2026-01-01T00:00:00.000Z", &month_labels)
-            .await
-            .unwrap();
+    let overview = get_stats_overview_impl(
+        pool,
+        "default",
+        "2026-01-01T00:00:00.000Z",
+        &month_labels,
+        0,
+    )
+    .await
+    .unwrap();
     let overview_elapsed = started.elapsed();
 
     let started = Instant::now();
@@ -267,7 +272,7 @@ async fn benchmark_iteration(pool: &SqlitePool) -> BenchmarkIteration {
     let recap_elapsed = started.elapsed();
 
     let started = Instant::now();
-    get_rating_distribution_impl(pool, "default", "2026-01-01T00:00:00.000Z")
+    get_rating_distribution_impl(pool, "default", "2026-01-01T00:00:00.000Z", 0)
         .await
         .unwrap();
     let ratings_elapsed = started.elapsed();
