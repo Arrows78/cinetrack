@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useQueries } from "@tanstack/react-query";
+import { queryClient } from "@/app/query-client";
 import { mediaRepository } from "@/features/media/media-repository";
 import { episodeProgressKeys, useRefreshTrackedSeriesBatch } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { getNextEpisode } from "@/features/progress/progress-utils";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { STALE_30_MIN } from "@/shared/constants/query";
+import { STALE_1_HOUR, STALE_30_MIN } from "@/shared/constants/query";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { logger } from "@/shared/lib/logger";
 import { parseCalendarDate } from "@/shared/utils/format";
@@ -30,10 +31,15 @@ export interface NextEpisodeResult {
 }
 
 /**
- * Resolves the next unwatched, already-aired episode of a series with at
- * most two season fetches: local progress tells us where the viewer
- * stopped, so only the season in progress (and the following one, for a
- * season boundary) needs episode data.
+ * Resolves the next unwatched, already-aired episode of a series: the first
+ * one in season/episode order, across every season (specials excluded). A
+ * series with an episode skipped in an earlier season is therefore still
+ * proposed, and that skipped episode is what comes up next.
+ *
+ * A series with no watched episode only needs its first season. Season
+ * lookups go through the shared query client (the same `remote.seasonDetails`
+ * entries the detail pages and the calendar use), so looking at every season
+ * does not mean one fresh TMDB request per season per resolution.
  */
 async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
   const [details, progress] = await Promise.all([
@@ -41,22 +47,22 @@ async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
     progressRepository.getEpisodeProgress(seriesId),
   ]);
 
-  const watched = progress
-    .filter((item) => item.watched)
-    .sort((a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber);
-  const last = watched.length ? watched[watched.length - 1] : undefined;
-
+  const hasWatched = progress.some((item) => item.watched);
   const seasonNumbers = (details.seasons ?? [])
     .map((season) => season.seasonNumber)
     .filter((seasonNumber) => seasonNumber > 0)
     .sort((a, b) => a - b);
-  const candidates = last
-    ? seasonNumbers.filter((seasonNumber) => seasonNumber >= last.seasonNumber).slice(0, 2)
-    : seasonNumbers.slice(0, 1);
+  const candidates = hasWatched ? seasonNumbers : seasonNumbers.slice(0, 1);
   if (!candidates.length) return null;
 
   const seasons = await Promise.all(
-    candidates.map((seasonNumber) => mediaRepository.getSeasonDetails(seriesId, seasonNumber))
+    candidates.map((seasonNumber) =>
+      queryClient.fetchQuery({
+        queryKey: queryKeys.remote.seasonDetails(seriesId, seasonNumber),
+        queryFn: () => mediaRepository.getSeasonDetails(seriesId, seasonNumber),
+        staleTime: STALE_1_HOUR,
+      })
+    )
   );
   return getNextEpisode(seasons, progress);
 }

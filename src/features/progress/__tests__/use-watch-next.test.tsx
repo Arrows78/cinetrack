@@ -75,7 +75,10 @@ function createWrapper() {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Season lookups go through the shared query client: start each test cold.
+  const { queryClient } = await import("@/app/query-client");
+  queryClient.clear();
   getSeriesDetailsMock.mockClear();
   getSeasonDetailsMock.mockClear();
   getEpisodeProgressMock.mockClear();
@@ -113,10 +116,16 @@ describe("useWatchNext", () => {
   });
 });
 
-describe("useNextEpisodes season-window selection", () => {
-  it("narrows to at most two seasons starting from the last-watched one when progress exists", async () => {
+describe("useNextEpisodes season selection", () => {
+  it("looks at every season (specials excluded) once something has been watched", async () => {
     getSeriesDetailsMock.mockResolvedValueOnce({
-      seasons: [{ seasonNumber: 1 }, { seasonNumber: 2 }, { seasonNumber: 3 }, { seasonNumber: 4 }],
+      seasons: [
+        { seasonNumber: 0 },
+        { seasonNumber: 1 },
+        { seasonNumber: 2 },
+        { seasonNumber: 3 },
+        { seasonNumber: 4 },
+      ],
     } as never);
     getEpisodeProgressMock.mockResolvedValueOnce([
       { seasonNumber: 1, episodeNumber: 1, watched: true },
@@ -128,11 +137,9 @@ describe("useNextEpisodes season-window selection", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(getSeasonDetailsMock).toHaveBeenCalledTimes(2);
-    expect(getSeasonDetailsMock).toHaveBeenCalledWith(1, 2);
-    expect(getSeasonDetailsMock).toHaveBeenCalledWith(1, 3);
-    expect(getSeasonDetailsMock).not.toHaveBeenCalledWith(1, 1);
-    expect(getSeasonDetailsMock).not.toHaveBeenCalledWith(1, 4);
+    expect(getSeasonDetailsMock).toHaveBeenCalledTimes(4);
+    for (const seasonNumber of [1, 2, 3, 4]) expect(getSeasonDetailsMock).toHaveBeenCalledWith(1, seasonNumber);
+    expect(getSeasonDetailsMock).not.toHaveBeenCalledWith(1, 0);
   });
 
   it("falls back to just the first season when there is no prior watched progress", async () => {
@@ -181,29 +188,6 @@ describe("useNextEpisodes season-window selection", () => {
     expect(result.current.results).toEqual([
       { series: inProgressSeries, nextEpisode: null, remaining: 7, isLoading: false, isError: false },
     ]);
-  });
-
-  it("breaks a tie between watched episodes in the same season by episode number", async () => {
-    getSeriesDetailsMock.mockResolvedValueOnce({
-      seasons: [{ seasonNumber: 1 }, { seasonNumber: 2 }],
-    } as never);
-    // Both watched entries share seasonNumber 2 and are given out of episode
-    // order, so the sort comparator's `a.seasonNumber - b.seasonNumber` term
-    // is 0 and it must fall through to `a.episodeNumber - b.episodeNumber`
-    // to find episode 5 (not episode 1) as the last-watched one.
-    getEpisodeProgressMock.mockResolvedValueOnce([
-      { seasonNumber: 2, episodeNumber: 5, watched: true },
-      { seasonNumber: 2, episodeNumber: 1, watched: true },
-    ] as never);
-
-    const { useNextEpisodes } = await import("../use-watch-next");
-    const { result } = renderHook(() => useNextEpisodes([inProgressSeries]), { wrapper: createWrapper() });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    // last-watched season is 2, so candidates are seasons >= 2 (just season 2 here).
-    expect(getSeasonDetailsMock).toHaveBeenCalledTimes(1);
-    expect(getSeasonDetailsMock).toHaveBeenCalledWith(1, 2);
   });
 
   it("surfaces isError per-series when a series' own query rejects", async () => {
