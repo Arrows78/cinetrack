@@ -196,9 +196,10 @@ mod tests {
 
         let pool_state: State<'_, SqlitePool> = app.state();
         let cache_state: State<'_, PreferencesCache> = app.state();
-        let updated = set_active_profile("default".to_string(), None, None, pool_state, cache_state)
-            .await
-            .unwrap();
+        let updated =
+            set_active_profile("default".to_string(), None, None, pool_state, cache_state)
+                .await
+                .unwrap();
         assert_eq!(updated.active_profile_id, "default");
 
         let pool_state: State<'_, SqlitePool> = app.state();
