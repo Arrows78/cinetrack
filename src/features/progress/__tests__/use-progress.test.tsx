@@ -290,3 +290,28 @@ describe("useRefreshTrackedSeriesStatus", () => {
     expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(9, "Ended", 12);
   });
 });
+
+describe("useRefreshTrackedSeriesBatch", () => {
+  it("refreshes every series, invalidates once, and reports the ones that failed", async () => {
+    refreshTrackedSeriesStatusMock.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("boom"));
+    const { useRefreshTrackedSeriesBatch } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useRefreshTrackedSeriesBatch(), { wrapper: Wrapper });
+
+    let failed: number[] = [];
+    await act(async () => {
+      failed = await result.current([
+        { seriesId: 1, status: null, totalEpisodes: 4 },
+        { seriesId: 2, status: "Ended", totalEpisodes: 9 },
+      ]);
+    });
+
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(1, null, 4);
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, "Ended", 9);
+    expect(failed).toEqual([2]);
+    const invalidated = invalidateSpy.mock.calls.map(([filters]) => filters?.queryKey);
+    expect(invalidated.filter((key) => key?.[1] === "trackedSeries")).toHaveLength(1);
+    expect(invalidated).toContainEqual(queryKeys.local.library(DEFAULT_PROFILE_ID));
+  });
+});

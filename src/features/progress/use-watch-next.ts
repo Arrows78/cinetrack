@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
-import { episodeProgressKeys, useRefreshTrackedSeriesStatus } from "@/features/progress/use-progress";
+import { episodeProgressKeys, useRefreshTrackedSeriesBatch } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { getNextEpisode } from "@/features/progress/progress-utils";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
@@ -161,22 +161,29 @@ export function useTodayHubEpisodes(
   // bump the cached total past the watched count, which also reopens an
   // auto-Completed library entry in Rust (refresh_tracked_series_status_impl).
   // Once per series per mount — the detail page later writes the exact total.
-  const refreshTrackedSeriesStatus = useRefreshTrackedSeriesStatus();
+  // Batched, so the caches are invalidated once rather than once per series.
+  const refreshTrackedSeries = useRefreshTrackedSeriesBatch();
   const reconciled = useRef(new Set<number>());
   useEffect(() => {
-    for (const { series, nextEpisode } of results) {
-      if (!nextEpisode || series.watchedEpisodes === 0 || reconciled.current.has(series.seriesId)) continue;
-      reconciled.current.add(series.seriesId);
-      refreshTrackedSeriesStatus({
+    const refreshes = results
+      .filter(
+        ({ series, nextEpisode }) =>
+          nextEpisode !== null && series.watchedEpisodes > 0 && !reconciled.current.has(series.seriesId)
+      )
+      .map(({ series }) => ({
         seriesId: series.seriesId,
         status: series.status,
         totalEpisodes: Math.max(series.totalEpisodes, series.watchedEpisodes + 1),
-      }).catch((error: unknown) => {
-        reconciled.current.delete(series.seriesId);
-        logger.warn(`[watch-next] Could not refresh tracked series ${series.seriesId}: ${String(error)}`);
-      });
-    }
-  }, [results, refreshTrackedSeriesStatus]);
+      }));
+    if (!refreshes.length) return;
+    for (const { seriesId } of refreshes) reconciled.current.add(seriesId);
+    refreshTrackedSeries(refreshes)
+      .then((failed) => {
+        for (const seriesId of failed) reconciled.current.delete(seriesId);
+        if (failed.length) logger.warn(`[watch-next] Could not refresh tracked series: ${failed.join(", ")}`);
+      })
+      .catch((error: unknown) => logger.warn(`[watch-next] Tracked series refresh failed: ${String(error)}`));
+  }, [results, refreshTrackedSeries]);
   // `results` (one entry per input series, resolved or not) is also what
   // needs-attention-section.tsx's selectBacklogSeries needs to tell a real
   // aired-episode backlog apart from TMDB's total just outrunning what's

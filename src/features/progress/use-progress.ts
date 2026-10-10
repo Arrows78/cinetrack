@@ -1,4 +1,5 @@
-import { useQuery, type QueryKey } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { libraryInvalidationKeys } from "@/features/library/use-library";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
@@ -185,7 +186,38 @@ export function useRefreshTrackedSeriesStatus() {
   const mutation = useInvalidatingMutation(
     ({ seriesId, status, totalEpisodes }: { seriesId: number; status: string | null; totalEpisodes?: number | null }) =>
       progressRepository.refreshTrackedSeriesStatus(seriesId, status, totalEpisodes ?? null),
-    () => [queryKeys.local.trackedSeries(profileId)]
+    // A larger total can reopen an auto-Completed library entry in Rust.
+    () => [queryKeys.local.trackedSeries(profileId), ...libraryInvalidationKeys(profileId)]
   );
   return mutation.mutateAsync;
+}
+
+export interface TrackedSeriesRefresh {
+  seriesId: number;
+  status: string | null;
+  totalEpisodes: number;
+}
+
+/**
+ * Batch form of useRefreshTrackedSeriesStatus for the Today Hub, which can
+ * refresh dozens of series at once: one invalidation pass after every call
+ * settles, instead of one refetch per series. Resolves to the ids whose
+ * refresh failed (already logged by the caller's choice).
+ */
+export function useRefreshTrackedSeriesBatch() {
+  const profileId = useActiveProfileId();
+  const queryClient = useQueryClient();
+  return useCallback(
+    async (refreshes: TrackedSeriesRefresh[]): Promise<number[]> => {
+      const outcomes = await Promise.allSettled(
+        refreshes.map(({ seriesId, status, totalEpisodes }) =>
+          progressRepository.refreshTrackedSeriesStatus(seriesId, status, totalEpisodes)
+        )
+      );
+      const keys = [queryKeys.local.trackedSeries(profileId), ...libraryInvalidationKeys(profileId)];
+      await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+      return refreshes.filter((_, index) => outcomes[index]!.status === "rejected").map(({ seriesId }) => seriesId);
+    },
+    [profileId, queryClient]
+  );
 }
