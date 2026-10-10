@@ -214,6 +214,23 @@ pub(super) async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(
         .await
         .map_err(ApiError::from)?;
 
+    // The active profile must never end up pointing at a row that no longer
+    // exists: every write for it would then fail its profile foreign key. The
+    // caller used to reset it in a second step after this one, which a failure
+    // or a quit in between left undone. Same transaction, so both or neither.
+    let removed_as_json =
+        serde_json::to_string(profile_id).map_err(|error| ApiError::internal(error.to_string()))?;
+    let now = now_iso(&mut *tx).await?;
+    sqlx::query(
+        "UPDATE preferences SET value = '\"default\"', updated_at = $1
+         WHERE key = 'activeProfileId' AND value = $2",
+    )
+    .bind(&now)
+    .bind(&removed_as_json)
+    .execute(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
     sqlx::query("UPDATE sync_control SET suppress_outbox = 0 WHERE id = 1")
         .execute(&mut *tx)
         .await
@@ -367,6 +384,33 @@ mod tests {
     async fn refuses_to_remove_the_default_profile() {
         let pool = migrated_pool().await;
         assert!(remove_impl(&pool, "default").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn removing_the_active_profile_resets_the_active_profile_in_the_same_transaction() {
+        let pool = migrated_pool().await;
+        let alex = create_impl(&pool, "Alex", None, None).await.unwrap();
+        let sam = create_impl(&pool, "Sam", None, None).await.unwrap();
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('activeProfileId', $1, 'now')",
+        )
+        .bind(format!("\"{}\"", alex.id))
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Removing someone else leaves the active profile alone.
+        remove_impl(&pool, &sam.id).await.unwrap();
+        assert_eq!(
+            crate::database::current_profile_id(&pool).await.unwrap(),
+            alex.id
+        );
+
+        remove_impl(&pool, &alex.id).await.unwrap();
+        assert_eq!(
+            crate::database::current_profile_id(&pool).await.unwrap(),
+            "default"
+        );
     }
 
     #[tokio::test]
