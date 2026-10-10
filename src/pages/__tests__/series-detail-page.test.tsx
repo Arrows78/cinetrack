@@ -759,6 +759,9 @@ describe("SeriesDetailPage", () => {
     renderPage();
 
     expect(screen.getByText("All up to date")).toBeInTheDocument();
+    // Caught up but not "completed" (an unaired episode is left): the
+    // series still reads as seen, so the toggle offers to unmark it.
+    expect(screen.getByTestId("seen-toggle")).toHaveAttribute("data-seen", "true");
   });
 
   it("marks the series seen with the flipped completed state when the seen toggle is clicked", () => {

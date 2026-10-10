@@ -75,6 +75,10 @@ export function SeriesDetailPage() {
     seasons.length === seasonNumbers.length &&
     seasonQueries.every((query) => !query.isPending && !query.isError);
   const progress = calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
+  // "Seen" once everything aired is watched — `completed` alone also needs
+  // announced, unaired episodes, so a caught-up ongoing series showed
+  // "mark as seen" and the click did nothing (only aired episodes get marked).
+  const seriesSeen = progress.completed || (progress.isUpToDate && progress.watchedEpisodes > 0);
   // The card/row progress-bar color and episode count both read
   // tracked_series.status/total_episodes, a local cache that's only ever
   // written as a side effect of toggling an episode — a show nobody
@@ -170,9 +174,9 @@ export function SeriesDetailPage() {
         extra={
           <div className="flex flex-col gap-2">
             <SeenToggle
-              seen={progress.completed}
+              seen={seriesSeen}
               disabled={progressQuery.isSaving || progressQuery.isError || !allSeasonsLoaded}
-              onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !progress.completed })}
+              onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !seriesSeen })}
               celebrateOnSeen
             />
             {/* progressQuery failing falls back to an empty watched list (see

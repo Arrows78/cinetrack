@@ -15,7 +15,7 @@ import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { Card } from "@/components/ui/card";
-import { useEpisodeProgress } from "@/features/progress/use-progress";
+import { hasAired, useEpisodeProgress } from "@/features/progress/use-progress";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
 
@@ -74,7 +74,11 @@ export function SeasonPage() {
   const series = seriesQuery.data;
   const season = seasonQuery.data;
   const watchedSet = new Set((progressQuery.data ?? []).map((item) => item.episodeId));
-  const allWatched = season.episodes.length > 0 && season.episodes.every((ep) => watchedSet.has(ep.id));
+  // Against aired episodes only: markSeasonSeen never marks an unaired one,
+  // so requiring them kept a caught-up airing season on "mark as seen",
+  // with a click that changed nothing.
+  const airedEpisodes = season.episodes.filter(hasAired);
+  const allWatched = airedEpisodes.length > 0 && airedEpisodes.every((ep) => watchedSet.has(ep.id));
 
   // Same prev/next pattern as episode-detail-page.tsx, one level up: specials
   // (season 0) are excluded, matching series-detail-page.tsx's own season list.

@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as UseProgressModule from "@/features/progress/use-progress";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
@@ -28,7 +29,8 @@ vi.mock("@/features/media/use-media", () => ({
 }));
 
 const progressQueryMock = vi.fn();
-vi.mock("@/features/progress/use-progress", () => ({
+vi.mock("@/features/progress/use-progress", async (importOriginal) => ({
+  ...(await importOriginal<typeof UseProgressModule>()),
   useEpisodeProgress: () => progressQueryMock(),
 }));
 
@@ -340,6 +342,15 @@ describe("SeasonPage", () => {
     renderPage();
 
     expect(screen.getByTestId("seen-toggle")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("marks the SeenToggle as seen once every aired episode is watched, even with unaired ones left", () => {
+    const unaired = { ...episode3, airDate: "2999-01-01" };
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, unaired])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([1, 2]));
+    renderPage();
+
+    expect(screen.getByTestId("seen-toggle")).toHaveAttribute("aria-pressed", "true");
   });
 
   // A failed progress read falls back to an empty watched set — every
