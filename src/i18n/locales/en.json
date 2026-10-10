@@ -1286,6 +1286,7 @@
     "localDatabase": "CineTrack couldn't open your local data. Try restarting the app.",
     "tmdbAuthentication": "The TMDB token stored by the desktop app is missing, expired, or rejected. Unlock the vault and save a valid Bearer token again.",
     "tmdbConnection": "The connection to TMDB failed. Check your network, VPN, or proxy.",
+    "tmdbRateLimited": "TMDB is receiving too many requests right now. Wait a few seconds, then try again.",
     "retry": "Try again",
     "technicalDetails": "Technical details",
     "technicalDetailsLogged": "This error was written to the local log (Settings → Diagnostics).",

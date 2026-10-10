@@ -14,6 +14,13 @@ describe("RemoteErrorState", () => {
     expect(screen.getByText(/token stored by the desktop app/i)).toBeInTheDocument();
   });
 
+  it("explains a 429 as a temporary rate limit, not a broken connection or token", () => {
+    const rateLimited = Object.assign(new Error("Your token quota is over the allowed limit"), { status: 429 });
+    render(<RemoteErrorState error={rateLimited} onRetry={() => {}} />);
+    expect(screen.getByText(/too many requests/i)).toBeInTheDocument();
+    expect(screen.queryByText(/token stored by the desktop app/i)).not.toBeInTheDocument();
+  });
+
   it("classifies SQLite errors as local data problems", () => {
     render(<RemoteErrorState error={new Error("plugin:sql error")} onRetry={() => {}} />);
     expect(screen.getByText(/unable to open local data/i)).toBeInTheDocument();

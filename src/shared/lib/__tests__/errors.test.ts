@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { errorMessage, isDegradedRemoteError } from "../errors";
+import { errorCategory, errorMessage, isDegradedRemoteError, isRateLimitedError } from "../errors";
 
 class CustomError extends Error {
   constructor(message: string) {
@@ -59,5 +59,24 @@ describe("isDegradedRemoteError", () => {
 
   it("is false for a local database failure", () => {
     expect(isDegradedRemoteError(new Error("plugin:sql error"))).toBe(false);
+  });
+});
+
+describe("429 handling", () => {
+  const rateLimited = { status: 429, message: "token quota exceeded" };
+
+  it("classifies a 429 as a connection problem even when its text mentions a token", () => {
+    expect(isRateLimitedError(rateLimited)).toBe(true);
+    expect(errorCategory(rateLimited)).toBe("connection");
+  });
+
+  it("keeps showing cached data on a failed refetch that was rate-limited", () => {
+    expect(isDegradedRemoteError(rateLimited)).toBe(true);
+  });
+
+  it("does not treat other statuses as rate limiting", () => {
+    expect(isRateLimitedError({ status: 503 })).toBe(false);
+    expect(isRateLimitedError(new Error("x"))).toBe(false);
+    expect(isRateLimitedError(null)).toBe(false);
   });
 });

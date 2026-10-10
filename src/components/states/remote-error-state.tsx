@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/states/empty-state";
 import { logger } from "@/shared/lib/logger";
-import { errorCategory, errorMessage } from "@/shared/lib/errors";
+import { errorCategory, errorMessage, isRateLimitedError } from "@/shared/lib/errors";
 
 interface RemoteErrorStateProps {
   error: unknown;
@@ -36,7 +36,9 @@ export function RemoteErrorState({ error, onRetry, description }: RemoteErrorSta
           ? t("errors.localDatabase")
           : authenticationError
             ? t("errors.tmdbAuthentication")
-            : t("errors.tmdbConnection"))
+            : isRateLimitedError(error)
+              ? t("errors.tmdbRateLimited")
+              : t("errors.tmdbConnection"))
       }
       action={
         <div className="space-y-3 text-center">

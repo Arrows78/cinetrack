@@ -21,10 +21,17 @@ export const errorMessage = (error: unknown): string => {
 
 export type ErrorCategory = "authentication" | "localDatabase" | "connection";
 
+/** TMDB (or its proxy) answered 429: a transient condition, not a broken setup. */
+export const isRateLimitedError = (error: unknown): boolean =>
+  (error as { status?: number } | null)?.status === 429;
+
 /** Classify known transport errors without relying on a single formatted string. */
 export const errorCategory = (error: unknown): ErrorCategory => {
   const candidate = error as { status?: number; message?: string } | null;
   const message = errorMessage(error);
+  // Checked first: a rate-limit body must never be read as an auth failure
+  // because its text happens to mention a token or a quota.
+  if (isRateLimitedError(error)) return "connection";
   if (candidate && (candidate.status === 401 || candidate.status === 403)) return "authentication";
   if (/TMDB\s+(401|403)|token/i.test(message)) return "authentication";
   if (candidate?.status && candidate.status >= 500 && /sql|sqlite|database|plugin:sql/i.test(message)) {

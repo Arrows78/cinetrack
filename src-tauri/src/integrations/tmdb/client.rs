@@ -21,6 +21,10 @@ pub(super) fn http_client() -> &'static reqwest::Client {
 
 const MAX_ATTEMPTS: u32 = 3;
 const RETRY_BASE_DELAY: Duration = Duration::from_millis(250);
+/// The longest `Retry-After` the client is willing to wait out. Anything
+/// above it is not worth holding the UI for (the whole call has a 20s
+/// deadline), so the 429 is returned right away instead.
+const MAX_RETRY_AFTER: Duration = Duration::from_secs(5);
 pub(super) const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
 
 /// The frontend controls `path`, but it still crosses the IPC boundary, so it
@@ -74,11 +78,15 @@ pub(super) async fn tmdb_request_impl(
 
     // Controlled retry: bounded attempts with exponential backoff, and only
     // for failures that are plausibly transient (network errors, 5xx).
-    // 4xx responses (bad request, unauthorized, not found, rate-limited)
-    // return immediately — retrying those wastes time and, for 429
-    // specifically, would just hammer an already-rate-limited endpoint.
+    // 4xx responses (bad request, unauthorized, not found) return
+    // immediately. A 429 is retried only when the server says how long to
+    // wait (`Retry-After`) and that wait is short; the wait replaces the
+    // usual backoff, so the endpoint is never hammered.
+    let mut wait_override: Option<Duration> = None;
     for attempt in 0..MAX_ATTEMPTS {
-        if attempt > 0 {
+        if let Some(wait) = wait_override.take() {
+            tokio::time::sleep(wait).await;
+        } else if attempt > 0 {
             tokio::time::sleep(RETRY_BASE_DELAY * 2u32.pow(attempt - 1)).await;
         }
 
@@ -98,6 +106,7 @@ pub(super) async fn tmdb_request_impl(
         };
 
         let status = response.status();
+        let retry_after = parse_retry_after(response.headers());
         let body = match response.text().await {
             Ok(body) => body,
             Err(error) => {
@@ -113,6 +122,15 @@ pub(super) async fn tmdb_request_impl(
 
         last_error = ApiError::with_status(body, status.as_u16());
 
+        if status.as_u16() == 429 {
+            match retry_after {
+                Some(wait) if wait <= MAX_RETRY_AFTER => {
+                    wait_override = Some(wait);
+                    continue;
+                }
+                _ => return Err(last_error),
+            }
+        }
         if !status.is_server_error() {
             return Err(last_error);
         }
@@ -120,6 +138,19 @@ pub(super) async fn tmdb_request_impl(
     }
 
     Err(last_error)
+}
+
+/// `Retry-After` as a number of seconds. The HTTP-date form is not honoured
+/// (TMDB sends seconds); a missing or unparsable value means "no usable hint".
+fn parse_retry_after(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
+    headers
+        .get(reqwest::header::RETRY_AFTER)?
+        .to_str()
+        .ok()?
+        .trim()
+        .parse::<u64>()
+        .ok()
+        .map(Duration::from_secs)
 }
 
 #[cfg(test)]
@@ -242,6 +273,84 @@ mod tests {
 
         assert_eq!(error.status, Some(404));
         assert_eq!(error.message, "Not Found");
+    }
+
+    #[tokio::test]
+    async fn a_429_with_a_short_retry_after_waits_that_long_then_retries() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(429).insert_header("Retry-After", "1"))
+            .up_to_n_times(1)
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "id": 550 })),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let started = std::time::Instant::now();
+        let result = tmdb_request_impl(
+            &server.uri(),
+            &test_client(),
+            "/movie/550",
+            &HashMap::new(),
+            "token",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result["id"], 550);
+        assert!(started.elapsed() >= Duration::from_secs(1));
+    }
+
+    #[tokio::test]
+    async fn a_429_with_a_retry_after_beyond_the_cap_is_returned_immediately() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(429).insert_header("Retry-After", "60"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let started = std::time::Instant::now();
+        let error = tmdb_request_impl(
+            &server.uri(),
+            &test_client(),
+            "/movie/550",
+            &HashMap::new(),
+            "token",
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(error.status, Some(429));
+        assert!(started.elapsed() < Duration::from_secs(1));
+    }
+
+    #[tokio::test]
+    async fn a_429_without_retry_after_is_not_retried() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(429))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let error = tmdb_request_impl(
+            &server.uri(),
+            &test_client(),
+            "/movie/550",
+            &HashMap::new(),
+            "token",
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(error.status, Some(429));
     }
 
     #[tokio::test]
