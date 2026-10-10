@@ -12,8 +12,7 @@ const WEEKLY_AGENDA_DAYS = 7;
  * - Only "mine" entries (see isCalendarEntryMine in tracking-service.ts) —
  *   a movie release the user never added to their library is TMDB's global
  *   upcoming feed, not something personal to surface on a weekly agenda.
- *   Episode entries are always "mine" already (they only exist because
- *   their series is tracked).
+ *   An episode is "mine" only while its series is still in the library.
  * - A dated entry (release/episode) is kept as-is — trackingService.build()
  *   already scoped those to the requested day window via
  *   calendarService.build().

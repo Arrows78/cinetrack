@@ -7,15 +7,16 @@ import type { CalendarEntry, TrackingEntry } from "@/types/media";
 // identity: a movie and a series can share one.
 const mediaKey = (item: { mediaId: number; mediaType: string }): string => `${item.mediaType}-${item.mediaId}`;
 
-// A movie-release entry is only "mine" once the user actually tracks that
-// title (it's in their library) — otherwise it's just TMDB's global
-// upcoming-releases feed. An episode entry is always "mine": it only
-// exists because its series is in tracked_series, which is itself an
-// opt-in. This is the one filter that decides what's allowed to notify
-// (see buildNotifiableCalendarEntries) as well as what the tracking page
-// shows by default.
+// A calendar entry is only "mine" once the user actually follows that title
+// (it's in their library) — otherwise it's just TMDB's global
+// upcoming-releases feed. This holds for episodes too: a series removed from
+// the library keeps its episode tracking (so re-adding it restores the
+// progress) but must stop producing reminders, so the library — not the
+// tracked_series cache — decides. This is the one filter that decides what's
+// allowed to notify (see buildNotifiableCalendarEntries) as well as what the
+// tracking page shows by default.
 function isCalendarEntryMine(entry: CalendarEntry, libraryKeys: ReadonlySet<string>): boolean {
-  return entry.kind === "episode" || libraryKeys.has(mediaKey(entry));
+  return libraryKeys.has(mediaKey(entry));
 }
 
 function fromCalendarEntry(entry: CalendarEntry, libraryKeys: ReadonlySet<string>): TrackingEntry {

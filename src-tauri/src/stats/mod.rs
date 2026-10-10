@@ -2271,6 +2271,20 @@ mod tests {
         .execute(pool)
         .await
         .unwrap();
+        insert_library_series(pool, uuid, series_id).await;
+    }
+
+    // A series only counts toward the forecast while it is in the library.
+    async fn insert_library_series(pool: &SqlitePool, uuid: &str, series_id: i64) {
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ($1, 'default', $2, 'series', 'Series', 'watching', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .bind(format!("lib-{uuid}"))
+        .bind(series_id)
+        .execute(pool)
+        .await
+        .unwrap();
     }
 
     async fn insert_watched_episode(
@@ -2340,6 +2354,29 @@ mod tests {
         .unwrap();
 
         assert_eq!(forecast.backlog_episodes, 6);
+    }
+
+    #[tokio::test]
+    async fn forecast_ignores_a_series_removed_from_the_library() {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await; // 10 left, followed
+        insert_tracked_series(&pool, "s2", 2, 20).await; // 20 left, then retired
+        sqlx::query("DELETE FROM library_items WHERE media_id = 2")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(forecast.backlog_episodes, 10);
     }
 
     #[tokio::test]

@@ -82,6 +82,11 @@ pub(super) async fn get_episode_progress_impl(
         .collect())
 }
 
+/// The series a profile currently follows: a `tracked_series` row only counts
+/// while the series is also in the profile's library. Removing a series from
+/// the library keeps its tracking (episode progress and this cache row), so
+/// re-adding it brings the progress back, but it stops feeding Watch Next,
+/// the Today Hub, reminders and the watch forecast in the meantime.
 pub(super) async fn list_tracked_series_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -92,6 +97,10 @@ pub(super) async fn list_tracked_series_impl(
          FROM tracked_series ts
          LEFT JOIN episode_progress ep ON ep.profile_id = ts.profile_id AND ep.series_id = ts.series_id AND ep.watched = 1 AND ep.season_number > 0
          WHERE ts.profile_id = $1
+           AND EXISTS (
+             SELECT 1 FROM library_items li
+             WHERE li.profile_id = ts.profile_id AND li.media_id = ts.series_id AND li.media_type = 'series'
+           )
          GROUP BY ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at
          ORDER BY ts.updated_at DESC",
     )

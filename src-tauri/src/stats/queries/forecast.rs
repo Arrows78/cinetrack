@@ -39,7 +39,11 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
            WHERE profile_id = $1 AND watched = 1 AND season_number > 0
            GROUP BY series_id
          ) watched ON watched.series_id = ts.series_id
-         WHERE ts.profile_id = $1",
+         WHERE ts.profile_id = $1
+           AND EXISTS (
+             SELECT 1 FROM library_items li
+             WHERE li.profile_id = ts.profile_id AND li.media_id = ts.series_id AND li.media_type = 'series'
+           )",
     )
     .bind(profile_id)
     .fetch_one(pool)

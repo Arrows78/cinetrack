@@ -1416,6 +1416,61 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_series_removed_from_the_library_leaves_the_tracked_list_but_keeps_its_progress() {
+        let pool = migrated_pool().await;
+        let s = series(9, None);
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        assert!(
+            list_tracked_series_impl(&pool, "default")
+                .await
+                .unwrap()
+                .iter()
+                .any(|item| item.series_id == 9)
+        );
+
+        sqlx::query("DELETE FROM library_items WHERE media_id = 9 AND media_type = 'series'")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        assert!(
+            !list_tracked_series_impl(&pool, "default")
+                .await
+                .unwrap()
+                .iter()
+                .any(|item| item.series_id == 9),
+            "a series the viewer no longer follows must not feed reminders or Watch Next"
+        );
+        assert_eq!(
+            get_episode_progress_impl(&pool, "default", 9)
+                .await
+                .unwrap()
+                .len(),
+            1,
+            "the episode tracking is kept"
+        );
+
+        seed_library_status(&pool, 9, "series", "planned").await;
+        let back = list_tracked_series_impl(&pool, "default").await.unwrap();
+        assert_eq!(
+            back.iter()
+                .find(|item| item.series_id == 9)
+                .map(|i| i.watched_episodes),
+            Some(1),
+            "re-adding the series brings its progress back"
+        );
+    }
+
+    #[tokio::test]
     async fn does_not_reapply_an_already_applied_episode() {
         let pool = migrated_pool().await;
         let s = series(9, None);

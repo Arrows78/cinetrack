@@ -116,15 +116,21 @@ describe("trackingService.build", () => {
     expect(notifiable).toHaveLength(0);
   });
 
-  it("always tags episodes as mine, library or not", async () => {
-    mocks.build.mockResolvedValue([
-      calendarEntry({ kind: "episode", mediaId: 10, mediaType: "series", id: "episode-1" }),
-    ]);
+  it("tags an episode as mine only while its series is in the library", async () => {
+    // Removing a series from the library keeps its episode tracking (so
+    // re-adding it restores the progress) but it must stop producing
+    // reminders and calendar/tracking entries: the library decides, not the
+    // tracked_series cache that outlives the removal.
+    const episode = calendarEntry({ kind: "episode", mediaId: 10, mediaType: "series", id: "episode-1" });
+    mocks.build.mockResolvedValue([episode]);
+
+    mocks.listMediaKeys.mockResolvedValue([{ ...libraryItem(10), mediaType: "series" }]);
+    expect((await trackingService.build())[0]).toMatchObject({ type: "episode", scope: "mine" });
+    expect(await trackingService.buildNotifiableCalendarEntries()).toHaveLength(1);
+
     mocks.listMediaKeys.mockResolvedValue([]);
-
-    const entries = await trackingService.build();
-
-    expect(entries[0]).toMatchObject({ type: "episode", scope: "mine" });
+    expect((await trackingService.build())[0]).toMatchObject({ type: "episode", scope: "discovery" });
+    expect(await trackingService.buildNotifiableCalendarEntries()).toHaveLength(0);
   });
 
   it("excludes disabled alerts", async () => {
@@ -201,7 +207,7 @@ describe("trackingService.buildNotifiableCalendarEntries", () => {
       calendarEntry({ mediaId: 2, id: "movie-2-2026-09-01" }),
       calendarEntry({ kind: "episode", mediaId: 10, mediaType: "series", id: "episode-1" }),
     ]);
-    mocks.listMediaKeys.mockResolvedValue([libraryItem(1)]);
+    mocks.listMediaKeys.mockResolvedValue([libraryItem(1), { ...libraryItem(10), mediaType: "series" }]);
 
     const entries = await trackingService.buildNotifiableCalendarEntries();
 

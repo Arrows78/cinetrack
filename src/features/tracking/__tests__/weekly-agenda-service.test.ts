@@ -30,7 +30,7 @@ describe("selectWeeklyAgendaEntries", () => {
     expect(selectWeeklyAgendaEntries([mine, discovery])).toEqual([mine]);
   });
 
-  it("keeps every episode entry, which is always scoped 'mine'", () => {
+  it("keeps an episode entry scoped 'mine'", () => {
     const episode = entry({ id: "episode", type: "episode", mediaType: "series", scope: "mine" });
 
     expect(selectWeeklyAgendaEntries([episode])).toEqual([episode]);
