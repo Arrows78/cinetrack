@@ -29,6 +29,8 @@ A profile = a person using the app. **Every** table below attaches to it via `pr
 
 Relations: a profile has `0..n` rows in every table below. No dedicated index (the table is tiny and always scanned by `uuid`).
 
+**PIN and backup restore.** A backup export never carries a PIN (hash and salt are device secrets). `import_impl` (`backup/repository.rs`) replaces every profile, but inside the same transaction it first reads the PIN of each profile that exists before the restore and puts it back on the profile with the same `uuid` after re-inserting it. So a restore on the **same device** — including "undo the last restore", which restores `pre-restore.json` through the same path — keeps the PIN of every profile present both before and in the backup; a profile **absent from the database before the restore** (a backup from another device) arrives without a PIN, and a locked profile that the backup lacks disappears along with its PIN, like any other profile data.
+
 ### `preferences`
 
 Application settings: theme, accent color, language, TMDB region, spoiler protection, notifications (`notificationsEnabled` for calendar reminders, plus `availabilityAlertsEnabled` and `desktopNotificationsEnabled` split out by migration 22), availability check frequency (`availabilityCheckIntervalHours`), automatic-backup frequency (`backupFrequency`), keyboard shortcuts (`commandPaletteShortcut`, `globalCommandPaletteShortcut`), onboarding/tour flags, recent searches, and `activeProfileId` — the currently selected profile. This is a **global** table, shared by every profile: they share the same app, not the same per-profile preferences.

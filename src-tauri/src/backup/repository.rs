@@ -500,6 +500,18 @@ const IMPORT_BATCH_SIZE: usize = 200;
 pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
+    // The export never carries a PIN (hash and salt are device secrets), so
+    // the purge below would unlock every profile. A profile whose uuid is
+    // already in the database is the same person on the same device: its PIN
+    // is read here and put back after the profiles are re-inserted. A
+    // profile absent before the restore (another device) arrives unlocked.
+    let existing_pins: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT uuid, pin_hash, pin_salt FROM profiles WHERE pin_hash IS NOT NULL AND pin_salt IS NOT NULL",
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+
     // Child-first purge order: `custom_list_items` before `custom_lists`
     // (its own FK target), everything in `PROFILE_SCOPED_TABLES` before
     // `profiles` (what they all reference) — `availability_snapshots` and
@@ -529,6 +541,17 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
         .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
+    }
+
+    for (uuid, pin_hash, pin_salt) in &existing_pins {
+        // Matches nothing when the backup has no such profile.
+        sqlx::query("UPDATE profiles SET pin_hash = $1, pin_salt = $2 WHERE uuid = $3")
+            .bind(pin_hash)
+            .bind(pin_salt)
+            .bind(uuid)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
     }
 
     let now = crate::database::now_iso(&mut *tx).await?;
@@ -1713,6 +1736,105 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(list_count.0, 0, "stale custom list should have been purged");
+    }
+
+    async fn pin_of(pool: &SqlitePool, profile: &str) -> Option<(String, String)> {
+        let row: Option<(Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT pin_hash, pin_salt FROM profiles WHERE uuid = $1")
+                .bind(profile)
+                .fetch_optional(pool)
+                .await
+                .unwrap();
+        row.and_then(|(hash, salt)| hash.zip(salt))
+    }
+
+    async fn set_raw_pin(pool: &SqlitePool, profile: &str, hash: &str, salt: &str) {
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, pin_hash, pin_salt, created_at, updated_at)
+             VALUES ($1, $1, $2, $3, 'now', 'now')
+             ON CONFLICT (uuid) DO UPDATE SET pin_hash = $2, pin_salt = $3",
+        )
+        .bind(profile)
+        .bind(hash)
+        .bind(salt)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_same_device_restore_keeps_the_pin_of_profiles_already_in_the_database() {
+        let pool = migrated_pool().await;
+        set_raw_pin(&pool, "kid", "hash-kid", "salt-kid").await;
+        // The export never carries a PIN.
+        let snapshot = export_impl(&pool).await.unwrap();
+        assert!(snapshot.profiles.iter().all(|p| !p.has_pin));
+
+        import_impl(&pool, snapshot).await.unwrap();
+
+        assert_eq!(
+            pin_of(&pool, "kid").await,
+            Some(("hash-kid".to_string(), "salt-kid".to_string()))
+        );
+    }
+
+    #[tokio::test]
+    async fn a_restore_from_another_device_brings_unknown_profiles_without_a_pin() {
+        let source = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('kid', 'Kid', 'now', 'now')",
+        )
+        .execute(&source)
+        .await
+        .unwrap();
+        let snapshot = export_impl(&source).await.unwrap();
+
+        // This device has never heard of `kid`; it locks `default`, and has
+        // another locked profile that the backup lacks.
+        let target = migrated_pool().await;
+        set_raw_pin(&target, "default", "h", "s").await;
+        set_raw_pin(&target, "local-only", "h2", "s2").await;
+
+        import_impl(&target, snapshot).await.unwrap();
+
+        assert_eq!(pin_of(&target, "kid").await, None, "unknown: no PIN");
+        assert_eq!(
+            pin_of(&target, "default").await,
+            Some(("h".to_string(), "s".to_string())),
+            "present before the restore: keeps its PIN"
+        );
+        let (gone,): (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM profiles WHERE uuid = 'local-only'")
+                .fetch_one(&target)
+                .await
+                .unwrap();
+        assert_eq!(
+            gone, 0,
+            "a profile absent from the backup is still replaced"
+        );
+    }
+
+    #[tokio::test]
+    async fn undoing_the_last_restore_keeps_the_pin_of_a_profile_present_throughout() {
+        let pool = migrated_pool().await;
+        set_raw_pin(&pool, "default", "h", "s").await;
+        // `pre-restore.json` is an export of the state before the restore.
+        let pre_restore = export_impl(&pool).await.unwrap();
+
+        let other = migrated_pool().await;
+        import_impl(&pool, export_impl(&other).await.unwrap())
+            .await
+            .unwrap();
+        assert_eq!(
+            pin_of(&pool, "default").await,
+            Some(("h".to_string(), "s".to_string()))
+        );
+
+        import_impl(&pool, pre_restore).await.unwrap();
+        assert_eq!(
+            pin_of(&pool, "default").await,
+            Some(("h".to_string(), "s".to_string()))
+        );
     }
 
     // ------------------------------------------------------------------
