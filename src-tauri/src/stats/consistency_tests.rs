@@ -178,6 +178,33 @@ async fn assert_views_agree(app: &tauri::App<tauri::test::MockRuntime>, context:
     )
     .await;
 
+    // --- The library's own counters and listings --------------------------
+    let counts = crate::library::get_library_status_counts(app.state())
+        .await
+        .unwrap();
+    assert_eq!(
+        counts.planned + counts.watching + counts.paused + counts.completed + counts.dropped,
+        library_total,
+        "{context}: status counts add up to the library size"
+    );
+    assert_eq!(counts.completed, library_completed, "{context}: completed");
+    assert_eq!(
+        crate::library::list_library(None, app.state())
+            .await
+            .unwrap()
+            .len() as i64,
+        library_total,
+        "{context}: list_library size"
+    );
+    assert_eq!(
+        crate::library::list_library_media_keys(app.state())
+            .await
+            .unwrap()
+            .len() as i64,
+        library_total,
+        "{context}: media keys size"
+    );
+
     // --- Stats overview ---------------------------------------------------
     let overview = crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, app.state())
         .await
