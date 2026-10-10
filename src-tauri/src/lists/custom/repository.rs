@@ -161,14 +161,12 @@ pub(super) async fn add_impl(
         updated_at: now.clone(),
     };
 
-    sqlx::query(
+    // A title already in the list is left exactly as it is: no new position,
+    // no `updated_at` bump on the item or the list (re-adding is a no-op).
+    let inserted = sqlx::query(
         "INSERT INTO custom_list_items (uuid, list_id, media_id, media_type, title, poster_path, position, added_at, updated_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8)
-         ON CONFLICT (list_id, media_id, media_type) DO UPDATE SET
-           title = excluded.title,
-           poster_path = excluded.poster_path,
-           position = excluded.position,
-           updated_at = excluded.updated_at",
+         ON CONFLICT (list_id, media_id, media_type) DO NOTHING",
     )
     .bind(&item.id)
     .bind(&item.list_id)
@@ -180,14 +178,12 @@ pub(super) async fn add_impl(
     .bind(&item.added_at)
     .execute(&mut *tx)
     .await
-    .map_err(ApiError::from)?;
+    .map_err(ApiError::from)?
+    .rows_affected();
 
-    sqlx::query("UPDATE custom_lists SET updated_at = $1 WHERE uuid = $2")
-        .bind(&now)
-        .bind(list_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(ApiError::from)?;
+    if inserted > 0 {
+        touch_list(&mut tx, list_id, &now).await?;
+    }
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(())
@@ -200,16 +196,40 @@ pub(super) async fn remove_item_impl(
     media_id: i64,
     media_type: MediaType,
 ) -> Result<(), ApiError> {
-    assert_owns_list(pool, profile_id, list_id).await?;
-    sqlx::query(
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    assert_owns_list(&mut *tx, profile_id, list_id).await?;
+    let removed = sqlx::query(
         "DELETE FROM custom_list_items WHERE list_id = $1 AND media_id = $2 AND media_type = $3",
     )
     .bind(list_id)
     .bind(media_id)
     .bind(media_type.as_db_str())
-    .execute(pool)
+    .execute(&mut *tx)
     .await
-    .map_err(ApiError::from)?;
+    .map_err(ApiError::from)?
+    .rows_affected();
+
+    // Like an add, a removal that really changed the list bumps its
+    // `updated_at`; removing an absent item changes nothing.
+    if removed > 0 {
+        let now = now_iso(&mut *tx).await?;
+        touch_list(&mut tx, list_id, &now).await?;
+    }
+    tx.commit().await.map_err(ApiError::from)?;
+    Ok(())
+}
+
+async fn touch_list(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    list_id: &str,
+    now: &str,
+) -> Result<(), ApiError> {
+    sqlx::query("UPDATE custom_lists SET updated_at = $1 WHERE uuid = $2")
+        .bind(now)
+        .bind(list_id)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
     Ok(())
 }
 
@@ -307,8 +327,81 @@ mod tests {
         assert_eq!(items.len(), 2);
         assert_eq!(
             items.iter().map(|i| i.media_id).collect::<Vec<_>>(),
-            vec![2, 1]
+            vec![1, 2]
         );
+    }
+
+    async fn list_updated_at(pool: &SqlitePool, list_id: &str) -> String {
+        let (value,): (String,) =
+            sqlx::query_as("SELECT updated_at FROM custom_lists WHERE uuid = $1")
+                .bind(list_id)
+                .fetch_one(pool)
+                .await
+                .unwrap();
+        value
+    }
+
+    const AGED: &str = "2000-01-01T00:00:00.000Z";
+
+    async fn age_list(pool: &SqlitePool, list_id: &str) {
+        sqlx::query("UPDATE custom_lists SET updated_at = $1 WHERE uuid = $2")
+            .bind(AGED)
+            .bind(list_id)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn re_adding_a_present_title_is_a_no_op() {
+        let pool = migrated_pool().await;
+        let list = create_impl(&pool, "default", "Ma liste", None)
+            .await
+            .unwrap();
+        add_impl(&pool, "default", &list.id, media(1, "Premier"))
+            .await
+            .unwrap();
+        add_impl(&pool, "default", &list.id, media(2, "Deuxième"))
+            .await
+            .unwrap();
+        age_list(&pool, &list.id).await;
+        let before = items_impl(&pool, "default", &list.id).await.unwrap();
+
+        add_impl(&pool, "default", &list.id, media(1, "Premier"))
+            .await
+            .unwrap();
+
+        let after = items_impl(&pool, "default", &list.id).await.unwrap();
+        let shape = |items: &[CustomListItem]| {
+            items
+                .iter()
+                .map(|i| (i.media_id, i.position))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(shape(&after), shape(&before), "a re-add must not move it");
+        assert_eq!(list_updated_at(&pool, &list.id).await, AGED);
+    }
+
+    #[tokio::test]
+    async fn removing_an_item_bumps_the_list_but_a_missing_item_does_not() {
+        let pool = migrated_pool().await;
+        let list = create_impl(&pool, "default", "Ma liste", None)
+            .await
+            .unwrap();
+        add_impl(&pool, "default", &list.id, media(1, "Un"))
+            .await
+            .unwrap();
+        age_list(&pool, &list.id).await;
+
+        remove_item_impl(&pool, "default", &list.id, 99, MediaType::Movie)
+            .await
+            .unwrap();
+        assert_eq!(list_updated_at(&pool, &list.id).await, AGED);
+
+        remove_item_impl(&pool, "default", &list.id, 1, MediaType::Movie)
+            .await
+            .unwrap();
+        assert_ne!(list_updated_at(&pool, &list.id).await, AGED);
     }
 
     #[tokio::test]

@@ -177,7 +177,7 @@ A named list created by a profile.
 | `name`, `description`      | TEXT |                                                                              |
 | `created_at`, `updated_at` | TEXT | ISO dates                                                                    |
 
-Indexes: `(profile_id, updated_at DESC)`.
+Indexes: `(profile_id, updated_at DESC)`. `updated_at` is bumped when an item is really added or removed; re-adding a title already in the list, or removing one that is not, changes nothing.
 
 Relations: a profile creates `0..n` lists. Deleting the profile deletes the list, which in turn deletes its contents (cascading chain).
 
@@ -196,7 +196,7 @@ A movie or show inside a list, with its position for display order.
 
 Indexes: `(list_id, position)`, `(media_id, media_type)`.
 
-Relations: a list contains `0..n` items.
+Relations: a list contains `0..n` items. Adding a title already present is a no-op: it keeps its position and its stored title/poster.
 
 ## Smart lists & saved filters
 
