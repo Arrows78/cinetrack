@@ -1,6 +1,10 @@
+use std::collections::BTreeMap;
+
 use sqlx::SqlitePool;
 
-use super::monthly_activity::{self, MonthlyActivityRow};
+use super::active_events::fetch_counted_watches;
+use super::local_time::LocalClock;
+use super::monthly_activity;
 use super::{StatsOverview, StatsTotals, YearlyActivityBucket};
 use crate::error::ApiError;
 
@@ -20,30 +24,27 @@ struct LibraryTotalsRow {
     completed_series: i64,
 }
 
+/// Headline totals and the trailing-window monthly chart, both over the
+/// titles currently seen (see `active_events`): a title counts once, at the
+/// date of its last active watch, and a cancelled watch counts nowhere.
 pub(in crate::stats) async fn get_stats_overview_impl(
     pool: &SqlitePool,
     profile_id: &str,
     window_start: &str,
     month_labels: &[String],
-    tz_offset_minutes: i64,
+    clock: impl Into<LocalClock>,
 ) -> Result<StatsOverview, ApiError> {
-    let event_totals = sqlx::query_as::<_, EventTotalsRow>(
-        "WITH latest_events AS (
-           SELECT media_type, episode_id, event_type, duration_minutes,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY media_id, media_type, episode_id
-                    ORDER BY watched_at DESC, created_at DESC
-                  ) AS rn
-           FROM viewing_events WHERE profile_id = $1
-         )
-         SELECT
-           COUNT(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
-           COUNT(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
-           SUM(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched,
-           SUM(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND media_type = 'movie' THEN duration_minutes ELSE 0 END) AS movie_minutes_watched,
-           SUM(CASE WHEN rn = 1 AND event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN duration_minutes ELSE 0 END) AS episode_minutes_watched
-         FROM latest_events",
-    )
+    let clock = clock.into();
+    let event_totals = sqlx::query_as::<_, EventTotalsRow>(concat!(
+        active_events_cte!(),
+        " SELECT
+           COUNT(CASE WHEN media_type = 'movie' THEN 1 END) AS movies_watched,
+           COUNT(CASE WHEN episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
+           SUM(duration_minutes) AS minutes_watched,
+           SUM(CASE WHEN media_type = 'movie' THEN duration_minutes ELSE 0 END) AS movie_minutes_watched,
+           SUM(CASE WHEN episode_id IS NOT NULL THEN duration_minutes ELSE 0 END) AS episode_minutes_watched
+         FROM counted WHERE rk = 1"
+    ))
     .bind(profile_id)
     .fetch_one(pool);
 
@@ -57,22 +58,17 @@ pub(in crate::stats) async fn get_stats_overview_impl(
     .bind(profile_id)
     .fetch_one(pool);
 
-    let monthly_rows = sqlx::query_as::<_, MonthlyActivityRow>(
-        "SELECT strftime('%Y-%m', datetime(watched_at, printf('%+d minutes', -$3))) AS month, COUNT(*) AS count, SUM(duration_minutes) AS minutes
-         FROM viewing_events
-         WHERE profile_id = $1 AND event_type IN ('watched','rewatched') AND watched_at >= $2
-         GROUP BY month",
-    )
-    .bind(profile_id)
-    .bind(window_start)
-    .bind(tz_offset_minutes)
-    .fetch_all(pool);
+    let window_events = fetch_counted_watches(pool, profile_id, Some(window_start), None);
 
     // These reads are independent and read-only. Let the SQLite pool service
     // them concurrently instead of paying their wall-clock latencies serially.
-    let (event_totals, library_totals, monthly_rows) =
-        tokio::try_join!(event_totals, library_totals, monthly_rows).map_err(ApiError::from)?;
+    let (event_totals, library_totals, window_events) = tokio::try_join!(
+        async { event_totals.await.map_err(ApiError::from) },
+        async { library_totals.await.map_err(ApiError::from) },
+        window_events
+    )?;
 
+    let monthly_rows = monthly_activity::bucket_by_local_month(&window_events, &clock)?;
     let monthly_activity = monthly_activity::zero_fill(&monthly_rows, month_labels);
 
     let library_completion_percent = if library_totals.total > 0 {
@@ -95,46 +91,34 @@ pub(in crate::stats) async fn get_stats_overview_impl(
     })
 }
 
-#[derive(sqlx::FromRow)]
-struct YearlyActivityRow {
-    year: i64,
-    movies_watched: i64,
-    episodes_watched: i64,
-    minutes_watched: Option<i64>,
-}
-
-impl From<YearlyActivityRow> for YearlyActivityBucket {
-    fn from(row: YearlyActivityRow) -> Self {
-        Self {
-            year: row.year,
-            movies_watched: row.movies_watched,
-            episodes_watched: row.episodes_watched,
-            minutes_watched: row.minutes_watched.unwrap_or(0),
-        }
-    }
-}
-
+/// One bucket per local calendar year with at least one seen title, oldest
+/// first; each seen title is counted once, in the year of its last active
+/// watch.
 pub(in crate::stats) async fn list_yearly_activity_impl(
     pool: &SqlitePool,
     profile_id: &str,
-    tz_offset_minutes: i64,
+    clock: impl Into<LocalClock>,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-    let rows: Vec<YearlyActivityRow> = sqlx::query_as(
-        "SELECT
-           CAST(strftime('%Y', datetime(watched_at, printf('%+d minutes', -$2))) AS INTEGER) AS year,
-           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND media_type = 'movie' THEN 1 END) AS movies_watched,
-           COUNT(CASE WHEN event_type IN ('watched','rewatched') AND episode_id IS NOT NULL THEN 1 END) AS episodes_watched,
-           SUM(CASE WHEN event_type IN ('watched','rewatched') THEN duration_minutes ELSE 0 END) AS minutes_watched
-         FROM viewing_events
-         WHERE profile_id = $1 AND event_type IN ('watched','rewatched')
-         GROUP BY year
-         ORDER BY year ASC",
-    )
-    .bind(profile_id)
-    .bind(tz_offset_minutes)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    let clock = clock.into();
+    let events = fetch_counted_watches(pool, profile_id, None, None).await?;
 
-    Ok(rows.into_iter().map(Into::into).collect())
+    let mut by_year: BTreeMap<i64, YearlyActivityBucket> = BTreeMap::new();
+    for event in &events {
+        let year = i64::from(chrono::Datelike::year(&clock.day(&event.watched_at)?));
+        let bucket = by_year.entry(year).or_insert(YearlyActivityBucket {
+            year,
+            movies_watched: 0,
+            episodes_watched: 0,
+            minutes_watched: 0,
+        });
+        if event.media_type == "movie" {
+            bucket.movies_watched += 1;
+        }
+        if event.episode_id.is_some() {
+            bucket.episodes_watched += 1;
+        }
+        bucket.minutes_watched += event.duration_minutes.unwrap_or(0);
+    }
+
+    Ok(by_year.into_values().collect())
 }

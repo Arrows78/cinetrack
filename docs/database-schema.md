@@ -77,7 +77,7 @@ Relations: a profile owns `0..n` library entries. Deleting the profile deletes t
 
 ### `viewing_events`
 
-Every watch (or un-watch) generates a row here: a whole movie or a specific episode, with its duration. This is **this** table — not `library_items.status` — that feeds the statistics (minutes watched, consecutive-day streaks, monthly activity).
+Every watch (or un-watch) generates a row here: a whole movie or a specific episode, with its duration. This is **this** table — not `library_items.status` — that feeds the statistics (minutes watched, consecutive-day streaks, monthly activity). The statistics read the log as a _current state_, not a history: a title is seen when its latest event is a `watched`/`rewatched`, a cancelled watch (latest event `unwatched`) is in no figure, and a watch → unwatch → watch cycle is one watch dated at the last active watch (see `docs/architecture.md`'s "Statistics semantics").
 
 | Column                                          | Type      | Notes                                                                                   |
 | ----------------------------------------------- | --------- | --------------------------------------------------------------------------------------- |

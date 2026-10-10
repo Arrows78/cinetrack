@@ -1,51 +1,33 @@
+use std::collections::{BTreeSet, HashMap};
+
+use chrono::{Datelike, Duration, NaiveDate, Timelike};
 use sqlx::SqlitePool;
 
+use super::active_events::fetch_counted_watches;
+use super::local_time::LocalClock;
 use super::{ActivityStats, BiggestBingeDay, HeatmapBucket};
 use crate::error::ApiError;
 
-// `tz_offset_minutes` is JS's `Date.getTimezoneOffset()` (UTC minus local,
-// in minutes) — shifting a stored UTC `watched_at` by `-tz_offset_minutes`
-// via `datetime(watched_at, printf('%+d minutes', -$N))` converts it to the
-// caller's local wall-clock time before bucketing. Streak/binge-day/heatmap
-// all read as "days" or "hours you experienced", not UTC days — matching
-// how the equivalent TS (`date-fns`'s `parseISO`/`format`, plain
-// `Date.getDay()`/`getHours()`) worked before this moved to SQL. Unlike
-// `list_on_this_day_events_impl`'s UTC-only month-day match, these need to
-// be timezone-precise: a "when do you like to watch" heatmap in UTC hours
-// would misrepresent anyone outside UTC.
-//
-// Each query below repeats this shift as a literal string rather than
-// building the SQL dynamically (sqlx 0.9 requires a `&'static str` for
-// `query_as`, specifically to make it easy to audit that no query is ever
-// built by interpolating untrusted data into SQL text).
+// Everything here is bucketed in the viewer's local time (see `local_time`):
+// streaks, the binge day and the heatmap read as "days" and "hours you
+// experienced", not UTC ones — a heatmap in UTC hours would misrepresent
+// anyone outside UTC. Only the titles currently seen count, each at its last
+// active watch (see `active_events`).
 
-#[derive(sqlx::FromRow)]
-struct DayIslandRow {
-    island_end: String,
-    streak_len: i64,
-}
-
-#[derive(sqlx::FromRow)]
-struct BingeDayRow {
-    day: String,
-    count: i64,
-}
-
-#[derive(sqlx::FromRow)]
-struct HeatmapRow {
-    day_of_week: i64,
-    hour: i64,
-    count: i64,
-}
-
-fn local_day_before(local_day: &str) -> Result<String, ApiError> {
-    use chrono::NaiveDate;
-    let date = NaiveDate::parse_from_str(local_day, "%Y-%m-%d").map_err(|error| {
-        ApiError::internal(format!("Malformed local day '{local_day}': {error}"))
-    })?;
-    Ok((date - chrono::Duration::days(1))
-        .format("%Y-%m-%d")
-        .to_string())
+/// Runs of consecutive days in an ascending, de-duplicated day list, as
+/// `(last day of the run, run length)`, oldest run first.
+fn day_runs(days: &BTreeSet<NaiveDate>) -> Vec<(NaiveDate, i64)> {
+    let mut runs: Vec<(NaiveDate, i64)> = Vec::new();
+    for &day in days {
+        match runs.last_mut() {
+            Some((last, length)) if *last + Duration::days(1) == day => {
+                *last = day;
+                *length += 1;
+            }
+            _ => runs.push((day, 1)),
+        }
+    }
+    runs
 }
 
 pub(in crate::stats) async fn get_activity_stats_impl(
@@ -53,111 +35,66 @@ pub(in crate::stats) async fn get_activity_stats_impl(
     profile_id: &str,
     since: &str,
     today: &str,
-    tz_offset_minutes: i64,
+    clock: impl Into<LocalClock>,
 ) -> Result<ActivityStats, ApiError> {
-    // "Islands" of consecutive local calendar days: for each distinct
-    // watched day, `julianday(day) - ROW_NUMBER()` is constant within a run
-    // of consecutive days and differs across a gap, so grouping by it
-    // yields one row per run — the run's own length, and its last (most
-    // recent) day. Ordered newest-run-first so the current streak (if any)
-    // is always the first row.
-    let islands: Vec<DayIslandRow> = sqlx::query_as(
-        "WITH days AS (
-           SELECT DISTINCT date(datetime(watched_at, printf('%+d minutes', -$3))) AS day
-           FROM viewing_events
-           WHERE profile_id = $1 AND event_type IN ('watched','rewatched') AND watched_at >= $2
-         ),
-         numbered AS (
-           SELECT day, julianday(day) - ROW_NUMBER() OVER (ORDER BY day) AS island
-           FROM days
-         )
-         SELECT MAX(day) AS island_end, COUNT(*) AS streak_len
-         FROM numbered
-         GROUP BY island
-         ORDER BY island_end DESC",
-    )
-    .bind(profile_id)
-    .bind(since)
-    .bind(tz_offset_minutes)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    let clock = clock.into();
+    let events = fetch_counted_watches(pool, profile_id, Some(since), None).await?;
 
-    let longest_streak_days = islands.iter().map(|row| row.streak_len).max().unwrap_or(0);
+    let mut days: BTreeSet<NaiveDate> = BTreeSet::new();
+    let mut per_day: HashMap<NaiveDate, i64> = HashMap::new();
+    let mut heat: HashMap<(i64, i64), i64> = HashMap::new();
+    for event in &events {
+        let local = clock.local(&event.watched_at)?;
+        let day = local.date();
+        days.insert(day);
+        *per_day.entry(day).or_insert(0) += 1;
+        *heat
+            .entry((
+                i64::from(day.weekday().num_days_from_sunday()),
+                i64::from(local.hour()),
+            ))
+            .or_insert(0) += 1;
+    }
 
-    let local_today_row: (String,) =
-        sqlx::query_as("SELECT date(datetime($1, printf('%+d minutes', -$2)))")
-            .bind(today)
-            .bind(tz_offset_minutes)
-            .fetch_one(pool)
-            .await
-            .map_err(ApiError::from)?;
-    let local_today = local_today_row.0;
-    let local_yesterday = local_day_before(&local_today)?;
+    let runs = day_runs(&days);
+    let longest_streak_days = runs.iter().map(|(_, length)| *length).max().unwrap_or(0);
+
+    let local_today = clock.day(today)?;
+    let local_yesterday = local_today - Duration::days(1);
 
     // A streak still "counts" if the most recent watched day is today or
     // yesterday (local time) — it only breaks once a full day passes with
     // no watch, not the instant a new day starts before today's first watch.
-    let current_streak_days = islands
-        .first()
-        .filter(|row| row.island_end == local_today || row.island_end == local_yesterday)
-        .map(|row| row.streak_len)
+    let current_streak_days = runs
+        .last()
+        .filter(|(end, _)| *end == local_today || *end == local_yesterday)
+        .map(|(_, length)| *length)
         .unwrap_or(0);
 
-    let binge_row: Option<BingeDayRow> = sqlx::query_as(
-        "SELECT date(datetime(watched_at, printf('%+d minutes', -$3))) AS day, COUNT(*) AS count
-         FROM viewing_events
-         WHERE profile_id = $1 AND event_type IN ('watched','rewatched') AND watched_at >= $2
-         GROUP BY day
-         ORDER BY count DESC, day DESC
-         LIMIT 1",
-    )
-    .bind(profile_id)
-    .bind(since)
-    .bind(tz_offset_minutes)
-    .fetch_optional(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    // tz_offset_minutes is bound twice ($3, $4) rather than reusing $3 in
-    // both CAST expressions — sqlx/SQLite numbered parameters can be reused
-    // by number, but binding each occurrence explicitly avoids relying on
-    // that being the case here.
-    let heatmap_rows: Vec<HeatmapRow> = sqlx::query_as(
-        "SELECT CAST(strftime('%w', datetime(watched_at, printf('%+d minutes', -$3))) AS INTEGER) AS day_of_week,
-                CAST(strftime('%H', datetime(watched_at, printf('%+d minutes', -$4))) AS INTEGER) AS hour,
-                COUNT(*) AS count
-         FROM viewing_events
-         WHERE profile_id = $1 AND event_type IN ('watched','rewatched') AND watched_at >= $2
-         GROUP BY day_of_week, hour",
-    )
-    .bind(profile_id)
-    .bind(since)
-    .bind(tz_offset_minutes)
-    .bind(tz_offset_minutes)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    // Most watches in one local day; on a tie the more recent day.
+    let biggest_binge_day = per_day
+        .iter()
+        .max_by(|a, b| a.1.cmp(b.1).then_with(|| a.0.cmp(b.0)))
+        .map(|(day, count)| BiggestBingeDay {
+            day: day.format("%Y-%m-%d").to_string(),
+            count: *count,
+        });
 
     let mut heatmap = Vec::with_capacity(7 * 24);
     for day in 0..7 {
         for hour in 0..24 {
-            let count = heatmap_rows
-                .iter()
-                .find(|row| row.day_of_week == day && row.hour == hour)
-                .map(|row| row.count)
-                .unwrap_or(0);
-            heatmap.push(HeatmapBucket { day, hour, count });
+            heatmap.push(HeatmapBucket {
+                day,
+                hour,
+                count: heat.get(&(day, hour)).copied().unwrap_or(0),
+            });
         }
     }
 
     Ok(ActivityStats {
         current_streak_days,
         longest_streak_days,
-        biggest_binge_day: binge_row.map(|row| BiggestBingeDay {
-            day: row.day,
-            count: row.count,
-        }),
+        biggest_binge_day,
         heatmap,
     })
 }

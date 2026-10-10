@@ -12,9 +12,10 @@ import { logger } from "@/shared/lib/logger";
  * Rewatch analytics panel — builds beyond the existing "most rewatched"
  * record card (see stats-page.tsx's Records section) with a total count, a
  * share of all watches, a ranked comfort-title list, and a monthly trend.
- * Every figure here is deliberately event-log-based, not deduped to
- * current state: a rewatch is itself a historical action, so it stays
- * counted even if the title was later unwatched.
+ * Every figure comes from the `rewatched` events the app writes (an explicit
+ * "watch again", or a higher rewatch count saved in the library editor),
+ * under the same current-state rule as every other statistic: a rewatch
+ * cancelled by a later unwatch of its title is not counted.
  */
 export function RewatchAnalyticsSection() {
   const { t } = useTranslation();

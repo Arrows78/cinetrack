@@ -354,30 +354,159 @@ async fn assert_views_agree(app: &tauri::App<tauri::test::MockRuntime>, context:
         other => panic!("{context}: average rating presence mismatch {other:?}"),
     }
 
-    // --- Yearly activity is the historical diary: it must add up to the ---
-    // --- watch events actually logged, minute for minute. ------------------
+    // --- Every activity view counts the same current state ----------------
+    // The sequence logs every event on 2026-01-01 or -02 (UTC), so each seen
+    // title is one watch in January 2026 and the views below must all add up
+    // to the recounts from the progress tables — never to the raw log, which
+    // also holds the watches that were cancelled since.
+    let seen_total = movies_seen + episodes_seen;
+    let all_minutes = movie_minutes + episode_minutes;
+    let labels: Vec<String> = (1..=12).map(|month| format!("2026-{month:02}")).collect();
+
     let yearly = crate::stats::list_yearly_activity(0, app.state())
         .await
         .unwrap();
     assert_eq!(
         yearly.iter().map(|y| y.movies_watched).sum::<i64>(),
-        scalar(
-            pool_ref,
-            "SELECT COUNT(*) FROM viewing_events
-             WHERE event_type IN ('watched','rewatched') AND media_type = 'movie'"
-        )
-        .await,
-        "{context}: yearly movie events"
+        movies_seen,
+        "{context}: yearly movies"
+    );
+    assert_eq!(
+        yearly.iter().map(|y| y.episodes_watched).sum::<i64>(),
+        episodes_seen,
+        "{context}: yearly episodes"
     );
     assert_eq!(
         yearly.iter().map(|y| y.minutes_watched).sum::<i64>(),
-        scalar(
-            pool_ref,
-            "SELECT SUM(duration_minutes) FROM viewing_events
-             WHERE event_type IN ('watched','rewatched')"
-        )
-        .await,
+        all_minutes,
         "{context}: yearly minutes"
+    );
+
+    let monthly =
+        crate::stats::get_stats_overview(SINCE.to_string(), labels.clone(), 0, app.state())
+            .await
+            .unwrap()
+            .monthly_activity;
+    assert_eq!(
+        monthly.iter().map(|m| m.count).sum::<i64>(),
+        seen_total,
+        "{context}: monthly count"
+    );
+    assert_eq!(
+        monthly.iter().map(|m| m.minutes).sum::<i64>(),
+        all_minutes,
+        "{context}: monthly minutes"
+    );
+
+    let recap = crate::stats::get_monthly_recap(
+        "2026-01".to_string(),
+        "2026-01-01T00:00:00.000Z".to_string(),
+        "2026-02-01T00:00:00.000Z".to_string(),
+        0,
+        app.state(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(recap.movies_watched, movies_seen, "{context}: recap movies");
+    assert_eq!(
+        recap.episodes_watched, episodes_seen,
+        "{context}: recap episodes"
+    );
+    assert_eq!(
+        recap.minutes_watched, all_minutes,
+        "{context}: recap minutes"
+    );
+
+    let activity = crate::stats::get_activity_stats(
+        SINCE.to_string(),
+        "2026-01-02T12:00:00.000Z".to_string(),
+        0,
+        app.state(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        activity.heatmap.iter().map(|b| b.count).sum::<i64>(),
+        seen_total,
+        "{context}: heatmap total"
+    );
+    assert_eq!(
+        activity.biggest_binge_day.as_ref().map_or(0, |d| d.count),
+        seen_total,
+        "{context}: binge day size"
+    );
+    assert_eq!(
+        activity.longest_streak_days,
+        i64::from(seen_total > 0),
+        "{context}: longest streak"
+    );
+    assert_eq!(
+        activity.current_streak_days,
+        i64::from(seen_total > 0),
+        "{context}: current streak"
+    );
+
+    let recent = crate::stats::list_recent_viewing_events(SINCE.to_string(), app.state())
+        .await
+        .unwrap();
+    assert_eq!(recent.len() as i64, seen_total, "{context}: recent events");
+    let for_year = crate::stats::list_viewing_events_for_year(
+        "2026-01-01T00:00:00.000Z".to_string(),
+        "2027-01-01T00:00:00.000Z".to_string(),
+        app.state(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(for_year.len() as i64, seen_total, "{context}: year events");
+    let on_this_day = crate::stats::list_on_this_day_events(
+        "2027-01-01T12:00:00.000Z".to_string(),
+        0,
+        app.state(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        on_this_day.len() as i64,
+        seen_total,
+        "{context}: on this day"
+    );
+
+    let forecast_pace = crate::stats::get_watch_forecast(
+        SINCE.to_string(),
+        SINCE.to_string(),
+        NOW.to_string(),
+        app.state(),
+    )
+    .await
+    .unwrap()
+    .episodes_per_week;
+    let expected_pace = ((episodes_seen as f64 / (60.0 / 7.0)) * 10.0).round() / 10.0;
+    assert!(
+        (forecast_pace - expected_pace).abs() < 1e-9,
+        "{context}: pace {forecast_pace} vs {expected_pace}"
+    );
+
+    // A rated, currently seen title is one sample in the yearly average.
+    let rated_seen_titles = scalar(
+        pool_ref,
+        "SELECT COUNT(*) FROM library_items li
+         WHERE li.user_rating IS NOT NULL AND (
+           (li.media_type = 'movie' AND EXISTS (SELECT 1 FROM seen_movies m WHERE m.movie_id = li.media_id))
+           OR (li.media_type = 'series' AND EXISTS (
+                 SELECT 1 FROM episode_progress p WHERE p.series_id = li.media_id AND p.watched = 1)))",
+    )
+    .await;
+    let rating_samples: i64 =
+        crate::stats::get_rating_distribution(SINCE.to_string(), 0, app.state())
+            .await
+            .unwrap()
+            .average_by_year
+            .iter()
+            .map(|period| period.count)
+            .sum();
+    assert_eq!(
+        rating_samples, rated_seen_titles,
+        "{context}: rating samples"
     );
 
     // --- History and the watch log describe the same movie transitions ----

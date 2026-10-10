@@ -20,7 +20,7 @@ const PACE_WINDOW_DAYS = 60;
 // lifetime of events, no matter how long the app has been in use.
 const RECENT_EVENTS_WINDOW_DAYS = 400;
 
-/** Filter out "unwatched" rollbacks — only active watch events count. */
+/** Defensive: the Rust side already returns only the standing watches of the titles currently seen. */
 function activeEvents(events: ViewingEvent[]): ViewingEvent[] {
   return events.filter((event) => event.eventType !== "unwatched");
 }

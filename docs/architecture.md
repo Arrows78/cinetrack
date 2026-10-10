@@ -136,6 +136,18 @@ CineTrack is local-first: SQLite stays the source of truth for the device it's o
 
 `src/features/community/` (types + a Supabase-direct repository — `community-repository.ts` calls `community_profiles`/`community_reviews`/`community_follows`/`community_blocks`/`community_mutes`/`community_review_likes` and a `community_feed` RPC) and the privacy/moderation design in `docs/cloud-sync-community.md`'s "Community boundary" and "Community verification" sections exist as **backend preparation for a future social UI, not a shipped feature**. There is deliberately no Tauri command, no route, no page, and no `community.*` i18n namespace — the only consumer today is the module's own colocated test file. This is intentional groundwork, not dead code: the decision (as of this writing) is to keep it in place, undocumented as a "real" domain in the list above, until building the actual UI is scheduled.
 
+## Statistics semantics
+
+Every statistic counts the **current state** of what the viewer has seen, never the history of toggles. The rule lives in one place — `active_events_cte!` in `src-tauri/src/stats/queries/mod.rs`, run by `src-tauri/src/stats/queries/active_events.rs` — and every stats query reads through it:
+
+- A movie, or one episode, is **seen** when its latest event is a `watched` (or `rewatched`). One whose latest event is an `unwatched` is in **no** statistic: overview totals, monthly and yearly activity, the monthly recap, streaks, the heatmap, the binge day, the pace forecast, milestones, rating averages by month/year, "On this day", and the events behind the year summary (`list_recent_viewing_events`, `list_viewing_events_for_year`).
+- A watch → unwatch → watch cycle is **one** watch, dated at the last active watch (the unwatch cancelled the first one for good).
+- A `rewatched` event is an extra viewing of a title that stays seen. It never adds to the per-title counts above; it feeds only the rewatch statistics (and "On this day"), and an `unwatched` cancels the rewatches logged before it.
+
+Because every view reads the same set of rows, they cannot disagree: `src-tauri/src/stats/consistency_tests.rs` recounts the progress tables after every step of random action sequences and compares overview, monthly, yearly, recap, streaks, heatmap, forecast pace, milestones, rating samples and the events lists against that recount; `current_state_tests.rs` pins the cancelled and cycle cases view by view.
+
+The per-day/month/year/weekday/hour bucketing is done in Rust on the rows that query returns (SQLite has no time-zone database), through `LocalClock` in `src-tauri/src/stats/queries/local_time.rs`.
+
 ## Testing strategy
 
 - **Rust** (`cargo test`) exercises the crate-root domain slices directly against real, migrated SQLite pools — this is where service orchestration, cascades, transactions, query behavior, and multi-table invariants are proven, not just "does the call succeed."

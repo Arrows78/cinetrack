@@ -125,8 +125,8 @@ pub struct WatchForecast {
 #[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct MonthlyRecap {
     pub month: String,
-    // Historical breakdown: count every watched/rewatched event that fell in
-    // the month instead of deduping to the latest state of each title.
+    // The titles currently seen whose last active watch falls in the month
+    // (local calendar) — a watch cancelled since is not in it.
     pub movies_watched: i64,
     pub episodes_watched: i64,
     pub minutes_watched: i64,
@@ -148,8 +148,9 @@ pub struct ComfortTitle {
 #[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct RewatchStats {
     pub total_rewatches: i64,
-    /// Rewatches as a percentage of every watch event (`watched` +
-    /// `rewatched`), rounded to the nearest whole percent.
+    /// Rewatches as a percentage of every standing viewing (the titles
+    /// currently seen, once each, plus the rewatches), rounded to the
+    /// nearest whole percent.
     pub rewatch_share_percent: i64,
     pub favourite_comfort_titles: Vec<ComfortTitle>,
     pub rewatch_activity: Vec<MonthlyActivityBucket>,
@@ -178,7 +179,8 @@ pub struct RatingPeriodAverage {
 pub struct RatingDistribution {
     // Current-state: user_rating is one mutable value per title.
     pub distribution: Vec<RatingBucket>,
-    // Historical watch periods using the title's current rating value.
+    // The titles currently seen, grouped by the period of their last active
+    // watch, using the title's current rating value.
     pub average_by_month: Vec<RatingPeriodAverage>,
     pub average_by_year: Vec<RatingPeriodAverage>,
 }

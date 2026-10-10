@@ -1,6 +1,9 @@
+use chrono::Datelike;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
+use super::active_events::{fetch_active_rewatches, fetch_counted_watches};
+use super::local_time::LocalClock;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
@@ -95,81 +98,74 @@ impl ViewingEventRow {
     }
 }
 
+/// The seen titles' counted watches from `since` on (inclusive) — never a
+/// watch that was cancelled since; see `active_events`.
 pub(in crate::stats) async fn list_viewing_events_since_impl(
     pool: &SqlitePool,
     profile_id: &str,
     since: &str,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    let rows: Vec<ViewingEventRow> = sqlx::query_as(
-        "SELECT uuid, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number
-         FROM viewing_events WHERE profile_id = $1 AND watched_at >= $2",
-    )
-    .bind(profile_id)
-    .bind(since)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    rows.into_iter()
+    fetch_counted_watches(pool, profile_id, Some(since), None)
+        .await?
+        .into_iter()
         .map(|row| row.into_event(profile_id))
         .collect()
 }
 
+/// The seen titles' counted watches inside `[range_start, range_end)` —
+/// what the yearly "wrapped" summary aggregates.
 pub(in crate::stats) async fn list_viewing_events_for_year_impl(
     pool: &SqlitePool,
     profile_id: &str,
     range_start: &str,
     range_end: &str,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    let rows: Vec<ViewingEventRow> = sqlx::query_as(
-        "SELECT uuid, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number
-         FROM viewing_events WHERE profile_id = $1 AND watched_at >= $2 AND watched_at < $3",
-    )
-    .bind(profile_id)
-    .bind(range_start)
-    .bind(range_end)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
-
-    rows.into_iter()
+    fetch_counted_watches(pool, profile_id, Some(range_start), Some(range_end))
+        .await?
+        .into_iter()
         .map(|row| row.into_event(profile_id))
         .collect()
 }
 
-/// Powers the opt-in "On this day" Home card: every `watched`/`rewatched`
-/// event whose `watched_at` falls on the same month-day as `today` in a
-/// strictly earlier year — never the current year, never a future one —
-/// most recent year first. `today` is an ISO instant computed client-side
-/// (mirroring how `list_viewing_events_for_year`'s range bounds above are
-/// computed client-side) rather than read from SQLite's own `now()`, so this
-/// stays deterministically testable and immune to whatever timezone the
-/// SQLite build happens to be running under.
+/// Powers the opt-in "On this day" Home card: every standing watch (a seen
+/// title's counted watch, or a rewatch that was not cancelled) whose
+/// `watched_at` falls on the same local month-day as `today` in a strictly
+/// earlier local year — never the current year, never a future one — most
+/// recent first. `today` is an ISO instant computed client-side (mirroring
+/// how `list_viewing_events_for_year`'s range bounds above are computed
+/// client-side) rather than read from the clock, so this stays
+/// deterministically testable.
 pub(in crate::stats) async fn list_on_this_day_events_impl(
     pool: &SqlitePool,
     profile_id: &str,
     today: &str,
-    tz_offset_minutes: i64,
+    clock: impl Into<LocalClock>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
-    let rows: Vec<ViewingEventRow> = sqlx::query_as(
-        "SELECT uuid, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number
-         FROM viewing_events
-         WHERE profile_id = $1
-           AND event_type IN ('watched','rewatched')
-           AND strftime('%m-%d', datetime(watched_at, printf('%+d minutes', -$3)))
-             = strftime('%m-%d', datetime($2, printf('%+d minutes', -$3)))
-           AND strftime('%Y', datetime(watched_at, printf('%+d minutes', -$3)))
-             < strftime('%Y', datetime($2, printf('%+d minutes', -$3)))
-         ORDER BY watched_at DESC",
-    )
-    .bind(profile_id)
-    .bind(today)
-    .bind(tz_offset_minutes)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    let clock = clock.into();
+    let local_today = clock.day(today)?;
+    let (watches, rewatches) = tokio::try_join!(
+        fetch_counted_watches(pool, profile_id, None, None),
+        fetch_active_rewatches(pool, profile_id),
+    )?;
 
-    rows.into_iter()
+    let mut matching = Vec::new();
+    for row in watches.into_iter().chain(rewatches) {
+        let day = clock.day(&row.watched_at)?;
+        if day.month() == local_today.month()
+            && day.day() == local_today.day()
+            && day.year() < local_today.year()
+        {
+            matching.push(row);
+        }
+    }
+    matching.sort_by(|a, b| {
+        b.watched_at
+            .cmp(&a.watched_at)
+            .then_with(|| a.uuid.cmp(&b.uuid))
+    });
+
+    matching
+        .into_iter()
         .map(|row| row.into_event(profile_id))
         .collect()
 }

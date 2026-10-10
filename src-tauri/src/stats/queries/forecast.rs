@@ -51,16 +51,20 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
     .map_err(ApiError::from)?;
     let backlog_episodes = backlog_row.backlog_episodes;
 
+    // Both figures read the episodes currently seen (see `active_events`): a
+    // cancelled watch is neither a runtime sample nor part of the pace.
+    //
     // Average runtime is drawn from the same bounded recent-events window as
     // activity stats (`since`, ~400 days) — not further restricted to the
     // 60-day pace window below, matching the pre-migration TS behavior.
-    let runtime_rows: Vec<RuntimeRow> = sqlx::query_as(
-        "SELECT duration_minutes
-         FROM viewing_events
-         WHERE profile_id = $1 AND event_type IN ('watched','rewatched')
+    let runtime_rows: Vec<RuntimeRow> = sqlx::query_as(concat!(
+        active_events_cte!(),
+        " SELECT duration_minutes
+         FROM counted
+         WHERE rk = 1
            AND episode_id IS NOT NULL AND watched_at >= $2
-           AND duration_minutes IS NOT NULL AND duration_minutes > 0",
-    )
+           AND duration_minutes IS NOT NULL AND duration_minutes > 0"
+    ))
     .bind(profile_id)
     .bind(since)
     .fetch_all(pool)
@@ -77,12 +81,13 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
             / runtime_rows.len() as f64
     };
 
-    let recent_count_row: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*)
-         FROM viewing_events
-         WHERE profile_id = $1 AND event_type IN ('watched','rewatched')
-           AND episode_id IS NOT NULL AND watched_at >= $2",
-    )
+    let recent_count_row: (i64,) = sqlx::query_as(concat!(
+        active_events_cte!(),
+        " SELECT COUNT(*)
+         FROM counted
+         WHERE rk = 1
+           AND episode_id IS NOT NULL AND watched_at >= $2"
+    ))
     .bind(profile_id)
     .bind(pace_window_start)
     .fetch_one(pool)

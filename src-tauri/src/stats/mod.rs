@@ -4,6 +4,8 @@ use sqlx::SqlitePool;
 mod commands;
 #[cfg(test)]
 mod consistency_tests;
+#[cfg(test)]
+mod current_state_tests;
 mod models;
 #[cfg(test)]
 mod performance;
@@ -194,6 +196,15 @@ mod tests {
         assert_eq!(events[0].note, None);
     }
 
+    /// A stable, distinct title id per event uuid: a fixture that logs many
+    /// events must not accidentally log them all against one title now that
+    /// the statistics count the current state of each title.
+    fn title_of(uuid: &str) -> i64 {
+        uuid.bytes().fold(1000_i64, |acc, byte| {
+            (acc * 31 + i64::from(byte)) % 1_000_000
+        }) + 1000
+    }
+
     async fn insert_event(
         pool: &SqlitePool,
         uuid: &str,
@@ -203,11 +214,38 @@ mod tests {
         duration_minutes: Option<i64>,
         episode_id: Option<i64>,
     ) {
+        insert_event_for(
+            pool,
+            title_of(uuid),
+            uuid,
+            watched_at,
+            event_type,
+            media_type,
+            duration_minutes,
+            episode_id,
+        )
+        .await;
+    }
+
+    /// Like `insert_event`, against an explicit title — for the fixtures
+    /// whose point is several events of the same title (watch, unwatch...).
+    #[allow(clippy::too_many_arguments)]
+    async fn insert_event_for(
+        pool: &SqlitePool,
+        media_id: i64,
+        uuid: &str,
+        watched_at: &str,
+        event_type: &str,
+        media_type: &str,
+        duration_minutes: Option<i64>,
+        episode_id: Option<i64>,
+    ) {
         sqlx::query(
             "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, created_at)
-             VALUES ($1, 'default', 1, $2, 'Test', $3, $4, $5, $6, $4)",
+             VALUES ($1, 'default', $2, $3, 'Test', $4, $5, $6, $7, $5)",
         )
         .bind(uuid)
+        .bind(media_id)
         .bind(media_type)
         .bind(event_type)
         .bind(watched_at)
@@ -970,8 +1008,9 @@ mod tests {
         )
         .await;
 
-        insert_event(
+        insert_event_for(
             &pool,
+            1,
             "movie-1",
             "2026-03-05T00:00:00.000Z",
             "watched",
@@ -988,8 +1027,9 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-        insert_event(
+        insert_event_for(
             &pool,
+            3,
             "movie-3",
             "2026-02-20T00:00:00.000Z",
             "watched",
@@ -1033,15 +1073,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn monthly_recap_still_counts_a_watch_later_unwatched_in_the_same_month() {
-        // Unlike get_stats_overview's current-state headline totals, a
-        // monthly recap is a historical breakdown (like Wrapped/monthly
-        // activity) — "I watched this movie in March" stays true even if it
-        // was unwatched later that same month, so this must NOT dedupe to
-        // "the latest event only" the way stats_overview does.
+    async fn monthly_recap_does_not_count_a_watch_that_was_unwatched_later() {
+        // The statistics count the current state: a movie whose latest event
+        // is an unwatch is in no figure, whatever month the watch was in.
         let pool = migrated_pool().await;
-        insert_event(
+        insert_event_for(
             &pool,
+            7,
             "watch",
             "2026-03-01T00:00:00.000Z",
             "watched",
@@ -1050,8 +1088,9 @@ mod tests {
             None,
         )
         .await;
-        insert_event(
+        insert_event_for(
             &pool,
+            7,
             "unwatch",
             "2026-03-02T00:00:00.000Z",
             "unwatched",
@@ -1072,10 +1111,48 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(
-            recap.movies_watched, 1,
-            "the watch that happened this month must still be reflected, even though it was later unwatched"
-        );
+        assert_eq!(recap.movies_watched, 0);
+        assert_eq!(recap.minutes_watched, 0);
+        assert_eq!(recap.biggest_binge_day, None);
+    }
+
+    #[tokio::test]
+    async fn monthly_recap_dates_a_rewatched_cycle_at_the_last_active_watch() {
+        // watch (March) -> unwatch (March) -> watch (April): one watch, in
+        // April, so the March recap is empty and April's has it once.
+        let pool = migrated_pool().await;
+        for (uuid, at, kind) in [
+            ("w1", "2026-03-01T00:00:00.000Z", "watched"),
+            ("u1", "2026-03-02T00:00:00.000Z", "unwatched"),
+            ("w2", "2026-04-03T00:00:00.000Z", "watched"),
+        ] {
+            insert_event_for(&pool, 7, uuid, at, kind, "movie", Some(100), None).await;
+        }
+
+        let march = get_monthly_recap_impl(
+            &pool,
+            "default",
+            "2026-03",
+            "2026-03-01T00:00:00.000Z",
+            "2026-04-01T00:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+        let april = get_monthly_recap_impl(
+            &pool,
+            "default",
+            "2026-04",
+            "2026-04-01T00:00:00.000Z",
+            "2026-05-01T00:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(march.movies_watched, 0);
+        assert_eq!(april.movies_watched, 1);
+        assert_eq!(april.minutes_watched, 100);
     }
 
     #[tokio::test]
@@ -1114,8 +1191,9 @@ mod tests {
     async fn every_calendar_bucket_uses_the_viewers_local_day() {
         let pool = migrated_pool().await;
         // 00:30 on Jan 1 2026 in Paris (UTC+1, getTimezoneOffset() = -60).
-        insert_event(
+        insert_event_for(
             &pool,
+            1,
             "nye",
             "2025-12-31T23:30:00.000Z",
             "watched",
@@ -1232,42 +1310,17 @@ mod tests {
     // -----------------------------------------------------------------
 
     #[tokio::test]
-    async fn rewatch_stats_counts_every_rewatched_event_even_after_a_later_unwatch() {
-        // A rewatch is a historical action, not reversible state like
-        // "watched" — total_rewatches must stay a raw count of every
-        // `rewatched` row ever logged, unlike get_stats_overview's headline
-        // totals which dedupe to the latest event only.
+    async fn rewatch_stats_drop_a_rewatch_cancelled_by_a_later_unwatch() {
+        // Same current-state rule as every other statistic: unwatching the
+        // title cancels the watch and the rewatches logged before it.
         let pool = migrated_pool().await;
-        insert_event(
-            &pool,
-            "watch",
-            "2026-01-01T00:00:00.000Z",
-            "watched",
-            "movie",
-            Some(100),
-            None,
-        )
-        .await;
-        insert_event(
-            &pool,
-            "rewatch",
-            "2026-01-05T00:00:00.000Z",
-            "rewatched",
-            "movie",
-            Some(100),
-            None,
-        )
-        .await;
-        insert_event(
-            &pool,
-            "unwatch",
-            "2026-01-10T00:00:00.000Z",
-            "unwatched",
-            "movie",
-            Some(100),
-            None,
-        )
-        .await;
+        for (uuid, at, kind) in [
+            ("watch", "2026-01-01T00:00:00.000Z", "watched"),
+            ("rewatch", "2026-01-05T00:00:00.000Z", "rewatched"),
+            ("unwatch", "2026-01-10T00:00:00.000Z", "unwatched"),
+        ] {
+            insert_event_for(&pool, 7, uuid, at, kind, "movie", Some(100), None).await;
+        }
 
         let stats = get_rewatch_stats_impl(
             &pool,
@@ -1279,10 +1332,37 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(
-            stats.total_rewatches, 1,
-            "the rewatch must still count even though the title was later unwatched"
-        );
+        assert_eq!(stats.total_rewatches, 0);
+        assert_eq!(stats.rewatch_share_percent, 0);
+        assert!(stats.favourite_comfort_titles.is_empty());
+    }
+
+    #[tokio::test]
+    async fn rewatch_stats_count_a_rewatch_logged_after_the_last_unwatch() {
+        let pool = migrated_pool().await;
+        for (uuid, at, kind) in [
+            ("watch", "2026-01-01T00:00:00.000Z", "watched"),
+            ("unwatch", "2026-01-02T00:00:00.000Z", "unwatched"),
+            ("watch-again", "2026-01-03T00:00:00.000Z", "watched"),
+            ("rewatch", "2026-01-05T00:00:00.000Z", "rewatched"),
+        ] {
+            insert_event_for(&pool, 7, uuid, at, kind, "movie", Some(100), None).await;
+        }
+
+        let stats = get_rewatch_stats_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            &["2026-01".to_string()],
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.total_rewatches, 1);
+        // One standing first watch + one rewatch: half of the viewings.
+        assert_eq!(stats.rewatch_share_percent, 50);
+        assert_eq!(stats.rewatch_activity[0].count, 1);
     }
 
     #[tokio::test]
@@ -1592,8 +1672,9 @@ mod tests {
             None,
         )
         .await;
-        insert_event(
+        insert_event_for(
             &pool,
+            1,
             "old",
             "2020-01-01T00:00:00.000Z",
             "watched",

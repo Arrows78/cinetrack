@@ -25,11 +25,10 @@ function shiftMonth(month: string, delta: number): string {
 }
 
 /**
- * Monthly recap panel for the Stats page — like Wrapped, this is a
- * historical breakdown ("what did I watch this month") rather than a
- * current-state total, so it counts every watched/rewatched event that fell
- * in the selected month, not a dedupe-to-latest-event total the way the
- * headline stats cards above it are.
+ * Monthly recap panel for the Stats page ("what did I watch this month"):
+ * the titles currently seen whose last active watch falls in the selected
+ * local month. Same rule as the headline cards and the monthly chart, so a
+ * watch cancelled since is in none of them and the figures add up.
  */
 export function MonthlyRecapSection() {
   const { t, i18n } = useTranslation();

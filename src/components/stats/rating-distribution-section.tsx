@@ -12,10 +12,10 @@ const roundToOneDecimal = (value: number) => Math.round(value * 10) / 10;
  * Rating distribution & evolution panel. `distribution` reads
  * library_items.user_rating current-state — a changed rating is reflected
  * immediately, since the schema keeps no history of past values.
- * `averageByMonth`/`averageByYear` are historical breakdowns instead (same
- * exception as the Stats page's other monthly/yearly activity charts):
- * which month a title was watched in doesn't change in hindsight, even
- * though the rating read for it is always the title's current rating.
+ * `averageByMonth`/`averageByYear` group the titles currently seen by the
+ * month/year of their last active watch (the same rule as every other
+ * statistic: a watch that was cancelled counts nowhere), using each
+ * title's current rating.
  */
 export function RatingDistributionSection() {
   const { t } = useTranslation();

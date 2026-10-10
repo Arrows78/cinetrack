@@ -20,20 +20,13 @@ async fn fetch_current_watch_events(
     pool: &SqlitePool,
     profile_id: &str,
 ) -> Result<Vec<CurrentEventRow>, ApiError> {
-    sqlx::query_as(
-        "WITH latest_events AS (
-           SELECT media_type, episode_id, event_type, watched_at, duration_minutes,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY media_id, media_type, episode_id
-                    ORDER BY watched_at DESC, created_at DESC
-                  ) AS rn
-           FROM viewing_events WHERE profile_id = $1
-         )
-         SELECT media_type, episode_id, watched_at, duration_minutes
-         FROM latest_events
-         WHERE rn = 1 AND event_type IN ('watched','rewatched')
-         ORDER BY watched_at ASC",
-    )
+    sqlx::query_as(concat!(
+        active_events_cte!(),
+        " SELECT media_type, episode_id, watched_at, duration_minutes
+         FROM counted
+         WHERE rk = 1
+         ORDER BY watched_at ASC, uuid ASC"
+    ))
     .bind(profile_id)
     .fetch_all(pool)
     .await
