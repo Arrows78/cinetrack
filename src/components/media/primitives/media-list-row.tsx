@@ -7,7 +7,7 @@ import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { useMovieSeen } from "@/features/progress/use-progress";
-import { buildTmdbImageUrl, formatRating } from "@/shared/utils/format";
+import { buildTmdbImageUrl, formatRating, percent as percentOf } from "@/shared/utils/format";
 import { progressBarTone } from "@/shared/utils/series-status";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
@@ -45,7 +45,7 @@ export function MediaListRow({
   // gabarit asked for a logo-sized source rather than a real poster.
   const image = buildTmdbImageUrl(media.posterPath, "w185") ?? fallbackPoster;
   const showProgress = progress !== undefined && progress.total > 0;
-  const percent = showProgress ? Math.min(100, Math.round((progress.watched / progress.total) * 100)) : 0;
+  const percent = showProgress ? percentOf(progress.watched, progress.total) : 0;
   const tone = showProgress ? progressBarTone(progress.watched, progress.total, progress.seriesStatus) : null;
   const showFinishedBar = !showProgress && alreadySeen;
 

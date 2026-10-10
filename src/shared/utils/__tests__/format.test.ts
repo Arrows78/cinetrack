@@ -236,6 +236,19 @@ describe("percent", () => {
     expect(percent(2, 3)).toBe(67);
     expect(percent(5, 0)).toBe(0);
   });
+
+  it("never shows 100% before everything is done, nor 0% once something is", () => {
+    expect(percent(199, 200)).toBe(99);
+    expect(percent(999, 1000)).toBe(99);
+    expect(percent(1, 300)).toBe(1);
+    expect(percent(200, 200)).toBe(100);
+    expect(percent(0, 200)).toBe(0);
+  });
+
+  it("stays within 0-100 for out-of-range counts", () => {
+    expect(percent(8, 6)).toBe(100);
+    expect(percent(-1, 6)).toBe(0);
+  });
 });
 
 describe("pluralize", () => {

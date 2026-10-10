@@ -194,7 +194,13 @@ export const formatWatchDurationBreakdown = (minutes: number): string => {
   return parts.join(" ");
 };
 
-export const percent = (value: number, total: number) => (total === 0 ? 0 : Math.round((value / total) * 100));
+// Rounded, but never a misleading edge: 199/200 is 99%, not "100%" (which
+// reads as complete), and 1/300 is 1%, not "0%" (which reads as untouched).
+export const percent = (value: number, total: number) => {
+  if (total <= 0 || value <= 0) return 0;
+  if (value >= total) return 100;
+  return Math.min(99, Math.max(1, Math.round((value / total) * 100)));
+};
 
 export const pluralize = (value: number, one: string, many: string) => (value > 1 ? many : one);
 

@@ -152,6 +152,31 @@ describe("progress-utils", () => {
   });
 });
 
+describe("calculateSeriesProgress percentages", () => {
+  it("shows 99%, not 100%, with one episode of 200 still to watch", () => {
+    const episodes = Array.from({ length: 200 }, (_, index) => episode({ id: index + 1, episodeNumber: index + 1 }));
+    const now = new Date().toISOString();
+    const watched: EpisodeProgress[] = episodes.slice(0, 199).map((item) => ({
+      id: String(item.id),
+      profileId: null,
+      seriesId: 9,
+      episodeId: item.id,
+      seasonNumber: 1,
+      episodeNumber: item.episodeNumber,
+      watched: true,
+      watchedAt: null,
+      createdAt: now,
+      updatedAt: now,
+      rating: null,
+    }));
+
+    const progress = calculateSeriesProgress(9, [season(episodes)], watched);
+
+    expect(progress.progressPercent).toBe(99);
+    expect(progress.seasons[0]?.progressPercent).toBe(99);
+  });
+});
+
 describe("hasAired", () => {
   afterEach(() => {
     vi.useRealTimers();
