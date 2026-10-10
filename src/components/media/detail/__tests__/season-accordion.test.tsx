@@ -277,6 +277,20 @@ describe("SeasonAccordion", () => {
     }
   });
 
+  it("still offers to mark a long season watched when one episode is left, even though it rounds to 100%", () => {
+    const longEpisodes = Array.from({ length: 200 }, (_, index) =>
+      makeEpisode(5000 + index, 5, index + 1, `S5E${index + 1}`)
+    );
+    const longSeason = makeSeason(5, "Season Five", longEpisodes);
+    const progress = longEpisodes.slice(0, 199).map((ep) => makeProgress(ep.id, 5, ep.episodeNumber));
+    const { onToggleSeason } = renderAccordion({ seasons: [longSeason], watchedEpisodes: progress });
+    openSeason("Season Five");
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark season as watched" }));
+
+    expect(onToggleSeason).toHaveBeenCalledWith(expect.objectContaining({ seasonNumber: 5 }), true);
+  });
+
   it("marks a completed season as unwatched with no confetti", () => {
     vi.useFakeTimers();
     try {

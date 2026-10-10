@@ -128,7 +128,12 @@ export function SeasonAccordion({
         {seasons.map((season) => {
           const seasonProgress = progress.seasons.find((item) => item.seasonNumber === season.seasonNumber);
           const pct = seasonProgress?.progressPercent ?? 0;
-          const isComplete = pct >= 100;
+          // From the counts, not the rounded percent: 199/200 rounds to 100%,
+          // which offered "mark season unseen" and wiped 199 episodes.
+          const isComplete =
+            !!seasonProgress &&
+            seasonProgress.totalEpisodes > 0 &&
+            seasonProgress.watchedEpisodes >= seasonProgress.totalEpisodes;
 
           return (
             <AccordionItem
@@ -167,17 +172,17 @@ export function SeasonAccordion({
               <AccordionContent className="rounded-b-2xl border border-t-0 border-border bg-foreground/[0.02] px-4 pb-4">
                 <div className="flex flex-wrap items-center gap-2 py-3">
                   <Button
-                    variant={pct === 100 ? "outline" : "secondary"}
+                    variant={isComplete ? "outline" : "secondary"}
                     size="sm"
                     onClick={() => {
-                      const newWatched = pct !== 100;
+                      const newWatched = !isComplete;
                       void onToggleSeason(season, newWatched);
-                      if (newWatched && pct < 100) setTimeout(celebrate, CONFETTI_DELAY_MS);
+                      if (newWatched) setTimeout(celebrate, CONFETTI_DELAY_MS);
                     }}
                     disabled={isSaving}
                   >
                     <CheckCheck className="h-4 w-4" />
-                    {pct === 100 ? t("series.markSeasonUnseen") : t("series.markSeasonSeen")}
+                    {isComplete ? t("series.markSeasonUnseen") : t("series.markSeasonSeen")}
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
                     <Link
