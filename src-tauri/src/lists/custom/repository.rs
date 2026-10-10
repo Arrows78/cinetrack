@@ -407,4 +407,117 @@ mod tests {
         );
         assert_eq!(list_impl(&pool, "default").await.unwrap().len(), 1);
     }
+
+    /// Tiny seeded generator so a failure is reproducible from its seed.
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self, bound: u64) -> u64 {
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (self.0 >> 33) % bound
+        }
+    }
+
+    #[tokio::test]
+    async fn random_add_remove_sequences_keep_every_list_consistent() {
+        use std::collections::BTreeSet;
+
+        for seed in [1_u64, 7, 42, 2026] {
+            let pool = migrated_pool().await;
+            let mut rng = Lcg(seed);
+            let lists = [
+                create_impl(&pool, "default", "A", None).await.unwrap(),
+                create_impl(&pool, "default", "B", None).await.unwrap(),
+                create_impl(&pool, "default", "C", None).await.unwrap(),
+            ];
+            // What each list should hold, as (media_id, is_series).
+            let mut model: Vec<BTreeSet<(i64, bool)>> = vec![BTreeSet::new(); lists.len()];
+            let mut removed_lists = vec![false; lists.len()];
+
+            for _ in 0..120 {
+                let list_index = rng.next(lists.len() as u64) as usize;
+                let media_id = rng.next(6) as i64 + 1;
+                let is_series = rng.next(2) == 1;
+                let media_type = if is_series {
+                    MediaType::Series
+                } else {
+                    MediaType::Movie
+                };
+                let list_id = &lists[list_index].id;
+
+                match rng.next(10) {
+                    0..=5 => {
+                        let result = add_impl(
+                            &pool,
+                            "default",
+                            list_id,
+                            MediaSummaryInput {
+                                id: media_id,
+                                media_type,
+                                title: format!("Title {media_id}"),
+                                poster_path: None,
+                            },
+                        )
+                        .await;
+                        if removed_lists[list_index] {
+                            assert!(result.is_err(), "seed {seed}: add to a removed list");
+                        } else {
+                            result.unwrap();
+                            model[list_index].insert((media_id, is_series));
+                        }
+                    }
+                    6..=8 => {
+                        let result =
+                            remove_item_impl(&pool, "default", list_id, media_id, media_type).await;
+                        if removed_lists[list_index] {
+                            assert!(result.is_err());
+                        } else {
+                            result.unwrap();
+                            model[list_index].remove(&(media_id, is_series));
+                        }
+                    }
+                    _ => {
+                        // Rarely drop a whole list; removing twice must fail
+                        // cleanly, never touch another list.
+                        let result = remove_impl(&pool, "default", list_id).await;
+                        if removed_lists[list_index] {
+                            assert!(result.is_err());
+                        } else {
+                            result.unwrap();
+                            removed_lists[list_index] = true;
+                            model[list_index].clear();
+                        }
+                    }
+                }
+
+                // Invariants, checked after every single step.
+                for (index, list) in lists.iter().enumerate() {
+                    if removed_lists[index] {
+                        continue;
+                    }
+                    let items = items_impl(&pool, "default", &list.id).await.unwrap();
+                    let held: BTreeSet<(i64, bool)> = items
+                        .iter()
+                        .map(|item| (item.media_id, item.media_type == MediaType::Series))
+                        .collect();
+                    assert_eq!(held, model[index], "seed {seed}: list {index} content");
+                    assert_eq!(held.len(), items.len(), "seed {seed}: duplicate in list");
+                    let positions: Vec<i64> = items.iter().map(|item| item.position).collect();
+                    assert!(
+                        positions.windows(2).all(|pair| pair[0] < pair[1]),
+                        "seed {seed}: positions not strictly increasing: {positions:?}"
+                    );
+                }
+                let (orphans,): (i64,) = sqlx::query_as(
+                    "SELECT COUNT(*) FROM custom_list_items WHERE list_id NOT IN (SELECT uuid FROM custom_lists)",
+                )
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+                assert_eq!(orphans, 0, "seed {seed}: orphaned items");
+            }
+        }
+    }
 }
