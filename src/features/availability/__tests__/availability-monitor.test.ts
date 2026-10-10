@@ -69,6 +69,24 @@ describe("availabilityMonitor.checkAll", () => {
     mocks.getSnapshot.mockResolvedValue(snapshot([]));
   });
 
+  it("notifies once when two checks overlap", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mocks.getWatchAvailability.mockImplementation(async () => {
+      await gate;
+      return availability([8]);
+    });
+
+    const first = availabilityMonitor.checkAll({ alertsEnabled: true });
+    const second = availabilityMonitor.checkAll({ alertsEnabled: true });
+    release();
+    await Promise.all([first, second]);
+
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+  });
+
   it("sends a notification when a new provider appears and notifications are enabled", async () => {
     const outcome = await availabilityMonitor.checkAll({ alertsEnabled: true });
 

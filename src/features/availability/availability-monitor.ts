@@ -13,24 +13,41 @@ export interface AvailabilityCheckOutcome {
   checked: number;
 }
 
+interface CheckAllOptions {
+  alertsEnabled?: boolean;
+  // Independent of alertsEnabled: alertsEnabled decides whether *this
+  // category* is eligible to notify at all, this decides whether any
+  // notification is allowed to pop as an OS desktop toast — same split as
+  // notification-service.ts's notifyDue for calendar reminders.
+  desktopNotificationsEnabled?: boolean;
+  // Falls back to the profile's own preferred streaming services when an
+  // alert has none of its own selected — previously fell back to "every
+  // platform", so an alert with no explicit provider notified for a
+  // service the user doesn't even subscribe to.
+  preferredProviderIds?: number[];
+}
+
+// The boot-time check and the recurring interval can overlap (a slow TMDB
+// run outlasting the interval): a second pass reading the snapshots before
+// the first wrote them back would notify for the same new provider again.
+// An overlapping call joins the pass already running.
+let inFlight: Promise<AvailabilityCheckOutcome> | null = null;
+
 export const availabilityMonitor = {
-  async checkAll({
+  checkAll(options: CheckAllOptions = {}): Promise<AvailabilityCheckOutcome> {
+    if (inFlight) return inFlight;
+    const run = this.runCheck(options).finally(() => {
+      inFlight = null;
+    });
+    inFlight = run;
+    return run;
+  },
+
+  async runCheck({
     alertsEnabled = true,
     desktopNotificationsEnabled = true,
     preferredProviderIds = [],
-  }: {
-    alertsEnabled?: boolean;
-    // Independent of alertsEnabled: alertsEnabled decides whether *this
-    // category* is eligible to notify at all, this decides whether any
-    // notification is allowed to pop as an OS desktop toast — same split as
-    // notification-service.ts's notifyDue for calendar reminders.
-    desktopNotificationsEnabled?: boolean;
-    // Falls back to the profile's own preferred streaming services when an
-    // alert has none of its own selected — previously fell back to "every
-    // platform", so an alert with no explicit provider notified for a
-    // service the user doesn't even subscribe to.
-    preferredProviderIds?: number[];
-  } = {}): Promise<AvailabilityCheckOutcome> {
+  }: CheckAllOptions): Promise<AvailabilityCheckOutcome> {
     const alerts = (await availabilityRepository.listAlerts()).filter((item) => item.enabled);
     let changes = 0;
     let failures = 0;
