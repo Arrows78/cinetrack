@@ -2,6 +2,8 @@
 use sqlx::SqlitePool;
 
 mod commands;
+#[cfg(test)]
+mod consistency_tests;
 mod models;
 #[cfg(test)]
 mod performance;
