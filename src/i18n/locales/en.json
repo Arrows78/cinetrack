@@ -1011,6 +1011,8 @@
       "minRatingPlaceholder": "e.g. 8",
       "providerLabel": "Streaming service",
       "hasEpisodeWaitingLabel": "Series with episodes waiting",
+      "maxRuntimeInvalid": "Max runtime must be at least 1 minute.",
+      "minRatingInvalid": "Minimum rating must be between 0 and 10.",
       "previewCountLoading": "Counting matches…",
       "previewCountError": "Couldn't count matches for these rules.",
       "previewCount_one": "{{count}} match in your library",

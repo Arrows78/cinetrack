@@ -22,6 +22,29 @@ export const DEFAULT_SMART_LIST_RULES: SmartListRules = {
   hasEpisodeWaiting: false,
 };
 
+export const SMART_LIST_MAX_RATING = 10;
+
+export type SmartListRulesProblem = "maxRuntimeInvalid" | "minRatingInvalid";
+
+/**
+ * Bounds the rule form must respect: a runtime cap needs at least one minute
+ * and a minimum rating lives on the 0–10 scale TMDB and the library editor
+ * share. Anything outside would be a rule that can never match, saved
+ * without a word. Rust deliberately never inspects rule fields (see
+ * lists::smart::models), so this is the one place the numbers are checked.
+ */
+export function findSmartListRulesProblems(rules: SmartListRules): SmartListRulesProblem[] {
+  const problems: SmartListRulesProblem[] = [];
+  const { maxRuntimeMinutes, minRating } = rules;
+  if (maxRuntimeMinutes != null && !(Number.isFinite(maxRuntimeMinutes) && maxRuntimeMinutes >= 1)) {
+    problems.push("maxRuntimeInvalid");
+  }
+  if (minRating != null && !(Number.isFinite(minRating) && minRating >= 0 && minRating <= SMART_LIST_MAX_RATING)) {
+    problems.push("minRatingInvalid");
+  }
+  return problems;
+}
+
 /** Everything matchesSmartListRules needs beyond the rule set and the item itself — one bundle per evaluation pass, built once by the caller rather than looked up per item. */
 export interface SmartListEvalContext {
   trackedSeriesBySeriesId: Map<number, TrackedSeriesItem>;

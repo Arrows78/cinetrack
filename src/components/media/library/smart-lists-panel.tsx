@@ -13,6 +13,7 @@ import { LoadingState } from "@/components/states/loading-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import {
   DEFAULT_SMART_LIST_RULES,
+  findSmartListRulesProblems,
   NO_SMART_LIST_SELECTED,
   SMART_LIST_PROVIDER_ANY,
   SMART_LIST_PROVIDER_MINE,
@@ -53,6 +54,8 @@ function SmartListForm({
   // count a user sees while building the list is the same one they'd get
   // once it's saved and selected.
   const preview = useSmartListMatches(rules);
+
+  const problems = findSmartListRulesProblems(rules);
 
   const providerValue =
     rules.provider === SMART_LIST_PROVIDER_ANY || rules.provider === SMART_LIST_PROVIDER_MINE
@@ -136,6 +139,7 @@ function SmartListForm({
                 }))
               }
               placeholder={t("library.smartLists.maxRuntimePlaceholder")}
+              aria-invalid={problems.includes("maxRuntimeInvalid") || undefined}
             />
           )}
         </FormField>
@@ -155,6 +159,7 @@ function SmartListForm({
                 }))
               }
               placeholder={t("library.smartLists.minRatingPlaceholder")}
+              aria-invalid={problems.includes("minRatingInvalid") || undefined}
             />
           )}
         </FormField>
@@ -189,6 +194,11 @@ function SmartListForm({
         pressed={rules.hasEpisodeWaiting}
         onPressedChange={() => setRules((current) => ({ ...current, hasEpisodeWaiting: !current.hasEpisodeWaiting }))}
       />
+      {problems.map((problem) => (
+        <p key={problem} role="alert" className="text-body-sm text-destructive">
+          {t(`library.smartLists.${problem}`)}
+        </p>
+      ))}
       <p className="text-body-sm text-muted-foreground" aria-live="polite">
         {preview.isLoading
           ? t("library.smartLists.previewCountLoading")
@@ -197,7 +207,11 @@ function SmartListForm({
             : t("library.smartLists.previewCount", { count: preview.items.length })}
       </p>
       <div className="flex gap-2">
-        <Button type="button" disabled={!name.trim() || isSaving} onClick={() => onSubmit(name, rules)}>
+        <Button
+          type="button"
+          disabled={!name.trim() || isSaving || problems.length > 0}
+          onClick={() => onSubmit(name, rules)}
+        >
           <ListPlus className="mr-2 size-4" />
           {submitLabel}
         </Button>
@@ -228,6 +242,10 @@ export function SmartListsAccordionContent({
 }) {
   const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Bumped after every successful save so the create form remounts empty
+  // instead of keeping the draft that was just saved (a second click would
+  // otherwise save an identical duplicate).
+  const [formVersion, setFormVersion] = useState(0);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -236,7 +254,7 @@ export function SmartListsAccordionContent({
   return (
     <div className="grid gap-4">
       <SmartListForm
-        key={editingId ?? "create"}
+        key={editingId ?? `create-${formVersion}`}
         initialName={editingList?.name ?? ""}
         initialRules={editingList?.rules ?? DEFAULT_SMART_LIST_RULES}
         submitLabel={editingList ? t("library.smartLists.save") : t("library.smartLists.create")}
@@ -247,7 +265,12 @@ export function SmartListsAccordionContent({
           const action = editingList
             ? smartLists.update({ id: editingList.id, name, rules })
             : smartLists.create({ name, rules });
-          void action.then(() => setEditingId(null)).catch(() => setActionError(t("desktop.operationFailed")));
+          void action
+            .then(() => {
+              setEditingId(null);
+              setFormVersion((version) => version + 1);
+            })
+            .catch(() => setActionError(t("desktop.operationFailed")));
         }}
       />
       {actionError ? <p className="text-body-sm text-destructive">{actionError}</p> : null}

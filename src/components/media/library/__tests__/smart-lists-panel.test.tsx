@@ -187,6 +187,62 @@ describe("SmartListsAccordionContent", () => {
     await waitFor(() => expect(create).toHaveBeenCalledWith({ name: "Weeknight picks", rules: expectedRules }));
   });
 
+  it("refuses a max runtime below one minute and says why", () => {
+    const create = vi.fn().mockResolvedValue(smartList());
+    render(
+      <SmartListsAccordionContent
+        smartLists={smartListsProp({ create })}
+        activeSmartListId="all"
+        onSelectSmartList={vi.fn()}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(i18n.t("library.smartLists.nameLabel")), { target: { value: "Never" } });
+    fireEvent.change(screen.getByLabelText(i18n.t("library.smartLists.maxRuntimeLabel")), { target: { value: "-5" } });
+
+    expect(screen.getByText(i18n.t("library.smartLists.maxRuntimeInvalid"))).toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: i18n.t("library.smartLists.create") });
+    expect(submit).toBeDisabled();
+    fireEvent.click(submit);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a minimum rating outside 0-10 and says why", () => {
+    const create = vi.fn().mockResolvedValue(smartList());
+    render(
+      <SmartListsAccordionContent
+        smartLists={smartListsProp({ create })}
+        activeSmartListId="all"
+        onSelectSmartList={vi.fn()}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(i18n.t("library.smartLists.nameLabel")), { target: { value: "Never" } });
+    fireEvent.change(screen.getByLabelText(i18n.t("library.smartLists.minRatingLabel")), { target: { value: "15" } });
+
+    expect(screen.getByText(i18n.t("library.smartLists.minRatingInvalid"))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: i18n.t("library.smartLists.create") })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(i18n.t("library.smartLists.minRatingLabel")), { target: { value: "7.5" } });
+    expect(screen.queryByText(i18n.t("library.smartLists.minRatingInvalid"))).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: i18n.t("library.smartLists.create") })).toBeEnabled();
+  });
+
+  it("clears the create form once the list is saved, so a second click cannot save a duplicate", async () => {
+    const create = vi.fn().mockResolvedValue(smartList());
+    render(
+      <SmartListsAccordionContent
+        smartLists={smartListsProp({ create })}
+        activeSmartListId="all"
+        onSelectSmartList={vi.fn()}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(i18n.t("library.smartLists.nameLabel")), { target: { value: "Once" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("library.smartLists.create") }));
+
+    await waitFor(() => expect(screen.getByLabelText(i18n.t("library.smartLists.nameLabel"))).toHaveValue(""));
+    expect(screen.getByRole("button", { name: i18n.t("library.smartLists.create") })).toBeDisabled();
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
   it("starts a fresh create form with the default (all-any) rules", () => {
     render(
       <SmartListsAccordionContent smartLists={smartListsProp()} activeSmartListId="all" onSelectSmartList={vi.fn()} />

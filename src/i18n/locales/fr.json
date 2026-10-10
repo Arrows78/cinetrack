@@ -1011,6 +1011,8 @@
       "minRatingPlaceholder": "ex. 8",
       "providerLabel": "Service de streaming",
       "hasEpisodeWaitingLabel": "Séries avec épisodes en attente",
+      "maxRuntimeInvalid": "La durée max doit être d'au moins 1 minute.",
+      "minRatingInvalid": "La note minimale doit être comprise entre 0 et 10.",
       "previewCountLoading": "Décompte des correspondances…",
       "previewCountError": "Impossible de compter les correspondances pour ces règles.",
       "previewCount_one": "{{count}} correspondance dans votre bibliothèque",
