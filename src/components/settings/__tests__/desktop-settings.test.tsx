@@ -21,6 +21,11 @@ vi.mock("@/shared/lib/logger", () => ({
   },
 }));
 
+const updateGlobalShortcutMock = vi.fn<(next: string) => Promise<void>>();
+vi.mock("@/features/desktop/use-desktop-shortcuts", () => ({
+  useDesktopShortcuts: () => ({ updateGlobalShortcut: (next: string) => updateGlobalShortcutMock(next) }),
+}));
+
 const getLastBackupStatusMock = vi.fn();
 const createAutomaticBackupMock = vi.fn();
 const checkDataIntegrityMock = vi.fn();
@@ -131,6 +136,7 @@ describe("DesktopSettings", () => {
     updatePreferenceMock.mockReset().mockResolvedValue(undefined);
     mockCommandPaletteShortcut = "mod+k";
     mockGlobalCommandPaletteShortcut = "mod+shift+k";
+    updateGlobalShortcutMock.mockReset().mockResolvedValue(undefined);
 
     // jsdom doesn't implement the Clipboard API.
     Object.defineProperty(navigator, "clipboard", {
@@ -353,6 +359,53 @@ describe("DesktopSettings", () => {
 
       expect(await screen.findByText("Couldn't update the shortcut. Try again.")).toBeInTheDocument();
       expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("preferences boom"));
+    });
+
+    it("registers a new system-wide shortcut before persisting it", async () => {
+      render(<DesktopSettings />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Palette (system-wide)" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Press a key combo…" }), {
+        key: "j",
+        ctrlKey: true,
+        shiftKey: true,
+      });
+
+      await waitFor(() =>
+        expect(updatePreferenceMock).toHaveBeenCalledWith({ key: "globalCommandPaletteShortcut", value: "mod+shift+j" })
+      );
+      expect(updateGlobalShortcutMock).toHaveBeenCalledWith("mod+shift+j");
+    });
+
+    it("shows an error and keeps the saved shortcut when the OS refuses the new system-wide one", async () => {
+      updateGlobalShortcutMock.mockRejectedValueOnce(new Error("already taken by another app"));
+      render(<DesktopSettings />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Palette (system-wide)" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Press a key combo…" }), {
+        key: "j",
+        ctrlKey: true,
+        shiftKey: true,
+      });
+
+      expect(await screen.findByText("Couldn't update the shortcut. Try again.")).toBeInTheDocument();
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("already taken by another app"));
+      expect(updatePreferenceMock).not.toHaveBeenCalled();
+    });
+
+    it("puts the previous system-wide shortcut back when saving the new one fails", async () => {
+      updatePreferenceMock.mockRejectedValueOnce(new Error("preferences boom"));
+      render(<DesktopSettings />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Palette (system-wide)" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Press a key combo…" }), {
+        key: "j",
+        ctrlKey: true,
+        shiftKey: true,
+      });
+
+      expect(await screen.findByText("Couldn't update the shortcut. Try again.")).toBeInTheDocument();
+      expect(updateGlobalShortcutMock).toHaveBeenLastCalledWith("mod+shift+k");
     });
 
     it("resets a non-default global shortcut to its default", async () => {

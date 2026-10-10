@@ -50,9 +50,19 @@ function KeyboardShortcutsRow() {
       return;
     }
     try {
-      await updatePreference({ key, value: next as UserPreferences[ShortcutKey] });
-      if (key === "globalCommandPaletteShortcut") {
-        void updateGlobalShortcut(next);
+      // The OS binding comes first: if it refuses the combo, nothing is
+      // saved and the previous shortcut keeps working.
+      if (key === "globalCommandPaletteShortcut") await updateGlobalShortcut(next);
+      try {
+        await updatePreference({ key, value: next as UserPreferences[ShortcutKey] });
+      } catch (saveError) {
+        // Saved value and live binding must not drift apart.
+        if (key === "globalCommandPaletteShortcut") {
+          await updateGlobalShortcut(current[key]).catch((restoreError: unknown) =>
+            logger.warn(`Failed to restore the previous global shortcut: ${errorMessage(restoreError)}`)
+          );
+        }
+        throw saveError;
       }
     } catch (updateError) {
       logger.warn(`Failed to update keyboard shortcut: ${errorMessage(updateError)}`);

@@ -85,12 +85,20 @@ export const desktopService = {
     const { register, unregister } = await import("@/shared/lib/tauri-desktop");
     const nextShortcut = toTauriGlobalShortcut(next);
     if (nextShortcut === registeredGlobalShortcut) return;
-    try {
-      if (registeredGlobalShortcut) await unregister(registeredGlobalShortcut);
-      await register(nextShortcut, openCommandPalette);
-      registeredGlobalShortcut = nextShortcut;
-    } catch (error) {
-      console.warn("Global shortcut unavailable", error);
+    // The new binding is registered *before* the old one is released, and a
+    // refusal (another app owns it, the OS rejects it) propagates: the caller
+    // (Settings) must be able to tell the user and keep the previous binding,
+    // instead of ending up with no system-wide shortcut while the screen
+    // shows the new one.
+    await register(nextShortcut, openCommandPalette);
+    const previousShortcut = registeredGlobalShortcut;
+    registeredGlobalShortcut = nextShortcut;
+    if (previousShortcut) {
+      try {
+        await unregister(previousShortcut);
+      } catch (error) {
+        console.warn("Previous global shortcut could not be released", error);
+      }
     }
   },
 };

@@ -309,14 +309,31 @@ describe("desktopService.initialize", () => {
       expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+J", expect.any(Function));
     });
 
-    it("warns without throwing when registering the new shortcut fails", async () => {
+    it("rejects, and leaves the previous shortcut registered, when the new one can't be registered", async () => {
       await desktopService.initialize();
-      const error = new Error("register boom");
+      unregisterMock.mockClear();
+      const error = new Error("already taken by another app");
       registerMock.mockRejectedValueOnce(error);
+
+      await expect(desktopService.updateGlobalShortcut("mod+shift+j")).rejects.toBe(error);
+
+      // The old binding must survive: dropping it first left the user with
+      // no system-wide shortcut at all while Settings showed the new one.
+      expect(unregisterMock).not.toHaveBeenCalled();
+      registerMock.mockClear();
+      await desktopService.updateGlobalShortcut("mod+shift+k");
+      expect(registerMock).not.toHaveBeenCalled();
+    });
+
+    it("registers the new shortcut before releasing the old one", async () => {
+      await desktopService.initialize();
+      const order: string[] = [];
+      registerMock.mockImplementationOnce(async () => void order.push("register"));
+      unregisterMock.mockImplementationOnce(async () => void order.push("unregister"));
 
       await desktopService.updateGlobalShortcut("mod+shift+j");
 
-      expect(warnSpy).toHaveBeenCalledWith("Global shortcut unavailable", error);
+      expect(order).toEqual(["register", "unregister"]);
     });
   });
 });
