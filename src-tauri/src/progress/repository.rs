@@ -453,7 +453,21 @@ pub(super) async fn refresh_tracked_series_status_impl(
     let Some((current_status, current_total_episodes)) = current else {
         return Ok(());
     };
-    let next_total_episodes = total_episodes.unwrap_or(current_total_episodes);
+    // A total can never be below what is already watched: a smaller value
+    // means TMDB answered with incomplete season data (a season with no
+    // episodes), not that watched episodes disappeared.
+    let watched_regular: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM episode_progress
+         WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0",
+    )
+    .bind(profile_id)
+    .bind(series_id)
+    .fetch_one(pool)
+    .await
+    .map_err(ApiError::from)?;
+    let next_total_episodes = total_episodes
+        .map(|total| total.max(watched_regular))
+        .unwrap_or(current_total_episodes);
     if current_status != status || current_total_episodes != next_total_episodes {
         sqlx::query(
             "UPDATE tracked_series SET status = $1, total_episodes = $2 WHERE profile_id = $3 AND series_id = $4",
@@ -1770,6 +1784,39 @@ mod tests {
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
         assert_eq!(entry.total_episodes, 2);
+    }
+
+    #[tokio::test]
+    async fn refresh_never_stores_a_total_below_the_episodes_already_watched() {
+        let pool = migrated_pool().await;
+        let mut s = series(9, Some(10));
+        s.status = Some("Returning Series".to_string());
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(100, 1), episode(101, 2), episode(102, 3)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        // A degraded TMDB response (a season that came back with no
+        // episodes) makes the page recompute a total of 0.
+        refresh_tracked_series_status_impl(
+            &pool,
+            "default",
+            9,
+            Some("Returning Series".to_string()),
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.total_episodes, 3);
     }
 
     // --- tauri::command wrapper coverage -----------------------------
