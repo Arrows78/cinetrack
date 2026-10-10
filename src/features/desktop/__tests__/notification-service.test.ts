@@ -251,6 +251,22 @@ describe("notificationService", () => {
       expect(count).toBe(0);
     });
 
+    it("remembers what it already sent even when a later send throws", async () => {
+      mocks.isTauriApp.mockReturnValue(true);
+      mocks.isPermissionGranted.mockResolvedValue(true);
+      mocks.sendNotification
+        .mockImplementationOnce(() => undefined)
+        .mockImplementationOnce(() => {
+          throw new Error("os refused");
+        });
+
+      await expect(
+        notificationService.notifyDue([episodeEntry(), movieEntry({ date: "2026-01-16" })], basePreferences)
+      ).rejects.toThrow("os refused");
+
+      expect(localStorage.getItem(SENT_KEY)).toBe(JSON.stringify(["entry-episode"]));
+    });
+
     it("skips entries whose release date is already past", async () => {
       stubNotification("granted");
       const entry = episodeEntry({ date: "2026-01-10" });

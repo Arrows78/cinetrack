@@ -53,23 +53,29 @@ export const notificationService = {
     const sent = readSentNotifications();
     let count = 0;
     const now = new Date();
-    for (const entry of entries) {
-      const releaseDate = parseISO(entry.date);
-      const hours = differenceInHours(startOfDay(releaseDate), now);
-      if (isAfter(now, endOfDay(releaseDate)) || hours > preferences.notifyHoursBefore || sent.has(entry.id)) continue;
-      const body =
-        entry.kind === "episode"
-          ? i18n.t("notifications.episodeBody", {
-              season: entry.seasonNumber,
-              episode: entry.episodeNumber,
-              title: entry.episodeTitle ?? i18n.t("tracking.newEpisodeFallback"),
-            })
-          : i18n.t("notifications.theatricalReleaseBody");
-      await this.send(entry.title, body);
-      sent.add(entry.id);
-      count += 1;
+    // Saved even when a send throws partway: otherwise every notification
+    // already shown in this pass would be shown again on the next one.
+    try {
+      for (const entry of entries) {
+        const releaseDate = parseISO(entry.date);
+        const hours = differenceInHours(startOfDay(releaseDate), now);
+        if (isAfter(now, endOfDay(releaseDate)) || hours > preferences.notifyHoursBefore || sent.has(entry.id))
+          continue;
+        const body =
+          entry.kind === "episode"
+            ? i18n.t("notifications.episodeBody", {
+                season: entry.seasonNumber,
+                episode: entry.episodeNumber,
+                title: entry.episodeTitle ?? i18n.t("tracking.newEpisodeFallback"),
+              })
+            : i18n.t("notifications.theatricalReleaseBody");
+        await this.send(entry.title, body);
+        sent.add(entry.id);
+        count += 1;
+      }
+    } finally {
+      localStorage.setItem(SENT_KEY, JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS)));
     }
-    localStorage.setItem(SENT_KEY, JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS)));
     return count;
   },
 };
