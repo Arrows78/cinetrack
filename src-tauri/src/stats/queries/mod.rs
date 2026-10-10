@@ -6,7 +6,10 @@
 // Bind `$1` = profile id; everything after the CTE chain is the caller's.
 //
 // - `ordered`: every event of the profile numbered in log order inside its
-//   item (`media_id`, `media_type`, `episode_id` — NULL for a movie).
+//   item (`media_id`, `media_type`, `episode_id` — NULL for a movie). The log
+//   order is the order the events were *inserted* in (`insert_seq`), never
+//   their dates: a watch may carry an earlier date than an unwatch it follows
+//   (imported history, a late clock), and dates can tie.
 // - `marked`: each event's `cut` = the position of the item's last
 //   `unwatched` event (0 when there is none).
 // - `active`: events that are still standing — not themselves an
@@ -25,7 +28,7 @@ macro_rules! active_events_cte {
                   episode_id, season_number, episode_number,
                   ROW_NUMBER() OVER (
                     PARTITION BY media_id, media_type, episode_id
-                    ORDER BY watched_at ASC, created_at ASC, rowid ASC
+                    ORDER BY insert_seq ASC
                   ) AS pos
            FROM viewing_events WHERE profile_id = $1
          ),
@@ -51,6 +54,10 @@ macro_rules! active_events_cte {
          )"
     };
 }
+
+// Re-exported for the query-plan test, which checks the real query.
+#[cfg(test)]
+pub(in crate::stats) use active_events_cte;
 
 pub(super) mod active_events;
 pub(super) mod activity;

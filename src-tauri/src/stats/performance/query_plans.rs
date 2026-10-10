@@ -1,4 +1,5 @@
 use super::fixtures::migrated_pool;
+use crate::stats::queries::active_events_cte;
 
 #[derive(sqlx::FromRow)]
 struct QueryPlanRow {
@@ -13,32 +14,36 @@ fn joined_plan(rows: &[QueryPlanRow]) -> String {
 }
 
 #[tokio::test]
-async fn latest_event_stats_query_uses_partition_index_without_temp_sort() {
+async fn current_state_stats_query_reads_events_through_the_log_order_index() {
     let pool = migrated_pool().await;
-    let rows: Vec<QueryPlanRow> = sqlx::query_as(
-        "EXPLAIN QUERY PLAN
-         WITH latest_events AS (
-           SELECT media_type, episode_id, event_type, duration_minutes,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY media_id, media_type, episode_id
-                    ORDER BY watched_at DESC, created_at DESC
-                  ) AS rn
-           FROM viewing_events WHERE profile_id = 'default'
-         )
-         SELECT COUNT(*) FROM latest_events WHERE rn = 1",
-    )
+    // The query every statistic runs, not a copy of it: the shared
+    // current-state definition followed by the simplest consumer.
+    let rows: Vec<QueryPlanRow> = sqlx::query_as(concat!(
+        "EXPLAIN QUERY PLAN ",
+        active_events_cte!(),
+        " SELECT COUNT(*) FROM counted WHERE rk = 1"
+    ))
+    .bind("default")
     .fetch_all(&pool)
     .await
     .unwrap();
     let plan = joined_plan(&rows);
 
     assert!(
-        plan.contains("idx_viewing_events_profile_media_episode_date"),
-        "expected latest-event composite index, got: {plan}"
+        plan.contains("idx_viewing_events_profile_media_episode_seq"),
+        "expected the log-order composite index, got: {plan}"
+    );
+    // The first window reads the events straight off that index in log order.
+    // The later windows (the cut and the ranking of the counted watch) each
+    // re-partition the rows already in memory, so they sort — that is
+    // intended, and bounded by one profile's events.
+    assert!(
+        plan.contains("SEARCH viewing_events USING INDEX idx_viewing_events_profile_media_episode_seq (profile_id=?)"),
+        "the events should be read by profile through the index, not scanned: {plan}"
     );
     assert!(
-        !plan.contains("USE TEMP B-TREE FOR ORDER BY"),
-        "latest-event window should not need a temporary sort: {plan}"
+        !plan.contains("SCAN viewing_events"),
+        "the viewing_events table must not be scanned: {plan}"
     );
 }
 

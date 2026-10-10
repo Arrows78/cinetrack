@@ -423,3 +423,76 @@ async fn a_watch_unwatch_watch_cycle_on_an_episode_is_one_watch_at_the_last_watc
 
     assert_every_view_shows(&app, "episode", 1, APRIL_WATCH, 40, "episode cycle").await;
 }
+
+/// Logs one event for movie 7, in call order (which is the order the app
+/// logged it in, whatever date it carries).
+async fn log_event(pool: &SqlitePool, uuid: &str, kind: &str, at: &str) {
+    sqlx::query(
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, created_at)
+         VALUES ($1, 'default', 7, 'movie', 'Movie 7', $2, $3, 90, $3)",
+    )
+    .bind(uuid)
+    .bind(kind)
+    .bind(at)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn seen_movie_dates(app: &tauri::App<tauri::test::MockRuntime>) -> Vec<String> {
+    let overview = crate::stats::get_stats_overview(SINCE.to_string(), labels(), 0, app.state())
+        .await
+        .unwrap();
+    let recent = crate::stats::list_recent_viewing_events(SINCE.to_string(), app.state())
+        .await
+        .unwrap();
+    assert_eq!(overview.totals.movies_watched as usize, recent.len());
+    recent.into_iter().map(|event| event.watched_at).collect()
+}
+
+#[tokio::test]
+async fn a_watch_dated_before_an_earlier_unwatch_but_logged_after_it_leaves_the_title_seen() {
+    let pool = migrated_pool().await;
+    let app = app_with(&pool);
+    log_event(&pool, "w1", "watched", "2026-03-05T10:00:00.000Z").await;
+    log_event(&pool, "u1", "unwatched", "2026-03-06T10:00:00.000Z").await;
+    // An import (or a clock that ran late) logs a watch dated before the unwatch.
+    log_event(&pool, "w2", "watched", "2026-03-01T10:00:00.000Z").await;
+
+    assert_eq!(
+        seen_movie_dates(&app).await,
+        vec!["2026-03-01T10:00:00.000Z"]
+    );
+}
+
+#[tokio::test]
+async fn an_unwatch_logged_after_a_later_dated_watch_still_cancels_it() {
+    let pool = migrated_pool().await;
+    let app = app_with(&pool);
+    log_event(&pool, "w1", "watched", "2026-03-06T10:00:00.000Z").await;
+    // Dated earlier than the watch it undoes, but logged after it.
+    log_event(&pool, "u1", "unwatched", "2026-03-05T10:00:00.000Z").await;
+
+    assert!(seen_movie_dates(&app).await.is_empty());
+}
+
+#[tokio::test]
+async fn events_with_identical_dates_are_ordered_by_when_they_were_logged() {
+    let at = "2026-03-05T10:00:00.000Z";
+
+    let pool = migrated_pool().await;
+    let app = app_with(&pool);
+    log_event(&pool, "w", "watched", at).await;
+    log_event(&pool, "u", "unwatched", at).await;
+    assert!(
+        seen_movie_dates(&app).await.is_empty(),
+        "watch then unwatch"
+    );
+
+    // Uuids sort the other way round on purpose: the order is not the uuid's.
+    let pool = migrated_pool().await;
+    let app = app_with(&pool);
+    log_event(&pool, "z-u", "unwatched", at).await;
+    log_event(&pool, "a-w", "watched", at).await;
+    assert_eq!(seen_movie_dates(&app).await, vec![at], "unwatch then watch");
+}

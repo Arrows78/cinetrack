@@ -23,4 +23,14 @@ export type ViewingEvent = {
    * deserializes as `None` instead of failing.
    */
   note?: string;
+  /**
+   * The event's place in the order events were logged in
+   * (`viewing_events.insert_seq`) — what decides which event is the
+   * latest of a title, whatever the dates say. Only ever populated by
+   * backup.rs's export, so a restore can replay the events in that order;
+   * the stats endpoints leave it `None`. `#[serde(default)]` so a backup
+   * from before this field existed deserializes as `None` (those events
+   * are then replayed by date, as they were read then).
+   */
+  insertSeq?: number;
 };

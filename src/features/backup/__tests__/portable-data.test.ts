@@ -126,6 +126,23 @@ describe("portableData", () => {
     expect(importArgs().viewingEvents[0]?.note).toBe("Loved it");
   });
 
+  // What is seen is decided by the order events were logged in, not by their
+  // dates, and a restore replays them by `insertSeq`: if validation stripped
+  // it, a watch dated before the unwatch it follows would be replayed by date
+  // and come back unwatched.
+  it("preserves a viewing event's log position through import validation", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { ...emptyData(), viewingEvents: [viewingEvent({ insertSeq: 42 })] },
+    });
+
+    expect(importArgs().viewingEvents[0]?.insertSeq).toBe(42);
+  });
+
   // Regression check for a real bug: smart_lists and saved_filters were both
   // added to PROFILE_SCOPED_TABLES (so a restore's purge step already
   // deletes them) but were never added to PortableData's export/import at

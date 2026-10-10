@@ -125,8 +125,8 @@ async fn scalar(pool: &SqlitePool, sql: impl AsRef<str>) -> i64 {
         .unwrap_or(0)
 }
 
-/// Sum of the duration of the most recent watch event of every title or
-/// episode that is *currently seen* according to the progress tables — what
+/// Sum of the duration of the most recent watch event (in insertion order) of
+/// every title or episode that is *currently seen* according to the progress tables — what
 /// "minutes watched" must mean, independent of how the stats query finds it.
 async fn active_minutes(pool: &SqlitePool, kind: &str) -> i64 {
     let (seen_clause, key_clause) = match kind {
@@ -143,8 +143,8 @@ async fn active_minutes(pool: &SqlitePool, kind: &str) -> i64 {
         pool,
         &format!(
             "SELECT SUM((SELECT e.duration_minutes FROM viewing_events e
-                         WHERE {key_clause} AND e.event_type IN ('watched','rewatched')
-                         ORDER BY e.watched_at DESC, e.rowid DESC LIMIT 1))
+                         WHERE {key_clause} AND e.event_type = 'watched'
+                         ORDER BY e.insert_seq DESC LIMIT 1))
              FROM ({seen_clause}) s"
         ),
     )
@@ -154,6 +154,17 @@ async fn active_minutes(pool: &SqlitePool, kind: &str) -> i64 {
 /// Every aggregate that claims to describe the same viewing state, checked
 /// against raw-table recounts.
 async fn assert_views_agree(app: &tauri::App<tauri::test::MockRuntime>, context: &str) {
+    assert_views_agree_with(app, context, true).await;
+}
+
+/// `history_is_complete` is false once a TV Time import has run: the importer
+/// logs viewing events only, no history row, so the history/event counts of
+/// the last section legitimately differ.
+async fn assert_views_agree_with(
+    app: &tauri::App<tauri::test::MockRuntime>,
+    context: &str,
+    history_is_complete: bool,
+) {
     let pool: State<'_, SqlitePool> = app.state();
     let pool_ref: &SqlitePool = pool.inner();
 
@@ -510,10 +521,14 @@ async fn assert_views_agree(app: &tauri::App<tauri::test::MockRuntime>, context:
     );
 
     // --- History and the watch log describe the same movie transitions ----
-    for (action, event_type) in [
+    let transitions = [
         ("movie:watched", "watched"),
         ("movie:unwatched", "unwatched"),
-    ] {
+    ];
+    for (action, event_type) in transitions
+        .iter()
+        .take(if history_is_complete { 2 } else { 0 })
+    {
         let history = scalar(
             pool_ref,
             &format!("SELECT COUNT(*) FROM activity_log WHERE action = '{action}'"),
@@ -546,6 +561,20 @@ fn media_input(id: i64, media_type: &str, genres: &[&str]) -> serde_json::Value 
 
 #[tokio::test]
 async fn random_action_sequences_keep_every_aggregate_equal_to_a_recount_of_the_tables() {
+    run_random_sequences(false).await;
+}
+
+/// Same sequences, but every action carries a random time of day instead of
+/// an increasing clock — so a watch is often dated *before* the unwatch it
+/// follows (a delayed clock, an import of old history). The log order, not
+/// the dates, decides what is seen, and every view must still agree with the
+/// progress tables, including across a backup export and restore.
+#[tokio::test]
+async fn random_action_sequences_with_scrambled_dates_keep_every_aggregate_equal_to_a_recount() {
+    run_random_sequences(true).await;
+}
+
+async fn run_random_sequences(scrambled_dates: bool) {
     let catalogue = catalogue();
 
     for seed in [3_u64, 11, 97, 2026, 31337] {
@@ -558,12 +587,16 @@ async fn random_action_sequences_keep_every_aggregate_equal_to_a_recount_of_the_
         let mut exercised = std::collections::BTreeMap::<String, u32>::new();
 
         for step in 0..90_u64 {
-            let at = format!(
-                "2026-01-{:02}T{:02}:{:02}:00.000Z",
-                1 + step / 1440,
-                (step / 60) % 24,
-                step % 60
-            );
+            let at = if scrambled_dates {
+                format!("2026-01-01T{:02}:{:02}:00.000Z", rng.next(24), rng.next(60))
+            } else {
+                format!(
+                    "2026-01-{:02}T{:02}:{:02}:00.000Z",
+                    1 + step / 1440,
+                    (step / 60) % 24,
+                    step % 60
+                )
+            };
             let watched = rng.next(3) != 0;
             let action;
             match rng.next(10) {
@@ -685,16 +718,13 @@ async fn random_action_sequences_keep_every_aggregate_equal_to_a_recount_of_the_
     }
 }
 
-/// Confirmed inconsistency, left ignored until the product rule is decided:
-/// the stats read "seen" from the latest event by `watched_at`, but a TV Time
-/// import writes its events at the *original* watch date. Unwatching a movie
-/// and then importing a history that predates the unwatch leaves the movie
-/// seen (progress tables, Library, Watch Next) yet not counted by the stats,
-/// milestones and minutes. Either the import must skip titles the user
-/// explicitly unwatched, or "seen" for stats must come from the progress
-/// tables — a product decision, so no behaviour is changed here.
+/// A TV Time import writes its events at the *original* watch date, which
+/// can predate an unwatch the viewer made since. What is seen is decided by
+/// the order the events were logged in, not by their dates: the import is the
+/// latest thing that happened, so the movie is seen in the progress tables,
+/// the Library, Watch Next — and in every statistic, dated at the imported
+/// watch.
 #[tokio::test]
-#[ignore = "needs a product decision: should a TV Time import override an explicit unwatch?"]
 async fn an_import_older_than_an_unwatch_leaves_progress_and_stats_in_agreement() {
     let pool = migrated_pool().await;
     let app = tauri::test::mock_app();
@@ -706,7 +736,7 @@ async fn an_import_older_than_an_unwatch_leaves_progress_and_stats_in_agreement(
     crate::progress::toggle_movie_seen(
         serde_json::from_value(movie(100)).unwrap(),
         true,
-        "2026-03-01T10:00:00.000Z".to_string(),
+        "2026-01-01T10:00:00.000Z".to_string(),
         None,
         app.state(),
     )
@@ -715,7 +745,7 @@ async fn an_import_older_than_an_unwatch_leaves_progress_and_stats_in_agreement(
     crate::progress::toggle_movie_seen(
         serde_json::from_value(movie(100)).unwrap(),
         false,
-        "2026-03-02T10:00:00.000Z".to_string(),
+        "2026-01-01T12:00:00.000Z".to_string(),
         None,
         app.state(),
     )
@@ -723,7 +753,7 @@ async fn an_import_older_than_an_unwatch_leaves_progress_and_stats_in_agreement(
     .unwrap();
     crate::integrations::tvtime::import_movie_seen(
         serde_json::from_value(json!({
-            "movieId": 55, "title": "Movie 55", "runtime": 100, "watchedAt": "2020-01-01T00:00:00.000Z",
+            "movieId": 55, "title": "Movie 55", "runtime": 100, "watchedAt": "2026-01-01T08:00:00.000Z",
         }))
         .unwrap(),
         app.state(),
@@ -731,5 +761,5 @@ async fn an_import_older_than_an_unwatch_leaves_progress_and_stats_in_agreement(
     .await
     .unwrap();
 
-    assert_views_agree(&app, "import older than an unwatch").await;
+    assert_views_agree_with(&app, "import older than an unwatch", false).await;
 }

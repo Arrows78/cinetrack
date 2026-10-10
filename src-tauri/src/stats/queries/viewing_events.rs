@@ -50,6 +50,16 @@ pub struct ViewingEvent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub note: Option<String>,
+    /// The event's place in the order events were logged in
+    /// (`viewing_events.insert_seq`) — what decides which event is the
+    /// latest of a title, whatever the dates say. Only ever populated by
+    /// backup.rs's export, so a restore can replay the events in that order;
+    /// the stats endpoints leave it `None`. `#[serde(default)]` so a backup
+    /// from before this field existed deserializes as `None` (those events
+    /// are then replayed by date, as they were read then).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub insert_seq: Option<i64>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -91,9 +101,10 @@ impl ViewingEventRow {
             episode_id: self.episode_id,
             season_number: self.season_number,
             episode_number: self.episode_number,
-            // This query never selects `note` — see `ViewingEvent::note`'s
-            // doc comment.
+            // These queries never select `note` or `insert_seq` — see their
+            // doc comments on `ViewingEvent`.
             note: None,
+            insert_seq: None,
         })
     }
 }

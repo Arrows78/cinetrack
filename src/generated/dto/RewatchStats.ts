@@ -5,8 +5,9 @@ import type { MonthlyActivityBucket } from "./MonthlyActivityBucket";
 export type RewatchStats = {
   totalRewatches: number;
   /**
-   * Rewatches as a percentage of every watch event (`watched` +
-   * `rewatched`), rounded to the nearest whole percent.
+   * Rewatches as a percentage of every standing viewing (the titles
+   * currently seen, once each, plus the rewatches), rounded to the
+   * nearest whole percent.
    */
   rewatchSharePercent: number;
   favouriteComfortTitles: Array<ComfortTitle>;

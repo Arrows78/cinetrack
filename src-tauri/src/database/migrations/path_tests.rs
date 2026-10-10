@@ -359,8 +359,8 @@ async fn seed_newer_features(pool: &SqlitePool, version: i64) {
     }
 }
 
-const REGISTERED_VERSIONS: [i64; 17] = [
-    1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+const REGISTERED_VERSIONS: [i64; 18] = [
+    1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
 ];
 
 /// No table may vanish (except the merged `watchlist_items`) or lose a column.
@@ -954,4 +954,84 @@ async fn migration_24_marks_only_fully_watched_completed_series_as_auto() {
     .await
     .unwrap();
     assert!(payload.contains("\"statusOrigin\":\"auto\""), "{payload}");
+}
+
+#[tokio::test]
+async fn migration_25_numbers_existing_viewing_events_in_log_order_and_numbers_new_ones_after_them()
+{
+    let db = pool().await;
+    apply_migrations_up_to(&db, 24).await.unwrap();
+    run(
+        &db,
+        "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('p', 'P', 't', 't')",
+    )
+    .await;
+    // Logged in this order, with dates that do not follow it.
+    for (uuid, at) in [
+        ("e1", "2026-03-05T10:00:00.000Z"),
+        ("e2", "2026-03-01T10:00:00.000Z"),
+        ("e3", "2026-03-03T10:00:00.000Z"),
+    ] {
+        run(
+            &db,
+            &format!(
+                "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+                 VALUES ('{uuid}', 'p', 1, 'movie', 'M', 'watched', '{at}', '{at}')"
+            ),
+        )
+        .await;
+    }
+
+    apply_pending_migrations(&db).await.unwrap();
+
+    let ordered: Vec<(String, i64)> =
+        sqlx::query_as("SELECT uuid, insert_seq FROM viewing_events ORDER BY insert_seq")
+            .fetch_all(&db)
+            .await
+            .unwrap();
+    assert_eq!(
+        ordered
+            .iter()
+            .map(|(uuid, _)| uuid.as_str())
+            .collect::<Vec<_>>(),
+        vec!["e1", "e2", "e3"],
+        "existing events keep the order they were logged in"
+    );
+    assert!(
+        ordered.iter().all(|(_, seq)| *seq > 0),
+        "no event is left unnumbered"
+    );
+
+    // A new event is numbered after every existing one, by the database.
+    run(
+        &db,
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+         VALUES ('e4', 'p', 1, 'movie', 'M', 'unwatched', '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')",
+    )
+    .await;
+    let (last, max): (i64, i64) = sqlx::query_as(
+        "SELECT (SELECT insert_seq FROM viewing_events WHERE uuid = 'e4'),
+                (SELECT MAX(insert_seq) FROM viewing_events WHERE uuid <> 'e4')",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(last, max + 1);
+
+    // Numbering a row is not a second change: the sync trigger queued it once.
+    let queued: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sync_outbox WHERE entity_type = 'viewing_event' AND entity_id = 'e4'",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert_eq!(queued, 1);
+
+    // The numbering is unique: no two events share a place in the order.
+    let duplicate = sqlx::query(
+        "UPDATE viewing_events SET insert_seq = (SELECT insert_seq FROM viewing_events WHERE uuid = 'e1') WHERE uuid = 'e2'",
+    )
+    .execute(&db)
+    .await;
+    assert!(duplicate.is_err());
 }

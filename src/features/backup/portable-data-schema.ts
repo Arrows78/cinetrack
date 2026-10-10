@@ -149,6 +149,9 @@ export const viewingEventSchema = z.object({
   seasonNumber: z.number().nullable().optional(),
   episodeNumber: z.number().nullable().optional(),
   note: z.string().nullable().optional(),
+  // The event's place in the order events were logged in; a restore replays
+  // events by it. Absent in backups from before it existed.
+  insertSeq: z.number().int().optional(),
 });
 
 export const userProfileSchema = z.object({

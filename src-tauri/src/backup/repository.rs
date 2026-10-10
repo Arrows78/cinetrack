@@ -172,6 +172,7 @@ struct ViewingEventRow {
     season_number: Option<i64>,
     episode_number: Option<i64>,
     note: Option<String>,
+    insert_seq: i64,
 }
 
 // ---------------------------------------------------------------------
@@ -244,7 +245,9 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
     let history = export_table!(tx, "activity_log", HistoryExportRow);
     let preferences = export_table!(tx, "preferences", PreferenceRow);
     let library = export_table!(tx, "library_items", LibraryRow);
-    let viewing_events = export_table!(tx, "viewing_events", ViewingEventRow);
+    let mut viewing_events = export_table!(tx, "viewing_events", ViewingEventRow);
+    // In log order, so the file reads in the order things happened.
+    viewing_events.sort_by_key(|row| row.insert_seq);
     let profiles = export_table!(tx, "profiles", ProfileRow);
     let custom_lists = export_table!(tx, "custom_lists", CustomListRow);
     let custom_list_items = export_table!(tx, "custom_list_items", CustomListItemRow);
@@ -400,6 +403,7 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
                     season_number: row.season_number,
                     episode_number: row.episode_number,
                     note: row.note,
+                    insert_seq: Some(row.insert_seq),
                 })
             })
             .collect::<Result<Vec<_>, _>>()?,
@@ -497,6 +501,18 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
 // bound-parameter limit even for the widest table here (library_items, 20
 // columns): 200 * 20 = 4,000, far below the 32,766 default.
 const IMPORT_BATCH_SIZE: usize = 200;
+
+/// The events in the order they were originally logged in: by the position
+/// the export recorded, or — for a backup from before events carried one, or
+/// a file that lost it — by date, which is the order such events were read in.
+fn events_in_log_order(mut events: Vec<ViewingEvent>) -> Vec<ViewingEvent> {
+    if events.iter().all(|event| event.insert_seq.is_some()) {
+        events.sort_by_key(|event| event.insert_seq);
+    } else {
+        events.sort_by(|a, b| a.watched_at.cmp(&b.watched_at));
+    }
+    events
+}
 
 pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
@@ -688,9 +704,13 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
         }
     );
 
+    // The order events were logged in decides which one is a title's latest
+    // (see `viewing_events.insert_seq`), and the database numbers rows in the
+    // order they are inserted — so replay them in the order they were logged.
+    let viewing_events = events_in_log_order(data.viewing_events.clone());
     import_table!(
         tx,
-        data.viewing_events,
+        viewing_events,
         "INSERT INTO viewing_events
               (uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,note,created_at) ",
         |b, item| {
@@ -1023,7 +1043,9 @@ mod tests {
             ]),
         );
         // viewing_events: created_at isn't modeled because it always mirrors
-        // watched_at (this table is append-only, per the migration header).
+        // watched_at (this table is append-only, per the migration header);
+        // insert_seq is modeled as `insertSeq`, used to replay events in log
+        // order on restore (the restored numbers are the database's own).
         assert_eq!(
             table_columns(&pool, "viewing_events").await,
             sorted(vec![
@@ -1040,6 +1062,7 @@ mod tests {
                 "episode_number",
                 "note",
                 "created_at",
+                "insert_seq",
             ]),
         );
         // activity_log: profile_id is reconstructed from metadata.profileId

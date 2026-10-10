@@ -491,7 +491,10 @@ const TABLES: &[(&str, &[&str])] = &[
     ("episode_progress", &["uuid"]),
     ("tracked_series", &["uuid"]),
     ("activity_log", &["created_at", "updated_at", "metadata"]),
-    ("viewing_events", &["created_at"]),
+    // `insert_seq` is the database's own numbering of the log order: a restore
+    // renumbers from 1 in the same order (checked by its own tests below), so
+    // the raw values may differ when the source had gaps.
+    ("viewing_events", &["created_at", "insert_seq"]),
     ("custom_lists", &[]),
     ("custom_list_items", &["uuid"]),
     ("availability_alerts", &["updated_at"]),
@@ -673,6 +676,63 @@ async fn a_restored_history_row_keeps_the_mirrored_metadata_profile_id_in_sync()
     .await
     .unwrap();
     assert_eq!(mismatched, 0);
+}
+
+async fn log_event(pool: &SqlitePool, uuid: &str, kind: &str, at: &str) {
+    sqlx::query(
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, created_at)
+         VALUES ($1, 'default', 7, 'movie', 'Movie 7', $2, $3, 90, $3)",
+    )
+    .bind(uuid)
+    .bind(kind)
+    .bind(at)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn events_in_log_order(pool: &SqlitePool) -> Vec<String> {
+    sqlx::query_scalar("SELECT uuid FROM viewing_events ORDER BY insert_seq")
+        .fetch_all(pool)
+        .await
+        .unwrap()
+}
+
+/// What is seen is decided by the order the events were logged in, so a
+/// restore has to keep that order even when the dates disagree with it (a
+/// watch dated before the unwatch it follows).
+#[tokio::test]
+async fn a_restore_keeps_the_order_the_events_were_logged_in_whatever_their_dates() {
+    let source = migrated_pool().await;
+    log_event(&source, "w1", "watched", "2026-03-05T10:00:00.000Z").await;
+    log_event(&source, "u1", "unwatched", "2026-03-06T10:00:00.000Z").await;
+    log_event(&source, "w2", "watched", "2026-03-01T10:00:00.000Z").await;
+    let snapshot = export_to_json_and_back(&export_impl(&source).await.unwrap()).await;
+
+    let restored = migrated_pool().await;
+    import_impl(&restored, snapshot).await.unwrap();
+
+    assert_eq!(events_in_log_order(&restored).await, vec!["w1", "u1", "w2"]);
+}
+
+/// A backup written before events carried their log position has no order
+/// to restore: they are replayed by date, which is how they were read then.
+#[tokio::test]
+async fn restoring_a_backup_without_log_positions_replays_the_events_by_date() {
+    let source = migrated_pool().await;
+    log_event(&source, "w1", "watched", "2026-03-05T10:00:00.000Z").await;
+    log_event(&source, "u1", "unwatched", "2026-03-06T10:00:00.000Z").await;
+    log_event(&source, "w2", "watched", "2026-03-01T10:00:00.000Z").await;
+    let mut value = serde_json::to_value(export_impl(&source).await.unwrap()).unwrap();
+    for event in value["viewingEvents"].as_array_mut().unwrap() {
+        event.as_object_mut().unwrap().remove("insertSeq");
+    }
+    let legacy: PortableData = serde_json::from_value(value).unwrap();
+
+    let restored = migrated_pool().await;
+    import_impl(&restored, legacy).await.unwrap();
+
+    assert_eq!(events_in_log_order(&restored).await, vec!["w2", "w1", "u1"]);
 }
 
 /// Every table, every column, no exclusion: what a failed restore must leave

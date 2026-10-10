@@ -22,6 +22,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/022-split-notification-preferences.sql"),
     include_str!("migrations/023-add-profile-pin.sql"),
     include_str!("migrations/024-add-library-status-origin.sql"),
+    include_str!("migrations/025-add-insert-seq-to-viewing-events.sql"),
 ];
 
 #[derive(Debug)]
@@ -228,7 +229,7 @@ mod tests {
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
             vec![
-                1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+                1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
             ]
         );
         assert_eq!(
@@ -254,6 +255,7 @@ mod tests {
                 "split notification preferences",
                 "add profile pin lock",
                 "add library status origin",
+                "add insertion order to viewing events",
             ]
         );
         assert!(
@@ -311,7 +313,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 24);
+        assert_eq!(version.0, 25);
     }
 
     #[tokio::test]
@@ -331,7 +333,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 24);
+        assert_eq!(version.0, 25);
     }
 
     #[tokio::test]
