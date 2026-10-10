@@ -5,6 +5,7 @@ import { useLibraryMediaKeys } from "@/features/library/use-library";
 import { LoadingScreen } from "@/components/states/loading-screen";
 import { OnboardingScreen } from "@/features/onboarding/onboarding-screen";
 import { shouldShowOnboarding } from "@/features/onboarding/should-show-onboarding";
+import { isTauriApp } from "@/shared/lib/platform";
 
 /**
  * Goal-oriented first-launch screen — sits in AuthRoot (auth-root.tsx)
@@ -68,6 +69,13 @@ export function OnboardingGate({ children }: PropsWithChildren) {
       void updatePreference({ key: "onboardingCompleted", value: true });
     }
   }, [preferencesQuery.isLoading, onboardingCompleted, hasExistingLibrary, updatePreference]);
+
+  // Outside the Tauri window (`pnpm dev`, the visual-regression suite) no
+  // preference or library read can ever succeed, so the disposition above is
+  // decided from failing reads and the screen flips between loading,
+  // onboarding and the app while those queries retry — a first-launch flow
+  // that can't save its own answer isn't meaningful there anyway.
+  if (!isTauriApp()) return children;
 
   if (disposition === "loading") {
     return <LoadingScreen label={t("onboarding.loading")} />;

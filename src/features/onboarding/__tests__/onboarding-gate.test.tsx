@@ -13,6 +13,9 @@ vi.mock("@/features/library/use-library", () => ({
   useLibraryMediaKeys: () => libraryMediaKeysMock(),
 }));
 
+const isTauriAppMock = vi.fn(() => true);
+vi.mock("@/shared/lib/platform", () => ({ isTauriApp: () => isTauriAppMock() }));
+
 vi.mock("@/features/onboarding/onboarding-screen", () => ({
   OnboardingScreen: () => <div data-testid="onboarding-screen" />,
 }));
@@ -27,6 +30,7 @@ describe("OnboardingGate", () => {
   });
 
   beforeEach(() => {
+    isTauriAppMock.mockReset().mockReturnValue(true);
     updatePreferenceMock.mockReset().mockResolvedValue(undefined);
     refetchPreferencesMock.mockReset();
     refetchLibraryKeysMock.mockReset();
@@ -45,6 +49,26 @@ describe("OnboardingGate", () => {
       error: null,
       refetch: refetchLibraryKeysMock,
     });
+  });
+
+  it("renders the app straight away outside the Tauri window, whatever the reads are doing", () => {
+    isTauriAppMock.mockReturnValue(false);
+    preferencesMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: refetchPreferencesMock,
+      updatePreference: updatePreferenceMock,
+    });
+    render(
+      <OnboardingGate>
+        <div data-testid="app-child" />
+      </OnboardingGate>
+    );
+
+    expect(screen.getByTestId("app-child")).toBeInTheDocument();
+    expect(screen.queryByTestId("onboarding-screen")).not.toBeInTheDocument();
   });
 
   it("shows a loading screen while preferences are loading", () => {
