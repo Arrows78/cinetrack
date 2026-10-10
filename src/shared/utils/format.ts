@@ -21,11 +21,19 @@ const POSTER_WIDTHS: Array<{ size: TmdbImageSize; width: number }> = [
 export const buildTmdbPosterSrcSet = (path: string | null | undefined) =>
   path ? POSTER_WIDTHS.map(({ size, width }) => `${buildTmdbImageUrl(path, size)} ${width}w`).join(", ") : undefined;
 
+// A date-only string ("2026-07-14" — every TMDB release/air date) is a
+// calendar day, read as local midnight; `new Date()` would read it as UTC
+// midnight and show the previous day anywhere west of UTC. Timestamps keep
+// their own instant.
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 export const formatDate = (value?: string | null) => {
   if (!value) return i18n.t("common.unknownDate");
 
   try {
-    return format(new Date(value), "dd MMM yyyy", { locale: dateLocale() });
+    return format(DATE_ONLY.test(value) ? parseISO(value) : new Date(value), "dd MMM yyyy", {
+      locale: dateLocale(),
+    });
   } catch {
     return value;
   }
