@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { MediaSummary, PageResult } from "@/types/media";
 import type { RetryableUnmatched } from "@/features/tvtime/tvtime-import-service";
+import { logger } from "@/shared/lib/logger";
 import { TvTimeUnmatchedResolver } from "../tvtime-unmatched-resolver";
 
 function page(results: MediaSummary[]): PageResult<MediaSummary> {
@@ -51,6 +52,7 @@ const seriesItem: RetryableUnmatched = {
   label: "Bodyguard (2018)",
   searchTitle: "Bodyguard",
   searchYear: 2018,
+  libraryPatch: null,
   episodes: [
     {
       seriesName: "Bodyguard (2018)",
@@ -251,5 +253,44 @@ describe("TvTimeUnmatchedResolver", () => {
 
     expect(await screen.findByText("Couldn't add this title. Try again.")).toBeInTheDocument();
     expect(onResolved).not.toHaveBeenCalled();
+  });
+
+  it("logs why a manual resolution failed instead of swallowing the error", async () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
+    searchMock.mockResolvedValue(page([summary({ id: 42, title: "The Real Movie" })]));
+    resolveRetryableMovieMock.mockRejectedValue(new Error("database is locked"));
+    renderResolver([movieItem]);
+
+    screen.getByRole("button", { name: "Unknown Movie" }).click();
+    const result = await screen.findByText("The Real Movie", {}, { timeout: 2000 });
+    result.closest("div")!.querySelector("button")!.click();
+
+    await screen.findByText("Couldn't add this title. Try again.");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("database is locked"));
+    warn.mockRestore();
+  });
+
+  it("lists two unmatched films that share a title (different years) without key collisions", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const remake: RetryableUnmatched = {
+      kind: "movie",
+      label: "Halloween",
+      searchTitle: "Halloween",
+      searchYear: 2018,
+      movie: { title: "Halloween", year: 2018, watchedAt: "2026-01-01", runtimeMinutes: null },
+      initialCandidates: [],
+    };
+    const original: RetryableUnmatched = {
+      ...remake,
+      searchYear: 1978,
+      movie: { title: "Halloween", year: 1978, watchedAt: "2026-01-01", runtimeMinutes: null },
+    } as RetryableUnmatched;
+
+    renderResolver([remake, original]);
+
+    expect(screen.getAllByRole("button", { name: "Halloween" })).toHaveLength(2);
+    expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining("same key"), expect.anything());
+    expect(consoleError.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+    consoleError.mockRestore();
   });
 });

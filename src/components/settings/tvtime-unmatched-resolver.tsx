@@ -21,6 +21,8 @@ import {
   type TvTimeImportUndo,
 } from "@/features/tvtime";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import type { MediaSummary, SearchScope } from "@/types/media";
 
 const scopeFor = (item: RetryableUnmatched): SearchScope => {
@@ -28,6 +30,10 @@ const scopeFor = (item: RetryableUnmatched): SearchScope => {
   if (item.kind === "movie") return "movie";
   return item.entry.mediaType === "movie" ? "movie" : "series";
 };
+
+// Label alone isn't unique: two different films can share a title and differ
+// only by year (the year is already part of a series' label).
+const retryableItemKey = (item: RetryableUnmatched): string => `${item.kind}-${item.label}-${item.searchYear ?? ""}`;
 
 const NO_UNDO: TvTimeImportUndo = { movies: [], series: [], planned: [] };
 
@@ -87,14 +93,15 @@ function UnmatchedItemRow({
       await invalidateTvTimeImportQueries(queryClient, profileId);
       toast({ description: t("tvtimeImport.retry.resolved", { title: match.title }), variant: "success" });
       onResolved(item, undo);
-    } catch {
+    } catch (resolveError) {
+      logger.warn(`TV Time import: manual resolution of "${item.label}" failed: ${errorMessage(resolveError)}`);
       setError(t("tvtimeImport.retry.resolveFailed"));
       setResolvingId(null);
     }
   };
 
   return (
-    <AccordionItem value={`${item.kind}-${item.label}`}>
+    <AccordionItem value={retryableItemKey(item)}>
       <AccordionTrigger>
         <span className="flex flex-col items-start text-left">
           <span>{item.label}</span>
@@ -172,7 +179,7 @@ export function TvTimeUnmatchedResolver({
       <CardContent>
         <Accordion type="single" collapsible className="space-y-2">
           {items.map((item) => (
-            <UnmatchedItemRow key={`${item.kind}-${item.label}`} item={item} onResolved={onResolved} />
+            <UnmatchedItemRow key={retryableItemKey(item)} item={item} onResolved={onResolved} />
           ))}
         </Accordion>
       </CardContent>
