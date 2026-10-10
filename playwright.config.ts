@@ -20,6 +20,10 @@ export default defineConfig({
   snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{testFilePath}/{arg}{ext}",
   use: {
     baseURL: "http://localhost:1420",
+    // Date-relative surfaces also depend on the runner's locale and time
+    // zone — pinned so a baseline renders the same wherever it's produced.
+    locale: "en-US",
+    timezoneId: "UTC",
     trace: "retain-on-failure",
   },
   webServer: {

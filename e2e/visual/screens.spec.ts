@@ -19,7 +19,15 @@ const SCREENS = [
 
 const THEMES = ["light", "dark"] as const;
 
+// Home's weekly agenda, the stats calendar/heatmap and other date-relative
+// surfaces render from "today" — left on the real clock, every baseline
+// drifts a little each day (different weekday labels and wrapping, a
+// shifted page height) and the suite fails for reasons unrelated to any
+// visual change. Only Date is frozen; timers and network keep running.
+const FIXED_NOW = new Date("2026-09-15T10:00:00Z");
+
 async function gotoStable(page: Page, path: string, theme: (typeof THEMES)[number]) {
+  await page.clock.setFixedTime(FIXED_NOW);
   const separator = path.includes("?") ? "&" : "?";
   await page.goto(`${path}${separator}e2e-theme=${theme}`);
   // Real user motion preferences aren't under test here, and a mid-flight
