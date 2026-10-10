@@ -113,7 +113,7 @@ function KeyboardShortcutsRow() {
 
 export function DesktopSettings() {
   const { t } = useTranslation();
-  const { data: preferences, updatePreference } = usePreferences();
+  const { data: preferences, updatePreference, isSaving } = usePreferences();
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [autoStart, setAutoStart] = useState(false);
@@ -315,6 +315,7 @@ export function DesktopSettings() {
                   {t("desktop.automaticBackupFrequency")}
                   <Select
                     value={preferences?.backupFrequency ?? "daily"}
+                    disabled={isSaving}
                     onChange={(event) =>
                       void updatePreference({
                         key: "backupFrequency",

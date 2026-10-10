@@ -7,6 +7,7 @@ export function FilterBar<T extends string>({
   onChange,
   groupLabel,
   as = "filter",
+  disabled = false,
 }: {
   value: T;
   // ReactNode (not just string) so a tab can carry an icon alongside its
@@ -26,6 +27,8 @@ export function FilterBar<T extends string>({
   // semantics there, not role="group"/aria-pressed, which describes a set
   // of independent toggles rather than one mutually-exclusive view.
   as?: "filter" | "tabs";
+  // Ignores clicks while a write triggered by this bar is still in flight.
+  disabled?: boolean;
 }) {
   const isTabs = as === "tabs";
   return (
@@ -40,12 +43,13 @@ export function FilterBar<T extends string>({
           <button
             key={option.value}
             type="button"
+            disabled={disabled}
             role={isTabs ? "tab" : undefined}
             aria-selected={isTabs ? selected : undefined}
             aria-pressed={isTabs ? undefined : selected}
             onClick={() => onChange(option.value)}
             className={cn(
-              "shrink-0 rounded-xl px-4 py-1.5 text-body-sm font-medium transition-all duration-fast",
+              "shrink-0 rounded-xl px-4 py-1.5 text-body-sm font-medium transition-all duration-fast disabled:opacity-50",
               selected ? "bg-foreground/10 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/80"
             )}
           >

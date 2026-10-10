@@ -625,6 +625,7 @@ export function SettingsPage() {
                 {t("settings.language")}
                 <Select
                   value={preferences?.language ?? DEFAULT_LANGUAGE}
+                  disabled={isSaving}
                   onChange={(event) => void setLanguage(event.target.value as "fr" | "en")}
                 >
                   <option value="en">{t("settings.languageOptions.english")}</option>
@@ -635,6 +636,7 @@ export function SettingsPage() {
                 {t("settings.region")}
                 <Select
                   value={preferences?.region ?? DEFAULT_TMDB_REGION}
+                  disabled={isSaving}
                   onChange={(event) => void updatePreference({ key: "region", value: event.target.value })}
                 >
                   <option value="FR">{t("settings.regionOptions.france")}</option>
@@ -655,6 +657,7 @@ export function SettingsPage() {
                 value={preferences?.defaultSearchType ?? "all"}
                 onChange={(value) => void updatePreference({ key: "defaultSearchType", value })}
                 groupLabel={t("settings.defaultSearch")}
+                disabled={isSaving}
                 options={[
                   { value: "all", label: t("filters.all") },
                   { value: "series", label: t("filters.typeSeries") },
@@ -667,6 +670,7 @@ export function SettingsPage() {
               <SettingToggle
                 label={t("settings.reduceAnimations")}
                 pressed={preferences?.reduceMotion ?? false}
+                disabled={isSaving}
                 onPressedChange={() =>
                   void updatePreference({ key: "reduceMotion", value: !preferences?.reduceMotion })
                 }
@@ -674,11 +678,13 @@ export function SettingsPage() {
               <SettingToggle
                 label={t("settings.compactMode")}
                 pressed={preferences?.compactMode ?? false}
+                disabled={isSaving}
                 onPressedChange={() => void updatePreference({ key: "compactMode", value: !preferences?.compactMode })}
               />
               <SettingToggle
                 label={t("settings.spoilerProtection")}
                 pressed={preferences?.spoilerProtection ?? false}
+                disabled={isSaving}
                 onPressedChange={() =>
                   void updatePreference({ key: "spoilerProtection", value: !preferences?.spoilerProtection })
                 }
@@ -686,6 +692,7 @@ export function SettingsPage() {
               <SettingToggle
                 label={t("settings.onThisDay")}
                 pressed={preferences?.onThisDayEnabled ?? false}
+                disabled={isSaving}
                 onPressedChange={() =>
                   void updatePreference({ key: "onThisDayEnabled", value: !preferences?.onThisDayEnabled })
                 }
@@ -728,16 +735,19 @@ export function SettingsPage() {
             <SettingToggle
               label={t("settings.calendarNotifications")}
               pressed={preferences?.notificationsEnabled ?? false}
+              disabled={isSaving}
               onPressedChange={() => void toggleCalendarNotifications()}
             />
             <SettingToggle
               label={t("settings.availabilityAlerts")}
               pressed={preferences?.availabilityAlertsEnabled ?? false}
+              disabled={isSaving}
               onPressedChange={() => void toggleAvailabilityAlerts()}
             />
             <SettingToggle
               label={t("settings.desktopNotifications")}
               pressed={preferences?.desktopNotificationsEnabled ?? false}
+              disabled={isSaving}
               onPressedChange={() => void toggleDesktopNotifications()}
             />
           </CardContent>

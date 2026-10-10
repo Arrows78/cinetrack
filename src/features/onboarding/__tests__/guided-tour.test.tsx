@@ -110,4 +110,38 @@ describe("GuidedTour", () => {
 
     expect(onFinish).toHaveBeenCalledTimes(1);
   });
+
+  it("points at the element that replaced a target after the sidebar remounted", () => {
+    const container = renderTargets(TOUR_TARGETS);
+    render(<GuidedTour onFinish={vi.fn()} />);
+
+    // The sidebar remounts: the old second target is detached and a new node
+    // with the same data-tour attribute sits somewhere else.
+    container.querySelector('[data-tour="tour-watch-tonight"]')?.remove();
+    const replacement = document.createElement("button");
+    replacement.setAttribute("data-tour", "tour-watch-tonight");
+    replacement.setAttribute("data-moved", "true");
+    container.appendChild(replacement);
+    vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+      const moved = this.getAttribute("data-moved") === "true";
+      const top = moved ? 400 : 100;
+      return {
+        top,
+        left: 100,
+        bottom: top + 40,
+        right: 200,
+        width: 100,
+        height: 40,
+        x: 100,
+        y: top,
+        toJSON: () => "",
+      };
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("onboarding.tour.next") }));
+
+    const dialog = screen.getByRole("dialog", { name: i18n.t("onboarding.tour.watchTonight.title") });
+    // Tooltip sits GAP (12px) under the target: 400 + 40 + 12.
+    expect(dialog.style.top).toBe("452px");
+  });
 });

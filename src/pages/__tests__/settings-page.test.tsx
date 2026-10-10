@@ -542,6 +542,42 @@ describe("SettingsPage — preferences", () => {
     await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("availabilityCheckIntervalHours", 12));
   });
 
+  it("ignores a second click on a toggle while the first write is still pending", async () => {
+    let finishWrite: (value: typeof preferencesData) => void = () => undefined;
+    updatePreferenceMock.mockReset().mockImplementation(
+      () =>
+        new Promise<typeof preferencesData>((resolve) => {
+          finishWrite = resolve;
+        })
+    );
+    renderPage();
+    await screen.findByText("Default profile");
+
+    const toggle = screen.getByRole("button", { name: "Compact mode" });
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeDisabled());
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "Reduce animations" }));
+
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledTimes(1));
+    expect(updatePreferenceMock).toHaveBeenCalledWith("compactMode", true);
+    finishWrite({ ...preferencesData, compactMode: true });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Compact mode" })).toBeEnabled());
+  });
+
+  it("ignores a second change of a select while the first write is still pending", async () => {
+    updatePreferenceMock.mockReset().mockImplementation(() => new Promise(() => undefined));
+    renderPage();
+    await screen.findByText("Default profile");
+
+    const regionSelect = screen.getByRole("combobox", { name: "TMDB region" });
+    fireEvent.change(regionSelect, { target: { value: "US" } });
+    await waitFor(() => expect(regionSelect).toBeDisabled());
+    fireEvent.change(regionSelect, { target: { value: "GB" } });
+
+    expect(updatePreferenceMock).toHaveBeenCalledTimes(1);
+  });
+
   it("links to the dedicated availability-alerts management page", async () => {
     renderPage();
     await screen.findByText("Default profile");

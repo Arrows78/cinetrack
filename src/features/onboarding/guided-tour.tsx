@@ -56,20 +56,24 @@ function findVisibleTarget(target: string): HTMLElement | null {
  */
 export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation();
-  const [steps] = useState<{ step: TourStep; element: HTMLElement }[]>(() =>
-    TOUR_STEPS.map((step) => {
-      const element = findVisibleTarget(step.target);
-      return element ? { step, element } : null;
-    }).filter((entry): entry is { step: TourStep; element: HTMLElement } => entry !== null)
-  );
+  // Only the steps (not their elements) are fixed at mount: the sidebar can
+  // remount while the tour is open, which would leave a held element
+  // detached, so the current target is looked up again on every step and
+  // every layout change below.
+  const [steps] = useState<TourStep[]>(() => TOUR_STEPS.filter((step) => findVisibleTarget(step.target) !== null));
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
-  const current = steps[index];
+  const currentStep = steps[index];
 
   useLayoutEffect(() => {
-    if (!current) return;
-    const update = () => setRect(current.element.getBoundingClientRect());
+    if (!currentStep) return;
+    const update = () => {
+      // A target that is momentarily absent keeps the last known position
+      // instead of collapsing the tour.
+      const element = findVisibleTarget(currentStep.target);
+      if (element) setRect(element.getBoundingClientRect());
+    };
     update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
@@ -77,20 +81,20 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [current]);
+  }, [currentStep]);
 
   // Escape always skips — a keyboard user shouldn't be trapped behind a
   // tour with no other way out short of clicking through every step.
   useEffect(() => {
-    if (!current) return;
+    if (!currentStep) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onFinish();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [current, onFinish]);
+  }, [currentStep, onFinish]);
 
-  if (!current || !rect) return null;
+  if (!currentStep || !rect) return null;
 
   const isLast = index === steps.length - 1;
   const placeBelow = rect.bottom + GAP + 140 <= window.innerHeight;
@@ -112,7 +116,7 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t(current.step.titleKey)}
+        aria-label={t(currentStep.titleKey)}
         className={cn(
           "fixed z-command-palette rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-elevation-lg"
         )}
@@ -121,8 +125,8 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
         <p className="text-caption text-muted-foreground">
           {t("onboarding.tour.stepCounter", { current: index + 1, total: steps.length })}
         </p>
-        <p className="mt-1 font-semibold">{t(current.step.titleKey)}</p>
-        <p className="mt-1 text-body-sm text-muted-foreground">{t(current.step.bodyKey)}</p>
+        <p className="mt-1 font-semibold">{t(currentStep.titleKey)}</p>
+        <p className="mt-1 text-body-sm text-muted-foreground">{t(currentStep.bodyKey)}</p>
         <div className="mt-4 flex items-center justify-between gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={onFinish}>
             {t("onboarding.tour.skip")}
