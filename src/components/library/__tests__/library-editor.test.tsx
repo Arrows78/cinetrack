@@ -306,6 +306,89 @@ describe("LibraryEditor", () => {
     );
   });
 
+  it("saves a tag still being typed when Save is clicked right after", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    const tagsInput = screen.getByLabelText("Tags");
+    fireEvent.change(tagsInput, { target: { value: "weekend" } });
+    // What a real click on Save does first: the tag field loses focus.
+    fireEvent.blur(tagsInput);
+    screen.getByRole("button", { name: /save/i }).click();
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ tags: ["favourite-director", "weekend"] }));
+  });
+
+  it("keeps unsaved edits when the stored entry changes underneath (e.g. the favourite toggle)", () => {
+    const state = { data: libraryItem };
+    useLibraryItemMock.mockImplementation(() => ({
+      data: state.data,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    }));
+
+    const view = renderLoaded();
+    fireEvent.change(screen.getByLabelText("Private notes"), { target: { value: "Rewatch with Sam" } });
+
+    // FavouriteButton saved: the query now holds a new object.
+    state.data = { ...libraryItem, favourite: false, updatedAt: "2026-02-01T00:00:00.000Z" };
+    view.rerender(<LibraryEditor media={media} />);
+
+    expect(screen.getByLabelText("Private notes")).toHaveValue("Rewatch with Sam");
+    screen.getByRole("button", { name: /save/i }).click();
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ notes: "Rewatch with Sam" }));
+  });
+
+  it("still picks up a stored change on a field the user has not touched", () => {
+    const state = { data: libraryItem };
+    useLibraryItemMock.mockImplementation(() => ({
+      data: state.data,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    }));
+
+    const view = renderLoaded();
+    // Watching episodes moved the entry to "completed" behind the form's back.
+    state.data = { ...libraryItem, status: "completed" as const };
+    view.rerender(<LibraryEditor media={media} />);
+
+    expect(screen.getByLabelText("Status")).toHaveValue("completed");
+  });
+
+  it("rounds a fractional rewatch count down to a whole number on save", () => {
+    useLibraryItemMock.mockReturnValue({
+      data: libraryItem,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    });
+
+    renderLoaded();
+    fireEvent.change(screen.getByLabelText("Rewatches"), { target: { value: "2.5" } });
+    screen.getByRole("button", { name: /save/i }).click();
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ rewatchCount: 2 }));
+  });
+
   it("renders the form with no Remove button for a title that isn't in the library yet", () => {
     useLibraryItemMock.mockReturnValue({
       data: undefined,

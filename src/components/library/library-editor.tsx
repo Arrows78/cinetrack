@@ -16,6 +16,9 @@ import { toast } from "@/components/ui/use-toast";
 import { useLibraryDistinctTags, useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
+const sameTags = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((tag, index) => tag === right[index]);
+
 export function LibraryEditor({ media }: { media: MediaSummary }) {
   const { t } = useTranslation();
   const library = useLibraryItem(media);
@@ -34,13 +37,22 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   // real cached values.
   const [loadedLibraryData, setLoadedLibraryData] = useState<typeof library.data>();
 
+  // The stored entry can change while the form is open (the favourite toggle
+  // in the page hero saves it, and watching episodes moves its status). Only
+  // fields still equal to what the previous load put in the form are
+  // refreshed: overwriting the whole form would silently discard whatever the
+  // user had typed and not saved yet.
   if (library.data && library.data !== loadedLibraryData) {
-    setLoadedLibraryData(library.data);
-    setStatus(library.data.status);
-    setUserRating(library.data.userRating ?? null);
-    setNotes(library.data.notes ?? "");
-    setTags(library.data.tags);
-    setRewatchCount(library.data.rewatchCount);
+    const previous = loadedLibraryData;
+    const next = library.data;
+    setLoadedLibraryData(next);
+    setStatus((current) => (!previous || current === previous.status ? next.status : current));
+    setUserRating((current) =>
+      !previous || current === (previous.userRating ?? null) ? (next.userRating ?? null) : current
+    );
+    setNotes((current) => (!previous || current === (previous.notes ?? "") ? (next.notes ?? "") : current));
+    setTags((current) => (!previous || sameTags(current, previous.tags) ? next.tags : current));
+    setRewatchCount((current) => (!previous || current === previous.rewatchCount ? next.rewatchCount : current));
   }
 
   // Saving always sends all 5 fields (see save() below), and upsert_impl on
@@ -94,7 +106,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         // Trimmed and case-insensitively deduplicated by TagInput itself as
         // tags are added — nothing left to normalize here.
         tags,
-        rewatchCount: Math.max(0, rewatchCount),
+        rewatchCount: Number.isFinite(rewatchCount) ? Math.max(0, Math.floor(rewatchCount)) : 0,
       })
       .then(() => {
         toast({ description: t("library.saved"), variant: "success" });
