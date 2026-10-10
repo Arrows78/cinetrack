@@ -312,9 +312,10 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     )
                     .await
                     .unwrap();
+                    let regular = model.regular_seen(entry.id, &catalogue);
                     if let Some(cached) = model.tracked_total.get_mut(&entry.id) {
-                        *cached = total;
-                        let regular = model.regular_seen(entry.id, &catalogue);
+                        // A refresh never stores a total below what is already watched.
+                        *cached = total.max(regular);
                         let key = (entry.id, "series");
                         if model.lib.get(&key) == Some(&"completed")
                             && regular >= 1
