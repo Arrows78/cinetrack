@@ -25,22 +25,49 @@ pub(super) async fn load_preferences(pool: &SqlitePool) -> Result<UserPreference
         .await
         .map_err(ApiError::from)?;
 
-    let mut merged: Map<String, Value> = match serde_json::to_value(UserPreferences::default()) {
+    let defaults: Map<String, Value> = match serde_json::to_value(UserPreferences::default()) {
         Ok(Value::Object(map)) => map,
         _ => unreachable!("UserPreferences always serializes to a JSON object"),
     };
 
-    for (key, raw_value) in rows {
-        // Ignore invalid legacy values and fall back to the default already
-        // present in `merged`, matching the try/catch-and-skip in
-        // preferences-repository.ts.
-        if let Ok(value) = serde_json::from_str::<Value>(&raw_value) {
-            merged.insert(key, value);
-        }
-    }
+    // Ignore invalid legacy values and fall back to the default already
+    // present in `defaults`, matching the try/catch-and-skip in
+    // preferences-repository.ts.
+    let stored: Vec<(String, Value)> = rows
+        .into_iter()
+        .filter_map(|(key, raw_value)| {
+            serde_json::from_str::<Value>(&raw_value)
+                .ok()
+                .map(|value| (key, value))
+        })
+        .collect();
 
-    let prefs: UserPreferences = serde_json::from_value(Value::Object(merged))
-        .map_err(|error| ApiError::bad_request(format!("Invalid stored preferences: {error}")))?;
+    let mut merged = defaults.clone();
+    merged.extend(stored.iter().cloned());
+
+    let prefs: UserPreferences = match serde_json::from_value(Value::Object(merged)) {
+        Ok(prefs) => prefs,
+        Err(_) => {
+            // Well-formed JSON can still be a value the current schema no
+            // longer accepts (a retired accent colour, a wrong type). One bad
+            // row must not make every preference unreadable — nor block
+            // writing the others, which starts from this read — so keep only
+            // the stored values that each fit on their own over the defaults.
+            let mut tolerant = defaults;
+            for (key, value) in stored {
+                let mut candidate = tolerant.clone();
+                candidate.insert(key, value);
+                if serde_json::from_value::<UserPreferences>(Value::Object(candidate.clone()))
+                    .is_ok()
+                {
+                    tolerant = candidate;
+                }
+            }
+            serde_json::from_value(Value::Object(tolerant)).map_err(|error| {
+                ApiError::bad_request(format!("Invalid stored preferences: {error}"))
+            })?
+        }
+    };
     validate(&prefs)?;
     Ok(prefs)
 }
@@ -147,11 +174,24 @@ pub(super) async fn write_preference(
 
     tx.commit().await.map_err(ApiError::from)?;
 
-    *cache
+    // Patch just this key into whatever the cache holds *now*, rather than
+    // replacing the cache with `updated` (a snapshot taken before this write
+    // committed): a concurrent write to another key that committed in
+    // between would otherwise vanish from the cache, so the app would keep
+    // serving a value the database no longer has.
+    let mut guard = cache
         .0
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(updated.clone());
-    Ok(updated)
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let patched = guard.as_ref().and_then(|cached| {
+        let Ok(Value::Object(mut map)) = serde_json::to_value(cached) else {
+            return None;
+        };
+        map.insert(key.clone(), updated_json.get(&key)?.clone());
+        serde_json::from_value::<UserPreferences>(Value::Object(map)).ok()
+    });
+    *guard = patched.or_else(|| Some(updated.clone()));
+    Ok(guard.clone().unwrap_or(updated))
 }
 
 #[cfg(test)]
@@ -209,6 +249,72 @@ mod tests {
 
         let prefs = load_preferences(&pool).await.unwrap();
         assert!(matches!(prefs.theme, Theme::Dark));
+    }
+
+    #[tokio::test]
+    async fn load_preferences_ignores_a_stored_value_of_the_wrong_type_or_an_unknown_variant() {
+        let pool = migrated_pool().await;
+        // Valid JSON, but not a value the current schema accepts (a retired
+        // accent colour, a boolean stored as text). One bad row must not make
+        // every preference unreadable — or block writing the others.
+        for (key, value) in [
+            ("accentColor", "\"chartreuse\""),
+            ("reduceMotion", "\"yes\""),
+            ("language", "\"fr\""),
+        ] {
+            sqlx::query("INSERT INTO preferences (key, value, updated_at) VALUES ($1, $2, 'now')")
+                .bind(key)
+                .bind(value)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+
+        let prefs = load_preferences(&pool).await.unwrap();
+        assert!(!prefs.reduce_motion);
+        assert_eq!(
+            serde_json::to_value(&prefs).unwrap()["accentColor"],
+            "violet"
+        );
+        assert_eq!(serde_json::to_value(&prefs).unwrap()["language"], "fr");
+
+        let cache = PreferencesCache::default();
+        let updated = write_preference(
+            "theme".to_string(),
+            Value::String("light".to_string()),
+            &pool,
+            &cache,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(updated.theme, Theme::Light));
+    }
+
+    #[tokio::test]
+    async fn concurrent_writes_to_different_keys_are_both_kept_in_the_cache() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+        // Warm the cache, as every real write after the first read finds it.
+        get_preferences_cached(&pool, &cache).await.unwrap();
+
+        let (first, second) = tokio::join!(
+            write_preference("reduceMotion".to_string(), Value::Bool(true), &pool, &cache),
+            write_preference("compactMode".to_string(), Value::Bool(true), &pool, &cache),
+        );
+        first.unwrap();
+        second.unwrap();
+
+        // What the app serves from now on (the cache) must agree with what
+        // was persisted (the database) — and both writes must be in each.
+        let cached = get_preferences_cached(&pool, &cache).await.unwrap();
+        let stored = load_preferences(&pool).await.unwrap();
+        assert!(stored.reduce_motion && stored.compact_mode);
+        assert!(
+            cached.reduce_motion && cached.compact_mode,
+            "the cache lost one of two concurrent writes (reduceMotion: {}, compactMode: {})",
+            cached.reduce_motion,
+            cached.compact_mode
+        );
     }
 
     #[tokio::test]
