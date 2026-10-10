@@ -93,6 +93,7 @@ async fn rewatch_stats(app: &App) -> serde_json::Value {
             SINCE.to_string(),
             vec!["2026-01".to_string(), "2026-02".to_string()],
             0,
+            None,
             app.state(),
         )
         .await
@@ -118,9 +119,10 @@ async fn watching_a_seen_movie_again_logs_one_rewatch_and_the_movie_stays_one_wa
     assert_eq!(rewatch_events(&pool).await, 1);
     // Still seen, still one watch dated at the first viewing — a rewatch is
     // not a second watch of the title in the overview or the year summary.
-    let overview = crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, app.state())
-        .await
-        .unwrap();
+    let overview =
+        crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, None, app.state())
+            .await
+            .unwrap();
     assert_eq!(overview.totals.movies_watched, 1);
     assert_eq!(overview.totals.minutes_watched, 100);
     let recent = crate::stats::list_recent_viewing_events(SINCE.to_string(), app.state())
@@ -275,9 +277,10 @@ async fn raising_the_library_counter_of_a_seen_movie_logs_one_rewatch_per_step()
     .await;
     assert_eq!(minutes, 300);
     // Never a second watch of the movie.
-    let overview = crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, app.state())
-        .await
-        .unwrap();
+    let overview =
+        crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, None, app.state())
+            .await
+            .unwrap();
     assert_eq!(overview.totals.movies_watched, 1);
 }
 
@@ -314,9 +317,10 @@ async fn a_counter_set_on_a_title_that_is_not_seen_is_not_a_viewing() {
     // movie must not become "seen" in the statistics.
     assert_eq!(counter(&pool, 55, "movie").await, 3);
     assert_eq!(count(&pool, "SELECT COUNT(*) FROM viewing_events").await, 0);
-    let overview = crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, app.state())
-        .await
-        .unwrap();
+    let overview =
+        crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, None, app.state())
+            .await
+            .unwrap();
     assert_eq!(overview.totals.movies_watched, 0);
 }
 
@@ -350,9 +354,10 @@ async fn a_series_counter_logs_title_level_rewatches_that_never_count_as_episode
     save_counter(&app, 10, "series", 2).await;
 
     assert_eq!(rewatch_events(&pool).await, 2);
-    let overview = crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, app.state())
-        .await
-        .unwrap();
+    let overview =
+        crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, None, app.state())
+            .await
+            .unwrap();
     assert_eq!(overview.totals.episodes_watched, 1);
     assert_eq!(overview.totals.minutes_watched, 40);
     assert_eq!(total_rewatches(&app).await, 2);

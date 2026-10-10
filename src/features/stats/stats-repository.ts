@@ -1,6 +1,7 @@
 import { eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth, subDays, subMonths } from "date-fns";
 import { statsCommands, type YearlyActivityBucket } from "@/features/stats/stats-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
+import { getViewerTimeZone } from "@/shared/lib/time-zone";
 import type {
   LibraryStats,
   MonthlyRecap,
@@ -97,6 +98,16 @@ export function yearOverYearComparison(current: YearSummary, previous: YearSumma
   };
 }
 
+/**
+ * How the Rust side buckets by the viewer's local calendar: their IANA zone
+ * (applied per event, so daylight saving is exact all year) and, as the
+ * fallback for a runtime that cannot name it, the fixed offset in force at
+ * `at`.
+ */
+function viewerZone(at: Date = new Date()): { tzOffsetMinutes: number; timeZone: string | null } {
+  return { tzOffsetMinutes: at.getTimezoneOffset(), timeZone: getViewerTimeZone() };
+}
+
 function recentEventsSince(now: Date): string {
   return subDays(now, RECENT_EVENTS_WINDOW_DAYS).toISOString();
 }
@@ -126,12 +137,12 @@ export const statsRepository = {
       invokeTypedCommand(statsCommands.getOverview, {
         windowStart: windowStart.toISOString(),
         monthLabels,
-        tzOffsetMinutes: now.getTimezoneOffset(),
+        ...viewerZone(now),
       }),
       invokeTypedCommand(statsCommands.getActivityStats, {
         since,
         today: now.toISOString(),
-        tzOffsetMinutes: now.getTimezoneOffset(),
+        ...viewerZone(now),
       }),
       invokeTypedCommand(statsCommands.getLibraryExtras),
     ]);
@@ -196,7 +207,7 @@ export const statsRepository = {
   // page's year-over-year chart and bounds its year switcher, in one query
   // instead of probing getYearSummary one year at a time.
   async getYearlyActivity(): Promise<YearlyActivityBucket[]> {
-    return invokeTypedCommand(statsCommands.listYearlyActivity, { tzOffsetMinutes: new Date().getTimezoneOffset() });
+    return invokeTypedCommand(statsCommands.listYearlyActivity, viewerZone());
   },
   // Powers the opt-in "On this day" Home card — every past-year watch whose
   // watched_at falls on today's month-day, most recent year first. `today`
@@ -206,7 +217,7 @@ export const statsRepository = {
   async getOnThisDayEvents(today = new Date().toISOString()): Promise<ViewingEvent[]> {
     return invokeTypedCommand(statsCommands.listOnThisDayEvents, {
       today,
-      tzOffsetMinutes: new Date(today).getTimezoneOffset(),
+      ...viewerZone(new Date(today)),
     });
   },
   // `month` is a "YYYY-MM" label.
@@ -221,7 +232,7 @@ export const statsRepository = {
       month,
       rangeStart: rangeStart.toISOString(),
       rangeEnd: new Date(year, monthNumber, 1).toISOString(),
-      tzOffsetMinutes: rangeStart.getTimezoneOffset(),
+      ...viewerZone(rangeStart),
     });
   },
   async getRewatchStats(): Promise<RewatchStats> {
@@ -229,14 +240,14 @@ export const statsRepository = {
     return invokeTypedCommand(statsCommands.getRewatchStats, {
       windowStart: windowStart.toISOString(),
       monthLabels,
-      tzOffsetMinutes: new Date().getTimezoneOffset(),
+      ...viewerZone(),
     });
   },
   async getRatingDistribution(): Promise<RatingDistribution> {
     const { windowStart } = trailing12MonthsWindow();
     return invokeTypedCommand(statsCommands.getRatingDistribution, {
       windowStart: windowStart.toISOString(),
-      tzOffsetMinutes: new Date().getTimezoneOffset(),
+      ...viewerZone(),
     });
   },
   async getWatchMilestones(): Promise<WatchMilestone[]> {

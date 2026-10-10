@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
 
+use super::queries::local_time::LocalClock;
 use super::repository::StatsRepository;
 use super::{
     ActivityStats, LibraryExtras, MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview,
@@ -59,10 +60,14 @@ impl<'a> StatsService<'a> {
         &self,
         today: &str,
         tz_offset_minutes: i64,
+        time_zone: Option<&str>,
     ) -> Result<Vec<ViewingEvent>, ApiError> {
         self.repository()
             .await?
-            .list_on_this_day_events(today, tz_offset_minutes)
+            .list_on_this_day_events(
+                today,
+                LocalClock::from_request(tz_offset_minutes, time_zone)?,
+            )
             .await
     }
 
@@ -82,20 +87,26 @@ impl<'a> StatsService<'a> {
         window_start: &str,
         month_labels: &[String],
         tz_offset_minutes: i64,
+        time_zone: Option<&str>,
     ) -> Result<StatsOverview, ApiError> {
         self.repository()
             .await?
-            .get_stats_overview(window_start, month_labels, tz_offset_minutes)
+            .get_stats_overview(
+                window_start,
+                month_labels,
+                LocalClock::from_request(tz_offset_minutes, time_zone)?,
+            )
             .await
     }
 
     pub(super) async fn list_yearly_activity(
         &self,
         tz_offset_minutes: i64,
+        time_zone: Option<&str>,
     ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
         self.repository()
             .await?
-            .list_yearly_activity(tz_offset_minutes)
+            .list_yearly_activity(LocalClock::from_request(tz_offset_minutes, time_zone)?)
             .await
     }
 
@@ -105,10 +116,16 @@ impl<'a> StatsService<'a> {
         range_start: &str,
         range_end: &str,
         tz_offset_minutes: i64,
+        time_zone: Option<&str>,
     ) -> Result<MonthlyRecap, ApiError> {
         self.repository()
             .await?
-            .get_monthly_recap(month, range_start, range_end, tz_offset_minutes)
+            .get_monthly_recap(
+                month,
+                range_start,
+                range_end,
+                LocalClock::from_request(tz_offset_minutes, time_zone)?,
+            )
             .await
     }
 
@@ -117,10 +134,15 @@ impl<'a> StatsService<'a> {
         window_start: &str,
         month_labels: &[String],
         tz_offset_minutes: i64,
+        time_zone: Option<&str>,
     ) -> Result<RewatchStats, ApiError> {
         self.repository()
             .await?
-            .get_rewatch_stats(window_start, month_labels, tz_offset_minutes)
+            .get_rewatch_stats(
+                window_start,
+                month_labels,
+                LocalClock::from_request(tz_offset_minutes, time_zone)?,
+            )
             .await
     }
 
@@ -128,10 +150,14 @@ impl<'a> StatsService<'a> {
         &self,
         window_start: &str,
         tz_offset_minutes: i64,
+        time_zone: Option<&str>,
     ) -> Result<RatingDistribution, ApiError> {
         self.repository()
             .await?
-            .get_rating_distribution(window_start, tz_offset_minutes)
+            .get_rating_distribution(
+                window_start,
+                LocalClock::from_request(tz_offset_minutes, time_zone)?,
+            )
             .await
     }
 
@@ -144,10 +170,15 @@ impl<'a> StatsService<'a> {
         since: &str,
         today: &str,
         tz_offset_minutes: i64,
+        time_zone: Option<&str>,
     ) -> Result<ActivityStats, ApiError> {
         self.repository()
             .await?
-            .get_activity_stats(since, today, tz_offset_minutes)
+            .get_activity_stats(
+                since,
+                today,
+                LocalClock::from_request(tz_offset_minutes, time_zone)?,
+            )
             .await
     }
 

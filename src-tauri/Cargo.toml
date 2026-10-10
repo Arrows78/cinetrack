@@ -30,6 +30,11 @@ serde_json = "1"
 # `new Date().toISOString()` format (see diagnostics.rs), not for any real
 # date arithmetic.
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+# The IANA time-zone database, so the statistics bucket every event in the
+# viewer's real zone (daylight saving included) instead of one fixed offset —
+# see stats/queries/local_time.rs. default-features off: just the compiled-in
+# zone data, no serde or case-insensitive lookups.
+chrono-tz = { version = "0.10", default-features = false }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 sqlx = { version = "0.9", default-features = false, features = ["sqlite", "runtime-tokio", "macros", "json"] }

@@ -661,6 +661,7 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     "2000-01-01T00:00:00.000Z".to_string(),
                     vec![],
                     0,
+                    None,
                     pool_state,
                 )
                 .await

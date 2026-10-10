@@ -234,9 +234,10 @@ async fn assert_views_agree_with(
     );
 
     // --- Stats overview ---------------------------------------------------
-    let overview = crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, app.state())
-        .await
-        .unwrap();
+    let overview =
+        crate::stats::get_stats_overview(SINCE.to_string(), vec![], 0, None, app.state())
+            .await
+            .unwrap();
     let totals = overview.totals;
     assert_eq!(totals.movies_watched, movies_seen, "{context}: movies");
     assert_eq!(
@@ -399,7 +400,7 @@ async fn assert_views_agree_with(
     let all_minutes = movie_minutes + episode_minutes;
     let labels: Vec<String> = (1..=12).map(|month| format!("2026-{month:02}")).collect();
 
-    let yearly = crate::stats::list_yearly_activity(0, app.state())
+    let yearly = crate::stats::list_yearly_activity(0, None, app.state())
         .await
         .unwrap();
     assert_eq!(
@@ -419,7 +420,7 @@ async fn assert_views_agree_with(
     );
 
     let monthly =
-        crate::stats::get_stats_overview(SINCE.to_string(), labels.clone(), 0, app.state())
+        crate::stats::get_stats_overview(SINCE.to_string(), labels.clone(), 0, None, app.state())
             .await
             .unwrap()
             .monthly_activity;
@@ -439,6 +440,7 @@ async fn assert_views_agree_with(
         "2026-01-01T00:00:00.000Z".to_string(),
         "2026-02-01T00:00:00.000Z".to_string(),
         0,
+        None,
         app.state(),
     )
     .await
@@ -457,6 +459,7 @@ async fn assert_views_agree_with(
         SINCE.to_string(),
         "2026-01-02T12:00:00.000Z".to_string(),
         0,
+        None,
         app.state(),
     )
     .await
@@ -497,6 +500,7 @@ async fn assert_views_agree_with(
     let on_this_day = crate::stats::list_on_this_day_events(
         "2027-01-01T12:00:00.000Z".to_string(),
         0,
+        None,
         app.state(),
     )
     .await
@@ -534,7 +538,7 @@ async fn assert_views_agree_with(
     )
     .await;
     let rating_samples: i64 =
-        crate::stats::get_rating_distribution(SINCE.to_string(), 0, app.state())
+        crate::stats::get_rating_distribution(SINCE.to_string(), 0, None, app.state())
             .await
             .unwrap()
             .average_by_year
@@ -552,7 +556,7 @@ async fn assert_views_agree_with(
     // of the per-title figures above (those were checked against the
     // progress tables, which a rewatch does not touch).
     let rewatch_stats =
-        crate::stats::get_rewatch_stats(SINCE.to_string(), labels.clone(), 0, app.state())
+        crate::stats::get_rewatch_stats(SINCE.to_string(), labels.clone(), 0, None, app.state())
             .await
             .unwrap();
     assert_eq!(

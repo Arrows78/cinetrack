@@ -100,9 +100,10 @@ async fn assert_every_view_shows(
     let year: i64 = at[..4].parse().unwrap();
 
     // Overview: totals and the monthly chart.
-    let overview = crate::stats::get_stats_overview(SINCE.to_string(), labels(), 0, app.state())
-        .await
-        .unwrap();
+    let overview =
+        crate::stats::get_stats_overview(SINCE.to_string(), labels(), 0, None, app.state())
+            .await
+            .unwrap();
     assert_eq!(
         overview.totals.movies_watched, movies,
         "{context}: overview movies"
@@ -136,7 +137,7 @@ async fn assert_every_view_shows(
     }
 
     // Yearly activity.
-    let yearly = crate::stats::list_yearly_activity(0, app.state())
+    let yearly = crate::stats::list_yearly_activity(0, None, app.state())
         .await
         .unwrap();
     if expected == 0 {
@@ -161,9 +162,10 @@ async fn assert_every_view_shows(
     // Monthly recap, for every month of the year.
     for label in labels() {
         let (start, end) = month_range(&label);
-        let recap = crate::stats::get_monthly_recap(label.clone(), start, end, 0, app.state())
-            .await
-            .unwrap();
+        let recap =
+            crate::stats::get_monthly_recap(label.clone(), start, end, 0, None, app.state())
+                .await
+                .unwrap();
         let in_month = expected == 1 && label == month;
         assert_eq!(
             recap.movies_watched,
@@ -195,6 +197,7 @@ async fn assert_every_view_shows(
         SINCE.to_string(),
         format!("{}T23:00:00.000Z", day),
         0,
+        None,
         app.state(),
     )
     .await
@@ -278,7 +281,7 @@ async fn assert_every_view_shows(
     }
 
     // Rating averages by month and year (the title is rated 8).
-    let ratings = crate::stats::get_rating_distribution(SINCE.to_string(), 0, app.state())
+    let ratings = crate::stats::get_rating_distribution(SINCE.to_string(), 0, None, app.state())
         .await
         .unwrap();
     if expected == 0 {
@@ -323,6 +326,7 @@ async fn assert_every_view_shows(
     let on_this_day = crate::stats::list_on_this_day_events(
         format!("{}-{}T12:00:00.000Z", year + 1, &at[5..10]),
         0,
+        None,
         app.state(),
     )
     .await
@@ -332,6 +336,7 @@ async fn assert_every_view_shows(
     let cancelled_day = crate::stats::list_on_this_day_events(
         format!("{}-03-01T12:00:00.000Z", year + 1),
         0,
+        None,
         app.state(),
     )
     .await
@@ -440,9 +445,10 @@ async fn log_event(pool: &SqlitePool, uuid: &str, kind: &str, at: &str) {
 }
 
 async fn seen_movie_dates(app: &tauri::App<tauri::test::MockRuntime>) -> Vec<String> {
-    let overview = crate::stats::get_stats_overview(SINCE.to_string(), labels(), 0, app.state())
-        .await
-        .unwrap();
+    let overview =
+        crate::stats::get_stats_overview(SINCE.to_string(), labels(), 0, None, app.state())
+            .await
+            .unwrap();
     let recent = crate::stats::list_recent_viewing_events(SINCE.to_string(), app.state())
         .await
         .unwrap();

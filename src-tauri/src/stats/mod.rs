@@ -12,6 +12,8 @@ mod performance;
 mod queries;
 mod repository;
 mod service;
+#[cfg(test)]
+mod time_zone_tests;
 
 pub use commands::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
@@ -520,9 +522,10 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let events = list_on_this_day_events("2026-08-22T12:00:00.000Z".to_string(), 0, state)
-            .await
-            .unwrap();
+        let events =
+            list_on_this_day_events("2026-08-22T12:00:00.000Z".to_string(), 0, None, state)
+                .await
+                .unwrap();
 
         assert!(events.is_empty());
     }
@@ -898,6 +901,7 @@ mod tests {
             "2026-01-01T00:00:00.000Z".to_string(),
             vec!["2026-01".to_string()],
             0,
+            None,
             state,
         )
         .await
@@ -924,7 +928,7 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let yearly = list_yearly_activity(0, state).await.unwrap();
+        let yearly = list_yearly_activity(0, None, state).await.unwrap();
 
         assert!(yearly.is_empty());
     }
@@ -1297,6 +1301,7 @@ mod tests {
             "2026-03-01T00:00:00.000Z".to_string(),
             "2026-04-01T00:00:00.000Z".to_string(),
             0,
+            None,
             state,
         )
         .await
@@ -1480,6 +1485,7 @@ mod tests {
             "2025-01-01T00:00:00.000Z".to_string(),
             vec!["2026-01".to_string()],
             0,
+            None,
             state,
         )
         .await
@@ -1722,7 +1728,7 @@ mod tests {
         let state: State<'_, SqlitePool> = app.state();
 
         let distribution =
-            get_rating_distribution("2020-01-01T00:00:00.000Z".to_string(), 0, state)
+            get_rating_distribution("2020-01-01T00:00:00.000Z".to_string(), 0, None, state)
                 .await
                 .unwrap();
 
@@ -2717,6 +2723,7 @@ mod tests {
             "2025-01-01T00:00:00.000Z".to_string(),
             "2026-06-15T18:00:00.000Z".to_string(),
             0,
+            None,
             state,
         )
         .await

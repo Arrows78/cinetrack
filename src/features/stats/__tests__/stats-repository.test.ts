@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
+import { getViewerTimeZone } from "@/shared/lib/time-zone";
 import type { ViewingEvent } from "@/types/media";
 
 const invokeCommandMock = vi.hoisted(() => vi.fn());
@@ -243,6 +244,7 @@ describe("statsRepository.getStats", () => {
         since: expect.any(String),
         today: expect.any(String),
         tzOffsetMinutes: expect.any(Number),
+        timeZone: getViewerTimeZone(),
       })
     );
     expect(invokeCommandMock).toHaveBeenCalledWith("get_library_extras");
@@ -295,6 +297,7 @@ describe("statsRepository.getYearlyActivity", () => {
     expect(buckets[0]).toEqual({ year: 2025, moviesWatched: 20, episodesWatched: 300, minutesWatched: 4000 });
     expect(invokeCommandMock).toHaveBeenCalledWith("list_yearly_activity", {
       tzOffsetMinutes: new Date().getTimezoneOffset(),
+      timeZone: getViewerTimeZone(),
     });
   });
 });

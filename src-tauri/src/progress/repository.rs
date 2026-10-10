@@ -2578,6 +2578,7 @@ mod tests {
                     "2025-01-01T00:00:00.000Z".to_string(),
                     vec![],
                     0,
+                    None,
                     pool_state,
                 )
                 .await

@@ -10,6 +10,7 @@ vi.mock("@/shared/lib/invoke", async (importOriginal) => {
   };
 });
 
+import { getViewerTimeZone } from "@/shared/lib/time-zone";
 import { statsRepository } from "../stats-repository";
 
 describe("statsRepository.getOnThisDayEvents", () => {
@@ -21,6 +22,7 @@ describe("statsRepository.getOnThisDayEvents", () => {
     expect(invokeCommandMock).toHaveBeenCalledWith("list_on_this_day_events", {
       today: "2026-08-22T12:00:00.000Z",
       tzOffsetMinutes: new Date("2026-08-22T12:00:00.000Z").getTimezoneOffset(),
+      timeZone: getViewerTimeZone(),
     });
   });
 

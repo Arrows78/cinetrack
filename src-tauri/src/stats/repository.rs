@@ -5,6 +5,7 @@ use super::forecast::get_watch_forecast_impl;
 use super::library_extras::get_library_extras_impl;
 use super::milestones::get_watch_milestones_impl;
 use super::overview::{get_stats_overview_impl, list_yearly_activity_impl};
+use super::queries::local_time::LocalClock;
 use super::ratings::get_rating_distribution_impl;
 use super::recap::get_monthly_recap_impl;
 use super::rewatch::get_rewatch_stats_impl;
@@ -56,9 +57,9 @@ impl<'a> StatsRepository<'a> {
     pub(super) async fn list_on_this_day_events(
         &self,
         today: &str,
-        tz_offset_minutes: i64,
+        clock: LocalClock,
     ) -> Result<Vec<ViewingEvent>, ApiError> {
-        list_on_this_day_events_impl(self.pool, &self.profile_id, today, tz_offset_minutes).await
+        list_on_this_day_events_impl(self.pool, &self.profile_id, today, clock).await
     }
 
     pub(super) async fn list_viewing_events_for_media(
@@ -73,23 +74,23 @@ impl<'a> StatsRepository<'a> {
         &self,
         window_start: &str,
         month_labels: &[String],
-        tz_offset_minutes: i64,
+        clock: LocalClock,
     ) -> Result<StatsOverview, ApiError> {
         get_stats_overview_impl(
             self.pool,
             &self.profile_id,
             window_start,
             month_labels,
-            tz_offset_minutes,
+            clock,
         )
         .await
     }
 
     pub(super) async fn list_yearly_activity(
         &self,
-        tz_offset_minutes: i64,
+        clock: LocalClock,
     ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
-        list_yearly_activity_impl(self.pool, &self.profile_id, tz_offset_minutes).await
+        list_yearly_activity_impl(self.pool, &self.profile_id, clock).await
     }
 
     pub(super) async fn get_monthly_recap(
@@ -97,7 +98,7 @@ impl<'a> StatsRepository<'a> {
         month: &str,
         range_start: &str,
         range_end: &str,
-        tz_offset_minutes: i64,
+        clock: LocalClock,
     ) -> Result<MonthlyRecap, ApiError> {
         get_monthly_recap_impl(
             self.pool,
@@ -105,7 +106,7 @@ impl<'a> StatsRepository<'a> {
             month,
             range_start,
             range_end,
-            tz_offset_minutes,
+            clock,
         )
         .await
     }
@@ -114,14 +115,14 @@ impl<'a> StatsRepository<'a> {
         &self,
         window_start: &str,
         month_labels: &[String],
-        tz_offset_minutes: i64,
+        clock: LocalClock,
     ) -> Result<RewatchStats, ApiError> {
         get_rewatch_stats_impl(
             self.pool,
             &self.profile_id,
             window_start,
             month_labels,
-            tz_offset_minutes,
+            clock,
         )
         .await
     }
@@ -129,10 +130,9 @@ impl<'a> StatsRepository<'a> {
     pub(super) async fn get_rating_distribution(
         &self,
         window_start: &str,
-        tz_offset_minutes: i64,
+        clock: LocalClock,
     ) -> Result<RatingDistribution, ApiError> {
-        get_rating_distribution_impl(self.pool, &self.profile_id, window_start, tz_offset_minutes)
-            .await
+        get_rating_distribution_impl(self.pool, &self.profile_id, window_start, clock).await
     }
 
     pub(super) async fn get_watch_milestones(&self) -> Result<Vec<WatchMilestone>, ApiError> {
@@ -143,9 +143,9 @@ impl<'a> StatsRepository<'a> {
         &self,
         since: &str,
         today: &str,
-        tz_offset_minutes: i64,
+        clock: LocalClock,
     ) -> Result<ActivityStats, ApiError> {
-        get_activity_stats_impl(self.pool, &self.profile_id, since, today, tz_offset_minutes).await
+        get_activity_stats_impl(self.pool, &self.profile_id, since, today, clock).await
     }
 
     pub(super) async fn get_library_extras(&self) -> Result<LibraryExtras, ApiError> {

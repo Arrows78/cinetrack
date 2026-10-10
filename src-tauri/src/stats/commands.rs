@@ -66,11 +66,12 @@ pub async fn get_year_favourite_genre(
 pub async fn list_on_this_day_events(
     today: String,
     tz_offset_minutes: i64,
+    time_zone: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingEvent>, ApiError> {
     timed("list_on_this_day_events", async {
         StatsService::new(pool.inner())
-            .list_on_this_day_events(&today, tz_offset_minutes)
+            .list_on_this_day_events(&today, tz_offset_minutes, time_zone.as_deref())
             .await
     })
     .await
@@ -100,11 +101,17 @@ pub async fn get_stats_overview(
     window_start: String,
     month_labels: Vec<String>,
     tz_offset_minutes: i64,
+    time_zone: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<StatsOverview, ApiError> {
     timed("get_stats_overview", async {
         StatsService::new(pool.inner())
-            .get_stats_overview(&window_start, &month_labels, tz_offset_minutes)
+            .get_stats_overview(
+                &window_start,
+                &month_labels,
+                tz_offset_minutes,
+                time_zone.as_deref(),
+            )
             .await
     })
     .await
@@ -113,11 +120,12 @@ pub async fn get_stats_overview(
 #[tauri::command]
 pub async fn list_yearly_activity(
     tz_offset_minutes: i64,
+    time_zone: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<YearlyActivityBucket>, ApiError> {
     timed("list_yearly_activity", async {
         StatsService::new(pool.inner())
-            .list_yearly_activity(tz_offset_minutes)
+            .list_yearly_activity(tz_offset_minutes, time_zone.as_deref())
             .await
     })
     .await
@@ -132,11 +140,18 @@ pub async fn get_monthly_recap(
     range_start: String,
     range_end: String,
     tz_offset_minutes: i64,
+    time_zone: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<MonthlyRecap, ApiError> {
     timed("get_monthly_recap", async {
         StatsService::new(pool.inner())
-            .get_monthly_recap(&month, &range_start, &range_end, tz_offset_minutes)
+            .get_monthly_recap(
+                &month,
+                &range_start,
+                &range_end,
+                tz_offset_minutes,
+                time_zone.as_deref(),
+            )
             .await
     })
     .await
@@ -149,11 +164,17 @@ pub async fn get_rewatch_stats(
     window_start: String,
     month_labels: Vec<String>,
     tz_offset_minutes: i64,
+    time_zone: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<RewatchStats, ApiError> {
     timed("get_rewatch_stats", async {
         StatsService::new(pool.inner())
-            .get_rewatch_stats(&window_start, &month_labels, tz_offset_minutes)
+            .get_rewatch_stats(
+                &window_start,
+                &month_labels,
+                tz_offset_minutes,
+                time_zone.as_deref(),
+            )
             .await
     })
     .await
@@ -167,11 +188,12 @@ pub async fn get_rewatch_stats(
 pub async fn get_rating_distribution(
     window_start: String,
     tz_offset_minutes: i64,
+    time_zone: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<RatingDistribution, ApiError> {
     timed("get_rating_distribution", async {
         StatsService::new(pool.inner())
-            .get_rating_distribution(&window_start, tz_offset_minutes)
+            .get_rating_distribution(&window_start, tz_offset_minutes, time_zone.as_deref())
             .await
     })
     .await
@@ -189,19 +211,29 @@ pub async fn get_watch_milestones(
 
 /// `since` bounds the window the same way `list_recent_viewing_events`
 /// does (the client never needs a streak/heatmap further back than that).
-/// `today` and `tz_offset_minutes` (JS's `Date.getTimezoneOffset()`) are
-/// client-computed so "current streak"/"biggest binge day"/heatmap bucket
-/// by the caller's own local calendar day and hour, not SQLite's.
+/// `today` is client-computed, and the viewer's zone — `time_zone`, an IANA
+/// identifier such as `Europe/Paris`, or failing that the fixed
+/// `tz_offset_minutes` (JS's `Date.getTimezoneOffset()`) — makes "current
+/// streak"/"biggest binge day"/heatmap bucket by the viewer's own local
+/// calendar day and hour, not UTC's.
+///
+/// Every command below that takes `tz_offset_minutes` takes `time_zone`
+/// beside it the same way: the zone, when given, is applied per event (the
+/// offset in force at that event's own instant, daylight saving included) and
+/// an unknown identifier is a 400; without it the single fixed offset is used
+/// for the whole history, which is only exact for the half of the year the
+/// offset was read in. See `queries/local_time.rs`.
 #[tauri::command]
 pub async fn get_activity_stats(
     since: String,
     today: String,
     tz_offset_minutes: i64,
+    time_zone: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<ActivityStats, ApiError> {
     timed("get_activity_stats", async {
         StatsService::new(pool.inner())
-            .get_activity_stats(&since, &today, tz_offset_minutes)
+            .get_activity_stats(&since, &today, tz_offset_minutes, time_zone.as_deref())
             .await
     })
     .await

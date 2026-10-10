@@ -16,20 +16,24 @@ export type { YearlyActivityBucket, StatsOverview };
 
 type SinceArgs = { since: string };
 type YearRangeArgs = { rangeStart: string; rangeEnd: string };
-// `tzOffsetMinutes` is JS's getTimezoneOffset(): every month/year/day
-// bucket is the viewer's local calendar one, not UTC's.
-type StatsOverviewArgs = { windowStart: string; monthLabels: string[]; tzOffsetMinutes: number };
-type OnThisDayArgs = { today: string; tzOffsetMinutes: number };
-type YearlyActivityArgs = { tzOffsetMinutes: number };
-type MonthlyRecapArgs = {
+// Every month/year/day/hour bucket is the viewer's local calendar one, not
+// UTC's. `timeZone` is the viewer's IANA identifier (`Europe/Paris`), which
+// Rust applies per event so daylight saving is right all year round (an
+// unknown identifier is rejected, not ignored); `tzOffsetMinutes` is JS's
+// getTimezoneOffset() of one instant, the fixed-offset fallback used only
+// when `timeZone` is null.
+type ZoneArgs = { tzOffsetMinutes: number; timeZone: string | null };
+type StatsOverviewArgs = ZoneArgs & { windowStart: string; monthLabels: string[] };
+type OnThisDayArgs = ZoneArgs & { today: string };
+type YearlyActivityArgs = ZoneArgs;
+type MonthlyRecapArgs = ZoneArgs & {
   month: string;
   rangeStart: string;
   rangeEnd: string;
-  tzOffsetMinutes: number;
 };
-type RewatchStatsArgs = { windowStart: string; monthLabels: string[]; tzOffsetMinutes: number };
-type RatingDistributionArgs = { windowStart: string; tzOffsetMinutes: number };
-type ActivityStatsArgs = { since: string; today: string; tzOffsetMinutes: number };
+type RewatchStatsArgs = ZoneArgs & { windowStart: string; monthLabels: string[] };
+type RatingDistributionArgs = ZoneArgs & { windowStart: string };
+type ActivityStatsArgs = ZoneArgs & { since: string; today: string };
 type WatchForecastArgs = { since: string; paceWindowStart: string; now: string };
 
 export const statsCommands = {

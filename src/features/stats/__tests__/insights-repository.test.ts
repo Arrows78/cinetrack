@@ -11,7 +11,13 @@ vi.mock("@/shared/lib/invoke", async (importOriginal) => {
   };
 });
 
+import { getViewerTimeZone } from "@/shared/lib/time-zone";
 import { statsRepository, trailing12MonthsWindow } from "../stats-repository";
+
+// Every zone-aware stats command also carries the viewer's IANA zone, which
+// the Rust side buckets with per event; the offset stays as the fallback for
+// a runtime that cannot name its zone.
+const zone = getViewerTimeZone();
 
 beforeEach(() => {
   invokeCommandMock.mockClear();
@@ -42,6 +48,7 @@ describe("statsRepository.getMonthlyRecap", () => {
       rangeStart: new Date(2026, 2, 1).toISOString(),
       rangeEnd: new Date(2026, 3, 1).toISOString(),
       tzOffsetMinutes: new Date(2026, 2, 1).getTimezoneOffset(),
+      timeZone: zone,
     });
   });
 
@@ -55,6 +62,7 @@ describe("statsRepository.getMonthlyRecap", () => {
       rangeStart: new Date(2026, 11, 1).toISOString(),
       rangeEnd: new Date(2027, 0, 1).toISOString(),
       tzOffsetMinutes: new Date(2026, 11, 1).getTimezoneOffset(),
+      timeZone: zone,
     });
   });
 
@@ -92,6 +100,7 @@ describe("statsRepository.getRatingDistribution", () => {
     expect(invokeCommandMock).toHaveBeenCalledWith("get_rating_distribution", {
       windowStart: expect.any(String),
       tzOffsetMinutes: new Date().getTimezoneOffset(),
+      timeZone: zone,
     });
   });
 });
@@ -105,5 +114,52 @@ describe("statsRepository.getWatchMilestones", () => {
 
     expect(invokeCommandMock).toHaveBeenCalledWith("get_watch_milestones");
     expect(result).toBe(milestones);
+  });
+});
+
+describe("the viewer's IANA time zone", () => {
+  it("is sent on every zone-aware stats command, next to the legacy offset", async () => {
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(
+      () => ({ resolvedOptions: () => ({ timeZone: "Europe/Paris" }) }) as Intl.DateTimeFormat
+    );
+    invokeCommandMock.mockResolvedValue({ totals: {}, monthlyActivity: [], heatmap: [], favouriteGenres: [] });
+
+    await statsRepository.getStats();
+    await statsRepository.getYearlyActivity();
+    await statsRepository.getOnThisDayEvents("2026-08-22T12:00:00.000Z");
+    await statsRepository.getMonthlyRecap("2026-03");
+    await statsRepository.getRewatchStats();
+    await statsRepository.getRatingDistribution();
+
+    const zoneAware = [
+      "get_stats_overview",
+      "get_activity_stats",
+      "list_yearly_activity",
+      "list_on_this_day_events",
+      "get_monthly_recap",
+      "get_rewatch_stats",
+      "get_rating_distribution",
+    ];
+    for (const command of zoneAware) {
+      const call = invokeCommandMock.mock.calls.find(([name]) => name === command);
+      expect(call, command).toBeDefined();
+      expect(call![1], command).toMatchObject({ timeZone: "Europe/Paris", tzOffsetMinutes: expect.any(Number) });
+    }
+    vi.restoreAllMocks();
+  });
+
+  it("is null when the runtime cannot name its zone, leaving the fixed offset to the Rust side", async () => {
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(
+      () => ({ resolvedOptions: () => ({ timeZone: undefined }) }) as unknown as Intl.DateTimeFormat
+    );
+    invokeCommandMock.mockResolvedValue([]);
+
+    await statsRepository.getYearlyActivity();
+
+    expect(invokeCommandMock).toHaveBeenCalledWith("list_yearly_activity", {
+      tzOffsetMinutes: expect.any(Number),
+      timeZone: null,
+    });
+    vi.restoreAllMocks();
   });
 });
