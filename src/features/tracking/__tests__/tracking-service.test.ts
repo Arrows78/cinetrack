@@ -105,6 +105,17 @@ describe("trackingService.build", () => {
     expect(entries[0]).toMatchObject({ scope: "discovery" });
   });
 
+  it("does not tag a movie release as mine because a series shares its TMDB id", async () => {
+    mocks.build.mockResolvedValue([calendarEntry({ mediaId: 1399, mediaType: "movie" })]);
+    mocks.listMediaKeys.mockResolvedValue([{ ...libraryItem(1399), mediaType: "series" }]);
+
+    const entries = await trackingService.build();
+    const notifiable = await trackingService.buildNotifiableCalendarEntries();
+
+    expect(entries[0]).toMatchObject({ scope: "discovery" });
+    expect(notifiable).toHaveLength(0);
+  });
+
   it("always tags episodes as mine, library or not", async () => {
     mocks.build.mockResolvedValue([
       calendarEntry({ kind: "episode", mediaId: 10, mediaType: "series", id: "episode-1" }),
