@@ -7,6 +7,27 @@ use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
+/// Same rule as the `region` preference: TMDB watch-provider data is keyed by
+/// a 2-letter uppercase country code, so anything else could never match a
+/// snapshot or a provider list.
+fn validate_region(region: &str) -> Result<(), ApiError> {
+    if region.len() == 2 && region.chars().all(|c| c.is_ascii_uppercase()) {
+        Ok(())
+    } else {
+        Err(ApiError::bad_request(
+            "region must be a 2-letter uppercase country code",
+        ))
+    }
+}
+
+fn dedup_provider_ids(provider_ids: Vec<i64>) -> Vec<i64> {
+    let mut seen = std::collections::HashSet::new();
+    provider_ids
+        .into_iter()
+        .filter(|id| seen.insert(*id))
+        .collect()
+}
+
 pub(super) async fn list_alerts_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -74,6 +95,9 @@ pub(super) async fn toggle_impl(
         tx.commit().await.map_err(ApiError::from)?;
         return Ok(None);
     }
+
+    validate_region(&region)?;
+    let provider_ids = dedup_provider_ids(provider_ids);
 
     let created_at = now_iso(&mut *tx).await?;
     let alert = AvailabilityAlert {
@@ -170,6 +194,7 @@ pub(super) async fn save_snapshot_impl(
     pool: &SqlitePool,
     snapshot: AvailabilitySnapshot,
 ) -> Result<(), ApiError> {
+    validate_region(&snapshot.region)?;
     sqlx::query(
         "INSERT OR REPLACE INTO availability_snapshots (media_id,media_type,region,provider_ids,checked_at)
          VALUES ($1,$2,$3,$4,$5)",
@@ -243,6 +268,63 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[tokio::test]
+    async fn rejects_an_alert_whose_region_is_not_a_two_letter_uppercase_code() {
+        let pool = migrated_pool().await;
+        for region in ["", "fr", "FRA", "F1"] {
+            let error = toggle_impl(
+                &pool,
+                "default",
+                media(7, MediaType::Movie, "Alerte"),
+                region.to_string(),
+                vec![8],
+            )
+            .await
+            .unwrap_err();
+            assert_eq!(error.status, Some(400), "region {region:?}");
+        }
+        assert!(
+            get_alert_impl(&pool, "default", 7, MediaType::Movie)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn stores_each_selected_provider_once() {
+        let pool = migrated_pool().await;
+        let alert = toggle_impl(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Alerte"),
+            "FR".to_string(),
+            vec![8, 119, 8],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(alert.provider_ids, vec![8, 119]);
+    }
+
+    #[tokio::test]
+    async fn rejects_a_snapshot_for_a_malformed_region() {
+        let pool = migrated_pool().await;
+        let error = save_snapshot_impl(
+            &pool,
+            AvailabilitySnapshot {
+                media_id: 1,
+                media_type: MediaType::Movie,
+                region: "france".to_string(),
+                provider_ids: vec![8],
+                checked_at: "2026-01-01T00:00:00.000Z".to_string(),
+            },
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error.status, Some(400));
     }
 
     #[tokio::test]
