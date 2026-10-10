@@ -132,10 +132,13 @@ export function TagInput({
             setHighlighted(0);
           }}
           onFocus={() => setOpen(true)}
-          // Deferred so a suggestion's onClick (fired on mousedown-then-click)
-          // still lands before the list unmounts; commits whatever's left
-          // typed too, so tabbing away doesn't silently drop it.
-          onBlur={() => setTimeout(commitDraft, 100)}
+          // Commits whatever's left typed so tabbing away doesn't silently
+          // drop it — and does so synchronously: a click on a form's Save
+          // button blurs this field first, and a deferred commit landed
+          // after that save had already read the old tag list (and from a
+          // stale closure of it). A suggestion's own onMouseDown prevents
+          // the blur, so its click still lands before the list unmounts.
+          onBlur={commitDraft}
           onKeyDown={handleKeyDown}
           placeholder={value.length ? undefined : placeholder}
           className="min-w-24 flex-1 bg-transparent text-body-sm outline-none placeholder:text-muted-foreground"

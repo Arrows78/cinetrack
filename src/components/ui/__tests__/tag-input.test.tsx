@@ -35,6 +35,19 @@ describe("TagInput", () => {
     expect(onChange).toHaveBeenCalledWith(["Sci-Fi"]);
   });
 
+  it("commits a typed draft the moment the field loses focus, not on a later timer", () => {
+    const onChange = vi.fn();
+    render(<TagInput value={["Drama"]} onChange={onChange} suggestions={[]} ariaLabel="Tags" />);
+
+    const input = screen.getByLabelText("Tags");
+    fireEvent.change(input, { target: { value: "Sunday night" } });
+    fireEvent.blur(input);
+
+    // A click on "Save" right after blurring must already see this tag — a
+    // deferred commit used to land after the save had read the old list.
+    expect(onChange).toHaveBeenCalledWith(["Drama", "Sunday night"]);
+  });
+
   it("splits a comma-separated paste into several tags at once", () => {
     const onChange = vi.fn();
     render(<TagInput value={[]} onChange={onChange} suggestions={[]} ariaLabel="Tags" />);
