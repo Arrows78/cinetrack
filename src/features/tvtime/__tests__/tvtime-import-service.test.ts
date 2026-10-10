@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { QueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { MediaSummary, Season, Series } from "@/types/media";
 import type { TvTimeExport } from "../parse-export";
@@ -1218,29 +1217,38 @@ describe("importTvTimeExport", () => {
 });
 
 describe("invalidateTvTimeImportQueries", () => {
-  it("scopes invalidation to the active profile's own entities, not the whole local cache", async () => {
-    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
-    const queryClient = { invalidateQueries } as unknown as QueryClient;
+  it("invalidates every reader of the active profile, and nothing that belongs to another profile or to no profile", async () => {
+    const { QueryClient: RealQueryClient } = await import("@tanstack/react-query");
+    const queryClient = new RealQueryClient();
+    const ownKeys: unknown[][] = [
+      ["local", "history", "profile-1", "", "", ""],
+      ["local", "library", "profile-1"],
+      ["local", "library", "profile-1", "movie", 7],
+      ["local", "libraryPage", "profile-1", {}],
+      ["local", "trackedSeries", "profile-1"],
+      ["local", "stats", "profile-1", "wrapped", 2026],
+      ["local", "episodeProgress", "profile-1", 9],
+      ["local", "movieSeen", "profile-1", 55],
+      ["local", "watchNext", "profile-1", 9],
+      ["local", "viewingEventsForMedia", "profile-1", "series", 9],
+      ["local", "customLists", "profile-1", "list-1"],
+    ];
+    const untouchedKeys: unknown[][] = [
+      ["local", "history", "profile-2", "", "", ""],
+      ["local", "episodeProgress", "profile-2", 9],
+      ["local", "preferences"],
+      ["local", "profiles"],
+      ["local", "availabilitySnapshots"],
+      ["remote", "movie", 7],
+    ];
+    for (const key of [...ownKeys, ...untouchedKeys]) queryClient.setQueryData(key, "cached");
 
     await invalidateTvTimeImportQueries(queryClient, "profile-1");
 
-    const invalidatedKeys = invalidateQueries.mock.calls.map(([arg]) => (arg as { queryKey: unknown[] }).queryKey);
-    expect(invalidatedKeys).toEqual([
-      ["local", "history", "profile-1"],
-      ["local", "library", "profile-1"],
-      ["local", "libraryPage", "profile-1"],
-      ["local", "trackedSeries", "profile-1"],
-      ["local", "stats", "profile-1"],
-      ["local", "tracking", "profile-1"],
-      ["local", "calendar", "profile-1"],
-      ["local", "watchTonight", "profile-1"],
-      ["local", "libraryMediaKeys", "profile-1"],
-      ["local", "completedLibraryCandidates", "profile-1"],
-      ["local", "bestRecommendationSeed", "profile-1"],
-    ]);
-    // Never the bare ["local"] prefix, which would also evict every other
-    // profile's unrelated cached data.
-    expect(invalidatedKeys.some((key) => key.length === 1)).toBe(false);
+    for (const key of ownKeys) expect(queryClient.getQueryState(key)?.isInvalidated, JSON.stringify(key)).toBe(true);
+    for (const key of untouchedKeys) {
+      expect(queryClient.getQueryState(key)?.isInvalidated, JSON.stringify(key)).toBe(false);
+    }
   });
 });
 

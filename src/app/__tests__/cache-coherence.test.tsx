@@ -142,3 +142,91 @@ describe("library edits and the other views of the same title", () => {
     await waitFor(() => expect(count("list_library_distinct_tags")).toBeGreaterThan(before));
   });
 });
+
+describe("hiding a recommendation and Watch Tonight", () => {
+  it("dismissing and restoring a title re-runs the Watch Tonight picks that filter on it", async () => {
+    const { useDismissedRecommendations } = await import("@/features/recommendations/use-recommendations");
+    const { useWatchTonightPicks } = await import("@/features/watch-tonight/use-watch-tonight");
+    const client = createClient();
+    const view = renderHook(
+      () => ({ dismissed: useDismissedRecommendations(), picks: useWatchTonightPicks({ hideWatched: false }) }),
+      { wrapper: wrapperFor(client) }
+    );
+    await waitFor(() => expect(view.result.current.picks.isSuccess).toBe(true));
+    await waitFor(() => expect(view.result.current.dismissed.isSuccess).toBe(true));
+
+    const afterLoad = pickMock.mock.calls.length;
+    await act(async () => {
+      await view.result.current.dismissed.dismiss({ id: 5, mediaType: "movie", title: "Seven" });
+    });
+    await waitFor(() => expect(pickMock.mock.calls.length).toBeGreaterThan(afterLoad));
+
+    const afterDismiss = pickMock.mock.calls.length;
+    await act(async () => {
+      await view.result.current.dismissed.undismiss({ mediaId: 5, mediaType: "movie" });
+    });
+    await waitFor(() => expect(pickMock.mock.calls.length).toBeGreaterThan(afterDismiss));
+  });
+});
+
+describe("the tracking feed and the streaming services preference", () => {
+  it("never builds the feed with a provisional empty provider list while preferences load", async () => {
+    preferences = { ...preferences, preferredProviderIds: [8, 337] };
+    const { useTracking } = await import("@/features/tracking/use-tracking");
+    const client = createClient({ warm: false });
+    const view = renderHook(() => useTracking(), { wrapper: wrapperFor(client) });
+
+    await waitFor(() => expect(view.result.current.isSuccess).toBe(true));
+
+    expect(buildMock.mock.calls.map((call) => call[1])).toEqual([[8, 337]]);
+  });
+
+  it("rebuilds the feed when the streaming services change", async () => {
+    const { useTracking } = await import("@/features/tracking/use-tracking");
+    const { usePreferences } = await import("@/features/preferences/use-preferences");
+    const client = createClient();
+    const view = renderHook(() => ({ tracking: useTracking(), prefs: usePreferences() }), {
+      wrapper: wrapperFor(client),
+    });
+    await waitFor(() => expect(view.result.current.tracking.isSuccess).toBe(true));
+
+    await act(async () => {
+      await view.result.current.prefs.updatePreference({ key: "preferredProviderIds", value: [119] });
+    });
+
+    await waitFor(() => expect(buildMock.mock.calls[buildMock.mock.calls.length - 1]?.[1]).toEqual([119]));
+  });
+});
+
+describe("TV Time import and every profile-scoped reader", () => {
+  it("refreshes episode progress, the watch diary and seen flags that were already cached", async () => {
+    const { useEpisodeProgress, useMovieSeen, useViewingEventsForMedia } =
+      await import("@/features/progress/use-progress");
+    const { invalidateTvTimeImportQueries } = await import("@/features/tvtime/tvtime-import-service");
+    const client = createClient();
+    const view = renderHook(
+      () => ({
+        progress: useEpisodeProgress(9),
+        seen: useMovieSeen(55),
+        events: useViewingEventsForMedia(9, "series"),
+      }),
+      { wrapper: wrapperFor(client) }
+    );
+    await waitFor(() => expect(view.result.current.progress.isSuccess).toBe(true));
+    await waitFor(() => expect(view.result.current.seen.isSuccess).toBe(true));
+    await waitFor(() => expect(view.result.current.events.isSuccess).toBe(true));
+    const before = {
+      progress: count("get_episode_progress"),
+      seen: count("is_movie_seen"),
+      events: count("list_viewing_events_for_media"),
+    };
+
+    await act(async () => {
+      await invalidateTvTimeImportQueries(client, PROFILE);
+    });
+
+    await waitFor(() => expect(count("get_episode_progress")).toBeGreaterThan(before.progress));
+    await waitFor(() => expect(count("is_movie_seen")).toBeGreaterThan(before.seen));
+    await waitFor(() => expect(count("list_viewing_events_for_media")).toBeGreaterThan(before.events));
+  });
+});

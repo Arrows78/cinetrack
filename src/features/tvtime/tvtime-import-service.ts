@@ -7,7 +7,6 @@ import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import { logger } from "@/shared/lib/logger";
 import { errorMessage } from "@/shared/lib/errors";
 import { normalizeTitle } from "@/shared/utils/text";
-import { queryKeys } from "@/shared/constants/query-keys";
 import type { Episode, MediaSummary, Series } from "@/types/media";
 import {
   emptyExport,
@@ -680,25 +679,17 @@ export async function undoTvTimeImport(undo: TvTimeImportUndo): Promise<void> {
   );
 }
 
-// A bulk import (or resolving one retryable/unmatched item afterwards) can
-// touch history, library, tracked series, stats, tracking/calendar and
-// watch-tonight for the active profile — but nothing else, so this stays
-// scoped instead of invalidating the entire ["local"] cache namespace
-// (which would also evict every OTHER profile's unrelated cached data).
+// A bulk import (or resolving one retryable/unmatched item afterwards) writes
+// seen flags, episode progress, history, library and tracked series, so every
+// reader keyed under the active profile is stale afterwards — scoped to that
+// profile (index 2 of every `["local", <name>, <profileId>, ...]` key) rather
+// than the whole ["local"] namespace, which would also evict every OTHER
+// profile's unrelated cached data. Profile-less keys (preferences, profile
+// list, availability snapshots) are untouched.
 export async function invalidateTvTimeImportQueries(queryClient: QueryClient, profileId: string): Promise<void> {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.history(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.library(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryPage(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.trackedSeries(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.stats(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.watchTonight(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.libraryMediaKeys(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.completedLibraryCandidates(profileId) }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.bestRecommendationSeed(profileId) }),
-  ]);
+  await queryClient.invalidateQueries({
+    predicate: (query) => query.queryKey[0] === "local" && query.queryKey[2] === profileId,
+  });
 }
 
 /** Back-compat convenience: parses raw file contents, then applies them. */
