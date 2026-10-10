@@ -17,6 +17,24 @@ describe("Progress", () => {
     expect(indicator.style.transform).toBe("translateX(-100%)");
   });
 
+  it("stays empty rather than producing NaN when the maximum is 0 (a series whose total is unknown)", () => {
+    const { container } = render(<Progress value={0} max={0} />);
+    const indicator = container.querySelector('[class*="bg-primary"]') as HTMLElement;
+
+    expect(indicator.style.transform).toBe("translateX(-100%)");
+  });
+
+  it("clamps a value above the maximum to full and a negative value to empty", () => {
+    const over = render(<Progress value={12} max={10} />);
+    expect((over.container.querySelector('[class*="bg-primary"]') as HTMLElement).style.transform).toBe(
+      "translateX(-0%)"
+    );
+    const under = render(<Progress value={-3} max={10} />);
+    expect((under.container.querySelector('[class*="bg-primary"]') as HTMLElement).style.transform).toBe(
+      "translateX(-100%)"
+    );
+  });
+
   it("merges a custom indicator className", () => {
     const { container } = render(<Progress value={50} indicatorClassName="custom-indicator" />);
     expect(container.querySelector(".custom-indicator")).toBeInTheDocument();

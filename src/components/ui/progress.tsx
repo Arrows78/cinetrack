@@ -15,7 +15,9 @@ export function Progress({
   // (raw units — e.g. "8 of 24 episodes" — not forced through a
   // pre-computed percentage), but doesn't set the indicator's width; that's
   // still on the consumer, hence computing percent for the transform below.
-  const percent = Math.min(100, Math.max(0, ((value ?? 0) / max) * 100));
+  // A max of 0 (a total not known yet) is an empty bar, not 0/0 = NaN, which
+  // would make the transform below invalid and render the bar full-width.
+  const percent = max > 0 ? Math.min(100, Math.max(0, ((value ?? 0) / max) * 100)) : 0;
 
   return (
     <ProgressPrimitive.Root
