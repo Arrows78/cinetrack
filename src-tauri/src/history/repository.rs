@@ -2,7 +2,7 @@ use serde_json::Value;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
 use super::models::{HistoryRow, ViewingHistoryItem};
-use crate::database::current_profile_id;
+use crate::database::{current_profile_id, like_contains_pattern};
 use crate::error::ApiError;
 
 /// Search/date-range filters layered on top of the cursor pagination below —
@@ -55,8 +55,8 @@ pub(crate) async fn list_history_impl(
         .filter(|s| !s.is_empty())
     {
         qb.push(" AND title LIKE ")
-            .push_bind(format!("%{search}%"))
-            .push(" COLLATE NOCASE");
+            .push_bind(like_contains_pattern(search))
+            .push(" COLLATE NOCASE ESCAPE '\\'");
     }
     if let Some(from) = filters.from.as_deref().filter(|s| !s.is_empty()) {
         qb.push(" AND timestamp >= ").push_bind(from.to_string());

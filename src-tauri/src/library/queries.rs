@@ -5,6 +5,7 @@ use super::models::{
     LibraryCursorPayload, LibraryFilterParams, LibraryItem, LibraryListParams, LibraryMediaKey,
     LibraryPage, LibraryRow, LibrarySort, LibraryStatusCounts,
 };
+use crate::database::like_contains_pattern;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
@@ -126,8 +127,8 @@ pub(super) async fn list_page_impl(
         // if this ever shows up as a real user-facing delay rather than a
         // benchmark number.
         qb.push(" AND title LIKE ")
-            .push_bind(format!("%{search}%"))
-            .push(" COLLATE NOCASE");
+            .push_bind(like_contains_pattern(search))
+            .push(" COLLATE NOCASE ESCAPE '\\'");
     }
 
     match (params.sort, &cursor) {

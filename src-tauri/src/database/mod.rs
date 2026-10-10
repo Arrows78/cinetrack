@@ -259,6 +259,22 @@ pub fn new_uuid() -> String {
     uuid::Uuid::now_v7().to_string()
 }
 
+/// A `%…%` substring pattern for user-typed search text, with `%`, `_` and
+/// the escape character itself escaped — otherwise searching "100%" would
+/// match every title containing "100". Pair it with `ESCAPE '\'`.
+pub fn like_contains_pattern(text: &str) -> String {
+    let mut pattern = String::with_capacity(text.len() + 2);
+    pattern.push('%');
+    for character in text.chars() {
+        if matches!(character, '%' | '_' | '\\') {
+            pattern.push('\\');
+        }
+        pattern.push(character);
+    }
+    pattern.push('%');
+    pattern
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

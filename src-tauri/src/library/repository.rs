@@ -831,6 +831,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn list_page_impl_search_treats_percent_and_underscore_literally() {
+        let pool = migrated_pool().await;
+        for (id, title) in [(1, "100% Wolf"), (2, "100 Bullets"), (3, "A_B"), (4, "AXB")] {
+            upsert_impl(
+                &pool,
+                MediaSummaryInput {
+                    title: title.to_string(),
+                    ..media(id)
+                },
+                LibraryPatch::default(),
+                "default",
+            )
+            .await
+            .unwrap();
+        }
+        let search = |text: &str| LibraryListParams {
+            media_type: None,
+            status: None,
+            favourites_only: false,
+            search: Some(text.to_string()),
+            sort: LibrarySort::Title,
+            genre: None,
+            cursor: None,
+            limit: 10,
+        };
+
+        for (text, expected) in [("100%", 1), ("a_b", 3)] {
+            let page = list_page_impl(&pool, "default", search(text))
+                .await
+                .unwrap();
+            let ids: Vec<i64> = page.items.iter().map(|item| item.media_id).collect();
+            assert_eq!(ids, vec![expected], "search {text:?}");
+        }
+    }
+
+    #[tokio::test]
     async fn list_page_impl_filters_by_genre() {
         let pool = migrated_pool().await;
         upsert_impl(
