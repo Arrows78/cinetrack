@@ -11,7 +11,8 @@ use super::queries::{
     list_status_counts_impl,
 };
 use super::repository::{
-    refresh_catalog_metadata_impl, remove_if_planned_impl, remove_impl, upsert_impl,
+    add_if_absent_impl, refresh_catalog_metadata_impl, remove_if_planned_impl, remove_impl,
+    upsert_impl,
 };
 use crate::database::current_profile_id;
 use crate::error::ApiError;
@@ -88,6 +89,11 @@ impl<'a> LibraryService<'a> {
     ) -> Result<(), ApiError> {
         let profile_id = self.profile_id().await?;
         remove_impl(self.pool, &profile_id, media_id, media_type).await
+    }
+
+    pub(super) async fn add_if_absent(&self, media: MediaSummaryInput) -> Result<bool, ApiError> {
+        let profile_id = self.profile_id().await?;
+        add_if_absent_impl(self.pool, media, &profile_id).await
     }
 
     pub(super) async fn remove_if_planned(

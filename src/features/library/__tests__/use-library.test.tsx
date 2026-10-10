@@ -36,6 +36,7 @@ const removeMock = vi.fn(async (mediaId: number, mediaType: string) => {
 });
 const removeIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
 const hasMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => false);
+const addIfAbsentMock = vi.fn<(media: MediaSummary) => Promise<boolean>>(async () => true);
 const listPageMock = vi.fn<(params: LibraryListParams) => Promise<LibraryPage>>();
 const getRandomMock =
   vi.fn<(mediaType?: MediaSummary["mediaType"]) => Promise<{ mediaId: number; mediaType: string } | null>>();
@@ -50,6 +51,7 @@ vi.mock("@/features/library/library-repository", () => ({
     getRandom: (mediaType?: MediaSummary["mediaType"]) => getRandomMock(mediaType),
     get: getMock,
     save: saveMock,
+    addIfAbsent: (media: MediaSummary) => addIfAbsentMock(media),
     remove: removeMock,
     removeIfPlanned: (mediaId: number, mediaType: string) => removeIfPlannedMock(mediaId, mediaType),
     has: (mediaId: number, mediaType: string) => hasMock(mediaId, mediaType),
@@ -191,7 +193,7 @@ describe("useLibraryQuickToggle", () => {
     removeMock.mockClear();
   });
 
-  it("addPlanned saves with the planned status", async () => {
+  it("addPlanned only adds a title that isn't in the library yet", async () => {
     const { useLibraryQuickToggle } = await import("../use-library");
     const { result } = renderHook(() => useLibraryQuickToggle(), { wrapper: createWrapper() });
 
@@ -199,7 +201,7 @@ describe("useLibraryQuickToggle", () => {
       await result.current.addPlanned(media);
     });
 
-    expect(saveMock).toHaveBeenCalledWith(media, { status: "planned" });
+    expect(addIfAbsentMock).toHaveBeenCalledWith(media);
   });
 
   it("removeIfPlanned forwards to the guarded repository method", async () => {

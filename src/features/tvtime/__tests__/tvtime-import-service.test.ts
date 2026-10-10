@@ -29,11 +29,13 @@ vi.mock("@/features/media/media-repository", async () => {
 
 const librarySaveMock = vi.fn();
 const libraryHasMock = vi.fn();
+const libraryAddIfAbsentMock = vi.fn();
 const libraryRemoveIfPlannedMock = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     save: (...args: unknown[]) => librarySaveMock(...args),
     has: (...args: unknown[]) => libraryHasMock(...args),
+    addIfAbsent: (...args: unknown[]) => libraryAddIfAbsentMock(...args),
     removeIfPlanned: (...args: unknown[]) => libraryRemoveIfPlannedMock(...args),
   },
 }));
@@ -121,6 +123,7 @@ describe("importTvTimeExport", () => {
     exportData = emptyExportData();
     librarySaveMock.mockResolvedValue(undefined);
     libraryHasMock.mockResolvedValue(false);
+    libraryAddIfAbsentMock.mockReset().mockResolvedValue(true);
     importSeriesProgressMock.mockResolvedValue([]);
     importMovieSeenMock.mockResolvedValue(false);
   });
@@ -639,16 +642,15 @@ describe("importTvTimeExport", () => {
       const summary = await importTvTimeExport(["irrelevant"]);
 
       expect(searchMock).toHaveBeenCalledWith("Dune", "movie");
-      expect(librarySaveMock).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 9, mediaType: "movie", title: "Dune", rating: 8.1 }),
-        { status: "planned" }
+      expect(libraryAddIfAbsentMock).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 9, mediaType: "movie", title: "Dune", rating: 8.1 })
       );
       expect(summary.plannedImported).toBe(1);
       expect(summary.plannedAlreadyInLibrary).toBe(0);
       expect(summary.undo.planned).toEqual([{ mediaId: 9, mediaType: "movie" }]);
     });
 
-    it("does not count an entry already in the library as newly planned, and leaves it out of undo", async () => {
+    it("leaves an entry already in the library untouched, uncounted, and out of undo", async () => {
       exportData = { ...emptyExportData(), watchlist: [{ title: "Dune", mediaType: "movie", year: 2021 }] };
       searchMock.mockResolvedValue({
         page: 1,
@@ -656,11 +658,13 @@ describe("importTvTimeExport", () => {
         totalResults: 1,
         results: [media({ id: 9, mediaType: "movie", title: "Dune", year: 2021 })],
       });
-      libraryHasMock.mockResolvedValue(true);
+      libraryAddIfAbsentMock.mockResolvedValue(false);
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
-      expect(librarySaveMock).toHaveBeenCalled();
+      // Never a plain save: that would reset a watching/completed title
+      // (e.g. one the series pass just marked) back to planned.
+      expect(librarySaveMock).not.toHaveBeenCalled();
       expect(summary.plannedImported).toBe(0);
       expect(summary.plannedAlreadyInLibrary).toBe(1);
       expect(summary.undo.planned).toEqual([]);
@@ -684,7 +688,7 @@ describe("importTvTimeExport", () => {
         totalResults: 1,
         results: [media({ id: 9, mediaType: "movie", title: "Dune", year: 2021 })],
       });
-      librarySaveMock.mockRejectedValueOnce(new Error("disk full"));
+      libraryAddIfAbsentMock.mockRejectedValueOnce(new Error("disk full"));
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
@@ -892,7 +896,7 @@ describe("importTvTimeExport", () => {
 
       const wasNewlyPlanned = await resolveRetryableWatchlist(item, match);
 
-      expect(librarySaveMock).toHaveBeenCalledWith(match, { status: "planned" });
+      expect(libraryAddIfAbsentMock).toHaveBeenCalledWith(match);
       expect(wasNewlyPlanned).toBe(true);
     });
 
@@ -906,11 +910,12 @@ describe("importTvTimeExport", () => {
         initialCandidates: [],
       };
       const match = media({ id: 8, title: "The Show" });
-      libraryHasMock.mockResolvedValue(true);
+      libraryAddIfAbsentMock.mockResolvedValue(false);
 
       const wasNewlyPlanned = await resolveRetryableWatchlist(item, match);
 
       expect(wasNewlyPlanned).toBe(false);
+      expect(librarySaveMock).not.toHaveBeenCalled();
     });
   });
 

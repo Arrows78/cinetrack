@@ -16,7 +16,7 @@ const forceRemoveMock = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     has: (...args: unknown[]) => libraryHasMock(...args),
-    save: vi.fn(),
+    addIfAbsent: vi.fn(async () => true),
     removeIfPlanned: (...args: unknown[]) => removeIfPlannedMock(...args),
     remove: (...args: unknown[]) => forceRemoveMock(...args),
   },
@@ -86,7 +86,7 @@ describe("MediaCard", () => {
     const button = await screen.findByRole("button", { name: "Add to library" });
     button.click();
 
-    await waitFor(() => expect(libraryRepository.save).toHaveBeenCalled());
+    await waitFor(() => expect(libraryRepository.addIfAbsent).toHaveBeenCalled());
   });
 
   it("offers to really remove a title once removeIfPlanned reports it has real progress", async () => {

@@ -238,7 +238,7 @@ export function useLibraryQuickToggle(options?: { suppressErrorToast?: boolean }
   const invalidateKeys = libraryInvalidationKeys(profileId);
 
   const addPlanned = useInvalidatingMutation(
-    (media: MediaSummary) => libraryRepository.save(media, { status: "planned" }),
+    (media: MediaSummary) => libraryRepository.addIfAbsent(media),
     invalidateKeys,
     options
   );

@@ -54,6 +54,14 @@ export const libraryRepository = {
     return invokeTypedCommand(libraryCommands.has, { mediaId, mediaType });
   },
 
+  // Adds the title as "planned" only if it isn't in the library yet, never
+  // touching an existing row (save() with a planned status would send a
+  // finished title back to "to watch") — see add_if_absent_impl in
+  // src-tauri/src/library/repository.rs. Resolves to whether it was added.
+  async addIfAbsent(media: MediaSummary): Promise<boolean> {
+    return invokeTypedCommand(libraryCommands.addIfAbsent, { media });
+  },
+
   // Guarded remove used by the quick "add to library" toggle: only removes
   // (and returns true for) an item still in the default `planned` status,
   // never one with real progress — see remove_if_planned_impl in src-tauri/src/library/repository.rs.

@@ -84,6 +84,7 @@ vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     has: () => libraryHasMock(),
     save: (media: MediaSummary, patch: unknown) => librarySaveMock(media, patch),
+    addIfAbsent: (media: MediaSummary) => librarySaveMock(media, undefined),
     removeIfPlanned: (mediaId: number, mediaType: string) => libraryRemoveIfPlannedMock(mediaId, mediaType),
     remove: (mediaId: number, mediaType: string) => libraryRemoveMock(mediaId, mediaType),
   },
@@ -568,7 +569,7 @@ describe("CommandPalette", () => {
       await waitFor(() => screen.getByRole("option", { name: "Add to library" }));
       fireEvent.click(screen.getByRole("option", { name: "Add to library" }));
 
-      await waitFor(() => expect(librarySaveMock).toHaveBeenCalledWith(cachedMovie, { status: "planned" }));
+      await waitFor(() => expect(librarySaveMock).toHaveBeenCalledWith(cachedMovie, undefined));
     });
 
     it("removes a still-planned title directly, with no confirmation needed", async () => {

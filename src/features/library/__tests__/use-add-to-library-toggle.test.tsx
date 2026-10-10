@@ -21,7 +21,7 @@ const removeMock = vi.fn<(mediaId: number, mediaType: string) => Promise<undefin
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
     has: () => hasMock(),
-    save: (media: MediaSummary, patch: unknown) => saveMock(media, patch),
+    addIfAbsent: (media: MediaSummary) => saveMock(media, undefined),
     removeIfPlanned: (mediaId: number, mediaType: string) => removeIfPlannedMock(mediaId, mediaType),
     remove: (mediaId: number, mediaType: string) => removeMock(mediaId, mediaType),
   },
@@ -52,7 +52,7 @@ describe("useAddToLibraryToggle", () => {
       await result.current.toggle();
     });
 
-    expect(saveMock).toHaveBeenCalledWith(media, { status: "planned" });
+    expect(saveMock).toHaveBeenCalledWith(media, undefined);
     expect(result.current.confirmingForceRemove).toBe(false);
   });
 

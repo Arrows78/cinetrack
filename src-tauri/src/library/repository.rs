@@ -380,6 +380,35 @@ pub(super) async fn refresh_catalog_metadata_impl(
     Ok(())
 }
 
+/// "Add to the library unless it's already there" — the quick add toggle and
+/// the TV Time watchlist import. `save_library_item` with a planned status
+/// would also overwrite an existing row's status, sending a finished or
+/// in-progress title back to "to watch" and dropping its completed_at.
+/// Returns whether a row was added.
+pub(super) async fn add_if_absent_impl(
+    pool: &SqlitePool,
+    media: MediaSummaryInput,
+    profile_id: &str,
+) -> Result<bool, ApiError> {
+    if get_impl(pool, profile_id, media.id, media.media_type)
+        .await?
+        .is_some()
+    {
+        return Ok(false);
+    }
+    upsert_impl(
+        pool,
+        media,
+        LibraryPatch {
+            status: Some(LibraryStatus::Planned),
+            ..Default::default()
+        },
+        profile_id,
+    )
+    .await?;
+    Ok(true)
+}
+
 /// Backs the grid/detail quick "add to library" toggle, whose remove side
 /// must never destroy real progress: only removes (and logs) a row that's
 /// still in the default `planned` status, a no-op returning `false`
@@ -1284,6 +1313,47 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[tokio::test]
+    async fn add_if_absent_never_sends_an_existing_title_back_to_planned() {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(7),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                user_rating: Some(Some(8.0)),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            !add_if_absent_impl(&pool, media(7), "default")
+                .await
+                .unwrap()
+        );
+        let item = get_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(item.status, LibraryStatus::Completed);
+        assert!(item.completed_at.is_some());
+        assert_eq!(item.user_rating, Some(8.0));
+
+        assert!(
+            add_if_absent_impl(&pool, media(8), "default")
+                .await
+                .unwrap()
+        );
+        let added = get_impl(&pool, "default", 8, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(added.status, LibraryStatus::Planned);
     }
 
     #[tokio::test]

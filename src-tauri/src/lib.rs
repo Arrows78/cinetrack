@@ -31,8 +31,8 @@ use tauri::{Emitter, Manager};
 use diagnostics::export_diagnostics_summary;
 
 use commands::{
-    PreferencesCache, add_custom_list_item, check_data_integrity, clear_profile_pin,
-    create_custom_list, create_profile, create_smart_list, export_backup_data,
+    PreferencesCache, add_custom_list_item, add_planned_library_item, check_data_integrity,
+    clear_profile_pin, create_custom_list, create_profile, create_smart_list, export_backup_data,
     find_profile_by_supabase_user_id, get_availability_alert, get_availability_snapshot,
     get_boot_recovery, get_episode_progress, get_library_item, get_preferences, get_stats_overview,
     has_library_item, import_backup_data, import_movie_seen, import_series_progress, is_movie_seen,
@@ -140,6 +140,7 @@ pub fn run() {
             save_library_item,
             remove_library_item,
             remove_planned_library_item,
+            add_planned_library_item,
             list_library_media_keys,
             get_random_library_item,
             get_library_items_by_keys,

@@ -122,6 +122,17 @@ pub async fn remove_library_item(
 }
 
 #[tauri::command]
+pub async fn add_planned_library_item(
+    media: MediaSummaryInput,
+    pool: State<'_, SqlitePool>,
+) -> Result<bool, ApiError> {
+    timed("add_planned_library_item", async {
+        LibraryService::new(pool.inner()).add_if_absent(media).await
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn remove_planned_library_item(
     media_id: i64,
     media_type: MediaType,

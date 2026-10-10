@@ -20,6 +20,10 @@ export interface LibraryPatch {
   rewatchCount?: number;
 }
 
+type AddPlannedLibraryItemArgs = {
+  media: MediaSummary;
+};
+
 type LibraryIdentityArgs = {
   mediaId: number;
   mediaType: MediaSummary["mediaType"];
@@ -48,6 +52,7 @@ export const libraryCommands = {
   save: defineCommand<SaveLibraryItemArgs, LibraryItem>("save_library_item"),
   remove: defineCommand<LibraryIdentityArgs, void>("remove_library_item"),
   has: defineCommand<LibraryIdentityArgs, boolean>("has_library_item"),
+  addIfAbsent: defineCommand<AddPlannedLibraryItemArgs, boolean>("add_planned_library_item"),
   removeIfPlanned: defineCommand<LibraryIdentityArgs, boolean>("remove_planned_library_item"),
   listMediaKeys: defineCommand<undefined, LibraryMediaKey[]>("list_library_media_keys"),
   getRandom: defineCommand<GetRandomArgs, LibraryMediaKey | null>("get_random_library_item"),

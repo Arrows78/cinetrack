@@ -443,9 +443,7 @@ export async function resolveRetryableMovie(item: RetryableMovie, match: MediaSu
 
 /** Manual-panel entry point: adds a retryable watchlist item to the library once matched. Returns whether this was a genuinely new addition — `false` when the title was already in the library in some status, so the caller (and undo) can tell that apart from a real write. */
 export async function resolveRetryableWatchlist(_item: RetryableWatchlistEntry, match: MediaSummary): Promise<boolean> {
-  const alreadyInLibrary = await libraryRepository.has(match.id, match.mediaType);
-  await libraryRepository.save(match, { status: "planned" });
-  return !alreadyInLibrary;
+  return libraryRepository.addIfAbsent(match);
 }
 
 /**
@@ -570,9 +568,10 @@ export async function applyTvTimeImport(
                 summary.unmatched.push(entry.title);
                 summary.retryable.push(retryableWatchlistFrom(entry, results));
               } else {
-                const alreadyInLibrary = await libraryRepository.has(match.id, match.mediaType);
-                await libraryRepository.save(match, { status: "planned" });
-                if (alreadyInLibrary) {
+                // Never overwrites a title already there: the series pass
+                // above may just have marked it watching or completed.
+                const added = await libraryRepository.addIfAbsent(match);
+                if (!added) {
                   summary.plannedAlreadyInLibrary += 1;
                 } else {
                   summary.plannedImported += 1;
