@@ -1,0 +1,15 @@
+# osv-scanner configuration, picked up by the `osv-scan` job in
+# .github/workflows/ci.yml.
+
+# braces <= 3.0.3 — stack exhaustion on deeply nested brace patterns.
+# No patched release exists: 3.0.3 is the latest published version and the
+# advisory's affected range runs up to it. The only path to it is
+# eslint-plugin-boundaries -> micromatch -> braces, i.e. dev-only lint
+# tooling matching this repository's own configured globs; it is never part
+# of the desktop bundle and never sees untrusted input. Remove this entry
+# (it expires on its own) once micromatch or eslint-plugin-boundaries
+# stops depending on it.
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-01-10
+reason = "Dev-only transitive dependency (eslint-plugin-boundaries -> micromatch); no patched version of braces exists"
