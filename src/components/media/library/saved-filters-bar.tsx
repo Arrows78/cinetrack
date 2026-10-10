@@ -13,6 +13,18 @@ import type { SavedFilterPage, SavedFilterState } from "@/types/media";
 
 const MAX_SAVED_FILTER_NAME_LENGTH = 100;
 
+// Key-order-independent, undefined-as-absent form of a filter state: the
+// backend hands a saved filter back with its keys sorted alphabetically (a
+// plain JSON object), while the page builds its own state in a different
+// order, so comparing raw JSON.stringify output never matched in the real app.
+function canonicalFilterState(state: SavedFilterState): string {
+  return JSON.stringify(
+    Object.entries(state)
+      .filter(([, value]) => value !== undefined)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+  );
+}
+
 /**
  * Save-the-current-view / reopen-a-saved-view bar, shared by LibraryExplorer
  * and SearchPage — the two only differ in `page` (which scopes storage, see
@@ -86,7 +98,7 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
   // A saved filter is "active" when the page's current filter state is
   // exactly what was captured at save time — purely derived, no extra
   // persisted "which one is active" state to keep in sync.
-  const isActive = (filters: TState) => JSON.stringify(filters) === JSON.stringify(currentFilters);
+  const isActive = (filters: TState) => canonicalFilterState(filters) === canonicalFilterState(currentFilters);
 
   return (
     <div className="flex flex-col gap-2">

@@ -121,6 +121,50 @@ describe("SavedFiltersBar", () => {
     expect(screen.getByText(i18n.t("filters.savedFilters.active"))).toBeInTheDocument();
   });
 
+  it("marks a saved filter active whatever order its keys come back in", () => {
+    // The backend returns the stored JSON object with its keys sorted
+    // alphabetically, not in the order the page builds its own state.
+    useSavedFiltersMock.mockReturnValue({
+      data: [{ ...savedFilterA, filters: { favouritesOnly: false, sort: "recent", statusFilter: "paused" } }],
+      isLoading: false,
+      isError: false,
+      error: null,
+      create: createMock,
+      rename: renameMock,
+      remove: removeMock,
+      isSaving: false,
+    });
+    render(
+      <SavedFiltersBar
+        page="library"
+        currentFilters={{ statusFilter: "paused", favouritesOnly: false, sort: "recent" }}
+        onApply={vi.fn()}
+      />
+    );
+    expect(screen.getByText(i18n.t("filters.savedFilters.active"))).toBeInTheDocument();
+  });
+
+  it("ignores undefined fields when deciding whether a saved filter is active", () => {
+    useSavedFiltersMock.mockReturnValue({
+      data: [{ ...savedFilterA, page: "search" as const, filters: { scope: "movie", genreMovie: "28" } }],
+      isLoading: false,
+      isError: false,
+      error: null,
+      create: createMock,
+      rename: renameMock,
+      remove: removeMock,
+      isSaving: false,
+    });
+    render(
+      <SavedFiltersBar
+        page="search"
+        currentFilters={{ scope: "movie", genreMovie: "28", genreSeries: undefined, provider: undefined }}
+        onApply={vi.fn()}
+      />
+    );
+    expect(screen.getByText(i18n.t("filters.savedFilters.active"))).toBeInTheDocument();
+  });
+
   it("does not mark any saved filter as active when the current filters differ", () => {
     render(<SavedFiltersBar page="library" currentFilters={{ statusFilter: "watching" }} onApply={vi.fn()} />);
     expect(screen.queryByText(i18n.t("filters.savedFilters.active"))).not.toBeInTheDocument();
