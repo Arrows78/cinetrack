@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import i18n from "@/i18n";
 import { OnboardingScreen } from "../onboarding-screen";
 
@@ -67,5 +68,11 @@ describe("OnboardingScreen", () => {
 
     expect(await screen.findByText(i18n.t("onboarding.error"))).toBeInTheDocument();
     expect(button).toBeEnabled();
+  });
+
+  it("has no detectable accessibility violations", async () => {
+    const { container } = render(<OnboardingScreen />);
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

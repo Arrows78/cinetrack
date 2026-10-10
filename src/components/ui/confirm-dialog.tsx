@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button";
 import { DIALOG_CONTENT_CLASSNAME, DIALOG_OVERLAY_CLASSNAME } from "@/components/ui/sheet";
+import { useRestoreFocus } from "@/components/ui/use-restore-focus";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -33,11 +34,12 @@ export function ConfirmDialog({
   isConfirming = false,
   confirmVariant = "destructive",
 }: ConfirmDialogProps) {
+  const restoreFocus = useRestoreFocus();
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
-        <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME}>
+        <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME} {...restoreFocus}>
           <DialogPrimitive.Title className="shrink-0 font-display text-heading-sm font-bold">
             {title}
           </DialogPrimitive.Title>

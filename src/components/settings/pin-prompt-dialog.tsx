@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DIALOG_CONTENT_CLASSNAME, DIALOG_OVERLAY_CLASSNAME } from "@/components/ui/sheet";
+import { useRestoreFocus } from "@/components/ui/use-restore-focus";
 
 export interface PinPromptDialogProps {
   open: boolean;
@@ -23,6 +24,8 @@ export interface PinPromptDialogProps {
  */
 export function PinPromptDialog({ open, profileName, onOpenChange, onVerify, onSuccess }: PinPromptDialogProps) {
   const { t } = useTranslation();
+  const restoreFocus = useRestoreFocus();
+  const errorId = useId();
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -63,7 +66,7 @@ export function PinPromptDialog({ open, profileName, onOpenChange, onVerify, onS
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className={DIALOG_OVERLAY_CLASSNAME} />
-        <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME}>
+        <DialogPrimitive.Content className={DIALOG_CONTENT_CLASSNAME} {...restoreFocus}>
           <DialogPrimitive.Title className="shrink-0 font-display text-heading-sm font-bold">
             {t("settings.profiles.pinPrompt.title", { name: profileName })}
           </DialogPrimitive.Title>
@@ -89,10 +92,11 @@ export function PinPromptDialog({ open, profileName, onOpenChange, onVerify, onS
               }}
               aria-label={t("settings.profiles.pinPrompt.inputLabel")}
               aria-invalid={error}
+              aria-describedby={error ? errorId : undefined}
               maxLength={6}
             />
             {error ? (
-              <p role="alert" aria-live="polite" className="text-body-sm text-destructive">
+              <p id={errorId} role="alert" className="text-body-sm text-destructive">
                 {t("settings.profiles.pinPrompt.error")}
               </p>
             ) : null}

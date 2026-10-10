@@ -39,6 +39,19 @@ describe("ConfirmDialog", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
+  it("returns focus to the element that opened it once it closes", async () => {
+    render(<Harness />);
+    const opener = screen.getByText("Open");
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
   it("calls onConfirm when the confirm button is activated", () => {
     const onConfirm = vi.fn();
     render(

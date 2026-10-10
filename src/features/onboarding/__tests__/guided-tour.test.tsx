@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 import i18n from "@/i18n";
 import { GuidedTour } from "../guided-tour";
 
@@ -143,5 +144,37 @@ describe("GuidedTour", () => {
     const dialog = screen.getByRole("dialog", { name: i18n.t("onboarding.tour.watchTonight.title") });
     // Tooltip sits GAP (12px) under the target: 400 + 40 + 12.
     expect(dialog.style.top).toBe("452px");
+  });
+
+  it("moves keyboard focus into the tour card and keeps it there on every step", () => {
+    renderTargets(TOUR_TARGETS);
+    render(<GuidedTour onFinish={vi.fn()} />);
+
+    const next = screen.getByRole("button", { name: i18n.t("onboarding.tour.next") });
+    expect(next).toHaveFocus();
+
+    fireEvent.click(next);
+    expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement);
+  });
+
+  it("wraps Tab and Shift+Tab inside the card instead of leaving it", () => {
+    renderTargets(TOUR_TARGETS);
+    render(<GuidedTour onFinish={vi.fn()} />);
+    const skip = screen.getByRole("button", { name: i18n.t("onboarding.tour.skip") });
+    const next = screen.getByRole("button", { name: i18n.t("onboarding.tour.next") });
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(skip).toHaveFocus();
+
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+    expect(next).toHaveFocus();
+  });
+
+  it("has no detectable accessibility violations", async () => {
+    renderTargets(TOUR_TARGETS);
+    render(<GuidedTour onFinish={vi.fn()} />);
+
+    // The card only: the stand-in targets above are empty buttons.
+    expect(await axe(screen.getByRole("dialog"))).toHaveNoViolations();
   });
 });

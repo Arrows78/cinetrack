@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/cn";
@@ -63,6 +63,8 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   const [steps] = useState<TourStep[]>(() => TOUR_STEPS.filter((step) => findVisibleTarget(step.target) !== null));
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
 
   const currentStep = steps[index];
 
@@ -88,11 +90,35 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
   useEffect(() => {
     if (!currentStep) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onFinish();
+      if (event.key === "Escape") {
+        onFinish();
+        return;
+      }
+      // Tab and Shift+Tab cycle inside the card instead of leaving it.
+      if (event.key !== "Tab") return;
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>("button:not([disabled])");
+      const first = focusable?.[0];
+      const last = focusable?.[focusable.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [currentStep, onFinish]);
+
+  // The tour is modal: keyboard focus moves into it when a step appears
+  // (and again on every step change) instead of staying on the page behind
+  // the backdrop, where Tab would walk through controls the user can't see.
+  const hasDialog = Boolean(currentStep && rect);
+  useEffect(() => {
+    if (hasDialog) nextButtonRef.current?.focus();
+  }, [hasDialog, index]);
 
   if (!currentStep || !rect) return null;
 
@@ -114,6 +140,7 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
         }}
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={t(currentStep.titleKey)}
@@ -138,6 +165,7 @@ export function GuidedTour({ onFinish }: { onFinish: () => void }) {
               </Button>
             )}
             <Button
+              ref={nextButtonRef}
               type="button"
               variant="default"
               size="sm"
