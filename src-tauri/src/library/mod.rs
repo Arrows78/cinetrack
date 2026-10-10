@@ -24,6 +24,6 @@ pub(crate) use models::LibrarySort;
 pub(crate) use repository::auto_sync_status_impl;
 
 #[cfg(test)]
-mod status_transitions_tests;
-#[cfg(test)]
 mod sequence_tests;
+#[cfg(test)]
+mod status_transitions_tests;
