@@ -202,6 +202,27 @@ describe("watchTonightService", () => {
     expect(result.series.map((item) => item.id)).toEqual([30]);
   });
 
+  it("excludes a title with an unknown or zero runtime when a maximum runtime is set, but keeps it with no limit", async () => {
+    seedLibrary([
+      { mediaId: 50, mediaType: "movie", status: "planned" },
+      { mediaId: 51, mediaType: "movie", status: "planned" },
+      { mediaId: 52, mediaType: "movie", status: "planned" },
+      { mediaId: 60, mediaType: "series", status: "planned" },
+      { mediaId: 61, mediaType: "series", status: "planned" },
+    ]);
+    const runtimes: Record<number, number | undefined> = { 50: 90, 51: undefined, 52: 0, 60: 30, 61: undefined };
+    mocks.getMovieDetails.mockImplementation((id: number) => Promise.resolve(movie(id, { runtime: runtimes[id] })));
+    mocks.getSeriesDetails.mockImplementation((id: number) => Promise.resolve(series(id, { runtime: runtimes[id] })));
+
+    const limited = await watchTonightService.pick({ maxRuntime: 120 });
+    expect(limited.movies.map((item) => item.id)).toEqual([50]);
+    expect(limited.series.map((item) => item.id)).toEqual([60]);
+
+    const unlimited = await watchTonightService.pick({});
+    expect(unlimited.movies.map((item) => item.id).sort()).toEqual([50, 51, 52]);
+    expect(unlimited.series.map((item) => item.id).sort()).toEqual([60, 61]);
+  });
+
   it("filters planned candidates by origin country, and passes it through to the catalogue fallback", async () => {
     seedLibrary([
       { mediaId: 40, mediaType: "movie", status: "planned" },

@@ -52,8 +52,13 @@ const GENRE_AFFINITY_SCORE_STEP = 100;
 // way against maxRuntime matches the actual ask ("something I can watch
 // tonight"), since watching a series tonight means one episode, not the
 // whole show.
+//
+// An unknown (missing or 0-minute) runtime can't be shown to fit under a
+// limit, so it is excluded whenever one is set — the same rule the smart
+// lists' maximum-runtime rule applies to movies. With no limit it is kept.
 function matchesRuntime(item: MediaSummary, maxRuntime?: number): boolean {
-  return !maxRuntime || !item.runtime || item.runtime <= maxRuntime;
+  if (!maxRuntime) return true;
+  return item.runtime != null && item.runtime > 0 && item.runtime <= maxRuntime;
 }
 
 function matchesGenre(item: MediaSummary, genre?: number): boolean {
