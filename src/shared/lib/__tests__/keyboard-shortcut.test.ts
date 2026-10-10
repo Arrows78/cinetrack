@@ -32,6 +32,29 @@ describe("captureShortcutFromEvent", () => {
   });
 });
 
+describe("keys that clash with the shortcut syntax", () => {
+  it("captures the + key as a nameable key, not as an empty one after the separator", () => {
+    expect(captureShortcutFromEvent(keyEvent({ key: "+", ctrlKey: true }))).toBe("mod+plus");
+  });
+
+  it("captures the space bar as a nameable key", () => {
+    expect(captureShortcutFromEvent(keyEvent({ key: " ", ctrlKey: true, shiftKey: true }))).toBe("mod+shift+space");
+  });
+
+  it("matches a captured + or space shortcut against the live key event", () => {
+    expect(shortcutMatchesEvent("mod+plus", keyEvent({ key: "+", ctrlKey: true }))).toBe(true);
+    expect(shortcutMatchesEvent("mod+space", keyEvent({ key: " ", metaKey: true }))).toBe(true);
+    expect(shortcutMatchesEvent("mod+space", keyEvent({ key: "k", metaKey: true }))).toBe(false);
+  });
+
+  it("registers them with the OS in tauri's own names and shows them readably", () => {
+    expect(toTauriGlobalShortcut("mod+plus")).toBe("CommandOrControl+Plus");
+    expect(toTauriGlobalShortcut("mod+shift+space")).toBe("CommandOrControl+Shift+Space");
+    expect(formatShortcutForDisplay("mod+plus", false)).toBe("Ctrl+Plus");
+    expect(formatShortcutForDisplay("mod+space", true)).toBe("⌘Space");
+  });
+});
+
 describe("shortcutMatchesEvent", () => {
   it("matches when modifiers and key line up exactly", () => {
     expect(shortcutMatchesEvent("mod+k", keyEvent({ key: "k", ctrlKey: true }))).toBe(true);

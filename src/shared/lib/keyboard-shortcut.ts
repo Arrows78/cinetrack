@@ -8,6 +8,21 @@
 // below), so nothing else in the app needs to know that format exists.
 const MODIFIER_KEYS = new Set(["Control", "Meta", "Shift", "Alt", "AltGraph", "OS"]);
 
+// "+" is the separator and " " is invisible, so neither can be stored as the
+// key itself ("mod++" splits into an empty key, "mod+ " can't be read back or
+// registered with the OS) — they're stored, matched, shown and registered
+// under a name instead.
+const KEY_NAMES: Record<string, string> = { "+": "plus", " ": "space" };
+const KEY_LABELS: Record<string, string> = { plus: "Plus", space: "Space" };
+
+function normalizeKey(key: string): string {
+  return KEY_NAMES[key] ?? key.toLowerCase();
+}
+
+function keyLabel(key: string): string {
+  return KEY_LABELS[key] ?? (key.length === 1 ? key.toUpperCase() : key);
+}
+
 function modifierPrefix(event: Pick<KeyboardEvent, "metaKey" | "ctrlKey" | "shiftKey" | "altKey">): string[] {
   const parts: string[] = [];
   if (event.metaKey || event.ctrlKey) parts.push("mod");
@@ -26,8 +41,7 @@ export function captureShortcutFromEvent(event: KeyboardEvent): string | null {
   if (MODIFIER_KEYS.has(event.key)) return null;
   const modifiers = modifierPrefix(event);
   if (modifiers.length === 0) return null;
-  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key.toLowerCase();
-  return [...modifiers, key].join("+");
+  return [...modifiers, normalizeKey(event.key)].join("+");
 }
 
 export function shortcutMatchesEvent(shortcut: string, event: KeyboardEvent): boolean {
@@ -37,7 +51,7 @@ export function shortcutMatchesEvent(shortcut: string, event: KeyboardEvent): bo
   if (modifiers.includes("mod") !== (event.metaKey || event.ctrlKey)) return false;
   if (modifiers.includes("shift") !== event.shiftKey) return false;
   if (modifiers.includes("alt") !== event.altKey) return false;
-  return event.key.toLowerCase() === key;
+  return normalizeKey(event.key) === key;
 }
 
 function displayModifier(part: string, isMac: boolean): string {
@@ -51,8 +65,7 @@ export function formatShortcutForDisplay(shortcut: string, isMac: boolean): stri
   const parts = shortcut.split("+");
   const key = parts[parts.length - 1] ?? "";
   const modifiers = parts.slice(0, -1);
-  const keyLabel = key.length === 1 ? key.toUpperCase() : key;
-  const labels = [...modifiers.map((part) => displayModifier(part, isMac)), keyLabel];
+  const labels = [...modifiers.map((part) => displayModifier(part, isMac)), keyLabel(key)];
   return isMac ? labels.join("") : labels.join("+");
 }
 
@@ -67,6 +80,5 @@ export function toTauriGlobalShortcut(shortcut: string): string {
     if (part === "alt") return "Alt";
     return part;
   });
-  const keyLabel = key.length === 1 ? key.toUpperCase() : key;
-  return [...mapped, keyLabel].join("+");
+  return [...mapped, keyLabel(key)].join("+");
 }
