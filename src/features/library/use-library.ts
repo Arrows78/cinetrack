@@ -17,6 +17,19 @@ export function useLibrary(options?: { enabled?: boolean; mediaType?: MediaType 
   });
 }
 
+// The five per-status totals, aggregated in SQL — for the callers that only
+// show a count (Home's "planned" card, the Today Hub's "is the library empty"
+// check) and must not read every row to get it.
+export function useLibraryStatusCounts() {
+  const profileId = useActiveProfileId();
+  return useQuery({
+    // Nested under the plain library() key so every library mutation
+    // invalidates it for free.
+    queryKey: [...queryKeys.local.library(profileId), "statusCounts"],
+    queryFn: () => libraryRepository.statusCounts(),
+  });
+}
+
 // A membership set only — for "am I already tracking this" style filters
 // (recommendation rails excluding owned titles) that don't need full rows.
 export function useLibraryMediaKeys() {
@@ -70,12 +83,13 @@ export function useLibraryItemsByKeys(keys: LibraryMediaKey[]) {
 // SmartList's provider/episode-waiting/runtime rules are never among
 // them). Nested under the plain library() key for the same reason as
 // useLibraryItemsByKeys above.
-export function useLibraryIdsMatchingFilters(filters: LibraryFilterParams) {
+export function useLibraryIdsMatchingFilters(filters: LibraryFilterParams, options?: { enabled?: boolean }) {
   const profileId = useActiveProfileId();
   const signature = `${filters.mediaType ?? ""}:${filters.status ?? ""}:${filters.genre ?? ""}:${filters.minRating ?? ""}`;
   return useQuery({
     queryKey: [...queryKeys.local.library(profileId), "idsMatchingFilters", signature],
     queryFn: () => libraryRepository.idsMatchingFilters(filters),
+    enabled: options?.enabled ?? true,
   });
 }
 

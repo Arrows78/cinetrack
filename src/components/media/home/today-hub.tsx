@@ -20,8 +20,8 @@ import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useTodayHubEpisodes } from "@/features/progress/use-watch-next";
 import { useAvailabilityStatus } from "@/features/availability/use-availability-alerts";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
-import { useLibrary } from "@/features/library/use-library";
-import { selectStalePlannedItems } from "@/features/library/use-stale-planned-items";
+import { useLibraryStatusCounts } from "@/features/library/use-library";
+import { useStalePlannedItems } from "@/features/library/use-stale-planned-items";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useBecauseYouLiked } from "@/features/media/use-because-you-liked";
 import { useFavouriteGenreRail } from "@/components/media/detail/use-favourite-genre-rail";
@@ -55,7 +55,11 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
   const preferences = usePreferences();
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
   const watchTonight = useWatchTonightPicks({ hideWatched });
-  const libraryQuery = useLibrary();
+  // Two targeted reads instead of the whole library: the per-status totals
+  // (is the library empty?) and the first few planned titles untouched for a
+  // month, both computed in SQL.
+  const libraryCounts = useLibraryStatusCounts();
+  const stalePlanned = useStalePlannedItems(CARD_ROW_LIMIT);
   const becauseYouLiked = useBecauseYouLiked();
   const favouriteGenreRail = useFavouriteGenreRail();
   const peopleYouWatch = usePeopleYouWatch();
@@ -64,7 +68,7 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
     () => selectBacklogSeries(trackedSeries, episodes.results),
     [trackedSeries, episodes.results]
   );
-  const stale = useMemo(() => selectStalePlannedItems(libraryQuery.data ?? [], new Date()), [libraryQuery.data]);
+  const stale = useMemo(() => stalePlanned.data ?? [], [stalePlanned.data]);
 
   const teaserItems = useMemo<Array<Movie | Series>>(
     () =>
@@ -92,7 +96,11 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
   // neither useTodayHubEpisodes nor useAvailabilityStatus exposes a
   // refetch, so this is the plain inline variant with no retry action —
   // the underlying queries retry on their own next invalidation.
-  const hasPartialFailure = episodes.isError || availability.isError || watchTonight.isError;
+  useEffect(() => {
+    if (stalePlanned.isError)
+      logger.warn(`[today-hub] Stale planned titles failed: ${errorMessage(stalePlanned.error)}`);
+  }, [stalePlanned.isError, stalePlanned.error]);
+  const hasPartialFailure = episodes.isError || availability.isError || watchTonight.isError || stalePlanned.isError;
 
   const hasRecommendationContent =
     (Boolean(becauseYouLiked.seedTitle) && becauseYouLiked.items.length > 0) ||
@@ -115,11 +123,16 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
   // with everything" — an experienced user with an empty backlog shouldn't
   // get told to go add a first show, so this only fires once the library
   // and tracked-series reads have actually settled, not while still loading.
+  const libraryIsEmpty = libraryCounts.data
+    ? libraryCounts.data.planned +
+        libraryCounts.data.watching +
+        libraryCounts.data.paused +
+        libraryCounts.data.completed +
+        libraryCounts.data.dropped ===
+      0
+    : false;
   const isNewUser =
-    !libraryQuery.isPending &&
-    !trackedSeriesQuery.isPending &&
-    (libraryQuery.data ?? []).length === 0 &&
-    trackedSeries.length === 0;
+    libraryCounts.isSuccess && !trackedSeriesQuery.isPending && libraryIsEmpty && trackedSeries.length === 0;
 
   // A total secondary-fetch outage would otherwise empty every card and
   // take the whole hub down with it, wordlessly — keep it mounted so the

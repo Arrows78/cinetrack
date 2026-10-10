@@ -146,32 +146,13 @@ describe("CatalogueSections", () => {
       nowPlayingMovies: [],
       upcomingMovies: [],
     };
-    const library = [
-      {
-        id: "item-1",
-        profileId: "p1",
-        mediaId: 2,
-        mediaType: "movie" as const,
-        title: "Dune",
-        posterPath: null,
-        backdropPath: null,
-        year: null,
-        rating: null,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-        genres: [],
-        status: "completed" as const,
-        favourite: false,
-        userRating: null,
-        notes: null,
-        tags: [],
-        startedAt: null,
-        completedAt: null,
-        rewatchCount: 0,
-      },
-    ];
+    // The completed titles' keys (see buildKeySetFromMediaKeys) — what Home
+    // builds from list_library_ids_matching_filters instead of the full library.
+    const completedKeySet = new Set(["movie:2"]);
 
-    const { container } = render(<CatalogueSections feed={feed} startIndex={0} hideWatched library={library} />);
+    const { container } = render(
+      <CatalogueSections feed={feed} startIndex={0} hideWatched completedKeySet={completedKeySet} />
+    );
     const sections = container.querySelectorAll("section");
     const trendingMoviesGrid = within(sections[3] as HTMLElement).getByTestId("grid");
 

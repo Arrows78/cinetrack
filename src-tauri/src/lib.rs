@@ -58,13 +58,13 @@ use commands::{create_saved_filter, list_saved_filters, rename_saved_filter};
 use commands::{dismiss_recommendation, list_dismissed_recommendations, undismiss_recommendation};
 use commands::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
-    get_rewatch_stats, get_watch_forecast, get_watch_milestones,
+    get_rewatch_stats, get_watch_forecast, get_watch_milestones, get_year_favourite_genre,
 };
 use commands::{
     get_best_recommendation_seed, get_library_items_by_keys, get_library_status_counts,
     get_random_library_item, list_completed_library_candidates, list_library_distinct_tags,
     list_library_ids_matching_filters, list_library_media_keys, list_planned_library_candidates,
-    refresh_library_catalog_metadata,
+    list_stale_planned_library_items, refresh_library_catalog_metadata,
 };
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
@@ -146,6 +146,7 @@ pub fn run() {
             get_library_items_by_keys,
             get_library_status_counts,
             list_planned_library_candidates,
+            list_stale_planned_library_items,
             list_completed_library_candidates,
             get_best_recommendation_seed,
             list_library_ids_matching_filters,
@@ -171,6 +172,7 @@ pub fn run() {
             get_rewatch_stats,
             get_rating_distribution,
             get_watch_milestones,
+            get_year_favourite_genre,
             get_activity_stats,
             get_library_extras,
             get_watch_forecast,

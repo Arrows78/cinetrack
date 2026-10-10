@@ -29,10 +29,27 @@ vi.mock("@/features/watch-tonight/use-watch-tonight", () => ({
   useWatchTonightPicks: () => watchTonightMock(),
 }));
 
-const libraryMock = vi.fn();
+const libraryCountsMock = vi.fn();
 vi.mock("@/features/library/use-library", () => ({
-  useLibrary: () => libraryMock(),
+  useLibraryStatusCounts: () => libraryCountsMock(),
 }));
+
+const stalePlannedMock = vi.fn();
+const stalePlannedLimitSpy = vi.fn();
+vi.mock("@/features/library/use-stale-planned-items", () => ({
+  useStalePlannedItems: (limit: number) => {
+    stalePlannedLimitSpy(limit);
+    return stalePlannedMock();
+  },
+}));
+
+const counts = (
+  overrides: Partial<Record<"planned" | "watching" | "paused" | "completed" | "dropped", number>> = {}
+) => ({
+  isSuccess: true,
+  isPending: false,
+  data: { planned: 0, watching: 0, paused: 0, completed: 0, dropped: 0, ...overrides },
+});
 
 const preferencesMock = vi.fn();
 vi.mock("@/features/preferences/use-preferences", () => ({
@@ -109,7 +126,9 @@ describe("TodayHub", () => {
     episodesMock.mockReset().mockReturnValue(emptyEpisodes());
     availabilityMock.mockReset().mockReturnValue(emptyAvailability());
     watchTonightMock.mockReset().mockReturnValue({ data: { movies: [], series: [] }, isError: false, error: null });
-    libraryMock.mockReset().mockReturnValue({ data: [] });
+    libraryCountsMock.mockReset().mockReturnValue(counts());
+    stalePlannedMock.mockReset().mockReturnValue({ data: [], isError: false, error: null });
+    stalePlannedLimitSpy.mockReset();
     preferencesMock.mockReset().mockReturnValue({ data: undefined });
     becauseYouLikedMock.mockReset().mockReturnValue({ seedTitle: null, items: [] });
     favouriteGenreRailMock.mockReset().mockReturnValue({ genre: null, items: [] });
@@ -129,7 +148,7 @@ describe("TodayHub", () => {
   });
 
   it("renders nothing when an existing user is simply caught up, rather than the new-user nudge", () => {
-    libraryMock.mockReturnValue({ data: [{ status: "completed" }] });
+    libraryCountsMock.mockReturnValue(counts({ completed: 1 }));
 
     const { container } = render(<TodayHub index={1} />);
 
@@ -137,7 +156,7 @@ describe("TodayHub", () => {
   });
 
   it("does not show the new-user nudge while library/tracked-series reads are still pending", () => {
-    libraryMock.mockReturnValue({ data: undefined, isPending: true });
+    libraryCountsMock.mockReturnValue({ data: undefined, isPending: true, isSuccess: false });
     trackedSeriesMock.mockReturnValue({ data: undefined, isPending: true });
 
     const { container } = render(<TodayHub index={1} />);
@@ -228,11 +247,31 @@ describe("TodayHub", () => {
   });
 
   it("renders when only needs-attention has a stale planned item", () => {
-    libraryMock.mockReturnValue({
-      data: [{ status: "planned", updatedAt: "2000-01-01T00:00:00.000Z" }],
+    libraryCountsMock.mockReturnValue(counts({ planned: 1 }));
+    stalePlannedMock.mockReturnValue({
+      data: [{ item: { status: "planned" }, daysSinceUpdate: 40 }],
+      isError: false,
+      error: null,
     });
     render(<TodayHub index={1} />);
 
     expect(screen.getByTestId("needs-attention")).toHaveAttribute("data-stale", "1");
+    // Only the card's own row count is ever requested, never the whole library.
+    expect(stalePlannedLimitSpy).toHaveBeenCalledWith(4);
+  });
+
+  it("does not claim a brand new user when the library count could not be read", () => {
+    libraryCountsMock.mockReturnValue({ data: undefined, isPending: false, isSuccess: false });
+
+    const { container } = render(<TodayHub index={1} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("tells the user when the stale planned titles failed to load", () => {
+    stalePlannedMock.mockReturnValue({ data: undefined, isError: true, error: new Error("boom") });
+    render(<TodayHub index={1} />);
+
+    expect(screen.getByText(i18n.t("home.todayHubPartialError"))).toBeInTheDocument();
   });
 });

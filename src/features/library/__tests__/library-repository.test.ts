@@ -120,6 +120,18 @@ describe("libraryRepository", () => {
     });
   });
 
+  it("stalePlanned() invokes list_stale_planned_library_items with the cutoff instant and limit", async () => {
+    const items = [libraryItem()];
+    invokeMock.mockResolvedValueOnce(items);
+    const { libraryRepository } = await import("../library-repository");
+
+    await expect(libraryRepository.stalePlanned("2026-05-16T00:00:00.000Z", 4)).resolves.toEqual(items);
+    expect(invokeMock).toHaveBeenCalledWith("list_stale_planned_library_items", {
+      updatedAtOrBefore: "2026-05-16T00:00:00.000Z",
+      limit: 4,
+    });
+  });
+
   it("completedCandidates() invokes list_completed_library_candidates with an optional mediaType and limit", async () => {
     const items = [libraryItem()];
     invokeMock.mockResolvedValueOnce(items);

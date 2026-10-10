@@ -480,6 +480,35 @@ pub(super) async fn list_planned_candidates_impl(
     rows.into_iter().map(LibraryItem::try_from).collect()
 }
 
+/// Planned items untouched since `updated_at_or_before` (an ISO instant,
+/// inclusive), newest first, capped at `limit` — the Today Hub's "planned
+/// for too long" card, instead of reading the whole library to filter it in
+/// JS. Same order as `list_impl` (`updated_at DESC, media_id DESC,
+/// media_type DESC`) so the first `limit` rows are exactly the first `limit`
+/// stale items the full read would have listed. Served by
+/// `idx_library_profile_status (profile_id, status, updated_at DESC)`.
+pub(super) async fn list_stale_planned_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    updated_at_or_before: &str,
+    limit: i64,
+) -> Result<Vec<LibraryItem>, ApiError> {
+    let limit = limit.clamp(CANDIDATE_MIN_LIMIT, CANDIDATE_MAX_LIMIT);
+    let rows: Vec<LibraryRow> = sqlx::query_as(
+        "SELECT * FROM library_items
+         WHERE profile_id = $1 AND status = 'planned' AND updated_at <= $2
+         ORDER BY updated_at DESC, media_id DESC, media_type DESC
+         LIMIT $3",
+    )
+    .bind(profile_id)
+    .bind(updated_at_or_before)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+    rows.into_iter().map(LibraryItem::try_from).collect()
+}
+
 /// Up to `limit` most-recently-completed items (optionally of one media
 /// type) — the "people you watch most" rail's candidate pool, instead of
 /// filtering the whole library in JS for a `status = 'completed'` slice

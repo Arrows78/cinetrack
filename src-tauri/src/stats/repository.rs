@@ -12,6 +12,7 @@ use super::viewing_events::{
     list_on_this_day_events_impl, list_viewing_events_for_media_impl,
     list_viewing_events_for_year_impl, list_viewing_events_since_impl,
 };
+use super::year_favourite_genre::get_year_favourite_genre_impl;
 use super::{
     ActivityStats, LibraryExtras, MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview,
     ViewingEvent, ViewingEventNote, WatchForecast, WatchMilestone, YearlyActivityBucket,
@@ -34,6 +35,14 @@ impl<'a> StatsRepository<'a> {
         since: &str,
     ) -> Result<Vec<ViewingEvent>, ApiError> {
         list_viewing_events_since_impl(self.pool, &self.profile_id, since).await
+    }
+
+    pub(super) async fn get_year_favourite_genre(
+        &self,
+        range_start: &str,
+        range_end: &str,
+    ) -> Result<Option<String>, ApiError> {
+        get_year_favourite_genre_impl(self.pool, &self.profile_id, range_start, range_end).await
     }
 
     pub(super) async fn list_viewing_events_for_year(

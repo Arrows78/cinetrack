@@ -36,6 +36,7 @@ export const statsCommands = {
   listRecentViewingEvents: defineCommand<SinceArgs, ViewingEvent[]>("list_recent_viewing_events"),
   getOverview: defineCommand<StatsOverviewArgs, StatsOverview>("get_stats_overview"),
   listViewingEventsForYear: defineCommand<YearRangeArgs, ViewingEvent[]>("list_viewing_events_for_year"),
+  getYearFavouriteGenre: defineCommand<YearRangeArgs, string | null>("get_year_favourite_genre"),
   listYearlyActivity: defineCommand<YearlyActivityArgs, YearlyActivityBucket[]>("list_yearly_activity"),
   listOnThisDayEvents: defineCommand<OnThisDayArgs, ViewingEvent[]>("list_on_this_day_events"),
   getMonthlyRecap: defineCommand<MonthlyRecapArgs, MonthlyRecap>("get_monthly_recap"),

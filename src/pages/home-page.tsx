@@ -33,7 +33,8 @@ import { useTokenVault } from "@/features/desktop/use-token-vault";
 import { useHistory } from "@/features/history/use-history";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
-import { useLibrary } from "@/features/library/use-library";
+import { useLibraryIdsMatchingFilters, useLibraryStatusCounts } from "@/features/library/use-library";
+import { buildKeySetFromMediaKeys } from "@/shared/utils/library-set";
 import { useHomeFeed } from "@/features/media/use-media";
 import { usePresentSectionIds } from "@/hooks/use-present-section-ids";
 import { TodayHub } from "@/components/media/home/today-hub";
@@ -51,13 +52,11 @@ const HOME_DISCOVER_ID = "home-discover";
 // which used to be indistinguishable from a genuinely empty library/history.
 function TrackingStatsTrio({
   trackedSeriesQuery,
-  libraryQuery,
-  plannedCount,
+  libraryCountsQuery,
   historyQuery,
 }: {
   trackedSeriesQuery: ReturnType<typeof useTrackedSeries>;
-  libraryQuery: ReturnType<typeof useLibrary>;
-  plannedCount: number;
+  libraryCountsQuery: ReturnType<typeof useLibraryStatusCounts>;
   historyQuery: ReturnType<typeof useHistory>;
 }) {
   const { t } = useTranslation();
@@ -70,7 +69,7 @@ function TrackingStatsTrio({
       />
       <StatCard
         label={t("library.statuses.planned")}
-        value={libraryQuery.isError ? "—" : String(plannedCount)}
+        value={libraryCountsQuery.isError ? "—" : String(libraryCountsQuery.data?.planned ?? 0)}
         helper={t("home.plannedHelper")}
       />
       <StatCard
@@ -109,16 +108,16 @@ function HomePageContent() {
   // code there.
   const hasTmdbToken = useTokenVault().configured;
   const homeQuery = useHomeFeed();
-  const libraryQuery = useLibrary();
-  const plannedCount = useMemo(
-    () => (libraryQuery.data ?? []).filter((item) => item.status === "planned").length,
-    [libraryQuery.data]
-  );
+  // The "planned" card only needs a count, aggregated in SQL.
+  const libraryCountsQuery = useLibraryStatusCounts();
   const trackedSeriesQuery = useTrackedSeries();
   const historyQuery = useHistory();
   const preferences = usePreferences();
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
-  const library = libraryQuery.data ?? [];
+  // The "Hide watched" toggle only needs the set of completed titles' keys,
+  // and only while it is on — not every library row.
+  const completedKeys = useLibraryIdsMatchingFilters({ status: "completed" }, { enabled: hideWatched });
+  const completedKeySet = useMemo(() => buildKeySetFromMediaKeys(completedKeys.data ?? []), [completedKeys.data]);
 
   // In-page jump nav for the zones below the hero (see SectionNav) — each
   // candidate can render nothing of its own accord (an empty Today Hub, an
@@ -206,8 +205,7 @@ function HomePageContent() {
           <div className="flex flex-wrap items-center gap-6">
             <TrackingStatsTrio
               trackedSeriesQuery={trackedSeriesQuery}
-              libraryQuery={libraryQuery}
-              plannedCount={plannedCount}
+              libraryCountsQuery={libraryCountsQuery}
               historyQuery={historyQuery}
             />
           </div>
@@ -297,8 +295,7 @@ function HomePageContent() {
             <div className="mt-6 flex flex-wrap items-center gap-6 pt-5 animate-in delay-600">
               <TrackingStatsTrio
                 trackedSeriesQuery={trackedSeriesQuery}
-                libraryQuery={libraryQuery}
-                plannedCount={plannedCount}
+                libraryCountsQuery={libraryCountsQuery}
                 historyQuery={historyQuery}
               />
             </div>
@@ -398,7 +395,7 @@ function HomePageContent() {
           feed={homeQuery.data}
           startIndex={sectionIndex + 1}
           hideWatched={hideWatched}
-          library={library}
+          completedKeySet={completedKeySet}
         />
 
         <BrowseByGenre startIndex={sectionIndex + 1 + CATALOGUE_SECTIONS.length} />

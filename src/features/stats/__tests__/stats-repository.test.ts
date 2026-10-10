@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import { makeLibraryItem } from "@/shared/test-utils";
 import type { ViewingEvent } from "@/types/media";
 
 const invokeCommandMock = vi.hoisted(() => vi.fn());
@@ -13,15 +12,8 @@ vi.mock("@/shared/lib/invoke", async (importOriginal) => {
   };
 });
 
-const libraryListMock = vi.hoisted(() => vi.fn());
-vi.mock("@/features/library/library-repository", () => ({
-  libraryRepository: { list: libraryListMock },
-}));
-
 import { monthOverMonthComparison, yearOverYearComparison } from "../stats-repository";
 import type { YearSummary } from "../stats-repository";
-
-const libraryItem = makeLibraryItem;
 
 function makeYearSummary(overrides: Partial<YearSummary> = {}): YearSummary {
   return {
@@ -96,7 +88,6 @@ describe("yearOverYearComparison", () => {
 describe("statsRepository.getYearSummary", () => {
   beforeEach(() => {
     invokeCommandMock.mockReset();
-    libraryListMock.mockReset();
   });
 
   const viewingEvent = (overrides: Partial<ViewingEvent>): ViewingEvent =>
@@ -112,45 +103,51 @@ describe("statsRepository.getYearSummary", () => {
       ...overrides,
     }) as ViewingEvent;
 
-  it("aggregates the given year's events, ranking top titles and favourite genre", async () => {
+  // The favourite genre is computed in SQL (get_year_favourite_genre, proven
+  // against the previous client-side computation in Rust); here it only has
+  // to be passed through, and no full library read may happen.
+  const mockYear = (events: ViewingEvent[], favouriteGenre: string | null = null) =>
+    invokeCommandMock.mockImplementation(async (command: string) => {
+      if (command === "list_viewing_events_for_year") return events;
+      if (command === "get_year_favourite_genre") return favouriteGenre;
+      throw new Error(`unexpected command ${command}`);
+    });
+
+  it("aggregates the given year's events, ranking top titles and passing the favourite genre through", async () => {
     const year = 2026;
-    libraryListMock.mockResolvedValue([
-      libraryItem({ mediaId: 1, mediaType: "movie", title: "Film A", genres: ["Drame"] }),
-      // A second title/genre so topTitles and favouriteGenre each have more
-      // than one entry to rank — otherwise Array.sort never calls its
-      // comparator on a single-element input and the sort branch goes untested.
-      libraryItem({ mediaId: 3, mediaType: "movie", title: "Film B", genres: ["Comédie"] }),
-    ]);
-    invokeCommandMock.mockResolvedValue([
-      viewingEvent({ mediaId: 1, title: "Film A", watchedAt: `${year}-02-01T00:00:00.000Z`, durationMinutes: 100 }),
-      viewingEvent({ mediaId: 1, title: "Film A", watchedAt: `${year}-03-01T00:00:00.000Z`, durationMinutes: 50 }),
-      viewingEvent({ mediaId: 3, title: "Film B", watchedAt: `${year}-04-01T00:00:00.000Z`, durationMinutes: 20 }),
-    ]);
+    mockYear(
+      [
+        viewingEvent({ mediaId: 1, title: "Film A", watchedAt: `${year}-02-01T00:00:00.000Z`, durationMinutes: 100 }),
+        viewingEvent({ mediaId: 1, title: "Film A", watchedAt: `${year}-03-01T00:00:00.000Z`, durationMinutes: 50 }),
+        viewingEvent({ mediaId: 3, title: "Film B", watchedAt: `${year}-04-01T00:00:00.000Z`, durationMinutes: 20 }),
+      ],
+      "Drame"
+    );
     const { statsRepository: repo } = await import("../stats-repository");
 
     const summary = await repo.getYearSummary(year);
 
-    expect(invokeCommandMock).toHaveBeenCalledWith("list_viewing_events_for_year", {
+    const range = {
       // Local year bounds (equal to the UTC ones when TZ=UTC).
       rangeStart: new Date(year, 0, 1).toISOString(),
       rangeEnd: new Date(year + 1, 0, 1).toISOString(),
-    });
+    };
+    expect(invokeCommandMock).toHaveBeenCalledWith("list_viewing_events_for_year", range);
+    expect(invokeCommandMock).toHaveBeenCalledWith("get_year_favourite_genre", range);
+    expect(invokeCommandMock).not.toHaveBeenCalledWith("list_library");
     expect(summary.movies).toBe(3);
     expect(summary.minutes).toBe(170);
     expect(summary.activeDays).toBe(3);
     expect(summary.topTitles[0]).toEqual({ title: "Film A", count: 2 });
     expect(summary.topTitles).toContainEqual({ title: "Film B", count: 1 });
-    // Both Drame and Comédie appear exactly once (one matching library item
-    // each) — favouriteGenre just needs to be one of the tied candidates.
-    expect(["Drame", "Comédie"]).toContain(summary.favouriteGenre);
+    expect(summary.favouriteGenre).toBe("Drame");
   });
 
   it("buckets watch counts per calendar day for the activity calendar", async () => {
     // Kept safely mid-day UTC (not near a day boundary) so this doesn't
     // depend on the test runner's local timezone — same reasoning as
     // localDay's other callers (activeDays above).
-    libraryListMock.mockResolvedValue([]);
-    invokeCommandMock.mockResolvedValue([
+    mockYear([
       viewingEvent({ mediaId: 1, watchedAt: "2026-02-01T12:00:00.000Z" }),
       viewingEvent({ mediaId: 1, watchedAt: "2026-02-01T13:00:00.000Z" }),
       viewingEvent({ mediaId: 1, watchedAt: "2026-02-02T12:00:00.000Z" }),
@@ -165,8 +162,7 @@ describe("statsRepository.getYearSummary", () => {
   });
 
   it("excludes an unwatched rollback event from the aggregation", async () => {
-    libraryListMock.mockResolvedValue([libraryItem({ mediaId: 1, mediaType: "movie", genres: ["Drame"] })]);
-    invokeCommandMock.mockResolvedValue([
+    mockYear([
       viewingEvent({ mediaId: 1, eventType: "watched", durationMinutes: 100 }),
       viewingEvent({ mediaId: 1, eventType: "unwatched", durationMinutes: 100 }),
     ]);
@@ -178,13 +174,8 @@ describe("statsRepository.getYearSummary", () => {
     expect(summary.minutes).toBe(100);
   });
 
-  it("defaults a missing duration to zero and reports no favourite genre when no library item matches this year's events", async () => {
-    // mediaId 99 has no event below, so its genre must never be credited —
-    // genreCounts stays empty, which is what exercises the `?? null` fallback.
-    libraryListMock.mockResolvedValue([
-      libraryItem({ mediaId: 99, mediaType: "movie", title: "Unrelated", genres: ["Horreur"] }),
-    ]);
-    invokeCommandMock.mockResolvedValue([viewingEvent({ mediaId: 1, title: "Film A", durationMinutes: null })]);
+  it("defaults a missing duration to zero and keeps a null favourite genre", async () => {
+    mockYear([viewingEvent({ mediaId: 1, title: "Film A", durationMinutes: null })], null);
     const { statsRepository: repo } = await import("../stats-repository");
 
     const summary = await repo.getYearSummary(2026);

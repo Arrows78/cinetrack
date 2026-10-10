@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -28,10 +28,13 @@ vi.mock("@/features/media/use-media", () => ({
   useHomeFeed: () => homeFeedMock(),
 }));
 
-const libraryMock = vi.fn();
+const libraryCountsMock = vi.fn();
+const completedIdsMock = vi.fn();
 vi.mock("@/features/library/use-library", () => ({
-  useLibrary: () => libraryMock(),
+  useLibraryStatusCounts: () => libraryCountsMock(),
+  useLibraryIdsMatchingFilters: (...args: unknown[]) => completedIdsMock(...args),
 }));
+const plannedCounts = (planned: number) => ({ data: { planned, watching: 0, paused: 0, completed: 0, dropped: 0 } });
 
 const trackedSeriesMock = vi.fn();
 vi.mock("@/features/progress/use-progress", () => ({
@@ -52,8 +55,12 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 // src/pages/__tests__/library-page.test.tsx — keeps assertions targeted at
 // HomePage's own composition/index-math logic rather than these components'.
 vi.mock("@/components/media/discover/catalogue-sections", () => ({
-  CatalogueSections: ({ startIndex }: { startIndex: number }) => (
-    <div data-testid="catalogue-sections" data-start-index={startIndex} />
+  CatalogueSections: ({ startIndex, completedKeySet }: { startIndex: number; completedKeySet?: Set<string> }) => (
+    <div
+      data-testid="catalogue-sections"
+      data-start-index={startIndex}
+      data-completed-keys={[...(completedKeySet ?? [])].join(",")}
+    />
   ),
 }));
 vi.mock("@/components/media/discover/catalogue-sections-data", () => ({ CATALOGUE_SECTIONS: [{}, {}] }));
@@ -147,7 +154,8 @@ describe("HomePage", () => {
       refetch: vi.fn(),
       data: buildHomeFeed(),
     });
-    libraryMock.mockReset().mockReturnValue({ data: [] });
+    libraryCountsMock.mockReset().mockReturnValue(plannedCounts(0));
+    completedIdsMock.mockReset().mockReturnValue({ data: [] });
     trackedSeriesMock.mockReset().mockReturnValue({ data: [] });
     historyMock.mockReset().mockReturnValue({ data: { pages: [[]] } });
     preferencesMock.mockReset().mockReturnValue({ data: undefined, updatePreference: vi.fn(), isSaving: false });
@@ -173,7 +181,7 @@ describe("HomePage", () => {
   it("falls through to a local-data summary with quick links when 'continue without a token' is clicked", () => {
     hasTmdbTokenValue = false;
     trackedSeriesMock.mockReturnValue({ data: [{ id: "1" }, { id: "2" }] });
-    libraryMock.mockReturnValue({ data: [{ mediaId: 1, status: "planned" }] });
+    libraryCountsMock.mockReturnValue(plannedCounts(1));
     historyMock.mockReturnValue({ data: { pages: [[{ id: "h1" }]] } });
     renderPage();
 
@@ -196,10 +204,44 @@ describe("HomePage", () => {
     expect(screen.queryByText("Dune Part Two")).not.toBeInTheDocument();
   });
 
+  it("shows a dash on the planned card when the status counts could not be read", () => {
+    hasTmdbTokenValue = false;
+    libraryCountsMock.mockReturnValue({ data: undefined, isError: true });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("home.noTokenContinueCta") }));
+
+    const plannedLabel = screen.getByText(i18n.t("library.statuses.planned"));
+    expect(plannedLabel.nextElementSibling).toHaveTextContent("—");
+  });
+
+  it("only loads the completed titles' keys when Hide watched is on, and hands them to the rails", () => {
+    renderPage();
+    expect(completedIdsMock).toHaveBeenLastCalledWith({ status: "completed" }, { enabled: false });
+    expect(screen.getByTestId("catalogue-sections")).toHaveAttribute("data-completed-keys", "");
+
+    preferencesMock.mockReturnValue({
+      data: { hideWatchedInDiscovery: true },
+      updatePreference: vi.fn(),
+      isSaving: false,
+    });
+    completedIdsMock.mockReturnValue({
+      data: [
+        { mediaId: 2, mediaType: "movie" },
+        { mediaId: 5, mediaType: "series" },
+      ],
+    });
+    cleanup();
+    renderPage();
+
+    expect(completedIdsMock).toHaveBeenLastCalledWith({ status: "completed" }, { enabled: true });
+    expect(screen.getByTestId("catalogue-sections")).toHaveAttribute("data-completed-keys", "movie:2,series:5");
+  });
+
   it("shows a dash rather than a misleading 0 when a stat card's own query failed", () => {
     hasTmdbTokenValue = false;
     trackedSeriesMock.mockReturnValue({ data: undefined, isError: true });
-    libraryMock.mockReturnValue({ data: [{ mediaId: 1, status: "planned" }] });
+    libraryCountsMock.mockReturnValue(plannedCounts(1));
     historyMock.mockReturnValue({ data: { pages: [[{ id: "h1" }]] } });
     renderPage();
 
@@ -280,13 +322,7 @@ describe("HomePage", () => {
 
   it("renders the hero from the first trending movie, its link, and the three stat cards", () => {
     trackedSeriesMock.mockReturnValue({ data: [{ id: "1" }, { id: "2" }] });
-    libraryMock.mockReturnValue({
-      data: [
-        { mediaId: 1, status: "planned" },
-        { mediaId: 2, status: "watching" },
-        { mediaId: 3, status: "watching" },
-      ],
-    });
+    libraryCountsMock.mockReturnValue({ data: { planned: 1, watching: 2, paused: 0, completed: 0, dropped: 0 } });
     historyMock.mockReturnValue({ data: { pages: [[{ id: "h1" }, { id: "h2" }, { id: "h3" }]] } });
 
     renderPage();
@@ -303,7 +339,7 @@ describe("HomePage", () => {
     expect(followedLabel.nextElementSibling).toHaveTextContent("2"); // trackedSeriesQuery.data.length
 
     const plannedLabel = screen.getByText(i18n.t("library.statuses.planned"));
-    expect(plannedLabel.nextElementSibling).toHaveTextContent("1"); // libraryQuery.data filtered to "planned"
+    expect(plannedLabel.nextElementSibling).toHaveTextContent("1"); // get_library_status_counts().planned
 
     const historyLabel = screen.getByText(i18n.t("nav.history"));
     expect(historyLabel.nextElementSibling).toHaveTextContent("3"); // historyQuery.data.pages[0].length

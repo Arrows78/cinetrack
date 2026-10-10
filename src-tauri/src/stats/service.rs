@@ -33,6 +33,17 @@ impl<'a> StatsService<'a> {
             .await
     }
 
+    pub(super) async fn get_year_favourite_genre(
+        &self,
+        range_start: &str,
+        range_end: &str,
+    ) -> Result<Option<String>, ApiError> {
+        self.repository()
+            .await?
+            .get_year_favourite_genre(range_start, range_end)
+            .await
+    }
+
     pub(super) async fn list_viewing_events_for_year(
         &self,
         range_start: &str,

@@ -38,6 +38,7 @@ type ListLibraryArgs = { mediaType: MediaSummary["mediaType"] | null };
 type GetRandomArgs = { mediaType: MediaSummary["mediaType"] | null };
 type GetItemsByKeysArgs = { keys: LibraryMediaKey[] };
 type PlannedCandidatesArgs = { mediaType: MediaSummary["mediaType"]; limit: number };
+type StalePlannedArgs = { updatedAtOrBefore: string; limit: number };
 type CompletedCandidatesArgs = { mediaType?: MediaSummary["mediaType"]; limit: number };
 type IdsMatchingFiltersArgs = { filters: LibraryFilterParams };
 type RefreshCatalogMetadataArgs = LibraryIdentityArgs & { year: number | null; rating: number | null };
@@ -59,6 +60,7 @@ export const libraryCommands = {
   getItemsByKeys: defineCommand<GetItemsByKeysArgs, LibraryItem[]>("get_library_items_by_keys"),
   statusCounts: defineCommand<undefined, LibraryStatusCounts>("get_library_status_counts"),
   plannedCandidates: defineCommand<PlannedCandidatesArgs, LibraryItem[]>("list_planned_library_candidates"),
+  stalePlanned: defineCommand<StalePlannedArgs, LibraryItem[]>("list_stale_planned_library_items"),
   completedCandidates: defineCommand<CompletedCandidatesArgs, LibraryItem[]>("list_completed_library_candidates"),
   bestRecommendationSeed: defineCommand<undefined, LibraryItem | null>("get_best_recommendation_seed"),
   idsMatchingFilters: defineCommand<IdsMatchingFiltersArgs, LibraryMediaKey[]>("list_library_ids_matching_filters"),

@@ -206,6 +206,22 @@ pub async fn list_planned_library_candidates(
     .await
 }
 
+/// Planned titles whose last update is at or before `updated_at_or_before`
+/// (an ISO instant), newest first — the Today Hub's stale-planned card.
+#[tauri::command]
+pub async fn list_stale_planned_library_items(
+    updated_at_or_before: String,
+    limit: i64,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryItem>, ApiError> {
+    timed("list_stale_planned_library_items", async {
+        LibraryService::new(pool.inner())
+            .stale_planned(&updated_at_or_before, limit)
+            .await
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn list_completed_library_candidates(
     media_type: Option<MediaType>,

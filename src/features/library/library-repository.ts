@@ -100,6 +100,12 @@ export const libraryRepository = {
     return invokeTypedCommand(libraryCommands.plannedCandidates, { mediaType, limit });
   },
 
+  // The Today Hub's "planned for too long" card: planned items last touched
+  // at or before the given ISO instant, newest first, capped at `limit`.
+  async stalePlanned(updatedAtOrBefore: string, limit: number): Promise<LibraryItem[]> {
+    return invokeTypedCommand(libraryCommands.stalePlanned, { updatedAtOrBefore, limit });
+  },
+
   // The "people you watch most" rail's candidate pool: up to `limit`
   // most-recently-completed items, optionally of one media type.
   async completedCandidates(mediaType: MediaSummary["mediaType"] | undefined, limit: number): Promise<LibraryItem[]> {

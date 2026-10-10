@@ -14,8 +14,8 @@ mod service;
 pub use commands::{
     get_activity_stats, get_library_extras, get_monthly_recap, get_rating_distribution,
     get_rewatch_stats, get_stats_overview, get_watch_forecast, get_watch_milestones,
-    list_on_this_day_events, list_recent_viewing_events, list_viewing_events_for_media,
-    list_viewing_events_for_year, list_yearly_activity,
+    get_year_favourite_genre, list_on_this_day_events, list_recent_viewing_events,
+    list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
 };
 use models::{
     ActivityStats, LibraryExtras, MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview,
@@ -25,7 +25,7 @@ pub(crate) use queries::{ViewingEvent, ViewingEventNote, ViewingEventType};
 
 use queries::{
     activity, forecast, library_extras, milestones, overview, ratings, recap, rewatch,
-    viewing_events,
+    viewing_events, year_favourite_genre,
 };
 
 #[cfg(test)]

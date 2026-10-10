@@ -43,6 +43,24 @@ pub async fn list_viewing_events_for_year(
     .await
 }
 
+/// The year's favourite genre for the Wrapped summary, aggregated in SQL
+/// (see `queries/year_favourite_genre.rs`) so the client no longer reads the
+/// whole library to find it. Same `[range_start, range_end)` bounds as
+/// `list_viewing_events_for_year`.
+#[tauri::command]
+pub async fn get_year_favourite_genre(
+    range_start: String,
+    range_end: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<Option<String>, ApiError> {
+    timed("get_year_favourite_genre", async {
+        StatsService::new(pool.inner())
+            .get_year_favourite_genre(&range_start, &range_end)
+            .await
+    })
+    .await
+}
+
 /// Powers the opt-in "On this day" Home card for the active profile.
 #[tauri::command]
 pub async fn list_on_this_day_events(

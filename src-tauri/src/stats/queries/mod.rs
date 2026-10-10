@@ -8,6 +8,7 @@ pub(super) mod ratings;
 pub(super) mod recap;
 pub(super) mod rewatch;
 pub(super) mod viewing_events;
+pub(super) mod year_favourite_genre;
 
 pub use viewing_events::{ViewingEvent, ViewingEventNote, ViewingEventType};
 

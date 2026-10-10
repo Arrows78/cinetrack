@@ -1,7 +1,6 @@
 import { eachMonthOfInterval, endOfMonth, format, parseISO, startOfMonth, subDays, subMonths } from "date-fns";
 import { statsCommands, type YearlyActivityBucket } from "@/features/stats/stats-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
-import { libraryRepository } from "@/features/library/library-repository";
 import type {
   LibraryStats,
   MonthlyRecap,
@@ -157,20 +156,15 @@ export const statsRepository = {
     };
   },
   async getYearSummary(year = new Date().getFullYear()): Promise<YearSummary> {
-    const [library, selected] = await Promise.all([
-      libraryRepository.list(),
-      // Local year bounds, like the local days dailyCounts groups by below.
-      invokeTypedCommand(statsCommands.listViewingEventsForYear, {
-        rangeStart: new Date(year, 0, 1).toISOString(),
-        rangeEnd: new Date(year + 1, 0, 1).toISOString(),
-      }).then(activeEvents),
+    // Local year bounds, like the local days dailyCounts groups by below.
+    const range = { rangeStart: new Date(year, 0, 1).toISOString(), rangeEnd: new Date(year + 1, 0, 1).toISOString() };
+    const [favouriteGenre, selected] = await Promise.all([
+      // Aggregated in SQL: no full-library read just to find one genre.
+      invokeTypedCommand(statsCommands.getYearFavouriteGenre, range),
+      invokeTypedCommand(statsCommands.listViewingEventsForYear, range).then(activeEvents),
     ]);
     const titleCounts = new Map<string, number>();
     for (const event of selected) titleCounts.set(event.title, (titleCounts.get(event.title) ?? 0) + 1);
-    const genreCounts = new Map<string, number>();
-    for (const item of library)
-      if (selected.some((event) => event.mediaId === item.mediaId && event.mediaType === item.mediaType))
-        for (const genre of item.genres) genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
     const dailyCounts: Record<string, number> = {};
     for (const event of selected) {
       const day = localDay(event.watchedAt);
@@ -185,7 +179,7 @@ export const statsRepository = {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
         .map(([title, count]) => ({ title, count })),
-      favouriteGenre: [...genreCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
+      favouriteGenre,
       activeDays: new Set(selected.map((event) => localDay(event.watchedAt))).size,
       dailyCounts,
     };
