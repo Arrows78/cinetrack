@@ -8,7 +8,10 @@ export function useTracking(options?: { enabled?: boolean }) {
   const profileId = useActiveProfileId();
   const preferredProviderIds = usePreferences().data?.preferredProviderIds ?? [];
   return useQuery({
-    queryKey: queryKeys.local.tracking(profileId),
+    // The preferred providers are part of the key: they decide which alerts
+    // count as available, so a change (or the preferences finishing loading
+    // after the first render) must not keep serving the previous result.
+    queryKey: [...queryKeys.local.tracking(profileId), "feed", preferredProviderIds] as const,
     queryFn: () => trackingService.build(60, preferredProviderIds),
     staleTime: STALE_30_MIN,
     enabled: options?.enabled ?? true,

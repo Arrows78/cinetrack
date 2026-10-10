@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { weeklyAgendaService } from "@/features/tracking/weekly-agenda-service";
-import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { useActiveProfileId, usePreferences } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_30_MIN } from "@/shared/constants/query";
 
@@ -13,9 +13,10 @@ import { STALE_30_MIN } from "@/shared/constants/query";
 // matches by prefix by default.
 export function useWeeklyAgenda() {
   const profileId = useActiveProfileId();
+  const preferredProviderIds = usePreferences().data?.preferredProviderIds ?? [];
   return useQuery({
-    queryKey: [...queryKeys.local.tracking(profileId), "week"] as const,
-    queryFn: () => weeklyAgendaService.build(),
+    queryKey: [...queryKeys.local.tracking(profileId), "week", preferredProviderIds] as const,
+    queryFn: () => weeklyAgendaService.build(preferredProviderIds),
     staleTime: STALE_30_MIN,
   });
 }

@@ -61,7 +61,7 @@ describe("weeklyAgendaService.build", () => {
 
     await weeklyAgendaService.build();
 
-    expect(mocks.build).toHaveBeenCalledWith(7);
+    expect(mocks.build).toHaveBeenCalledWith(7, []);
   });
 
   it("applies the same mine/available filtering to whatever trackingService returns", async () => {

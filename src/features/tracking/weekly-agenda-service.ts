@@ -33,8 +33,8 @@ export function selectWeeklyAgendaEntries(entries: TrackingEntry[]): TrackingEnt
 }
 
 export const weeklyAgendaService = {
-  async build(): Promise<TrackingEntry[]> {
-    const entries = await trackingService.build(WEEKLY_AGENDA_DAYS);
+  async build(preferredProviderIds: number[] = []): Promise<TrackingEntry[]> {
+    const entries = await trackingService.build(WEEKLY_AGENDA_DAYS, preferredProviderIds);
     return selectWeeklyAgendaEntries(entries);
   },
 };
