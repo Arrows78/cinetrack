@@ -489,7 +489,10 @@ pub(super) async fn refresh_tracked_series_status_impl(
     // up to date, and a no-op once the status is no longer Completed.
     sqlx::query(
         "UPDATE library_items
-         SET status = 'watching', updated_at = strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'
+         SET status = 'watching',
+             completed_at = NULL,
+             started_at = COALESCE(started_at, strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'),
+             updated_at = strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'
          WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series' AND status = 'completed'
            AND (SELECT COUNT(*) FROM episode_progress
                 WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0)
@@ -1680,6 +1683,42 @@ mod tests {
         assert_eq!(
             library_status(&pool, 9, "series").await,
             Some("completed".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn reopening_a_completed_series_clears_its_completion_date() {
+        let pool = migrated_pool().await;
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &ended_series(9, Some(2)),
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        let completed_at: Option<String> =
+            sqlx::query_scalar("SELECT completed_at FROM library_items WHERE media_id = 9")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(completed_at.is_some());
+
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(3))
+            .await
+            .unwrap();
+
+        let (status, completed_at): (String, Option<String>) =
+            sqlx::query_as("SELECT status, completed_at FROM library_items WHERE media_id = 9")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(status, "watching");
+        assert_eq!(
+            completed_at, None,
+            "a series that is Watching again must not keep its completion date"
         );
     }
 
