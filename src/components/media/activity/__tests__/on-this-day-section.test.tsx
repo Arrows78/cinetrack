@@ -44,6 +44,12 @@ const event = (overrides: Partial<ViewingEvent> = {}): ViewingEvent => ({
   ...overrides,
 });
 
+// The banner keys its dismissal on the viewer's local day, not the UTC one.
+function localDayKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 describe("OnThisDaySection", () => {
   beforeAll(async () => {
     await i18n.changeLanguage("en");
@@ -207,11 +213,11 @@ describe("OnThisDayInviteBanner", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 
     expect(updatePreferenceMock).not.toHaveBeenCalled();
-    expect(localStorage.getItem(ON_THIS_DAY_INVITE_DISMISSED_KEY)).toBe(new Date().toISOString().slice(0, 10));
+    expect(localStorage.getItem(ON_THIS_DAY_INVITE_DISMISSED_KEY)).toBe(localDayKey());
   });
 
   it("stays dismissed for the remainder of the day on a fresh render", () => {
-    localStorage.setItem(ON_THIS_DAY_INVITE_DISMISSED_KEY, new Date().toISOString().slice(0, 10));
+    localStorage.setItem(ON_THIS_DAY_INVITE_DISMISSED_KEY, localDayKey());
     usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
     useOnThisDayMock.mockReturnValue({ data: [event()] });
 

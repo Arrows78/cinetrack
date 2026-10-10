@@ -96,8 +96,13 @@ export function OnThisDaySection({ id }: { id?: string }) {
   );
 }
 
+// The viewer's local calendar day: a UTC key let a "dismiss for today"
+// expire (or carry over) up to a day early around midnight.
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 /**
