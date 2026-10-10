@@ -98,6 +98,12 @@ const EMPTY_PLACEHOLDER_MEDIA: MediaSummary = {
 };
 
 const TITLE_RESULTS_CAP = 5;
+
+const foldForSearch = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
 const COMMAND_PALETTE_ROW_ID_PREFIX = "command-palette-row";
 
 export function CommandPalette() {
@@ -218,10 +224,11 @@ export function CommandPalette() {
     return [...actions, ...contextualItems, ...pages];
   }, [navigationItems, nextTheme, t, updatePreference, contextualItems, navigate]);
 
-  const filteredCommands = useMemo(
-    () => commands.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())),
-    [commands, query]
-  );
+  // Accent- and case-insensitive, so "parametres" finds "Paramètres".
+  const filteredCommands = useMemo(() => {
+    const needle = foldForSearch(query.trim());
+    return commands.filter((item) => foldForSearch(item.label).includes(needle));
+  }, [commands, query]);
 
   const titleResults = useMemo<PaletteItem[]>(() => {
     if (debouncedQuery.trim().length < MIN_SEARCH_QUERY_LENGTH) return [];
@@ -324,6 +331,10 @@ export function CommandPalette() {
         return;
       }
       if (event.key === "Enter") {
+        // The Enter that accepts an IME candidate (CJK input, dead-key
+        // accents on some layouts) is part of typing the query, not a request
+        // to run the selected row.
+        if (event.isComposing) return;
         const item = stateRef.current.results[stateRef.current.selectedIndex];
         if (item) item.run();
       }

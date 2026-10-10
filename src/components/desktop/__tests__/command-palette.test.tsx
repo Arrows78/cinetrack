@@ -465,6 +465,34 @@ describe("CommandPalette", () => {
     expect(navigateMock).toHaveBeenCalledWith({ to: "/settings" });
   });
 
+  it("ignores the Enter that confirms an IME composition instead of running the selected row", () => {
+    renderPalette();
+    openPalette();
+
+    // Accepting a candidate in an IME (Japanese, Chinese, Korean, ...) fires
+    // keydown Enter with isComposing set — it must not also trigger a page.
+    fireEvent.keyDown(getSearchInput(), { key: "Enter", isComposing: true });
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("option", { name: "Home" })).toBeInTheDocument();
+  });
+
+  it("finds a page whatever the accents typed, in either direction", async () => {
+    await i18n.changeLanguage("fr");
+    renderPalette();
+    openPalette();
+
+    // The placeholder is French here — reach the field through the dialog.
+    const input = screen.getByRole("dialog").querySelector("input")!;
+    fireEvent.change(input, { target: { value: "parametres" } });
+
+    expect(screen.getByRole("option", { name: "Paramètres" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Accueil" })).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "PARAMÈTRES" } });
+    expect(screen.getByRole("option", { name: "Paramètres" })).toBeInTheDocument();
+  });
+
   it("pressing Enter with no results is a no-op", () => {
     renderPalette();
     openPalette();
