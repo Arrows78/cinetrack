@@ -77,6 +77,7 @@
     "fallbackTitle": "Season {{number}}",
     "episodesAvailable_one": "{{count}} episode available in this season.",
     "episodesAvailable_other": "{{count}} episodes available in this season.",
+    "watchAgain": "Watch again",
     "addWatchNoteAction": "Add a note",
     "addWatchNoteTitle": "Add a note",
     "addWatchNoteDescription": "Optional — write something about this watch. Notes can't be edited afterward.",

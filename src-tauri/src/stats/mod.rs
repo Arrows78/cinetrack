@@ -2246,18 +2246,16 @@ mod tests {
         title: &str,
         genres: &str,
         user_rating: Option<f64>,
-        rewatch_count: i64,
     ) {
         sqlx::query(
-            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, genres, user_rating, rewatch_count, created_at, updated_at)
-             VALUES ($1, 'default', $2, 'movie', $3, $4, $5, $6, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, genres, user_rating, created_at, updated_at)
+             VALUES ($1, 'default', $2, 'movie', $3, $4, $5, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
         )
         .bind(uuid)
         .bind(media_id)
         .bind(title)
         .bind(genres)
         .bind(user_rating)
-        .bind(rewatch_count)
         .execute(pool)
         .await
         .unwrap();
@@ -2266,7 +2264,7 @@ mod tests {
     #[tokio::test]
     async fn library_extras_extracts_favourite_genres() {
         let pool = migrated_pool().await;
-        insert_rated_library_item(&pool, "a", 1, "Test", "[\"Drama\"]", None, 0).await;
+        insert_rated_library_item(&pool, "a", 1, "Test", "[\"Drama\"]", None).await;
 
         let extras = get_library_extras_impl(&pool, "default").await.unwrap();
 
@@ -2277,9 +2275,9 @@ mod tests {
     #[tokio::test]
     async fn library_extras_averages_user_rating_across_rated_items_only() {
         let pool = migrated_pool().await;
-        insert_rated_library_item(&pool, "a", 1, "A", "[]", Some(8.0), 0).await;
-        insert_rated_library_item(&pool, "b", 2, "B", "[]", Some(6.0), 0).await;
-        insert_rated_library_item(&pool, "c", 3, "C", "[]", None, 0).await;
+        insert_rated_library_item(&pool, "a", 1, "A", "[]", Some(8.0)).await;
+        insert_rated_library_item(&pool, "b", 2, "B", "[]", Some(6.0)).await;
+        insert_rated_library_item(&pool, "c", 3, "C", "[]", None).await;
 
         let extras = get_library_extras_impl(&pool, "default").await.unwrap();
 
@@ -2300,10 +2298,10 @@ mod tests {
         let pool = migrated_pool().await;
         // Drama averages 8 across two rated items; Comedy averages 8.5 from
         // just one — Comedy should still win.
-        insert_rated_library_item(&pool, "a", 1, "A", "[\"Drama\"]", Some(9.0), 0).await;
-        insert_rated_library_item(&pool, "b", 2, "B", "[\"Drama\"]", Some(7.0), 0).await;
-        insert_rated_library_item(&pool, "c", 3, "C", "[\"Comedy\"]", Some(8.5), 0).await;
-        insert_rated_library_item(&pool, "d", 4, "D", "[\"Horror\"]", None, 0).await;
+        insert_rated_library_item(&pool, "a", 1, "A", "[\"Drama\"]", Some(9.0)).await;
+        insert_rated_library_item(&pool, "b", 2, "B", "[\"Drama\"]", Some(7.0)).await;
+        insert_rated_library_item(&pool, "c", 3, "C", "[\"Comedy\"]", Some(8.5)).await;
+        insert_rated_library_item(&pool, "d", 4, "D", "[\"Horror\"]", None).await;
 
         let extras = get_library_extras_impl(&pool, "default").await.unwrap();
 
@@ -2311,11 +2309,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn library_extras_finds_the_most_rewatched_title() {
+    async fn library_extras_finds_the_most_rewatched_title_from_the_rewatch_events() {
         let pool = migrated_pool().await;
-        insert_rated_library_item(&pool, "a", 1, "Once", "[]", None, 0).await;
-        insert_rated_library_item(&pool, "b", 2, "Thrice", "[]", None, 3).await;
-        insert_rated_library_item(&pool, "c", 3, "Twice", "[]", None, 2).await;
+        // Library counters are not what is read: only the events are.
+        insert_rated_library_item(&pool, "a", 1, "Once", "[]", None).await;
+        sqlx::query("UPDATE library_items SET rewatch_count = 9 WHERE media_id = 1")
+            .execute(&pool)
+            .await
+            .unwrap();
+        for (media_id, title, rewatches) in [(1, "Once", 1), (2, "Thrice", 3), (3, "Twice", 2)] {
+            for n in 0..rewatches {
+                let uuid = format!("rw-{media_id}-{n}");
+                sqlx::query(
+                    "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+                     VALUES ($1, 'default', $2, 'movie', $3, 'rewatched', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+                )
+                .bind(uuid)
+                .bind(media_id)
+                .bind(title)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+        }
 
         let extras = get_library_extras_impl(&pool, "default").await.unwrap();
 
@@ -2325,9 +2341,26 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn library_extras_most_rewatched_title_ignores_rewatches_cancelled_by_an_unwatch() {
+        let pool = migrated_pool().await;
+        for (uuid, kind, at) in [
+            ("w", "watched", "2026-01-01T00:00:00.000Z"),
+            ("r1", "rewatched", "2026-01-02T00:00:00.000Z"),
+            ("r2", "rewatched", "2026-01-03T00:00:00.000Z"),
+            ("u", "unwatched", "2026-01-04T00:00:00.000Z"),
+        ] {
+            insert_event_for(&pool, 7, uuid, at, kind, "movie", Some(90), None).await;
+        }
+
+        let extras = get_library_extras_impl(&pool, "default").await.unwrap();
+
+        assert!(extras.most_rewatched_title.is_none());
+    }
+
+    #[tokio::test]
     async fn library_extras_most_rewatched_title_is_none_with_no_rewatches() {
         let pool = migrated_pool().await;
-        insert_rated_library_item(&pool, "a", 1, "A", "[]", None, 0).await;
+        insert_rated_library_item(&pool, "a", 1, "A", "[]", None).await;
 
         let extras = get_library_extras_impl(&pool, "default").await.unwrap();
 

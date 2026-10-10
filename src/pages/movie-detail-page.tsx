@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
-import { NotebookPen, TriangleAlert } from "lucide-react";
+import { NotebookPen, Repeat, TriangleAlert } from "lucide-react";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { AvailabilityAlertButton } from "@/components/media/detail/availability-alert-button";
 import { CollectionProgressPanel } from "@/components/media/detail/collection-progress-panel";
@@ -96,7 +96,22 @@ export function MovieDetailPage() {
                     <NotebookPen className="size-4" />
                   </Button>
                 </IconTooltip>
-              ) : null}
+              ) : (
+                // A seen movie can be watched again: logs a rewatch, never a
+                // second watch (see rewatch_movie_impl).
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={seenQuery.isSaving || seenQuery.isError}
+                  // Failure toast is handled by the app-wide MutationCache
+                  // error handler (see query-client.ts).
+                  onClick={() => void seenQuery.rewatchMovie({ movie }).catch(() => {})}
+                >
+                  <Repeat className="size-4" />
+                  {t("media.watchAgain")}
+                </Button>
+              )}
             </div>
             {seenQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
           </div>

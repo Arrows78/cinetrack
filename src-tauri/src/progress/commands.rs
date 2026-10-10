@@ -34,6 +34,22 @@ pub async fn toggle_movie_seen(
     .await
 }
 
+/// Watches an already-seen movie again (see `rewatch_movie_impl`).
+#[tauri::command]
+pub async fn rewatch_movie(
+    movie: MovieInput,
+    watched_at: String,
+    note: Option<String>,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
+    timed("rewatch_movie", async {
+        ProgressService::new(pool.inner())
+            .rewatch_movie(movie, &watched_at, note)
+            .await
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn get_episode_progress(
     series_id: i64,

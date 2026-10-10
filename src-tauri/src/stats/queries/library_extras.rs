@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use sqlx::SqlitePool;
 
+use super::active_events::fetch_active_rewatches;
 use super::{FavouriteGenre, LibraryExtras, RewatchedTitle};
 use crate::error::ApiError;
 
@@ -9,32 +10,24 @@ use crate::error::ApiError;
 struct LibraryExtrasRow {
     genres: String,
     user_rating: Option<f64>,
-    title: String,
-    rewatch_count: i64,
 }
 
 pub(in crate::stats) async fn get_library_extras_impl(
     pool: &SqlitePool,
     profile_id: &str,
 ) -> Result<LibraryExtras, ApiError> {
-    // ORDER BY makes row iteration below deterministic (a bare SELECT's row
-    // order is otherwise unspecified) — matters for most_rewatched_title's
-    // tie-break, which keeps whichever row it sees first on an exact count
-    // tie.
-    let rows: Vec<LibraryExtrasRow> = sqlx::query_as(
-        "SELECT genres, user_rating, title, rewatch_count FROM library_items WHERE profile_id = $1 ORDER BY title ASC",
-    )
-    .bind(profile_id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?;
+    let rows: Vec<LibraryExtrasRow> =
+        sqlx::query_as("SELECT genres, user_rating FROM library_items WHERE profile_id = $1")
+            .bind(profile_id)
+            .fetch_all(pool)
+            .await
+            .map_err(ApiError::from)?;
 
     let mut genre_counts: HashMap<String, i64> = HashMap::new();
     // Sum + count per genre from rated items only, so an unrated item can't
     // silently drag a genre's average down to a misleading number.
     let mut genre_rating_sums: HashMap<String, (f64, i64)> = HashMap::new();
     let mut ratings: Vec<f64> = Vec::new();
-    let mut most_rewatched: Option<RewatchedTitle> = None;
 
     for row in &rows {
         let genres: Vec<String> = serde_json::from_str(&row.genres).unwrap_or_default();
@@ -48,16 +41,6 @@ pub(in crate::stats) async fn get_library_extras_impl(
                 entry.0 += rating;
                 entry.1 += 1;
             }
-        }
-        if row.rewatch_count > 0
-            && most_rewatched
-                .as_ref()
-                .is_none_or(|current| row.rewatch_count > current.count)
-        {
-            most_rewatched = Some(RewatchedTitle {
-                title: row.title.clone(),
-                count: row.rewatch_count,
-            });
         }
     }
 
@@ -87,6 +70,23 @@ pub(in crate::stats) async fn get_library_extras_impl(
     } else {
         Some(ratings.iter().sum::<f64>() / ratings.len() as f64)
     };
+
+    // The most rewatched title is read from the standing `rewatched` events
+    // (see `active_events`), not from the library editor's counter: the app
+    // writes an event whenever the counter goes up or the viewer watches a
+    // movie again, so the two agree, and unwatching a title cancels its
+    // rewatches. A tie goes to the alphabetically first title.
+    let mut rewatches_per_title: HashMap<(i64, String), (String, i64)> = HashMap::new();
+    for event in fetch_active_rewatches(pool, profile_id).await? {
+        rewatches_per_title
+            .entry((event.media_id, event.media_type.clone()))
+            .or_insert((event.title.clone(), 0))
+            .1 += 1;
+    }
+    let most_rewatched = rewatches_per_title
+        .into_values()
+        .min_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)))
+        .map(|(title, count)| RewatchedTitle { title, count });
 
     Ok(LibraryExtras {
         favourite_genres,

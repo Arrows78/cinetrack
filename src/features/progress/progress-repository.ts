@@ -40,6 +40,15 @@ export const progressRepository = {
     await invokeTypedCommand(progressCommands.toggleMovieSeen, { movie, watched, watchedAt, note: note ?? null });
   },
 
+  // An explicit "watch again" of a movie that is already seen: Rust logs one
+  // `rewatched` viewing event and raises the library entry's rewatch count
+  // (see rewatch_movie_impl). The movie stays one watch everywhere; only the
+  // rewatch statistics change. Rust refuses a movie that is not seen, and
+  // treats a repeat with the same `watchedAt` as a no-op.
+  async rewatchMovie(movie: MediaSummary, watchedAt = nowIso(), note?: string): Promise<void> {
+    await invokeTypedCommand(progressCommands.rewatchMovie, { movie, watchedAt, note: note ?? null });
+  },
+
   async getEpisodeProgress(seriesId: number): Promise<EpisodeProgress[]> {
     return invokeTypedCommand(progressCommands.getEpisodeProgress, { seriesId });
   },

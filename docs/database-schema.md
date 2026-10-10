@@ -54,19 +54,19 @@ The functional core of the app. Three ideas deliberately coexist: a current _sta
 
 The full record of a movie or show in a profile's library: its **status** (`planned`, `watching`, `paused`, `completed`, `dropped`), the personal rating, free-form notes, tags, start/end dates, and the rewatch count.
 
-| Column                                        | Type      | Notes                                                                   |
-| --------------------------------------------- | --------- | ----------------------------------------------------------------------- |
-| `uuid` **PK**                                 | TEXT      | public identifier of the row                                            |
-| `profile_id` `FK`                             | TEXT      | → `profiles.uuid`                                                       |
-| `media_id`, `media_type` **UK**               | INT, TEXT | TMDB id + `movie`/`series` — `UNIQUE(profile_id, media_id, media_type)` |
-| `title`, `poster_path`, `backdrop_path`       | TEXT      | TMDB copy taken when added                                              |
-| `year`, `rating`                              | INT, REAL | TMDB copy (`year > 1800`, `rating` 0–10)                                |
-| `genres`                                      | TEXT      | JSON array, copied from TMDB                                            |
-| `status`                                      | TEXT      | defaults to `planned`                                                   |
-| `status_origin`                               | TEXT      | `manual` (default) or `auto` — who set `status` (migration 24)          |
-| `favourite`, `user_rating`, `notes`, `tags`   | …         | `user_rating` 1–10, `tags` as JSON                                      |
-| `started_at`, `completed_at`, `rewatch_count` | …         | set based on status changes                                             |
-| `created_at`, `updated_at`                    | TEXT      | ISO dates                                                               |
+| Column                                        | Type      | Notes                                                                                                             |
+| --------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------- |
+| `uuid` **PK**                                 | TEXT      | public identifier of the row                                                                                      |
+| `profile_id` `FK`                             | TEXT      | → `profiles.uuid`                                                                                                 |
+| `media_id`, `media_type` **UK**               | INT, TEXT | TMDB id + `movie`/`series` — `UNIQUE(profile_id, media_id, media_type)`                                           |
+| `title`, `poster_path`, `backdrop_path`       | TEXT      | TMDB copy taken when added                                                                                        |
+| `year`, `rating`                              | INT, REAL | TMDB copy (`year > 1800`, `rating` 0–10)                                                                          |
+| `genres`                                      | TEXT      | JSON array, copied from TMDB                                                                                      |
+| `status`                                      | TEXT      | defaults to `planned`                                                                                             |
+| `status_origin`                               | TEXT      | `manual` (default) or `auto` — who set `status` (migration 24)                                                    |
+| `favourite`, `user_rating`, `notes`, `tags`   | …         | `user_rating` 1–10, `tags` as JSON                                                                                |
+| `started_at`, `completed_at`, `rewatch_count` | …         | dates set based on status changes; `rewatch_count` follows the standing `rewatched` events (see `viewing_events`) |
+| `created_at`, `updated_at`                    | TEXT      | ISO dates                                                                                                         |
 
 Indexes: `(profile_id, status, updated_at DESC)`, `(media_id, media_type)`, plus two added by migration 16 for large-library stats queries: `(profile_id, media_type, status, completed_at ASC)` and a partial index `(profile_id, user_rating) WHERE user_rating IS NOT NULL`. Migration 17 replaced the plain `(profile_id, updated_at DESC)` index with `(profile_id, updated_at DESC, media_id DESC, media_type DESC)` — matching the tiebreak order the Library listing query already sorts by — and added two more for the Library page's cursor-paginated grid/list: `(profile_id, title ASC, media_id ASC, media_type ASC)` and `(profile_id, COALESCE(user_rating, rating, -1.0) DESC, media_id DESC, media_type DESC)`, one per sort mode `list_library_page` supports (see `src-tauri/src/library/queries.rs`'s `list_page_impl`).
 
@@ -85,7 +85,7 @@ Every watch (or un-watch) generates a row here: a whole movie or a specific epis
 | `uuid` **PK**                                   | TEXT      | public identifier of the row                                                                                     |
 | `profile_id` `FK`                               | TEXT      | → `profiles.uuid`                                                                                                |
 | `media_id`, `media_type`, `title`               | …         | which title the event is about                                                                                   |
-| `event_type`                                    | TEXT      | `watched` / `unwatched` / `rewatched`                                                                            |
+| `event_type`                                    | TEXT      | `watched` / `unwatched` / `rewatched` (an extra viewing of a seen title, see below)                              |
 | `watched_at`, `duration_minutes`                | TEXT, INT | timestamp + duration for stats                                                                                   |
 | `episode_id`, `season_number`, `episode_number` | INT       | null for a movie                                                                                                 |
 | `note`                                          | TEXT      | optional free-form note on the event, nullable (added by migration 13)                                           |
@@ -93,6 +93,8 @@ Every watch (or un-watch) generates a row here: a whole movie or a specific epis
 | `created_at`                                    | TEXT      | ISO date; no `updated_at` — **append-only** log, no row is ever modified after the fact                          |
 
 Indexes: `(profile_id, watched_at DESC)`, `(media_id, media_type)`, plus two added by migration 16 for large-library stats queries: `(profile_id, media_id, media_type, episode_id, watched_at DESC, created_at DESC)` and `(profile_id, media_id, media_type, watched_at DESC)`.
+
+**Rewatches.** A `rewatched` event is written only by the explicit "Watch again" of a seen movie and by a higher `library_items.rewatch_count` saved in the library editor (never inferred from the history); series-level ones have no `episode_id`. The rewatch statistics read them under the same current-state rule as every other statistic — see `docs/architecture.md`'s "Statistics semantics" for the full rules, including how a lower count or an unwatch takes them back.
 
 **Order of events (`insert_seq`).** "A title is seen when its latest event is a watch" needs a latest that dates cannot give: a watch can carry an earlier date than an unwatch that came before it (a TV Time import of old history, a clock that ran late), and two events can share a date. `insert_seq` is the order the rows were inserted in. An `AFTER INSERT` trigger (`viewing_events_assign_insert_seq`) numbers every row that arrives with `insert_seq = 0` as `MAX(insert_seq) + 1`, so no insert statement has to compute it; `viewing_events` has no `UPDATE` sync trigger, so numbering a row queues no second cloud mutation. Migration 25 numbered the existing rows by `rowid` (the order they sit in the table, i.e. the order they were logged in). Two indexes serve it: `UNIQUE (insert_seq)` (also what makes `MAX` cheap) and `(profile_id, media_id, media_type, episode_id, insert_seq)`, which the current-state window in `stats/queries/mod.rs` reads in log order. The number is local to a database: a backup exports it as `insertSeq` (events are exported in that order, and a restore replays them in it — one from before the field existed is replayed by `watched_at`), and a cloud sync does not carry it, so a device numbers pulled events in the order it receives them.
 

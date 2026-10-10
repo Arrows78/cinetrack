@@ -5,8 +5,8 @@ use super::models::{
 };
 use super::queries::{get_episode_progress_impl, is_movie_seen_impl, list_tracked_series_impl};
 use super::repository::{
-    apply_episodes_and_log_impl, refresh_tracked_series_status_impl, set_episode_rating_impl,
-    toggle_movie_seen_with_note_impl,
+    apply_episodes_and_log_impl, refresh_tracked_series_status_impl, rewatch_movie_impl,
+    set_episode_rating_impl, toggle_movie_seen_with_note_impl,
 };
 use crate::database::current_profile_id;
 use crate::error::ApiError;
@@ -39,6 +39,16 @@ impl<'a> ProgressService<'a> {
         let profile_id = self.profile_id().await?;
         toggle_movie_seen_with_note_impl(self.pool, &profile_id, movie, watched, watched_at, note)
             .await
+    }
+
+    pub(super) async fn rewatch_movie(
+        &self,
+        movie: MovieInput,
+        watched_at: &str,
+        note: Option<String>,
+    ) -> Result<(), ApiError> {
+        let profile_id = self.profile_id().await?;
+        rewatch_movie_impl(self.pool, &profile_id, movie, watched_at, note).await
     }
 
     pub(super) async fn get_episode_progress(

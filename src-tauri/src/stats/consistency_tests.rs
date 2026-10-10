@@ -151,6 +151,23 @@ async fn active_minutes(pool: &SqlitePool, kind: &str) -> i64 {
     .await
 }
 
+/// How many `rewatched` events still stand (logged after their title's last
+/// unwatch) among those matching `condition` (a SQL predicate on `e`).
+async fn standing_rewatch_events(pool: &SqlitePool, condition: &str) -> i64 {
+    scalar(
+        pool,
+        &format!(
+            "SELECT COUNT(*) FROM viewing_events e
+             WHERE e.event_type = 'rewatched' AND ({condition})
+               AND e.insert_seq > COALESCE((
+                 SELECT MAX(u.insert_seq) FROM viewing_events u
+                 WHERE u.media_id = e.media_id AND u.media_type = e.media_type
+                   AND u.episode_id IS e.episode_id AND u.event_type = 'unwatched'), 0)"
+        ),
+    )
+    .await
+}
+
 /// Every aggregate that claims to describe the same viewing state, checked
 /// against raw-table recounts.
 async fn assert_views_agree(app: &tauri::App<tauri::test::MockRuntime>, context: &str) {
@@ -365,6 +382,14 @@ async fn assert_views_agree_with(
         other => panic!("{context}: average rating presence mismatch {other:?}"),
     }
 
+    // Standing `rewatched` events (logged after the title's last unwatch).
+    // An explicit rewatch is dated like every other step (2026-01-01); one
+    // the library editor's counter logs is dated with the real clock, so the
+    // date-bound views below count only the rewatches whose date they cover.
+    let standing_rewatches = standing_rewatch_events(pool_ref, "1 = 1").await;
+    let rewatches_in_2026 = standing_rewatch_events(pool_ref, "e.watched_at LIKE '2026-%'").await;
+    let rewatches_on_jan_1 =
+        standing_rewatch_events(pool_ref, "e.watched_at LIKE '2026-01-01T%'").await;
     // --- Every activity view counts the same current state ----------------
     // The sequence logs every event on 2026-01-01 or -02 (UTC), so each seen
     // title is one watch in January 2026 and the views below must all add up
@@ -476,9 +501,10 @@ async fn assert_views_agree_with(
     )
     .await
     .unwrap();
+    // Every standing viewing, rewatches included.
     assert_eq!(
         on_this_day.len() as i64,
-        seen_total,
+        seen_total + rewatches_on_jan_1,
         "{context}: on this day"
     );
 
@@ -518,6 +544,39 @@ async fn assert_views_agree_with(
     assert_eq!(
         rating_samples, rated_seen_titles,
         "{context}: rating samples"
+    );
+
+    // --- Rewatches are in the rewatch statistics only -----------------------
+    // The standing `rewatched` events (logged after the title's last
+    // unwatch) are what the rewatch statistics count; they never changed any
+    // of the per-title figures above (those were checked against the
+    // progress tables, which a rewatch does not touch).
+    let rewatch_stats =
+        crate::stats::get_rewatch_stats(SINCE.to_string(), labels.clone(), 0, app.state())
+            .await
+            .unwrap();
+    assert_eq!(
+        rewatch_stats.total_rewatches, standing_rewatches,
+        "{context}: total rewatches"
+    );
+    let viewings = seen_total + standing_rewatches;
+    let expected_share = if viewings == 0 {
+        0
+    } else {
+        ((standing_rewatches as f64 / viewings as f64) * 100.0).round() as i64
+    };
+    assert_eq!(
+        rewatch_stats.rewatch_share_percent, expected_share,
+        "{context}: rewatch share"
+    );
+    assert_eq!(
+        rewatch_stats
+            .rewatch_activity
+            .iter()
+            .map(|m| m.count)
+            .sum::<i64>(),
+        rewatches_in_2026,
+        "{context}: rewatch activity"
     );
 
     // --- History and the watch log describe the same movie transitions ----
@@ -599,7 +658,7 @@ async fn run_random_sequences(scrambled_dates: bool) {
             };
             let watched = rng.next(3) != 0;
             let action;
-            match rng.next(10) {
+            match rng.next(12) {
                 // One episode, or a whole season/series mark.
                 0..=3 => {
                     let series = &catalogue[rng.next(catalogue.len() as u64) as usize];
@@ -687,6 +746,46 @@ async fn run_random_sequences(scrambled_dates: bool) {
                         .await
                         .unwrap();
                 }
+                // Watching a movie again (refused while it is not seen).
+                9 => {
+                    let (id, runtime) = MOVIES[rng.next(MOVIES.len() as u64) as usize];
+                    action = format!("rewatch movie {id}");
+                    let seen = scalar(
+                        &pool,
+                        &format!("SELECT COUNT(*) FROM seen_movies WHERE movie_id = {id}"),
+                    )
+                    .await
+                        == 1;
+                    let outcome = crate::progress::rewatch_movie(
+                        serde_json::from_value(json!({
+                            "id": id,
+                            "title": format!("Movie {id}"),
+                            "runtime": runtime,
+                            "year": 2020,
+                            "rating": 7.5,
+                            "genres": [GENRES[(id % 4) as usize]],
+                        }))
+                        .unwrap(),
+                        at.clone(),
+                        None,
+                        app.state(),
+                    )
+                    .await;
+                    assert_eq!(outcome.is_ok(), seen, "seed {seed}: rewatch of movie {id}");
+                }
+                // The library editor saves a rewatch count.
+                10 => {
+                    let (id, _) = MOVIES[rng.next(MOVIES.len() as u64) as usize];
+                    let count = rng.next(4);
+                    action = format!("counter movie {id} = {count}");
+                    crate::library::save_library_item(
+                        serde_json::from_value(media_input(id, "movie", &["Drama"])).unwrap(),
+                        Some(serde_json::from_value(json!({ "rewatchCount": count })).unwrap()),
+                        app.state(),
+                    )
+                    .await
+                    .unwrap();
+                }
                 // A full backup export followed by a restore of it.
                 _ => {
                     action = "export + restore".to_string();
@@ -707,7 +806,9 @@ async fn run_random_sequences(scrambled_dates: bool) {
 
         // The sequence must actually have reached every kind of action and
         // left something to count, or the equalities above prove nothing.
-        for kind in ["episodes", "movie", "save", "remove", "export"] {
+        for kind in [
+            "episodes", "movie", "save", "remove", "export", "rewatch", "counter",
+        ] {
             assert!(
                 exercised.get(kind).copied().unwrap_or(0) > 0,
                 "seed {seed}: no `{kind}` step was drawn ({exercised:?})"

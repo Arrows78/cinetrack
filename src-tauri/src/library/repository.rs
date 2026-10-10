@@ -17,6 +17,7 @@ use super::queries::{
     list_impl, list_media_keys_impl, list_page_impl, list_planned_candidates_impl,
     list_status_counts_impl,
 };
+use super::rewatch_events;
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
@@ -180,6 +181,23 @@ pub(super) async fn upsert_impl(
         .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
+    }
+
+    // A changed rewatch count is a rewatch (or the taking back of one): the
+    // events the rewatch statistics read follow it, in the same transaction.
+    let previous_rewatches = current.as_ref().map_or(0, |c| c.rewatch_count);
+    if item.rewatch_count != previous_rewatches {
+        rewatch_events::apply_counter_change(
+            &mut tx,
+            profile_id,
+            item.media_id,
+            item.media_type,
+            &item.title,
+            previous_rewatches,
+            item.rewatch_count,
+            &item.updated_at,
+        )
+        .await?;
     }
 
     if is_new {

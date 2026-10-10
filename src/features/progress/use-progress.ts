@@ -40,10 +40,24 @@ export function useMovieSeen(movieId: number) {
     ]
   );
 
+  // "Watch again": a rewatch changes the rewatch statistics, the library
+  // entry's rewatch count and this movie's diary — not its seen state.
+  const rewatchMutation = useInvalidatingMutation(
+    ({ movie, note }: { movie: MediaSummary; note?: string }) =>
+      progressRepository.rewatchMovie(movie, undefined, note),
+    (_data, variables) => [
+      queryKeys.local.history(profileId),
+      queryKeys.local.stats(profileId),
+      queryKeys.local.viewingEventsForMedia(profileId, "movie", variables.movie.id),
+      ...libraryInvalidationKeys(profileId),
+    ]
+  );
+
   return {
     ...query,
     toggleMovieSeen: mutation.mutateAsync,
-    isSaving: mutation.isPending,
+    rewatchMovie: rewatchMutation.mutateAsync,
+    isSaving: mutation.isPending || rewatchMutation.isPending,
   };
 }
 

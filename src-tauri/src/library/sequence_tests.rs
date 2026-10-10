@@ -10,6 +10,11 @@
 //! - a refresh from the catalogue reopens a Completed series that now has
 //!   unwatched episodes, and only that — and only when auto-sync (not the
 //!   viewer) set the Completed (`status_origin`).
+//! - rewatches: watching a seen movie again, or raising a seen title's
+//!   library rewatch count, logs standing `rewatched` events; lowering the
+//!   count takes the most recent back; unwatching a movie cancels its
+//!   rewatches and resets its count; a count set on an unseen title writes
+//!   no event.
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -24,7 +29,7 @@ use crate::backup::{export_backup_data, import_backup_data};
 use crate::models::MediaType;
 use crate::progress::{
     EpisodeInput, SeriesInput, apply_episodes_impl, list_tracked_series,
-    refresh_tracked_series_status, toggle_movie_seen,
+    refresh_tracked_series_status, rewatch_movie, toggle_movie_seen,
 };
 
 type Key = (i64, &'static str);
@@ -70,6 +75,11 @@ struct Model {
     tracked_total: HashMap<i64, i64>,
     adds: HashMap<Key, i64>,
     removes: HashMap<Key, i64>,
+    /// `library_items.rewatch_count` of every library entry.
+    counters: HashMap<Key, i64>,
+    /// Standing `rewatched` events per title (the log keeps them across a
+    /// library removal; the library entry's count does not).
+    rewatches: HashMap<Key, i64>,
 }
 
 impl Model {
@@ -85,13 +95,37 @@ impl Model {
     fn create(&mut self, key: Key, status: &'static str) {
         self.lib.insert(key, status);
         self.origin.insert(key, "manual");
+        self.counters.insert(key, 0);
         *self.adds.entry(key).or_insert(0) += 1;
     }
 
     fn drop_entry(&mut self, key: Key) {
         if self.lib.remove(&key).is_some() {
             self.origin.remove(&key);
+            self.counters.remove(&key);
             *self.removes.entry(key).or_insert(0) += 1;
+        }
+    }
+
+    fn is_seen(&self, key: Key) -> bool {
+        match key.1 {
+            "movie" => self.seen_movies.contains(&key.0),
+            _ => self
+                .seen_episodes
+                .iter()
+                .any(|(series, _)| *series == key.0),
+        }
+    }
+
+    /// The library editor saved `new` as the rewatch count of an existing
+    /// entry.
+    fn set_counter(&mut self, key: Key, new: i64) {
+        let previous = self.counters.insert(key, new).unwrap_or(0);
+        if new > previous && self.is_seen(key) {
+            *self.rewatches.entry(key).or_insert(0) += new - previous;
+        } else if new < previous {
+            let standing = self.rewatches.entry(key).or_insert(0);
+            *standing -= (previous - new).min(*standing);
         }
     }
 
@@ -180,13 +214,14 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
 
         let mut model = Model::default();
         let mut snapshot: Option<(_, Model)> = None;
+        let mut peak_rewatches = 0_i64;
 
         for step in 0..120_u64 {
             let context = format!("seed {seed}, step {step}");
             // One step per hour, strictly increasing.
             let at = format!("2026-01-{:02}T{:02}:00:00.000Z", 1 + step / 24, step % 24);
 
-            match next(10) {
+            match next(12) {
                 // Episodes (single or whole list), watch or unwatch.
                 0..=2 => {
                     let entry = &catalogue[next(catalogue.len() as u64) as usize];
@@ -249,6 +284,12 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                         .unwrap();
                     if watched && changed {
                         model.auto_sync((id, "movie"), "completed");
+                    }
+                    if !watched && changed {
+                        model.rewatches.remove(&(id, "movie"));
+                        if let Some(counter) = model.counters.get_mut(&(id, "movie")) {
+                            *counter = 0;
+                        }
                     }
                 }
                 // Manual status edit (creates the entry if absent).
@@ -344,6 +385,54 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                             model.lib.insert(key, "watching");
                         }
                     }
+                }
+                // Watch a movie again (an explicit "watch again").
+                9 => {
+                    let id = movies[next(2) as usize];
+                    let key: Key = (id, "movie");
+                    let movie = serde_json::from_value(serde_json::json!({
+                        "id": id, "title": "Movie", "posterPath": null, "backdropPath": null,
+                        "runtime": 100, "year": 2020, "rating": 7.0, "genres": []
+                    }))
+                    .unwrap();
+                    let pool_state: State<'_, SqlitePool> = app.state();
+                    let outcome = rewatch_movie(movie, at.clone(), None, pool_state).await;
+                    if model.seen_movies.contains(&id) {
+                        outcome.unwrap();
+                        *model.rewatches.entry(key).or_insert(0) += 1;
+                        if let Some(counter) = model.counters.get_mut(&key) {
+                            *counter += 1;
+                        }
+                    } else {
+                        assert!(outcome.is_err(), "{context}: rewatch of an unseen movie");
+                    }
+                }
+                // The library editor saves a rewatch count (creating the
+                // entry if absent).
+                10 => {
+                    let is_movie = next(2) == 0;
+                    let id = if is_movie {
+                        movies[next(2) as usize]
+                    } else {
+                        catalogue[next(2) as usize].id
+                    };
+                    let key: Key = (id, if is_movie { "movie" } else { "series" });
+                    let count = next(5) as i64;
+                    upsert_impl(
+                        &pool,
+                        media_for(is_movie, id),
+                        LibraryPatch {
+                            rewatch_count: Some(count),
+                            ..Default::default()
+                        },
+                        "default",
+                    )
+                    .await
+                    .unwrap();
+                    if !model.lib.contains_key(&key) {
+                        model.create(key, "planned");
+                    }
+                    model.set_counter(key, count);
                 }
                 // Backup: take a snapshot, or restore the last one.
                 _ => {
@@ -462,15 +551,21 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     .collect();
             assert_eq!(stored_movies, model.seen_movies, "{context}: seen_movies");
 
-            let events: Vec<(i64, Option<i64>, String)> = sqlx::query_as(
-                "SELECT media_id, episode_id, event_type FROM viewing_events
-                 ORDER BY watched_at ASC, rowid ASC",
+            // Log order, not dates, is what the invariants below read.
+            let events: Vec<(i64, String, Option<i64>, String)> = sqlx::query_as(
+                "SELECT media_id, media_type, episode_id, event_type FROM viewing_events
+                 ORDER BY insert_seq ASC",
             )
             .fetch_all(&pool)
             .await
             .unwrap();
             let mut last: HashMap<(i64, Option<i64>), String> = HashMap::new();
-            for (media_id, episode_id, event_type) in events {
+            for (media_id, media_type, episode_id, event_type) in events {
+                // A series' own rewatch events (no episode) and every
+                // rewatch are not watch/unwatch toggles.
+                if event_type == "rewatched" || (media_type == "series" && episode_id.is_none()) {
+                    continue;
+                }
                 let previous = last.insert((media_id, episode_id), event_type.clone());
                 assert_ne!(
                     previous.as_deref(),
@@ -489,6 +584,105 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     "{context}: latest event {media_id}/{episode_id:?}"
                 );
             }
+
+            // Rewatches: the library editor's counters and the standing
+            // `rewatched` events (those logged after the title's last
+            // unwatch) follow the model, and the statistics read the same.
+            let counters: Vec<(i64, String, i64)> =
+                sqlx::query_as("SELECT media_id, media_type, rewatch_count FROM library_items")
+                    .fetch_all(&pool)
+                    .await
+                    .unwrap();
+            let stored_counters: HashMap<Key, i64> = counters
+                .into_iter()
+                .map(|(id, media_type, count)| {
+                    (
+                        (
+                            id,
+                            if media_type == "movie" {
+                                "movie"
+                            } else {
+                                "series"
+                            },
+                        ),
+                        count,
+                    )
+                })
+                .collect();
+            assert_eq!(stored_counters, model.counters, "{context}: rewatch counts");
+            let standing: Vec<(i64, String, i64)> = sqlx::query_as(
+                "SELECT e.media_id, e.media_type, COUNT(*) FROM viewing_events e
+                 WHERE e.event_type = 'rewatched'
+                   AND e.insert_seq > COALESCE((
+                     SELECT MAX(u.insert_seq) FROM viewing_events u
+                     WHERE u.media_id = e.media_id AND u.media_type = e.media_type
+                       AND u.episode_id IS e.episode_id AND u.event_type = 'unwatched'), 0)
+                 GROUP BY e.media_id, e.media_type",
+            )
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+            let stored_rewatches: HashMap<Key, i64> = standing
+                .into_iter()
+                .map(|(id, media_type, count)| {
+                    (
+                        (
+                            id,
+                            if media_type == "movie" {
+                                "movie"
+                            } else {
+                                "series"
+                            },
+                        ),
+                        count,
+                    )
+                })
+                .collect();
+            let expected_rewatches: HashMap<Key, i64> = model
+                .rewatches
+                .iter()
+                .filter(|(_, count)| **count > 0)
+                .map(|(key, count)| (*key, *count))
+                .collect();
+            assert_eq!(
+                stored_rewatches, expected_rewatches,
+                "{context}: standing rewatch events"
+            );
+            peak_rewatches = peak_rewatches.max(expected_rewatches.values().sum::<i64>());
+            if step == 119 {
+                assert!(
+                    peak_rewatches > 0,
+                    "seed {seed}: no rewatch ever stood, the checks above proved nothing"
+                );
+            }
+            let pool_state: State<'_, SqlitePool> = app.state();
+            let rewatch_stats = serde_json::to_value(
+                crate::stats::get_rewatch_stats(
+                    "2000-01-01T00:00:00.000Z".to_string(),
+                    vec![],
+                    0,
+                    pool_state,
+                )
+                .await
+                .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(
+                rewatch_stats["totalRewatches"].as_i64().unwrap(),
+                expected_rewatches.values().sum::<i64>(),
+                "{context}: total rewatches in the statistics"
+            );
+            let pool_state: State<'_, SqlitePool> = app.state();
+            let most = crate::stats::get_library_extras(pool_state)
+                .await
+                .unwrap()
+                .most_rewatched_title
+                .map(|title| title.count);
+            assert_eq!(
+                most,
+                expected_rewatches.values().max().copied(),
+                "{context}: most rewatched title"
+            );
 
             // Tracked-series counters equal a recount, and the cached total
             // matches the model.

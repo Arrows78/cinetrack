@@ -5,6 +5,7 @@ mod domain;
 mod models;
 mod queries;
 mod repository;
+mod rewatch_events;
 mod service;
 
 pub use commands::{
@@ -25,6 +26,7 @@ pub(crate) use models::LibrarySort;
 pub(crate) use repository::{
     CreatedLibraryItem, UntouchedRemoval, auto_sync_status_impl, remove_untouched_items_impl,
 };
+pub(crate) use rewatch_events::insert_rewatch_event;
 
 #[cfg(test)]
 mod sequence_tests;

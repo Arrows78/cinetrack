@@ -74,6 +74,26 @@ describe("progressRepository", () => {
     expect(() => new Date(args.watchedAt).toISOString()).not.toThrow();
   });
 
+  it("rewatchMovie() invokes rewatch_movie with the movie/watchedAt/note, defaulting watchedAt to now and note to null", async () => {
+    invokeMock.mockResolvedValue(undefined);
+    const { progressRepository } = await import("../progress-repository");
+    const movie = makeMedia({ id: 55, runtime: 118 });
+
+    await progressRepository.rewatchMovie(movie, "2026-02-14T21:00:00.000Z", "Again!");
+    expect(invokeMock).toHaveBeenCalledWith("rewatch_movie", {
+      movie,
+      watchedAt: "2026-02-14T21:00:00.000Z",
+      note: "Again!",
+    });
+
+    invokeMock.mockClear();
+    await progressRepository.rewatchMovie(movie);
+    const [command, args] = invokeMock.mock.calls[0] as [string, { watchedAt: string; note: null }];
+    expect(command).toBe("rewatch_movie");
+    expect(args.note).toBeNull();
+    expect(() => new Date(args.watchedAt).toISOString()).not.toThrow();
+  });
+
   it("getEpisodeProgress() invokes get_episode_progress with seriesId", async () => {
     invokeMock.mockResolvedValueOnce([]);
     const { progressRepository } = await import("../progress-repository");

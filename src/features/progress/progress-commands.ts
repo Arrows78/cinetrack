@@ -29,6 +29,12 @@ type ToggleMovieSeenArgs = {
   note: string | null;
 };
 
+type RewatchMovieArgs = {
+  movie: MediaSummary;
+  watchedAt: string;
+  note: string | null;
+};
+
 type SeriesIdArgs = {
   seriesId: number;
 };
@@ -60,6 +66,7 @@ type ViewingEventsForMediaArgs = {
 export const progressCommands = {
   isMovieSeen: defineCommand<MovieIdArgs, boolean>("is_movie_seen"),
   toggleMovieSeen: defineCommand<ToggleMovieSeenArgs, void>("toggle_movie_seen"),
+  rewatchMovie: defineCommand<RewatchMovieArgs, void>("rewatch_movie"),
   getEpisodeProgress: defineCommand<SeriesIdArgs, EpisodeProgress[]>("get_episode_progress"),
   toggleEpisodesWatched: defineCommand<ToggleEpisodesWatchedArgs, number>("toggle_episodes_watched"),
   listTrackedSeries: defineCommand<undefined, TrackedSeriesItem[]>("list_tracked_series"),

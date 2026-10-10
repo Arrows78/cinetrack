@@ -51,6 +51,7 @@ const season: Season = {
 
 const isMovieSeenMock = vi.fn(async () => false);
 const toggleMovieSeenMock = vi.fn(async () => undefined);
+const rewatchMovieMock = vi.fn(async () => undefined);
 const getEpisodeProgressMock = vi.fn(async () => [] as never);
 const toggleEpisodeSeenMock = vi.fn(async () => undefined);
 const markSeasonMock = vi.fn(async () => undefined);
@@ -71,6 +72,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
     isMovieSeen: isMovieSeenMock,
     toggleMovieSeen: toggleMovieSeenMock,
+    rewatchMovie: rewatchMovieMock,
     getEpisodeProgress: getEpisodeProgressMock,
     toggleEpisodeSeen: toggleEpisodeSeenMock,
     markSeason: markSeasonMock,
@@ -99,6 +101,7 @@ function createWrapper() {
 beforeEach(() => {
   isMovieSeenMock.mockClear();
   toggleMovieSeenMock.mockClear();
+  rewatchMovieMock.mockClear();
   getEpisodeProgressMock.mockClear();
   toggleEpisodeSeenMock.mockClear();
   markSeasonMock.mockClear();
@@ -138,6 +141,25 @@ describe("useMovieSeen", () => {
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.movieSeen(DEFAULT_PROFILE_ID, 7));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.history(DEFAULT_PROFILE_ID));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.stats(DEFAULT_PROFILE_ID));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.library(DEFAULT_PROFILE_ID));
+    expect(invalidatedKeys).toContainEqual(queryKeys.local.viewingEventsForMedia(DEFAULT_PROFILE_ID, "movie", 7));
+  });
+
+  it("rewatching logs a rewatch and invalidates what a rewatch changes: stats, the library count and this movie's diary", async () => {
+    const { useMovieSeen } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useMovieSeen(7), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.rewatchMovie({ movie });
+    });
+
+    expect(rewatchMovieMock).toHaveBeenCalledWith(movie, undefined, undefined);
+    expect(toggleMovieSeenMock).not.toHaveBeenCalled();
+    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.stats(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.library(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.viewingEventsForMedia(DEFAULT_PROFILE_ID, "movie", 7));

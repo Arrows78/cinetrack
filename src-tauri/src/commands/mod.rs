@@ -39,7 +39,7 @@ pub use crate::profiles::{
 };
 pub use crate::progress::{
     get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
-    set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
+    rewatch_movie, set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
 };
 pub use crate::recommendations::{
     dismiss_recommendation, list_dismissed_recommendations, undismiss_recommendation,

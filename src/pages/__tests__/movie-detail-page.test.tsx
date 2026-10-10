@@ -22,6 +22,7 @@ vi.mock("@/features/media/use-media", () => ({
 
 const seenQueryMock = vi.fn();
 const toggleMovieSeenMock = vi.fn();
+const rewatchMovieMock = vi.fn();
 vi.mock("@/features/progress/use-progress", () => ({
   useMovieSeen: () => seenQueryMock(),
 }));
@@ -133,11 +134,13 @@ describe("MovieDetailPage", () => {
       data: buildMovie(),
     });
     toggleMovieSeenMock.mockReset().mockResolvedValue(undefined);
+    rewatchMovieMock.mockReset().mockResolvedValue(undefined);
     seenQueryMock.mockReset().mockReturnValue({
       data: false,
       isSaving: false,
       isError: false,
       toggleMovieSeen: toggleMovieSeenMock,
+      rewatchMovie: rewatchMovieMock,
     });
   });
 
@@ -435,6 +438,59 @@ describe("MovieDetailPage", () => {
     renderPage();
 
     expect(screen.queryByRole("button", { name: "Add a note" })).not.toBeInTheDocument();
+  });
+
+  it("offers to watch the movie again only once it is seen, and logs a rewatch (not a second watch)", () => {
+    const movie = buildMovie();
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: movie,
+    });
+
+    // Not seen: nothing to watch again.
+    renderPage();
+    expect(screen.queryByRole("button", { name: "Watch again" })).not.toBeInTheDocument();
+  });
+
+  it("logs a rewatch when 'Watch again' is pressed on a seen movie", () => {
+    const movie = buildMovie();
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: movie,
+    });
+    seenQueryMock.mockReturnValue({
+      data: true,
+      isSaving: false,
+      isError: false,
+      toggleMovieSeen: toggleMovieSeenMock,
+      rewatchMovie: rewatchMovieMock,
+    });
+
+    renderPage();
+    screen.getByRole("button", { name: "Watch again" }).click();
+
+    expect(rewatchMovieMock).toHaveBeenCalledWith({ movie });
+    expect(toggleMovieSeenMock).not.toHaveBeenCalled();
+  });
+
+  it("disables 'Watch again' while a save is in flight", () => {
+    seenQueryMock.mockReturnValue({
+      data: true,
+      isSaving: true,
+      isError: false,
+      toggleMovieSeen: toggleMovieSeenMock,
+      rewatchMovie: rewatchMovieMock,
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("button", { name: "Watch again" })).toBeDisabled();
   });
 
   it("opens the watch-note dialog, confirms with a note, and marks the movie seen with it", async () => {

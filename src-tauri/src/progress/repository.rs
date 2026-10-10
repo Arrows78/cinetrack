@@ -11,7 +11,7 @@ use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
-use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
+use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl, insert_rewatch_event};
 use crate::models::MediaType;
 
 /// Thin wrapper over `toggle_movie_seen_with_note_impl` for callers (the
@@ -105,6 +105,19 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
             .execute(&mut *tx)
             .await
             .map_err(ApiError::from)?;
+        // Unwatching cancels the rewatches logged so far (the statistics
+        // drop them, see stats/queries/active_events.rs), so the library
+        // editor's rewatch count starts over from 0 with the next watch.
+        sqlx::query(
+            "UPDATE library_items SET rewatch_count = 0, updated_at = $3
+             WHERE profile_id = $1 AND media_id = $2 AND media_type = 'movie' AND rewatch_count > 0",
+        )
+        .bind(profile_id)
+        .bind(movie.id)
+        .bind(watched_at)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
     }
 
     sqlx::query(
@@ -181,6 +194,80 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
         )
         .await?;
     }
+
+    tx.commit().await.map_err(ApiError::from)?;
+    Ok(())
+}
+
+/// Watches an already-seen movie again: logs one `rewatched` viewing event
+/// and moves the library editor's rewatch count up by one, in one
+/// transaction. The movie stays one watch in every statistic (a rewatch only
+/// feeds the rewatch statistics, see `library::rewatch_events`) and no
+/// history row is written (the history has no rewatch action to undo).
+///
+/// A movie that is not currently seen cannot be rewatched: that is a
+/// conflict, nothing is written. Repeating the very same call (same
+/// `watched_at` — a retry, a double invocation) is a no-op, like every other
+/// event-writing command here; a new viewing carries a new timestamp.
+pub(crate) async fn rewatch_movie_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    movie: MovieInput,
+    watched_at: &str,
+    note: Option<String>,
+) -> Result<(), ApiError> {
+    // Same reason as toggle_movie_seen_with_note_impl: the seen check and the
+    // duplicate check have to sit under the write lock of the write they guard.
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
+
+    if !is_movie_seen_impl(&mut *tx, profile_id, movie.id).await? {
+        return Err(ApiError::conflict(
+            "A movie that is not marked as seen cannot be rewatched",
+        ));
+    }
+
+    let already_logged: bool = sqlx::query_scalar(
+        "SELECT EXISTS(
+           SELECT 1 FROM viewing_events
+           WHERE profile_id = $1 AND media_id = $2 AND media_type = 'movie'
+             AND event_type = 'rewatched' AND watched_at = $3
+         )",
+    )
+    .bind(profile_id)
+    .bind(movie.id)
+    .bind(watched_at)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+    if already_logged {
+        return Ok(());
+    }
+
+    insert_rewatch_event(
+        &mut tx,
+        profile_id,
+        movie.id,
+        MediaType::Movie,
+        &movie.title,
+        known_runtime(movie.runtime),
+        watched_at,
+        note.as_deref(),
+    )
+    .await?;
+
+    sqlx::query(
+        "UPDATE library_items SET rewatch_count = rewatch_count + 1, updated_at = $3
+         WHERE profile_id = $1 AND media_id = $2 AND media_type = 'movie'",
+    )
+    .bind(profile_id)
+    .bind(movie.id)
+    .bind(watched_at)
+    .execute(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(())

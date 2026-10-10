@@ -31,6 +31,7 @@ export const tauriCommandNames = [
   "refresh_library_catalog_metadata",
   "is_movie_seen",
   "toggle_movie_seen",
+  "rewatch_movie",
   "get_episode_progress",
   "toggle_episodes_watched",
   "list_tracked_series",
