@@ -12,7 +12,7 @@ import i18n from "@/i18n";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 import { backupCommands, type DataIntegrityCheck } from "@/features/backup/backup-commands";
-import { MAX_BACKUP_FILE_BYTES, portableData } from "@/features/backup/portable-data";
+import { MAX_BACKUP_FILE_BYTES, parseBackup, portableData } from "@/features/backup/portable-data";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { STALE_24_HOURS } from "@/shared/constants/query";
 import { logger } from "@/shared/lib/logger";
@@ -202,6 +202,10 @@ export const maintenanceService = {
    * safety net for this since it can be up to 24h stale.
    */
   async restoreFromBackup(parsed: unknown): Promise<void> {
+    // Validate before touching the snapshot slot: a wrong or malformed file
+    // would otherwise replace the previous undo point with the current state
+    // and then be rejected, leaving nothing to undo an earlier restore with.
+    parseBackup(parsed);
     const snapshot = await portableData.export();
     await writeNamedBackup(PRE_RESTORE_FILE, JSON.stringify(snapshot, null, 2));
     await portableData.import(parsed);

@@ -109,6 +109,19 @@ describe("maintenanceService.restoreFromBackup / undoLastRestore", () => {
     expect(importMock).toHaveBeenLastCalledWith(currentState);
   });
 
+  it("keeps the previous undo snapshot when the file to restore is not a valid backup", async () => {
+    exportMock.mockResolvedValue(backup("state after the first restore"));
+    const { maintenanceService } = await import("../maintenance-service");
+    fsState.files.set("backups/pre-restore.json", JSON.stringify(backup("state before the first restore")));
+
+    await expect(maintenanceService.restoreFromBackup({ format: "something-else" })).rejects.toThrow();
+
+    expect(fsState.files.get("backups/pre-restore.json")).toBe(
+      JSON.stringify(backup("state before the first restore"))
+    );
+    expect(importMock).not.toHaveBeenCalled();
+  });
+
   it("throws when there is nothing to undo", async () => {
     const { maintenanceService } = await import("../maintenance-service");
 

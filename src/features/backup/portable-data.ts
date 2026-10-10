@@ -25,7 +25,7 @@ export const MAX_BACKUP_FILE_BYTES = 100 * 1024 * 1024;
  * e.g. `watchlist: [{ mediaId: "not-a-number" }]` is rejected instead of
  * being sent to Rust as-is. Throws with a readable message on failure.
  */
-function parseBackup(value: unknown): CineTrackBackup {
+export function parseBackup(value: unknown): CineTrackBackup {
   const result = cineTrackBackupSchema.safeParse(value);
   if (!result.success) {
     const issue = result.error.issues[0];
