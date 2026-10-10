@@ -27,12 +27,14 @@ vi.mock("@/features/media/media-repository", async () => {
   };
 });
 
+const libraryGetMock = vi.fn();
 const librarySaveMock = vi.fn();
 const libraryHasMock = vi.fn();
 const libraryAddIfAbsentMock = vi.fn();
 const libraryRemoveIfPlannedMock = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
+    get: (...args: unknown[]) => libraryGetMock(...args),
     save: (...args: unknown[]) => librarySaveMock(...args),
     has: (...args: unknown[]) => libraryHasMock(...args),
     addIfAbsent: (...args: unknown[]) => libraryAddIfAbsentMock(...args),
@@ -64,6 +66,8 @@ vi.mock("../parse-export", () => ({
   parseTvTimeFile: vi.fn(),
   normalizeExport: () => exportData,
 }));
+
+const { logger } = await import("@/shared/lib/logger");
 
 const {
   importTvTimeExport,
@@ -122,6 +126,7 @@ describe("importTvTimeExport", () => {
     vi.clearAllMocks();
     exportData = emptyExportData();
     librarySaveMock.mockResolvedValue(undefined);
+    libraryGetMock.mockReset().mockResolvedValue(null);
     libraryHasMock.mockResolvedValue(false);
     libraryAddIfAbsentMock.mockReset().mockResolvedValue(true);
     importSeriesProgressMock.mockResolvedValue([]);
@@ -196,6 +201,86 @@ describe("importTvTimeExport", () => {
       await importTvTimeExport(["irrelevant"]);
 
       expect(librarySaveMock).toHaveBeenCalledWith(matchedSeries, { favourite: true, userRating: 9 });
+    });
+
+    it("never puts a TV Time rating back over one already set in CineTrack", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Breaking Bad",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: 45,
+          },
+        ],
+        tvdbIdsByName: new Map([["breaking bad", 81189]]),
+        favouriteSeriesNames: new Set(["breaking bad"]),
+        seriesRatingsByName: new Map([["breaking bad", 9]]),
+      };
+      const matchedSeries = series({ id: 62 });
+      findSeriesByTvdbIdMock.mockResolvedValue(matchedSeries);
+      getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
+      importSeriesProgressMock.mockResolvedValue([100]);
+      // Re-import: the user has since re-rated the show 4/10 in CineTrack.
+      libraryGetMock.mockResolvedValue({ userRating: 4 });
+
+      await importTvTimeExport(["irrelevant"]);
+
+      expect(librarySaveMock).toHaveBeenCalledWith(matchedSeries, { favourite: true });
+    });
+
+    it("skips the library save entirely when the only signal is a rating the user already replaced", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Breaking Bad",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: 45,
+          },
+        ],
+        tvdbIdsByName: new Map([["breaking bad", 81189]]),
+        seriesRatingsByName: new Map([["breaking bad", 9]]),
+      };
+      findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
+      getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
+      importSeriesProgressMock.mockResolvedValue([100]);
+      libraryGetMock.mockResolvedValue({ userRating: 4 });
+
+      await importTvTimeExport(["irrelevant"]);
+
+      expect(librarySaveMock).not.toHaveBeenCalled();
+    });
+
+    it("logs, rather than silently drops, a failed library save for a series' signals", async () => {
+      const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Breaking Bad",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: 45,
+          },
+        ],
+        tvdbIdsByName: new Map([["breaking bad", 81189]]),
+        favouriteSeriesNames: new Set(["breaking bad"]),
+      };
+      findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
+      getSeasonDetailsMock.mockResolvedValue(season(100, 1, 1));
+      importSeriesProgressMock.mockResolvedValue([100]);
+      librarySaveMock.mockRejectedValue(new Error("disk full"));
+
+      await importTvTimeExport(["irrelevant"]);
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("Breaking Bad"));
+      warn.mockRestore();
     });
 
     it("never touches the library entry for a series with neither signal", async () => {
@@ -406,10 +491,14 @@ describe("importTvTimeExport", () => {
         ],
       };
       searchMock.mockRejectedValue(new Error("network down"));
+      const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
 
       const summary = await importTvTimeExport(["irrelevant"]);
 
       expect(summary.unmatched).toEqual(["Breaking Bad"]);
+      // The cause is kept in the log, not thrown away with the title.
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("network down"));
+      warn.mockRestore();
     });
 
     it("does not auto-import an ambiguous series pick — routes it to unmatched/retryable instead", async () => {
@@ -721,6 +810,7 @@ describe("importTvTimeExport", () => {
           label: "Bodyguard (2018)",
           searchTitle: "Bodyguard",
           searchYear: 2018,
+          libraryPatch: null,
           episodes: exportData.episodes,
         },
       ]);
@@ -804,6 +894,7 @@ describe("importTvTimeExport", () => {
           label: "Breaking Bad",
           searchTitle: "Breaking Bad",
           searchYear: null,
+          libraryPatch: null,
           episodes: exportData.episodes,
         },
       ]);
@@ -815,6 +906,7 @@ describe("importTvTimeExport", () => {
         label: "Bodyguard (2018)",
         searchTitle: "Bodyguard",
         searchYear: 2018,
+        libraryPatch: null,
         episodes: [
           {
             seriesName: "Bodyguard (2018)",
@@ -842,12 +934,42 @@ describe("importTvTimeExport", () => {
       });
     });
 
+    it("resolveRetryableSeries applies the export's favourite and rating once the user has picked the match", async () => {
+      exportData = {
+        ...emptyExportData(),
+        episodes: [
+          {
+            seriesName: "Bodyguard (2018)",
+            seasonNumber: 1,
+            episodeNumber: 1,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            runtimeMinutes: null,
+          },
+        ],
+        favouriteSeriesNames: new Set(["bodyguard (2018)"]),
+        seriesRatingsByName: new Map([["bodyguard (2018)", 8]]),
+      };
+      searchMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
+
+      const summary = await importTvTimeExport(["irrelevant"]);
+      const item = summary.retryable[0];
+      expect(item?.kind).toBe("series");
+
+      getSeasonDetailsMock.mockResolvedValue(season(500, 1, 1));
+      importSeriesProgressMock.mockResolvedValue([500]);
+      const matchedSeries = series({ id: 77 });
+      await resolveRetryableSeries(item as Parameters<typeof resolveRetryableSeries>[0], matchedSeries);
+
+      expect(librarySaveMock).toHaveBeenCalledWith(matchedSeries, { favourite: true, userRating: 8 });
+    });
+
     it("resolveRetryableSeries returns a null undo when every episode was already tracked", async () => {
       const item = {
         kind: "series" as const,
         label: "Bodyguard (2018)",
         searchTitle: "Bodyguard",
         searchYear: 2018,
+        libraryPatch: null,
         episodes: [
           {
             seriesName: "Bodyguard (2018)",

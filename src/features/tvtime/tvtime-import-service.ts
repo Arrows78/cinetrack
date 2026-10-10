@@ -4,6 +4,8 @@ import { TmdbRequestError, mediaRepository } from "@/features/media/media-reposi
 import { libraryRepository } from "@/features/library/library-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
+import { logger } from "@/shared/lib/logger";
+import { errorMessage } from "@/shared/lib/errors";
 import { normalizeTitle } from "@/shared/utils/text";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { Episode, MediaSummary, Series } from "@/types/media";
@@ -83,6 +85,8 @@ export interface RetryableSeries {
   searchTitle: string;
   searchYear: number | null;
   episodes: TvTimeEpisode[];
+  /** The export's favourite/rating for this show — applied once the user picks its TMDB match, like the automatic pass does. */
+  libraryPatch: TvTimeLibraryPatch | null;
 }
 export interface RetryableMovie {
   kind: "movie";
@@ -103,6 +107,11 @@ export interface RetryableWatchlistEntry {
   initialCandidates: MediaSummary[];
 }
 export type RetryableUnmatched = RetryableSeries | RetryableMovie | RetryableWatchlistEntry;
+
+export interface TvTimeLibraryPatch {
+  favourite?: boolean;
+  userRating?: number;
+}
 
 /** Minimal per-episode identity — enough to build the `Episode` shape `progressRepository.toggleEpisodesWatched` needs when undoing, without carrying every TMDB detail field around in the undo descriptor. */
 export interface TvTimeImportUndoEpisode {
@@ -180,9 +189,13 @@ const splitTitleYear = (name: string): { title: string; year: number | null } =>
   return { title: match[1]!.trim(), year: Number(match[2]) };
 };
 
-const retryableSeriesFrom = (seriesName: string, episodes: TvTimeEpisode[]): RetryableSeries => {
+const retryableSeriesFrom = (
+  seriesName: string,
+  episodes: TvTimeEpisode[],
+  libraryPatch: TvTimeLibraryPatch | null
+): RetryableSeries => {
   const { title, year } = splitTitleYear(seriesName);
-  return { kind: "series", label: seriesName, searchTitle: title, searchYear: year, episodes };
+  return { kind: "series", label: seriesName, searchTitle: title, searchYear: year, episodes, libraryPatch };
 };
 const retryableMovieFrom = (movie: TvTimeMovie, initialCandidates: MediaSummary[] = []): RetryableMovie => ({
   kind: "movie",
@@ -278,7 +291,8 @@ async function resolveSeries(name: string, tvdbIdsByName: Map<string, number>): 
     try {
       const found = await withRateLimitRetry(() => mediaRepository.findSeriesByTvdbId(tvdbId));
       if (found) return { series: found, ambiguous: false };
-    } catch {
+    } catch (error) {
+      logger.warn(`TV Time import: TVDB lookup failed for "${name}": ${errorMessage(error)}`);
       // Fall through to name search.
     }
   }
@@ -307,8 +321,10 @@ async function attachEpisodesToSeries(
           runtime: episode.runtime ?? null,
         });
       }
-    } catch {
-      // Season unavailable on TMDB — its episodes are reported unresolved below.
+    } catch (error) {
+      // Season unavailable on TMDB (or the lookup failed) — its episodes are
+      // reported unresolved below.
+      logger.warn(`TV Time import: season ${seasonNumber} of "${series.title}" unavailable: ${errorMessage(error)}`);
     }
   }
 
@@ -342,10 +358,7 @@ async function attachEpisodesToSeries(
 // (no favourite) never has its favourite flag reset by this patch — see
 // upsert_impl's per-field fallback-to-current semantics in
 // src-tauri/src/library/repository.rs.
-function libraryPatchFromTvTimeSignals(
-  seriesName: string,
-  data: TvTimeExport
-): { favourite?: boolean; userRating?: number } | null {
+function libraryPatchFromTvTimeSignals(seriesName: string, data: TvTimeExport): TvTimeLibraryPatch | null {
   const key = seriesName.toLowerCase();
   const favourite = data.favouriteSeriesNames.has(key);
   const userRating = data.seriesRatingsByName.get(key);
@@ -356,6 +369,26 @@ function libraryPatchFromTvTimeSignals(
   };
 }
 
+// Best-effort, after the episode import: a failure here shouldn't undo
+// progress that already succeeded. Never overwrites a rating already set in
+// CineTrack (a re-import must not put an older TV Time rating back over a
+// newer one) — the favourite flag only ever turns on.
+async function applyLibraryPatch(series: Series, patch: TvTimeLibraryPatch | null): Promise<void> {
+  if (!patch) return;
+  try {
+    const existing = await libraryRepository.get(series.id, "series");
+    const { userRating, ...rest } = patch;
+    const effective: TvTimeLibraryPatch = {
+      ...rest,
+      ...(userRating !== undefined && existing?.userRating == null ? { userRating } : {}),
+    };
+    if (Object.keys(effective).length === 0) return;
+    await libraryRepository.save(series, effective);
+  } catch (error) {
+    logger.warn(`TV Time import: could not save library signals for "${series.title}": ${errorMessage(error)}`);
+  }
+}
+
 async function importOneSeries(
   seriesName: string,
   episodes: TvTimeEpisode[],
@@ -364,9 +397,10 @@ async function importOneSeries(
 ): Promise<void> {
   const resolved = await resolveSeries(seriesName, data.tvdbIdsByName);
   if (resolved.ambiguous) summary.ambiguous.push(seriesName);
+  const libraryPatch = libraryPatchFromTvTimeSignals(seriesName, data);
   if (!resolved.series) {
     summary.unmatched.push(seriesName);
-    summary.retryable.push(retryableSeriesFrom(seriesName, episodes));
+    summary.retryable.push(retryableSeriesFrom(seriesName, episodes, libraryPatch));
     return;
   }
 
@@ -390,17 +424,7 @@ async function importOneSeries(
     });
   }
 
-  // Best-effort, after the episode import: a failure here shouldn't undo
-  // progress that already succeeded, and this never blocks on it.
-  const patch = libraryPatchFromTvTimeSignals(seriesName, data);
-  if (patch) {
-    try {
-      await libraryRepository.save(resolved.series, patch);
-    } catch {
-      // Not worth its own summary line — the episode import (the part a
-      // user would actually notice missing) already succeeded above.
-    }
-  }
+  await applyLibraryPatch(resolved.series, libraryPatch);
 }
 
 /** Manual-panel entry point: attaches a user-picked series to a retryable item's episodes. `undo` is `null` when every episode was already tracked — nothing this call did that undo would need to revert. */
@@ -409,6 +433,7 @@ export async function resolveRetryableSeries(
   series: Series
 ): Promise<{ episodesImported: number; undo: TvTimeImportUndoSeries | null }> {
   const { insertedEpisodes } = await attachEpisodesToSeries(series, item.episodes);
+  await applyLibraryPatch(series, item.libraryPatch);
   const undo: TvTimeImportUndoSeries | null = insertedEpisodes.length
     ? {
         series,
@@ -504,9 +529,12 @@ export async function applyTvTimeImport(
             reportProgress({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
             try {
               await importOneSeries(seriesName, episodes, data, summary);
-            } catch {
+            } catch (error) {
+              logger.warn(`TV Time import: series "${seriesName}" failed: ${errorMessage(error)}`);
               summary.unmatched.push(seriesName);
-              summary.retryable.push(retryableSeriesFrom(seriesName, episodes));
+              summary.retryable.push(
+                retryableSeriesFrom(seriesName, episodes, libraryPatchFromTvTimeSignals(seriesName, data))
+              );
             }
             seriesDone += 1;
             reportProgress({ phase: "series", done: seriesDone, total: seriesEntries.length, label: seriesName });
@@ -536,7 +564,8 @@ export async function applyTvTimeImport(
                   summary.moviesAlreadyInLibrary += 1;
                 }
               }
-            } catch {
+            } catch (error) {
+              logger.warn(`TV Time import: movie "${movie.title}" failed: ${errorMessage(error)}`);
               summary.unmatched.push(movie.title);
               summary.retryable.push(retryableMovieFrom(movie));
             }
@@ -578,7 +607,8 @@ export async function applyTvTimeImport(
                   summary.undo.planned.push({ mediaId: match.id, mediaType: match.mediaType });
                 }
               }
-            } catch {
+            } catch (error) {
+              logger.warn(`TV Time import: watchlist entry "${entry.title}" failed: ${errorMessage(error)}`);
               summary.unmatched.push(entry.title);
               summary.retryable.push(retryableWatchlistFrom(entry));
             }
