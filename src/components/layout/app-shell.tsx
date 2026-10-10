@@ -13,6 +13,8 @@ import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { PullToRefresh } from "@/components/layout/pull-to-refresh";
 import { GuidedTour } from "@/features/onboarding/use-guided-tour";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 
 // `router.history.back()` has nowhere sensible to go when this window has no
 // prior in-app navigation (a deep link, or a reload) — this maps a detail
@@ -44,8 +46,15 @@ export function AppShell() {
   // desktop-service.ts's own "cinetrack:command-palette" event already uses
   // to reach across the tree from outside AppShell's own component subtree.
   const [forceTour, setForceTour] = useState(false);
+  // Remembered locally as well: the stored "tour completed" flag is saved
+  // asynchronously and can fail, which would otherwise leave the tour on
+  // screen (and Skip/Escape doing nothing visible) for a user who dismissed it.
+  const [tourDismissed, setTourDismissed] = useState(false);
   useEffect(() => {
-    const onRequestTour = () => setForceTour(true);
+    const onRequestTour = () => {
+      setTourDismissed(false);
+      setForceTour(true);
+    };
     window.addEventListener("cinetrack:guided-tour", onRequestTour);
     return () => window.removeEventListener("cinetrack:guided-tour", onRequestTour);
   }, []);
@@ -53,7 +62,9 @@ export function AppShell() {
   // through OnboardingScreen (see tour_completed's own doc comment in
   // src-tauri/src/preferences/models.rs for why an existing install
   // upgrading into these fields never sees it pop up unprompted).
-  const showTour = forceTour || (Boolean(preferences?.onboardingCompleted) && preferences?.tourCompleted === false);
+  const showTour =
+    !tourDismissed &&
+    (forceTour || (Boolean(preferences?.onboardingCompleted) && preferences?.tourCompleted === false));
 
   const handleToggleSidebar = async () => {
     await updatePreference({ key: "sidebarCollapsed", value: !sidebarCollapsed });
@@ -177,7 +188,10 @@ export function AppShell() {
         <GuidedTour
           onFinish={() => {
             setForceTour(false);
-            void updatePreference({ key: "tourCompleted", value: true });
+            setTourDismissed(true);
+            updatePreference({ key: "tourCompleted", value: true }).catch((error: unknown) =>
+              logger.warn(`Could not save that the guided tour was completed: ${errorMessage(error)}`)
+            );
           }}
         />
       )}

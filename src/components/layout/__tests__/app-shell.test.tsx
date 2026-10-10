@@ -1,5 +1,5 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { axe } from "jest-axe";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -20,7 +20,10 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const updatePreferenceSpy = vi.fn();
-let preferencesData: { sidebarCollapsed?: boolean } | undefined = { sidebarCollapsed: false };
+let preferencesData:
+  { sidebarCollapsed?: boolean; onboardingCompleted?: boolean; tourCompleted?: boolean } | undefined = {
+  sidebarCollapsed: false,
+};
 
 vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
@@ -227,5 +230,40 @@ describe("AppShell", () => {
 
     expect(screen.getAllByRole("button", { name: i18n.t("common.back") })).toHaveLength(2);
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  describe("guided tour", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.querySelectorAll("[data-tour]").forEach((element) => element.remove());
+    });
+
+    it("stays dismissed after Skip even when saving the 'tour completed' preference fails", async () => {
+      vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+        top: 100,
+        left: 100,
+        bottom: 140,
+        right: 200,
+        width: 100,
+        height: 40,
+        x: 100,
+        y: 100,
+        toJSON: () => "",
+      });
+      const target = document.createElement("button");
+      target.setAttribute("data-tour", "tour-library");
+      document.body.appendChild(target);
+      preferencesData = { sidebarCollapsed: false, onboardingCompleted: true, tourCompleted: false };
+      updatePreferenceSpy.mockRejectedValue(new Error("sqlite is locked"));
+
+      render(<AppShell />);
+      expect(screen.getByRole("dialog", { name: i18n.t("onboarding.tour.library.title") })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("onboarding.tour.skip") }));
+
+      // The write failed, so the stored flag is still false — the tour must
+      // not trap the user behind a dialog they already dismissed.
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
   });
 });
