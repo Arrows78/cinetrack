@@ -61,6 +61,37 @@ const snapshot = (providerIds: number[]): AvailabilitySnapshot => ({
   checkedAt: new Date().toISOString(),
 });
 
+describe("availabilityMonitor.seedBaseline", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getWatchAvailability.mockResolvedValue(availability([8]));
+    mocks.getSnapshot.mockResolvedValue(null);
+  });
+
+  it("records what is available now, without notifying", async () => {
+    const seeded = await availabilityMonitor.seedBaseline(alert());
+
+    expect(seeded).toBe(true);
+    expect(mocks.saveSnapshot).toHaveBeenCalledWith(expect.objectContaining({ providerIds: [8], region: "FR" }));
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("keeps a baseline that already exists", async () => {
+    mocks.getSnapshot.mockResolvedValue(snapshot([]));
+
+    expect(await availabilityMonitor.seedBaseline(alert())).toBe(false);
+    expect(mocks.saveSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("logs and carries on when TMDB cannot be reached", async () => {
+    mocks.getWatchAvailability.mockRejectedValue(new Error("TMDB down"));
+
+    expect(await availabilityMonitor.seedBaseline(alert())).toBe(false);
+    expect(loggerWarn).toHaveBeenCalled();
+    expect(mocks.saveSnapshot).not.toHaveBeenCalled();
+  });
+});
+
 describe("availabilityMonitor.checkAll", () => {
   beforeEach(() => {
     vi.clearAllMocks();

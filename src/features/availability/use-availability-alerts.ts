@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { availabilityMonitor } from "@/features/availability/availability-monitor";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { useActiveProfileId, usePreferences } from "@/features/preferences/use-preferences";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
@@ -119,6 +120,15 @@ export function useAvailabilityAlert(
       client.setQueryData([...queryKeys.local.availabilityAlerts(profileId), media.mediaType, media.id], data);
       void client.invalidateQueries({ queryKey: queryKeys.local.availabilityAlerts(profileId) });
       void client.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) });
+      if (data) {
+        // Baseline for the new alert (see availabilityMonitor.seedBaseline);
+        // the lists refresh again once it is stored.
+        void availabilityMonitor.seedBaseline(data).then((seeded) => {
+          if (!seeded) return;
+          void client.invalidateQueries({ queryKey: queryKeys.local.availabilitySnapshots });
+          void client.invalidateQueries({ queryKey: queryKeys.local.tracking(profileId) });
+        });
+      }
     },
   });
   return { ...query, toggle: mutation.mutateAsync, isSaving: mutation.isPending };

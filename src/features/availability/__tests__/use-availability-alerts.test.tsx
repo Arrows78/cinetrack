@@ -58,6 +58,11 @@ vi.mock("@/features/availability/availability-repository", () => ({
   },
 }));
 
+const seedBaselineMock = vi.fn<(alert: unknown) => Promise<boolean>>(async () => true);
+vi.mock("@/features/availability/availability-monitor", () => ({
+  availabilityMonitor: { seedBaseline: (alertArg: unknown) => seedBaselineMock(alertArg) },
+}));
+
 vi.mock("@/features/preferences/preferences-repository", () => ({
   preferencesRepository: { getPreferences: getPreferencesMock },
 }));
@@ -152,6 +157,31 @@ describe("useAvailabilityAlert", () => {
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.availabilityAlerts(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+  });
+
+  it("seeds the baseline snapshot when the toggle creates an alert, not when it removes one", async () => {
+    const { useAvailabilityAlert } = await import("../use-availability-alerts");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useAvailabilityAlert(media, "FR", [8]), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.toggle();
+    });
+    expect(seedBaselineMock).toHaveBeenCalledWith(alert);
+    await waitFor(() =>
+      expect(invalidateSpy.mock.calls.map((call) => call[0]?.queryKey)).toContainEqual(
+        queryKeys.local.availabilitySnapshots
+      )
+    );
+
+    seedBaselineMock.mockClear();
+    toggleMock.mockResolvedValue(null);
+    await act(async () => {
+      await result.current.toggle();
+    });
+    expect(seedBaselineMock).not.toHaveBeenCalled();
   });
 });
 

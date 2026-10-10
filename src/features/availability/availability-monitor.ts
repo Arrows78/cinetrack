@@ -3,6 +3,7 @@ import { availabilityRepository } from "@/features/availability/availability-rep
 import { mediaRepository } from "@/features/media/media-repository";
 import { notificationService } from "@/features/desktop";
 import { logger } from "@/shared/lib/logger";
+import type { AvailabilityAlert } from "@/types/media";
 
 export interface AvailabilityCheckOutcome {
   /** Alerts whose provider set gained something the user asked to be told about. */
@@ -41,6 +42,32 @@ export const availabilityMonitor = {
     });
     inFlight = run;
     return run;
+  },
+
+  /**
+   * Records what is available right now as the baseline for a just-created
+   * alert. Without it the first scheduled check would be the baseline, so a
+   * provider added between creating the alert and that check (up to the whole
+   * check interval) was absorbed silently and never notified. Best effort:
+   * a failure only means the first scheduled check seeds it, as before.
+   */
+  async seedBaseline(alert: Pick<AvailabilityAlert, "mediaId" | "mediaType" | "region">): Promise<boolean> {
+    try {
+      const existing = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
+      if (existing) return false;
+      const availability = await mediaRepository.getWatchAvailability(alert.mediaType, alert.mediaId, alert.region);
+      await availabilityRepository.saveSnapshot({
+        mediaId: alert.mediaId,
+        mediaType: alert.mediaType,
+        region: alert.region,
+        providerIds: [...availability.flatrate, ...availability.free].map((provider) => provider.id),
+        checkedAt: new Date().toISOString(),
+      });
+      return true;
+    } catch (error) {
+      logger.warn(`[availability] Could not seed the baseline for ${alert.mediaType} ${alert.mediaId}: ${error}`);
+      return false;
+    }
   },
 
   async runCheck({
