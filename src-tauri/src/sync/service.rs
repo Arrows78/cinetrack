@@ -598,9 +598,9 @@ async fn run_upsert(
     // per-device uuid split turns out to matter in practice.
     let sql = match entity_type {
         "library_item" => {
-            r#"INSERT INTO library_items(uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,genres,status,favourite,user_rating,notes,tags,started_at,completed_at,rewatch_count,created_at,updated_at)
-          VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.backdropPath'),json_extract(?1,'$.year'),json_extract(?1,'$.rating'),coalesce(json_extract(?1,'$.genres'),'[]'),json_extract(?1,'$.status'),coalesce(json_extract(?1,'$.favourite'),0),json_extract(?1,'$.userRating'),json_extract(?1,'$.notes'),coalesce(json_extract(?1,'$.tags'),'[]'),json_extract(?1,'$.startedAt'),json_extract(?1,'$.completedAt'),coalesce(json_extract(?1,'$.rewatchCount'),0),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(profile_id,media_id,media_type) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,year=excluded.year,rating=excluded.rating,genres=excluded.genres,status=excluded.status,favourite=excluded.favourite,user_rating=excluded.user_rating,notes=excluded.notes,tags=excluded.tags,started_at=excluded.started_at,completed_at=excluded.completed_at,rewatch_count=excluded.rewatch_count,updated_at=excluded.updated_at"#
+            r#"INSERT INTO library_items(uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,genres,status,favourite,user_rating,notes,tags,started_at,completed_at,rewatch_count,created_at,updated_at,status_origin)
+          VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.backdropPath'),json_extract(?1,'$.year'),json_extract(?1,'$.rating'),coalesce(json_extract(?1,'$.genres'),'[]'),json_extract(?1,'$.status'),coalesce(json_extract(?1,'$.favourite'),0),json_extract(?1,'$.userRating'),json_extract(?1,'$.notes'),coalesce(json_extract(?1,'$.tags'),'[]'),json_extract(?1,'$.startedAt'),json_extract(?1,'$.completedAt'),coalesce(json_extract(?1,'$.rewatchCount'),0),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'),coalesce(json_extract(?1,'$.statusOrigin'),'manual'))
+          ON CONFLICT(profile_id,media_id,media_type) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,backdrop_path=excluded.backdrop_path,year=excluded.year,rating=excluded.rating,genres=excluded.genres,status=excluded.status,favourite=excluded.favourite,user_rating=excluded.user_rating,notes=excluded.notes,tags=excluded.tags,started_at=excluded.started_at,completed_at=excluded.completed_at,rewatch_count=excluded.rewatch_count,updated_at=excluded.updated_at,status_origin=coalesce(json_extract(?1,'$.statusOrigin'),library_items.status_origin)"#
         }
         "seen_movie" => {
             r#"INSERT INTO seen_movies(uuid,profile_id,movie_id,title,poster_path,backdrop_path,watched_at,created_at,updated_at)
@@ -1505,6 +1505,64 @@ mod tests {
 
         assert_eq!(library_item_count(&pool).await, 1);
         assert_eq!(cursor(&pool).await.unwrap(), 1);
+    }
+
+    async fn local_status_origin(pool: &SqlitePool) -> String {
+        sqlx::query_scalar(
+            "SELECT status_origin FROM library_items WHERE profile_id='default' AND media_id=42 AND media_type='movie'",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_remote_library_item_carries_who_set_its_status() {
+        let pool = pool().await;
+        let mut payload = library_item_payload("remote-1", "completed");
+        payload["statusOrigin"] = serde_json::json!("auto");
+
+        apply_remote_changes(&pool, &[upsert_change("remote-1", 1, 1, payload)])
+            .await
+            .unwrap();
+        assert_eq!(local_status_origin(&pool).await, "auto");
+
+        // A payload from a client that predates the field keeps what is
+        // already stored instead of resetting it...
+        apply_remote_changes(
+            &pool,
+            &[upsert_change(
+                "remote-1",
+                2,
+                2,
+                library_item_payload("remote-1", "completed"),
+            )],
+        )
+        .await
+        .unwrap();
+        assert_eq!(local_status_origin(&pool).await, "auto");
+
+        // ...and a new row from such a client is conservatively manual.
+        sqlx::query("DELETE FROM library_items")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM sync_outbox")
+            .execute(&pool)
+            .await
+            .unwrap();
+        apply_remote_changes(
+            &pool,
+            &[upsert_change(
+                "remote-1",
+                3,
+                3,
+                library_item_payload("remote-1", "completed"),
+            )],
+        )
+        .await
+        .unwrap();
+        assert_eq!(local_status_origin(&pool).await, "manual");
     }
 
     #[tokio::test]

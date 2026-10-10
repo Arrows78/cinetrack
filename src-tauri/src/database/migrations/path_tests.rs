@@ -359,8 +359,9 @@ async fn seed_newer_features(pool: &SqlitePool, version: i64) {
     }
 }
 
-const REGISTERED_VERSIONS: [i64; 16] =
-    [1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+const REGISTERED_VERSIONS: [i64; 17] = [
+    1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+];
 
 /// No table may vanish (except the merged `watchlist_items`) or lose a column.
 fn assert_tables_and_columns_survived(before: &Snapshot, after: &Snapshot, context: &str) {
@@ -503,8 +504,14 @@ async fn upgrading_from_every_registered_version_keeps_all_data_and_ends_on_the_
                 assert_eq!(before_rows, &after_rows, "{context}: table {table} changed");
             }
 
-            let library_after =
-                dump(&db, "library_items", &columns(&db, "library_items").await).await;
+            // Compared on the columns the seeded schema already had: a later
+            // migration may add one (it can only default or backfill it).
+            let library_columns_before = &before
+                .iter()
+                .find(|(table, _, _)| table == "library_items")
+                .expect("library_items exists in every registered version")
+                .1;
+            let library_after = dump(&db, "library_items", library_columns_before).await;
             let migrated_watchlist = library_after.len() as i64 - library_before.len() as i64;
             assert_eq!(
                 migrated_watchlist, watchlist_only,
@@ -862,4 +869,89 @@ async fn a_pre_squash_database_is_refused_with_a_blocking_message_and_its_data_k
         pool.close().await;
         remove_db_files(&path);
     }
+}
+
+#[tokio::test]
+async fn migration_24_marks_only_fully_watched_completed_series_as_auto() {
+    let db = pool().await;
+    apply_migrations_up_to(&db, 23).await.unwrap();
+    for (uuid, media_id, media_type, status) in [
+        ("lib-full", 1, "series", "completed"),
+        ("lib-missing", 2, "series", "completed"),
+        ("lib-untracked", 3, "series", "completed"),
+        ("lib-watching", 4, "series", "watching"),
+        ("lib-movie", 5, "movie", "completed"),
+    ] {
+        run(
+            &db,
+            &format!(
+                "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+                 VALUES ('{uuid}', 'default', {media_id}, '{media_type}', 'T', '{status}', 't', 't')"
+            ),
+        )
+        .await;
+    }
+    // Series 1: both cached episodes watched. Series 2: 1 of 3 watched.
+    for (series_id, total, watched) in [(1, 2, 2), (2, 3, 1), (4, 2, 2)] {
+        run(
+            &db,
+            &format!(
+                "INSERT INTO tracked_series (uuid, profile_id, series_id, title, total_episodes, created_at, updated_at)
+                 VALUES ('ts{series_id}', 'default', {series_id}, 'T', {total}, 't', 't')"
+            ),
+        )
+        .await;
+        for episode in 1..=watched {
+            run(
+                &db,
+                &format!(
+                    "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, created_at, updated_at)
+                     VALUES ('ep{series_id}-{episode}', 'default', {series_id}, {series_id}0{episode}, 1, {episode}, 1, 't', 't')"
+                ),
+            )
+            .await;
+        }
+    }
+    let queued_before: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+
+    apply_pending_migrations(&db).await.unwrap();
+
+    let origins: Vec<(String, String)> =
+        sqlx::query_as("SELECT uuid, status_origin FROM library_items ORDER BY uuid")
+            .fetch_all(&db)
+            .await
+            .unwrap();
+    assert_eq!(
+        origins,
+        vec![
+            ("lib-full".to_string(), "auto".to_string()),
+            ("lib-missing".to_string(), "manual".to_string()),
+            ("lib-movie".to_string(), "manual".to_string()),
+            ("lib-untracked".to_string(), "manual".to_string()),
+            ("lib-watching".to_string(), "manual".to_string()),
+        ]
+    );
+
+    // The backfill must not have queued a sync mutation per row, and the
+    // recreated triggers carry the origin from now on.
+    let queued_after: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert_eq!(queued_after, queued_before);
+    run(
+        &db,
+        "UPDATE library_items SET notes = 'x' WHERE uuid = 'lib-full'",
+    )
+    .await;
+    let payload: String = sqlx::query_scalar(
+        "SELECT payload FROM sync_outbox WHERE entity_id = 'lib-full' ORDER BY created_at DESC LIMIT 1",
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap();
+    assert!(payload.contains("\"statusOrigin\":\"auto\""), "{payload}");
 }

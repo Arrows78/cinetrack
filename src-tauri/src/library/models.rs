@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::domain::LibraryStatus;
+use super::domain::{LibraryStatus, LibraryStatusOrigin};
 use crate::error::ApiError;
 use crate::models::MediaType;
 
@@ -182,6 +182,11 @@ pub struct LibraryItem {
     pub rewatch_count: i64,
     pub created_at: String,
     pub updated_at: String,
+    /// Who set `status`. Absent from backups made before it existed, which
+    /// restore as `manual` (never reopened automatically).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub status_origin: Option<LibraryStatusOrigin>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -206,6 +211,7 @@ pub(crate) struct LibraryRow {
     pub(crate) rewatch_count: i64,
     pub(crate) created_at: String,
     pub(crate) updated_at: String,
+    pub(crate) status_origin: String,
 }
 
 impl TryFrom<LibraryRow> for LibraryItem {
@@ -234,6 +240,7 @@ impl TryFrom<LibraryRow> for LibraryItem {
             rewatch_count: row.rewatch_count,
             created_at: row.created_at,
             updated_at: row.updated_at,
+            status_origin: Some(LibraryStatusOrigin::from_db_str(&row.status_origin)?),
         })
     }
 }

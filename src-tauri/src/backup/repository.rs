@@ -19,7 +19,7 @@ use crate::availability::{AlertRow, AvailabilityAlert, AvailabilitySnapshot, Sna
 use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::history::{HistoryAction, HistoryRow, ViewingHistoryItem};
-use crate::library::{LibraryItem, LibraryRow, LibraryStatus};
+use crate::library::{LibraryItem, LibraryRow, LibraryStatus, LibraryStatusOrigin};
 use crate::lists::custom::{CustomList, CustomListItem, CustomListItemRow, CustomListRow};
 use crate::lists::saved_filters::{SavedFilter, SavedFilterRow};
 use crate::lists::smart::{SmartList, SmartListRow};
@@ -371,6 +371,7 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
                     rewatch_count: row.rewatch_count,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
+                    status_origin: Some(LibraryStatusOrigin::from_db_str(&row.status_origin)?),
                 })
             })
             .collect::<Result<Vec<_>, _>>()?,
@@ -661,7 +662,7 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
         tx,
         data.library,
         "INSERT INTO library_items
-              (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,genres,status,favourite,user_rating,notes,tags,started_at,completed_at,rewatch_count,created_at,updated_at) ",
+              (uuid,profile_id,media_id,media_type,title,poster_path,backdrop_path,year,rating,genres,status,favourite,user_rating,notes,tags,started_at,completed_at,rewatch_count,created_at,updated_at,status_origin) ",
         |b, item| {
             b.push_bind(new_uuid())
                 .push_bind(&item.profile_id)
@@ -682,7 +683,8 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
                 .push_bind(&item.completed_at)
                 .push_bind(item.rewatch_count)
                 .push_bind(&item.created_at)
-                .push_bind(&item.updated_at);
+                .push_bind(&item.updated_at)
+                .push_bind(item.status_origin.unwrap_or_default().as_db_str());
         }
     );
 
@@ -905,6 +907,7 @@ mod tests {
                     "rewatch_count",
                     "created_at",
                     "updated_at",
+                    "status_origin",
                 ]),
             ),
             (
@@ -1211,6 +1214,7 @@ mod tests {
             rewatch_count: 0,
             created_at: "2026-01-01T00:00:00.000Z".to_string(),
             updated_at: "2026-01-01T00:00:00.000Z".to_string(),
+            status_origin: None,
         }
     }
 
@@ -1249,6 +1253,38 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(history_uuid.0, "original-history-id");
+    }
+
+    #[tokio::test]
+    async fn a_library_status_origin_survives_an_export_import_round_trip() {
+        let pool = migrated_pool().await;
+        let mut data = export_impl(&pool).await.unwrap();
+        let mut auto = library_item("a", 1, "Auto");
+        auto.status = LibraryStatus::Completed;
+        auto.status_origin = Some(LibraryStatusOrigin::Auto);
+        let mut manual = library_item("b", 2, "Manual");
+        manual.status_origin = Some(LibraryStatusOrigin::Manual);
+        // A backup made before the field existed.
+        let legacy = library_item("c", 3, "Legacy");
+        data.library.extend([auto, manual, legacy]);
+
+        import_impl(&pool, data).await.unwrap();
+        let exported = export_impl(&pool).await.unwrap();
+
+        let origin_of = |media_id: i64| {
+            exported
+                .library
+                .iter()
+                .find(|item| item.media_id == media_id)
+                .and_then(|item| item.status_origin)
+        };
+        assert_eq!(origin_of(1), Some(LibraryStatusOrigin::Auto));
+        assert_eq!(origin_of(2), Some(LibraryStatusOrigin::Manual));
+        assert_eq!(
+            origin_of(3),
+            Some(LibraryStatusOrigin::Manual),
+            "an older backup restores as manual, never reopened automatically"
+        );
     }
 
     #[tokio::test]

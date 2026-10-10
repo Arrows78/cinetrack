@@ -535,10 +535,12 @@ pub(super) async fn refresh_tracked_series_status_impl(
 
     // Auto-sync never lowers a status, so a series that reached Completed
     // before TMDB announced (or aired) more episodes would stay Completed
-    // forever. Only entries with recorded progress are touched: a Completed
-    // title with no tracked viewing was set by hand and has nothing to
-    // compare against. Re-checked even when the cache above was already
-    // up to date, and a no-op once the status is no longer Completed.
+    // forever. Only a Completed that auto-sync itself set (`status_origin =
+    // 'auto'`) is reopened: one the viewer picked by hand is a decision, not
+    // a derived state, and a refresh must not override it. Entries with no
+    // recorded progress are left alone too, having nothing to compare
+    // against. Re-checked even when the cache above was already up to date,
+    // and a no-op once the status is no longer Completed.
     sqlx::query(
         "UPDATE library_items
          SET status = 'watching',
@@ -546,6 +548,7 @@ pub(super) async fn refresh_tracked_series_status_impl(
              started_at = COALESCE(started_at, strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'),
              updated_at = strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'
          WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series' AND status = 'completed'
+           AND status_origin = 'auto'
            AND (SELECT COUNT(*) FROM episode_progress
                 WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0)
                BETWEEN 1 AND $3 - 1",
@@ -1862,6 +1865,76 @@ mod tests {
             completed_at, None,
             "a series that is Watching again must not keep its completion date"
         );
+    }
+
+    async fn status_origin(pool: &SqlitePool, media_id: i64) -> String {
+        sqlx::query_scalar("SELECT status_origin FROM library_items WHERE media_id = $1")
+            .bind(media_id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn refresh_never_reopens_a_completed_status_the_viewer_chose() {
+        let pool = migrated_pool().await;
+        // Two of three episodes watched, then the viewer sets "Completed"
+        // by hand (e.g. they dropped the last one but consider it done).
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &series(9, Some(3)),
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        sqlx::query(
+            "UPDATE library_items SET status = 'completed', status_origin = 'manual' WHERE media_id = 9",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(3))
+            .await
+            .unwrap();
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(8))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string()),
+            "a status the viewer picked is not an automatic one, so a TMDB refresh must not reopen it"
+        );
+    }
+
+    #[tokio::test]
+    async fn refresh_reopens_an_auto_completed_series_and_keeps_it_automatic() {
+        let pool = migrated_pool().await;
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &ended_series(9, Some(2)),
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        assert_eq!(status_origin(&pool, 9).await, "auto");
+
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(3))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
+        assert_eq!(status_origin(&pool, 9).await, "auto");
     }
 
     #[tokio::test]

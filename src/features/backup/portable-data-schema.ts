@@ -131,6 +131,9 @@ export const libraryItemSchema = z.object({
   completedAt: z.string().nullable().optional(),
   rewatchCount: z.number(),
   updatedAt: z.string(),
+  // Who set `status` (see LibraryStatusOrigin in Rust). Optional: a backup
+  // made before it existed restores every status as "manual".
+  statusOrigin: z.enum(["manual", "auto"]).optional(),
 });
 
 export const viewingEventSchema = z.object({

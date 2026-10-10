@@ -21,6 +21,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/021-sync-activity-log-and-episode-rating.sql"),
     include_str!("migrations/022-split-notification-preferences.sql"),
     include_str!("migrations/023-add-profile-pin.sql"),
+    include_str!("migrations/024-add-library-status-origin.sql"),
 ];
 
 #[derive(Debug)]
@@ -226,7 +227,9 @@ mod tests {
                 .iter()
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
-            vec![1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+            vec![
+                1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+            ]
         );
         assert_eq!(
             migrations
@@ -250,6 +253,7 @@ mod tests {
                 "sync activity log and episode ratings",
                 "split notification preferences",
                 "add profile pin lock",
+                "add library status origin",
             ]
         );
         assert!(
@@ -307,7 +311,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 23);
+        assert_eq!(version.0, 24);
     }
 
     #[tokio::test]
@@ -327,7 +331,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 23);
+        assert_eq!(version.0, 24);
     }
 
     #[tokio::test]

@@ -5,7 +5,7 @@ use tauri::State;
 
 #[cfg(test)]
 use super::commands::{get_library_item, list_library, remove_library_item, save_library_item};
-use super::domain::{LibraryStatus, auto_sync_rank};
+use super::domain::{LibraryStatus, LibraryStatusOrigin, auto_sync_rank};
 use super::models::{AutoSyncMedia, LibraryItem, LibraryPatch, LibraryRow, MediaSummaryInput};
 #[cfg(test)]
 use super::models::{LibraryFilterParams, LibraryListParams, LibraryMediaKey, LibrarySort};
@@ -46,6 +46,14 @@ pub(super) async fn upsert_impl(
             .as_ref()
             .map_or(LibraryStatus::Planned, |c| c.status)
     });
+
+    // Who set the status: a status the viewer picks (or a new entry added by
+    // hand) is manual; a save that leaves the status alone keeps whoever set
+    // it. Only an automatic status may be reopened by a TMDB refresh.
+    let status_origin = match current.as_ref() {
+        Some(previous) if previous.status == status => previous.status_origin.unwrap_or_default(),
+        _ => LibraryStatusOrigin::Manual,
+    };
 
     let is_currently_watching = status == LibraryStatus::Watching;
     let started_at = current
@@ -101,13 +109,15 @@ pub(super) async fn upsert_impl(
             .as_ref()
             .map_or_else(|| now.clone(), |c| c.created_at.clone()),
         updated_at: now,
+        status_origin: Some(status_origin),
     };
 
     sqlx::query(
         "INSERT INTO library_items (
           uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
-          status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+          status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at,
+          status_origin
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
         ON CONFLICT (profile_id, media_id, media_type) DO UPDATE SET
           title = excluded.title,
           poster_path = excluded.poster_path,
@@ -123,7 +133,8 @@ pub(super) async fn upsert_impl(
           started_at = excluded.started_at,
           completed_at = excluded.completed_at,
           rewatch_count = excluded.rewatch_count,
-          updated_at = excluded.updated_at",
+          updated_at = excluded.updated_at,
+          status_origin = excluded.status_origin",
     )
     .bind(&item.id)
     .bind(&item.profile_id)
@@ -145,6 +156,7 @@ pub(super) async fn upsert_impl(
     .bind(item.rewatch_count)
     .bind(&item.created_at)
     .bind(&item.updated_at)
+    .bind(status_origin.as_db_str())
     .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
@@ -278,8 +290,9 @@ pub(crate) async fn auto_sync_status_impl(
         sqlx::query(
             "INSERT INTO library_items (
               uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
-              status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,NULL,NULL,$12,$13,$14,0,$15,$15)",
+              status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at,
+              status_origin
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,NULL,NULL,$12,$13,$14,0,$15,$15,'auto')",
         )
         .bind(&uuid)
         .bind(profile_id)
@@ -334,7 +347,7 @@ pub(crate) async fn auto_sync_status_impl(
         row.started_at
     };
     sqlx::query(
-        "UPDATE library_items SET status = $1, started_at = $2, completed_at = $3, updated_at = $4 WHERE uuid = $5",
+        "UPDATE library_items SET status = $1, started_at = $2, completed_at = $3, updated_at = $4, status_origin = 'auto' WHERE uuid = $5",
     )
     .bind(target.as_db_str())
     .bind(&started_at)
@@ -2903,5 +2916,95 @@ mod tests {
         let tags = list_distinct_tags_impl(&pool, "default").await.unwrap();
 
         assert_eq!(tags, vec!["Mine"]);
+    }
+
+    fn auto_sync_media_summary(id: i64) -> MediaSummaryInput {
+        MediaSummaryInput {
+            media_type: MediaType::Series,
+            ..media(id)
+        }
+    }
+
+    async fn auto_sync(pool: &SqlitePool, media_id: i64, target: LibraryStatus) {
+        let mut tx = pool.begin().await.unwrap();
+        auto_sync_status_impl(
+            &mut tx,
+            pool,
+            "default",
+            target,
+            "2026-01-01T00:00:00.000Z",
+            &auto_sync_media(media_id, MediaType::Series),
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+    }
+
+    async fn status_origin(pool: &SqlitePool, media_id: i64) -> String {
+        sqlx::query_scalar("SELECT status_origin FROM library_items WHERE media_id = $1")
+            .bind(media_id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn status_origin_tells_a_viewers_status_from_an_automatic_one() {
+        let pool = migrated_pool().await;
+
+        // Created by viewing: automatic.
+        auto_sync(&pool, 1, LibraryStatus::Watching).await;
+        assert_eq!(status_origin(&pool, 1).await, "auto");
+        // Raised by viewing: still automatic.
+        auto_sync(&pool, 1, LibraryStatus::Completed).await;
+        assert_eq!(status_origin(&pool, 1).await, "auto");
+
+        // The viewer picks a status in the editor: it becomes manual, even
+        // if it is the one auto-sync would have chosen.
+        upsert_impl(
+            &pool,
+            auto_sync_media_summary(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Watching),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        assert_eq!(status_origin(&pool, 1).await, "manual");
+        upsert_impl(
+            &pool,
+            auto_sync_media_summary(1),
+            LibraryPatch {
+                status: Some(LibraryStatus::Completed),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        assert_eq!(status_origin(&pool, 1).await, "manual");
+
+        // A save that leaves the status alone keeps whoever set it.
+        auto_sync(&pool, 2, LibraryStatus::Watching).await;
+        upsert_impl(
+            &pool,
+            auto_sync_media_summary(2),
+            LibraryPatch {
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        assert_eq!(status_origin(&pool, 2).await, "auto");
+
+        // A title added by hand starts manual.
+        upsert_impl(&pool, media(3), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+        assert_eq!(status_origin(&pool, 3).await, "manual");
     }
 }

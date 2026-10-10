@@ -33,6 +33,39 @@ impl LibraryStatus {
     }
 }
 
+/// Who set a library entry's current status. Generates
+/// `src/generated/dto/LibraryStatusOrigin.ts`.
+///
+/// `Manual` is a status the viewer chose (editor, quick add); `Auto` one the
+/// viewing auto-sync derived (see `auto_sync_status_impl`). Only an `Auto`
+/// Completed series may be reopened when TMDB reports more episodes than
+/// watched: a manual Completed is a decision, not a derived state.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, ts_rs::TS)]
+#[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "export-bindings", ts(export))]
+pub enum LibraryStatusOrigin {
+    #[default]
+    Manual,
+    Auto,
+}
+
+impl LibraryStatusOrigin {
+    pub(crate) fn as_db_str(self) -> &'static str {
+        match self {
+            LibraryStatusOrigin::Manual => "manual",
+            LibraryStatusOrigin::Auto => "auto",
+        }
+    }
+
+    pub(crate) fn from_db_str(value: &str) -> Result<Self, ApiError> {
+        serde_json::from_value(Value::String(value.to_string())).map_err(|_| {
+            ApiError::internal(format!(
+                "Unknown library status origin in database: {value}"
+            ))
+        })
+    }
+}
+
 /// Rank used only to decide whether an automatic status sync is allowed to
 /// move a library item forward. Manual edits remain the only way to move it
 /// back to a lower lifecycle state.

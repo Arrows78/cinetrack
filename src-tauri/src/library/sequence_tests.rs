@@ -8,7 +8,8 @@
 //!   target status;
 //! - a manual edit sets any status, whatever the viewing says;
 //! - a refresh from the catalogue reopens a Completed series that now has
-//!   unwatched episodes, and only that.
+//!   unwatched episodes, and only that — and only when auto-sync (not the
+//!   viewer) set the Completed (`status_origin`).
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -28,7 +29,7 @@ use crate::progress::{
 
 type Key = (i64, &'static str);
 /// media_id, media_type, status, started_at, completed_at
-type LibraryDatesRow = (i64, String, String, Option<String>, Option<String>);
+type LibraryDatesRow = (i64, String, String, Option<String>, Option<String>, String);
 
 fn rank(status: &str) -> u8 {
     match status {
@@ -60,6 +61,8 @@ struct Entry {
 #[derive(Clone, Default)]
 struct Model {
     lib: HashMap<Key, &'static str>,
+    /// Who set each entry's status: "manual" or "auto".
+    origin: HashMap<Key, &'static str>,
     seen_episodes: BTreeSet<(i64, i64)>,
     seen_movies: BTreeSet<i64>,
     /// Cached `tracked_series.total_episodes`, present once a series has been
@@ -81,22 +84,41 @@ impl Model {
 
     fn create(&mut self, key: Key, status: &'static str) {
         self.lib.insert(key, status);
+        self.origin.insert(key, "manual");
         *self.adds.entry(key).or_insert(0) += 1;
     }
 
     fn drop_entry(&mut self, key: Key) {
         if self.lib.remove(&key).is_some() {
+            self.origin.remove(&key);
             *self.removes.entry(key).or_insert(0) += 1;
         }
     }
 
     fn auto_sync(&mut self, key: Key, target: &'static str) {
         match self.lib.get(&key).copied() {
-            None => self.create(key, target),
+            None => {
+                self.create(key, target);
+                self.origin.insert(key, "auto");
+            }
             Some(current) if rank(target) > rank(current) => {
                 self.lib.insert(key, target);
+                self.origin.insert(key, "auto");
             }
             Some(_) => {}
+        }
+    }
+
+    /// A status the viewer picks: manual whenever it actually changes.
+    fn manual_edit(&mut self, key: Key, status: &'static str) {
+        match self.lib.get_mut(&key) {
+            Some(current) => {
+                if *current != status {
+                    *current = status;
+                    self.origin.insert(key, "manual");
+                }
+            }
+            None => self.create(key, status),
         }
     }
 }
@@ -250,10 +272,7 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     )
                     .await
                     .unwrap();
-                    match model.lib.get_mut(&key) {
-                        Some(current) => *current = status,
-                        None => model.create(key, status),
-                    }
+                    model.manual_edit(key, status);
                 }
                 // Quick add / quick remove / full remove.
                 6 => {
@@ -318,6 +337,7 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                         *cached = total.max(regular);
                         let key = (entry.id, "series");
                         if model.lib.get(&key) == Some(&"completed")
+                            && model.origin.get(&key) == Some(&"auto")
                             && regular >= 1
                             && regular < total
                         {
@@ -341,13 +361,13 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
             // ---- invariants -------------------------------------------------
             // Library status and presence follow the model; dates follow status.
             let rows: Vec<LibraryDatesRow> = sqlx::query_as(
-                "SELECT media_id, media_type, status, started_at, completed_at FROM library_items",
+                "SELECT media_id, media_type, status, started_at, completed_at, status_origin FROM library_items",
             )
             .fetch_all(&pool)
             .await
             .unwrap();
             assert_eq!(rows.len(), model.lib.len(), "{context}: library size");
-            for (id, media_type, status, started, completed) in rows {
+            for (id, media_type, status, started, completed, origin) in rows {
                 let key: Key = (
                     id,
                     if media_type == "movie" {
@@ -360,6 +380,11 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     model.lib.get(&key).copied(),
                     Some(status.as_str()),
                     "{context}: status of {key:?}"
+                );
+                assert_eq!(
+                    model.origin.get(&key).copied(),
+                    Some(origin.as_str()),
+                    "{context}: status origin of {key:?}"
                 );
                 assert_eq!(
                     completed.is_some(),

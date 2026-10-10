@@ -16,7 +16,7 @@ pub use commands::{
     refresh_library_catalog_metadata, remove_library_item, remove_planned_library_item,
     save_library_item,
 };
-pub(crate) use domain::LibraryStatus;
+pub(crate) use domain::{LibraryStatus, LibraryStatusOrigin};
 pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
 // Only used by stats::performance's benchmark, which is itself
 // `#[cfg(test)]`-only — see that module's `timed_library_page`.

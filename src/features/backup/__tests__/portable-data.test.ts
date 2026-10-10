@@ -92,6 +92,22 @@ describe("portableData", () => {
     expect(invokeCommandMock).toHaveBeenCalledWith("refresh_preferences");
   });
 
+  // Zod strips unknown keys: without `statusOrigin` in the schema, a restore
+  // would turn every automatic Completed into a manual one, and the series
+  // would stop reopening when new episodes are announced.
+  it("preserves who set a library status through import validation", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { ...emptyData(), library: [libraryItem({ mediaId: 5, statusOrigin: "auto" })] },
+    });
+
+    expect(importArgs().library[0]).toMatchObject({ mediaId: 5, statusOrigin: "auto" });
+  });
+
   // Regression check for a real bug: viewingEventSchema (portable-data-schema.ts)
   // didn't declare `note`, so zod's default strip-unknown-keys behavior erased
   // it while validating an imported backup, even after the Rust side already
