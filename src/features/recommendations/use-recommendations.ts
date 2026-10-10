@@ -13,15 +13,23 @@ export function useDismissedRecommendations() {
     queryKey: queryKeys.local.dismissedRecommendations(profileId),
     queryFn: () => recommendationsRepository.listDismissed(),
   });
+  // Watch Tonight's picks are filtered against this list and cached for
+  // minutes, so a dismissal or a restore must refresh them too — otherwise a
+  // title the viewer just rejected keeps showing up there until the cache
+  // expires.
+  const invalidatedKeys = [
+    queryKeys.local.dismissedRecommendations(profileId),
+    queryKeys.local.watchTonight(profileId),
+  ];
 
   const dismissMutation = useInvalidatingMutation(
     (media: DismissMediaInput) => recommendationsRepository.dismiss(media),
-    [queryKeys.local.dismissedRecommendations(profileId)]
+    invalidatedKeys
   );
   const undismissMutation = useInvalidatingMutation(
     ({ mediaId, mediaType }: { mediaId: number; mediaType: MediaType }) =>
       recommendationsRepository.undismiss(mediaId, mediaType),
-    [queryKeys.local.dismissedRecommendations(profileId)]
+    invalidatedKeys
   );
 
   return {

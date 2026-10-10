@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
+import { queryKeys } from "@/shared/constants/query-keys";
 import type { DismissedRecommendation } from "@/types/media";
 
 const listDismissedMock = vi.fn(async () => [] as DismissedRecommendation[]);
@@ -81,6 +82,47 @@ describe("useDismissedRecommendations", () => {
     });
 
     expect(undismissMock).toHaveBeenCalledWith(7, "movie");
+  });
+});
+
+describe("useDismissedRecommendations and the cached Watch Tonight picks", () => {
+  // Watch Tonight filters its candidates against the dismissed list, and its
+  // picks stay cached for minutes: a title dismissed (or restored) anywhere
+  // must make those cached picks stale, not wait for them to expire.
+  function wrapperWithWatchTonightCache() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const picksKey = [...queryKeys.local.watchTonight("default"), "filters"];
+    client.setQueryData(picksKey, { movies: [], series: [] });
+    const Wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    return { Wrapper, client, picksKey };
+  }
+
+  it("marks cached Watch Tonight picks stale when a title is dismissed", async () => {
+    const { useDismissedRecommendations } = await import("../use-recommendations");
+    const { Wrapper, client, picksKey } = wrapperWithWatchTonightCache();
+    const { result } = renderHook(() => useDismissedRecommendations(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.dismiss({ id: 7, mediaType: "movie", title: "Dune" });
+    });
+
+    expect(client.getQueryState(picksKey)?.isInvalidated).toBe(true);
+  });
+
+  it("marks cached Watch Tonight picks stale when a title is restored", async () => {
+    const { useDismissedRecommendations } = await import("../use-recommendations");
+    const { Wrapper, client, picksKey } = wrapperWithWatchTonightCache();
+    const { result } = renderHook(() => useDismissedRecommendations(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.undismiss({ mediaId: 7, mediaType: "movie" });
+    });
+
+    expect(client.getQueryState(picksKey)?.isInvalidated).toBe(true);
   });
 });
 
