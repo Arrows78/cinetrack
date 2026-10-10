@@ -51,6 +51,9 @@ use viewing_events::{
 };
 
 #[cfg(test)]
+mod edge_tests;
+
+#[cfg(test)]
 mod tests {
     use super::models::*;
     use super::*;
