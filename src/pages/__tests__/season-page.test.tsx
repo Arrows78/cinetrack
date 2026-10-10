@@ -105,9 +105,30 @@ function makeSeason(name: string, episodes: Episode[]): Season {
   };
 }
 
-const episode1: Episode = { id: 1, seasonNumber: 1, episodeNumber: 1, title: "Good News About Hell", overview: "" };
-const episode2: Episode = { id: 2, seasonNumber: 1, episodeNumber: 2, title: "Half Loop", overview: "" };
-const episode3: Episode = { id: 3, seasonNumber: 1, episodeNumber: 3, title: "In Perpetuity", overview: "" };
+const episode1: Episode = {
+  id: 1,
+  seasonNumber: 1,
+  episodeNumber: 1,
+  title: "Good News About Hell",
+  overview: "",
+  airDate: "2020-01-01",
+};
+const episode2: Episode = {
+  id: 2,
+  seasonNumber: 1,
+  episodeNumber: 2,
+  title: "Half Loop",
+  overview: "",
+  airDate: "2020-01-02",
+};
+const episode3: Episode = {
+  id: 3,
+  seasonNumber: 1,
+  episodeNumber: 3,
+  title: "In Perpetuity",
+  overview: "",
+  airDate: "2020-01-03",
+};
 
 const toggleEpisodeSeenMock = vi.fn();
 const markSeasonSeenMock = vi.fn();

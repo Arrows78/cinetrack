@@ -105,7 +105,7 @@ export function EpisodeDetailPage() {
   const watchedSet = new Set((progressQuery.data ?? []).map((item) => item.episodeId));
   const watched = watchedSet.has(episode.id);
   const currentRating = (progressQuery.data ?? []).find((item) => item.episodeId === episode.id)?.rating ?? null;
-  const isUnreleased = !watched && !hasAired(episode);
+  const isUnreleased = !watched && !hasAired(episode, season);
   const stillUrl = buildTmdbImageUrl(episode.stillPath, "w780");
 
   const episodeLinkParams = (targetEpisodeNumber: number) => ({

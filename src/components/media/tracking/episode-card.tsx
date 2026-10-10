@@ -14,7 +14,7 @@ import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
 import { cn } from "@/shared/lib/cn";
 import { MEDIA_POSTER_OVERLAY_CLASSNAME } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, formatDate, formatEpisodeNumber, formatRating, formatRuntime } from "@/shared/utils/format";
-import type { Episode } from "@/types/media";
+import type { Episode, Season } from "@/types/media";
 
 // Drag distance (px) past which onDragEnd treats the swipe as a deliberate
 // mark-seen/unseen rather than an accidental nudge while scrolling the list.
@@ -26,8 +26,13 @@ export function EpisodeCard({
   isLastUnwatched,
   seriesId,
   seasonNumber,
+  season,
 }: {
   episode: Episode;
+  // The season the episode belongs to: whether an undated episode has aired
+  // depends on its siblings (see hasAired). Without it, an undated episode is
+  // simply upcoming.
+  season?: Pick<Season, "episodes">;
   onToggleSeen: (note?: string) => void;
   disabled?: boolean;
   isLastUnwatched?: boolean;
@@ -44,7 +49,7 @@ export function EpisodeCard({
   // A future/unannounced air date only blocks marking-as-watched, not the
   // reverse — an already-watched row (e.g. from a bad TMDB date correction)
   // must stay toggleable back off.
-  const isUnreleased = !watched && !hasAired(episode);
+  const isUnreleased = !watched && !hasAired(episode, season ?? { episodes: [episode] });
   const stillUrl = buildTmdbImageUrl(episode.stillPath, "w342");
 
   // Swipe-to-toggle is touch-only (see useIsTouchDevice) — a mouse/trackpad

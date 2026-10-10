@@ -13,6 +13,9 @@ const episode = (overrides: Partial<Episode> = {}): Episode => ({
   episodeNumber: 1,
   title: "Pilot",
   overview: "",
+  // Dated in the past by default: an undated episode only counts as aired
+  // when a later one has (see hasAired).
+  airDate: "2020-01-01",
   ...overrides,
 });
 

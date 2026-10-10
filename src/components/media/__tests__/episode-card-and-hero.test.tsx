@@ -105,10 +105,14 @@ describe("EpisodeCard", () => {
     expect(button).toBeDisabled();
   });
 
-  it("does not treat a missing air date as unreleased — the toggle stays enabled", () => {
+  it("treats a lone undated episode as unreleased, but an undated one followed by an aired episode as released", () => {
     preferencesData = { spoilerProtection: false };
-    render(<EpisodeCard episode={makeEpisode({ watched: false, airDate: null })} onToggleSeen={vi.fn()} />);
+    const undated = makeEpisode({ id: 1, episodeNumber: 1, watched: false, airDate: null });
+    const { rerender } = render(<EpisodeCard episode={undated} onToggleSeen={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Not yet aired" })).toBeDisabled();
 
+    const later = makeEpisode({ id: 2, episodeNumber: 2, airDate: "2020-01-01" });
+    rerender(<EpisodeCard episode={undated} season={{ episodes: [undated, later] }} onToggleSeen={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Mark watched" })).toBeEnabled();
   });
 

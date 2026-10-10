@@ -17,7 +17,7 @@ import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { Card } from "@/components/ui/card";
-import { hasAired, useEpisodeProgress } from "@/features/progress/use-progress";
+import { airedEpisodes, useEpisodeProgress } from "@/features/progress/use-progress";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
 
@@ -80,8 +80,8 @@ export function SeasonPage() {
   // Against aired episodes only: markSeasonSeen never marks an unaired one,
   // so requiring them kept a caught-up airing season on "mark as seen",
   // with a click that changed nothing.
-  const airedEpisodes = season.episodes.filter(hasAired);
-  const allWatched = airedEpisodes.length > 0 && airedEpisodes.every((ep) => watchedSet.has(ep.id));
+  const seasonAired = airedEpisodes(season);
+  const allWatched = seasonAired.length > 0 && seasonAired.every((ep) => watchedSet.has(ep.id));
 
   // Same prev/next pattern as episode-detail-page.tsx, one level up: specials
   // (season 0) are excluded, matching series-detail-page.tsx's own season list.
@@ -121,7 +121,7 @@ export function SeasonPage() {
             <SeenToggle
               seen={allWatched}
               // Nothing aired yet: marking the season would write nothing.
-              disabled={progressQuery.isSaving || progressQuery.isError || (!allWatched && airedEpisodes.length === 0)}
+              disabled={progressQuery.isSaving || progressQuery.isError || (!allWatched && seasonAired.length === 0)}
               onToggle={() => {
                 // Unwatching deletes each episode's own rating and watch date,
                 // so it asks first (see ConfirmUnmarkDialog).
@@ -150,6 +150,7 @@ export function SeasonPage() {
             <EpisodeCard
               key={episode.id}
               episode={{ ...episode, watched: watchedSet.has(episode.id) }}
+              season={season}
               disabled={progressQuery.isSaving}
               seriesId={series.id}
               seasonNumber={season.seasonNumber}

@@ -1,14 +1,28 @@
 import { parseCalendarDate, percent } from "@/shared/utils/format";
 import type { Episode, EpisodeProgress, Season, SeriesProgress } from "@/types/media";
 
-// An episode with no air date at all is treated as already aired (TMDB
-// sometimes omits it for older/obscure entries) — matches every other
-// air-date check in the app (episode-card.tsx's own single-episode guard,
-// getNextEpisode below).
-export function hasAired(episode: Episode): boolean {
-  // Aired from the local start of its air date — the same day the app
-  // shows for it (see parseCalendarDate), not UTC midnight.
-  return !episode.airDate || parseCalendarDate(episode.airDate) <= new Date();
+/**
+ * Whether `episode` has aired, given the season it belongs to.
+ *
+ * A dated episode has aired from the local start of its air date — the same
+ * day the app shows for it (see parseCalendarDate), not UTC midnight.
+ *
+ * An episode TMDB lists with no air date is announced but unscheduled, so it
+ * counts as aired only when a later episode of the same season has aired
+ * (the season has visibly moved past it: old or obscure entries whose date
+ * TMDB never filled in). Otherwise it is upcoming — it must not show up as
+ * "to watch" nor be swept up by a bulk "mark season seen".
+ */
+export function hasAired(episode: Episode, season: Pick<Season, "episodes">): boolean {
+  const now = new Date();
+  const airedByDate = (candidate: Episode) => (candidate.airDate ? parseCalendarDate(candidate.airDate) <= now : false);
+  if (episode.airDate) return airedByDate(episode);
+  return season.episodes.some((candidate) => candidate.episodeNumber > episode.episodeNumber && airedByDate(candidate));
+}
+
+/** The episodes of `season` that have aired (see hasAired). */
+export function airedEpisodes(season: Pick<Season, "episodes">): Episode[] {
+  return season.episodes.filter((episode) => hasAired(episode, season));
 }
 
 export function getNextEpisode(seasons: Season[], watched: EpisodeProgress[]): Episode | null {
@@ -17,8 +31,8 @@ export function getNextEpisode(seasons: Season[], watched: EpisodeProgress[]): E
     seasons
       .slice()
       .sort((a, b) => a.seasonNumber - b.seasonNumber)
-      .flatMap((season) => season.episodes.slice().sort((a, b) => a.episodeNumber - b.episodeNumber))
-      .find((episode) => !watchedIds.has(episode.id) && hasAired(episode)) ?? null
+      .flatMap((season) => airedEpisodes(season).sort((a, b) => a.episodeNumber - b.episodeNumber))
+      .find((episode) => !watchedIds.has(episode.id)) ?? null
   );
 }
 
@@ -29,22 +43,22 @@ export function calculateSeriesProgress(
 ): SeriesProgress {
   const watchedSet = new Set(watched.filter((item) => item.watched).map((item) => item.episodeId));
   const progressBySeason = seasons.map((season) => {
-    const airedEpisodes = season.episodes.filter(hasAired);
-    const watchedEpisodes = airedEpisodes.filter((episode) => watchedSet.has(episode.id)).length;
+    const seasonAired = airedEpisodes(season);
+    const watchedEpisodes = seasonAired.filter((episode) => watchedSet.has(episode.id)).length;
     return {
       seasonNumber: season.seasonNumber,
-      totalEpisodes: airedEpisodes.length,
+      totalEpisodes: seasonAired.length,
       watchedEpisodes,
-      progressPercent: percent(watchedEpisodes, airedEpisodes.length),
+      progressPercent: percent(watchedEpisodes, seasonAired.length),
     };
   });
   // Deliberately every known episode (including future/unaired ones TMDB
   // has already announced) — see `completed` below, which needs that
   // distinction from `isUpToDate`.
   const totalEpisodes = seasons.reduce((sum, season) => sum + season.episodes.length, 0);
-  const airedEpisodes = seasons.flatMap((season) => season.episodes).filter(hasAired);
-  const totalAiredEpisodes = airedEpisodes.length;
-  const watchedEpisodes = airedEpisodes.filter((episode) => watchedSet.has(episode.id)).length;
+  const allAired = seasons.flatMap(airedEpisodes);
+  const totalAiredEpisodes = allAired.length;
+  const watchedEpisodes = allAired.filter((episode) => watchedSet.has(episode.id)).length;
   const completed = totalEpisodes > 0 && watchedEpisodes === totalEpisodes;
   // "Up to date" (caught up but still ongoing) is distinct from `completed`:
   // completed requires every known episode watched, including future/

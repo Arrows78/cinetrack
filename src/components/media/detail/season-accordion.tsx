@@ -13,7 +13,7 @@ import { useConfetti } from "@/hooks/use-confetti";
 import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
 import type { Episode, EpisodeProgress, MediaSummary, Season } from "@/types/media";
-import { calculateSeriesProgress, hasAired } from "@/features/progress/use-progress";
+import { airedEpisodes as airedEpisodesOf, calculateSeriesProgress, hasAired } from "@/features/progress/use-progress";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 
 /* Episode filmstrip — each episode is a sprocket-hole perforation; watched
@@ -99,10 +99,10 @@ export function SeasonAccordion({
   // a catch-up can also carry episodes of earlier seasons (see the backlog
   // prompt below), which say nothing about whether this one just completed.
   const celebrateIfSeasonCompletes = (season: Season, newlyWatched: Episode[]) => {
-    const airedEpisodes = season.episodes.filter(hasAired);
+    const airedEpisodes = airedEpisodesOf(season);
     const alreadyWatched = airedEpisodes.filter((ep) => watchedSet.has(ep.id)).length;
     const newlyWatchedHere = newlyWatched.filter(
-      (ep) => ep.seasonNumber === season.seasonNumber && hasAired(ep) && !watchedSet.has(ep.id)
+      (ep) => ep.seasonNumber === season.seasonNumber && hasAired(ep, season) && !watchedSet.has(ep.id)
     ).length;
     if (airedEpisodes.length > 0 && alreadyWatched + newlyWatchedHere === airedEpisodes.length) {
       setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
@@ -216,7 +216,7 @@ export function SeasonAccordion({
                     // an unwatched count of 1 from aired progress alone, and
                     // "Last one!" would never show.
                     const unwatchedCount = season.episodes.filter(
-                      (ep) => hasAired(ep) && !watchedSet.has(ep.id)
+                      (ep) => hasAired(ep, season) && !watchedSet.has(ep.id)
                     ).length;
                     const isLastUnwatched = !isWatched && unwatchedCount === 1;
 
@@ -224,6 +224,7 @@ export function SeasonAccordion({
                       <EpisodeCard
                         key={episode.id}
                         episode={{ ...episode, watched: isWatched }}
+                        season={season}
                         disabled={isSaving}
                         isLastUnwatched={isLastUnwatched}
                         seriesId={series.id}

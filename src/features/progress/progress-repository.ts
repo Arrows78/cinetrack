@@ -1,5 +1,5 @@
 import { progressCommands, type EpisodeHistoryInput, type SeriesInput } from "@/features/progress/progress-commands";
-import { hasAired } from "@/features/progress/progress-utils";
+import { airedEpisodes } from "@/features/progress/progress-utils";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type {
   Episode,
@@ -90,7 +90,7 @@ export const progressRepository = {
   // somehow got marked (e.g. from before this guard existed) should still
   // work.
   async markSeason(series: SeriesInput, season: Season, watched: boolean): Promise<void> {
-    const episodes = watched ? season.episodes.filter(hasAired) : season.episodes;
+    const episodes = watched ? airedEpisodes(season) : season.episodes;
     await this.toggleEpisodesWatched(series, episodes, watched, nowIso(), {
       action: watched ? "season:watched" : "season:unwatched",
       seasonNumber: season.seasonNumber,
@@ -98,8 +98,7 @@ export const progressRepository = {
   },
 
   async markSeries(series: SeriesInput, seasons: Season[], watched: boolean): Promise<void> {
-    const allEpisodes = seasons.flatMap((season) => season.episodes);
-    const episodes = watched ? allEpisodes.filter(hasAired) : allEpisodes;
+    const episodes = seasons.flatMap((season) => (watched ? airedEpisodes(season) : season.episodes));
     await this.toggleEpisodesWatched(series, episodes, watched, nowIso(), {
       action: watched ? "series:watched" : "series:unwatched",
     });

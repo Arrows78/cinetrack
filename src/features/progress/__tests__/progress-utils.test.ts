@@ -8,6 +8,9 @@ const episode = (overrides: Partial<Episode> = {}): Episode => ({
   episodeNumber: 1,
   title: "Pilot",
   overview: "",
+  // Dated in the past by default: an undated episode only counts as aired
+  // when a later one has (see hasAired).
+  airDate: "2020-01-01",
   ...overrides,
 });
 
@@ -22,8 +25,8 @@ const season = (episodes: Episode[]): Season => ({
 
 describe("progress-utils", () => {
   it("computes next episode and series progress purely from inputs", () => {
-    const ep1 = episode({ id: 1, episodeNumber: 1 });
-    const ep2 = episode({ id: 2, episodeNumber: 2 });
+    const ep1 = episode({ id: 1, episodeNumber: 1, airDate: "2020-01-01" });
+    const ep2 = episode({ id: 2, episodeNumber: 2, airDate: "2020-01-08" });
     const s = season([ep1, ep2]);
 
     const now = new Date().toISOString();
@@ -52,8 +55,8 @@ describe("progress-utils", () => {
   it("getNextEpisode skips unwatched episodes that haven't aired yet", () => {
     const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
     const unaired = episode({ id: 1, episodeNumber: 1, airDate: farFuture });
-    const noAirDate = episode({ id: 2, episodeNumber: 2, airDate: null });
-    const s = season([unaired, noAirDate]);
+    const aired = episode({ id: 2, episodeNumber: 2, airDate: "2020-01-01" });
+    const s = season([unaired, aired]);
 
     const next = getNextEpisode([s], []);
     expect(next?.id).toBe(2);
@@ -188,10 +191,61 @@ describe("hasAired", () => {
   it("only counts an air date as aired from the local start of that day", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 13, 21, 0));
-    expect(hasAired(episode({ airDate: "2026-07-14" }))).toBe(false);
+    const dated = episode({ airDate: "2026-07-14" });
+    expect(hasAired(dated, season([dated]))).toBe(false);
 
     vi.setSystemTime(new Date(2026, 6, 14, 0, 1));
-    expect(hasAired(episode({ airDate: "2026-07-14" }))).toBe(true);
+    expect(hasAired(dated, season([dated]))).toBe(true);
+  });
+
+  describe("an episode with no air date", () => {
+    const aired = "2026-07-01";
+    const future = "2026-09-01";
+
+    it("has aired only when a later episode of its season has", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 14, 12, 0));
+      const undated = episode({ id: 1, episodeNumber: 1, airDate: null });
+      const later = episode({ id: 2, episodeNumber: 2, airDate: aired });
+
+      expect(hasAired(undated, season([undated, later]))).toBe(true);
+    });
+
+    it("is upcoming when it is the last episode, or the later ones are still ahead or undated", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 14, 12, 0));
+      const earlier = episode({ id: 1, episodeNumber: 1, airDate: aired });
+      const undated = episode({ id: 2, episodeNumber: 2, airDate: null });
+
+      expect(hasAired(undated, season([earlier, undated]))).toBe(false);
+      const ahead = episode({ id: 3, episodeNumber: 3, airDate: future });
+      expect(hasAired(undated, season([earlier, undated, ahead]))).toBe(false);
+      const alsoUndated = episode({ id: 4, episodeNumber: 3, airDate: null });
+      expect(hasAired(undated, season([earlier, undated, alsoUndated]))).toBe(false);
+    });
+
+    it("chains through consecutive undated episodes to a later aired one", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 14, 12, 0));
+      const first = episode({ id: 1, episodeNumber: 1, airDate: null });
+      const second = episode({ id: 2, episodeNumber: 2, airDate: null });
+      const third = episode({ id: 3, episodeNumber: 3, airDate: aired });
+
+      expect(hasAired(first, season([first, second, third]))).toBe(true);
+      expect(hasAired(second, season([first, second, third]))).toBe(true);
+    });
+
+    it("is neither the next episode nor counted in progress while it is upcoming", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 6, 14, 12, 0));
+      const watchedEp = episode({ id: 1, episodeNumber: 1, airDate: aired });
+      const undated = episode({ id: 2, episodeNumber: 2, airDate: null });
+      const s = season([watchedEp, undated]);
+      const progress = [{ episodeId: 1, watched: true } as EpisodeProgress];
+
+      expect(getNextEpisode([s], progress)).toBeNull();
+      expect(calculateSeriesProgress(1, [s], progress)).toMatchObject({ totalEpisodes: 1, watchedEpisodes: 1 });
+    });
   });
 
   describe("boundary values", () => {
@@ -247,10 +301,10 @@ describe("hasAired", () => {
       expect(progress.isUpToDate).toBe(true);
     });
 
-    it("an episode with no air date counts as aired, and a watched id from another series is ignored", () => {
+    it("a watched id from another series is ignored", () => {
       const progress = calculateSeriesProgress(
         1,
-        [season([episode({ id: 1 })])],
+        [season([episode({ id: 1, airDate: "2020-01-01" })])],
         [{ episodeId: 999, watched: true } as EpisodeProgress]
       );
       expect(progress).toMatchObject({ totalEpisodes: 1, watchedEpisodes: 0, progressPercent: 0, completed: false });
