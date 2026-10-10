@@ -115,7 +115,7 @@ impl<'a> PreferencesService<'a> {
 /// (e.g. a backup restore) without going through `update`. A free function
 /// (not a `PreferencesService` method) because `refresh_preferences` only
 /// ever has a `PreferencesCache` handle, never a pool.
-pub(super) fn refresh(cache: &PreferencesCache) {
+pub(crate) fn refresh(cache: &PreferencesCache) {
     *cache
         .0
         .lock()

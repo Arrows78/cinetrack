@@ -83,7 +83,7 @@ beforeEach(() => {
   mocks.isTauriApp.mockReturnValue(true);
   mocks.getCurrentUserId.mockReturnValue("user_1");
   mocks.getDeviceId.mockResolvedValue("device-1");
-  mocks.prepare.mockResolvedValue(undefined);
+  mocks.prepare.mockResolvedValue("profile-1");
   mocks.getStatus.mockResolvedValue({
     deviceId: "device-1",
     cursor: 0,
@@ -159,7 +159,7 @@ describe("syncService.run", () => {
 
     await expect(syncService.run(queryClient)).resolves.toEqual({ pushed: 1, pulled: 1, conflicts: 0 });
     expect(mocks.ack).toHaveBeenCalledTimes(1);
-    expect(mocks.applyRemote).toHaveBeenCalledWith([
+    expect(mocks.applyRemote).toHaveBeenCalledWith("profile-1", [
       expect.objectContaining({ sequence: 2, entityType: "library_item", entityId: "remote-1", version: 3 }),
     ]);
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["local"] });
@@ -211,7 +211,7 @@ describe("syncService.run", () => {
     });
 
     await expect(syncService.run()).resolves.toEqual({ pushed: 1, pulled: 0, conflicts: 1 });
-    expect(mocks.rebase).toHaveBeenCalledWith([
+    expect(mocks.rebase).toHaveBeenCalledWith("profile-1", [
       expect.objectContaining({ mutationId: "m1", entityId: "item-1", serverVersion: 8 }),
     ]);
   });
@@ -233,6 +233,132 @@ describe("syncService.run", () => {
     client.rpc.mockResolvedValue({ data: null, error: failure });
 
     await expect(syncService.run()).rejects.toBe(failure);
+  });
+
+  it("binds every step to the profile Rust agreed to sync, for the signed-in account", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValueOnce([mutation]).mockResolvedValue([]);
+    client.rpc.mockImplementation(async (name: string) =>
+      name === "apply_sync_batch"
+        ? {
+            data: {
+              acks: [{ mutationId: "m1", entityType: "library_item", entityId: "item-1", version: 1 }],
+              conflicts: [],
+              cursor: 1,
+            },
+            error: null,
+          }
+        : { data: [], error: null }
+    );
+
+    await syncService.run();
+
+    expect(mocks.prepare).toHaveBeenCalledWith("user_1");
+    expect(mocks.listOutbox).toHaveBeenCalledWith("profile-1", 100);
+    expect(mocks.ack).toHaveBeenCalledWith("profile-1", expect.any(Array));
+    expect(mocks.getCursor).toHaveBeenCalledWith("profile-1");
+    expect(mocks.markCompleted).toHaveBeenCalledWith("profile-1");
+  });
+
+  it("does not touch the server when the active profile isn't the account's", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    const refusal = new Error("Cloud sync only runs on the profile linked to the signed-in account.");
+    mocks.prepare.mockRejectedValue(refusal);
+
+    await expect(syncService.run()).rejects.toBe(refusal);
+    expect(client.rpc).not.toHaveBeenCalled();
+    expect(mocks.listOutbox).not.toHaveBeenCalled();
+    expect(mocks.applyRemote).not.toHaveBeenCalled();
+  });
+
+  it("keeps the mutation queued when the push fails, and delivers it on the next run", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([mutation]);
+    const failure = new Error("network down");
+    client.rpc.mockResolvedValueOnce({ data: null, error: failure });
+
+    await expect(syncService.run()).rejects.toBe(failure);
+    expect(mocks.ack).not.toHaveBeenCalled();
+    expect(mocks.markCompleted).not.toHaveBeenCalled();
+
+    // The same outbox row (same mutation id) is sent again: the server
+    // dedupes by id, so a retry can never double-apply.
+    mocks.listOutbox.mockReset().mockResolvedValueOnce([mutation]).mockResolvedValue([]);
+    client.rpc.mockImplementation(async (name: string) =>
+      name === "apply_sync_batch"
+        ? {
+            data: {
+              acks: [
+                { mutationId: "m1", entityType: "library_item", entityId: "item-1", version: 1, deduplicated: true },
+              ],
+              conflicts: [],
+              cursor: 1,
+            },
+            error: null,
+          }
+        : { data: [], error: null }
+    );
+    await expect(syncService.run()).resolves.toEqual({ pushed: 1, pulled: 0, conflicts: 0 });
+    const sent = client.rpc.mock.calls.find(([name]) => name === "apply_sync_batch")?.[1] as {
+      p_mutations: Array<{ mutationId: string }>;
+    };
+    expect(sent.p_mutations.map((entry) => entry.mutationId)).toEqual(["m1"]);
+  });
+
+  it("acknowledges the accepted mutations of a partially rejected batch and rebases only the conflicting one", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    const other = { ...mutation, mutationId: "m2", entityId: "item-2" };
+    mocks.listOutbox.mockResolvedValueOnce([mutation, other]).mockResolvedValueOnce([mutation]).mockResolvedValue([]);
+    let batches = 0;
+    client.rpc.mockImplementation(async (name: string) => {
+      if (name !== "apply_sync_batch") return { data: [], error: null };
+      batches += 1;
+      return {
+        data:
+          batches === 1
+            ? {
+                acks: [{ mutationId: "m2", entityType: "library_item", entityId: "item-2", version: 1 }],
+                conflicts: [{ mutationId: "m1", entityType: "library_item", entityId: "item-1", serverVersion: 4 }],
+                cursor: 4,
+              }
+            : {
+                acks: [{ mutationId: "m1", entityType: "library_item", entityId: "item-1", version: 5 }],
+                conflicts: [],
+                cursor: 5,
+              },
+        error: null,
+      };
+    });
+
+    await expect(syncService.run()).resolves.toEqual({ pushed: 2, pulled: 0, conflicts: 1 });
+    expect(mocks.ack).toHaveBeenNthCalledWith(1, "profile-1", [expect.objectContaining({ mutationId: "m2" })]);
+    expect(mocks.rebase).toHaveBeenCalledWith("profile-1", [expect.objectContaining({ mutationId: "m1" })]);
+  });
+
+  it("stops pulling when a full page doesn't move the cursor", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    const page = Array.from({ length: 200 }, (_, index) => ({
+      sequence: index + 1,
+      entity_type: "entity_from_a_newer_app",
+      entity_id: `x${index}`,
+      operation: "upsert",
+      version: 1,
+      data: {},
+      created_at: "2026-08-30T20:01:00.000Z",
+    }));
+    client.rpc.mockResolvedValue({ data: page, error: null });
+    // The native side never advances (e.g. an older build ignoring the page).
+    mocks.getCursor.mockResolvedValue(0);
+
+    await expect(syncService.run()).resolves.toMatchObject({ pulled: 200 });
+    expect(mocks.applyRemote).toHaveBeenCalledTimes(1);
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(expect.stringContaining("cursor stuck"));
   });
 });
 
@@ -279,6 +405,17 @@ describe("syncService.initialize", () => {
     cleanup?.();
     document.dispatchEvent(new Event("visibilitychange"));
     await vi.advanceTimersByTimeAsync(251);
+  });
+
+  it("still returns its cleanup when the first run fails, and logs the failure", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.prepare.mockRejectedValue(new Error("profile not linked"));
+
+    const cleanup = await syncService.initialize(queryClientMock());
+    expect(typeof cleanup).toBe("function");
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(expect.stringContaining("profile not linked"));
+    cleanup?.();
   });
 
   it("does not initialize outside Tauri or without a current Clerk user id", async () => {

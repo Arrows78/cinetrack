@@ -29,15 +29,15 @@ async function requireSession() {
   return { client, userId };
 }
 
-async function pushOutbox(): Promise<{ pushed: number; conflicts: number }> {
-  const auth = await requireSession();
-  if (!auth) return { pushed: 0, conflicts: 0 };
+type Session = NonNullable<Awaited<ReturnType<typeof requireSession>>>;
+
+async function pushOutbox(auth: Session, profileId: string): Promise<{ pushed: number; conflicts: number }> {
   const deviceId = await syncRepository.getDeviceId();
   let pushed = 0;
   let conflicts = 0;
 
   for (let round = 0; round < MAX_PUSH_ROUNDS; round += 1) {
-    const mutations = await syncRepository.listOutbox(SYNC_BATCH_SIZE);
+    const mutations = await syncRepository.listOutbox(profileId, SYNC_BATCH_SIZE);
     if (mutations.length === 0) break;
 
     const { data, error } = await auth.client.rpc("apply_sync_batch", {
@@ -50,14 +50,14 @@ async function pushOutbox(): Promise<{ pushed: number; conflicts: number }> {
     const acks = result.acks ?? [];
     const batchConflicts = result.conflicts ?? [];
     if (acks.length > 0) {
-      await syncRepository.ack(acks);
+      await syncRepository.ack(profileId, acks);
       pushed += acks.length;
     }
     if (batchConflicts.length > 0) {
       // Deterministic local-pending-wins policy: the native outbox keeps the
       // local payload and only rebases its baseVersion, then the next round
       // retries against the version that caused the conflict.
-      await syncRepository.rebase(batchConflicts);
+      await syncRepository.rebase(profileId, batchConflicts);
       conflicts += batchConflicts.length;
     }
 
@@ -69,13 +69,19 @@ async function pushOutbox(): Promise<{ pushed: number; conflicts: number }> {
   return { pushed, conflicts };
 }
 
-async function pullChanges(): Promise<number> {
-  const auth = await requireSession();
-  if (!auth) return 0;
+async function pullChanges(auth: Session, profileId: string): Promise<number> {
   let pulled = 0;
+  let previousCursor: number | null = null;
 
   for (;;) {
-    const cursor = await syncRepository.getCursor();
+    const cursor = await syncRepository.getCursor(profileId);
+    // A full page that didn't move the cursor would be fetched again
+    // forever; stop and let the next run retry rather than spin.
+    if (previousCursor !== null && cursor <= previousCursor) {
+      logger.warn(`Cloud sync pull stopped: cursor stuck at ${cursor}`);
+      break;
+    }
+    previousCursor = cursor;
     const { data, error } = await auth.client.rpc("pull_sync_changes", {
       p_after: cursor,
       p_limit: SYNC_PULL_SIZE,
@@ -102,7 +108,7 @@ async function pullChanges(): Promise<number> {
       data: row.data,
       createdAt: row.created_at,
     }));
-    await syncRepository.applyRemote(changes);
+    await syncRepository.applyRemote(profileId, changes);
     pulled += changes.length;
     if (changes.length < SYNC_PULL_SIZE) break;
   }
@@ -115,15 +121,17 @@ async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
   const auth = await requireSession();
   if (!auth) return { pushed: 0, pulled: 0, conflicts: 0 };
 
-  await syncRepository.prepare();
-  const firstPush = await pushOutbox();
-  const pulled = await pullChanges();
+  // Rust only agrees to start when the active local profile is the one linked
+  // to this Clerk account, and every later step is bound to that profile.
+  const profileId = await syncRepository.prepare(auth.userId);
+  const firstPush = await pushOutbox(auth, profileId);
+  const pulled = await pullChanges(auth, profileId);
   // A pull may have rebased pending local edits onto a newer remote version.
   // Flush them now instead of waiting for the next periodic wake-up.
-  const secondPush = await pushOutbox();
+  const secondPush = await pushOutbox(auth, profileId);
   // Recorded even when nothing moved: a successful round with no pending
   // changes is still a successful "last synced" check-in.
-  await syncRepository.markCompleted();
+  await syncRepository.markCompleted(profileId);
 
   if (pulled > 0) {
     await queryClient?.invalidateQueries({ queryKey: ["local"] });
@@ -187,7 +195,10 @@ export const syncService = {
       )
       .subscribe();
 
-    await run(queryClient);
+    // A failing first run (offline, or the profile gate hasn't switched to the
+    // account's profile yet) must not leave the listeners above without a
+    // cleanup: the next wake-up retries.
+    await run(queryClient).catch((error: unknown) => logger.warn(`Cloud sync failed: ${errorMessage(error)}`));
 
     return () => {
       window.removeEventListener("online", wake);

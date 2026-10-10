@@ -268,6 +268,27 @@ pub(crate) const ACCOUNT_SCOPE_PREFERENCE_KEYS: &[&str] = &[
     "onThisDayEnabled",
 ];
 
+/// Whether a preference document received from the cloud may be written on
+/// this install: its key must be one of `ACCOUNT_SCOPE_PREFERENCE_KEYS` (the
+/// only keys that ever leave a device, so the only ones that may come back)
+/// and its stored JSON value must produce a valid `UserPreferences`.
+pub(crate) fn account_preference_accepts(key: &str, stored_value: &str) -> bool {
+    if !ACCOUNT_SCOPE_PREFERENCE_KEYS.contains(&key) {
+        return false;
+    }
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(stored_value) else {
+        return false;
+    };
+    let Ok(serde_json::Value::Object(mut merged)) =
+        serde_json::to_value(UserPreferences::default())
+    else {
+        return false;
+    };
+    merged.insert(key.to_string(), value);
+    serde_json::from_value::<UserPreferences>(serde_json::Value::Object(merged))
+        .is_ok_and(|prefs| validate(&prefs).is_ok())
+}
+
 impl Default for UserPreferences {
     fn default() -> Self {
         Self {

@@ -230,6 +230,9 @@ pub(super) async fn remove_impl(pool: &SqlitePool, profile_id: &str) -> Result<(
     .execute(&mut *tx)
     .await
     .map_err(ApiError::from)?;
+    // The cursor and bootstrap markers live in `sync_metadata`, keyed by the
+    // profile id with no foreign key to cascade through.
+    crate::sync::forget_profile(&mut tx, profile_id).await?;
 
     sqlx::query("UPDATE sync_control SET suppress_outbox = 0 WHERE id = 1")
         .execute(&mut *tx)

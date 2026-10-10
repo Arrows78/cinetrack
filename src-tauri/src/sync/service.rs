@@ -63,7 +63,47 @@ pub async fn device_id(pool: &SqlitePool) -> Result<String, ApiError> {
     Ok(stored)
 }
 
-pub async fn prepare(pool: &SqlitePool) -> Result<(), ApiError> {
+/// The cloud account is one person: only the local profile linked to the
+/// signed-in account (`profiles.supabase_user_id` = the Clerk `sub`) may sync
+/// against it. The frontend gate that switches the active profile after
+/// sign-in is a UI concern and can lag behind (or be bypassed): without this
+/// check a sync starting while another profile is still active would upload
+/// that profile's library into the signed-in account and pull the account's
+/// data into it. Returns the profile the whole run is bound to.
+pub async fn prepare_for_account(
+    pool: &SqlitePool,
+    supabase_user_id: &str,
+) -> Result<String, ApiError> {
+    if supabase_user_id.trim().is_empty() {
+        return Err(ApiError::bad_request("A signed-in account is required."));
+    }
+    let profile_id = current_profile_id(pool).await?;
+    let linked = crate::profiles::get_by_id_impl(pool, &profile_id)
+        .await?
+        .and_then(|profile| profile.supabase_user_id);
+    if linked.as_deref() != Some(supabase_user_id) {
+        return Err(ApiError::forbidden(
+            "Cloud sync only runs on the profile linked to the signed-in account.",
+        ));
+    }
+    prepare(pool).await?;
+    Ok(profile_id)
+}
+
+/// Every step of a sync run after `prepare_for_account` names the profile it
+/// started with. Switching profile mid-run must stop the run rather than
+/// acknowledge, rebase or apply one profile's mutations against another's
+/// outbox, cursor and rows.
+pub async fn assert_run_profile(pool: &SqlitePool, expected: &str) -> Result<(), ApiError> {
+    if current_profile_id(pool).await? != expected {
+        return Err(ApiError::forbidden(
+            "The active profile changed during the sync run.",
+        ));
+    }
+    Ok(())
+}
+
+async fn prepare(pool: &SqlitePool) -> Result<(), ApiError> {
     let profile_id = current_profile_id(pool).await?;
     let key = bootstrap_key(&profile_id);
     let already_done: Option<(String,)> =
@@ -306,9 +346,10 @@ pub async fn list_outbox(
     let rows: Vec<OutboxRow> = sqlx::query_as(
         "SELECT mutation_id,entity_type,entity_id,operation,payload,base_version,created_at,attempt_count \
          FROM sync_outbox WHERE profile_id=?1 \
-         ORDER BY created_at ASC, \
-           CASE entity_type WHEN 'custom_list' THEN 0 WHEN 'custom_list_item' THEN 2 ELSE 1 END ASC, \
-           mutation_id ASC LIMIT ?2",
+         ORDER BY \
+           CASE WHEN entity_type='custom_list' AND operation='upsert' THEN 0 \
+                WHEN entity_type='custom_list_item' THEN 2 ELSE 1 END ASC, \
+           created_at ASC, mutation_id ASC LIMIT ?2",
     ).bind(profile_id).bind(limit).fetch_all(pool).await.map_err(ApiError::from)?;
 
     rows.into_iter()
@@ -371,12 +412,23 @@ pub async fn ack_mutations(pool: &SqlitePool, acks: &[SyncMutationAck]) -> Resul
         if !validate_entity_type(&ack.entity_type) || ack.version <= 0 {
             continue;
         }
+        // What was acknowledged decides whether the document is now live or
+        // deleted on the server; the outbox row still carries that.
+        let acknowledged: Option<(String,)> = sqlx::query_as(
+            "SELECT operation FROM sync_outbox WHERE profile_id=?1 AND mutation_id=?2",
+        )
+        .bind(&profile_id)
+        .bind(&ack.mutation_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+        let deleted = acknowledged.is_some_and(|(operation,)| operation == "delete");
         let now = now_iso(&mut *tx).await?;
         sqlx::query(
             "INSERT INTO sync_entity_state(profile_id,entity_type,entity_id,remote_version,deleted,updated_at) \
-             VALUES(?1,?2,?3,?4,0,?5) ON CONFLICT(profile_id,entity_type,entity_id) DO UPDATE SET \
-             remote_version=excluded.remote_version,deleted=0,updated_at=excluded.updated_at",
-        ).bind(&profile_id).bind(&ack.entity_type).bind(&ack.entity_id).bind(ack.version).bind(now)
+             VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(profile_id,entity_type,entity_id) DO UPDATE SET \
+             remote_version=excluded.remote_version,deleted=excluded.deleted,updated_at=excluded.updated_at",
+        ).bind(&profile_id).bind(&ack.entity_type).bind(&ack.entity_id).bind(ack.version).bind(i64::from(deleted)).bind(now)
          .execute(&mut *tx).await.map_err(ApiError::from)?;
 
         sqlx::query("DELETE FROM sync_outbox WHERE profile_id=?1 AND mutation_id=?2")
@@ -447,6 +499,33 @@ async fn delete_entity(
         }
         _ => return Err(ApiError::bad_request("Unsupported sync entity type")),
     };
+    if entity_type == "custom_list" {
+        // Deleting the list cascades to its items locally, but their
+        // documents stay live on the server (the deleting device removes the
+        // items it knew about first; one added concurrently elsewhere, or
+        // one this device never saw deleted, is still there). If the list
+        // comes back — a device with an unpushed edit to it pushes it again —
+        // those items must come back with it, exactly as on a device that
+        // only ever received them while the list was gone: park them.
+        let now = now_iso(&mut **tx).await?;
+        sqlx::query(
+            "INSERT INTO sync_metadata(key,value,updated_at) \
+             SELECT ?3||uuid, \
+               json_object('uuid',uuid,'listId',list_id,'mediaId',media_id,'mediaType',media_type,'title',title,'posterPath',poster_path,'position',position,'addedAt',added_at,'updatedAt',updated_at), \
+               ?4 \
+             FROM custom_list_items \
+             WHERE list_id=?2 AND list_id IN (SELECT uuid FROM custom_lists WHERE profile_id=?1) \
+               AND NOT EXISTS (SELECT 1 FROM sync_outbox o WHERE o.profile_id=?1 AND o.entity_type='custom_list_item' AND o.entity_id=custom_list_items.uuid AND o.operation='delete') \
+             ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
+        )
+        .bind(profile_id)
+        .bind(entity_id)
+        .bind(orphan_key_prefix(profile_id))
+        .bind(now)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+    }
     sqlx::query(sql)
         .bind(profile_id)
         .bind(entity_id)
@@ -456,12 +535,16 @@ async fn delete_entity(
     Ok(())
 }
 
-async fn upsert_entity(
+/// Runs the type-specific INSERT ... ON CONFLICT for one remote upsert.
+/// Returns whether a row was written: `false` means the change was valid
+/// but has nowhere to land (a list item whose list hasn't arrived yet) or
+/// was rejected as outside the account-scope preference contract.
+async fn run_upsert(
     tx: &mut Transaction<'_, Sqlite>,
     profile_id: &str,
     entity_type: &str,
     data: &serde_json::Value,
-) -> Result<(), ApiError> {
+) -> Result<bool, ApiError> {
     let payload = serde_json::to_string(data)
         .map_err(|error| ApiError::bad_request(format!("Invalid remote payload: {error}")))?;
 
@@ -472,6 +555,21 @@ async fn upsert_entity(
     // (payload, profile_id) execute path every other entity type shares
     // below.
     if entity_type == "account_preferences" {
+        // The cloud document is untrusted input for this install: only the
+        // keys the account-scope contract names may be written (a stray
+        // `activeProfileId` or `backupDirectory` must never land here), and
+        // the value must be one the preferences layer itself would accept —
+        // an unparsable value would otherwise make every later preferences
+        // read fail.
+        let key = data.get("key").and_then(serde_json::Value::as_str);
+        let value = data.get("value").and_then(serde_json::Value::as_str);
+        let accepted = matches!(
+            (key, value),
+            (Some(key), Some(value)) if crate::preferences::account_preference_accepts(key, value)
+        );
+        if !accepted {
+            return Ok(false);
+        }
         sqlx::query(
             "INSERT INTO preferences(key,value,updated_at) \
              VALUES(json_extract(?1,'$.key'),json_extract(?1,'$.value'),json_extract(?1,'$.updatedAt')) \
@@ -481,7 +579,7 @@ async fn upsert_entity(
         .execute(&mut **tx)
         .await
         .map_err(ApiError::from)?;
-        return Ok(());
+        return Ok(true);
     }
 
     // library_item/seen_movie/episode_progress/tracked_series each have a
@@ -533,7 +631,7 @@ async fn upsert_entity(
             r#"INSERT INTO custom_list_items(uuid,list_id,media_id,media_type,title,poster_path,position,added_at,updated_at)
           SELECT json_extract(?1,'$.uuid'),json_extract(?1,'$.listId'),json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.posterPath'),json_extract(?1,'$.position'),json_extract(?1,'$.addedAt'),json_extract(?1,'$.updatedAt')
           WHERE EXISTS (SELECT 1 FROM custom_lists WHERE uuid=json_extract(?1,'$.listId') AND profile_id=?2)
-          ON CONFLICT(uuid) DO UPDATE SET list_id=excluded.list_id,media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,poster_path=excluded.poster_path,position=excluded.position,updated_at=excluded.updated_at"#
+          ON CONFLICT(list_id,media_id,media_type) DO UPDATE SET title=excluded.title,poster_path=excluded.poster_path,position=excluded.position,updated_at=excluded.updated_at"#
         }
         "smart_list" => {
             r#"INSERT INTO smart_lists(uuid,profile_id,name,rules,created_at,updated_at)
@@ -548,7 +646,7 @@ async fn upsert_entity(
         "availability_alert" => {
             r#"INSERT INTO availability_alerts(uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.region'),json_extract(?1,'$.providerIds'),coalesce(json_extract(?1,'$.enabled'),1),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,region=excluded.region,provider_ids=excluded.provider_ids,enabled=excluded.enabled,updated_at=excluded.updated_at"#
+          ON CONFLICT(profile_id,media_id,media_type) DO UPDATE SET title=excluded.title,region=excluded.region,provider_ids=excluded.provider_ids,enabled=excluded.enabled,updated_at=excluded.updated_at"#
         }
         "dismissed_recommendation" => {
             r#"INSERT INTO dismissed_recommendations(uuid,profile_id,media_id,media_type,title,poster_path,dismissed_at,created_at,updated_at)
@@ -562,12 +660,352 @@ async fn upsert_entity(
         }
         _ => return Err(ApiError::bad_request("Unsupported sync entity type")),
     };
-    sqlx::query(sql)
+    let result = sqlx::query(sql)
         .bind(payload)
         .bind(profile_id)
         .execute(&mut **tx)
         .await
         .map_err(ApiError::from)?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// How a synced entity type with a UNIQUE business key finds "the same
+/// real-world thing" under a different uuid.
+struct KeyedEntity {
+    table: &'static str,
+    /// Extra join/filter so a row only counts when it belongs to the active
+    /// profile (list items scope through their parent list).
+    scope: &'static str,
+    /// (column, JSON field) pairs forming the business key.
+    key: &'static [(&'static str, &'static str)],
+}
+
+fn keyed_entity(entity_type: &str) -> Option<KeyedEntity> {
+    const PROFILE: &str = "t.profile_id = ?2";
+    const MEDIA: &[(&str, &str)] = &[("media_id", "mediaId"), ("media_type", "mediaType")];
+    Some(match entity_type {
+        "library_item" => KeyedEntity {
+            table: "library_items",
+            scope: PROFILE,
+            key: MEDIA,
+        },
+        "dismissed_recommendation" => KeyedEntity {
+            table: "dismissed_recommendations",
+            scope: PROFILE,
+            key: MEDIA,
+        },
+        "availability_alert" => KeyedEntity {
+            table: "availability_alerts",
+            scope: PROFILE,
+            key: MEDIA,
+        },
+        "seen_movie" => KeyedEntity {
+            table: "seen_movies",
+            scope: PROFILE,
+            key: &[("movie_id", "movieId")],
+        },
+        "episode_progress" => KeyedEntity {
+            table: "episode_progress",
+            scope: PROFILE,
+            key: &[("series_id", "seriesId"), ("episode_id", "episodeId")],
+        },
+        "tracked_series" => KeyedEntity {
+            table: "tracked_series",
+            scope: PROFILE,
+            key: &[("series_id", "seriesId")],
+        },
+        "custom_list_item" => KeyedEntity {
+            table: "custom_list_items",
+            scope: "t.list_id IN (SELECT uuid FROM custom_lists WHERE profile_id = ?2)",
+            key: &[
+                ("list_id", "listId"),
+                ("media_id", "mediaId"),
+                ("media_type", "mediaType"),
+            ],
+        },
+        _ => return None,
+    })
+}
+
+async fn set_outbox_capture(
+    tx: &mut Transaction<'_, Sqlite>,
+    capture: bool,
+) -> Result<(), ApiError> {
+    sqlx::query("UPDATE sync_control SET suppress_outbox=?1 WHERE id=1")
+        .bind(if capture { 0_i64 } else { 1_i64 })
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}
+
+/// Two installs that each created the same title before ever syncing hold
+/// two rows with two uuids, and the server ends up with two documents for
+/// it (and the same happens when a title is deleted and added back, which
+/// creates a new uuid). Every device must settle on the same single row
+/// whatever order the documents reach it in, so the rule is the one used for
+/// every other entity, applied to the business key: documents are replayed
+/// in server order and the last one wins.
+///
+/// - **values**: a document for a key the device already holds under another
+///   uuid overwrites that row's fields. A local edit that hasn't been pushed
+///   yet is never overwritten: it keeps its value, and since it is pushed
+///   after the document just received, it is also the last one every other
+///   device applies;
+/// - **identity**: the row takes the uuid of that document (the last one
+///   wins here too, so a later delete of the superseded uuid can't remove
+///   the row), and the uuid it had before is retired: its server document
+///   is deleted by a queued mutation, and any unpushed edit is re-captured
+///   under the new uuid.
+async fn merge_duplicate_business_key(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    entity_type: &str,
+    keyed: &KeyedEntity,
+    local_uuid: String,
+    data: &serde_json::Value,
+) -> Result<bool, ApiError> {
+    let remote_uuid = data
+        .get("uuid")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+
+    let pending: Option<(String,)> = sqlx::query_as(
+        "SELECT operation FROM sync_outbox WHERE profile_id=?1 AND entity_type=?2 AND entity_id=?3",
+    )
+    .bind(profile_id)
+    .bind(entity_type)
+    .bind(&local_uuid)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+    let had_pending = pending.is_some();
+
+    if !had_pending {
+        // Conflict target is the business key, so this updates the existing
+        // row's fields and leaves its uuid alone.
+        run_upsert(tx, profile_id, entity_type, data).await?;
+    }
+
+    let table = keyed.table;
+    let old_state: Option<(i64,)> = sqlx::query_as(
+        "SELECT remote_version FROM sync_entity_state WHERE profile_id=?1 AND entity_type=?2 AND entity_id=?3",
+    )
+    .bind(profile_id)
+    .bind(entity_type)
+    .bind(&local_uuid)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    // The old uuid's pending mutation (an unpushed edit) and any pending
+    // delete of the new uuid (an earlier retirement, or the user's own
+    // delete of a title that's been added back since) are both superseded.
+    sqlx::query(
+        "DELETE FROM sync_outbox WHERE profile_id=?1 AND entity_type=?2 AND entity_id IN (?3,?4)",
+    )
+    .bind(profile_id)
+    .bind(entity_type)
+    .bind(&local_uuid)
+    .bind(remote_uuid)
+    .execute(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+
+    let rename = format!("UPDATE {table} SET uuid=?1 WHERE uuid=?2");
+    sqlx::query(sqlx::AssertSqlSafe(rename))
+        .bind(remote_uuid)
+        .bind(&local_uuid)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+
+    if had_pending {
+        // The unpushed local edit now belongs to the new document:
+        // re-capture the row (a no-op update fires the normal trigger, which
+        // bases it on the version just observed for the new uuid).
+        set_outbox_capture(tx, true).await?;
+        let recapture = format!("UPDATE {table} SET uuid=uuid WHERE uuid=?1");
+        let result = sqlx::query(sqlx::AssertSqlSafe(recapture))
+            .bind(remote_uuid)
+            .execute(&mut **tx)
+            .await
+            .map_err(ApiError::from);
+        set_outbox_capture(tx, false).await?;
+        result?;
+    }
+
+    if let Some((version,)) = old_state
+        && version > 0
+    {
+        // The old uuid has a document on the server: retire it.
+        let now = now_iso(&mut **tx).await?;
+        sqlx::query(
+            "INSERT INTO sync_outbox(mutation_id,profile_id,entity_type,entity_id,operation,payload,base_version,created_at) \
+             VALUES(?1,?2,?3,?4,'delete',NULL,?5,?6)",
+        )
+        .bind(new_uuid())
+        .bind(profile_id)
+        .bind(entity_type)
+        .bind(&local_uuid)
+        .bind(version)
+        .bind(now)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+    }
+    Ok(true)
+}
+
+/// The local row, if any, that already stands for the same real-world thing
+/// as this remote document under a *different* uuid.
+async fn find_duplicate_by_business_key(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    entity_type: &str,
+    data: &serde_json::Value,
+) -> Result<Option<(KeyedEntity, String)>, ApiError> {
+    let Some(keyed) = keyed_entity(entity_type) else {
+        return Ok(None);
+    };
+    let payload = serde_json::to_string(data)
+        .map_err(|error| ApiError::bad_request(format!("Invalid remote payload: {error}")))?;
+    let conditions = keyed
+        .key
+        .iter()
+        .map(|(column, field)| format!("t.{column} = json_extract(?1,'$.{field}')"))
+        .collect::<Vec<_>>()
+        .join(" AND ");
+    let lookup = format!(
+        "SELECT t.uuid FROM {} t WHERE {} AND {conditions}",
+        keyed.table, keyed.scope
+    );
+    let existing: Option<(String,)> = sqlx::query_as(sqlx::AssertSqlSafe(lookup))
+        .bind(&payload)
+        .bind(profile_id)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+    let remote_uuid = data.get("uuid").and_then(serde_json::Value::as_str);
+    Ok(existing
+        .filter(|(local_uuid,)| remote_uuid != Some(local_uuid.as_str()))
+        .map(|(local_uuid,)| (keyed, local_uuid)))
+}
+
+async fn upsert_entity(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    entity_type: &str,
+    data: &serde_json::Value,
+) -> Result<bool, ApiError> {
+    if let Some((keyed, local_uuid)) =
+        find_duplicate_by_business_key(tx, profile_id, entity_type, data).await?
+    {
+        return merge_duplicate_business_key(tx, profile_id, entity_type, &keyed, local_uuid, data)
+            .await;
+    }
+    run_upsert(tx, profile_id, entity_type, data).await
+}
+
+fn orphan_key_prefix(profile_id: &str) -> String {
+    format!("orphan:{profile_id}:")
+}
+
+/// A list item can reach a device before its list does, or while the list is
+/// deleted (someone added to a list another device just removed, and the list
+/// may well come back). The change can't be stored — the item needs its
+/// parent — but the cursor moves past it, so it is parked here, in
+/// `sync_metadata`, until its list shows up.
+async fn stash_orphaned_item(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    entity_id: &str,
+    data: &serde_json::Value,
+) -> Result<(), ApiError> {
+    let now = now_iso(&mut **tx).await?;
+    sqlx::query(
+        "INSERT INTO sync_metadata(key,value,updated_at) VALUES(?1,?2,?3) \
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
+    )
+    .bind(format!("{}{entity_id}", orphan_key_prefix(profile_id)))
+    .bind(data.to_string())
+    .bind(now)
+    .execute(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(())
+}
+
+async fn forget_orphaned_item(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    entity_id: &str,
+) -> Result<(), ApiError> {
+    sqlx::query("DELETE FROM sync_metadata WHERE key=?1")
+        .bind(format!("{}{entity_id}", orphan_key_prefix(profile_id)))
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(())
+}
+
+/// Replays the parked list items whose list now exists locally.
+async fn apply_orphaned_items(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+) -> Result<(), ApiError> {
+    let prefix = orphan_key_prefix(profile_id);
+    let parked: Vec<(String, String)> =
+        sqlx::query_as("SELECT key,value FROM sync_metadata WHERE substr(key,1,length(?1))=?1")
+            .bind(&prefix)
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(ApiError::from)?;
+    for (key, raw) in parked {
+        let Ok(data) = serde_json::from_str::<serde_json::Value>(&raw) else {
+            continue;
+        };
+        let entity_id = key[prefix.len()..].to_string();
+        let pending: Option<(String,)> = sqlx::query_as(
+            "SELECT operation FROM sync_outbox WHERE profile_id=?1 AND entity_type='custom_list_item' AND entity_id=?2",
+        )
+        .bind(profile_id)
+        .bind(&entity_id)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
+        if pending.is_some() {
+            forget_orphaned_item(tx, profile_id, &entity_id).await?;
+            continue;
+        }
+        if upsert_entity(tx, profile_id, "custom_list_item", &data).await? {
+            forget_orphaned_item(tx, profile_id, &entity_id).await?;
+        }
+    }
+    Ok(())
+}
+
+/// Drops the per-profile sync bookkeeping (cursor, bootstrap markers, last
+/// sync time, parked list items) of a profile that is being deleted. The
+/// outbox and entity-state rows go with the profile through their foreign
+/// keys; these `sync_metadata` keys have no such link and would otherwise
+/// outlive it.
+pub(crate) async fn forget_profile(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+) -> Result<(), ApiError> {
+    let prefix = orphan_key_prefix(profile_id);
+    sqlx::query(
+        "DELETE FROM sync_metadata WHERE key IN (?1,?2,?3,?4) OR substr(key,1,length(?5))=?5",
+    )
+    .bind(cursor_key(profile_id))
+    .bind(bootstrap_key(profile_id))
+    .bind(bootstrap_v2_key(profile_id))
+    .bind(last_synced_key(profile_id))
+    .bind(prefix)
+    .execute(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
     Ok(())
 }
 
@@ -590,26 +1028,58 @@ pub async fn apply_remote_changes(
 
     let mut max_sequence = initial_cursor;
     for change in &ordered {
-        if change.sequence <= max_sequence || !validate_entity_type(&change.entity_type) {
+        if change.sequence <= max_sequence {
+            continue;
+        }
+        // A change of a type this build doesn't know (written by a newer
+        // app version) can't be applied, but it must still move the cursor:
+        // otherwise a page made only of such changes is fetched again
+        // forever and never lets the changes behind it through.
+        if !validate_entity_type(&change.entity_type) {
+            max_sequence = change.sequence;
             continue;
         }
         let pending: Option<(String,)> = sqlx::query_as(
-            "SELECT mutation_id FROM sync_outbox WHERE profile_id=?1 AND entity_type=?2 AND entity_id=?3",
+            "SELECT operation FROM sync_outbox WHERE profile_id=?1 AND entity_type=?2 AND entity_id=?3",
         ).bind(&profile_id).bind(&change.entity_type).bind(&change.entity_id)
          .fetch_optional(&mut *tx).await.map_err(ApiError::from)?;
+
+        // Recorded before the change is applied: re-capturing a row under a
+        // canonical uuid (see merge_duplicate_business_key) bases its
+        // mutation on this version.
+        let now = now_iso(&mut *tx).await?;
+        sqlx::query(
+            "INSERT INTO sync_entity_state(profile_id,entity_type,entity_id,remote_version,deleted,updated_at) \
+             VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(profile_id,entity_type,entity_id) DO UPDATE SET \
+             remote_version=excluded.remote_version,deleted=excluded.deleted,updated_at=excluded.updated_at",
+        ).bind(&profile_id).bind(&change.entity_type).bind(&change.entity_id).bind(change.version)
+         .bind(if change.operation == "delete" { 1_i64 } else { 0_i64 }).bind(now)
+         .execute(&mut *tx).await.map_err(ApiError::from)?;
 
         if pending.is_none() {
             match change.operation.as_str() {
                 "delete" => {
                     delete_entity(&mut tx, &profile_id, &change.entity_type, &change.entity_id)
-                        .await?
+                        .await?;
+                    if change.entity_type == "custom_list_item" {
+                        forget_orphaned_item(&mut tx, &profile_id, &change.entity_id).await?;
+                    }
                 }
                 "upsert" => {
                     let data = change
                         .data
                         .as_ref()
                         .ok_or_else(|| ApiError::bad_request("Remote upsert has no payload"))?;
-                    upsert_entity(&mut tx, &profile_id, &change.entity_type, data).await?;
+                    let written =
+                        upsert_entity(&mut tx, &profile_id, &change.entity_type, data).await?;
+                    if change.entity_type == "custom_list_item" {
+                        if written {
+                            forget_orphaned_item(&mut tx, &profile_id, &change.entity_id).await?;
+                        } else {
+                            stash_orphaned_item(&mut tx, &profile_id, &change.entity_id, data)
+                                .await?;
+                        }
+                    }
                 }
                 _ => return Err(ApiError::bad_request("Unsupported remote sync operation")),
             }
@@ -619,18 +1089,35 @@ pub async fn apply_remote_changes(
             sqlx::query("UPDATE sync_outbox SET base_version=?1 WHERE profile_id=?2 AND entity_type=?3 AND entity_id=?4")
                 .bind(change.version).bind(&profile_id).bind(&change.entity_type).bind(&change.entity_id)
                 .execute(&mut *tx).await.map_err(ApiError::from)?;
+            // A pending *delete* of this uuid may only be the retirement of
+            // a duplicate (see merge_duplicate_business_key), in which case
+            // the document still carries the latest value for a row that
+            // lives on under the canonical uuid. Never recreates a row the
+            // user deleted: only an existing duplicate is merged into.
+            if pending
+                .as_ref()
+                .is_some_and(|(operation,)| operation == "delete")
+                && change.operation == "upsert"
+                && let Some(data) = change.data.as_ref()
+                && let Some((keyed, local_uuid)) =
+                    find_duplicate_by_business_key(&mut tx, &profile_id, &change.entity_type, data)
+                        .await?
+            {
+                merge_duplicate_business_key(
+                    &mut tx,
+                    &profile_id,
+                    &change.entity_type,
+                    &keyed,
+                    local_uuid,
+                    data,
+                )
+                .await?;
+            }
         }
-
-        let now = now_iso(&mut *tx).await?;
-        sqlx::query(
-            "INSERT INTO sync_entity_state(profile_id,entity_type,entity_id,remote_version,deleted,updated_at) \
-             VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(profile_id,entity_type,entity_id) DO UPDATE SET \
-             remote_version=excluded.remote_version,deleted=excluded.deleted,updated_at=excluded.updated_at",
-        ).bind(&profile_id).bind(&change.entity_type).bind(&change.entity_id).bind(change.version)
-         .bind(if change.operation == "delete" { 1_i64 } else { 0_i64 }).bind(now)
-         .execute(&mut *tx).await.map_err(ApiError::from)?;
         max_sequence = max_sequence.max(change.sequence);
     }
+
+    apply_orphaned_items(&mut tx, &profile_id).await?;
 
     let now = now_iso(&mut *tx).await?;
     sqlx::query(
@@ -732,6 +1219,11 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
+        // The local row is already in sync (nothing waiting to be pushed).
+        sqlx::query("DELETE FROM sync_outbox")
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let change = upsert_change(
             "remote-1",
@@ -748,13 +1240,199 @@ mod tests {
         );
         let (uuid, status) = library_item_row(&pool).await;
         assert_eq!(
-            uuid, "local-1",
-            "the pre-existing local uuid is preserved, not replaced by the remote one"
+            uuid, "remote-1",
+            "the row takes the uuid of the latest document, so a later delete of it reaches this row"
         );
         assert_eq!(
             status, "completed",
             "the remote field values are still applied"
         );
+        assert_eq!(
+            outbox_count(&pool).await,
+            0,
+            "adopting a remote uuid is not a local change to push back"
+        );
+    }
+
+    async fn outbox_count(pool: &SqlitePool) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox")
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    /// A local edit that hasn't been pushed yet is never overwritten by a
+    /// document for the same title carried under another uuid: it keeps its
+    /// value, moves onto the remote uuid, and goes out as the next version
+    /// of that document.
+    #[tokio::test]
+    async fn a_pending_local_edit_survives_a_remote_document_with_another_uuid() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at) \
+             VALUES ('local-1','default',42,'movie','Local Title','planned','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let change = upsert_change(
+            "remote-1",
+            1,
+            3,
+            library_item_payload("remote-1", "completed"),
+        );
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let (uuid, status) = library_item_row(&pool).await;
+        assert_eq!(status, "planned", "the unpushed local edit wins");
+        assert_eq!(uuid, "remote-1");
+        let pending = list_outbox(&pool, 10).await.unwrap();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(pending[0].entity_id, "remote-1");
+        assert_eq!(
+            pending[0].base_version, 3,
+            "rebased on the version just observed, so the push is accepted"
+        );
+        assert_eq!(pending[0].operation, "upsert");
+    }
+
+    /// The remote device that added a title again after deleting it publishes
+    /// "delete old uuid" and "upsert new uuid" — in an order the server picks.
+    /// Whichever comes first, the title must still be there afterwards.
+    #[tokio::test]
+    async fn a_title_deleted_and_added_back_elsewhere_survives_in_either_order() {
+        for new_document_first in [true, false] {
+            let pool = pool().await;
+            let old = RemoteSyncChange {
+                sequence: 1,
+                entity_type: "library_item".to_string(),
+                entity_id: "old".to_string(),
+                operation: "upsert".to_string(),
+                version: 1,
+                data: Some(library_item_payload("old", "planned")),
+            };
+            apply_remote_changes(&pool, &[old]).await.unwrap();
+
+            let deleted = RemoteSyncChange {
+                sequence: if new_document_first { 3 } else { 2 },
+                entity_type: "library_item".to_string(),
+                entity_id: "old".to_string(),
+                operation: "delete".to_string(),
+                version: 2,
+                data: None,
+            };
+            let added_back = upsert_change(
+                "new",
+                if new_document_first { 2 } else { 3 },
+                1,
+                library_item_payload("new", "watching"),
+            );
+            apply_remote_changes(&pool, &[deleted, added_back])
+                .await
+                .unwrap();
+
+            assert_eq!(
+                library_item_count(&pool).await,
+                1,
+                "new_document_first={new_document_first}"
+            );
+            let (uuid, status) = library_item_row(&pool).await;
+            assert_eq!((uuid.as_str(), status.as_str()), ("new", "watching"));
+        }
+    }
+
+    /// availability_alerts has UNIQUE(profile_id, media_id, media_type) like
+    /// the four entities the engine already merged by business key, but was
+    /// applied by uuid: the same alert created on two devices made the
+    /// remote upsert violate that constraint, which aborted the apply and
+    /// left the cursor stuck on it forever.
+    #[tokio::test]
+    async fn the_same_availability_alert_created_on_two_devices_does_not_block_the_pull() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO availability_alerts(uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at) \
+             VALUES('local-alert','default',42,'movie','T','FR','[]',1,'t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query("DELETE FROM sync_outbox")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let change = RemoteSyncChange {
+            sequence: 1,
+            entity_type: "availability_alert".to_string(),
+            entity_id: "remote-alert".to_string(),
+            operation: "upsert".to_string(),
+            version: 1,
+            data: Some(serde_json::json!({
+                "uuid": "remote-alert", "mediaId": 42, "mediaType": "movie", "title": "T",
+                "region": "BE", "providerIds": "[8]", "enabled": 0,
+                "createdAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-02T00:00:00.000Z",
+            })),
+        };
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let rows: Vec<(String, String, i64)> = sqlx::query_as(
+            "SELECT uuid, region, enabled FROM availability_alerts WHERE media_id=42",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            rows,
+            vec![("remote-alert".to_string(), "BE".to_string(), 0)]
+        );
+        assert_eq!(cursor(&pool).await.unwrap(), 1);
+    }
+
+    /// Same constraint on custom_list_items: UNIQUE(list_id, media_id,
+    /// media_type), while the apply conflicted on the item's uuid.
+    #[tokio::test]
+    async fn the_same_title_added_to_a_list_on_two_devices_does_not_block_the_pull() {
+        let pool = pool().await;
+        sqlx::query(
+            "INSERT INTO custom_lists(uuid,profile_id,name,created_at,updated_at) VALUES('list-1','default','L','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO custom_list_items(uuid,list_id,media_id,media_type,title,position,added_at,updated_at) \
+             VALUES('local-item','list-1',42,'movie','T',0,'t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query("DELETE FROM sync_outbox")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let change = RemoteSyncChange {
+            sequence: 1,
+            entity_type: "custom_list_item".to_string(),
+            entity_id: "remote-item".to_string(),
+            operation: "upsert".to_string(),
+            version: 1,
+            data: Some(serde_json::json!({
+                "uuid": "remote-item", "listId": "list-1", "mediaId": 42, "mediaType": "movie",
+                "title": "T", "position": 3,
+                "addedAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-02T00:00:00.000Z",
+            })),
+        };
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+
+        let rows: Vec<(String, i64)> =
+            sqlx::query_as("SELECT uuid, position FROM custom_list_items WHERE list_id='list-1'")
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+        assert_eq!(rows, vec![("remote-item".to_string(), 3)]);
+        assert_eq!(cursor(&pool).await.unwrap(), 1);
     }
 
     #[tokio::test]

@@ -8,39 +8,40 @@ export const syncRepository = {
     return invokeTypedCommand(syncCommands.deviceId);
   },
 
-  prepare() {
-    return invokeTypedCommand(syncCommands.prepare);
+  /** Binds a run to the active profile once Rust confirmed it is the one linked to `supabaseUserId`; returns its id. */
+  prepare(supabaseUserId: string) {
+    return invokeTypedCommand(syncCommands.prepare, { supabaseUserId });
   },
 
   getStatus() {
     return invokeTypedCommand(syncCommands.status);
   },
 
-  markCompleted() {
-    return invokeTypedCommand(syncCommands.markCompleted);
+  markCompleted(profileId: string) {
+    return invokeTypedCommand(syncCommands.markCompleted, { profileId });
   },
 
-  getCursor() {
-    return invokeTypedCommand(syncCommands.cursor);
+  getCursor(profileId: string) {
+    return invokeTypedCommand(syncCommands.cursor, { profileId });
   },
 
-  listOutbox(limit: number) {
-    return invokeTypedCommand(syncCommands.outbox, { limit });
+  listOutbox(profileId: string, limit: number) {
+    return invokeTypedCommand(syncCommands.outbox, { profileId, limit });
   },
 
   listConflicts(limit: number): Promise<SyncConflictDetail[]> {
     return invokeTypedCommand(syncCommands.conflicts, { limit });
   },
 
-  ack(acks: SyncMutationAck[]) {
-    return invokeTypedCommand(syncCommands.ack, { acks });
+  ack(profileId: string, acks: SyncMutationAck[]) {
+    return invokeTypedCommand(syncCommands.ack, { profileId, acks });
   },
 
-  rebase(conflicts: SyncConflict[]) {
-    return invokeTypedCommand(syncCommands.rebase, { conflicts });
+  rebase(profileId: string, conflicts: SyncConflict[]) {
+    return invokeTypedCommand(syncCommands.rebase, { profileId, conflicts });
   },
 
-  applyRemote(changes: RemoteSyncChange[]) {
-    return invokeTypedCommand(syncCommands.applyRemote, { changes });
+  applyRemote(profileId: string, changes: RemoteSyncChange[]) {
+    return invokeTypedCommand(syncCommands.applyRemote, { profileId, changes });
   },
 };

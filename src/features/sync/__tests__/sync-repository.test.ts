@@ -29,22 +29,28 @@ describe("syncRepository", () => {
     };
 
     await syncRepository.getDeviceId();
-    await syncRepository.prepare();
+    await syncRepository.prepare("user_1");
     await syncRepository.getStatus();
-    await syncRepository.markCompleted();
-    await syncRepository.getCursor();
-    await syncRepository.listOutbox(25);
+    await syncRepository.markCompleted("p1");
+    await syncRepository.getCursor("p1");
+    await syncRepository.listOutbox("p1", 25);
     await syncRepository.listConflicts(20);
-    await syncRepository.ack([ack]);
-    await syncRepository.rebase([conflict]);
-    await syncRepository.applyRemote([change]);
+    await syncRepository.ack("p1", [ack]);
+    await syncRepository.rebase("p1", [conflict]);
+    await syncRepository.applyRemote("p1", [change]);
 
     expect(invokeTypedCommandMock).toHaveBeenCalledTimes(10);
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(4, "mark_sync_completed");
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(6, "list_sync_outbox", { limit: 25 });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(4, "mark_sync_completed", { profileId: "p1" });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(6, "list_sync_outbox", { profileId: "p1", limit: 25 });
     expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(7, "list_sync_conflicts", { limit: 20 });
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(8, "ack_sync_mutations", { acks: [ack] });
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(9, "rebase_sync_conflicts", { conflicts: [conflict] });
-    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(10, "apply_remote_sync_changes", { changes: [change] });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(8, "ack_sync_mutations", { profileId: "p1", acks: [ack] });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(9, "rebase_sync_conflicts", {
+      profileId: "p1",
+      conflicts: [conflict],
+    });
+    expect(invokeTypedCommandMock).toHaveBeenNthCalledWith(10, "apply_remote_sync_changes", {
+      profileId: "p1",
+      changes: [change],
+    });
   });
 });
