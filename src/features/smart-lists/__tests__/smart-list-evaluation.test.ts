@@ -130,6 +130,12 @@ describe("matchesSmartListRules", () => {
       expect(matchesSmartListRules(makeLibraryItem({ mediaType: "movie" }), rules, emptyContext, null)).toBe(false);
     });
 
+    it("treats a 0-minute runtime (TMDB's value for 'unknown') like an unknown one, not like a short film", () => {
+      const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, maxRuntimeMinutes: 100 };
+      expect(matchesSmartListRules(makeLibraryItem({ mediaType: "movie" }), rules, emptyContext, 0)).toBe(false);
+      expect(matchesSmartListRules(makeLibraryItem({ mediaType: "movie" }), rules, emptyContext, -1)).toBe(false);
+    });
+
     it("never excludes a series, regardless of the runtime value passed in", () => {
       const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, maxRuntimeMinutes: 30 };
       expect(matchesSmartListRules(makeLibraryItem({ mediaType: "series" }), rules, emptyContext, null)).toBe(true);

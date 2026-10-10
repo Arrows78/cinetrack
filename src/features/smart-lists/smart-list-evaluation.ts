@@ -53,7 +53,10 @@ export function buildSmartListEvalContext(
  * — from cache or a live fetch — only for the items that already passed
  * every cheaper, purely-local check. `undefined` means "not yet known" (the
  * item is provisionally excluded rather than false-positived while the
- * runtime is still loading); `null` means "known to have none".
+ * runtime is still loading); `null` means "known to have none". A
+ * non-positive value is TMDB's own spelling of "unknown" (the same one
+ * progress records as no runtime at all), so it is treated exactly like
+ * `null` rather than as a film shorter than every limit.
  */
 export function matchesSmartListRules(
   item: LibraryItem,
@@ -89,7 +92,7 @@ export function matchesSmartListRules(
   // See this function's doc comment: this rule never excludes series, only
   // movies whose runtime is known and over the limit.
   if (rules.maxRuntimeMinutes != null && item.mediaType === "movie") {
-    if (movieRuntimeMinutes == null) return false;
+    if (movieRuntimeMinutes == null || movieRuntimeMinutes <= 0) return false;
     if (movieRuntimeMinutes > rules.maxRuntimeMinutes) return false;
   }
 

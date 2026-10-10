@@ -132,4 +132,42 @@ describe("useSmartListMatches", () => {
     expect(getMovieDetailsMock).toHaveBeenCalledWith(1);
     expect(getMovieDetailsMock).toHaveBeenCalledWith(2);
   });
+  it("does not list a movie whose TMDB runtime is 0 (unknown) under a max-runtime rule", async () => {
+    libraryItems = [
+      makeLibraryItem({ mediaId: 1, mediaType: "movie", title: "Known" }),
+      makeLibraryItem({ mediaId: 2, mediaType: "movie", title: "Unknown runtime" }),
+    ];
+    getMovieDetailsMock.mockImplementation(async (id) => ({ id, runtime: id === 1 ? 90 : 0 }) as unknown as Movie);
+
+    const activeRules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, maxRuntimeMinutes: 100 };
+    const { useSmartListMatches } = await import("../use-smart-list-matches");
+    const { result } = renderHook(() => useSmartListMatches(activeRules), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items.map((item) => item.id)).toEqual([1]);
+  });
+
+  it("reports an error instead of an empty list when the runtimes cannot be loaded (TMDB unavailable)", async () => {
+    libraryItems = [makeLibraryItem({ mediaId: 1, mediaType: "movie" })];
+    getMovieDetailsMock.mockRejectedValue(new Error("network down"));
+
+    const activeRules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, maxRuntimeMinutes: 100 };
+    const { useSmartListMatches } = await import("../use-smart-list-matches");
+    const { result } = renderHook(() => useSmartListMatches(activeRules), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("keeps a smart list without a runtime rule working when TMDB is unavailable", async () => {
+    libraryItems = [makeLibraryItem({ mediaId: 1, mediaType: "movie" })];
+    getMovieDetailsMock.mockRejectedValue(new Error("network down"));
+
+    const { useSmartListMatches } = await import("../use-smart-list-matches");
+    const { result } = renderHook(() => useSmartListMatches(DEFAULT_SMART_LIST_RULES), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isError).toBe(false);
+    expect(result.current.items.map((item) => item.id)).toEqual([1]);
+  });
 });

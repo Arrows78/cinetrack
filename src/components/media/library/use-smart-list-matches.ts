@@ -129,8 +129,27 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     preferencesQuery.isLoading ||
     snapshotsQuery.isLoading ||
     (needsRuntime && runtimeQueries.some((query) => query.isLoading));
-  const isError = idsQuery.isError || libraryItemsQuery.isError || trackedSeriesQuery.isError || snapshotsQuery.isError;
-  const error = idsQuery.error ?? libraryItemsQuery.error ?? trackedSeriesQuery.error ?? snapshotsQuery.error;
+  // A movie whose runtime could not be loaded (TMDB unreachable) is left out
+  // of a max-runtime list, so without this the list would silently read as
+  // "nothing matches". Only a failure with no cached runtime to fall back on
+  // counts, and only when the rule set actually needs runtimes — a smart list
+  // that never touches that dimension keeps working with no network at all.
+  const runtimeFailure = needsRuntime
+    ? runtimeQueries.find((query) => query.isError && query.data === undefined)
+    : undefined;
+  const isError =
+    idsQuery.isError ||
+    libraryItemsQuery.isError ||
+    trackedSeriesQuery.isError ||
+    snapshotsQuery.isError ||
+    runtimeFailure !== undefined;
+  const error =
+    idsQuery.error ??
+    libraryItemsQuery.error ??
+    trackedSeriesQuery.error ??
+    snapshotsQuery.error ??
+    runtimeFailure?.error ??
+    null;
 
   return {
     items,
@@ -142,6 +161,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
       void libraryItemsQuery.refetch();
       void trackedSeriesQuery.refetch();
       void snapshotsQuery.refetch();
+      for (const query of runtimeQueries) if (query.isError) void query.refetch();
     },
   };
 }
