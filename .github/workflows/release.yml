@@ -35,8 +35,11 @@ on:
   push:
     tags: ["v*"]
 
+# Read-only by default: `validate` runs `pnpm install` and every dependency's
+# scripts, which must never hold a token able to push to the repository.
+# Only `build` gets write access, to draft the GitHub Release.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -88,6 +91,8 @@ jobs:
 
   build:
     needs: validate
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
