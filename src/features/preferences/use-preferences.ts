@@ -30,6 +30,15 @@ export function usePreferences() {
           queryClient.invalidateQueries({
             queryKey: queryKeys.local.tracking(previousProfileId ?? DEFAULT_PROFILE_ID),
           }),
+          // Cached under a profile key but built from TMDB responses in the
+          // previous language/region: Watch Tonight's picks and the "people
+          // you watch" credits (see use-watch-tonight.ts, use-people-you-watch.ts).
+          queryClient.invalidateQueries({
+            predicate: ({ queryKey }) =>
+              queryKey[0] === "local" &&
+              queryKey[2] === (previousProfileId ?? DEFAULT_PROFILE_ID) &&
+              (queryKey[1] === "watchTonight" || queryKey[1] === "peopleYouWatchCredits"),
+          }),
         ]);
       }
     },

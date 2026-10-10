@@ -127,7 +127,7 @@ describe("usePreferences mutation side effects", () => {
     expect(invalidatedKeys).toContainEqual(["remote"]);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
-    expect(invalidateSpy).toHaveBeenCalledTimes(3);
+    expect(invalidateSpy).toHaveBeenCalledTimes(4);
   });
 
   it("invalidates remote, calendar and tracking queries when the changed key is 'region'", async () => {
@@ -145,7 +145,7 @@ describe("usePreferences mutation side effects", () => {
     expect(invalidatedKeys).toContainEqual(["remote"]);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
-    expect(invalidateSpy).toHaveBeenCalledTimes(3);
+    expect(invalidateSpy).toHaveBeenCalledTimes(4);
   });
 
   it("does not invalidate remote/calendar/tracking queries for an unrelated key like 'theme'", async () => {

@@ -230,3 +230,22 @@ describe("TV Time import and every profile-scoped reader", () => {
     await waitFor(() => expect(count("list_viewing_events_for_media")).toBeGreaterThan(before.events));
   });
 });
+
+describe("language changes and TMDB-derived views cached under a profile key", () => {
+  it("re-runs the Watch Tonight picks, whose titles come from TMDB in the previous language", async () => {
+    const { useWatchTonightPicks } = await import("@/features/watch-tonight/use-watch-tonight");
+    const { usePreferences } = await import("@/features/preferences/use-preferences");
+    const client = createClient();
+    const view = renderHook(() => ({ picks: useWatchTonightPicks({ hideWatched: false }), prefs: usePreferences() }), {
+      wrapper: wrapperFor(client),
+    });
+    await waitFor(() => expect(view.result.current.picks.isSuccess).toBe(true));
+    const afterLoad = pickMock.mock.calls.length;
+
+    await act(async () => {
+      await view.result.current.prefs.updatePreference({ key: "language", value: "fr" });
+    });
+
+    await waitFor(() => expect(pickMock.mock.calls.length).toBeGreaterThan(afterLoad));
+  });
+});
