@@ -352,7 +352,11 @@ pub(crate) async fn apply_episodes_and_log_impl(
     // episode count can still register as "Watching" but never falsely
     // "Completed" from a single episode.
     if watched {
-        let auto_sync_target = auto_sync_target(watched_episodes, series.number_of_episodes);
+        let auto_sync_target = auto_sync_target(
+            watched_episodes,
+            series.number_of_episodes,
+            series.status.as_deref(),
+        );
         if let Some(target) = auto_sync_target {
             let media = AutoSyncMedia {
                 media_id: series.id,
@@ -422,6 +426,8 @@ pub(crate) async fn apply_episodes_impl(
 // status and an aired-episode count in hand (a fresh fetch, not cached
 // locally), so it opportunistically writes both back here — a no-op if the
 // series isn't tracked yet, or if neither value actually changed.
+// The Today Hub also calls it, with a lower-bound total, for a show it just
+// found an aired unwatched episode for, so the cache doesn't wait on a visit.
 // total_episodes is a plain overwrite (not MAX) here: unlike a toggle's
 // snapshot, this comes from a full, trusted recomputation over every known
 // episode, so a smaller value is a real correction, not regression.
@@ -445,17 +451,35 @@ pub(super) async fn refresh_tracked_series_status_impl(
         return Ok(());
     };
     let next_total_episodes = total_episodes.unwrap_or(current_total_episodes);
-    if current_status == status && current_total_episodes == next_total_episodes {
-        return Ok(());
+    if current_status != status || current_total_episodes != next_total_episodes {
+        sqlx::query(
+            "UPDATE tracked_series SET status = $1, total_episodes = $2 WHERE profile_id = $3 AND series_id = $4",
+        )
+        .bind(&status)
+        .bind(next_total_episodes)
+        .bind(profile_id)
+        .bind(series_id)
+        .execute(pool)
+        .await
+        .map_err(ApiError::from)?;
     }
 
+    // Auto-sync never lowers a status, so a series that reached Completed
+    // before TMDB announced (or aired) more episodes would stay Completed
+    // forever. Only entries with recorded progress are touched: a Completed
+    // title with no tracked viewing was set by hand and has nothing to
+    // compare against. Re-checked even when the cache above was already
+    // up to date, and a no-op once the status is no longer Completed.
     sqlx::query(
-        "UPDATE tracked_series SET status = $1, total_episodes = $2 WHERE profile_id = $3 AND series_id = $4",
+        "UPDATE library_items
+         SET status = 'watching', updated_at = strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'
+         WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series' AND status = 'completed'
+           AND (SELECT COUNT(*) FROM episode_progress
+                WHERE profile_id = $1 AND series_id = $2 AND watched = 1) BETWEEN 1 AND $3 - 1",
     )
-    .bind(&status)
-    .bind(next_total_episodes)
     .bind(profile_id)
     .bind(series_id)
+    .bind(next_total_episodes)
     .execute(pool)
     .await
     .map_err(ApiError::from)?;
@@ -544,6 +568,13 @@ mod tests {
             rating: Some(8.0),
             genres: vec!["Drama".to_string()],
             status: None,
+        }
+    }
+
+    fn ended_series(id: i64, number_of_episodes: Option<i64>) -> SeriesInput {
+        SeriesInput {
+            status: Some("Ended".to_string()),
+            ..series(id, number_of_episodes)
         }
     }
 
@@ -738,7 +769,7 @@ mod tests {
     async fn finishing_every_episode_auto_completes_an_existing_library_entry() {
         let pool = migrated_pool().await;
         seed_library_status(&pool, 9, "series", "watching").await;
-        let s = series(9, Some(2));
+        let s = ended_series(9, Some(2));
 
         apply_episodes_impl(
             &pool,
@@ -754,6 +785,32 @@ mod tests {
         assert_eq!(
             library_status(&pool, 9, "series").await,
             Some("completed".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn catching_up_on_an_ongoing_series_does_not_complete_it() {
+        let pool = migrated_pool().await;
+        seed_library_status(&pool, 9, "series", "watching").await;
+        let s = SeriesInput {
+            status: Some("Returning Series".to_string()),
+            ..series(9, Some(2))
+        };
+
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
         );
     }
 
@@ -935,7 +992,7 @@ mod tests {
     #[tokio::test]
     async fn unwatching_episodes_never_downgrades_a_completed_library_entry() {
         let pool = migrated_pool().await;
-        let s = series(9, Some(2));
+        let s = ended_series(9, Some(2));
         // Watching both episodes auto-creates the library entry as
         // "completed" (2/2 watched) — no separate seeding needed.
         apply_episodes_impl(
@@ -1493,6 +1550,70 @@ mod tests {
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
         assert_eq!(entry.status.as_deref(), Some("Ended"));
+    }
+
+    #[tokio::test]
+    async fn refresh_reopens_a_completed_series_when_more_episodes_than_watched_exist() {
+        let pool = migrated_pool().await;
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &ended_series(9, Some(2)),
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
+
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(3))
+            .await
+            .unwrap();
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
+
+        // A later manual Completed is not reopened while nothing new exists.
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(2))
+            .await
+            .unwrap();
+        sqlx::query("UPDATE library_items SET status = 'completed' WHERE media_id = 9")
+            .execute(&pool)
+            .await
+            .unwrap();
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(2))
+            .await
+            .unwrap();
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn refresh_leaves_a_completed_entry_without_tracked_progress_alone() {
+        let pool = migrated_pool().await;
+        seed_library_status(&pool, 9, "series", "completed").await;
+        sqlx::query(
+            "INSERT INTO tracked_series (uuid, profile_id, series_id, title, total_episodes, created_at, updated_at)
+             VALUES ('t', 'default', 9, 'Show', 2, 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(5))
+            .await
+            .unwrap();
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
     }
 
     #[tokio::test]

@@ -1,13 +1,14 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
-import { episodeProgressKeys } from "@/features/progress/use-progress";
+import { episodeProgressKeys, useRefreshTrackedSeriesStatus } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { getNextEpisode } from "@/features/progress/progress-utils";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_30_MIN } from "@/shared/constants/query";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
+import { logger } from "@/shared/lib/logger";
 import type { Episode, MediaSummary, TrackedSeriesItem } from "@/types/media";
 
 export interface WatchNextEntry {
@@ -92,10 +93,14 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
 }
 
 export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
-  const inProgress = trackedSeries
-    .filter((item) => item.watchedEpisodes > 0 && item.watchedEpisodes < item.totalEpisodes)
-    .slice(0, limit);
-  return useNextEpisodes(inProgress);
+  // Started shows only, but not filtered on the cached episode total: it
+  // goes stale until a series' detail page next opens, so a show that has
+  // since gained episodes would be dropped here. The cap applies to
+  // resolved entries — slicing first lets a caught-up show spend a slot
+  // without ever showing a row.
+  const started = trackedSeries.filter((item) => item.watchedEpisodes > 0);
+  const { entries, results, isLoading } = useNextEpisodes(started);
+  return { entries: entries.slice(0, limit), results, isLoading };
 }
 
 // A tracked series' resolved next episode counts as "new" (rather than an
@@ -148,6 +153,30 @@ export function useTodayHubEpisodes(
 ): TodayHubEpisodeGroups & { isLoading: boolean; isError: boolean; results: NextEpisodeResult[] } {
   const { results, isLoading } = useNextEpisodes(trackedSeries);
   const groups = useMemo(() => partitionNextEpisodes(results, new Date()), [results]);
+
+  // tracked_series.total_episodes is a cache only a series' detail page
+  // refreshed until now, so a show with a freshly aired episode kept a
+  // total equal to its watched count (and a library status of Completed).
+  // This pass has already proven the show has an aired, unwatched episode:
+  // bump the cached total past the watched count, which also reopens an
+  // auto-Completed library entry in Rust (refresh_tracked_series_status_impl).
+  // Once per series per mount — the detail page later writes the exact total.
+  const refreshTrackedSeriesStatus = useRefreshTrackedSeriesStatus();
+  const reconciled = useRef(new Set<number>());
+  useEffect(() => {
+    for (const { series, nextEpisode } of results) {
+      if (!nextEpisode || series.watchedEpisodes === 0 || reconciled.current.has(series.seriesId)) continue;
+      reconciled.current.add(series.seriesId);
+      refreshTrackedSeriesStatus({
+        seriesId: series.seriesId,
+        status: series.status,
+        totalEpisodes: Math.max(series.totalEpisodes, series.watchedEpisodes + 1),
+      }).catch((error: unknown) => {
+        reconciled.current.delete(series.seriesId);
+        logger.warn(`[watch-next] Could not refresh tracked series ${series.seriesId}: ${String(error)}`);
+      });
+    }
+  }, [results, refreshTrackedSeriesStatus]);
   // `results` (one entry per input series, resolved or not) is also what
   // needs-attention-section.tsx's selectBacklogSeries needs to tell a real
   // aired-episode backlog apart from TMDB's total just outrunning what's

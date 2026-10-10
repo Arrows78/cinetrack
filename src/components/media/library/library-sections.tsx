@@ -282,24 +282,30 @@ export function SeriesLibrarySections({
   const trackedById = new Map(trackedSeries.map((series) => [series.seriesId, series]));
   const itemsById = new Map(items.map((item) => [item.id, item]));
 
-  const inProgress: MediaGridItem[] = [];
+  const started: MediaGridItem[] = [];
   const haventStarted: MediaGridItem[] = [];
   for (const item of items) {
-    const progress = item.progress;
-    if (!progress || progress.watched === 0) {
-      haventStarted.push(item);
-    } else if (progress.total > 0 && progress.watched >= progress.total) {
-      // Finished — deliberately excluded here, still visible on /library.
-    } else {
-      // Covers the normal partial-progress case, and also a series whose
-      // total hasn't synced yet (TMDB reporting 0 episodes for a newly
-      // announced show — see auto_sync_target's own zero-total guard):
-      // better to surface it as in-progress than to silently drop it.
-      inProgress.push(item);
-    }
+    if (!item.progress || item.progress.watched === 0) haventStarted.push(item);
+    else started.push(item);
   }
 
-  const watchNext = useNextEpisodes(inProgress.map((item) => toTrackedSeriesItem(item, trackedById.get(item.id))));
+  // The cached total (tracked_series.total_episodes) is only refreshed when
+  // a series' detail page opens, so "watched >= total" can't alone decide a
+  // show is finished: a new season would keep it out of "Watch next" until
+  // then. Every started show is resolved instead, and only one the cache
+  // calls finished *and* that has no aired unwatched episode left is
+  // dropped (still visible on /library) — held back while that resolves
+  // rather than flashing in and out. A series whose total hasn't synced yet
+  // (0 — see auto_sync_target's zero-total guard) counts as in-progress.
+  const resolvedStarted = useNextEpisodes(started.map((item) => toTrackedSeriesItem(item, trackedById.get(item.id))));
+  const kept = started.flatMap((item, index) => {
+    const result = resolvedStarted.results[index]!;
+    const { progress } = item;
+    const cacheSaysFinished = progress!.total > 0 && progress!.watched >= progress!.total;
+    return cacheSaysFinished && result.nextEpisode === null && !result.isError ? [] : [{ item, result }];
+  });
+  const watchNextResults = kept.map(({ result }) => result);
+  const inProgress = kept.map(({ item }) => item);
   const notStarted = useNextEpisodes(haventStarted.map((item) => toTrackedSeriesItem(item, trackedById.get(item.id))));
 
   return (
@@ -310,7 +316,7 @@ export function SeriesLibrarySections({
           <EpisodeRowSection
             title={t("library.sections.watchNext")}
             subtitle={t("library.sections.watchNextDescSeries")}
-            results={watchNext.results}
+            results={watchNextResults}
           />
           <EpisodeRowSection
             title={t("library.sections.haventStarted")}

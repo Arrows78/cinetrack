@@ -145,7 +145,12 @@ describe("SeriesLibrarySections / MovieLibrarySections", () => {
   });
 
   beforeEach(() => {
-    useNextEpisodesMock.mockReset().mockReturnValue({ results: [], entries: [], isLoading: false });
+    // Like the real hook: one unresolved result per input series.
+    useNextEpisodesMock.mockReset().mockImplementation((seriesList: TrackedSeriesItem[]) => ({
+      results: seriesList.map((series) => makeNextEpisodeResult({ series })),
+      entries: [],
+      isLoading: false,
+    }));
     useHistoryMock.mockReset().mockReturnValue({ data: { pages: [] } });
     useEpisodeProgressMock.mockReset().mockReturnValue({ data: [], isLoading: false });
     useSeasonDetailsMock.mockReset().mockReturnValue({ data: undefined, isLoading: false });
@@ -172,6 +177,23 @@ describe("SeriesLibrarySections / MovieLibrarySections", () => {
       expect(within(grids[1]!).getByText("No Progress Field")).toBeInTheDocument();
       expect(within(grids[1]!).getByText("Zero Watched")).toBeInTheDocument();
       expect(screen.queryByText("Fully Finished")).not.toBeInTheDocument();
+    });
+
+    it("keeps a series the stale cache calls finished when it has a newly aired episode", () => {
+      const items: MediaGridItem[] = [
+        makeMediaItem({ id: 4, title: "New Season Out", progress: { watched: 10, total: 10 } }),
+      ];
+      useNextEpisodesMock.mockImplementation((seriesList: TrackedSeriesItem[]) => ({
+        results: seriesList.map((series) =>
+          makeNextEpisodeResult({ series, nextEpisode: series.seriesId === 4 ? makeEpisode() : null })
+        ),
+        entries: [],
+        isLoading: false,
+      }));
+
+      render(<SeriesLibrarySections items={items} trackedSeries={[]} viewMode="grid" />);
+
+      expect(screen.getByText("New Season Out")).toBeInTheDocument();
     });
 
     it("treats watched > 0 with a not-yet-synced total (0) as in-progress rather than dropping it", () => {
@@ -402,6 +424,8 @@ describe("SeriesLibrarySections / MovieLibrarySections", () => {
         makeHistoryEntry({ id: `e${i}`, mediaType: "series", mediaId: 1, action: "episode:watched", episodeNumber: i })
       );
       useHistoryMock.mockReturnValue({ data: { pages: [entries] } });
+      // No fallback rows, so only the recently-watched rows link to a series.
+      useNextEpisodesMock.mockReturnValue({ results: [], entries: [], isLoading: false });
 
       render(<SeriesLibrarySections items={items} trackedSeries={[]} viewMode="list" />);
 

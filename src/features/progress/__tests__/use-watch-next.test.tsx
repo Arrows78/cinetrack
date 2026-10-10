@@ -47,6 +47,7 @@ const getSeasonDetailsMock = vi.fn(async () => ({ seasonNumber: 1, episodes: [] 
 const getEpisodeProgressMock = vi.fn(async () => [] as never);
 const getNextEpisodeMock = vi.fn(() => nextEpisode);
 const toggleEpisodeSeenMock = vi.fn(async () => undefined);
+const refreshTrackedSeriesStatusMock = vi.fn(async () => undefined);
 
 vi.mock("@/features/media/media-repository", () => ({
   mediaRepository: {
@@ -59,6 +60,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
     getEpisodeProgress: getEpisodeProgressMock,
     toggleEpisodeSeen: toggleEpisodeSeenMock,
+    refreshTrackedSeriesStatus: refreshTrackedSeriesStatusMock,
   },
 }));
 
@@ -79,10 +81,11 @@ beforeEach(() => {
   getEpisodeProgressMock.mockClear();
   getNextEpisodeMock.mockClear();
   toggleEpisodeSeenMock.mockClear();
+  refreshTrackedSeriesStatusMock.mockClear();
 });
 
 describe("useWatchNext", () => {
-  it("only resolves entries for series that are started but not finished", async () => {
+  it("resolves every started series, including one the cached total calls finished", async () => {
     const { useWatchNext } = await import("../use-watch-next");
     const { result } = renderHook(() => useWatchNext([inProgressSeries, finishedSeries, notStartedSeries]), {
       wrapper: createWrapper(),
@@ -90,18 +93,22 @@ describe("useWatchNext", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(1);
+    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(2);
     expect(getSeriesDetailsMock).toHaveBeenCalledWith(1);
-    expect(result.current.entries).toEqual([{ series: inProgressSeries, nextEpisode, remaining: 7 }]);
+    expect(getSeriesDetailsMock).toHaveBeenCalledWith(2);
+    expect(result.current.entries).toEqual([
+      { series: inProgressSeries, nextEpisode, remaining: 7 },
+      { series: finishedSeries, nextEpisode, remaining: 0 },
+    ]);
   });
 
-  it("caps the number of resolved series at the given limit", async () => {
+  it("caps the resolved entries at the given limit", async () => {
     const other = { ...inProgressSeries, id: "t4", seriesId: 4 };
     const { useWatchNext } = await import("../use-watch-next");
     const { result } = renderHook(() => useWatchNext([inProgressSeries, other], 1), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(1);
+    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(2);
     expect(result.current.entries).toHaveLength(1);
   });
 });
@@ -215,7 +222,7 @@ describe("useNextEpisodes season-window selection", () => {
 });
 
 describe("useWatchNext inProgress filter", () => {
-  it("excludes series that haven't started or are already finished, keeping only in-progress ones", async () => {
+  it("excludes series that haven't started, keeping every started one", async () => {
     const { useWatchNext } = await import("../use-watch-next");
     const { result } = renderHook(() => useWatchNext([notStartedSeries, inProgressSeries, finishedSeries]), {
       wrapper: createWrapper(),
@@ -223,9 +230,13 @@ describe("useWatchNext inProgress filter", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(1);
+    expect(getSeriesDetailsMock).toHaveBeenCalledTimes(2);
     expect(getSeriesDetailsMock).toHaveBeenCalledWith(1);
-    expect(result.current.entries).toEqual([{ series: inProgressSeries, nextEpisode, remaining: 7 }]);
+    expect(getSeriesDetailsMock).toHaveBeenCalledWith(2);
+    expect(result.current.entries).toEqual([
+      { series: inProgressSeries, nextEpisode, remaining: 7 },
+      { series: finishedSeries, nextEpisode, remaining: 0 },
+    ]);
   });
 });
 
@@ -346,6 +357,32 @@ describe("useTodayHubEpisodes", () => {
     expect(result.current.isError).toBe(true);
     expect(result.current.continueWatching).toEqual([{ series: inProgressSeries, nextEpisode, remaining: 7 }]);
     expect(result.current.upNext).toEqual([]);
+  });
+});
+
+describe("useTodayHubEpisodes cache reconciliation", () => {
+  it("bumps the cached total past the watched count for a show with an aired unwatched episode", async () => {
+    const { useTodayHubEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useTodayHubEpisodes([finishedSeries, notStartedSeries]), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledTimes(1));
+
+    // Never-started shows are left alone: nothing was completed there.
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, null, 11);
+  });
+
+  it("does not touch a show with no aired unwatched episode", async () => {
+    getNextEpisodeMock.mockReturnValue(null as never);
+    const { useTodayHubEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useTodayHubEpisodes([finishedSeries]), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(refreshTrackedSeriesStatusMock).not.toHaveBeenCalled();
+    getNextEpisodeMock.mockReturnValue(nextEpisode);
   });
 });
 
