@@ -76,8 +76,17 @@ impl<'a> StatsRepository<'a> {
         month: &str,
         range_start: &str,
         range_end: &str,
+        tz_offset_minutes: i64,
     ) -> Result<MonthlyRecap, ApiError> {
-        get_monthly_recap_impl(self.pool, &self.profile_id, month, range_start, range_end).await
+        get_monthly_recap_impl(
+            self.pool,
+            &self.profile_id,
+            month,
+            range_start,
+            range_end,
+            tz_offset_minutes,
+        )
+        .await
     }
 
     pub(super) async fn get_rewatch_stats(

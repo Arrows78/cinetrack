@@ -85,10 +85,11 @@ impl<'a> StatsService<'a> {
         month: &str,
         range_start: &str,
         range_end: &str,
+        tz_offset_minutes: i64,
     ) -> Result<MonthlyRecap, ApiError> {
         self.repository()
             .await?
-            .get_monthly_recap(month, range_start, range_end)
+            .get_monthly_recap(month, range_start, range_end, tz_offset_minutes)
             .await
     }
 

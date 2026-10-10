@@ -36,10 +36,12 @@ describe("statsRepository.getMonthlyRecap", () => {
 
     await statsRepository.getMonthlyRecap("2026-03");
 
+    // Local month bounds — in UTC these equal the old "...-01T00:00:00Z".
     expect(invokeCommandMock).toHaveBeenCalledWith("get_monthly_recap", {
       month: "2026-03",
-      rangeStart: "2026-03-01T00:00:00.000Z",
-      rangeEnd: "2026-04-01T00:00:00.000Z",
+      rangeStart: new Date(2026, 2, 1).toISOString(),
+      rangeEnd: new Date(2026, 3, 1).toISOString(),
+      tzOffsetMinutes: new Date(2026, 2, 1).getTimezoneOffset(),
     });
   });
 
@@ -50,8 +52,9 @@ describe("statsRepository.getMonthlyRecap", () => {
 
     expect(invokeCommandMock).toHaveBeenCalledWith("get_monthly_recap", {
       month: "2026-12",
-      rangeStart: "2026-12-01T00:00:00.000Z",
-      rangeEnd: "2027-01-01T00:00:00.000Z",
+      rangeStart: new Date(2026, 11, 1).toISOString(),
+      rangeEnd: new Date(2027, 0, 1).toISOString(),
+      tzOffsetMinutes: new Date(2026, 11, 1).getTimezoneOffset(),
     });
   });
 

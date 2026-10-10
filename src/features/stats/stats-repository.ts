@@ -219,12 +219,15 @@ export const statsRepository = {
   async getMonthlyRecap(month: string): Promise<MonthlyRecap> {
     const year = Number(month.slice(0, 4));
     const monthNumber = Number(month.slice(5, 7));
-    const nextMonth = monthNumber === 12 ? 1 : monthNumber + 1;
-    const nextYear = monthNumber === 12 ? year + 1 : year;
+    // The viewer's local month, not the UTC one: a watch just after local
+    // midnight on the 1st belongs to the new month. Date's constructor
+    // rolls month 12 over into January of the next year.
+    const rangeStart = new Date(year, monthNumber - 1, 1);
     return invokeTypedCommand(statsCommands.getMonthlyRecap, {
       month,
-      rangeStart: `${month}-01T00:00:00.000Z`,
-      rangeEnd: `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00.000Z`,
+      rangeStart: rangeStart.toISOString(),
+      rangeEnd: new Date(year, monthNumber, 1).toISOString(),
+      tzOffsetMinutes: rangeStart.getTimezoneOffset(),
     });
   },
   async getRewatchStats(): Promise<RewatchStats> {

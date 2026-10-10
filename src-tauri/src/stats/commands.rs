@@ -108,11 +108,12 @@ pub async fn get_monthly_recap(
     month: String,
     range_start: String,
     range_end: String,
+    tz_offset_minutes: i64,
     pool: State<'_, SqlitePool>,
 ) -> Result<MonthlyRecap, ApiError> {
     timed("get_monthly_recap", async {
         StatsService::new(pool.inner())
-            .get_monthly_recap(&month, &range_start, &range_end)
+            .get_monthly_recap(&month, &range_start, &range_end, tz_offset_minutes)
             .await
     })
     .await

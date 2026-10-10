@@ -22,6 +22,7 @@ type MonthlyRecapArgs = {
   month: string;
   rangeStart: string;
   rangeEnd: string;
+  tzOffsetMinutes: number;
 };
 type RewatchStatsArgs = { windowStart: string; monthLabels: string[] };
 type RatingDistributionArgs = { windowStart: string };

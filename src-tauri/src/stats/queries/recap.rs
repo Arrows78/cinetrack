@@ -33,6 +33,7 @@ pub(in crate::stats) async fn get_monthly_recap_impl(
     month: &str,
     range_start: &str,
     range_end: &str,
+    tz_offset_minutes: i64,
 ) -> Result<MonthlyRecap, ApiError> {
     let events: Vec<MonthEventRow> = sqlx::query_as(
         "SELECT media_type, episode_id, duration_minutes
@@ -55,7 +56,10 @@ pub(in crate::stats) async fn get_monthly_recap_impl(
     let minutes_watched: i64 = events.iter().filter_map(|row| row.duration_minutes).sum();
 
     let binge_row: Option<BingeDayRow> = sqlx::query_as(
-        "SELECT strftime('%Y-%m-%d', watched_at) AS day, COUNT(*) AS count
+        // The viewer's local day, like get_activity_stats_impl: a UTC day
+        // splits an evening session in two, and the month's first local day
+        // could read as the previous month's last.
+        "SELECT date(datetime(watched_at, printf('%+d minutes', -$4))) AS day, COUNT(*) AS count
          FROM viewing_events
          WHERE profile_id = $1 AND event_type IN ('watched','rewatched')
            AND watched_at >= $2 AND watched_at < $3
@@ -66,6 +70,7 @@ pub(in crate::stats) async fn get_monthly_recap_impl(
     .bind(profile_id)
     .bind(range_start)
     .bind(range_end)
+    .bind(tz_offset_minutes)
     .fetch_optional(pool)
     .await
     .map_err(ApiError::from)?;

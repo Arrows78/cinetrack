@@ -980,6 +980,7 @@ mod tests {
             "2026-03",
             "2026-03-01T00:00:00.000Z",
             "2026-04-01T00:00:00.000Z",
+            0,
         )
         .await
         .unwrap();
@@ -1041,6 +1042,7 @@ mod tests {
             "2026-03",
             "2026-03-01T00:00:00.000Z",
             "2026-04-01T00:00:00.000Z",
+            0,
         )
         .await
         .unwrap();
@@ -1048,6 +1050,38 @@ mod tests {
         assert_eq!(
             recap.movies_watched, 1,
             "the watch that happened this month must still be reflected, even though it was later unwatched"
+        );
+    }
+
+    #[tokio::test]
+    async fn monthly_recap_buckets_the_biggest_binge_day_in_the_viewers_time_zone() {
+        let pool = migrated_pool().await;
+        // 23:30 and 23:45 UTC on March 5 are 00:30 and 00:45 on March 6 in
+        // Paris (UTC+1 in March, getTimezoneOffset() = -60).
+        for (uuid, at) in [
+            ("a", "2026-03-05T23:30:00.000Z"),
+            ("b", "2026-03-05T23:45:00.000Z"),
+        ] {
+            insert_event(&pool, uuid, at, "watched", "series", Some(45), Some(1)).await;
+        }
+
+        let recap = get_monthly_recap_impl(
+            &pool,
+            "default",
+            "2026-03",
+            "2026-02-28T23:00:00.000Z",
+            "2026-03-31T22:00:00.000Z",
+            -60,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            recap.biggest_binge_day,
+            Some(BiggestBingeDay {
+                day: "2026-03-06".to_string(),
+                count: 2
+            })
         );
     }
 
@@ -1061,6 +1095,7 @@ mod tests {
             "2026-05",
             "2026-05-01T00:00:00.000Z",
             "2026-06-01T00:00:00.000Z",
+            0,
         )
         .await
         .unwrap();
@@ -1094,6 +1129,7 @@ mod tests {
             "2026-03".to_string(),
             "2026-03-01T00:00:00.000Z".to_string(),
             "2026-04-01T00:00:00.000Z".to_string(),
+            0,
             state,
         )
         .await
