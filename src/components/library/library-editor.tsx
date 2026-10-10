@@ -53,6 +53,15 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     setNotes((current) => (!previous || current === (previous.notes ?? "") ? (next.notes ?? "") : current));
     setTags((current) => (!previous || sameTags(current, previous.tags) ? next.tags : current));
     setRewatchCount((current) => (!previous || current === previous.rewatchCount ? next.rewatchCount : current));
+  } else if (!library.data && loadedLibraryData !== undefined) {
+    // The entry was removed (the query now holds null): back to a blank form,
+    // so a later Save doesn't re-create it with the removed rating and notes.
+    setLoadedLibraryData(undefined);
+    setStatus("planned");
+    setUserRating(null);
+    setNotes("");
+    setTags([]);
+    setRewatchCount(0);
   }
 
   // Saving always sends all 5 fields (see save() below), and upsert_impl on

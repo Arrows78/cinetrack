@@ -371,6 +371,34 @@ describe("LibraryEditor", () => {
     expect(screen.getByLabelText("Status")).toHaveValue("completed");
   });
 
+  it("clears the form once the entry has been removed, so Save can't bring its old rating and notes back", () => {
+    const state: { data: typeof libraryItem | null } = { data: libraryItem };
+    useLibraryItemMock.mockImplementation(() => ({
+      data: state.data,
+      isLoading: false,
+      isError: false,
+      save,
+      remove: vi.fn(),
+      isSaving: false,
+      refetch,
+    }));
+
+    const view = renderLoaded();
+    expect(screen.getByLabelText("Private notes")).toHaveValue("Great film");
+
+    // useLibraryItem's remove() writes null into the query once it succeeds.
+    state.data = null;
+    view.rerender(<LibraryEditor media={media} />);
+
+    expect(screen.getByLabelText("Private notes")).toHaveValue("");
+    expect(screen.getByLabelText("Status")).toHaveValue("planned");
+    expect(screen.queryByText("favourite-director")).not.toBeInTheDocument();
+    screen.getByRole("button", { name: /save/i }).click();
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "planned", userRating: null, notes: null, tags: [], rewatchCount: 0 })
+    );
+  });
+
   it("rounds a fractional rewatch count down to a whole number on save", () => {
     useLibraryItemMock.mockReturnValue({
       data: libraryItem,
