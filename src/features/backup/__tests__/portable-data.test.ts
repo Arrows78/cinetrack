@@ -320,4 +320,43 @@ describe("portableData", () => {
     expect(ids).toContain("alex");
     expect(ids).toContain(DEFAULT_PROFILE_ID);
   });
+
+  it("gives a profile without a createdAt the backup's own date, since Rust requires one", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "2025-05-05T00:00:00.000Z",
+      data: { profiles: [{ id: "alex", name: "Alex" }] },
+    } as never);
+
+    expect(importArgs().profiles.find((profile) => profile.id === "alex")?.createdAt).toBe("2025-05-05T00:00:00.000Z");
+  });
+
+  it("keeps a tracked series' status through import validation", async () => {
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: {
+        trackedSeries: [
+          {
+            id: "t1",
+            seriesId: 1,
+            title: "Show",
+            totalEpisodes: 10,
+            watchedEpisodes: 0,
+            status: "Ended",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-02T00:00:00.000Z",
+          },
+        ],
+      },
+    } as never);
+
+    expect(importArgs().trackedSeries[0]?.status).toBe("Ended");
+  });
 });

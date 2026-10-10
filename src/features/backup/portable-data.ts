@@ -45,6 +45,14 @@ function parseBackup(value: unknown): CineTrackBackup {
   const data = { ...emptyData(), ...rest } as PortableData;
   data.library = foldLegacyWatchlistIntoLibrary(data.library, legacyWatchlist);
 
+  // userProfileSchema keeps `createdAt` optional for old files, but Rust (and
+  // the profiles.created_at NOT NULL column) require it: a profile without one
+  // would reject the whole restore, so fall back to the backup's own date.
+  data.profiles = data.profiles.map((profile) => ({
+    ...profile,
+    createdAt: profile.createdAt ?? result.data.exportedAt,
+  }));
+
   if (!data.profiles.some((profile) => profile.id === DEFAULT_PROFILE_ID)) {
     data.profiles.unshift({ id: DEFAULT_PROFILE_ID, name: "Default", createdAt: new Date().toISOString() });
   }

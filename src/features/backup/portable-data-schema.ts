@@ -91,6 +91,9 @@ export const trackedSeriesItemSchema = z.object({
   backdropPath: z.string().nullable().optional(),
   totalEpisodes: z.number(),
   watchedEpisodes: z.number(),
+  // TMDB's cached series status — optional so backups written before it was
+  // exported still validate.
+  status: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
