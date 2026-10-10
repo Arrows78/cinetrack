@@ -1,4 +1,4 @@
-import { percent } from "@/shared/utils/format";
+import { parseCalendarDate, percent } from "@/shared/utils/format";
 import type { Episode, EpisodeProgress, Season, SeriesProgress } from "@/types/media";
 
 // An episode with no air date at all is treated as already aired (TMDB
@@ -6,7 +6,9 @@ import type { Episode, EpisodeProgress, Season, SeriesProgress } from "@/types/m
 // air-date check in the app (episode-card.tsx's own single-episode guard,
 // getNextEpisode below).
 export function hasAired(episode: Episode): boolean {
-  return !episode.airDate || new Date(episode.airDate) <= new Date();
+  // Aired from the local start of its air date — the same day the app
+  // shows for it (see parseCalendarDate), not UTC midnight.
+  return !episode.airDate || parseCalendarDate(episode.airDate) <= new Date();
 }
 
 export function getNextEpisode(seasons: Season[], watched: EpisodeProgress[]): Episode | null {

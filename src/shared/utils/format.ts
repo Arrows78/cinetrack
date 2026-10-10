@@ -27,11 +27,14 @@ export const buildTmdbPosterSrcSet = (path: string | null | undefined) =>
 // their own instant.
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
+/** A stored date as a Date: date-only values at local midnight, timestamps as-is (see DATE_ONLY above). */
+export const parseCalendarDate = (value: string): Date => (DATE_ONLY.test(value) ? parseISO(value) : new Date(value));
+
 export const formatDate = (value?: string | null) => {
   if (!value) return i18n.t("common.unknownDate");
 
   try {
-    return format(DATE_ONLY.test(value) ? parseISO(value) : new Date(value), "dd MMM yyyy", {
+    return format(parseCalendarDate(value), "dd MMM yyyy", {
       locale: dateLocale(),
     });
   } catch {

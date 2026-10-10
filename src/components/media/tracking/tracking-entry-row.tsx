@@ -7,14 +7,14 @@ import { Tile } from "@/components/ui/tile";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { useSeasonDetails } from "@/features/media/use-media";
 import { useEpisodeProgress } from "@/features/progress/use-progress";
-import { formatEpisodeCode, formatRelativeCountdown } from "@/shared/utils/format";
+import { formatEpisodeCode, formatRelativeCountdown, parseCalendarDate } from "@/shared/utils/format";
 import type { SeriesInput } from "@/features/progress/progress-repository";
 import type { TrackingEntry } from "@/types/media";
 
 const rowClassName = "flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-foreground/[0.04]";
 
 function hasEntryAired(entry: TrackingEntry): boolean {
-  return Boolean(entry.date) && new Date(entry.date as string) <= new Date();
+  return Boolean(entry.date) && parseCalendarDate(entry.date as string) <= new Date();
 }
 
 /**

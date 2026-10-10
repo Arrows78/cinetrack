@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { calculateSeriesProgress, getNextEpisode } from "../progress-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { calculateSeriesProgress, getNextEpisode, hasAired } from "../progress-utils";
 import type { Episode, EpisodeProgress, Season } from "@/types/media";
 
 const episode = (overrides: Partial<Episode> = {}): Episode => ({
@@ -149,5 +149,23 @@ describe("progress-utils", () => {
 
     expect(progress.completed).toBe(true);
     expect(progress.isUpToDate).toBe(false);
+  });
+});
+
+describe("hasAired", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Run the suite with TZ=America/New_York to exercise the west-of-UTC
+  // case: reading "2026-07-14" as UTC midnight made it "aired" at 20:00
+  // local on the 13th there.
+  it("only counts an air date as aired from the local start of that day", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 13, 21, 0));
+    expect(hasAired(episode({ airDate: "2026-07-14" }))).toBe(false);
+
+    vi.setSystemTime(new Date(2026, 6, 14, 0, 1));
+    expect(hasAired(episode({ airDate: "2026-07-14" }))).toBe(true);
   });
 });

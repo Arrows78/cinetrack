@@ -9,6 +9,7 @@ import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_30_MIN } from "@/shared/constants/query";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { logger } from "@/shared/lib/logger";
+import { parseCalendarDate } from "@/shared/utils/format";
 import type { Episode, MediaSummary, TrackedSeriesItem } from "@/types/media";
 
 export interface WatchNextEntry {
@@ -138,7 +139,7 @@ export function partitionNextEpisodes(results: NextEpisodeResult[], now: Date): 
       continue;
     }
 
-    const airedAt = nextEpisode.airDate ? new Date(nextEpisode.airDate).getTime() : null;
+    const airedAt = nextEpisode.airDate ? parseCalendarDate(nextEpisode.airDate).getTime() : null;
     const recentlyAired = airedAt !== null && now.getTime() - airedAt <= windowMs;
     if (recentlyAired) groups.newEpisodes.push(entry);
     else groups.continueWatching.push(entry);
