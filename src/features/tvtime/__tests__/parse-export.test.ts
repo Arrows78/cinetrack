@@ -106,6 +106,13 @@ describe("parseTvTimeFile + normalizeExport", () => {
     expect(data.seriesRatingsByName.get("the flash")).toBe(5);
   });
 
+  it("treats a zero-star show rating as unrated, never as a 0 the library can't store", () => {
+    const data = emptyExport();
+    parseTvTimeFile(`${SHOW_RATING}\n257657,0,2015-09-17 09:24:46,2015-09-17 09:24:47,Gotham,1`, data);
+
+    expect(data.seriesRatingsByName.has("gotham")).toBe(false);
+  });
+
   it("counts (rather than silently drops or backdates) rows missing a watch date", () => {
     const recordsV2WithBlankDate = RECORDS_V2.replace(
       "349310,3660,Bodyguard (2018),6,1,watch-episode-1,2023-11-04 15:30:38,watch-episode-aaa,1,1,6,6733513,6733513,2023-11-04 15:30:38,,,,,,,,,,,,true,,,",

@@ -73,7 +73,10 @@ const MAX_CINETRACK_RATING = 10;
 const convertStarRating = (value: string): number | null => {
   const stars = Number.parseFloat(value);
   if (!Number.isFinite(stars)) return null;
-  return Math.min(MAX_CINETRACK_RATING, Math.max(0, stars * (MAX_CINETRACK_RATING / MAX_TVTIME_STARS)));
+  const rating = Math.min(MAX_CINETRACK_RATING, stars * (MAX_CINETRACK_RATING / MAX_TVTIME_STARS));
+  // Below 1 isn't a storable rating (library_items CHECK 1-10): treat it as
+  // unrated rather than fail the save, which also carries the favourite flag.
+  return rating >= 1 ? rating : null;
 };
 
 export type TvTimeFileKind =

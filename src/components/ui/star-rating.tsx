@@ -36,21 +36,25 @@ export function StarRating({
   noneLabel: string;
 }) {
   const clamped = Math.min(MAX_VALUE, Math.max(0, value ?? 0));
+  // 0 is "not rated", sent as null like a click on the current star: the
+  // stored rating must be 1-10 (library_items CHECK), so a 0 failed the
+  // whole save.
+  const emit = (next: number) => onChange(next <= 0 ? null : next);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
     if (event.key === "ArrowRight" || event.key === "ArrowUp") {
       event.preventDefault();
-      onChange(Math.min(MAX_VALUE, clamped + 1));
+      emit(Math.min(MAX_VALUE, clamped + 1));
     } else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
       event.preventDefault();
-      onChange(Math.max(0, clamped - 1));
+      emit(Math.max(0, clamped - 1));
     } else if (event.key === "Home") {
       event.preventDefault();
-      onChange(0);
+      emit(0);
     } else if (event.key === "End") {
       event.preventDefault();
-      onChange(MAX_VALUE);
+      emit(MAX_VALUE);
     }
   };
 

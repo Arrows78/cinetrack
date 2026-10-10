@@ -31,6 +31,15 @@ describe("StarRating", () => {
     expect(onChange).toHaveBeenLastCalledWith(8);
   });
 
+  it("clears the rating instead of sending 0 when stepping down from the lowest half-star", () => {
+    const onChange = vi.fn();
+    render(<StarRating value={1} onChange={onChange} ariaLabel="Rating" noneLabel="Not rated" />);
+
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Rating" }), { key: "ArrowLeft" });
+
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
   it("jumps to the bounds on Home/End", () => {
     const onChange = vi.fn();
     render(<StarRating value={5} onChange={onChange} ariaLabel="Rating" noneLabel="Not rated" />);
@@ -39,8 +48,9 @@ describe("StarRating", () => {
     fireEvent.keyDown(slider, { key: "End" });
     expect(onChange).toHaveBeenLastCalledWith(10);
 
+    // The low bound is "not rated", never a 0 the database would reject.
     fireEvent.keyDown(slider, { key: "Home" });
-    expect(onChange).toHaveBeenLastCalledWith(0);
+    expect(onChange).toHaveBeenLastCalledWith(null);
   });
 
   it("ignores keyboard input while disabled", () => {
