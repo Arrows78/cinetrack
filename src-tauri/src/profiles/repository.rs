@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 
 use super::models::{ProfileRow, UserProfile};
-use crate::database::{new_uuid, now_iso};
+use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
 
 /// sha256(salt + pin), hex-encoded. Not a network-facing auth boundary —
@@ -299,6 +299,34 @@ pub(super) async fn verify_pin_impl(
     Ok(hash_pin(pin, &salt) == stored_hash)
 }
 
+/// The PIN lock, enforced here rather than only by the UI's PIN prompt: any
+/// `invoke()` is reachable from the webview whatever is on screen. Acting
+/// on a PIN-protected profile (switching into it, editing or removing it,
+/// changing its PIN) needs that PIN, unless it's already the active
+/// profile — someone already got past the lock to get there.
+pub(crate) async fn authorize_pin_protected_access(
+    pool: &SqlitePool,
+    profile_id: &str,
+    pin: Option<&str>,
+) -> Result<(), ApiError> {
+    let row: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT pin_hash FROM profiles WHERE uuid = $1")
+            .bind(profile_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(ApiError::from)?;
+    let Some((Some(_),)) = row else {
+        return Ok(());
+    };
+    if current_profile_id(pool).await? == profile_id {
+        return Ok(());
+    }
+    match pin {
+        Some(pin) if verify_pin_impl(pool, profile_id, pin).await? => Ok(()),
+        _ => Err(ApiError::forbidden("This profile is locked with a PIN.")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -589,5 +617,38 @@ mod tests {
 
         let result = link_to_supabase_user_impl(&pool, &second.id, "user_2abc").await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn pin_locked_profiles_need_their_pin_unless_already_active() {
+        let pool = migrated_pool().await;
+        let locked = create_impl(&pool, "Alex", None, None).await.unwrap();
+        let open = create_impl(&pool, "Sam", None, None).await.unwrap();
+        set_pin_impl(&pool, &locked.id, "4242").await.unwrap();
+
+        authorize_pin_protected_access(&pool, &open.id, None)
+            .await
+            .unwrap();
+        for pin in [None, Some("0000")] {
+            let error = authorize_pin_protected_access(&pool, &locked.id, pin)
+                .await
+                .unwrap_err();
+            assert_eq!(error.status, Some(403));
+        }
+        authorize_pin_protected_access(&pool, &locked.id, Some("4242"))
+            .await
+            .unwrap();
+
+        sqlx::query(
+            "INSERT INTO preferences (key, value, updated_at) VALUES ('activeProfileId', $1, 'now')
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(serde_json::to_string(&locked.id).unwrap())
+        .execute(&pool)
+        .await
+        .unwrap();
+        authorize_pin_protected_access(&pool, &locked.id, None)
+            .await
+            .unwrap();
     }
 }

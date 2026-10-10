@@ -4,11 +4,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import type { UserPreferences, UserProfile } from "@/types/media";
 
-const setActiveProfileMock = vi.fn<(profileId: string) => Promise<UserPreferences>>(
-  async () => ({}) as UserPreferences
-);
+const setActiveProfileMock = vi.fn<
+  (profileId: string, supabaseUserId?: string | null, pin?: string | null) => Promise<UserPreferences>
+>(async () => ({}) as UserPreferences);
 vi.mock("@/features/preferences/preferences-repository", () => ({
-  preferencesRepository: { setActiveProfile: (profileId: string) => setActiveProfileMock(profileId) },
+  preferencesRepository: {
+    setActiveProfile: (profileId: string, supabaseUserId?: string | null, pin?: string | null) =>
+      setActiveProfileMock(profileId, supabaseUserId, pin),
+  },
 }));
 
 const toastMock = vi.fn();
@@ -18,12 +21,14 @@ const profile: UserProfile = { id: "profile-1", name: "Alice" } as UserProfile;
 
 const listMock = vi.fn(async (): Promise<UserProfile[]> => [profile]);
 const createMock = vi.fn<(name: string, avatar?: string | null) => Promise<UserProfile>>(async () => profile);
-const updateMock = vi.fn<(id: string, name: string, avatar?: string | null) => Promise<UserProfile>>(
+const updateMock = vi.fn<
+  (id: string, name: string, avatar?: string | null, currentPin?: string | null) => Promise<UserProfile>
+>(async () => profile);
+const removeMock = vi.fn<(id: string, currentPin?: string | null) => Promise<void>>(async () => undefined);
+const setPinMock = vi.fn<(id: string, pin: string, currentPin?: string | null) => Promise<UserProfile>>(
   async () => profile
 );
-const removeMock = vi.fn<(id: string) => Promise<void>>(async () => undefined);
-const setPinMock = vi.fn<(id: string, pin: string) => Promise<UserProfile>>(async () => profile);
-const clearPinMock = vi.fn<(id: string) => Promise<UserProfile>>(async () => profile);
+const clearPinMock = vi.fn<(id: string, currentPin?: string | null) => Promise<UserProfile>>(async () => profile);
 const verifyPinMock = vi.fn<(id: string, pin: string) => Promise<boolean>>(async () => true);
 const resolveForSupabaseUserMock = vi.fn<(supabaseUserId: string) => Promise<UserProfile | null>>(async () => profile);
 const createForSupabaseUserMock = vi.fn<
@@ -34,10 +39,11 @@ vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
     list: () => listMock(),
     create: (name: string, avatar?: string | null) => createMock(name, avatar),
-    update: (id: string, name: string, avatar?: string | null) => updateMock(id, name, avatar),
-    remove: (id: string) => removeMock(id),
-    setPin: (id: string, pin: string) => setPinMock(id, pin),
-    clearPin: (id: string) => clearPinMock(id),
+    update: (id: string, name: string, avatar?: string | null, currentPin?: string | null) =>
+      updateMock(id, name, avatar, currentPin),
+    remove: (id: string, currentPin?: string | null) => removeMock(id, currentPin),
+    setPin: (id: string, pin: string, currentPin?: string | null) => setPinMock(id, pin, currentPin),
+    clearPin: (id: string, currentPin?: string | null) => clearPinMock(id, currentPin),
     verifyPin: (id: string, pin: string) => verifyPinMock(id, pin),
     resolveForSupabaseUser: (supabaseUserId: string) => resolveForSupabaseUserMock(supabaseUserId),
     createForSupabaseUser: (name: string, supabaseUserId: string, avatar?: string | null) =>
@@ -78,7 +84,7 @@ describe("useProfileSwitching", () => {
       await result.current.switchToProfile("profile-2");
     });
 
-    expect(setActiveProfileMock).toHaveBeenCalledWith("profile-2");
+    expect(setActiveProfileMock).toHaveBeenCalledWith("profile-2", null, null);
     expect(onSwitched).toHaveBeenCalledTimes(1);
     expect(toastMock).not.toHaveBeenCalled();
     expect(result.current.switchingProfileId).toBeNull();
@@ -207,7 +213,7 @@ describe("useProfiles", () => {
     });
 
     await waitFor(() => expect(result.current.isSaving).toBe(false));
-    expect(updateMock).toHaveBeenCalledWith("profile-1", "Bobby", undefined);
+    expect(updateMock).toHaveBeenCalledWith("profile-1", "Bobby", undefined, undefined);
   });
 
   it("isSaving is true while remove is pending, even though create is idle", async () => {
@@ -227,7 +233,7 @@ describe("useProfiles", () => {
 
     let removePromise!: Promise<unknown>;
     act(() => {
-      removePromise = result.current.remove("profile-1");
+      removePromise = result.current.remove({ id: "profile-1" });
     });
 
     await waitFor(() => expect(result.current.isSaving).toBe(true));
@@ -266,7 +272,7 @@ describe("useProfiles", () => {
     });
 
     await waitFor(() => expect(result.current.isSaving).toBe(false));
-    expect(setPinMock).toHaveBeenCalledWith("profile-1", "1234");
+    expect(setPinMock).toHaveBeenCalledWith("profile-1", "1234", undefined);
   });
 
   it("clearPin delegates to the repository", async () => {
@@ -275,10 +281,10 @@ describe("useProfiles", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
-      await result.current.clearPin("profile-1");
+      await result.current.clearPin({ id: "profile-1", currentPin: "4242" });
     });
 
-    expect(clearPinMock).toHaveBeenCalledWith("profile-1");
+    expect(clearPinMock).toHaveBeenCalledWith("profile-1", "4242");
   });
 
   it("verifyPin is a plain pass-through that doesn't affect isSaving", async () => {

@@ -14,20 +14,36 @@ export function useProfiles() {
     [queryKeys.local.profiles]
   );
   const update = useInvalidatingMutation(
-    ({ id, name, avatar }: { id: string; name: string; avatar?: string | null }) =>
-      profileRepository.update(id, name, avatar),
+    ({
+      id,
+      name,
+      avatar,
+      currentPin,
+    }: {
+      id: string;
+      name: string;
+      avatar?: string | null;
+      currentPin?: string | null;
+    }) => profileRepository.update(id, name, avatar, currentPin),
     [queryKeys.local.profiles]
   );
   const setPin = useInvalidatingMutation(
-    ({ id, pin }: { id: string; pin: string }) => profileRepository.setPin(id, pin),
+    ({ id, pin, currentPin }: { id: string; pin: string; currentPin?: string | null }) =>
+      profileRepository.setPin(id, pin, currentPin),
     [queryKeys.local.profiles]
   );
-  const clearPin = useInvalidatingMutation((id: string) => profileRepository.clearPin(id), [queryKeys.local.profiles]);
+  const clearPin = useInvalidatingMutation(
+    ({ id, currentPin }: { id: string; currentPin?: string | null }) => profileRepository.clearPin(id, currentPin),
+    [queryKeys.local.profiles]
+  );
   // Removing a profile can also reset activeProfileId (see
   // profileRepository.remove) — ["local"] alone already covers every
   // profile-scoped key regardless of which profile it's keyed under, so
   // there's no separate watchTonight key to list here.
-  const remove = useInvalidatingMutation((id: string) => profileRepository.remove(id), [["local"]]);
+  const remove = useInvalidatingMutation(
+    ({ id, currentPin }: { id: string; currentPin?: string | null }) => profileRepository.remove(id, currentPin),
+    [["local"]]
+  );
   return {
     ...query,
     create: create.mutateAsync,
@@ -58,10 +74,12 @@ export function useProfileSwitching(onSwitched?: () => void) {
   const queryClient = useQueryClient();
   const [switchingProfileId, setSwitchingProfileId] = useState<string | null>(null);
 
-  const switchToProfile = async (profileId: string) => {
+  // `pin` is required by Rust for a PIN-protected profile — callers get it
+  // from PinPromptDialog first.
+  const switchToProfile = async (profileId: string, pin?: string) => {
     setSwitchingProfileId(profileId);
     try {
-      await preferencesRepository.setActiveProfile(profileId);
+      await preferencesRepository.setActiveProfile(profileId, null, pin ?? null);
       queryClient.removeQueries({ queryKey: ["local"] });
       onSwitched?.();
     } catch {

@@ -2,9 +2,9 @@ use sqlx::SqlitePool;
 
 use super::models::UserProfile;
 use super::repository::{
-    clear_pin_impl, create_impl, find_by_supabase_user_id_impl, link_to_supabase_user_impl,
-    list_impl, remove_impl, resolve_for_supabase_user_impl, set_pin_impl, update_impl,
-    verify_pin_impl,
+    authorize_pin_protected_access, clear_pin_impl, create_impl, find_by_supabase_user_id_impl,
+    link_to_supabase_user_impl, list_impl, remove_impl, resolve_for_supabase_user_impl,
+    set_pin_impl, update_impl, verify_pin_impl,
 };
 use crate::error::ApiError;
 
@@ -57,11 +57,18 @@ impl<'a> ProfileService<'a> {
         profile_id: &str,
         name: &str,
         avatar: Option<String>,
+        current_pin: Option<&str>,
     ) -> Result<UserProfile, ApiError> {
+        authorize_pin_protected_access(self.pool, profile_id, current_pin).await?;
         update_impl(self.pool, profile_id, name, avatar).await
     }
 
-    pub(super) async fn remove(&self, profile_id: &str) -> Result<(), ApiError> {
+    pub(super) async fn remove(
+        &self,
+        profile_id: &str,
+        current_pin: Option<&str>,
+    ) -> Result<(), ApiError> {
+        authorize_pin_protected_access(self.pool, profile_id, current_pin).await?;
         remove_impl(self.pool, profile_id).await
     }
 
@@ -69,11 +76,18 @@ impl<'a> ProfileService<'a> {
         &self,
         profile_id: &str,
         pin: &str,
+        current_pin: Option<&str>,
     ) -> Result<UserProfile, ApiError> {
+        authorize_pin_protected_access(self.pool, profile_id, current_pin).await?;
         set_pin_impl(self.pool, profile_id, pin).await
     }
 
-    pub(super) async fn clear_pin(&self, profile_id: &str) -> Result<UserProfile, ApiError> {
+    pub(super) async fn clear_pin(
+        &self,
+        profile_id: &str,
+        current_pin: Option<&str>,
+    ) -> Result<UserProfile, ApiError> {
+        authorize_pin_protected_access(self.pool, profile_id, current_pin).await?;
         clear_pin_impl(self.pool, profile_id).await
     }
 

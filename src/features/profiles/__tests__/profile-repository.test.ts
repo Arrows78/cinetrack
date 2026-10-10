@@ -82,6 +82,7 @@ describe("profileRepository", () => {
       profileId: "profile-id",
       name: "Alexandra",
       avatar: "cat",
+      currentPin: null,
     });
   });
 
@@ -90,7 +91,11 @@ describe("profileRepository", () => {
     const { profileRepository } = await import("../profile-repository");
 
     await profileRepository.setPin("profile-id", "1234");
-    expect(invokeMock).toHaveBeenCalledWith("set_profile_pin", { profileId: "profile-id", pin: "1234" });
+    expect(invokeMock).toHaveBeenCalledWith("set_profile_pin", {
+      profileId: "profile-id",
+      pin: "1234",
+      currentPin: null,
+    });
   });
 
   it("clearPin() invokes clear_profile_pin with profileId", async () => {
@@ -98,7 +103,7 @@ describe("profileRepository", () => {
     const { profileRepository } = await import("../profile-repository");
 
     await profileRepository.clearPin("profile-id");
-    expect(invokeMock).toHaveBeenCalledWith("clear_profile_pin", { profileId: "profile-id" });
+    expect(invokeMock).toHaveBeenCalledWith("clear_profile_pin", { profileId: "profile-id", currentPin: null });
   });
 
   it("verifyPin() invokes verify_profile_pin and resolves its boolean result", async () => {
@@ -157,10 +162,11 @@ describe("profileRepository", () => {
 
     await profileRepository.remove("removed-id");
 
-    expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id" });
+    expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id", currentPin: null });
     expect(invokeMock).toHaveBeenCalledWith("set_active_profile", {
       profileId: DEFAULT_PROFILE_ID,
       supabaseUserId: null,
+      pin: null,
     });
   });
 

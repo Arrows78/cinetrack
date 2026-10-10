@@ -74,11 +74,12 @@ pub async fn update_profile(
     profile_id: String,
     name: String,
     avatar: Option<String>,
+    current_pin: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<UserProfile, ApiError> {
     timed("update_profile", async {
         ProfileService::new(pool.inner())
-            .update(&profile_id, &name, avatar)
+            .update(&profile_id, &name, avatar, current_pin.as_deref())
             .await
     })
     .await
@@ -87,10 +88,13 @@ pub async fn update_profile(
 #[tauri::command]
 pub async fn remove_profile(
     profile_id: String,
+    current_pin: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<(), ApiError> {
     timed("remove_profile", async {
-        ProfileService::new(pool.inner()).remove(&profile_id).await
+        ProfileService::new(pool.inner())
+            .remove(&profile_id, current_pin.as_deref())
+            .await
     })
     .await
 }
@@ -99,11 +103,12 @@ pub async fn remove_profile(
 pub async fn set_profile_pin(
     profile_id: String,
     pin: String,
+    current_pin: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<UserProfile, ApiError> {
     timed("set_profile_pin", async {
         ProfileService::new(pool.inner())
-            .set_pin(&profile_id, &pin)
+            .set_pin(&profile_id, &pin, current_pin.as_deref())
             .await
     })
     .await
@@ -112,11 +117,12 @@ pub async fn set_profile_pin(
 #[tauri::command]
 pub async fn clear_profile_pin(
     profile_id: String,
+    current_pin: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<UserProfile, ApiError> {
     timed("clear_profile_pin", async {
         ProfileService::new(pool.inner())
-            .clear_pin(&profile_id)
+            .clear_pin(&profile_id, current_pin.as_deref())
             .await
     })
     .await
@@ -227,6 +233,7 @@ mod tests {
             created.id,
             "Alexandra".to_string(),
             Some("cat".to_string()),
+            None,
             state,
         )
         .await
@@ -241,7 +248,11 @@ mod tests {
         let app = tauri::test::mock_app();
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
-        assert!(remove_profile("default".to_string(), state).await.is_err());
+        assert!(
+            remove_profile("default".to_string(), None, state)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -254,7 +265,7 @@ mod tests {
             .await
             .unwrap();
 
-        let with_pin = set_profile_pin(created.id.clone(), "4242".to_string(), state.clone())
+        let with_pin = set_profile_pin(created.id.clone(), "4242".to_string(), None, state.clone())
             .await
             .unwrap();
         assert!(with_pin.has_pin);
@@ -270,9 +281,10 @@ mod tests {
                 .unwrap()
         );
 
-        let cleared = clear_profile_pin(created.id.clone(), state.clone())
-            .await
-            .unwrap();
+        let cleared =
+            clear_profile_pin(created.id.clone(), Some("4242".to_string()), state.clone())
+                .await
+                .unwrap();
         assert!(!cleared.has_pin);
     }
 
@@ -286,7 +298,7 @@ mod tests {
             .await
             .unwrap();
         assert!(
-            set_profile_pin(created.id, "12".to_string(), state)
+            set_profile_pin(created.id, "12".to_string(), None, state)
                 .await
                 .is_err()
         );

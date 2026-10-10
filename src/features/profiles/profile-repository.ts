@@ -46,24 +46,34 @@ export const profileRepository = {
     return invokeTypedCommand(profileCommands.resolveForSupabaseUser, { supabaseUserId });
   },
 
-  async update(profileId: string, name: string, avatar?: string | null): Promise<UserProfile> {
-    return invokeTypedCommand(profileCommands.update, { profileId, name, avatar: avatar ?? null });
+  async update(
+    profileId: string,
+    name: string,
+    avatar?: string | null,
+    currentPin?: string | null
+  ): Promise<UserProfile> {
+    return invokeTypedCommand(profileCommands.update, {
+      profileId,
+      name,
+      avatar: avatar ?? null,
+      currentPin: currentPin ?? null,
+    });
   },
 
-  async setPin(profileId: string, pin: string): Promise<UserProfile> {
-    return invokeTypedCommand(profileCommands.setPin, { profileId, pin });
+  async setPin(profileId: string, pin: string, currentPin?: string | null): Promise<UserProfile> {
+    return invokeTypedCommand(profileCommands.setPin, { profileId, pin, currentPin: currentPin ?? null });
   },
 
-  async clearPin(profileId: string): Promise<UserProfile> {
-    return invokeTypedCommand(profileCommands.clearPin, { profileId });
+  async clearPin(profileId: string, currentPin?: string | null): Promise<UserProfile> {
+    return invokeTypedCommand(profileCommands.clearPin, { profileId, currentPin: currentPin ?? null });
   },
 
   async verifyPin(profileId: string, pin: string): Promise<boolean> {
     return invokeTypedCommand(profileCommands.verifyPin, { profileId, pin });
   },
 
-  async remove(profileId: string): Promise<void> {
-    await invokeTypedCommand(profileCommands.remove, { profileId });
+  async remove(profileId: string, currentPin?: string | null): Promise<void> {
+    await invokeTypedCommand(profileCommands.remove, { profileId, currentPin: currentPin ?? null });
 
     const preferences = await preferencesRepository.getPreferences();
     if (preferences.activeProfileId === profileId) {

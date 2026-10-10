@@ -3,8 +3,9 @@ use sqlx::SqlitePool;
 
 use super::models::UserPreferences;
 use super::repository::{PreferencesCache, get_preferences_cached, write_preference};
+use crate::database::current_profile_id;
 use crate::error::ApiError;
-use crate::profiles::get_by_id_impl;
+use crate::profiles::{authorize_pin_protected_access, get_by_id_impl};
 
 pub(super) struct PreferencesService<'a> {
     pool: &'a SqlitePool,
@@ -69,6 +70,7 @@ impl<'a> PreferencesService<'a> {
         &self,
         profile_id: &str,
         supabase_user_id: Option<&str>,
+        pin: Option<&str>,
     ) -> Result<UserPreferences, ApiError> {
         let owner = get_by_id_impl(self.pool, profile_id).await?;
         let Some(owner) = owner else {
@@ -76,12 +78,26 @@ impl<'a> PreferencesService<'a> {
         };
 
         if profile_id != "default"
-            && let Some(required) = owner.supabase_user_id
+            && let Some(required) = &owner.supabase_user_id
             && supabase_user_id != Some(required.as_str())
         {
             return Err(ApiError::forbidden(
                 "This profile requires signing in with the account it's linked to.",
             ));
+        }
+
+        // Two cases skip the PIN: a profile linked to an account, whose
+        // owner was just checked above (the account is the lock there), and
+        // the fallback to "default" after the active profile was deleted —
+        // without it, removing the active profile would leave
+        // activeProfileId pointing at a row that no longer exists.
+        let linked_and_proven = profile_id != "default" && owner.supabase_user_id.is_some();
+        let active_was_removed = profile_id == "default"
+            && get_by_id_impl(self.pool, &current_profile_id(self.pool).await?)
+                .await?
+                .is_none();
+        if !linked_and_proven && !active_was_removed {
+            authorize_pin_protected_access(self.pool, profile_id, pin).await?;
         }
 
         write_preference(

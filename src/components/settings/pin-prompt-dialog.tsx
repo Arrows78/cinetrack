@@ -10,7 +10,8 @@ export interface PinPromptDialogProps {
   profileName: string;
   onOpenChange: (open: boolean) => void;
   onVerify: (pin: string) => Promise<boolean>;
-  onSuccess: () => void;
+  /** Receives the verified PIN — the Rust command the caller runs next needs it too. */
+  onSuccess: (pin: string) => void;
 }
 
 /**
@@ -37,8 +38,9 @@ export function PinPromptDialog({ open, profileName, onOpenChange, onVerify, onS
     try {
       const ok = await onVerify(pin);
       if (ok) {
+        const verifiedPin = pin;
         reset();
-        onSuccess();
+        onSuccess(verifiedPin);
       } else {
         setError(true);
         setPin("");

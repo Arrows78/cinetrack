@@ -11,6 +11,8 @@ type UpdatePreferenceArgs = {
 type SetActiveProfileArgs = {
   profileId: string;
   supabaseUserId: string | null;
+  // Required to switch into a PIN-protected profile (checked in Rust).
+  pin: string | null;
 };
 
 export const preferencesCommands = {

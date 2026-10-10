@@ -9,4 +9,4 @@ pub use commands::{
     resolve_profile_for_supabase_user, set_profile_pin, update_profile, verify_profile_pin,
 };
 pub(crate) use models::{ProfileRow, UserProfile};
-pub(crate) use repository::get_by_id_impl;
+pub(crate) use repository::{authorize_pin_protected_access, get_by_id_impl};

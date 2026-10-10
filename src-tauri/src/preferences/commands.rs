@@ -40,12 +40,13 @@ pub async fn update_preference(
 pub async fn set_active_profile(
     profile_id: String,
     supabase_user_id: Option<String>,
+    pin: Option<String>,
     pool: State<'_, SqlitePool>,
     cache: State<'_, PreferencesCache>,
 ) -> Result<UserPreferences, ApiError> {
     timed("set_active_profile", async {
         PreferencesService::new(pool.inner(), cache.inner())
-            .set_active_profile(&profile_id, supabase_user_id.as_deref())
+            .set_active_profile(&profile_id, supabase_user_id.as_deref(), pin.as_deref())
             .await
     })
     .await
@@ -147,10 +148,80 @@ mod tests {
         let pool_state: State<'_, SqlitePool> = app.state();
         let cache_state: State<'_, PreferencesCache> = app.state();
 
-        let updated = set_active_profile("alex".to_string(), None, pool_state, cache_state)
+        let updated = set_active_profile("alex".to_string(), None, None, pool_state, cache_state)
             .await
             .unwrap();
         assert_eq!(updated.active_profile_id, "alex");
+    }
+
+    #[tokio::test]
+    async fn set_active_profile_refuses_a_pin_locked_profile_without_its_pin() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, pin_hash, pin_salt, created_at, updated_at)
+             VALUES ('alex', 'Alex', 'not-a-real-hash', 'salt', 'now', 'now')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        app.manage(PreferencesCache::default());
+
+        for pin in [None, Some("0000".to_string())] {
+            let pool_state: State<'_, SqlitePool> = app.state();
+            let cache_state: State<'_, PreferencesCache> = app.state();
+            let error = set_active_profile("alex".to_string(), None, pin, pool_state, cache_state)
+                .await
+                .unwrap_err();
+            assert_eq!(error.status, Some(403));
+        }
+    }
+
+    #[tokio::test]
+    async fn pin_lock_does_not_block_the_fallback_to_default_or_a_proven_linked_account() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "UPDATE profiles SET pin_hash = 'h', pin_salt = 's' WHERE uuid = 'default';
+             INSERT INTO profiles (uuid, name, supabase_user_id, pin_hash, pin_salt, created_at, updated_at)
+             VALUES ('alex', 'Alex', 'user_2abc', 'h', 's', 'now', 'now');
+             INSERT INTO preferences (key, value, updated_at) VALUES ('activeProfileId', '\"gone\"', 'now');",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        app.manage(PreferencesCache::default());
+
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache_state: State<'_, PreferencesCache> = app.state();
+        let updated = set_active_profile("default".to_string(), None, None, pool_state, cache_state)
+            .await
+            .unwrap();
+        assert_eq!(updated.active_profile_id, "default");
+
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache_state: State<'_, PreferencesCache> = app.state();
+        let updated = set_active_profile(
+            "alex".to_string(),
+            Some("user_2abc".to_string()),
+            None,
+            pool_state,
+            cache_state,
+        )
+        .await
+        .unwrap();
+        assert_eq!(updated.active_profile_id, "alex");
+
+        // Default is now locked and the active profile still exists.
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache_state: State<'_, PreferencesCache> = app.state();
+        assert!(
+            set_active_profile("default".to_string(), None, None, pool_state, cache_state)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -166,7 +237,7 @@ mod tests {
         let pool_state: State<'_, SqlitePool> = app.state();
         let cache_state: State<'_, PreferencesCache> = app.state();
 
-        let updated = set_active_profile("alex".to_string(), None, pool_state, cache_state)
+        let updated = set_active_profile("alex".to_string(), None, None, pool_state, cache_state)
             .await
             .unwrap();
         assert_eq!(updated.active_profile_id, "alex");
@@ -182,7 +253,7 @@ mod tests {
         let cache_state: State<'_, PreferencesCache> = app.state();
 
         assert!(
-            set_active_profile("ghost".to_string(), None, pool_state, cache_state)
+            set_active_profile("ghost".to_string(), None, None, pool_state, cache_state)
                 .await
                 .is_err()
         );
@@ -205,7 +276,7 @@ mod tests {
         let pool_state: State<'_, SqlitePool> = app.state();
         let cache_state: State<'_, PreferencesCache> = app.state();
         assert!(
-            set_active_profile("alex".to_string(), None, pool_state, cache_state)
+            set_active_profile("alex".to_string(), None, None, pool_state, cache_state)
                 .await
                 .is_err()
         );
@@ -216,6 +287,7 @@ mod tests {
             set_active_profile(
                 "alex".to_string(),
                 Some("someone-else".to_string()),
+                None,
                 pool_state,
                 cache_state
             )
@@ -243,6 +315,7 @@ mod tests {
         let updated = set_active_profile(
             "alex".to_string(),
             Some("user_2abc".to_string()),
+            None,
             pool_state,
             cache_state,
         )
@@ -264,9 +337,10 @@ mod tests {
         let pool_state: State<'_, SqlitePool> = app.state();
         let cache_state: State<'_, PreferencesCache> = app.state();
 
-        let updated = set_active_profile("default".to_string(), None, pool_state, cache_state)
-            .await
-            .unwrap();
+        let updated =
+            set_active_profile("default".to_string(), None, None, pool_state, cache_state)
+                .await
+                .unwrap();
         assert_eq!(updated.active_profile_id, "default");
     }
 

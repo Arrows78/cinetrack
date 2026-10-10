@@ -143,7 +143,7 @@ describe("SettingsPage — local profile management", () => {
 
     screen.getByText("Alex").click();
 
-    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id"));
+    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id", null, null));
   });
 
   it("offline mode: switching into a PIN-protected profile prompts for the PIN first, and unlocks on a correct one", async () => {
@@ -163,7 +163,8 @@ describe("SettingsPage — local profile management", () => {
     screen.getByRole("button", { name: "Unlock" }).click();
 
     await waitFor(() => expect(verifyProfilePinMock).toHaveBeenCalledWith("alex-id", "4242"));
-    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id"));
+    // The verified PIN rides along: Rust refuses the switch without it.
+    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id", null, "4242"));
   });
 
   it("offline mode: an incorrect PIN shows an inline error and never switches", async () => {
@@ -226,7 +227,7 @@ describe("SettingsPage — local profile management", () => {
     fireEvent.click(within(editForm).getByRole("button", { name: "Cat" }));
     fireEvent.click(within(editForm).getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(updateProfileMock).toHaveBeenCalledWith("alex-id", "Alexandra", "cat"));
+    await waitFor(() => expect(updateProfileMock).toHaveBeenCalledWith("alex-id", "Alexandra", "cat", null));
   });
 
   it("offline mode: sets a PIN on a profile from the inline edit form", async () => {
@@ -247,7 +248,7 @@ describe("SettingsPage — local profile management", () => {
     fireEvent.change(pinInput, { target: { value: "1234" } });
     fireEvent.click(within(pinInput.parentElement as HTMLElement).getByRole("button", { name: "Set PIN" }));
 
-    await waitFor(() => expect(setProfilePinMock).toHaveBeenCalledWith("alex-id", "1234"));
+    await waitFor(() => expect(setProfilePinMock).toHaveBeenCalledWith("alex-id", "1234", null));
   });
 
   it("offline mode: shows a loading spinner on the create-profile button while the mutation is pending", async () => {
@@ -289,7 +290,7 @@ describe("SettingsPage — local profile management", () => {
     expect(removeProfileMock).not.toHaveBeenCalled();
     dialogConfirm.click();
 
-    await waitFor(() => expect(removeProfileMock).toHaveBeenCalledWith("alex-id"));
+    await waitFor(() => expect(removeProfileMock).toHaveBeenCalledWith("alex-id", null));
   });
 
   it("auth-required mode: shows only the active profile, read-only, no switcher", async () => {

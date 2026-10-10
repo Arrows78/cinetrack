@@ -20,14 +20,19 @@ type LinkProfileArgs = {
   supabaseUserId: string;
 };
 
+// `currentPin` unlocks a PIN-protected profile that isn't the active one —
+// the Rust commands refuse to touch it otherwise (see
+// authorize_pin_protected_access in profiles/repository.rs).
 type RemoveProfileArgs = {
   profileId: string;
+  currentPin: string | null;
 };
 
 type UpdateProfileArgs = {
   profileId: string;
   name: string;
   avatar: string | null;
+  currentPin: string | null;
 };
 
 type ProfilePinArgs = {
@@ -35,8 +40,13 @@ type ProfilePinArgs = {
   pin: string;
 };
 
+type SetProfilePinArgs = ProfilePinArgs & {
+  currentPin: string | null;
+};
+
 type ClearProfilePinArgs = {
   profileId: string;
+  currentPin: string | null;
 };
 
 export const profileCommands = {
@@ -47,7 +57,7 @@ export const profileCommands = {
   resolveForSupabaseUser: defineCommand<SupabaseUserArgs, UserProfile | null>("resolve_profile_for_supabase_user"),
   update: defineCommand<UpdateProfileArgs, UserProfile>("update_profile"),
   remove: defineCommand<RemoveProfileArgs, void>("remove_profile"),
-  setPin: defineCommand<ProfilePinArgs, UserProfile>("set_profile_pin"),
+  setPin: defineCommand<SetProfilePinArgs, UserProfile>("set_profile_pin"),
   clearPin: defineCommand<ClearProfilePinArgs, UserProfile>("clear_profile_pin"),
   verifyPin: defineCommand<ProfilePinArgs, boolean>("verify_profile_pin"),
 } as const;

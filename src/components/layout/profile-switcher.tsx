@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Lock } from "lucide-react";
+import { PinPromptDialog } from "@/components/settings/pin-prompt-dialog";
 import { Badge } from "@/components/ui/badge";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -11,6 +12,7 @@ import { useAuth } from "@/features/auth/use-auth";
 import { logger } from "@/shared/lib/logger";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useProfiles, useProfileSwitching } from "@/features/profiles/use-profiles";
+import type { UserProfile } from "@/types/media";
 import { cn } from "@/shared/lib/cn";
 
 // Profile switcher for the persistent nav chrome, so switching doesn't
@@ -36,6 +38,13 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
   // See useProfileSwitching's own doc comment for why a free switcher here
   // is safe (only ever offered when auth isn't required, below).
   const { switchingProfileId, switchToProfile } = useProfileSwitching(() => setOpen(false));
+  // Same PIN prompt as the Settings switcher — this one used to switch
+  // straight into a PIN-protected profile. Rust now refuses that anyway.
+  const [pinPromptProfile, setPinPromptProfile] = useState<UserProfile | null>(null);
+  const requestSwitch = (profile: UserProfile) => {
+    if (profile.hasPin) setPinPromptProfile(profile);
+    else void switchToProfile(profile.id);
+  };
 
   const activeProfileId = preferences?.activeProfileId;
   const currentProfile = profiles.data?.find((profile) => profile.id === activeProfileId);
@@ -111,11 +120,17 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
                     type="button"
                     className="flex w-full items-center justify-between gap-3 text-left text-body-sm font-medium disabled:cursor-default"
                     disabled={isActive || switchingProfileId !== null}
-                    onClick={() => void switchToProfile(profile.id)}
+                    onClick={() => requestSwitch(profile)}
                   >
                     <span className="flex min-w-0 items-center gap-2.5">
                       <ProfileAvatar name={label ?? "?"} avatar={profile.avatar} className="size-7 text-caption" />
                       <span className="truncate">{label}</span>
+                      {profile.hasPin ? (
+                        <Lock
+                          className="size-3.5 shrink-0 text-muted-foreground"
+                          aria-label={t("settings.profiles.pin.locked")}
+                        />
+                      ) : null}
                     </span>
                     {isActive ? (
                       <Badge variant="success" className="gap-1">
@@ -130,6 +145,19 @@ export function ProfileSwitcher({ collapsed = false, children }: { collapsed?: b
           )}
         </div>
       </SheetContent>
+      <PinPromptDialog
+        open={pinPromptProfile !== null}
+        profileName={
+          pinPromptProfile?.id === "default" ? t("settings.profiles.defaultName") : (pinPromptProfile?.name ?? "")
+        }
+        onOpenChange={(next) => !next && setPinPromptProfile(null)}
+        onVerify={(pin) => profiles.verifyPin(pinPromptProfile!.id, pin)}
+        onSuccess={(pin) => {
+          const target = pinPromptProfile;
+          setPinPromptProfile(null);
+          if (target) void switchToProfile(target.id, pin);
+        }}
+      />
     </Sheet>
   );
 }

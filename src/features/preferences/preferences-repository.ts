@@ -74,10 +74,15 @@ export const preferencesRepository = {
   // the generic updatePreference above. See set_active_profile_impl's own
   // doc comment (src-tauri/src/preferences/) for what
   // supabaseUserId does and doesn't prove.
-  async setActiveProfile(profileId: string, supabaseUserId?: string | null): Promise<UserPreferences> {
+  async setActiveProfile(
+    profileId: string,
+    supabaseUserId?: string | null,
+    pin?: string | null
+  ): Promise<UserPreferences> {
     return invokeTypedCommand(preferencesCommands.setActiveProfile, {
       profileId,
       supabaseUserId: supabaseUserId ?? null,
+      pin: pin ?? null,
     });
   },
 

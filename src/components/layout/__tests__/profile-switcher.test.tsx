@@ -21,9 +21,11 @@ const warnMock = vi.fn();
 vi.mock("@/shared/lib/logger", () => ({ logger: { warn: (...args: unknown[]) => warnMock(...args) } }));
 
 const listProfilesMock = vi.fn();
+const verifyPinMock = vi.fn();
 vi.mock("@/features/profiles/profile-repository", () => ({
   profileRepository: {
     list: (...args: unknown[]) => listProfilesMock(...args),
+    verifyPin: (...args: unknown[]) => verifyPinMock(...args),
     create: vi.fn(),
     remove: vi.fn(),
   },
@@ -101,7 +103,24 @@ describe("ProfileSwitcher", () => {
     expect(await screen.findByText("Alex")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Alex"));
 
-    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id"));
+    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id", null, null));
+  });
+
+  it("offline mode: asks for the PIN before switching into a PIN-protected profile", async () => {
+    listProfilesMock.mockResolvedValue([
+      { id: "default", name: "Default", avatar: null, createdAt: "2026-01-01", supabaseUserId: null },
+      { id: "alex-id", name: "Alex", avatar: null, createdAt: "2026-01-02", supabaseUserId: null, hasPin: true },
+    ]);
+    verifyPinMock.mockResolvedValueOnce(true);
+    renderSwitcher();
+    fireEvent.click(await screen.findByRole("button", { name: "Switch profile" }));
+    fireEvent.click(await screen.findByText("Alex"));
+
+    expect(setActiveProfileMock).not.toHaveBeenCalled();
+    fireEvent.change(await screen.findByLabelText("PIN"), { target: { value: "4242" } });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+
+    await waitFor(() => expect(setActiveProfileMock).toHaveBeenCalledWith("alex-id", null, "4242"));
   });
 
   it("offline mode: marks the current profile active and disables switching into it", async () => {
