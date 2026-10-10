@@ -79,8 +79,8 @@ vi.mock("@/shared/lib/platform", () => ({
   isMacOs: () => false,
 }));
 
-let mockCommandPaletteShortcut = "mod+k";
-let mockGlobalCommandPaletteShortcut = "mod+shift+k";
+let mockCommandPaletteShortcut: string | undefined = "mod+k";
+let mockGlobalCommandPaletteShortcut: string | undefined = "mod+shift+k";
 let mockBackupFrequency: "daily" | "weekly" | "off" | undefined = "daily";
 const updatePreferenceMock = vi.fn();
 vi.mock("@/features/preferences/use-preferences", () => ({
@@ -406,6 +406,33 @@ describe("DesktopSettings", () => {
 
       expect(await screen.findByText("Couldn't update the shortcut. Try again.")).toBeInTheDocument();
       expect(updateGlobalShortcutMock).toHaveBeenLastCalledWith("mod+shift+k");
+    });
+
+    it("logs, and still reports the failure, when the previous system-wide shortcut can't be put back either", async () => {
+      updatePreferenceMock.mockRejectedValueOnce(new Error("preferences boom"));
+      updateGlobalShortcutMock.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("restore refused"));
+      render(<DesktopSettings />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Palette (system-wide)" }));
+      fireEvent.keyDown(screen.getByRole("button", { name: "Press a key combo…" }), {
+        key: "j",
+        ctrlKey: true,
+        shiftKey: true,
+      });
+
+      expect(await screen.findByText("Couldn't update the shortcut. Try again.")).toBeInTheDocument();
+      expect(loggerWarnMock).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to restore the previous global shortcut: restore refused")
+      );
+    });
+
+    it("falls back to the default shortcuts when the preferences don't carry them", () => {
+      mockCommandPaletteShortcut = undefined;
+      mockGlobalCommandPaletteShortcut = undefined;
+      render(<DesktopSettings />);
+
+      expect(screen.getByRole("button", { name: "Palette (in window)" })).toHaveTextContent("Ctrl+K");
+      expect(screen.getByRole("button", { name: "Palette (system-wide)" })).toHaveTextContent("Ctrl+Shift+K");
     });
 
     it("resets a non-default global shortcut to its default", async () => {

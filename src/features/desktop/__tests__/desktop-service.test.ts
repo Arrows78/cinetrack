@@ -325,6 +325,16 @@ describe("desktopService.initialize", () => {
       expect(registerMock).not.toHaveBeenCalled();
     });
 
+    it("warns but still succeeds when the previous shortcut can't be released afterwards", async () => {
+      await desktopService.initialize();
+      const error = new Error("release refused");
+      unregisterMock.mockRejectedValueOnce(error);
+
+      await expect(desktopService.updateGlobalShortcut("mod+shift+j")).resolves.toBeUndefined();
+
+      expect(warnSpy).toHaveBeenCalledWith("Previous global shortcut could not be released", error);
+    });
+
     it("registers the new shortcut before releasing the old one", async () => {
       await desktopService.initialize();
       const order: string[] = [];
