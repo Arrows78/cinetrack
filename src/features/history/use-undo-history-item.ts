@@ -1,10 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { libraryRepository } from "@/features/library/library-repository";
 import { libraryInvalidationKeys } from "@/features/library/use-library";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
+import { UserFacingError } from "@/shared/lib/user-facing-error";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { ViewingHistoryItem } from "@/types/media";
 
@@ -32,6 +34,7 @@ export function isHistoryItemUndoable(item: ViewingHistoryItem): boolean {
  * toggle, a library re-add) instead of ever sending a partial stand-in.
  */
 export function useUndoHistoryItem() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const profileId = useActiveProfileId();
 
@@ -47,9 +50,13 @@ export function useUndoHistoryItem() {
           await progressRepository.toggleMovieSeen(movie, item.action === "movie:unwatched");
           return;
         }
-        case "watchlist:add":
-          await libraryRepository.remove(item.mediaId, item.mediaType);
+        case "watchlist:add": {
+          // Only while it's still "to watch": an add undone after the title
+          // was rated, noted or finished would delete all of that with it.
+          const removed = await libraryRepository.removeIfPlanned(item.mediaId, item.mediaType);
+          if (!removed) throw new UserFacingError(t("history.undoKeptLibraryItem"));
           return;
+        }
         case "watchlist:remove": {
           const media =
             item.mediaType === "movie"
@@ -71,6 +78,16 @@ export function useUndoHistoryItem() {
           throw new Error(`History action "${item.action}" cannot be undone.`);
       }
     },
-    [queryKeys.local.history(profileId), ...libraryInvalidationKeys(profileId)]
+    (_data, item) => [
+      queryKeys.local.history(profileId),
+      ...libraryInvalidationKeys(profileId),
+      // A movie toggle also moves the title's own seen state and watch log.
+      ...(item.mediaType === "movie"
+        ? [
+            queryKeys.local.movieSeen(profileId, item.mediaId),
+            queryKeys.local.viewingEventsForMedia(profileId, "movie", item.mediaId),
+          ]
+        : []),
+    ]
   );
 }

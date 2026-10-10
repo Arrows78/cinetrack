@@ -3,12 +3,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import type { Movie, Series, ViewingHistoryItem } from "@/types/media";
+import { UserFacingError } from "@/shared/lib/user-facing-error";
+import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 
-const removeMock = vi.fn().mockResolvedValue(undefined);
+const removeIfPlannedMock = vi.fn().mockResolvedValue(true);
 const saveMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
-    remove: (...args: unknown[]) => removeMock(...args),
+    removeIfPlanned: (...args: unknown[]) => removeIfPlannedMock(...args),
     save: (...args: unknown[]) => saveMock(...args),
   },
 }));
@@ -93,7 +95,7 @@ describe("isHistoryItemUndoable", () => {
 
 describe("useUndoHistoryItem", () => {
   beforeEach(() => {
-    removeMock.mockClear();
+    removeIfPlannedMock.mockReset().mockResolvedValue(true);
     saveMock.mockClear();
     getMovieDetailsMock.mockReset().mockResolvedValue(buildMovie());
     getSeriesDetailsMock.mockReset().mockResolvedValue(buildSeries());
@@ -123,7 +125,7 @@ describe("useUndoHistoryItem", () => {
     expect(toggleMovieSeenMock).toHaveBeenCalledWith(buildMovie(), true);
   });
 
-  it("undoing a watchlist:add entry removes the title from the library, with no catalogue fetch", async () => {
+  it("undoing a watchlist:add entry removes the title only while it's still planned, with no catalogue fetch", async () => {
     const { useUndoHistoryItem } = await import("../use-undo-history-item");
     const { result } = renderHook(() => useUndoHistoryItem(), { wrapper: createWrapper() });
 
@@ -131,8 +133,38 @@ describe("useUndoHistoryItem", () => {
       await result.current.mutateAsync(makeHistoryItem({ mediaId: 42, mediaType: "movie", action: "watchlist:add" }));
     });
 
-    expect(removeMock).toHaveBeenCalledWith(42, "movie");
+    expect(removeIfPlannedMock).toHaveBeenCalledWith(42, "movie");
     expect(getMovieDetailsMock).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the movie's own seen state after undoing a movie toggle", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { useUndoHistoryItem } = await import("../use-undo-history-item");
+    const { result } = renderHook(() => useUndoHistoryItem(), {
+      wrapper: ({ children }: PropsWithChildren) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(makeHistoryItem({ mediaId: 42, mediaType: "movie", action: "movie:watched" }));
+    });
+
+    const keys = invalidateSpy.mock.calls.map(([filters]) => filters?.queryKey);
+    expect(keys).toContainEqual(["local", "movieSeen", DEFAULT_PROFILE_ID, 42]);
+  });
+
+  it("keeps a title that moved past planned and says so with a translated message", async () => {
+    removeIfPlannedMock.mockResolvedValueOnce(false);
+    const { useUndoHistoryItem } = await import("../use-undo-history-item");
+    const { result } = renderHook(() => useUndoHistoryItem(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync(makeHistoryItem({ mediaId: 42, mediaType: "movie", action: "watchlist:add" }))
+      ).rejects.toBeInstanceOf(UserFacingError);
+    });
   });
 
   it("undoing a watchlist:remove entry re-fetches the real title before re-adding it, for a movie", async () => {

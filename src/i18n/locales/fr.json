@@ -264,6 +264,7 @@
     "filterFromDate": "Depuis le",
     "filterToDate": "Jusqu'au",
     "undo": "Annuler",
+    "undoKeptLibraryItem": "Ce titre n'est plus « à voir » depuis son ajout : il a été conservé dans votre bibliothèque.",
     "seriesInProgress": "Séries en cours",
     "seriesInProgressSubtitle": "Votre progression locale.",
     "noActivity": "Aucune activité",

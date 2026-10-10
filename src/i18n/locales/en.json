@@ -264,6 +264,7 @@
     "filterFromDate": "From date",
     "filterToDate": "To date",
     "undo": "Undo",
+    "undoKeptLibraryItem": "This title has moved past \"to watch\" since it was added, so it was kept in your library.",
     "seriesInProgress": "Series in progress",
     "seriesInProgressSubtitle": "Your local progress on followed series.",
     "noActivity": "No activity yet",
