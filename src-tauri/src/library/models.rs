@@ -158,6 +158,10 @@ pub struct MediaSummaryInput {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "export-bindings", ts(export))]
 pub struct LibraryItem {
+    // The backup schema (portable-data-schema.ts) strips `id` from library
+    // rows — a restore never reuses it, `import_impl` generates a fresh uuid —
+    // so it must be allowed to be absent when a backup is deserialized.
+    #[serde(default)]
     pub id: String,
     pub profile_id: String,
     pub media_id: i64,

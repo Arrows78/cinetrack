@@ -19,6 +19,9 @@ pub struct UserProfile {
     /// Derived from `ProfileRow.pin_hash` — whether this profile has an
     /// optional PIN lock set. The hash/salt themselves never leave the
     /// backend (see `ProfileRow`), only this boolean.
+    // Absent in backups written before PIN locks existed (and optional in the
+    // frontend's backup schema); never restored anyway, see `import_impl`.
+    #[serde(default)]
     pub has_pin: bool,
 }
 

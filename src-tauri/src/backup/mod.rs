@@ -3,6 +3,8 @@ mod export;
 mod filesystem;
 mod import;
 mod integrity;
+#[cfg(test)]
+mod payload_contract_tests;
 mod repository;
 #[cfg(test)]
 mod round_trip_tests;
