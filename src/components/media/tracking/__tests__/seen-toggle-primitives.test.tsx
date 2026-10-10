@@ -122,6 +122,25 @@ describe("SeenToggleButton", () => {
     vi.restoreAllMocks();
   });
 
+  it("doesn't let a click on it reach an enclosing link (a row that is itself a link)", () => {
+    const onLinkClick = vi.fn((event: React.MouseEvent) => event.preventDefault());
+    const onToggle = vi.fn();
+    render(
+      <a href="/series/1/season/1" onClick={onLinkClick}>
+        <SeenToggleButton isSaving={false} onToggle={onToggle} seen={false} />
+      </a>
+    );
+
+    const event = fireEvent.click(screen.getByRole("button", { name: "Mark watched" }));
+
+    // Checking an episode off from a tracking row must not also open the
+    // season page behind it.
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onLinkClick).not.toHaveBeenCalled();
+    // fireEvent returns false when the click was default-prevented.
+    expect(event).toBe(false);
+  });
+
   it("shows the spinner and disables the button while isSaving", () => {
     const { container } = render(<SeenToggleButton isSaving onToggle={vi.fn()} seen={false} />);
 

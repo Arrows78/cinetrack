@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, LoaderCircle } from "lucide-react";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -50,7 +50,11 @@ export function SeenToggleButton({
   const [justChecked, setJustChecked] = useState(false);
   const label = disabled && disabledLabel ? disabledLabel : seen ? t("media.markUnseen") : t("media.markSeen");
 
-  const handleClick = async () => {
+  // Rendered inside link rows too (see TrackingEntryRow): without stopping
+  // the click here it would also follow the enclosing link.
+  const handleClick = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     setJustChecked(true);
     try {
       await onToggle();
@@ -64,7 +68,7 @@ export function SeenToggleButton({
       <button
         type="button"
         disabled={isSaving || disabled}
-        onClick={() => void handleClick()}
+        onClick={(event) => void handleClick(event)}
         aria-label={label}
         aria-pressed={seen}
         className={cn(
