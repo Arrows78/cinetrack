@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -7,6 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { EpisodeCard } from "@/components/media/tracking/episode-card";
+import { ConfirmUnmarkDialog } from "@/components/media/tracking/confirm-unmark-dialog";
 import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
 import { useConfetti } from "@/hooks/use-confetti";
 import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
@@ -94,13 +95,20 @@ export function SeasonAccordion({
     // produces.
   }, []);
 
-  const celebrateIfSeasonCompletes = (season: Season, newlyWatchedCount: number) => {
+  // Counts only the episodes that belong to `season` and aren't watched yet:
+  // a catch-up can also carry episodes of earlier seasons (see the backlog
+  // prompt below), which say nothing about whether this one just completed.
+  const celebrateIfSeasonCompletes = (season: Season, newlyWatched: Episode[]) => {
     const airedEpisodes = season.episodes.filter(hasAired);
     const alreadyWatched = airedEpisodes.filter((ep) => watchedSet.has(ep.id)).length;
-    if (alreadyWatched + newlyWatchedCount === airedEpisodes.length) {
+    const newlyWatchedHere = newlyWatched.filter(
+      (ep) => ep.seasonNumber === season.seasonNumber && hasAired(ep) && !watchedSet.has(ep.id)
+    ).length;
+    if (airedEpisodes.length > 0 && alreadyWatched + newlyWatchedHere === airedEpisodes.length) {
       setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
     }
   };
+  const [seasonToUnmark, setSeasonToUnmark] = useState<Season | null>(null);
 
   // Marking an episode watched can, via useEpisodeSeenBacklogPrompt, ask the
   // user whether to also catch up still-unwatched earlier episodes of the
@@ -109,11 +117,11 @@ export function SeasonAccordion({
   // that prompt, rather than reading it from a stale closure.
   const backlog = useEpisodeSeenBacklogPrompt<Season>({
     onMarkOne: (episode, watched, note, season) => {
-      if (watched) celebrateIfSeasonCompletes(season, 1);
+      if (watched) celebrateIfSeasonCompletes(season, [episode]);
       void onToggleEpisode(episode, watched, note);
     },
     onMarkMany: (episodes, target, season) => {
-      celebrateIfSeasonCompletes(season, episodes.length);
+      celebrateIfSeasonCompletes(season, episodes);
       void onToggleEpisodes(episodes, target);
     },
   });
@@ -175,11 +183,16 @@ export function SeasonAccordion({
                     variant={isComplete ? "outline" : "secondary"}
                     size="sm"
                     onClick={() => {
-                      const newWatched = !isComplete;
-                      void onToggleSeason(season, newWatched);
-                      if (newWatched) setTimeout(celebrate, CONFETTI_DELAY_MS);
+                      if (isComplete) {
+                        setSeasonToUnmark(season);
+                        return;
+                      }
+                      void onToggleSeason(season, true);
+                      setTimeout(celebrate, CONFETTI_DELAY_MS);
                     }}
-                    disabled={isSaving}
+                    // Nothing aired yet (an announced season, or one TMDB lists
+                    // with no episodes): marking it would write nothing.
+                    disabled={isSaving || (!isComplete && !seasonProgress?.totalEpisodes)}
                   >
                     <CheckCheck className="h-4 w-4" />
                     {isComplete ? t("series.markSeasonUnseen") : t("series.markSeasonSeen")}
@@ -228,6 +241,16 @@ export function SeasonAccordion({
         })}
       </Accordion>
 
+      <ConfirmUnmarkDialog
+        scope="season"
+        open={seasonToUnmark !== null}
+        onOpenChange={(open) => !open && setSeasonToUnmark(null)}
+        onConfirm={() => {
+          const season = seasonToUnmark;
+          setSeasonToUnmark(null);
+          if (season) void onToggleSeason(season, false);
+        }}
+      />
       <MarkPreviousEpisodesDialog
         open={backlog.prompt !== null}
         onOpenChange={(open) => !open && backlog.dismiss()}

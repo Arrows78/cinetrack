@@ -554,7 +554,12 @@
     "markSeasonSeen": "Mark season as watched",
     "markSeasonUnseen": "Mark season as unwatched",
     "openSeasonPage": "Open season page",
-    "someSeasonsUnavailable": "Some seasons couldn't load, so marking the whole series is disabled until they do."
+    "someSeasonsUnavailable": "Some seasons couldn't load, so marking the whole series is disabled until they do.",
+    "unmarkSeasonConfirmTitle": "Mark this season as unwatched?",
+    "unmarkSeasonConfirmDescription": "Every episode of this season goes back to unwatched. Their own ratings and watch dates are removed; your history keeps a record of the change.",
+    "unmarkSeriesConfirmTitle": "Mark the whole series as unwatched?",
+    "unmarkSeriesConfirmDescription": "Every episode of every season goes back to unwatched. Their own ratings and watch dates are removed; your history keeps a record of the change.",
+    "unmarkConfirm": "Mark as unwatched"
   },
   "stats": {
     "title": "Stats",

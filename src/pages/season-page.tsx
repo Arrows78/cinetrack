@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { EpisodeCard } from "@/components/media/tracking/episode-card";
+import { ConfirmUnmarkDialog } from "@/components/media/tracking/confirm-unmark-dialog";
 import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
 import { Breadcrumbs } from "@/components/media/primitives/breadcrumbs";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
@@ -27,6 +29,7 @@ export function SeasonPage() {
   const seriesQuery = useSeriesDetails(parsedSeriesId);
   const seasonQuery = useSeasonDetails(parsedSeriesId, parsedSeasonNumber);
   const progressQuery = useEpisodeProgress(parsedSeriesId);
+  const [confirmingUnmark, setConfirmingUnmark] = useState(false);
 
   // Called only from the interactive episode list below, which never
   // renders before seriesQuery.data is loaded — the `if (!seriesQuery.data)`
@@ -117,8 +120,14 @@ export function SeasonPage() {
           <div className="flex flex-col gap-2">
             <SeenToggle
               seen={allWatched}
-              disabled={progressQuery.isSaving || progressQuery.isError}
-              onToggle={() => void progressQuery.markSeasonSeen({ series, season, watched: !allWatched })}
+              // Nothing aired yet: marking the season would write nothing.
+              disabled={progressQuery.isSaving || progressQuery.isError || (!allWatched && airedEpisodes.length === 0)}
+              onToggle={() => {
+                // Unwatching deletes each episode's own rating and watch date,
+                // so it asks first (see ConfirmUnmarkDialog).
+                if (allWatched) setConfirmingUnmark(true);
+                else void progressQuery.markSeasonSeen({ series, season, watched: true });
+              }}
               celebrateOnSeen
             />
             {/* progressQuery failing falls back to an empty watched set below,
@@ -192,6 +201,15 @@ export function SeasonPage() {
         )}
       </div>
 
+      <ConfirmUnmarkDialog
+        scope="season"
+        open={confirmingUnmark}
+        onOpenChange={setConfirmingUnmark}
+        onConfirm={() => {
+          setConfirmingUnmark(false);
+          void progressQuery.markSeasonSeen({ series, season, watched: false });
+        }}
+      />
       <MarkPreviousEpisodesDialog
         open={backlog.prompt !== null}
         onOpenChange={(open) => !open && backlog.dismiss()}

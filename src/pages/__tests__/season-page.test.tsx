@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as UseProgressModule from "@/features/progress/use-progress";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -374,6 +374,29 @@ describe("SeasonPage", () => {
     screen.getByTestId("seen-toggle").click();
 
     expect(markSeasonSeenMock).toHaveBeenCalledWith({ series: defaultSeries, season, watched: true });
+  });
+
+  it("asks for confirmation before marking a fully watched season as unwatched", () => {
+    const season = makeSeason("Season One", [episode1, episode2, episode3]);
+    seasonQueryMock.mockReturnValue(makeQuery(season));
+    progressQueryMock.mockReturnValue(makeProgressQuery([1, 2, 3]));
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("seen-toggle"));
+
+    // Unwatching deletes every episode's own rating and watch date.
+    expect(markSeasonSeenMock).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as unwatched" }));
+    expect(markSeasonSeenMock).toHaveBeenCalledTimes(1);
+    expect(markSeasonSeenMock).toHaveBeenCalledWith({ series: defaultSeries, season, watched: false });
+  });
+
+  it("disables the season toggle when nothing in the season has aired yet", () => {
+    const unaired = { ...episode1, airDate: "2999-01-01" };
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [unaired])));
+    renderPage();
+
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
   });
 
   it("clicking an EpisodeCard's toggle calls toggleEpisodeSeen with that episode and its flipped watched state", () => {

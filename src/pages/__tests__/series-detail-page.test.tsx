@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { Episode, EpisodeProgress, Season, Series } from "@/types/media";
@@ -774,5 +774,35 @@ describe("SeriesDetailPage", () => {
     screen.getByTestId("seen-toggle").click();
 
     expect(markSeriesSeenMock).toHaveBeenCalledWith({ series, seasons: [buildSeason()], watched: true });
+  });
+
+  it("asks for confirmation before marking a fully watched series as unwatched", () => {
+    const series = buildSeries();
+    seriesQueryMock.mockReturnValue({ isPending: false, isError: false, error: null, refetch: vi.fn(), data: series });
+    episodeProgressMock.mockReturnValue({
+      data: episodes.map((episode) => ({
+        id: `p${episode.id}`,
+        seriesId: 9,
+        episodeId: episode.id,
+        seasonNumber: 1,
+        episodeNumber: episode.episodeNumber,
+        watched: true,
+        createdAt: "2024-01-15T00:00:00.000Z",
+        updatedAt: "2024-01-15T00:00:00.000Z",
+      })),
+      isSaving: false,
+      toggleEpisodeSeen: toggleEpisodeSeenMock,
+      markSeasonSeen: markSeasonSeenMock,
+      markSeriesSeen: markSeriesSeenMock,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByTestId("seen-toggle"));
+
+    // Unwatching deletes every episode's own rating and watch date.
+    expect(markSeriesSeenMock).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as unwatched" }));
+    expect(markSeriesSeenMock).toHaveBeenCalledTimes(1);
+    expect(markSeriesSeenMock).toHaveBeenCalledWith({ series, seasons: [buildSeason()], watched: false });
   });
 });

@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { makeMedia } from "@/shared/test-utils";
@@ -291,7 +291,7 @@ describe("SeasonAccordion", () => {
     expect(onToggleSeason).toHaveBeenCalledWith(expect.objectContaining({ seasonNumber: 5 }), true);
   });
 
-  it("marks a completed season as unwatched with no confetti", () => {
+  it("asks for confirmation before marking a completed season as unwatched, then does it with no confetti", () => {
     vi.useFakeTimers();
     try {
       const { onToggleSeason } = renderAccordion();
@@ -299,8 +299,60 @@ describe("SeasonAccordion", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Mark season as unwatched" }));
 
+      // Unmarking deletes each episode's own rating and watch date — nothing
+      // happens until the dialog is confirmed.
+      expect(onToggleSeason).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(onToggleSeason).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Mark season as unwatched" }));
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as unwatched" }));
+
+      expect(onToggleSeason).toHaveBeenCalledTimes(1);
       expect(onToggleSeason).toHaveBeenCalledWith(expect.objectContaining({ seasonNumber: 2 }), false);
 
+      vi.advanceTimersByTime(CONFETTI_DELAY_MS);
+      expect(celebrateMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not celebrate a season completion when the catch-up only covered episodes of other seasons", () => {
+    vi.useFakeTimers();
+    try {
+      const { onToggleEpisodes } = renderAccordion();
+      openSeason("Season Three");
+
+      // Catching up S1E3 + S3E2 completes neither season: S3E3 is still unwatched.
+      fireEvent.click(screen.getAllByRole("button", { name: "Mark watched" })[0]!);
+      fireEvent.click(screen.getByRole("button", { name: "This one and the previous one" }));
+
+      expect(onToggleEpisodes).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(CONFETTI_SEASON_COMPLETE_DELAY_MS);
+      expect(celebrateMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("offers no 'mark season watched' action for a season with nothing aired yet, and never celebrates it", () => {
+    vi.useFakeTimers();
+    try {
+      const upcoming = makeSeason(6, "Season Six", [{ ...makeEpisode(601, 6, 1, "S6E1"), airDate: "2999-01-01" }]);
+      const empty = makeSeason(7, "Season Seven", []);
+      const { onToggleSeason } = renderAccordion({ seasons: [upcoming, empty], watchedEpisodes: [] });
+
+      openSeason("Season Six");
+      openSeason("Season Seven");
+      const buttons = screen.getAllByRole("button", { name: "Mark season as watched" });
+      expect(buttons).toHaveLength(2);
+      for (const button of buttons) {
+        expect(button).toBeDisabled();
+        fireEvent.click(button);
+      }
+
+      expect(onToggleSeason).not.toHaveBeenCalled();
       vi.advanceTimersByTime(CONFETTI_DELAY_MS);
       expect(celebrateMock).not.toHaveBeenCalled();
     } finally {

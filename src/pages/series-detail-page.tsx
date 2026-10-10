@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
+import { ConfirmUnmarkDialog } from "@/components/media/tracking/confirm-unmark-dialog";
 import type { Season } from "@/types/media";
 import { AvailabilityAlertButton } from "@/components/media/detail/availability-alert-button";
 import { ProviderAvailability } from "@/components/media/detail/provider-availability";
@@ -74,6 +75,7 @@ export function SeriesDetailPage() {
     seasonNumbers.length > 0 &&
     seasons.length === seasonNumbers.length &&
     seasonQueries.every((query) => !query.isPending && !query.isError);
+  const [confirmingUnmark, setConfirmingUnmark] = useState(false);
   const progress = calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
   // "Seen" once everything aired is watched — `completed` alone also needs
   // announced, unaired episodes, so a caught-up ongoing series showed
@@ -176,7 +178,12 @@ export function SeriesDetailPage() {
             <SeenToggle
               seen={seriesSeen}
               disabled={progressQuery.isSaving || progressQuery.isError || !allSeasonsLoaded}
-              onToggle={() => void progressQuery.markSeriesSeen({ series, seasons, watched: !seriesSeen })}
+              onToggle={() => {
+                // Unwatching deletes each episode's own rating and watch date,
+                // so it asks first (see ConfirmUnmarkDialog).
+                if (seriesSeen) setConfirmingUnmark(true);
+                else void progressQuery.markSeriesSeen({ series, seasons, watched: true });
+              }}
               celebrateOnSeen
             />
             {/* progressQuery failing falls back to an empty watched list (see
@@ -289,6 +296,15 @@ export function SeriesDetailPage() {
           initialOpenSeason={initialOpenSeason}
         />
       </section>
+      <ConfirmUnmarkDialog
+        scope="series"
+        open={confirmingUnmark}
+        onOpenChange={setConfirmingUnmark}
+        onConfirm={() => {
+          setConfirmingUnmark(false);
+          void progressQuery.markSeriesSeen({ series, seasons, watched: false });
+        }}
+      />
       <WatchHistoryPanel id={SERIES_HISTORY_ID} mediaId={series.id} mediaType="series" />
       <ReviewsPanel id={SERIES_REVIEWS_ID} reviews={series.reviews} />
       <RecommendationsPanel id={SERIES_RECOMMENDATIONS_ID} media={series} />

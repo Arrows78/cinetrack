@@ -554,7 +554,12 @@
     "markSeasonSeen": "Marquer la saison comme vue",
     "markSeasonUnseen": "Marquer la saison comme non vue",
     "openSeasonPage": "Ouvrir la page de la saison",
-    "someSeasonsUnavailable": "Certaines saisons n'ont pas pu être chargées, ce qui désactive le marquage de toute la série."
+    "someSeasonsUnavailable": "Certaines saisons n'ont pas pu être chargées, ce qui désactive le marquage de toute la série.",
+    "unmarkSeasonConfirmTitle": "Marquer cette saison comme non vue ?",
+    "unmarkSeasonConfirmDescription": "Tous les épisodes de cette saison redeviennent non vus. Leurs notes et leurs dates de visionnage sont supprimées ; l'historique garde une trace du changement.",
+    "unmarkSeriesConfirmTitle": "Marquer toute la série comme non vue ?",
+    "unmarkSeriesConfirmDescription": "Tous les épisodes de toutes les saisons redeviennent non vus. Leurs notes et leurs dates de visionnage sont supprimées ; l'historique garde une trace du changement.",
+    "unmarkConfirm": "Marquer comme non vu"
   },
   "stats": {
     "title": "Statistiques",
