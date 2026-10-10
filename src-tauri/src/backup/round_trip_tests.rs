@@ -756,7 +756,10 @@ async fn every_table_is_backed_up_or_explicitly_exempt() {
     const EXEMPT: &[(&str, &str)] = &[
         ("sync_control", "device-local capture switch"),
         ("sync_metadata", "device-local sync cursors and markers"),
-        ("sync_outbox", "pending cloud mutations, rebuilt by the triggers"),
+        (
+            "sync_outbox",
+            "pending cloud mutations, rebuilt by the triggers",
+        ),
         ("sync_entity_state", "device-local cloud versions"),
     ];
 
