@@ -132,6 +132,32 @@ struct PreferenceRow {
     value: String,
 }
 
+/// `activity_log` as exported: the history DTO has no `profile_id` field (the
+/// owner travels as `metadata.profileId`), so the column is read next to the
+/// regular row to write it back into that mirror.
+#[derive(sqlx::FromRow)]
+struct HistoryExportRow {
+    profile_id: String,
+    #[sqlx(flatten)]
+    row: HistoryRow,
+}
+
+/// `metadata.profileId` must name the row's real owner: rows that came from a
+/// sync pull or from an older build can have no metadata at all, or one
+/// naming another profile, and `import_impl` rebuilds `profile_id` from this
+/// key (defaulting to the `default` profile).
+fn metadata_owned_by(raw: Option<String>, profile_id: &str) -> Option<Value> {
+    let mut metadata = match parse_metadata(raw) {
+        Some(Value::Object(map)) => map,
+        _ => serde_json::Map::new(),
+    };
+    metadata.insert(
+        "profileId".to_string(),
+        Value::String(profile_id.to_string()),
+    );
+    Some(Value::Object(metadata))
+}
+
 #[derive(sqlx::FromRow)]
 struct ViewingEventRow {
     uuid: String,
@@ -215,7 +241,7 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
     let seen_movies = export_table!(tx, "seen_movies", SeenMovieRow);
     let episode_progress = export_table!(tx, "episode_progress", EpisodeProgressRow);
     let tracked_series = export_table!(tx, "tracked_series", TrackedSeriesRow);
-    let history = export_table!(tx, "activity_log", HistoryRow);
+    let history = export_table!(tx, "activity_log", HistoryExportRow);
     let preferences = export_table!(tx, "preferences", PreferenceRow);
     let library = export_table!(tx, "library_items", LibraryRow);
     let viewing_events = export_table!(tx, "viewing_events", ViewingEventRow);
@@ -288,7 +314,8 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
             .collect(),
         history: history
             .into_iter()
-            .map(|row| -> Result<ViewingHistoryItem, ApiError> {
+            .map(|export_row| -> Result<ViewingHistoryItem, ApiError> {
+                let HistoryExportRow { profile_id, row } = export_row;
                 let action: HistoryAction =
                     serde_json::from_value(Value::String(row.action.clone())).map_err(|_| {
                         ApiError::internal(format!(
@@ -306,7 +333,7 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
                     season_number: row.season_number,
                     episode_number: row.episode_number,
                     episode_title: row.episode_title,
-                    metadata: parse_metadata(row.metadata),
+                    metadata: metadata_owned_by(row.metadata, &profile_id),
                 })
             })
             .collect::<Result<Vec<_>, _>>()?,

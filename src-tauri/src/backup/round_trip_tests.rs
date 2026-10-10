@@ -490,7 +490,7 @@ const TABLES: &[(&str, &[&str])] = &[
     ("seen_movies", &["uuid", "created_at", "updated_at"]),
     ("episode_progress", &["uuid"]),
     ("tracked_series", &["uuid"]),
-    ("activity_log", &["created_at", "updated_at", "profile_id"]),
+    ("activity_log", &["created_at", "updated_at", "metadata"]),
     ("viewing_events", &["created_at"]),
     ("custom_lists", &[]),
     ("custom_list_items", &["uuid"]),
@@ -509,12 +509,21 @@ async fn dump_table(pool: &SqlitePool, table: &str, ignored: &[&str]) -> Vec<Str
     .fetch_all(pool)
     .await
     .unwrap();
-    let pairs = columns
+    let mut pairs = columns
         .iter()
         .filter(|column| !ignored.contains(&column.as_str()))
         .map(|column| format!("'{column}', \"{column}\""))
-        .collect::<Vec<_>>()
-        .join(", ");
+        .collect::<Vec<_>>();
+    if table == "activity_log" {
+        // `metadata.profileId` mirrors the `profile_id` column and is allowed
+        // to be added or corrected by an export (see the invariant test
+        // below); everything else in the blob must survive untouched.
+        pairs.push(
+            "'metadata_without_profile_id', json_remove(COALESCE(metadata, '{}'), '$.profileId')"
+                .to_string(),
+        );
+    }
+    let pairs = pairs.join(", ");
     sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
         "SELECT json_object({pairs}) AS row FROM {table} ORDER BY row"
     )))
@@ -646,4 +655,22 @@ async fn importing_into_a_database_full_of_other_data_leaves_nothing_of_the_old_
     import_impl(&target, snapshot).await.unwrap();
 
     assert_same_content(&source, &target, "import over a non-empty database").await;
+}
+
+#[tokio::test]
+async fn a_restored_history_row_keeps_the_mirrored_metadata_profile_id_in_sync() {
+    let source = migrated_pool().await;
+    seed(&source, 31).await;
+    let snapshot = export_to_json_and_back(&export_impl(&source).await.unwrap()).await;
+
+    let restored = migrated_pool().await;
+    import_impl(&restored, snapshot).await.unwrap();
+
+    let mismatched: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM activity_log WHERE json_extract(metadata, '$.profileId') IS NOT profile_id",
+    )
+    .fetch_one(&restored)
+    .await
+    .unwrap();
+    assert_eq!(mismatched, 0);
 }
