@@ -36,7 +36,7 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
          LEFT JOIN (
            SELECT series_id, COUNT(*) AS count
            FROM episode_progress
-           WHERE profile_id = $1 AND watched = 1
+           WHERE profile_id = $1 AND watched = 1 AND season_number > 0
            GROUP BY series_id
          ) watched ON watched.series_id = ts.series_id
          WHERE ts.profile_id = $1",

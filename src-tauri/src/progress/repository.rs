@@ -297,7 +297,10 @@ pub(crate) async fn apply_episodes_and_log_impl(
     }
 
     let count_row: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1")
+        // Specials (season 0) are left out, like TMDB's number_of_episodes
+        // and the frontend's own totals — counting them could reach the
+        // total without the actual series being finished.
+        sqlx::query_as("SELECT COUNT(*) FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0")
             .bind(profile_id)
             .bind(series.id)
             .fetch_one(&mut *tx)
@@ -475,7 +478,8 @@ pub(super) async fn refresh_tracked_series_status_impl(
          SET status = 'watching', updated_at = strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'
          WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series' AND status = 'completed'
            AND (SELECT COUNT(*) FROM episode_progress
-                WHERE profile_id = $1 AND series_id = $2 AND watched = 1) BETWEEN 1 AND $3 - 1",
+                WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0)
+               BETWEEN 1 AND $3 - 1",
     )
     .bind(profile_id)
     .bind(series_id)
@@ -786,6 +790,34 @@ mod tests {
             library_status(&pool, 9, "series").await,
             Some("completed".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn specials_never_count_toward_completing_a_series() {
+        let pool = migrated_pool().await;
+        seed_library_status(&pool, 9, "series", "watching").await;
+        let special = |id, episode_number| EpisodeInput {
+            season_number: 0,
+            ..episode(id, episode_number)
+        };
+
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &ended_series(9, Some(2)),
+            &[episode(1, 1), special(50, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        assert_eq!(tracked[0].watched_episodes, 1);
     }
 
     #[tokio::test]
