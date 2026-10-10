@@ -22,8 +22,7 @@ export const errorMessage = (error: unknown): string => {
 export type ErrorCategory = "authentication" | "localDatabase" | "connection";
 
 /** TMDB (or its proxy) answered 429: a transient condition, not a broken setup. */
-export const isRateLimitedError = (error: unknown): boolean =>
-  (error as { status?: number } | null)?.status === 429;
+export const isRateLimitedError = (error: unknown): boolean => (error as { status?: number } | null)?.status === 429;
 
 /** Classify known transport errors without relying on a single formatted string. */
 export const errorCategory = (error: unknown): ErrorCategory => {
