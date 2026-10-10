@@ -112,6 +112,35 @@ pub(super) async fn link_to_supabase_user_impl(
     profile_id: &str,
     supabase_user_id: &str,
 ) -> Result<UserProfile, ApiError> {
+    if supabase_user_id.trim().is_empty() {
+        return Err(ApiError::bad_request("An account id is required."));
+    }
+    let profile = get_by_id_impl(pool, profile_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Profile not found."))?;
+    match profile.supabase_user_id.as_deref() {
+        // Already linked to this account: nothing to do (idempotent).
+        Some(linked) if linked == supabase_user_id => return Ok(profile),
+        // A profile belongs to one account for good; re-pointing it would
+        // hand that person's library to whoever signs in next.
+        Some(_) => {
+            return Err(ApiError::forbidden(
+                "This profile is already linked to another account.",
+            ));
+        }
+        None => {}
+    }
+    // One account, one local profile (the column is UNIQUE): say so instead
+    // of surfacing a raw constraint failure.
+    if find_by_supabase_user_id_impl(pool, supabase_user_id)
+        .await?
+        .is_some()
+    {
+        return Err(ApiError::bad_request(
+            "This account is already linked to another profile.",
+        ));
+    }
+
     let updated_at = now_iso(pool).await?;
     sqlx::query("UPDATE profiles SET supabase_user_id = $1, updated_at = $2 WHERE uuid = $3")
         .bind(supabase_user_id)
@@ -664,6 +693,97 @@ mod tests {
 
         let result = link_to_supabase_user_impl(&pool, &second.id, "user_2abc").await;
         assert!(result.is_err());
+    }
+
+    /// Linking used to overwrite whatever account a profile already had, so
+    /// anyone who could call the command could take over a profile (and its
+    /// library) for a different account.
+    #[tokio::test]
+    async fn a_profile_linked_to_one_account_cannot_be_relinked_to_another() {
+        let pool = migrated_pool().await;
+        let linked = create_impl(&pool, "Alex", None, Some("user_a".to_string()))
+            .await
+            .unwrap();
+
+        let error = link_to_supabase_user_impl(&pool, &linked.id, "user_b")
+            .await
+            .unwrap_err();
+        assert_eq!(error.status, Some(403));
+        let still = get_by_id_impl(&pool, &linked.id).await.unwrap().unwrap();
+        assert_eq!(still.supabase_user_id.as_deref(), Some("user_a"));
+
+        // Linking the same account again is a no-op, not an error.
+        let again = link_to_supabase_user_impl(&pool, &linked.id, "user_a")
+            .await
+            .unwrap();
+        assert_eq!(again.supabase_user_id.as_deref(), Some("user_a"));
+    }
+
+    #[tokio::test]
+    async fn an_account_already_on_a_profile_gets_a_clean_error_when_linked_to_another() {
+        let pool = migrated_pool().await;
+        create_impl(&pool, "Alex", None, Some("user_a".to_string()))
+            .await
+            .unwrap();
+        let other = create_impl(&pool, "Sam", None, None).await.unwrap();
+
+        let error = link_to_supabase_user_impl(&pool, &other.id, "user_a")
+            .await
+            .unwrap_err();
+        assert_eq!(error.status, Some(400));
+        assert!(
+            link_to_supabase_user_impl(&pool, &other.id, "  ")
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn removing_a_profile_also_drops_its_sync_bookkeeping_and_outbox() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        let other = create_impl(&pool, "Sam", None, None).await.unwrap();
+        for id in [&created.id, &other.id] {
+            sqlx::query(
+                "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+                 VALUES ($1, $2, 1, 'movie', 'T', 'now', 'now')",
+            )
+            .bind(format!("item-{id}"))
+            .bind(id)
+            .execute(&pool)
+            .await
+            .unwrap();
+            for key in [
+                format!("cursor:{id}"),
+                format!("bootstrap:{id}"),
+                format!("bootstrap:v2:{id}"),
+                format!("lastSyncedAt:{id}"),
+                format!("orphan:{id}:item-x"),
+            ] {
+                sqlx::query("INSERT INTO sync_metadata(key,value,updated_at) VALUES($1,'1','now')")
+                    .bind(key)
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+            }
+        }
+
+        remove_impl(&pool, &created.id).await.unwrap();
+
+        let left: Vec<(String,)> = sqlx::query_as("SELECT key FROM sync_metadata ORDER BY key")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert!(
+            left.iter().all(|(key,)| key.contains(&other.id)),
+            "only the other profile's keys remain: {left:?}"
+        );
+        assert_eq!(left.len(), 5);
+        let outbox: Vec<(String,)> = sqlx::query_as("SELECT DISTINCT profile_id FROM sync_outbox")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert_eq!(outbox, vec![(other.id.clone(),)]);
     }
 
     #[tokio::test]
