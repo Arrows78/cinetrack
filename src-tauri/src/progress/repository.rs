@@ -1965,4 +1965,231 @@ mod tests {
             .unwrap();
         assert_eq!(progress[0].rating, None);
     }
+
+    /// Random but reproducible sequences of watch/unwatch actions (single
+    /// episodes, a whole season, specials, movies), checking after every
+    /// step the invariants the rest of the app relies on:
+    /// - an episode/movie is "seen" exactly when its latest viewing event
+    ///   is a watch, and the event log never repeats the same transition;
+    /// - the stats overview counts what is actually seen;
+    /// - a tracked series' watched count ignores specials;
+    /// - the library status follows auto-sync's rules and never goes down.
+    #[tokio::test]
+    async fn random_watch_sequences_keep_progress_events_stats_and_status_consistent() {
+        use std::collections::{BTreeSet, HashMap};
+
+        fn rank(status: Option<&str>) -> u8 {
+            match status {
+                None => 0,
+                Some("watching") => 1,
+                Some("completed") => 2,
+                Some(other) => panic!("unexpected auto status {other}"),
+            }
+        }
+
+        // (series id, TMDB status, regular episode count, episodes)
+        let catalogue: Vec<(i64, &str, i64, Vec<EpisodeInput>)> = vec![
+            (
+                9,
+                "Ended",
+                4,
+                vec![
+                    episode(901, 1),
+                    episode(902, 2),
+                    episode(903, 3),
+                    episode(904, 4),
+                    EpisodeInput {
+                        season_number: 0,
+                        ..episode(950, 1)
+                    },
+                ],
+            ),
+            (
+                10,
+                "Returning Series",
+                3,
+                vec![episode(1001, 1), episode(1002, 2), episode(1003, 3)],
+            ),
+        ];
+        let movies = [55_i64, 56];
+
+        for seed in [1_u64, 7, 42, 2026] {
+            let pool = migrated_pool().await;
+            let app = tauri::test::mock_app();
+            app.manage(pool.clone());
+            let mut state = seed;
+            let mut next = |bound: u64| {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                (state >> 33) % bound
+            };
+
+            let mut seen_episodes: BTreeSet<(i64, i64)> = BTreeSet::new();
+            let mut seen_movies: BTreeSet<i64> = BTreeSet::new();
+            let mut expected_status: HashMap<(i64, &str), u8> = HashMap::new();
+
+            for step in 0..60_u64 {
+                let at = format!("2026-01-01T{:02}:{:02}:00.000Z", step / 60, step % 60);
+                let watched = next(3) != 0;
+                match next(4) {
+                    0 | 1 => {
+                        let (id, status, total, episodes) =
+                            &catalogue[next(catalogue.len() as u64) as usize];
+                        // One episode, or the whole list (a season/series mark).
+                        let picked: Vec<EpisodeInput> = if next(2) == 0 {
+                            vec![episodes[next(episodes.len() as u64) as usize].clone()]
+                        } else {
+                            episodes.clone()
+                        };
+                        let input = SeriesInput {
+                            status: Some(status.to_string()),
+                            ..series(*id, Some(*total))
+                        };
+                        let changed = picked
+                            .iter()
+                            .any(|ep| seen_episodes.contains(&(*id, ep.id)) != watched);
+                        for ep in &picked {
+                            if watched {
+                                seen_episodes.insert((*id, ep.id));
+                            } else {
+                                seen_episodes.remove(&(*id, ep.id));
+                            }
+                        }
+                        apply_episodes_impl(&pool, "default", &input, &picked, watched, &at)
+                            .await
+                            .unwrap();
+                        if watched && changed {
+                            let regular = episodes
+                                .iter()
+                                .filter(|ep| {
+                                    ep.season_number > 0 && seen_episodes.contains(&(*id, ep.id))
+                                })
+                                .count() as i64;
+                            let target = if regular >= *total && *status == "Ended" {
+                                2
+                            } else if regular >= 1 {
+                                1
+                            } else {
+                                0
+                            };
+                            let entry = expected_status.entry((*id, "series")).or_insert(0);
+                            *entry = (*entry).max(target);
+                        }
+                    }
+                    _ => {
+                        let id = movies[next(movies.len() as u64) as usize];
+                        let changed = seen_movies.contains(&id) != watched;
+                        if watched {
+                            seen_movies.insert(id);
+                        } else {
+                            seen_movies.remove(&id);
+                        }
+                        toggle_movie_seen_impl(&pool, "default", movie(id), watched, &at)
+                            .await
+                            .unwrap();
+                        if watched && changed {
+                            expected_status.insert((id, "movie"), 2);
+                        }
+                    }
+                }
+
+                let context = format!("seed {seed}, step {step}");
+
+                // Seen state == model == latest event, and no repeated transition.
+                let events: Vec<(i64, Option<i64>, String)> = sqlx::query_as(
+                    "SELECT media_id, episode_id, event_type FROM viewing_events
+                     ORDER BY watched_at ASC, created_at ASC",
+                )
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+                let mut last: HashMap<(i64, Option<i64>), String> = HashMap::new();
+                for (media_id, episode_id, event_type) in events {
+                    let previous = last.insert((media_id, episode_id), event_type.clone());
+                    assert_ne!(
+                        previous.as_deref(),
+                        Some(event_type.as_str()),
+                        "{context}: repeated {event_type} for {media_id}/{episode_id:?}"
+                    );
+                }
+                let stored_episodes: BTreeSet<(i64, i64)> = sqlx::query_as(
+                    "SELECT series_id, episode_id FROM episode_progress WHERE watched = 1",
+                )
+                .fetch_all(&pool)
+                .await
+                .unwrap()
+                .into_iter()
+                .collect();
+                assert_eq!(
+                    stored_episodes, seen_episodes,
+                    "{context}: episode_progress"
+                );
+                for (key, event_type) in &last {
+                    if let (series_id, Some(episode_id)) = key {
+                        assert_eq!(
+                            event_type == "watched",
+                            seen_episodes.contains(&(*series_id, *episode_id)),
+                            "{context}: latest event for episode {episode_id}"
+                        );
+                    } else {
+                        assert_eq!(
+                            event_type == "watched",
+                            seen_movies.contains(&key.0),
+                            "{context}: latest event for movie {}",
+                            key.0
+                        );
+                    }
+                }
+
+                // Stats overview counts exactly what's seen.
+                let pool_state: State<'_, SqlitePool> = app.state();
+                let overview = crate::stats::get_stats_overview(
+                    "2025-01-01T00:00:00.000Z".to_string(),
+                    vec![],
+                    pool_state,
+                )
+                .await
+                .unwrap();
+                assert_eq!(
+                    overview.totals.episodes_watched,
+                    seen_episodes.len() as i64,
+                    "{context}: stats episodes"
+                );
+                assert_eq!(
+                    overview.totals.movies_watched,
+                    seen_movies.len() as i64,
+                    "{context}: stats movies"
+                );
+
+                // Tracked series ignore specials.
+                for tracked in list_tracked_series_impl(&pool, "default").await.unwrap() {
+                    let regular = seen_episodes
+                        .iter()
+                        .filter(|(series_id, episode_id)| {
+                            *series_id == tracked.series_id && *episode_id != 950
+                        })
+                        .count() as i64;
+                    assert_eq!(
+                        tracked.watched_episodes, regular,
+                        "{context}: tracked series {}",
+                        tracked.series_id
+                    );
+                }
+
+                // Library status follows the auto-sync model, never down.
+                for (id, media_type) in
+                    [(9, "series"), (10, "series"), (55, "movie"), (56, "movie")]
+                {
+                    let actual = library_status(&pool, id, media_type).await;
+                    let expected = expected_status.get(&(id, media_type)).copied().unwrap_or(0);
+                    assert_eq!(
+                        rank(actual.as_deref()),
+                        expected,
+                        "{context}: library status of {media_type} {id} ({actual:?})"
+                    );
+                }
+            }
+        }
+    }
 }
