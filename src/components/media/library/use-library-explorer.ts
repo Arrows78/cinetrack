@@ -5,6 +5,7 @@ import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import {
   filterAndSortLibrary,
   libraryMediaKey,
+  resolveSavedLibraryFilters,
   type LibrarySortMode,
   type LibraryStatusFilter,
   type LibraryTypeFilter,
@@ -230,7 +231,8 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     search,
     genreFilter,
   };
-  const applySavedFilters = (saved: LibraryFilterState) => {
+  const applySavedFilters = (savedFilters: LibraryFilterState) => {
+    const saved = resolveSavedLibraryFilters(savedFilters, lists.data ? listIds : undefined);
     setTypeFilter(lockedMediaType ?? saved.typeFilter);
     setStatusFilter(saved.statusFilter);
     setFavouritesOnly(saved.favouritesOnly);

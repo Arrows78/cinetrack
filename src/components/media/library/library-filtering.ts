@@ -1,5 +1,5 @@
 import type { MediaGridItem } from "@/components/media/primitives/media-grid";
-import type { CustomListItem, LibraryItem, LibraryStatus } from "@/types/media";
+import type { CustomListItem, LibraryFilterState, LibraryItem, LibraryStatus } from "@/types/media";
 
 export type LibraryTypeFilter = "all" | "movie" | "series";
 export type LibraryStatusFilter = LibraryStatus | "all";
@@ -26,6 +26,21 @@ export interface LibraryFilterCriteria {
    * as one with no completedAt under "dateCompleted".
    */
   nextEpisodeDateBySeriesId?: Map<number, string>;
+}
+
+/**
+ * A saved filter outlives the custom list it points at: reapplying one whose
+ * list was deleted since would filter by an id the backend answers "not
+ * found" to (an error screen, not a result). Such a list is dropped back to
+ * "all lists". `knownListIds` is `undefined` while the lists are still
+ * loading, in which case nothing is dropped — it can't be told yet.
+ */
+export function resolveSavedLibraryFilters(
+  saved: LibraryFilterState,
+  knownListIds: readonly string[] | undefined
+): LibraryFilterState {
+  if (saved.listFilter === "all" || knownListIds === undefined || knownListIds.includes(saved.listFilter)) return saved;
+  return { ...saved, listFilter: "all" };
 }
 
 export function libraryMediaKey(mediaType: string, mediaId: number): string {

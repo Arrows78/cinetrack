@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { filterAndSortLibrary, libraryMediaKey, type LibraryFilterCriteria } from "../library-filtering";
-import type { CustomListItem, LibraryItem } from "@/types/media";
+import {
+  filterAndSortLibrary,
+  libraryMediaKey,
+  resolveSavedLibraryFilters,
+  type LibraryFilterCriteria,
+} from "../library-filtering";
+import type { CustomListItem, LibraryFilterState, LibraryItem } from "@/types/media";
 
 function libraryItem(overrides: Partial<LibraryItem> & Pick<LibraryItem, "id" | "mediaId" | "title">): LibraryItem {
   return {
@@ -489,5 +494,34 @@ describe("filterAndSortLibrary", () => {
 
       expect(result).toHaveLength(1);
     });
+  });
+});
+
+describe("resolveSavedLibraryFilters", () => {
+  const saved: LibraryFilterState = {
+    typeFilter: "all",
+    statusFilter: "paused",
+    favouritesOnly: false,
+    listFilter: "list-gone",
+    sort: "recent",
+    search: "",
+  };
+
+  it("drops a custom list that no longer exists instead of filtering by a dead id", () => {
+    expect(resolveSavedLibraryFilters(saved, ["list-1", "list-2"]).listFilter).toBe("all");
+  });
+
+  it("keeps a custom list that still exists", () => {
+    expect(resolveSavedLibraryFilters({ ...saved, listFilter: "list-2" }, ["list-1", "list-2"]).listFilter).toBe(
+      "list-2"
+    );
+  });
+
+  it("keeps the list untouched while the lists have not loaded yet", () => {
+    expect(resolveSavedLibraryFilters(saved, undefined).listFilter).toBe("list-gone");
+  });
+
+  it("leaves every other field as saved", () => {
+    expect(resolveSavedLibraryFilters(saved, [])).toEqual({ ...saved, listFilter: "all" });
   });
 });
