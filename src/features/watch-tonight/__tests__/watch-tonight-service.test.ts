@@ -331,6 +331,47 @@ describe("watchTonightService", () => {
     expect(result.series.map((item) => item.id)).not.toContain(3);
   });
 
+  it("falls back to the catalogue when the only planned candidates are dismissed, instead of returning nothing", async () => {
+    seedLibrary([{ mediaId: 10, mediaType: "movie", status: "planned" }]);
+    mocks.getMovieDetails.mockResolvedValue(movie(10));
+    mocks.listDismissed.mockResolvedValue([{ mediaId: 10, mediaType: "movie", title: "Film 10" }]);
+
+    const result = await watchTonightService.pick({});
+
+    expect(mocks.discoverMovies).toHaveBeenCalled();
+    expect(result.movies.map((item) => item.id).sort()).toEqual([1, 2, 3, 4]);
+  });
+
+  it("never returns a dismissed planned title, even when other planned titles remain", async () => {
+    seedLibrary([
+      { mediaId: 10, mediaType: "movie", status: "planned" },
+      { mediaId: 11, mediaType: "movie", status: "planned" },
+    ]);
+    mocks.getMovieDetails.mockImplementation((id: number) => Promise.resolve(movie(id)));
+    mocks.listDismissed.mockResolvedValue([{ mediaId: 10, mediaType: "movie", title: "Film 10" }]);
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.movies.map((item) => item.id)).toEqual([11]);
+  });
+
+  it("still returns the series picks when only the movie catalogue is unreachable", async () => {
+    mocks.discoverMovies.mockRejectedValue(new Error("network down"));
+
+    const result = await watchTonightService.pick({});
+
+    expect(result.movies).toEqual([]);
+    expect(result.series).toHaveLength(4);
+    expect(mocks.loggerWarn).toHaveBeenCalled();
+  });
+
+  it("rejects when neither catalogue is reachable, so the page can show its error state", async () => {
+    mocks.discoverMovies.mockRejectedValue(new Error("network down"));
+    mocks.discoverSeries.mockRejectedValue(new Error("network down"));
+
+    await expect(watchTonightService.pick({})).rejects.toThrow("network down");
+  });
+
   it("caps picks at PICKS_PER_TYPE (8) when more planned candidates match than that, for both movies and series", async () => {
     seedLibrary([
       { mediaId: 60, mediaType: "movie", status: "planned" },

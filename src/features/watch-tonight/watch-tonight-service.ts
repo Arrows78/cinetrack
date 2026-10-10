@@ -160,6 +160,26 @@ async function filterByProvider<T extends MediaSummary>(
   return candidates.filter((_item, index) => matches[index]);
 }
 
+/**
+ * What a pick may never contain: a dismissed ("not interested") title always,
+ * a completed one only when the "hide watched" preference is on. Applied
+ * *before* deciding whether the planned candidates ran out — a lone planned
+ * title that is dismissed must send the pick to the catalogue like any other
+ * empty candidate list, not leave the page with nothing — and again on
+ * whatever the catalogue returns.
+ */
+function dropExcluded<T extends MediaSummary>(
+  candidates: T[],
+  filters: WatchTonightFilters,
+  completedKeySet: Set<string>,
+  dismissedKeySet: Set<string>
+): T[] {
+  return filterDismissedByKeySet(
+    filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched)),
+    dismissedKeySet
+  );
+}
+
 async function pickMovies(
   filters: WatchTonightFilters,
   planned: LibraryItem[],
@@ -184,7 +204,12 @@ async function pickMovies(
         matchesOriginCountry(movie, filters.originCountry)
     );
 
-  candidates = await filterByProvider(candidates, "movie", filters.provider);
+  candidates = dropExcluded(
+    await filterByProvider(candidates, "movie", filters.provider),
+    filters,
+    completedKeySet,
+    dismissedKeySet
+  );
 
   if (!candidates.length) {
     candidates = (
@@ -197,12 +222,9 @@ async function pickMovies(
     ).results;
   }
 
-  // Applied last, against the full completed-key set (not just the
-  // `planned` candidates above) — the main place this actually removes
-  // anything is the catalogue fallback just above, since a `planned` item
-  // is never `completed` by definition.
-  candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
-  candidates = filterDismissedByKeySet(candidates, dismissedKeySet);
+  // Again on the catalogue fallback, against the full completed-key set —
+  // the planned candidates were already screened above.
+  candidates = dropExcluded(candidates, filters, completedKeySet, dismissedKeySet);
 
   return rankCandidates(candidates, genreAffinity, MOVIE_GENRES_BY_ID).slice(0, PICKS_PER_TYPE);
 }
@@ -231,7 +253,12 @@ async function pickSeries(
         matchesOriginCountry(series, filters.originCountry)
     );
 
-  candidates = await filterByProvider(candidates, "series", filters.provider);
+  candidates = dropExcluded(
+    await filterByProvider(candidates, "series", filters.provider),
+    filters,
+    completedKeySet,
+    dismissedKeySet
+  );
 
   if (!candidates.length) {
     candidates = (
@@ -244,8 +271,7 @@ async function pickSeries(
     ).results;
   }
 
-  candidates = filterHiddenIfWatchedByKeySet(candidates, completedKeySet, Boolean(filters.hideWatched));
-  candidates = filterDismissedByKeySet(candidates, dismissedKeySet);
+  candidates = dropExcluded(candidates, filters, completedKeySet, dismissedKeySet);
 
   return rankCandidates(candidates, genreAffinity, SERIES_GENRES_BY_ID).slice(0, PICKS_PER_TYPE);
 }
@@ -275,10 +301,19 @@ export const watchTonightService = {
     const dismissedKeySet = new Set(dismissed.map((item) => `${item.mediaType}:${item.mediaId}`));
     const movieAffinity = buildGenreAffinity(completedMovies);
     const seriesAffinity = buildGenreAffinity(completedSeries);
-    const [movies, series] = await Promise.all([
+    // Each type is its own TMDB round trip: one failing (a flaky endpoint)
+    // must not take the other's picks down with it. Only when both fail is
+    // there nothing to show, and the error reaches the page's error state.
+    const [movies, series] = await Promise.allSettled([
       pickMovies(filters, plannedMovies, completedKeySet, dismissedKeySet, movieAffinity),
       pickSeries(filters, plannedSeries, completedKeySet, dismissedKeySet, seriesAffinity),
     ]);
-    return { movies, series };
+    if (movies.status === "rejected" && series.status === "rejected") throw movies.reason;
+    if (movies.status === "rejected") logger.warn(`Watch Tonight movie picks failed: ${movies.reason}`);
+    if (series.status === "rejected") logger.warn(`Watch Tonight series picks failed: ${series.reason}`);
+    return {
+      movies: movies.status === "fulfilled" ? movies.value : [],
+      series: series.status === "fulfilled" ? series.value : [],
+    };
   },
 };
