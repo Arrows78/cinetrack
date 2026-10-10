@@ -27,6 +27,8 @@ use crate::progress::{
 };
 
 type Key = (i64, &'static str);
+/// media_id, media_type, status, started_at, completed_at
+type LibraryDatesRow = (i64, String, String, Option<String>, Option<String>);
 
 fn rank(status: &str) -> u8 {
     match status {
@@ -248,10 +250,9 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     )
                     .await
                     .unwrap();
-                    if model.lib.contains_key(&key) {
-                        model.lib.insert(key, status);
-                    } else {
-                        model.create(key, status);
+                    match model.lib.get_mut(&key) {
+                        Some(current) => *current = status,
+                        None => model.create(key, status),
                     }
                 }
                 // Quick add / quick remove / full remove.
@@ -270,9 +271,10 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     };
                     match next(3) {
                         0 => {
-                            let added = add_if_absent_impl(&pool, media_for(is_movie, id), "default")
-                                .await
-                                .unwrap();
+                            let added =
+                                add_if_absent_impl(&pool, media_for(is_movie, id), "default")
+                                    .await
+                                    .unwrap();
                             assert_eq!(added, !model.lib.contains_key(&key), "{context}: add");
                             if added {
                                 model.create(key, "planned");
@@ -310,8 +312,8 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     )
                     .await
                     .unwrap();
-                    if model.tracked_total.contains_key(&entry.id) {
-                        model.tracked_total.insert(entry.id, total);
+                    if let Some(cached) = model.tracked_total.get_mut(&entry.id) {
+                        *cached = total;
                         let regular = model.regular_seen(entry.id, &catalogue);
                         let key = (entry.id, "series");
                         if model.lib.get(&key) == Some(&"completed")
@@ -337,16 +339,22 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
 
             // ---- invariants -------------------------------------------------
             // Library status and presence follow the model; dates follow status.
-            let rows: Vec<(i64, String, String, Option<String>, Option<String>)> =
-                sqlx::query_as(
-                    "SELECT media_id, media_type, status, started_at, completed_at FROM library_items",
-                )
-                .fetch_all(&pool)
-                .await
-                .unwrap();
+            let rows: Vec<LibraryDatesRow> = sqlx::query_as(
+                "SELECT media_id, media_type, status, started_at, completed_at FROM library_items",
+            )
+            .fetch_all(&pool)
+            .await
+            .unwrap();
             assert_eq!(rows.len(), model.lib.len(), "{context}: library size");
             for (id, media_type, status, started, completed) in rows {
-                let key: Key = (id, if media_type == "movie" { "movie" } else { "series" });
+                let key: Key = (
+                    id,
+                    if media_type == "movie" {
+                        "movie"
+                    } else {
+                        "series"
+                    },
+                );
                 assert_eq!(
                     model.lib.get(&key).copied(),
                     Some(status.as_str()),
