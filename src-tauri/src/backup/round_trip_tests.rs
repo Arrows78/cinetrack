@@ -746,3 +746,37 @@ async fn a_restore_that_fails_late_leaves_the_existing_database_untouched() {
         assert!(foreign_keys.is_empty(), "{label}: dangling references left");
     }
 }
+
+/// A table added by a future migration but forgotten in the backup would be
+/// wiped by every restore (the purge empties whatever hangs off `profiles`)
+/// and never exported: silent data loss. Every table must therefore be either
+/// covered by the round-trip tests above or exempt here, with a reason.
+#[tokio::test]
+async fn every_table_is_backed_up_or_explicitly_exempt() {
+    const EXEMPT: &[(&str, &str)] = &[
+        ("sync_control", "device-local capture switch"),
+        ("sync_metadata", "device-local sync cursors and markers"),
+        ("sync_outbox", "pending cloud mutations, rebuilt by the triggers"),
+        ("sync_entity_state", "device-local cloud versions"),
+    ];
+
+    let pool = migrated_pool().await;
+    let tables: Vec<String> = sqlx::query_scalar(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+
+    let uncovered: Vec<&String> = tables
+        .iter()
+        .filter(|table| {
+            !TABLES.iter().any(|(name, _)| name == table)
+                && !EXEMPT.iter().any(|(name, _)| name == table)
+        })
+        .collect();
+    assert!(
+        uncovered.is_empty(),
+        "tables neither backed up nor exempt: {uncovered:?} — add them to PortableData (export and import) and TABLES, or to EXEMPT with a reason"
+    );
+}
