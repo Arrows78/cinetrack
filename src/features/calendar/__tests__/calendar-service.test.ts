@@ -248,4 +248,35 @@ describe("calendarService", () => {
 
     await expect(calendarService.build(60)).resolves.toHaveLength(1);
   });
+
+  // Run under TZ=America/New_York and TZ=Pacific/Kiritimati too: a date-only
+  // air date is the viewer's own calendar day, including around a DST change.
+  it.each([
+    ["early morning", new Date(2026, 2, 8, 0, 30)],
+    ["late evening", new Date(2026, 2, 8, 23, 59)],
+  ])(
+    "keeps an episode airing today (%s of the US spring-forward day) and stops at the window end",
+    async (_label, now) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(now);
+      try {
+        mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 40 }]);
+        mocks.getSeriesDetails.mockResolvedValue(series(40, [1]));
+        mocks.getSeasonDetails.mockResolvedValue(
+          season(1, [
+            { id: 1, airDate: "2026-03-08" },
+            { id: 2, airDate: "2026-03-07" },
+            { id: 3, airDate: "2026-05-07" },
+            { id: 4, airDate: "2026-05-08" },
+          ])
+        );
+
+        const entries = await calendarService.build(60);
+
+        expect(entries.map((entry) => entry.date)).toEqual(["2026-03-08", "2026-05-07"]);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
 });
