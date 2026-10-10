@@ -19,6 +19,11 @@ vi.mock("@tauri-apps/plugin-stronghold", () => ({
   Stronghold: { load: (...args: unknown[]) => strongholdLoad(...args) },
 }));
 
+const loggerWarn = vi.hoisted(() => vi.fn());
+vi.mock("@/shared/lib/logger", () => ({
+  logger: { warn: loggerWarn, error: vi.fn(), info: vi.fn(), debug: vi.fn() },
+}));
+
 const BROWSER_KEY = "cinetrack.tmdb-token";
 
 async function importFresh() {
@@ -179,6 +184,15 @@ describe("tokenVault", () => {
       expect(unlocked).toBe(false);
       expect(tokenVault.getToken()).toBeNull();
       expect(tokenVault.getSnapshot()).toEqual({ unlocked: true, configured: false, source: "vault" });
+    });
+
+    it("unlock() logs why the vault could not be read instead of failing silently", async () => {
+      storeGet.mockRejectedValue(new Error("store unreadable"));
+      const { tokenVault } = await importFresh();
+
+      expect(await tokenVault.unlock("hunter2")).toBe(false);
+
+      expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining("store unreadable"));
     });
 
     it("unlock() creates a fresh client when the vault has none yet", async () => {

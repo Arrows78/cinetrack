@@ -3,6 +3,8 @@ import { Stronghold, type Client } from "@tauri-apps/plugin-stronghold";
 
 import i18n from "@/i18n";
 import { env } from "@/shared/config/env";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 
@@ -110,7 +112,8 @@ export const tokenVault = {
       });
 
       return Boolean(token);
-    } catch {
+    } catch (error) {
+      logger.warn(`Could not read the TMDB token from the vault: ${errorMessage(error)}`);
       token = null;
 
       setSnapshot({
