@@ -64,8 +64,25 @@ pub(super) fn write_backup_file_sync(path: &Path, contents: &str) -> std::io::Re
     let mut tmp_path_os = path.as_os_str().to_owned();
     tmp_path_os.push(".tmp");
     let tmp_path = PathBuf::from(tmp_path_os);
-    std::fs::write(&tmp_path, contents)?;
-    std::fs::rename(&tmp_path, path)
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create(&tmp_path)?;
+        file.write_all(contents.as_bytes())?;
+        // Without this, a power loss right after the rename can leave the
+        // final name pointing at an empty or partial file: the rename may
+        // reach the disk before the data does. The previous good backup would
+        // already be gone by then.
+        file.sync_all()?;
+    }
+    std::fs::rename(&tmp_path, path)?;
+    // Persist the rename itself (a no-op where a directory cannot be opened).
+    #[cfg(unix)]
+    if let Some(parent) = path.parent()
+        && let Ok(directory) = std::fs::File::open(parent)
+    {
+        let _ = directory.sync_all();
+    }
+    Ok(())
 }
 
 pub(super) fn read_backup_file_sync(path: &Path) -> std::io::Result<Option<String>> {

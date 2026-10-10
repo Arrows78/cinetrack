@@ -674,3 +674,75 @@ async fn a_restored_history_row_keeps_the_mirrored_metadata_profile_id_in_sync()
     .unwrap();
     assert_eq!(mismatched, 0);
 }
+
+/// Every table, every column, no exclusion: what a failed restore must leave
+/// byte for byte identical.
+async fn full_dump(pool: &SqlitePool) -> Vec<(String, Vec<String>)> {
+    let mut dump = Vec::new();
+    for (table, _) in TABLES {
+        dump.push((table.to_string(), dump_table(pool, table, &[]).await));
+    }
+    dump
+}
+
+#[tokio::test]
+async fn a_restore_that_fails_late_leaves_the_existing_database_untouched() {
+    let existing = migrated_pool().await;
+    seed(&existing, 41).await;
+    let before = full_dump(&existing).await;
+
+    let donor = migrated_pool().await;
+    seed(&donor, 42).await;
+
+    // Each corruption makes a different table's insert fail, early or last,
+    // after the purge has already deleted every existing row.
+    type Corruption = (&'static str, fn(&mut PortableData));
+    let corruptions: [Corruption; 4] = [
+        ("library row outside its CHECK (user_rating 0)", |data| {
+            data.library[0].user_rating = Some(0.0)
+        }),
+        (
+            "library row owned by a profile that is not in the backup",
+            |data| data.library[0].profile_id = "ghost".to_string(),
+        ),
+        ("two library rows with the same business key", |data| {
+            let duplicate = data.library[0].clone();
+            data.library.push(duplicate)
+        }),
+        (
+            "last table (dismissed recommendations) owned by a ghost",
+            |data| {
+                let mut row = data.dismissed_recommendations[0].clone();
+                row.id = "ghost-row".to_string();
+                row.profile_id = "ghost".to_string();
+                row.media_id = 999_999;
+                data.dismissed_recommendations.push(row)
+            },
+        ),
+    ];
+
+    for (label, corrupt) in corruptions {
+        let mut snapshot = export_to_json_and_back(&export_impl(&donor).await.unwrap()).await;
+        assert!(
+            !snapshot.library.is_empty() && !snapshot.dismissed_recommendations.is_empty(),
+            "the donor seed must produce rows to corrupt"
+        );
+        corrupt(&mut snapshot);
+
+        assert!(
+            import_impl(&existing, snapshot).await.is_err(),
+            "{label}: the import should have been rejected"
+        );
+        assert_eq!(
+            before,
+            full_dump(&existing).await,
+            "{label}: a failed restore changed the database"
+        );
+        let foreign_keys: Vec<String> =
+            sqlx::query_scalar("SELECT \"table\" FROM pragma_foreign_key_check")
+                .fetch_all(&existing)
+                .await
+                .unwrap();
+        assert!(foreign_keys.is_empty(), "{label}: dangling references left");
+    }
+}
