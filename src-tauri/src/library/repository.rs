@@ -896,6 +896,92 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn paging_through_every_sort_returns_each_title_once_in_order() {
+        let pool = migrated_pool().await;
+        // Shared ids across media types, repeated titles, missing ratings
+        // and completion dates: the tie-breakers and NULL handling the
+        // keyset cursor has to get right.
+        for index in 0..37_i64 {
+            let media_type = if index % 3 == 0 {
+                MediaType::Series
+            } else {
+                MediaType::Movie
+            };
+            upsert_impl(
+                &pool,
+                MediaSummaryInput {
+                    id: index / 2,
+                    media_type,
+                    title: format!("Title {}", index % 5),
+                    rating: (index % 4 != 0).then_some((index % 7) as f64),
+                    ..media(0)
+                },
+                LibraryPatch {
+                    status: Some(if index % 2 == 0 {
+                        LibraryStatus::Completed
+                    } else {
+                        LibraryStatus::Planned
+                    }),
+                    user_rating: (index % 6 == 0).then_some(Some(5.0)),
+                    ..Default::default()
+                },
+                "default",
+            )
+            .await
+            .unwrap();
+        }
+        let total: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM library_items")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        for sort in [
+            LibrarySort::Recent,
+            LibrarySort::Title,
+            LibrarySort::Rating,
+            LibrarySort::DateAdded,
+            LibrarySort::DateCompleted,
+        ] {
+            let params = |cursor: Option<String>, limit: i64| LibraryListParams {
+                media_type: None,
+                status: None,
+                favourites_only: false,
+                search: None,
+                sort,
+                genre: None,
+                cursor,
+                limit,
+            };
+            let key = |item: &LibraryItem| (item.media_id, item.media_type);
+            let all: Vec<_> = list_page_impl(&pool, "default", params(None, 500))
+                .await
+                .unwrap()
+                .items
+                .iter()
+                .map(key)
+                .collect();
+            assert_eq!(all.len() as i64, total.0, "{sort:?}: single page");
+
+            let mut paged = Vec::new();
+            let mut cursor = None;
+            loop {
+                let page = list_page_impl(&pool, "default", params(cursor, 5))
+                    .await
+                    .unwrap();
+                paged.extend(page.items.iter().map(key));
+                cursor = page.next_cursor;
+                if cursor.is_none() {
+                    break;
+                }
+            }
+            assert_eq!(
+                paged, all,
+                "{sort:?}: pages must replay the single-page order"
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn list_page_impl_filters_by_genre() {
         let pool = migrated_pool().await;
         upsert_impl(
