@@ -149,6 +149,27 @@ pub(super) async fn upsert_impl(
     .await
     .map_err(ApiError::from)?;
 
+    // A title planned after a "not interested" is a newer, explicit intent
+    // than the dismissal, so planning it (a new entry, or an existing one
+    // moving back to "to watch") lifts the dismissal and it can reach Watch
+    // Tonight again. Only the transition counts: re-saving an
+    // already-planned title leaves a later dismissal in place.
+    let newly_planned = status == LibraryStatus::Planned
+        && current
+            .as_ref()
+            .is_none_or(|previous| previous.status != LibraryStatus::Planned);
+    if newly_planned {
+        sqlx::query(
+            "DELETE FROM dismissed_recommendations WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
+        )
+        .bind(profile_id)
+        .bind(item.media_id)
+        .bind(item.media_type.as_db_str())
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+    }
+
     if is_new {
         let timestamp = now_iso(&mut *tx).await?;
         let history_item = ViewingHistoryItem {
@@ -1289,6 +1310,125 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(fetched.unwrap().media_id, 7);
+    }
+
+    async fn dismiss(pool: &SqlitePool, media_id: i64, profile_id: &str) {
+        sqlx::query(
+            "INSERT INTO dismissed_recommendations (uuid,profile_id,media_id,media_type,title,dismissed_at,created_at,updated_at)
+             VALUES ($1,$2,$3,'movie','Test Movie','2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.000Z')",
+        )
+        .bind(new_uuid())
+        .bind(profile_id)
+        .bind(media_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn is_dismissed(pool: &SqlitePool, media_id: i64, profile_id: &str) -> bool {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM dismissed_recommendations WHERE profile_id = $1 AND media_id = $2",
+        )
+        .bind(profile_id)
+        .bind(media_id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+            > 0
+    }
+
+    #[tokio::test]
+    async fn planning_a_dismissed_title_lifts_its_dismissal() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO profiles (uuid, name, created_at, updated_at)
+             VALUES ('other', 'Other', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        dismiss(&pool, 7, "default").await;
+        dismiss(&pool, 8, "default").await;
+        dismiss(&pool, 7, "other").await;
+
+        // Adding it to the library as "to watch" is a newer, explicit intent
+        // than the earlier "not interested".
+        assert!(
+            add_if_absent_impl(&pool, media(7), "default")
+                .await
+                .unwrap()
+        );
+
+        assert!(!is_dismissed(&pool, 7, "default").await);
+        assert!(
+            is_dismissed(&pool, 8, "default").await,
+            "another title stays dismissed"
+        );
+        assert!(
+            is_dismissed(&pool, 7, "other").await,
+            "another profile's dismissal is untouched"
+        );
+    }
+
+    #[tokio::test]
+    async fn moving_an_existing_title_back_to_planned_lifts_its_dismissal_but_a_plain_resave_does_not()
+     {
+        let pool = migrated_pool().await;
+        upsert_impl(
+            &pool,
+            media(7),
+            LibraryPatch {
+                status: Some(LibraryStatus::Dropped),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        dismiss(&pool, 7, "default").await;
+
+        // Saving a non-planned status leaves the dismissal alone.
+        upsert_impl(
+            &pool,
+            media(7),
+            LibraryPatch {
+                favourite: Some(true),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        assert!(is_dismissed(&pool, 7, "default").await);
+
+        upsert_impl(
+            &pool,
+            media(7),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        assert!(!is_dismissed(&pool, 7, "default").await);
+
+        // Dismissing a title that is already planned, then re-saving it as
+        // planned (a retry, an unchanged editor save), is not a new plan.
+        dismiss(&pool, 7, "default").await;
+        upsert_impl(
+            &pool,
+            media(7),
+            LibraryPatch {
+                status: Some(LibraryStatus::Planned),
+                ..Default::default()
+            },
+            "default",
+        )
+        .await
+        .unwrap();
+        assert!(is_dismissed(&pool, 7, "default").await);
     }
 
     #[tokio::test]

@@ -8,7 +8,9 @@ import type { DismissedRecommendation, MediaType } from "@/types/media";
 // pattern this reuses). Local table, but synced across devices (see
 // docs/database-schema.md's dismissed_recommendations entry) — unlike
 // episode ratings, a "never show me this again" choice is something a user
-// expects to follow them to their other devices.
+// expects to follow them to their other devices. Planning the title in the
+// library afterwards lifts the dismissal (see upsert_impl in
+// src-tauri/src/library/repository.rs): the latest intent wins.
 export const recommendationsRepository = {
   async listDismissed(): Promise<DismissedRecommendation[]> {
     return invokeTypedCommand(recommendationsCommands.list);
