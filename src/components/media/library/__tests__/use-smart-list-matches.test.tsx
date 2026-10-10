@@ -44,6 +44,26 @@ vi.mock("@/features/progress/use-progress", () => ({
   }),
 }));
 
+// Stands in for Watch Next's per-series resolution (tested on its own in
+// use-watch-next*.test.tsx): the series ids it "finds" a next aired episode
+// for, and the ids it was asked to resolve.
+let seriesWithNextEpisode = new Set<number>();
+let failingSeriesIds = new Set<number>();
+const resolvedRequests: number[][] = [];
+vi.mock("@/features/progress/use-watch-next", () => ({
+  useNextEpisodes: (seriesList: TrackedSeriesItem[]) => {
+    resolvedRequests.push(seriesList.map((series) => series.seriesId));
+    const results = seriesList.map((series) => ({
+      series,
+      nextEpisode: seriesWithNextEpisode.has(series.seriesId) ? { id: series.seriesId * 10 } : null,
+      remaining: 0,
+      isLoading: false,
+      isError: failingSeriesIds.has(series.seriesId),
+    }));
+    return { entries: [], results, isLoading: false };
+  },
+}));
+
 let snapshotsData: AvailabilitySnapshot[] = [];
 vi.mock("@/features/availability/use-availability-alerts", () => ({
   useAvailabilitySnapshots: () => ({
@@ -74,6 +94,9 @@ beforeEach(() => {
   libraryIsError = false;
   trackedSeriesData = [];
   snapshotsData = [];
+  seriesWithNextEpisode = new Set();
+  failingSeriesIds = new Set();
+  resolvedRequests.length = 0;
 });
 
 describe("useSmartListMatches", () => {
@@ -132,6 +155,69 @@ describe("useSmartListMatches", () => {
     expect(getMovieDetailsMock).toHaveBeenCalledWith(1);
     expect(getMovieDetailsMock).toHaveBeenCalledWith(2);
   });
+  describe("the episode-waiting rule", () => {
+    const tracked = (seriesId: number, watchedEpisodes: number, totalEpisodes: number): TrackedSeriesItem => ({
+      id: String(seriesId),
+      profileId: null,
+      seriesId,
+      title: "Show " + seriesId,
+      posterPath: null,
+      backdropPath: null,
+      totalEpisodes,
+      watchedEpisodes,
+      status: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, mediaType: "series", hasEpisodeWaiting: true };
+
+    it("follows the resolved next episode, not the approximate tracked totals", async () => {
+      libraryItems = [
+        makeLibraryItem({ mediaId: 1, mediaType: "series", title: "Stale cache says caught up" }),
+        makeLibraryItem({ mediaId: 2, mediaType: "series", title: "Stale cache says behind" }),
+      ];
+      // Series 1: cache is at 3/3 but a new episode aired. Series 2: cache
+      // says 1/10 but every aired episode is watched.
+      trackedSeriesData = [tracked(1, 3, 3), tracked(2, 1, 10)];
+      seriesWithNextEpisode = new Set([1]);
+      const { useSmartListMatches } = await import("../use-smart-list-matches");
+      const { result } = renderHook(() => useSmartListMatches(rules), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.items.map((item) => item.id)).toEqual([1]);
+    });
+
+    it("only resolves started series of the library, and only when the rule is set", async () => {
+      libraryItems = [
+        makeLibraryItem({ mediaId: 1, mediaType: "series" }),
+        makeLibraryItem({ mediaId: 2, mediaType: "series" }),
+      ];
+      trackedSeriesData = [tracked(1, 2, 5), tracked(2, 0, 5), tracked(3, 4, 5)];
+      const { useSmartListMatches } = await import("../use-smart-list-matches");
+
+      const { result } = renderHook(() => useSmartListMatches(rules), { wrapper: createWrapper() });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(resolvedRequests[resolvedRequests.length - 1]).toEqual([1]);
+
+      resolvedRequests.length = 0;
+      const withoutRule = renderHook(() => useSmartListMatches(DEFAULT_SMART_LIST_RULES), {
+        wrapper: createWrapper(),
+      });
+      await waitFor(() => expect(withoutRule.result.current.isLoading).toBe(false));
+      expect(resolvedRequests.every((ids) => ids.length === 0)).toBe(true);
+    });
+
+    it("reports an error rather than a silently shorter list when a series cannot be resolved", async () => {
+      libraryItems = [makeLibraryItem({ mediaId: 1, mediaType: "series" })];
+      trackedSeriesData = [tracked(1, 2, 5)];
+      failingSeriesIds = new Set([1]);
+      const { useSmartListMatches } = await import("../use-smart-list-matches");
+      const { result } = renderHook(() => useSmartListMatches(rules), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+    });
+  });
+
   it("does not list a movie whose TMDB runtime is 0 (unknown) under a max-runtime rule", async () => {
     libraryItems = [
       makeLibraryItem({ mediaId: 1, mediaType: "movie", title: "Known" }),

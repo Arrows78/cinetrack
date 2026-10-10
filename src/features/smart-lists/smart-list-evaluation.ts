@@ -1,4 +1,4 @@
-import type { AvailabilitySnapshot, LibraryItem, SmartListRules, TrackedSeriesItem } from "@/types/media";
+import type { AvailabilitySnapshot, LibraryItem, SmartListRules } from "@/types/media";
 
 // Mirrors watch-tonight-page.tsx's MY_SERVICES_VALUE idea: "mine" resolves
 // to the profile's own preferredProviderIds preference at evaluation time
@@ -47,19 +47,25 @@ export function findSmartListRulesProblems(rules: SmartListRules): SmartListRule
 
 /** Everything matchesSmartListRules needs beyond the rule set and the item itself — one bundle per evaluation pass, built once by the caller rather than looked up per item. */
 export interface SmartListEvalContext {
-  trackedSeriesBySeriesId: Map<number, TrackedSeriesItem>;
+  /**
+   * Series that have an aired, unwatched episode waiting — resolved exactly
+   * like Watch Next does (next unwatched aired episode across every season),
+   * not read off the approximate `tracked_series` totals, which go stale
+   * until a series' detail page next opens.
+   */
+  seriesIdsWithEpisodeWaiting: ReadonlySet<number>;
   preferredProviderIds: number[];
   /** Keyed by `${mediaType}-${mediaId}`, mirroring the key LibraryExplorer already uses to join library items against tracked series/list membership. */
   snapshotsByMediaKey: Map<string, AvailabilitySnapshot>;
 }
 
 export function buildSmartListEvalContext(
-  trackedSeries: TrackedSeriesItem[],
   preferredProviderIds: number[],
-  snapshots: AvailabilitySnapshot[]
+  snapshots: AvailabilitySnapshot[],
+  seriesIdsWithEpisodeWaiting: Iterable<number> = []
 ): SmartListEvalContext {
   return {
-    trackedSeriesBySeriesId: new Map(trackedSeries.map((series) => [series.seriesId, series])),
+    seriesIdsWithEpisodeWaiting: new Set(seriesIdsWithEpisodeWaiting),
     preferredProviderIds,
     snapshotsByMediaKey: new Map(snapshots.map((snapshot) => [`${snapshot.mediaType}-${snapshot.mediaId}`, snapshot])),
   };
@@ -108,8 +114,7 @@ export function matchesSmartListRules(
 
   if (rules.hasEpisodeWaiting) {
     if (item.mediaType !== "series") return false;
-    const tracked = context.trackedSeriesBySeriesId.get(item.mediaId);
-    if (!tracked || tracked.watchedEpisodes >= tracked.totalEpisodes) return false;
+    if (!context.seriesIdsWithEpisodeWaiting.has(item.mediaId)) return false;
   }
 
   // See this function's doc comment: this rule never excludes series, only

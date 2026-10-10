@@ -6,6 +6,7 @@ import { useAvailabilitySnapshots } from "@/features/availability/use-availabili
 import { mediaRepository } from "@/features/media/media-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useNextEpisodes } from "@/features/progress/use-watch-next";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_24_HOURS } from "@/shared/constants/query";
 import type { LibraryFilterParams, LibraryItem, SmartListRules } from "@/types/media";
@@ -99,6 +100,21 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     movieCandidates.map((item, index) => [item.mediaId, runtimeQueries[index]?.data?.runtime ?? null])
   );
 
+  // "Has an episode waiting" is Watch Next's own resolution (next unwatched
+  // aired episode across every season), not a comparison of the approximate
+  // tracked_series totals. Only resolved when the rule is set, and only for
+  // started series that are candidates of this list: a series nobody began
+  // has nothing "waiting", and one outside the library is not followed.
+  const candidateSeriesIds = new Set(library.filter((item) => item.mediaType === "series").map((item) => item.mediaId));
+  const waitingCandidates =
+    rules?.hasEpisodeWaiting === true
+      ? trackedSeries.filter((series) => series.watchedEpisodes > 0 && candidateSeriesIds.has(series.seriesId))
+      : [];
+  const nextEpisodes = useNextEpisodes(waitingCandidates);
+  const seriesIdsWithEpisodeWaiting = nextEpisodes.results
+    .filter((result) => result.nextEpisode !== null)
+    .map((result) => result.series.seriesId);
+
   const progressBySeries = new Map(
     trackedSeries.map((series) => [
       series.seriesId,
@@ -108,7 +124,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
 
   const items = rules
     ? (() => {
-        const context = buildSmartListEvalContext(trackedSeries, preferredProviderIds, snapshots);
+        const context = buildSmartListEvalContext(preferredProviderIds, snapshots, seriesIdsWithEpisodeWaiting);
         return library
           .filter((item) =>
             matchesSmartListRules(
@@ -128,6 +144,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     trackedSeriesQuery.isLoading ||
     preferencesQuery.isLoading ||
     snapshotsQuery.isLoading ||
+    nextEpisodes.isLoading ||
     (needsRuntime && runtimeQueries.some((query) => query.isLoading));
   // A movie whose runtime could not be loaded (TMDB unreachable) is left out
   // of a max-runtime list, so without this the list would silently read as
@@ -137,17 +154,23 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
   const runtimeFailure = needsRuntime
     ? runtimeQueries.find((query) => query.isError && query.data === undefined)
     : undefined;
+  // A series whose next episode could not be resolved (TMDB unreachable) is
+  // left out of an episode-waiting list; report it rather than a quietly
+  // shorter list, as for runtimes above.
+  const nextEpisodeFailure = nextEpisodes.results.find((result) => result.isError);
   const isError =
     idsQuery.isError ||
     libraryItemsQuery.isError ||
     trackedSeriesQuery.isError ||
     snapshotsQuery.isError ||
+    nextEpisodeFailure !== undefined ||
     runtimeFailure !== undefined;
   const error =
     idsQuery.error ??
     libraryItemsQuery.error ??
     trackedSeriesQuery.error ??
     snapshotsQuery.error ??
+    (nextEpisodeFailure ? new Error("Could not resolve the next episode of a series") : null) ??
     runtimeFailure?.error ??
     null;
 

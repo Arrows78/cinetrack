@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeLibraryItem } from "@/shared/test-utils";
-import type { AvailabilitySnapshot, SmartListRules, TrackedSeriesItem } from "@/types/media";
+import type { AvailabilitySnapshot, SmartListRules } from "@/types/media";
 import {
   DEFAULT_SMART_LIST_RULES,
   SMART_LIST_PROVIDER_ANY,
@@ -8,21 +8,6 @@ import {
   buildSmartListEvalContext,
   matchesSmartListRules,
 } from "../smart-list-evaluation";
-
-const trackedSeries = (overrides: Partial<TrackedSeriesItem> = {}): TrackedSeriesItem => ({
-  id: "ts-1",
-  profileId: "default",
-  seriesId: 42,
-  title: "Test Show",
-  posterPath: null,
-  backdropPath: null,
-  totalEpisodes: 10,
-  watchedEpisodes: 3,
-  status: "Returning Series",
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-  ...overrides,
-});
 
 const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySnapshot => ({
   mediaId: 550,
@@ -34,15 +19,15 @@ const snapshot = (overrides: Partial<AvailabilitySnapshot> = {}): AvailabilitySn
 });
 
 function context({
-  trackedSeriesList = [],
+  waitingSeriesIds = [],
   preferredProviderIds = [],
   snapshots = [],
 }: {
-  trackedSeriesList?: TrackedSeriesItem[];
+  waitingSeriesIds?: number[];
   preferredProviderIds?: number[];
   snapshots?: AvailabilitySnapshot[];
 } = {}) {
-  return buildSmartListEvalContext(trackedSeriesList, preferredProviderIds, snapshots);
+  return buildSmartListEvalContext(preferredProviderIds, snapshots, waitingSeriesIds);
 }
 
 const emptyContext = context();
@@ -193,26 +178,22 @@ describe("matchesSmartListRules", () => {
       expect(matchesSmartListRules(makeLibraryItem({ mediaType: "movie" }), rules, emptyContext, null)).toBe(false);
     });
 
-    it("excludes an untracked series", () => {
+    it("excludes a series with no resolved next episode", () => {
       const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, hasEpisodeWaiting: true };
       expect(
         matchesSmartListRules(makeLibraryItem({ mediaType: "series", mediaId: 42 }), rules, emptyContext, null)
       ).toBe(false);
     });
 
-    it("matches a series with unwatched episodes remaining", () => {
+    it("matches a series whose next aired episode was resolved", () => {
       const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, hasEpisodeWaiting: true };
-      const ctx = context({
-        trackedSeriesList: [trackedSeries({ seriesId: 42, watchedEpisodes: 3, totalEpisodes: 10 })],
-      });
+      const ctx = context({ waitingSeriesIds: [42] });
       expect(matchesSmartListRules(makeLibraryItem({ mediaType: "series", mediaId: 42 }), rules, ctx, null)).toBe(true);
     });
 
-    it("excludes a series that's fully caught up", () => {
+    it("excludes a series that's fully caught up, whatever its cached totals say", () => {
       const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, hasEpisodeWaiting: true };
-      const ctx = context({
-        trackedSeriesList: [trackedSeries({ seriesId: 42, watchedEpisodes: 10, totalEpisodes: 10 })],
-      });
+      const ctx = context({ waitingSeriesIds: [43] });
       expect(matchesSmartListRules(makeLibraryItem({ mediaType: "series", mediaId: 42 }), rules, ctx, null)).toBe(
         false
       );
@@ -264,12 +245,7 @@ describe("matchesSmartListRules", () => {
 
     it("Series with episodes waiting", () => {
       const rules: SmartListRules = { ...DEFAULT_SMART_LIST_RULES, mediaType: "series", hasEpisodeWaiting: true };
-      const ctx = context({
-        trackedSeriesList: [
-          trackedSeries({ seriesId: 42, watchedEpisodes: 4, totalEpisodes: 10 }),
-          trackedSeries({ seriesId: 43, watchedEpisodes: 10, totalEpisodes: 10 }),
-        ],
-      });
+      const ctx = context({ waitingSeriesIds: [42] });
       const waiting = makeLibraryItem({ mediaType: "series", mediaId: 42 });
       const caughtUp = makeLibraryItem({ mediaType: "series", mediaId: 43 });
       const aMovie = makeLibraryItem({ mediaType: "movie", mediaId: 44 });
@@ -282,13 +258,9 @@ describe("matchesSmartListRules", () => {
 });
 
 describe("buildSmartListEvalContext", () => {
-  it("keys tracked series by seriesId and snapshots by mediaType-mediaId", () => {
-    const ctx = buildSmartListEvalContext(
-      [trackedSeries({ seriesId: 7 })],
-      [8],
-      [snapshot({ mediaId: 550, mediaType: "movie" })]
-    );
-    expect(ctx.trackedSeriesBySeriesId.get(7)).toBeDefined();
+  it("keys snapshots by mediaType-mediaId and keeps the series with an episode waiting", () => {
+    const ctx = buildSmartListEvalContext([8], [snapshot({ mediaId: 550, mediaType: "movie" })], [7]);
+    expect(ctx.seriesIdsWithEpisodeWaiting.has(7)).toBe(true);
     expect(ctx.snapshotsByMediaKey.get("movie-550")).toBeDefined();
     expect(ctx.preferredProviderIds).toEqual([8]);
   });
