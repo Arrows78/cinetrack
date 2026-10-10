@@ -225,4 +225,27 @@ describe("calendarService", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]!.mediaId).toBe(21);
   });
+
+  it("rejects when TMDB is unreachable for every source, instead of reporting an empty calendar", async () => {
+    mocks.getUpcomingMovies.mockRejectedValue(new Error("TMDB down"));
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 30 }, { seriesId: 31 }]);
+    mocks.getSeriesDetails.mockRejectedValue(new Error("TMDB down"));
+
+    await expect(calendarService.build(60)).rejects.toThrow("TMDB down");
+  });
+
+  it("rejects when the upcoming feed is down and no series is tracked", async () => {
+    mocks.getUpcomingMovies.mockRejectedValue(new Error("TMDB down"));
+
+    await expect(calendarService.build(60)).rejects.toThrow("TMDB down");
+  });
+
+  it("keeps the tracked-series episodes when only the upcoming feed is down", async () => {
+    mocks.getUpcomingMovies.mockRejectedValue(new Error("TMDB 500"));
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 32 }]);
+    mocks.getSeriesDetails.mockResolvedValue(series(32, [1]));
+    mocks.getSeasonDetails.mockResolvedValue(season(1, [{ id: 1, airDate: day(2) }]));
+
+    await expect(calendarService.build(60)).resolves.toHaveLength(1);
+  });
 });

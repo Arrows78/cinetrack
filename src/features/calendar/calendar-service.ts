@@ -2,6 +2,7 @@ import { addDays, endOfDay, isAfter, isBefore, parseISO, startOfDay } from "date
 import { queryClient } from "@/app/query-client";
 import { mediaRepository } from "@/features/media/media-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
+import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -22,13 +23,23 @@ const SERIES_LOOKUP_CONCURRENCY = 8;
 // as soon as a page's results move past `to`).
 const MAX_UPCOMING_MOVIE_PAGES = 10;
 
-async function fetchUpcomingMovieEntries(from: Date, to: Date): Promise<CalendarEntry[]> {
+// A source's entries plus the error that made it unreachable, when none of
+// its lookups succeeded (as opposed to "fetched, nothing in the window").
+interface SourceResult {
+  entries: CalendarEntry[];
+  failure?: { error: unknown };
+}
+
+async function fetchUpcomingMovieEntries(from: Date, to: Date): Promise<SourceResult> {
   const entries: CalendarEntry[] = [];
+  let failure: SourceResult["failure"];
 
   for (let page = 1; page <= MAX_UPCOMING_MOVIE_PAGES; page += 1) {
-    const upcoming = await mediaRepository
-      .getUpcomingMovies(page)
-      .catch(() => ({ page, totalPages: page, totalResults: 0, results: [] }));
+    const upcoming = await mediaRepository.getUpcomingMovies(page).catch((error: unknown) => {
+      logger.warn(`Failed to fetch upcoming movies page ${page}: ${errorMessage(error)}`);
+      if (page === 1) failure = { error };
+      return { page, totalPages: page, totalResults: 0, results: [] };
+    });
     if (!upcoming.results.length) break;
 
     let sawEntryPastWindow = false;
@@ -55,11 +66,12 @@ async function fetchUpcomingMovieEntries(from: Date, to: Date): Promise<Calendar
     if (sawEntryPastWindow || page >= upcoming.totalPages) break;
   }
 
-  return entries;
+  return { entries, failure };
 }
 
-async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<CalendarEntry[]> {
+async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceResult> {
   const entries: CalendarEntry[] = [];
+  const errors: unknown[] = [];
   const tracked = await progressRepository.listTrackedSeries();
 
   await mapWithConcurrency(
@@ -121,14 +133,17 @@ async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<Calendar
             episodeTitle: episode.title,
           });
         }
-      } catch {
+      } catch (error) {
         // A single unavailable series must not hide the rest of the calendar.
+        logger.warn(`Failed to fetch details for tracked series ${trackedSeries.seriesId}: ${errorMessage(error)}`);
+        errors.push(error);
       }
     },
     SERIES_LOOKUP_CONCURRENCY
   );
 
-  return entries;
+  // No tracked series means nothing was attempted, which is not a failure.
+  return { entries, failure: errors.length > 0 && errors.length === tracked.length ? { error: errors[0] } : undefined };
 }
 
 export const calendarService = {
@@ -141,11 +156,20 @@ export const calendarService = {
     // other's results — running them concurrently instead of sequentially
     // roughly halves the wall-clock time on a profile with both a sizeable
     // tracked-series list and several pages of upcoming movies.
-    const [movieEntries, episodeEntries] = await Promise.all([
+    const [movies, episodes] = await Promise.all([
       fetchUpcomingMovieEntries(from, to),
       fetchTrackedSeriesEntries(from, to),
     ]);
 
-    return [...movieEntries, ...episodeEntries].sort((left, right) => left.date.localeCompare(right.date));
+    // A partial failure degrades to a shorter calendar. When nothing could
+    // be fetched at all the caller must see an error (so the page shows its
+    // retry state) rather than an empty calendar reading as "nothing coming
+    // up": the upcoming feed is down and no tracked series could be reached
+    // either (or none is tracked, so there is nothing else to show).
+    if (movies.failure && (episodes.failure || episodes.entries.length === 0)) {
+      throw movies.failure.error;
+    }
+
+    return [...movies.entries, ...episodes.entries].sort((left, right) => left.date.localeCompare(right.date));
   },
 };
