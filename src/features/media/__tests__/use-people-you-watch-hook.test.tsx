@@ -10,6 +10,7 @@ const mediaKeysMock = vi.fn<() => LibraryMediaKey[]>();
 const getMovieDetailsMock = vi.fn();
 const getSeriesDetailsMock = vi.fn();
 const discoverMoviesMock = vi.fn();
+const dismissedKeysMock = vi.fn<() => Set<string>>();
 
 // The completed-candidates filtering/sorting and the membership-key set
 // both now come from Rust (list_completed_candidates_impl,
@@ -23,6 +24,9 @@ vi.mock("@/features/library/library-repository", () => ({
 }));
 vi.mock("@/features/library/use-library", () => ({
   useLibraryMediaKeys: () => ({ data: mediaKeysMock() }),
+}));
+vi.mock("@/features/recommendations/use-recommendations", () => ({
+  useDismissedRecommendationKeys: () => dismissedKeysMock(),
 }));
 vi.mock("@/features/preferences/use-preferences", () => ({
   useActiveProfileId: () => "default",
@@ -50,6 +54,8 @@ beforeEach(() => {
   getMovieDetailsMock.mockReset();
   getSeriesDetailsMock.mockReset();
   discoverMoviesMock.mockReset();
+  dismissedKeysMock.mockReset();
+  dismissedKeysMock.mockReturnValue(new Set());
   completedCandidatesMock.mockReturnValue([]);
   mediaKeysMock.mockReturnValue([]);
   discoverMoviesMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 0, results: [] });
@@ -117,5 +123,32 @@ describe("usePeopleYouWatch", () => {
 
     await waitFor(() => expect(result.current.isDirectorLoading).toBe(false));
     expect(result.current.directorItems).toEqual([]);
+  });
+
+  it("never proposes a title the viewer marked 'not interested' in either rail", async () => {
+    const director = { id: 42, name: "Denis Villeneuve", job: "Director", profilePath: null };
+    const actor = { id: 7, name: "Timothée Chalamet", character: "Paul", profilePath: null };
+    const completed = [
+      makeLibraryItem({ id: "a", mediaId: 1, mediaType: "movie", status: "completed" }),
+      makeLibraryItem({ id: "b", mediaId: 2, mediaType: "movie", status: "completed" }),
+      makeLibraryItem({ id: "c", mediaId: 3, mediaType: "movie", status: "completed" }),
+    ];
+    completedCandidatesMock.mockReturnValue(completed);
+    mediaKeysMock.mockReturnValue(completed.map(keyFor));
+    getMovieDetailsMock.mockImplementation((id: number) =>
+      Promise.resolve(makeMedia({ id, mediaType: "movie", cast: [actor], directors: [director] }))
+    );
+    const dismissed = makeMedia({ id: 998, mediaType: "movie", title: "Not for me" });
+    const kept = makeMedia({ id: 999, mediaType: "movie", title: "Fine" });
+    discoverMoviesMock.mockResolvedValue({ page: 1, totalPages: 1, totalResults: 2, results: [dismissed, kept] });
+    dismissedKeysMock.mockReturnValue(new Set(["movie:998"]));
+
+    const { usePeopleYouWatch } = await import("../use-people-you-watch");
+    const { result } = renderHook(() => usePeopleYouWatch(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isDirectorLoading).toBe(false));
+    await waitFor(() => expect(result.current.isActorLoading).toBe(false));
+    expect(result.current.directorItems.map((item) => item.id)).toEqual([999]);
+    expect(result.current.actorItems.map((item) => item.id)).toEqual([999]);
   });
 });

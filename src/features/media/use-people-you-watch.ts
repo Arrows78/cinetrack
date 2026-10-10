@@ -3,9 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/shared/lib/logger";
 import { libraryRepository } from "@/features/library/library-repository";
 import { useLibraryMediaKeys } from "@/features/library/use-library";
-import { buildKeySetFromMediaKeys, filterAvailableItemsByKeySet } from "@/shared/utils/library-set";
+import {
+  buildKeySetFromMediaKeys,
+  filterAvailableItemsByKeySet,
+  filterDismissedByKeySet,
+} from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { useDismissedRecommendationKeys } from "@/features/recommendations/use-recommendations";
 import { queryKeys } from "@/shared/constants/query-keys";
 import type { CastMember, CrewMember, LibraryItem, MediaSummary, Movie, Series } from "@/types/media";
 
@@ -115,7 +120,12 @@ function useCompletedCandidates() {
   });
 }
 
-function usePersonDiscoverRail(person: PersonTally | null, role: "cast" | "crew", keySet: Set<string>) {
+function usePersonDiscoverRail(
+  person: PersonTally | null,
+  role: "cast" | "crew",
+  keySet: Set<string>,
+  dismissedKeySet: Set<string>
+) {
   const query = useQuery({
     queryKey: queryKeys.remote.discoverByPerson(role, person?.id ?? Number.NaN),
     queryFn: () =>
@@ -125,8 +135,10 @@ function usePersonDiscoverRail(person: PersonTally | null, role: "cast" | "crew"
 
   const items = useMemo<MediaSummary[]>(() => {
     if (!person) return [];
-    return filterAvailableItemsByKeySet(query.data?.results ?? [], keySet);
-  }, [person, query.data, keySet]);
+    // A "not interested" dismissal applies to every recommendation rail, this
+    // one included — never gated behind a toggle (see filterDismissedByKeySet).
+    return filterAvailableItemsByKeySet(filterDismissedByKeySet(query.data?.results ?? [], dismissedKeySet), keySet);
+  }, [person, query.data, keySet, dismissedKeySet]);
 
   return { items, isLoading: Boolean(person) && query.isLoading };
 }
@@ -151,8 +163,9 @@ export function usePeopleYouWatch() {
   const topActor = useMemo(() => pickTopActor(watchedItems), [watchedItems]);
   const topDirector = useMemo(() => pickTopDirector(watchedItems), [watchedItems]);
 
-  const actorRail = usePersonDiscoverRail(topActor, "cast", keySet);
-  const directorRail = usePersonDiscoverRail(topDirector, "crew", keySet);
+  const dismissedKeySet = useDismissedRecommendationKeys();
+  const actorRail = usePersonDiscoverRail(topActor, "cast", keySet, dismissedKeySet);
+  const directorRail = usePersonDiscoverRail(topDirector, "crew", keySet, dismissedKeySet);
 
   // completedCandidatesQuery.isLoading must gate this too, not just
   // creditsQuery: while the candidates themselves are still in flight,
