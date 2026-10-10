@@ -20,7 +20,7 @@ const ALL: [LibraryStatus; 5] = [
     LibraryStatus::Dropped,
 ];
 
-async fn migrated_pool() -> SqlitePool {
+pub(super) async fn migrated_pool() -> SqlitePool {
     let pool = SqlitePoolOptions::new()
         .max_connections(4)
         .connect("sqlite::memory:")
@@ -32,7 +32,7 @@ async fn migrated_pool() -> SqlitePool {
     pool
 }
 
-fn show_media(id: i64) -> MediaSummaryInput {
+pub(super) fn show_media(id: i64) -> MediaSummaryInput {
     MediaSummaryInput {
         id,
         media_type: MediaType::Series,
@@ -45,7 +45,7 @@ fn show_media(id: i64) -> MediaSummaryInput {
     }
 }
 
-fn show(id: i64, total: i64, status: &str) -> SeriesInput {
+pub(super) fn show(id: i64, total: i64, status: &str) -> SeriesInput {
     SeriesInput {
         id,
         title: "Show".to_string(),
@@ -60,7 +60,7 @@ fn show(id: i64, total: i64, status: &str) -> SeriesInput {
     }
 }
 
-fn ep(id: i64, number: i64) -> EpisodeInput {
+pub(super) fn ep(id: i64, number: i64) -> EpisodeInput {
     EpisodeInput {
         id,
         season_number: 1,
