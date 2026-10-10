@@ -35,6 +35,28 @@ pub(super) fn is_valid_tmdb_path(path: &str) -> bool {
         && !path.contains('#')
 }
 
+/// Upper bound on one `tmdb_request` call, retries included. The HTTP
+/// client's 20s timeout applies to each attempt, so without this a hung
+/// server would hold the UI for every attempt in a row (about a minute)
+/// while the webview transport gives up after 20s.
+pub(super) const OVERALL_DEADLINE: Duration = Duration::from_secs(20);
+
+pub(super) async fn tmdb_request_within(
+    deadline: Duration,
+    base_url: &str,
+    client: &reqwest::Client,
+    path: &str,
+    params: &HashMap<String, String>,
+    token: &str,
+) -> Result<Value, ApiError> {
+    tokio::time::timeout(
+        deadline,
+        tmdb_request_impl(base_url, client, path, params, token),
+    )
+    .await
+    .unwrap_or_else(|_| Err(ApiError::with_status("TMDB request timed out", 504)))
+}
+
 /// The base-URL-parameterized core of `tmdb_request` — split out so tests can
 /// point it at a local mock server instead of the real TMDB API, the same
 /// `_impl` split this codebase's command layer already uses everywhere else
@@ -244,6 +266,32 @@ mod tests {
         .unwrap_err();
 
         assert_eq!(error.status, Some(503));
+    }
+
+    #[tokio::test]
+    async fn a_hung_server_fails_within_the_overall_deadline_instead_of_after_every_retry() {
+        let server = MockServer::start().await;
+        // Each attempt would hit the client's 2s timeout; without an
+        // overall deadline all three attempts run back to back (~6s).
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(30)))
+            .mount(&server)
+            .await;
+
+        let started = std::time::Instant::now();
+        let error = tmdb_request_within(
+            Duration::from_secs(3),
+            &server.uri(),
+            &test_client(),
+            "/movie/1",
+            &HashMap::new(),
+            "token",
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(error.status, Some(504));
+        assert!(started.elapsed() < Duration::from_millis(4500));
     }
 
     #[tokio::test]

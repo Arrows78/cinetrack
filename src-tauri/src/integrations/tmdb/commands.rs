@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use super::client::{TMDB_BASE_URL, http_client, is_valid_tmdb_path, tmdb_request_impl};
+use super::client::{
+    OVERALL_DEADLINE, TMDB_BASE_URL, http_client, is_valid_tmdb_path, tmdb_request_within,
+};
 use crate::diagnostics::timed;
 use crate::error::ApiError;
 
@@ -17,7 +19,15 @@ pub async fn tmdb_request(
             return Err(ApiError::bad_request("Invalid TMDB path"));
         }
 
-        tmdb_request_impl(TMDB_BASE_URL, http_client(), &path, &params, &token).await
+        tmdb_request_within(
+            OVERALL_DEADLINE,
+            TMDB_BASE_URL,
+            http_client(),
+            &path,
+            &params,
+            &token,
+        )
+        .await
     })
     .await
 }
