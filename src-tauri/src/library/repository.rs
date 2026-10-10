@@ -300,10 +300,18 @@ pub(crate) async fn auto_sync_status_impl(
     } else {
         row.completed_at
     };
+    // Same rule as a manual edit (`upsert_impl`): a title that becomes
+    // Watching gets a start date unless it already has one.
+    let started_at = if target == LibraryStatus::Watching {
+        row.started_at.or_else(|| Some(now.to_string()))
+    } else {
+        row.started_at
+    };
     sqlx::query(
-        "UPDATE library_items SET status = $1, completed_at = $2, updated_at = $3 WHERE uuid = $4",
+        "UPDATE library_items SET status = $1, started_at = $2, completed_at = $3, updated_at = $4 WHERE uuid = $5",
     )
     .bind(target.as_db_str())
+    .bind(&started_at)
     .bind(&completed_at)
     .bind(now)
     .bind(&row.uuid)

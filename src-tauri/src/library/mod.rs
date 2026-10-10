@@ -22,3 +22,6 @@ pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
 #[cfg(test)]
 pub(crate) use models::LibrarySort;
 pub(crate) use repository::auto_sync_status_impl;
+
+#[cfg(test)]
+mod status_transitions_tests;
