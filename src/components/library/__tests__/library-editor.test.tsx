@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { LibraryEditor } from "../library-editor";
-import type { MediaSummary } from "@/types/media";
+import type { LibraryStatus, MediaSummary } from "@/types/media";
 
 const save = vi.fn(() => Promise.resolve());
 const refetch = vi.fn();
@@ -328,7 +328,7 @@ describe("LibraryEditor", () => {
   });
 
   it("keeps unsaved edits when the stored entry changes underneath (e.g. the favourite toggle)", () => {
-    const state = { data: libraryItem };
+    const state: { data: typeof libraryItem } = { data: libraryItem };
     useLibraryItemMock.mockImplementation(() => ({
       data: state.data,
       isLoading: false,
@@ -352,7 +352,7 @@ describe("LibraryEditor", () => {
   });
 
   it("still picks up a stored change on a field the user has not touched", () => {
-    const state = { data: libraryItem };
+    const state: { data: Omit<typeof libraryItem, "status"> & { status: LibraryStatus } } = { data: libraryItem };
     useLibraryItemMock.mockImplementation(() => ({
       data: state.data,
       isLoading: false,
