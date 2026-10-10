@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -377,5 +378,20 @@ describe("HomePage", () => {
       "aria-pressed",
       "true"
     );
+  });
+
+  it("has no detectable accessibility violations with the hero and catalogue sections rendered", async () => {
+    trackedSeriesMock.mockReturnValue({ data: [{ id: "1" }] });
+    const { container } = renderPage();
+
+    expect(screen.getByText("Dune Part Two")).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no detectable accessibility violations in the no-token state", async () => {
+    hasTmdbTokenValue = false;
+    const { container } = renderPage();
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

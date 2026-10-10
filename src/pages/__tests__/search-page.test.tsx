@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { PropsWithChildren } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { SearchPage } from "../search-page";
@@ -802,7 +803,7 @@ describe("SearchPage — search history and suggestions dropdown", () => {
 
     const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
     fireEvent.focus(input);
-    const historyButton = screen.getByRole("button", { name: "dune" });
+    const historyButton = screen.getByRole("option", { name: "dune" });
     fireEvent.mouseDown(historyButton);
     fireEvent.click(historyButton);
 
@@ -847,7 +848,7 @@ describe("SearchPage — search history and suggestions dropdown", () => {
     fireEvent.change(input, { target: { value: "dune" } });
 
     await screen.findByRole("option", { name: "Dune" });
-    const suggestionButton = screen.getByRole("button", { name: "Dune" });
+    const suggestionButton = screen.getByRole("option", { name: "Dune" });
     fireEvent.mouseDown(suggestionButton);
     fireEvent.click(suggestionButton);
 
@@ -867,7 +868,7 @@ describe("SearchPage — search history and suggestions dropdown", () => {
     fireEvent.change(input, { target: { value: "severance" } });
 
     await screen.findByRole("option", { name: "Severance" });
-    fireEvent.click(screen.getByRole("button", { name: "Severance" }));
+    fireEvent.click(screen.getByRole("option", { name: "Severance" }));
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/series/$seriesId", params: { seriesId: "2" } });
   });
@@ -888,7 +889,7 @@ describe("SearchPage — search history and suggestions dropdown", () => {
     fireEvent.change(input, { target: { value: "streep" } });
 
     await screen.findByRole("option", { name: "Meryl Streep" });
-    fireEvent.click(screen.getByRole("button", { name: "Meryl Streep" }));
+    fireEvent.click(screen.getByRole("option", { name: "Meryl Streep" }));
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/people/$personId", params: { personId: "31" } });
   });
@@ -910,6 +911,10 @@ describe("SearchPage — search history and suggestions dropdown", () => {
 
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "ArrowDown" });
+    // Focus stays in the input; the highlighted option is announced through aria-activedescendant.
+    const highlighted = screen.getByRole("option", { name: "Dune Two" });
+    expect(highlighted).toHaveAttribute("aria-selected", "true");
+    expect(input).toHaveAttribute("aria-activedescendant", highlighted.id);
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/movies/$movieId", params: { movieId: "2" } });
@@ -970,5 +975,30 @@ describe("SearchPage — search history and suggestions dropdown", () => {
     fireEvent.keyDown(input, { key: "Escape" });
 
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("has no detectable accessibility violations with the suggestion dropdown open", async () => {
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [buildSummary({ id: 1, mediaType: "movie", title: "Dune" })],
+    });
+    const { container } = renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "dune" } });
+    await screen.findByRole("option", { name: "Dune" });
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no detectable accessibility violations on the results view", async () => {
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [buildSummary({ id: 1, mediaType: "movie", title: "Dune" })],
+    });
+    const { container } = renderPage("?q=dune");
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

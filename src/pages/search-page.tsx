@@ -144,6 +144,7 @@ export function SearchPage() {
   const searchHistory = useSearchHistory();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownId = useId();
+  const dropdownOptionId = (index: number) => `${dropdownId}-option-${index}`;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const closeDropdown = () => {
@@ -354,16 +355,12 @@ export function SearchPage() {
                 inputRef={inputRef}
                 dropdownOpen={isDropdownVisible}
                 dropdownId={dropdownId}
+                activeDescendantId={highlightedIndex >= 0 ? dropdownOptionId(highlightedIndex) : undefined}
               >
                 {isDropdownVisible ? (
-                  <ul
-                    id={dropdownId}
-                    role="listbox"
-                    aria-label={t("search.suggestionsLabel")}
-                    className="absolute z-dropdown mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-elevation-lg"
-                  >
+                  <div className="absolute z-dropdown mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-elevation-lg">
                     {trimmedLocalQuery.length === 0 ? (
-                      <li className="flex items-center justify-between px-3 py-1.5 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
+                      <div className="flex items-center justify-between px-3 py-1.5 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
                         {t("search.recentSearches")}
                         <button
                           type="button"
@@ -373,53 +370,57 @@ export function SearchPage() {
                         >
                           {t("search.clearHistory")}
                         </button>
-                      </li>
+                      </div>
                     ) : null}
-                    {dropdownItems.map((item, index) => (
-                      <li key={dropdownItemKey(item)} role="option" aria-selected={index === highlightedIndex}>
-                        {item.kind === "history" ? (
+                    {/* Options are plain (non-focusable) rows: focus stays in the
+                        combobox input and the highlighted row is announced through
+                        aria-activedescendant. The only controls next to an option
+                        (removing a recent search) sit beside it, not inside it. */}
+                    <ul id={dropdownId} role="listbox" aria-label={t("search.suggestionsLabel")}>
+                      {dropdownItems.map((item, index) => {
+                        const option = (
+                          // Keyboard selection is handled by the combobox input
+                          // (arrows + Enter), so the row itself needs no key listener.
+                          // eslint-disable-next-line jsx-a11y/click-events-have-key-events
                           <div
-                            className={cn(
-                              "flex items-center gap-2 rounded-md px-1 py-0.5",
-                              index === highlightedIndex ? "bg-accent/15" : "hover:bg-accent/10"
-                            )}
-                          >
-                            <button
-                              type="button"
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => selectDropdownItem(item)}
-                              className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-body-sm"
-                            >
-                              <History className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                              <span className="truncate">{item.term}</span>
-                            </button>
-                            <button
-                              type="button"
-                              aria-label={t("search.removeRecentSearch", { query: item.term })}
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => searchHistory.removeSearch(item.term)}
-                              className="shrink-0 rounded-full p-1.5 hover:bg-foreground/10"
-                            >
-                              <X className="size-3" aria-hidden="true" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
+                            id={dropdownOptionId(index)}
+                            role="option"
+                            tabIndex={-1}
+                            aria-selected={index === highlightedIndex}
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => selectDropdownItem(item)}
                             className={cn(
-                              "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-body-sm",
+                              "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-left text-body-sm",
                               index === highlightedIndex ? "bg-accent/15" : "hover:bg-accent/10"
                             )}
                           >
-                            <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            {item.kind === "history" ? (
+                              <History className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            ) : (
+                              <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            )}
                             <span className="truncate">{dropdownItemLabel(item)}</span>
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                          </div>
+                        );
+                        return (
+                          <li key={dropdownItemKey(item)} role="presentation" className="flex items-center gap-1">
+                            {option}
+                            {item.kind === "history" ? (
+                              <button
+                                type="button"
+                                aria-label={t("search.removeRecentSearch", { query: item.term })}
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => searchHistory.removeSearch(item.term)}
+                                className="shrink-0 rounded-full p-1.5 hover:bg-foreground/10"
+                              >
+                                <X className="size-3" aria-hidden="true" />
+                              </button>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 ) : null}
               </SearchBar>
             </div>

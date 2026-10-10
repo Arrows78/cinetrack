@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { Episode, EpisodeProgress, Season, Series } from "@/types/media";
@@ -804,5 +805,11 @@ describe("SeriesDetailPage", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as unwatched" }));
     expect(markSeriesSeenMock).toHaveBeenCalledTimes(1);
     expect(markSeriesSeenMock).toHaveBeenCalledWith({ series, seasons: [buildSeason()], watched: false });
+  });
+
+  it("has no detectable accessibility violations once the series, seasons and progress have loaded", async () => {
+    const { container } = renderPage();
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

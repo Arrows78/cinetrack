@@ -13,6 +13,7 @@ export function SearchBar({
   inputRef,
   dropdownOpen,
   dropdownId,
+  activeDescendantId,
   children,
 }: {
   value: string;
@@ -26,6 +27,8 @@ export function SearchBar({
   dropdownOpen?: boolean;
   /** Id of the `children` dropdown element, wired to the input's `aria-controls`. */
   dropdownId?: string;
+  /** Id of the highlighted option, so a screen reader announces it while focus stays in the input. */
+  activeDescendantId?: string;
   /** An autocomplete dropdown rendered under the input — omit for a plain search field. */
   children?: ReactNode;
 }) {
@@ -46,6 +49,7 @@ export function SearchBar({
         role={children ? "combobox" : undefined}
         aria-expanded={children ? Boolean(dropdownOpen) : undefined}
         aria-controls={children ? dropdownId : undefined}
+        aria-activedescendant={children && dropdownOpen ? activeDescendantId : undefined}
         aria-autocomplete={children ? "list" : undefined}
         className="pl-11"
       />

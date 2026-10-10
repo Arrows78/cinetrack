@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type { Movie } from "@/types/media";
@@ -504,5 +505,12 @@ describe("MovieDetailPage", () => {
 
     await waitFor(() => expect(toggleMovieSeenMock).toHaveBeenCalledTimes(1));
     expect(screen.queryByText("Your note")).not.toBeInTheDocument();
+  });
+
+  it("has no detectable accessibility violations once the movie has loaded", async () => {
+    const { container } = renderPage();
+
+    expect(screen.getByTestId("hero-title")).toHaveTextContent("Dune");
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
