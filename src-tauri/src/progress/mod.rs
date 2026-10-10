@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod atomicity_tests;
 mod commands;
 mod domain;
 mod models;
