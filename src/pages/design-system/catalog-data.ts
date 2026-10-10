@@ -1186,6 +1186,14 @@ export const componentInventory = [
     "Asks whether marking an episode watched should also catch up still-unwatched earlier episodes of the same season."
   ),
   component(
+    "ConfirmUnmarkDialog",
+    "components/media/tracking/confirm-unmark-dialog.tsx",
+    "Media",
+    "pattern",
+    "reference",
+    "Asks for confirmation before unmarking a whole season or series, since that also clears each episode's rating and watch date."
+  ),
+  component(
     "WatchHistoryPanel",
     "components/media/activity/watch-history-panel.tsx",
     "Media",
