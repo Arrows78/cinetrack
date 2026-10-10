@@ -147,6 +147,35 @@ impl TryFrom<HistoryRow> for ViewingHistoryItem {
     }
 }
 
+/// The catalogue fields an undo needs to put a title back (re-mark a movie
+/// watched, re-add a removed library entry) without asking TMDB. Stored
+/// under `metadata.media` of the history entry at write time; the TS side
+/// (`use-undo-history-item.ts`) reads it back as a `MediaSummary`. Entries
+/// written before it existed simply lack it.
+pub(crate) struct MediaSnapshot<'a> {
+    pub(crate) title: &'a str,
+    pub(crate) poster_path: Option<&'a str>,
+    pub(crate) backdrop_path: Option<&'a str>,
+    pub(crate) runtime: Option<i64>,
+    pub(crate) year: Option<i64>,
+    pub(crate) rating: Option<f64>,
+    pub(crate) genres: Value,
+}
+
+impl MediaSnapshot<'_> {
+    pub(crate) fn to_value(&self) -> Value {
+        serde_json::json!({
+            "title": self.title,
+            "posterPath": self.poster_path,
+            "backdropPath": self.backdrop_path,
+            "runtime": self.runtime,
+            "year": self.year,
+            "rating": self.rating,
+            "genres": self.genres,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

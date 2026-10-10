@@ -162,6 +162,8 @@ Every notable action — adding to a list, a movie marked watched, an episode or
 
 Indexes: `(profile_id, timestamp DESC)`, `(media_id, media_type)`.
 
+`metadata.media` — written for `movie:watched`/`movie:unwatched` (`progress/repository.rs`) and `watchlist:remove` (`library/repository.rs`) — is a snapshot of the title's catalogue fields (`title`, `posterPath`, `backdropPath`, `runtime`, `year`, `rating`, `genres`; `MediaSnapshot` in `history/models.rs`). It is what lets the History screen undo these entries offline: `use-undo-history-item.ts` rebuilds the title from it, and only an older entry without a snapshot falls back to TMDB (with a translated error when that is unreachable). No migration: the column was already free-form JSON.
+
 Relations: a profile has `0..n` history rows.
 
 ## Custom lists

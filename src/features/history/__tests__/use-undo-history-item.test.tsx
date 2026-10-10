@@ -195,6 +195,91 @@ describe("useUndoHistoryItem", () => {
     expect(saveMock).toHaveBeenCalledWith(buildSeries());
   });
 
+  describe("with the catalogue snapshot stored in the entry (no TMDB needed)", () => {
+    const media = {
+      title: "Dune",
+      posterPath: "/dune.jpg",
+      backdropPath: "/dune-bg.jpg",
+      runtime: 155,
+      year: 2021,
+      rating: 8.1,
+      genres: ["Sci-Fi"],
+    };
+    const expected = {
+      id: 42,
+      mediaType: "movie",
+      title: "Dune",
+      overview: "",
+      posterPath: "/dune.jpg",
+      backdropPath: "/dune-bg.jpg",
+      runtime: 155,
+      year: 2021,
+      rating: 8.1,
+      genres: ["Sci-Fi"],
+      cast: [],
+    };
+
+    it("undoes a movie toggle from the snapshot, in both directions, without fetching", async () => {
+      const { useUndoHistoryItem } = await import("../use-undo-history-item");
+      const { result } = renderHook(() => useUndoHistoryItem(), { wrapper: createWrapper() });
+      getMovieDetailsMock.mockRejectedValue(new Error("offline"));
+
+      await act(async () => {
+        await result.current.mutateAsync(makeHistoryItem({ action: "movie:watched", metadata: { media } }));
+        await result.current.mutateAsync(makeHistoryItem({ action: "movie:unwatched", metadata: { media } }));
+      });
+
+      expect(getMovieDetailsMock).not.toHaveBeenCalled();
+      expect(toggleMovieSeenMock).toHaveBeenNthCalledWith(1, expected, false);
+      expect(toggleMovieSeenMock).toHaveBeenNthCalledWith(2, expected, true);
+    });
+
+    it("re-adds a removed title from the snapshot, without fetching", async () => {
+      const { useUndoHistoryItem } = await import("../use-undo-history-item");
+      const { result } = renderHook(() => useUndoHistoryItem(), { wrapper: createWrapper() });
+      getMovieDetailsMock.mockRejectedValue(new Error("offline"));
+
+      await act(async () => {
+        await result.current.mutateAsync(
+          makeHistoryItem({ action: "watchlist:remove", mediaType: "movie", metadata: { media } })
+        );
+      });
+
+      expect(getMovieDetailsMock).not.toHaveBeenCalled();
+      expect(saveMock).toHaveBeenCalledWith(expected);
+    });
+
+    it("ignores a malformed snapshot and falls back to the catalogue", async () => {
+      const { useUndoHistoryItem } = await import("../use-undo-history-item");
+      const { result } = renderHook(() => useUndoHistoryItem(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        await result.current.mutateAsync(
+          makeHistoryItem({ action: "movie:watched", metadata: { media: { title: 3, genres: "x" } } })
+        );
+      });
+
+      expect(getMovieDetailsMock).toHaveBeenCalledWith(42);
+    });
+  });
+
+  it("explains with a translated message when an old entry has no snapshot and the catalogue is unreachable", async () => {
+    getMovieDetailsMock.mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
+    const { useUndoHistoryItem } = await import("../use-undo-history-item");
+    const { result } = renderHook(() => useUndoHistoryItem(), { wrapper: createWrapper() });
+
+    let caught: unknown;
+    await act(async () => {
+      caught = await result.current
+        .mutateAsync(makeHistoryItem({ action: "movie:watched" }))
+        .catch((error: unknown) => error);
+    });
+
+    expect(caught).toBeInstanceOf(UserFacingError);
+    expect((caught as Error).message).not.toMatch(/ECONNREFUSED/);
+    expect(toggleMovieSeenMock).not.toHaveBeenCalled();
+  });
+
   it("rejects an action with no defined reversal instead of silently doing nothing", async () => {
     const { useUndoHistoryItem } = await import("../use-undo-history-item");
     const { result } = renderHook(() => useUndoHistoryItem(), { wrapper: createWrapper() });

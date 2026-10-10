@@ -264,6 +264,7 @@
     "filterFromDate": "From date",
     "filterToDate": "To date",
     "undo": "Undo",
+    "undoNeedsCatalogue": "This older entry can only be undone while the movie and series catalogue is reachable. Check your connection and try again.",
     "undoKeptLibraryItem": "This title has moved past \"to watch\" since it was added, so it was kept in your library.",
     "seriesInProgress": "Series in progress",
     "seriesInProgressSubtitle": "Your local progress on followed series.",

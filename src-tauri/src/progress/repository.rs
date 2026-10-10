@@ -10,7 +10,7 @@ use super::queries::is_movie_seen_impl;
 use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
 use crate::database::new_uuid;
 use crate::error::ApiError;
-use crate::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
+use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
 use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
 use crate::models::MediaType;
 
@@ -142,7 +142,21 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
         // constructed (without a note) by library's and backup's own
         // repositories, and giving it a new required field would force
         // edits there too, for event kinds that never carry one.
-        metadata: Some(json!({ "profileId": profile_id, "note": event_note })),
+        // `media` lets the History screen undo this entry without TMDB.
+        metadata: Some(json!({
+            "profileId": profile_id,
+            "note": event_note,
+            "media": MediaSnapshot {
+                title: &movie.title,
+                poster_path: movie.poster_path.as_deref(),
+                backdrop_path: movie.backdrop_path.as_deref(),
+                runtime: movie.runtime,
+                year: movie.year,
+                rating: movie.rating,
+                genres: json!(movie.genres),
+            }
+            .to_value(),
+        })),
     };
     add_history_item_impl(&mut *tx, pool, history_item).await?;
 
@@ -728,6 +742,41 @@ mod tests {
                 .unwrap();
         let metadata: serde_json::Value = serde_json::from_str(&metadata_raw).unwrap();
         assert_eq!(metadata["note"], "Loved the twist ending");
+    }
+
+    #[tokio::test]
+    async fn a_movie_toggle_keeps_a_catalogue_snapshot_in_its_history_entry() {
+        let pool = migrated_pool().await;
+        let mut input = movie(56);
+        input.runtime = Some(111);
+        input.genres = vec!["Drama".to_string()];
+
+        for watched in [true, false] {
+            toggle_movie_seen_impl(
+                &pool,
+                "default",
+                input.clone(),
+                watched,
+                "2026-01-01T00:00:00.000Z",
+            )
+            .await
+            .unwrap();
+        }
+
+        let rows: Vec<String> = sqlx::query_scalar(
+            "SELECT metadata FROM activity_log WHERE media_id = 56 AND action LIKE 'movie:%'",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(rows.len(), 2);
+        for raw in rows {
+            let metadata: serde_json::Value = serde_json::from_str(&raw).unwrap();
+            let snapshot = &metadata["media"];
+            assert_eq!(snapshot["title"], input.title.as_str());
+            assert_eq!(snapshot["runtime"], 111);
+            assert_eq!(snapshot["genres"], serde_json::json!(["Drama"]));
+        }
     }
 
     #[tokio::test]

@@ -19,7 +19,7 @@ use super::queries::{
 };
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
-use crate::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
+use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
 use crate::models::MediaType;
 
 pub(super) async fn upsert_impl(
@@ -321,6 +321,12 @@ pub(crate) async fn auto_sync_status_impl(
     Ok(())
 }
 
+/// History metadata for a library removal: carries a snapshot of the
+/// removed entry's catalogue fields so "undo" can re-add it offline.
+fn removal_metadata(profile_id: &str, snapshot: MediaSnapshot<'_>) -> serde_json::Value {
+    json!({ "profileId": profile_id, "media": snapshot.to_value() })
+}
+
 pub(super) async fn remove_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -347,6 +353,18 @@ pub(super) async fn remove_impl(
 
     if let Some(item) = existing {
         let timestamp = now_iso(&mut *tx).await?;
+        let metadata = removal_metadata(
+            profile_id,
+            MediaSnapshot {
+                title: &item.title,
+                poster_path: item.poster_path.as_deref(),
+                backdrop_path: item.backdrop_path.as_deref(),
+                runtime: None,
+                year: item.year,
+                rating: item.rating,
+                genres: json!(item.genres),
+            },
+        );
         let history_item = ViewingHistoryItem {
             id: new_uuid(),
             media_id,
@@ -357,7 +375,7 @@ pub(super) async fn remove_impl(
             season_number: None,
             episode_number: None,
             episode_title: None,
-            metadata: Some(json!({ "profileId": profile_id })),
+            metadata: Some(metadata),
         };
         add_history_item_impl(&mut *tx, pool, history_item).await?;
     }
@@ -467,6 +485,20 @@ pub(super) async fn remove_if_planned_impl(
         .map_err(ApiError::from)?;
 
     let timestamp = now_iso(&mut *tx).await?;
+    let genres: serde_json::Value =
+        serde_json::from_str(&row.genres).map_err(|e| ApiError::internal(e.to_string()))?;
+    let metadata = removal_metadata(
+        profile_id,
+        MediaSnapshot {
+            title: &row.title,
+            poster_path: row.poster_path.as_deref(),
+            backdrop_path: row.backdrop_path.as_deref(),
+            runtime: None,
+            year: row.year,
+            rating: row.rating,
+            genres,
+        },
+    );
     let history_item = ViewingHistoryItem {
         id: new_uuid(),
         media_id,
@@ -477,7 +509,7 @@ pub(super) async fn remove_if_planned_impl(
         season_number: None,
         episode_number: None,
         episode_title: None,
-        metadata: Some(json!({ "profileId": profile_id })),
+        metadata: Some(metadata),
     };
     add_history_item_impl(&mut *tx, pool, history_item).await?;
 
@@ -1406,6 +1438,31 @@ mod tests {
             .unwrap();
         assert_eq!(history.len(), 2);
         assert_eq!(history[0].action, HistoryAction::LibraryRemove);
+        // What an undo needs to put the title back without asking TMDB.
+        let snapshot = &history[0].metadata.as_ref().unwrap()["media"];
+        assert_eq!(snapshot["title"], "Test Movie");
+        assert_eq!(snapshot["year"], 2024);
+        assert_eq!(snapshot["rating"], 7.5);
+        assert_eq!(snapshot["genres"], json!(["Drama"]));
+    }
+
+    #[tokio::test]
+    async fn the_planned_only_removal_also_keeps_a_snapshot_for_undo() {
+        let pool = migrated_pool().await;
+        upsert_impl(&pool, media(7), LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        remove_if_planned_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap();
+
+        let history = list_history_impl(&pool, 50, None, &HistoryFilters::default())
+            .await
+            .unwrap();
+        let snapshot = &history[0].metadata.as_ref().unwrap()["media"];
+        assert_eq!(snapshot["title"], "Test Movie");
+        assert_eq!(snapshot["genres"], json!(["Drama"]));
     }
 
     #[tokio::test]
