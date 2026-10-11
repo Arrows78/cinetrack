@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
@@ -40,7 +41,7 @@ export function AppShell() {
   const { data: preferences, updatePreference } = usePreferences();
 
   const canGoBack = /^\/(movies|series|people)\/[^/]+/.test(location.pathname);
-  const sidebarCollapsed = preferences?.sidebarCollapsed ?? false;
+  const sidebarCollapsed = preferences?.sidebarCollapsed ?? defaultPreferences.sidebarCollapsed;
 
   // "Take a tour" (AboutSettings) re-runs it on demand via this same event
   // desktop-service.ts's own "cinetrack:command-palette" event already uses

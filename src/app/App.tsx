@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -146,7 +147,8 @@ export function App() {
   // changing availabilityCheckIntervalHours in Settings just re-schedules
   // this interval, instead of re-running desktop/sync init and the
   // integrity-check/backup sequence too.
-  const availabilityCheckIntervalHours = usePreferences().data?.availabilityCheckIntervalHours ?? 6;
+  const availabilityCheckIntervalHours =
+    usePreferences().data?.availabilityCheckIntervalHours ?? defaultPreferences.availabilityCheckIntervalHours;
   useEffect(() => {
     if (!isTauriApp()) return;
 

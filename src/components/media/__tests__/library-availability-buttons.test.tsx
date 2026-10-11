@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import i18n from "@/i18n";
+import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import { makeMedia } from "@/shared/test-utils";
 import { AddToLibraryButton } from "../tracking/add-to-library-button";
 import { AvailabilityAlertButton } from "../detail/availability-alert-button";
@@ -178,7 +179,7 @@ describe("AvailabilityAlertButton", () => {
     const media = makeMedia({ id: 7 });
     render(<AvailabilityAlertButton media={media} />);
 
-    expect(useAvailabilityAlertMock).toHaveBeenCalledWith(media, "US", []);
+    expect(useAvailabilityAlertMock).toHaveBeenCalledWith(media, DEFAULT_PREFERRED_REGION, []);
 
     useAvailabilityAlertMock.mockClear();
     usePreferencesMock.mockReturnValue({ data: { region: "FR", preferredProviderIds: [8, 9] } });

@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useTranslation } from "react-i18next";
 import { SettingToggle } from "@/components/ui/setting-toggle";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -12,7 +13,7 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 export function HideWatchedToggle() {
   const { t } = useTranslation();
   const { data: preferences, updatePreference, isSaving, isLoading } = usePreferences();
-  const hideWatched = preferences?.hideWatchedInDiscovery ?? false;
+  const hideWatched = preferences?.hideWatchedInDiscovery ?? defaultPreferences.hideWatchedInDiscovery;
 
   return (
     <SettingToggle

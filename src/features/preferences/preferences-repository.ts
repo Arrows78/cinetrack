@@ -1,63 +1,14 @@
-import { z } from "zod";
 import { preferencesCommands } from "@/features/preferences/preferences-commands";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
-import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
-import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserPreferences } from "@/types/media";
 
-export const preferencesSchema = z.object({
-  theme: z.enum(["dark", "light"]).default("dark"),
-  accentColor: z.enum(["violet", "blue", "teal", "green", "amber", "orange", "rose", "red"]).default("violet"),
-  language: z.enum(["en", "fr"]).default("en"),
-  region: z
-    .string()
-    .regex(/^[A-Z]{2}$/)
-    .default(DEFAULT_TMDB_REGION),
-  defaultSearchType: z.enum(["all", "movie", "series", "person"]).default("all"),
-  reduceMotion: z.boolean().default(false),
-  compactMode: z.boolean().default(false),
-  sidebarCollapsed: z.boolean().default(false),
-  libraryViewMode: z.enum(["grid", "list"]).default("grid"),
-  spoilerProtection: z.boolean().default(true),
-  notificationsEnabled: z.boolean().default(false),
-  availabilityAlertsEnabled: z.boolean().default(false),
-  desktopNotificationsEnabled: z.boolean().default(false),
-  notifyHoursBefore: z.number().int().min(0).max(168).default(24),
-  availabilityCheckIntervalHours: z.number().int().min(1).max(24).default(6),
-  preferredProviderIds: z.array(z.number().int().positive()).default([]),
-  activeProfileId: z.string().default(DEFAULT_PROFILE_ID),
-  backupDirectory: z.string().nullable().default(null),
-  backupFrequency: z.enum(["daily", "weekly", "off"]).default("daily"),
-  hideWatchedInDiscovery: z.boolean().default(false),
-  onThisDayEnabled: z.boolean().default(false),
-  onboardingCompleted: z.boolean().default(false),
-  recentSearches: z.array(z.string()).max(8).default([]),
-  tourCompleted: z.boolean().default(false),
-  commandPaletteShortcut: z.string().min(1).default("mod+k"),
-  globalCommandPaletteShortcut: z.string().min(1).default("mod+shift+k"),
-  userProfile: z.object({
-    id: z.string().default(DEFAULT_PROFILE_ID),
-    name: z.string().nullable().default(null),
-    // Still accepts `null` so a backup written before avatar's wire shape
-    // tightened to "omitted or string" (never an explicit null, see
-    // src-tauri/src/preferences/models.rs's UserProfile) still restores —
-    // normalized to `undefined` here to match UserProfile's generated type.
-    avatar: z
-      .string()
-      .nullable()
-      .optional()
-      .transform((value) => value ?? undefined),
-  }),
-});
-
-export const defaultPreferences: UserPreferences = preferencesSchema.parse({
-  userProfile: {},
-});
+// Re-exported for older call sites; new code imports them from
+// preferences-schema.ts.
+export { defaultPreferences, preferencesSchema } from "@/shared/constants/preferences-schema";
 
 // Reading/writing/caching preferences now happens in Rust (see
 // src-tauri/src/preferences/) — this repository is a thin
-// invoke() wrapper. `preferencesSchema`/`defaultPreferences` above stay here
-// because backup-schema.ts still validates restored backups against them.
+// invoke() wrapper.
 export const preferencesRepository = {
   async getPreferences(): Promise<UserPreferences> {
     return invokeTypedCommand(preferencesCommands.get);

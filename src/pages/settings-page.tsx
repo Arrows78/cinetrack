@@ -28,10 +28,11 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { authConfig } from "@/features/auth";
 import { useAuth } from "@/features/auth/use-auth";
 import { notificationService } from "@/features/desktop";
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useProfiles, useProfileSwitching } from "@/features/profiles/use-profiles";
 import { COLOR_PRESETS, type AccentColor, type AvatarPresetKey } from "@/shared/constants/colors";
-import { DEFAULT_LANGUAGE, DEFAULT_TMDB_REGION, PLATFORMS } from "@/shared/constants/discover";
+import { PLATFORMS } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import type { UserPreferences, UserProfile } from "@/types/media";
 
@@ -588,7 +589,7 @@ export function SettingsPage() {
               <div className="flex flex-wrap gap-3">
                 {(Object.entries(COLOR_PRESETS) as [AccentColor, (typeof COLOR_PRESETS)[AccentColor]][]).map(
                   ([key, preset]) => {
-                    const selected = (preferences?.accentColor ?? "violet") === key;
+                    const selected = (preferences?.accentColor ?? defaultPreferences.accentColor) === key;
                     return (
                       <button
                         key={key}
@@ -624,7 +625,7 @@ export function SettingsPage() {
               <label className="grid gap-2 text-body-sm font-medium">
                 {t("settings.language")}
                 <Select
-                  value={preferences?.language ?? DEFAULT_LANGUAGE}
+                  value={preferences?.language ?? defaultPreferences.language}
                   disabled={isSaving}
                   onChange={(event) => void setLanguage(event.target.value as "fr" | "en")}
                 >
@@ -635,7 +636,7 @@ export function SettingsPage() {
               <label className="grid gap-2 text-body-sm font-medium">
                 {t("settings.region")}
                 <Select
-                  value={preferences?.region ?? DEFAULT_TMDB_REGION}
+                  value={preferences?.region ?? defaultPreferences.region}
                   disabled={isSaving}
                   onChange={(event) => void updatePreference({ key: "region", value: event.target.value })}
                 >
@@ -654,7 +655,7 @@ export function SettingsPage() {
                   programmatic association to the control below it. */}
               <p className="mb-3 text-body-sm font-medium">{t("settings.defaultSearch")}</p>
               <FilterBar
-                value={preferences?.defaultSearchType ?? "all"}
+                value={preferences?.defaultSearchType ?? defaultPreferences.defaultSearchType}
                 onChange={(value) => void updatePreference({ key: "defaultSearchType", value })}
                 groupLabel={t("settings.defaultSearch")}
                 disabled={isSaving}
@@ -669,7 +670,7 @@ export function SettingsPage() {
             <div className="flex flex-wrap gap-2">
               <SettingToggle
                 label={t("settings.reduceAnimations")}
-                pressed={preferences?.reduceMotion ?? false}
+                pressed={preferences?.reduceMotion ?? defaultPreferences.reduceMotion}
                 disabled={isSaving}
                 onPressedChange={() =>
                   void updatePreference({ key: "reduceMotion", value: !preferences?.reduceMotion })
@@ -677,13 +678,13 @@ export function SettingsPage() {
               />
               <SettingToggle
                 label={t("settings.compactMode")}
-                pressed={preferences?.compactMode ?? false}
+                pressed={preferences?.compactMode ?? defaultPreferences.compactMode}
                 disabled={isSaving}
                 onPressedChange={() => void updatePreference({ key: "compactMode", value: !preferences?.compactMode })}
               />
               <SettingToggle
                 label={t("settings.spoilerProtection")}
-                pressed={preferences?.spoilerProtection ?? false}
+                pressed={preferences?.spoilerProtection ?? defaultPreferences.spoilerProtection}
                 disabled={isSaving}
                 onPressedChange={() =>
                   void updatePreference({ key: "spoilerProtection", value: !preferences?.spoilerProtection })
@@ -691,7 +692,7 @@ export function SettingsPage() {
               />
               <SettingToggle
                 label={t("settings.onThisDay")}
-                pressed={preferences?.onThisDayEnabled ?? false}
+                pressed={preferences?.onThisDayEnabled ?? defaultPreferences.onThisDayEnabled}
                 disabled={isSaving}
                 onPressedChange={() =>
                   void updatePreference({ key: "onThisDayEnabled", value: !preferences?.onThisDayEnabled })
@@ -716,7 +717,9 @@ export function SettingsPage() {
             isSaving={isSaving}
           />
           <AvailabilityCheckCard
-            intervalHours={preferences?.availabilityCheckIntervalHours ?? 6}
+            intervalHours={
+              preferences?.availabilityCheckIntervalHours ?? defaultPreferences.availabilityCheckIntervalHours
+            }
             onChange={(hours) => void updatePreference({ key: "availabilityCheckIntervalHours", value: hours })}
             isSaving={isSaving}
           />
@@ -734,19 +737,19 @@ export function SettingsPage() {
           <CardContent className="mt-0 flex flex-wrap gap-2">
             <SettingToggle
               label={t("settings.calendarNotifications")}
-              pressed={preferences?.notificationsEnabled ?? false}
+              pressed={preferences?.notificationsEnabled ?? defaultPreferences.notificationsEnabled}
               disabled={isSaving}
               onPressedChange={() => void toggleCalendarNotifications()}
             />
             <SettingToggle
               label={t("settings.availabilityAlerts")}
-              pressed={preferences?.availabilityAlertsEnabled ?? false}
+              pressed={preferences?.availabilityAlertsEnabled ?? defaultPreferences.availabilityAlertsEnabled}
               disabled={isSaving}
               onPressedChange={() => void toggleAvailabilityAlerts()}
             />
             <SettingToggle
               label={t("settings.desktopNotifications")}
-              pressed={preferences?.desktopNotificationsEnabled ?? false}
+              pressed={preferences?.desktopNotificationsEnabled ?? defaultPreferences.desktopNotificationsEnabled}
               disabled={isSaving}
               onPressedChange={() => void toggleDesktopNotifications()}
             />

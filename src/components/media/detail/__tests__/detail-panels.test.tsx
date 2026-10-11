@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
-import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import type { MediaSummary, MediaVideo, WatchProvider } from "@/types/media";
 
 const availabilityMock = vi.fn();
@@ -149,19 +149,19 @@ describe("detail panels", () => {
       expect(availabilityMock).toHaveBeenCalledWith("movie", 1, "FR");
     });
 
-    it("falls back to DEFAULT_TMDB_REGION when preferences data is absent", () => {
+    it("falls back to DEFAULT_PREFERRED_REGION when preferences data is absent", () => {
       preferencesMock.mockReturnValue({ data: undefined });
       availabilityMock.mockReturnValue({
         isError: false,
         error: null,
         refetch: vi.fn(),
-        data: { region: DEFAULT_TMDB_REGION, flatrate: [buildProvider()], rent: [], buy: [], free: [] },
+        data: { region: DEFAULT_PREFERRED_REGION, flatrate: [buildProvider()], rent: [], buy: [], free: [] },
       });
 
       render(<ProviderAvailability media={buildMedia()} />);
 
-      expect(screen.getByText(`${i18n.t("media.whereToWatch")} · ${DEFAULT_TMDB_REGION}`)).toBeInTheDocument();
-      expect(availabilityMock).toHaveBeenCalledWith("movie", 1, DEFAULT_TMDB_REGION);
+      expect(screen.getByText(`${i18n.t("media.whereToWatch")} · ${DEFAULT_PREFERRED_REGION}`)).toBeInTheDocument();
+      expect(availabilityMock).toHaveBeenCalledWith("movie", 1, DEFAULT_PREFERRED_REGION);
     });
 
     it("renders rent, buy, and free groups even when there's no flatrate offer", () => {

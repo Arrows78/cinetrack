@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useTranslation } from "react-i18next";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { PanelLeftClose, PanelLeft, Moon, Sun, LogOut } from "lucide-react";
@@ -136,7 +137,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
   const navigationItems = useNavigationItems();
   const { data: preferences, updatePreference } = usePreferences();
   const { signOut, user } = useAuth();
-  const activeTheme = preferences?.theme ?? "dark";
+  const activeTheme = preferences?.theme ?? defaultPreferences.theme;
   const userName = user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? null;
 
   const groupedSections = navigationSections.map((section) => ({

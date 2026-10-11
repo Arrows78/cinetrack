@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
@@ -97,7 +98,7 @@ export function SearchPage() {
     if ((urlScope ?? undefined) !== lastPushedScopeRef.current) setSelectedScope(urlScope);
   }
 
-  const scope = selectedScope ?? preferences?.defaultSearchType ?? "all";
+  const scope = selectedScope ?? preferences?.defaultSearchType ?? defaultPreferences.defaultSearchType;
   const isPersonScope = scope === "person";
   const debouncedQuery = useDebouncedValue(localQuery, DEBOUNCE_MS);
 

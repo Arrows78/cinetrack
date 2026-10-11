@@ -1,8 +1,16 @@
 import { PLATFORM_BRAND_COLORS } from "@/shared/constants/colors";
 
-// English/international default — used wherever a stored region preference
-// hasn't loaded yet, rather than defaulting to a French-specific value.
+// International fallback for TMDB data that has no entry for the viewer's
+// region (release dates, certifications — see media/api/mapper.ts). Not the
+// region preference's default: see DEFAULT_PREFERRED_REGION.
 export const DEFAULT_TMDB_REGION = "US";
+
+// The `region` preference's default, identical to the one Rust stores
+// (UserPreferences::default(), pinned by default-preferences.json). Used
+// wherever the preference hasn't loaded yet, so the first renders ask TMDB
+// for the same region the loaded preference will name — not for a different
+// one that is immediately refetched.
+export const DEFAULT_PREFERRED_REGION = "FR";
 
 // Matches i18n's own fallbackLng (see src/i18n/index.ts) — used wherever a
 // stored language preference hasn't loaded yet.

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { preferencesSchema } from "@/features/preferences/preferences-repository";
+import { preferencesSchema } from "@/shared/constants/preferences-schema";
 import { portableDataSchema } from "./portable-data-schema";
 
 // Field-level validation for a restored backup. The structural schemas live

@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { profileRepository } from "@/features/profiles/profile-repository";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { toast } from "@/components/ui/use-toast";
 
@@ -82,7 +84,8 @@ export function useProfileSwitching(onSwitched?: () => void) {
       await preferencesRepository.setActiveProfile(profileId, null, pin ?? null);
       queryClient.removeQueries({ queryKey: ["local"] });
       onSwitched?.();
-    } catch {
+    } catch (error) {
+      logger.warn(`Switching to profile ${profileId} failed: ${errorMessage(error)}`);
       toast({ description: t("settings.profiles.switchFailed"), variant: "error" });
     } finally {
       setSwitchingProfileId(null);

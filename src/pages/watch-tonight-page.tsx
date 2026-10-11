@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
@@ -189,7 +190,7 @@ export function WatchTonightPage() {
     if (!ids.size) return undefined;
     return ids.size === 1 ? [...ids][0] : [...ids];
   })();
-  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
+  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? defaultPreferences.hideWatchedInDiscovery;
 
   const query = useWatchTonightPicks(
     {

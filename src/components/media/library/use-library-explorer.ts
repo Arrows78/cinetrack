@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ActiveFilterChip } from "@/components/media/library/active-filter-chips";
@@ -59,7 +60,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
   // Persisted (not local state) — a user's grid/list choice should survive
   // navigating away and back, and hold across /library, /movies and /series
   // since they all render this same explorer.
-  const viewMode = preferences.data?.libraryViewMode ?? "grid";
+  const viewMode = preferences.data?.libraryViewMode ?? defaultPreferences.libraryViewMode;
   const setViewMode = (mode: "grid" | "list") =>
     void preferences.updatePreference({ key: "libraryViewMode", value: mode });
   const [listFilter, setListFilter] = useState("all");

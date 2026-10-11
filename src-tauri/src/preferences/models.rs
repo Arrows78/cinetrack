@@ -373,6 +373,19 @@ pub(super) fn validate(prefs: &UserPreferences) -> Result<(), ApiError> {
 mod tests {
     use super::*;
 
+    /// The frontend's zod defaults (preferences-schema.ts) are pinned to this
+    /// same document by a Vitest twin of this test: a default changed on one
+    /// side alone fails on that side.
+    #[test]
+    fn the_defaults_match_the_document_the_frontend_is_checked_against() {
+        let golden: serde_json::Value =
+            serde_json::from_str(include_str!("default-preferences.json")).unwrap();
+        assert_eq!(
+            serde_json::to_value(UserPreferences::default()).unwrap(),
+            golden
+        );
+    }
+
     #[test]
     fn rejects_an_invalid_region() {
         let prefs = UserPreferences {

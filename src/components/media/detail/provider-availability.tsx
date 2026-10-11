@@ -5,7 +5,7 @@ import { SectionHeader } from "@/components/media/primitives/section-header";
 import { PartialErrorState } from "@/components/states/partial-error-state";
 import { useAvailability } from "@/features/media/use-discovery";
 import { usePreferences } from "@/features/preferences/use-preferences";
-import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import { buildTmdbImageUrl } from "@/shared/utils/format";
 import type { MediaSummary, WatchProvider } from "@/types/media";
 
@@ -35,7 +35,7 @@ function ProviderGroup({ label, providers }: { label: string; providers: WatchPr
 export function ProviderAvailability({ media, id }: { media: MediaSummary; id?: string }) {
   const { t } = useTranslation();
   const preferences = usePreferences();
-  const region = preferences.data?.region ?? DEFAULT_TMDB_REGION;
+  const region = preferences.data?.region ?? DEFAULT_PREFERRED_REGION;
   const query = useAvailability(media.mediaType, media.id, region);
   const data = query.data;
   // Below-the-fold on a page that otherwise loaded fine (movie/series

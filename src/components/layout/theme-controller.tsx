@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect } from "react";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { COLOR_PRESETS, DEFAULT_ACCENT } from "@/shared/constants/colors";
@@ -51,7 +52,7 @@ export function ThemeController() {
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    const theme = themeOverrideFromUrl() ?? preferences?.theme ?? "dark";
+    const theme = themeOverrideFromUrl() ?? preferences?.theme ?? defaultPreferences.theme;
     const accent = preferences?.accentColor ?? DEFAULT_ACCENT;
 
     // — Theme class
@@ -62,8 +63,8 @@ export function ThemeController() {
 
     // — Reduced motion / compact mode (see styles/index.css for the rules
     // these classes key off).
-    root.classList.toggle("reduce-motion", preferences?.reduceMotion ?? false);
-    root.classList.toggle("compact", preferences?.compactMode ?? false);
+    root.classList.toggle("reduce-motion", preferences?.reduceMotion ?? defaultPreferences.reduceMotion);
+    root.classList.toggle("compact", preferences?.compactMode ?? defaultPreferences.compactMode);
 
     // — Primary color CSS variables
     const preset = COLOR_PRESETS[accent];

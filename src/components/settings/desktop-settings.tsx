@@ -17,7 +17,7 @@ import { SectionHeader } from "@/components/media/primitives/section-header";
 import { maintenanceService } from "@/features/backup";
 import { diagnosticsService, tokenVault, updateService, type DiagnosticsSummary } from "@/features/desktop";
 import { useDesktopShortcuts } from "@/features/desktop/use-desktop-shortcuts";
-import { defaultPreferences } from "@/features/preferences/preferences-repository";
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { logger } from "@/shared/lib/logger";
 import { isDesktopApp, isTauriApp } from "@/shared/lib/platform";
@@ -314,7 +314,7 @@ export function DesktopSettings() {
                 <label className="grid max-w-xs gap-2 text-body-sm font-medium">
                   {t("desktop.automaticBackupFrequency")}
                   <Select
-                    value={preferences?.backupFrequency ?? "daily"}
+                    value={preferences?.backupFrequency ?? defaultPreferences.backupFrequency}
                     disabled={isSaving}
                     onChange={(event) =>
                       void updatePreference({

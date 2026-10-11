@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -54,7 +55,7 @@ function groupByYear(events: ViewingEvent[]): YearEntry[] {
 export function OnThisDaySection({ id }: { id?: string }) {
   const { t } = useTranslation();
   const preferencesQuery = usePreferences();
-  const enabled = preferencesQuery.data?.onThisDayEnabled ?? false;
+  const enabled = preferencesQuery.data?.onThisDayEnabled ?? defaultPreferences.onThisDayEnabled;
   const onThisDayQuery = useOnThisDay(enabled);
 
   if (!enabled) return null;
@@ -117,7 +118,7 @@ function todayKey(): string {
 export function OnThisDayInviteBanner({ id }: { id?: string }) {
   const { t } = useTranslation();
   const preferencesQuery = usePreferences();
-  const enabled = preferencesQuery.data?.onThisDayEnabled ?? false;
+  const enabled = preferencesQuery.data?.onThisDayEnabled ?? defaultPreferences.onThisDayEnabled;
   const [dismissedAt, setDismissedAt] = useState(() => localStorage.getItem(ON_THIS_DAY_INVITE_DISMISSED_KEY));
 
   const canShow = preferencesQuery.data !== undefined && !enabled && dismissedAt !== todayKey();

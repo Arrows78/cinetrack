@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -113,7 +114,7 @@ function HomePageContent() {
   const trackedSeriesQuery = useTrackedSeries();
   const historyQuery = useHistory();
   const preferences = usePreferences();
-  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
+  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? defaultPreferences.hideWatchedInDiscovery;
   // The "Hide watched" toggle only needs the set of completed titles' keys,
   // and only while it is on — not every library row.
   const completedKeys = useLibraryIdsMatchingFilters({ status: "completed" }, { enabled: hideWatched });

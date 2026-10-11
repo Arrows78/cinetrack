@@ -20,7 +20,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useNavigationItems } from "@/shared/constants/navigation";
 import { usePreferences } from "@/features/preferences/use-preferences";
-import { defaultPreferences } from "@/features/preferences/preferences-repository";
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { shortcutMatchesEvent } from "@/shared/lib/keyboard-shortcut";
 import { useSearch } from "@/features/media/use-search";
 import { useMovieSeen } from "@/features/progress/use-progress";
@@ -35,7 +35,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
-import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import { COMMAND_PALETTE_BACKDROP_CLASSNAME } from "@/shared/constants/decorative-gradients";
 import type { MediaSummary, Movie, Series } from "@/types/media";
@@ -136,7 +136,7 @@ export function CommandPalette() {
     [router]
   );
 
-  const theme = preferences.data?.theme ?? "dark";
+  const theme = preferences.data?.theme ?? defaultPreferences.theme;
   const nextTheme = theme === "dark" ? "light" : "dark";
   const updatePreference = preferences.updatePreference;
 
@@ -145,7 +145,7 @@ export function CommandPalette() {
   // useMovieSeen's own `enabled` gate gets NaN off a movie page, and
   // useAvailabilityAlert takes an explicit `enabled` for the same reason.
   const currentDetail = useCurrentDetailMedia();
-  const region = preferences.data?.region ?? DEFAULT_TMDB_REGION;
+  const region = preferences.data?.region ?? DEFAULT_PREFERRED_REGION;
   const providerIds = preferences.data?.preferredProviderIds ?? [];
   const alertMedia = currentDetail?.media ?? EMPTY_PLACEHOLDER_MEDIA;
   const alertQuery = useAvailabilityAlert(alertMedia, region, providerIds, { enabled: Boolean(currentDetail) });

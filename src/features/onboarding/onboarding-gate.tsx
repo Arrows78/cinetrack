@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -20,7 +21,7 @@ export function OnboardingGate({ children }: PropsWithChildren) {
   const { t } = useTranslation();
   const preferencesQuery = usePreferences();
   const libraryKeysQuery = useLibraryMediaKeys();
-  const onboardingCompleted = preferencesQuery.data?.onboardingCompleted ?? false;
+  const onboardingCompleted = preferencesQuery.data?.onboardingCompleted ?? defaultPreferences.onboardingCompleted;
   const hasExistingLibrary = (libraryKeysQuery.data?.length ?? 0) > 0;
   const { updatePreference } = preferencesQuery;
   const stillLoading = preferencesQuery.isLoading || libraryKeysQuery.isLoading;

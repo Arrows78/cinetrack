@@ -1,3 +1,4 @@
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -53,7 +54,7 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
   const episodes = useTodayHubEpisodes(trackedSeries);
   const availability = useAvailabilityStatus();
   const preferences = usePreferences();
-  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? false;
+  const hideWatched = preferences.data?.hideWatchedInDiscovery ?? defaultPreferences.hideWatchedInDiscovery;
   const watchTonight = useWatchTonightPicks({ hideWatched });
   // Two targeted reads instead of the whole library: the per-status totals
   // (is the library empty?) and the first few planned titles untouched for a

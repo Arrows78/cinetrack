@@ -6,7 +6,7 @@ import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import { CommandPalette } from "../command-palette";
 import type { MediaSummary, Movie, Series } from "@/types/media";
 
@@ -21,7 +21,7 @@ vi.mock("@tanstack/react-router", () => ({
 const updatePreferenceMock = vi.fn();
 let theme: "dark" | "light" = "dark";
 // Lets a single test simulate the preferences query not having resolved yet,
-// so the palette's own `?? "dark"` / `?? DEFAULT_TMDB_REGION` / `?? []`
+// so the palette's own `?? "dark"` / `?? DEFAULT_PREFERRED_REGION` / `?? []`
 // fallbacks actually run instead of always reading the seeded data below.
 let preferencesDataMissing = false;
 vi.mock("@/features/preferences/use-preferences", () => ({
@@ -671,7 +671,7 @@ describe("CommandPalette", () => {
       await waitFor(() => screen.getByRole("option", { name: "Availability alert" }));
       fireEvent.click(screen.getByRole("option", { name: "Availability alert" }));
 
-      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_TMDB_REGION, []));
+      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_PREFERRED_REGION, []));
     });
 
     it("marking watched runs the real toggle mutation with the cached movie", async () => {

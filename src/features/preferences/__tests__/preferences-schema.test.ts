@@ -1,7 +1,23 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultPreferences, preferencesSchema } from "../preferences-repository";
-import { DEFAULT_TMDB_REGION } from "@/shared/constants/discover";
+import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
+
+// Rust owns the stored defaults (UserPreferences::default()); the zod schema
+// only restores backups and covers the moments before preferences load. Both
+// sides are pinned to the same golden file, so a default changed on one side
+// only fails here and in preferences/models.rs's twin test.
+describe("default preferences parity with Rust", () => {
+  const golden = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "../../../../src-tauri/src/preferences/default-preferences.json"), "utf8")
+  ) as unknown;
+
+  it("the zod defaults equal the Rust defaults", () => {
+    expect(JSON.parse(JSON.stringify(defaultPreferences))).toEqual(golden);
+  });
+});
 
 // preferencesSchema/defaultPreferences are real zod validation logic reused
 // by backup-schema.ts to validate restored backups — unlike
@@ -15,7 +31,7 @@ describe("preferencesSchema", () => {
       theme: "dark",
       accentColor: "violet",
       language: "en",
-      region: DEFAULT_TMDB_REGION,
+      region: DEFAULT_PREFERRED_REGION,
       defaultSearchType: "all",
       reduceMotion: false,
       compactMode: false,
