@@ -45,8 +45,8 @@ use commands::{
     remove_custom_list, remove_custom_list_item, remove_library_item, remove_planned_library_item,
     remove_profile, remove_saved_filter, remove_smart_list, reset_library_status_to_auto,
     resolve_profile_for_supabase_user, rewatch_movie, save_availability_snapshot,
-    save_library_item, set_active_profile, set_episode_rating, set_profile_pin, tmdb_request,
-    toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
+    save_library_item, set_active_profile, set_episode_rating, set_profile_pin, set_tray_language,
+    tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
     undo_tvtime_import_library, update_preference, update_profile, update_smart_list,
     updater_is_configured, verify_profile_pin, write_backup_to_path,
 };
@@ -75,18 +75,59 @@ use commands::{
 // native OS dialog is the only way the user ever sees this instead of the
 // app just silently failing to open. Desktop only: rfd has no mobile
 // backend (mobile keeps the old panic on this specific failure path).
+/// The text of the native "could not start" dialog. There is no preference to
+/// read at that point (the database may be the very thing that failed), so it
+/// follows the system language: French for a French system, English otherwise.
+#[cfg(desktop)]
+fn startup_error_description(locale: Option<&str>, error: &str) -> String {
+    if locale.is_some_and(|locale| locale.to_ascii_lowercase().starts_with("fr")) {
+        format!(
+            "CineTrack n'a pas pu démarrer : {error}\n\n\
+             Vos données ne sont pas perdues. Si une sauvegarde automatique existe, \
+             vous pourrez la restaurer une fois le problème résolu.",
+        )
+    } else {
+        format!(
+            "CineTrack could not start: {error}\n\n\
+             Your data is not lost. If an automatic backup exists, \
+             you will be able to restore it once the problem is fixed.",
+        )
+    }
+}
+
 #[cfg(desktop)]
 fn show_startup_error_dialog(error: &tauri::Error) {
     rfd::MessageDialog::new()
         .set_title("CineTrack")
-        .set_description(format!(
-            "CineTrack n'a pas pu démarrer : {error}\n\n\
-             Vos données ne sont pas perdues. Si une sauvegarde automatique existe, \
-             vous pourrez la restaurer une fois le problème résolu.",
+        .set_description(startup_error_description(
+            tauri_plugin_os::locale().as_deref(),
+            &error.to_string(),
         ))
         .set_level(rfd::MessageLevel::Error)
         .set_buttons(rfd::MessageButtons::Ok)
         .show();
+}
+
+#[cfg(all(test, desktop))]
+mod startup_dialog_tests {
+    use super::startup_error_description;
+
+    #[test]
+    fn a_french_system_gets_the_french_dialog() {
+        for locale in ["fr-FR", "fr", "FR-ca"] {
+            assert!(
+                startup_error_description(Some(locale), "boom")
+                    .contains("n'a pas pu démarrer : boom")
+            );
+        }
+    }
+
+    #[test]
+    fn any_other_system_gets_the_english_dialog() {
+        for locale in [Some("en-US"), Some("de-DE"), None] {
+            assert!(startup_error_description(locale, "boom").contains("could not start: boom"));
+        }
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -129,6 +170,7 @@ pub fn run() {
             tmdb_request,
             get_boot_recovery,
             updater_is_configured,
+            set_tray_language,
             get_preferences,
             update_preference,
             set_active_profile,
@@ -274,7 +316,11 @@ pub fn run() {
                         .plugin(tauri_plugin_updater::Builder::new().build())?;
                 }
 
-                tray::build(app.handle())?;
+                let language = tauri::async_runtime::block_on(preferences::stored_language(
+                    &app.state::<sqlx::SqlitePool>(),
+                    &app.state::<PreferencesCache>(),
+                ));
+                tray::build(app.handle(), language)?;
                 auth::start_oauth_callback_server(app.handle().clone());
             }
 

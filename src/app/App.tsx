@@ -29,6 +29,7 @@ import { isTauriApp } from "@/shared/lib/platform";
 import { appBootStartedAt } from "@/shared/lib/startup-timing";
 import { TOOLTIP_DELAY_MS } from "@/shared/constants/query";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { useTrayLanguage } from "@/app/use-tray-language";
 
 // Module-level rather than declared inside App's effect: both the one-off
 // boot-time check and the recurring interval below (its own effect, so its
@@ -63,6 +64,7 @@ let startupLogged = false;
 
 export function App() {
   const queryClient = useQueryClient();
+  useTrayLanguage();
 
   useEffect(() => {
     if (!startupLogged) {

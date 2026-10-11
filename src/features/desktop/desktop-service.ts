@@ -1,7 +1,9 @@
 import { router } from "@/app/router-config";
 import { isTauriApp } from "@/shared/lib/platform";
 import { defaultPreferences, preferencesRepository } from "@/features/preferences/preferences-repository";
+import { trayCommands } from "@/features/desktop/tray-commands";
 import { errorMessage } from "@/shared/lib/errors";
+import { invokeTypedCommand } from "@/shared/lib/invoke";
 import { toTauriGlobalShortcut } from "@/shared/lib/keyboard-shortcut";
 import { logger } from "@/shared/lib/logger";
 
@@ -79,6 +81,13 @@ export const desktopService = {
       logger.warn(`Single-instance deep links unavailable: ${errorMessage(error)}`);
     }
     return () => cleanups.forEach((cleanup) => cleanup());
+  },
+
+  // The tray menu is native text: Rust rewrites its labels whenever the
+  // interface language changes (and at start, once the language is known).
+  async updateTrayLanguage(language: "en" | "fr"): Promise<void> {
+    if (!isTauriApp()) return;
+    await invokeTypedCommand(trayCommands.setLanguage, { language });
   },
 
   // Called by the Settings UI right after persisting a new

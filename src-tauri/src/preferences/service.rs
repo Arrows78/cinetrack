@@ -1,7 +1,7 @@
 use serde_json::Value;
 use sqlx::SqlitePool;
 
-use super::models::UserPreferences;
+use super::models::{Language, UserPreferences};
 use super::repository::{PreferencesCache, get_preferences_cached, write_preference};
 use crate::database::current_profile_id;
 use crate::error::ApiError;
@@ -120,4 +120,15 @@ pub(crate) fn refresh(cache: &PreferencesCache) {
         .0
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
+}
+
+/// The stored language preference, for native surfaces built before the
+/// webview can say anything (the tray menu): the default when it cannot be
+/// read, since a menu label is not worth failing startup over.
+#[cfg(desktop)]
+pub(crate) async fn stored_language(pool: &SqlitePool, cache: &PreferencesCache) -> Language {
+    get_preferences_cached(pool, cache)
+        .await
+        .map(|preferences| preferences.language)
+        .unwrap_or(Language::En)
 }

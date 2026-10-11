@@ -1,4 +1,5 @@
 mod boot;
+mod tray_language;
 mod updater;
 
 pub use crate::availability::{
@@ -56,6 +57,7 @@ pub use crate::sync::{
     rebase_sync_conflicts,
 };
 pub use boot::get_boot_recovery;
+pub use tray_language::set_tray_language;
 // has_updater_config is only ever called from lib.rs's #[cfg(desktop)] plugin
 // setup — re-exporting it unconditionally makes it an unused import on
 // mobile builds (iOS), where that whole block is compiled out.

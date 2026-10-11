@@ -9,6 +9,7 @@ const {
   isTauriAppMock,
   getPreferencesMock,
   loggerWarnMock,
+  invokeMock,
 } = vi.hoisted(() => ({
   registerMock: vi.fn(),
   unregisterMock: vi.fn(),
@@ -18,7 +19,10 @@ const {
   isTauriAppMock: vi.fn(),
   getPreferencesMock: vi.fn(),
   loggerWarnMock: vi.fn(),
+  invokeMock: vi.fn(),
 }));
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args: unknown[]) => invokeMock(...args) }));
 
 vi.mock("@/shared/lib/logger", () => ({
   logger: { info: vi.fn(), warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn() },
@@ -378,5 +382,28 @@ describe("desktopService.initialize", () => {
 
       expect(order).toEqual(["register", "unregister"]);
     });
+  });
+});
+
+describe("desktopService.updateTrayLanguage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invokeMock.mockResolvedValue(undefined);
+  });
+
+  it("tells the native tray menu which language to show", async () => {
+    isTauriAppMock.mockReturnValue(true);
+
+    await desktopService.updateTrayLanguage("fr");
+
+    expect(invokeMock).toHaveBeenCalledWith("set_tray_language", { language: "fr" });
+  });
+
+  it("does nothing outside Tauri, where there is no tray", async () => {
+    isTauriAppMock.mockReturnValue(false);
+
+    await desktopService.updateTrayLanguage("fr");
+
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 });

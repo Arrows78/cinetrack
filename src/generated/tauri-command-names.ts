@@ -5,6 +5,7 @@ export const tauriCommandNames = [
   "tmdb_request",
   "get_boot_recovery",
   "updater_is_configured",
+  "set_tray_language",
   "get_preferences",
   "update_preference",
   "set_active_profile",
