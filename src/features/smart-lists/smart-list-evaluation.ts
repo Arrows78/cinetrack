@@ -1,3 +1,4 @@
+import { mediaKey } from "@/shared/utils/media-key";
 import type { AvailabilitySnapshot, LibraryItem, SmartListRules } from "@/types/media";
 
 // Mirrors watch-tonight-page.tsx's MY_SERVICES_VALUE idea: "mine" resolves
@@ -55,7 +56,7 @@ export interface SmartListEvalContext {
    */
   seriesIdsWithEpisodeWaiting: ReadonlySet<number>;
   preferredProviderIds: number[];
-  /** Keyed by `${mediaType}-${mediaId}`, mirroring the key LibraryExplorer already uses to join library items against tracked series/list membership. */
+  /** Keyed by `mediaKey(mediaType, mediaId)`, mirroring the key LibraryExplorer already uses to join library items against tracked series/list membership. */
   snapshotsByMediaKey: Map<string, AvailabilitySnapshot>;
 }
 
@@ -67,7 +68,9 @@ export function buildSmartListEvalContext(
   return {
     seriesIdsWithEpisodeWaiting: new Set(seriesIdsWithEpisodeWaiting),
     preferredProviderIds,
-    snapshotsByMediaKey: new Map(snapshots.map((snapshot) => [`${snapshot.mediaType}-${snapshot.mediaId}`, snapshot])),
+    snapshotsByMediaKey: new Map(
+      snapshots.map((snapshot) => [mediaKey(snapshot.mediaType, snapshot.mediaId), snapshot])
+    ),
   };
 }
 
@@ -107,7 +110,7 @@ export function matchesSmartListRules(
       rules.provider === SMART_LIST_PROVIDER_MINE ? context.preferredProviderIds : [rules.provider];
     if (targetProviderIds.length === 0) return false;
 
-    const snapshot = context.snapshotsByMediaKey.get(`${item.mediaType}-${item.mediaId}`);
+    const snapshot = context.snapshotsByMediaKey.get(mediaKey(item.mediaType, item.mediaId));
     if (!snapshot) return false;
     if (!snapshot.providerIds.some((providerId) => targetProviderIds.includes(providerId))) return false;
   }

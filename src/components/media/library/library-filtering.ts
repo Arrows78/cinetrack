@@ -1,3 +1,4 @@
+import { mediaKey } from "@/shared/utils/media-key";
 import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import type { CustomListItem, LibraryFilterState, LibraryItem, LibraryStatus } from "@/types/media";
 
@@ -13,7 +14,7 @@ export interface LibraryFilterCriteria {
   sort: LibrarySortMode;
   /** Canonical genre label (see shared/constants/discover.ts's GENRES), or "all" for no filter. */
   genreFilter: string;
-  /** Media keys ("movie-123") the currently selected custom list contains — `null` when no list filter is active. */
+  /** Media keys ("movie:123") the currently selected custom list contains — `null` when no list filter is active. */
   listMediaKeys: Set<string> | null;
   /** Media keys the currently selected smart list matches — `null` when no smart list filter is active. */
   smartListMediaKeys: Set<string> | null;
@@ -43,10 +44,6 @@ export function resolveSavedLibraryFilters(
   return { ...saved, listFilter: "all" };
 }
 
-export function libraryMediaKey(mediaType: string, mediaId: number): string {
-  return `${mediaType}-${mediaId}`;
-}
-
 /**
  * The client-side filter/sort pass LibraryExplorer applies once its data is
  * in hand — extracted as a pure function (no hooks, no React) so it's
@@ -74,7 +71,7 @@ export function filterAndSortLibrary(
     smartListMediaKeys,
     nextEpisodeDateBySeriesId,
   } = criteria;
-  const libraryByKey = new Map(libraryItems.map((item) => [libraryMediaKey(item.mediaType, item.mediaId), item]));
+  const libraryByKey = new Map(libraryItems.map((item) => [mediaKey(item.mediaType, item.mediaId), item]));
   const normalizedSearch = search.trim().toLowerCase();
   const matchesSearch = (text: string) => (normalizedSearch ? text.toLowerCase().includes(normalizedSearch) : true);
   // Library items can also be found by their private notes or tags, not just
@@ -88,10 +85,8 @@ export function filterAndSortLibrary(
     .filter((item) => (statusFilter === "all" ? true : item.status === statusFilter))
     .filter((item) => (favouritesOnly ? item.favourite : true))
     .filter((item) => (genreFilter === "all" ? true : item.genres.includes(genreFilter)))
-    .filter((item) => (listMediaKeys ? listMediaKeys.has(libraryMediaKey(item.mediaType, item.mediaId)) : true))
-    .filter((item) =>
-      smartListMediaKeys ? smartListMediaKeys.has(libraryMediaKey(item.mediaType, item.mediaId)) : true
-    )
+    .filter((item) => (listMediaKeys ? listMediaKeys.has(mediaKey(item.mediaType, item.mediaId)) : true))
+    .filter((item) => (smartListMediaKeys ? smartListMediaKeys.has(mediaKey(item.mediaType, item.mediaId)) : true))
     .filter((item) => matchesLibrarySearch(item))
     .map((item) => ({
       sortKey:
@@ -130,14 +125,14 @@ export function filterAndSortLibrary(
     smartListMediaKeys !== null
       ? []
       : listItems
-          .filter((li) => !libraryByKey.has(libraryMediaKey(li.mediaType, li.mediaId)))
+          .filter((li) => !libraryByKey.has(mediaKey(li.mediaType, li.mediaId)))
           .filter((li) => (typeFilter === "all" ? true : li.mediaType === typeFilter))
           .filter(() => statusFilter === "all" && !favouritesOnly && genreFilter === "all")
           .filter((li) => matchesSearch(li.title))
           .filter((li) => {
             // The same title can live in more than one list — one card, not
             // one per list it happens to be on.
-            const key = libraryMediaKey(li.mediaType, li.mediaId);
+            const key = mediaKey(li.mediaType, li.mediaId);
             if (seenListOnlyKeys.has(key)) return false;
             seenListOnlyKeys.add(key);
             return true;

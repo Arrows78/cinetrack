@@ -6,6 +6,7 @@ import {
 } from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
 import { recommendationsRepository } from "@/features/recommendations/recommendations-repository";
+import { mediaKey } from "@/shared/utils/media-key";
 import { logger } from "@/shared/lib/logger";
 import { GENRES } from "@/shared/constants/discover";
 import type { LibraryItem, MediaSummary, MediaType, Movie, Series } from "@/types/media";
@@ -303,7 +304,7 @@ export const watchTonightService = {
         recommendationsRepository.listDismissed(),
       ]);
     const completedKeySet = buildKeySetFromMediaKeys(completedKeys);
-    const dismissedKeySet = new Set(dismissed.map((item) => `${item.mediaType}:${item.mediaId}`));
+    const dismissedKeySet = new Set(dismissed.map((item) => mediaKey(item.mediaType, item.mediaId)));
     const movieAffinity = buildGenreAffinity(completedMovies);
     const seriesAffinity = buildGenreAffinity(completedSeries);
     // Each type is its own TMDB round trip: one failing (a flaky endpoint)

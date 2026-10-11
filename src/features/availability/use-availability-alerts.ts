@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { availabilityMonitor } from "@/features/availability/availability-monitor";
+import { matchAlertProviderIds } from "@/shared/utils/alert-providers";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { useActiveProfileId, usePreferences } from "@/features/preferences/use-preferences";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { mediaKey } from "@/shared/utils/media-key";
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
 
 export function useAvailabilityAlerts() {
@@ -67,16 +69,15 @@ export function computeAlertStatuses(
   // checkAll, which applies the same fallback before ever notifying.
   preferredProviderIds: number[] = []
 ): AvailabilityStatusGroups {
-  const snapshotByKey = new Map(snapshots.map((snapshot) => [`${snapshot.mediaType}-${snapshot.mediaId}`, snapshot]));
+  const snapshotByKey = new Map(
+    snapshots.map((snapshot) => [mediaKey(snapshot.mediaType, snapshot.mediaId), snapshot])
+  );
   const groups: AvailabilityStatusGroups = { availableNow: [], pending: [] };
 
   for (const alert of alerts.filter((item) => item.enabled)) {
-    const snapshot = snapshotByKey.get(`${alert.mediaType}-${alert.mediaId}`);
+    const snapshot = snapshotByKey.get(mediaKey(alert.mediaType, alert.mediaId));
     const currentProviderIds = snapshot?.providerIds ?? [];
-    const relevantProviderIds = alert.providerIds.length ? alert.providerIds : preferredProviderIds;
-    const matchedProviderIds = relevantProviderIds.length
-      ? currentProviderIds.filter((id) => relevantProviderIds.includes(id))
-      : currentProviderIds;
+    const matchedProviderIds = matchAlertProviderIds(alert.providerIds, preferredProviderIds, currentProviderIds);
     const status: AlertStatus = { alert, matchedProviderIds, available: matchedProviderIds.length > 0 };
     (status.available ? groups.availableNow : groups.pending).push(status);
   }

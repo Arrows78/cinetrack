@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { logger } from "@/shared/lib/logger";
+import { mediaKey } from "@/shared/utils/media-key";
 import { libraryRepository } from "@/features/library/library-repository";
 import { useLibraryMediaKeys } from "@/features/library/use-library";
 import {
@@ -86,7 +87,7 @@ export function pickTopDirector(watchedItems: MediaSummary[]): PersonTally | nul
 // candidates, reused here instead of adding a parallel fetching path.
 function useWatchedCredits(candidates: LibraryItem[]) {
   const profileId = useActiveProfileId();
-  const signature = candidates.map((item) => `${item.mediaType}:${item.mediaId}`).join(",");
+  const signature = candidates.map((item) => mediaKey(item.mediaType, item.mediaId)).join(",");
 
   return useQuery({
     queryKey: queryKeys.local.peopleYouWatchCredits(profileId, signature),

@@ -3,6 +3,7 @@ import { libraryRepository, type LibraryPageSort, type LibraryPatch } from "@/fe
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
+import { mediaKey } from "@/shared/utils/media-key";
 import type { LibraryFilterParams, LibraryMediaKey, LibraryStatus, MediaSummary, MediaType } from "@/types/media";
 
 export function useLibrary(options?: { enabled?: boolean; mediaType?: MediaType }) {
@@ -68,7 +69,7 @@ export function useLibraryDistinctTags() {
 export function useLibraryItemsByKeys(keys: LibraryMediaKey[]) {
   const profileId = useActiveProfileId();
   const signature = keys
-    .map((key) => `${key.mediaType}:${key.mediaId}`)
+    .map((key) => mediaKey(key.mediaType, key.mediaId))
     .sort()
     .join(",");
   return useQuery({

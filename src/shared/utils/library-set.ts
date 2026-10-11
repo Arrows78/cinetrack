@@ -1,6 +1,7 @@
+import { mediaKey } from "@/shared/utils/media-key";
 import type { LibraryItem, MediaType, MediaSummary } from "@/types/media";
 
-const libraryKey = (mediaId: number, mediaType: MediaType) => `${mediaType}:${mediaId}`;
+const libraryKey = (mediaId: number, mediaType: MediaType) => mediaKey(mediaType, mediaId);
 
 // Stable reference so `library` doesn't change identity on every render
 // while libraryQuery.data is still undefined (avoids re-triggering the

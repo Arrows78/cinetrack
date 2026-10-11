@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  filterAndSortLibrary,
-  libraryMediaKey,
-  resolveSavedLibraryFilters,
-  type LibraryFilterCriteria,
-} from "../library-filtering";
+import { filterAndSortLibrary, resolveSavedLibraryFilters, type LibraryFilterCriteria } from "../library-filtering";
+import { mediaKey } from "@/shared/utils/media-key";
 import type { CustomListItem, LibraryFilterState, LibraryItem } from "@/types/media";
 
 function libraryItem(overrides: Partial<LibraryItem> & Pick<LibraryItem, "id" | "mediaId" | "title">): LibraryItem {
@@ -63,7 +59,7 @@ function titlesOf(items: ReturnType<typeof filterAndSortLibrary>): string[] {
 
 describe("libraryMediaKey", () => {
   it("joins media type and id with a dash", () => {
-    expect(libraryMediaKey("movie", 42)).toBe("movie-42");
+    expect(mediaKey("movie", 42)).toBe("movie:42");
   });
 });
 
@@ -137,7 +133,7 @@ describe("filterAndSortLibrary", () => {
   });
 
   it("does not match a custom-list-only item (no notes/tags of its own) against unrelated search text", () => {
-    const listMediaKeys = new Set([libraryMediaKey("movie", 9)]);
+    const listMediaKeys = new Set([mediaKey("movie", 9)]);
     const listOnlyItems = [listItem({ id: "l1", mediaId: 9, title: "Only In List" })];
 
     expect(
@@ -167,7 +163,7 @@ describe("filterAndSortLibrary", () => {
       libraryItem({ id: "1", mediaId: 1, title: "InList" }),
       libraryItem({ id: "2", mediaId: 2, title: "NotInList" }),
     ];
-    const listMediaKeys = new Set([libraryMediaKey("movie", 1)]);
+    const listMediaKeys = new Set([mediaKey("movie", 1)]);
 
     expect(titlesOf(filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, listMediaKeys }))).toEqual([
       "InList",
@@ -179,7 +175,7 @@ describe("filterAndSortLibrary", () => {
       libraryItem({ id: "1", mediaId: 1, title: "Matches" }),
       libraryItem({ id: "2", mediaId: 2, title: "DoesNotMatch" }),
     ];
-    const smartListMediaKeys = new Set([libraryMediaKey("movie", 1)]);
+    const smartListMediaKeys = new Set([mediaKey("movie", 1)]);
 
     expect(titlesOf(filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, smartListMediaKeys }))).toEqual([
       "Matches",
@@ -398,7 +394,7 @@ describe("filterAndSortLibrary", () => {
         listItem({ id: "li-1", mediaId: 1, title: "InLibrary" }),
         listItem({ id: "li-2", mediaId: 2, title: "OnlyInList" }),
       ];
-      const listMediaKeys = new Set([libraryMediaKey("movie", 1), libraryMediaKey("movie", 2)]);
+      const listMediaKeys = new Set([mediaKey("movie", 1), mediaKey("movie", 2)]);
 
       const result = filterAndSortLibrary(libraryItems, listItems, NO_PROGRESS, { ...BASE_CRITERIA, listMediaKeys });
 
@@ -411,7 +407,7 @@ describe("filterAndSortLibrary", () => {
         listItem({ id: "li-1", mediaId: 9, title: "OnlyMovie", mediaType: "movie" }),
         listItem({ id: "li-2", mediaId: 10, title: "OnlySeries", mediaType: "series" }),
       ];
-      const listMediaKeys = new Set([libraryMediaKey("movie", 9), libraryMediaKey("series", 10)]);
+      const listMediaKeys = new Set([mediaKey("movie", 9), mediaKey("series", 10)]);
 
       const result = filterAndSortLibrary([], listItems, NO_PROGRESS, {
         ...BASE_CRITERIA,
@@ -425,7 +421,7 @@ describe("filterAndSortLibrary", () => {
     it("sorts a list-only item (no rating field) alongside a rated library item without crashing", () => {
       const libraryItems = [libraryItem({ id: "1", mediaId: 1, title: "Rated", rating: 8 })];
       const listItems = [listItem({ id: "li-1", mediaId: 2, title: "Unrated" })];
-      const listMediaKeys = new Set([libraryMediaKey("movie", 1), libraryMediaKey("movie", 2)]);
+      const listMediaKeys = new Set([mediaKey("movie", 1), mediaKey("movie", 2)]);
 
       const result = filterAndSortLibrary(libraryItems, listItems, NO_PROGRESS, {
         ...BASE_CRITERIA,
@@ -438,7 +434,7 @@ describe("filterAndSortLibrary", () => {
 
     it("hides list-only items once a status, favourites or genre filter is active, since they carry neither", () => {
       const listItems = [listItem({ id: "li-1", mediaId: 9, title: "OnlyInList" })];
-      const listMediaKeys = new Set([libraryMediaKey("movie", 9)]);
+      const listMediaKeys = new Set([mediaKey("movie", 9)]);
 
       const byStatus = filterAndSortLibrary([], listItems, NO_PROGRESS, {
         ...BASE_CRITERIA,
@@ -463,7 +459,7 @@ describe("filterAndSortLibrary", () => {
 
     it("does not surface list-only items when a smart list filter is also active", () => {
       const listItems = [listItem({ id: "li-1", mediaId: 9, title: "OnlyInList" })];
-      const listMediaKeys = new Set([libraryMediaKey("movie", 9)]);
+      const listMediaKeys = new Set([mediaKey("movie", 9)]);
       const smartListMediaKeys = new Set<string>();
 
       const result = filterAndSortLibrary([], listItems, NO_PROGRESS, {

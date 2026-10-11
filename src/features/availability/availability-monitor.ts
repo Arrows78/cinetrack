@@ -1,4 +1,5 @@
 import i18n from "@/i18n";
+import { matchAlertProviderIds } from "@/shared/utils/alert-providers";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { mediaRepository } from "@/features/media/media-repository";
 import { notificationService } from "@/features/desktop";
@@ -84,10 +85,7 @@ export const availabilityMonitor = {
         const availability = await mediaRepository.getWatchAvailability(alert.mediaType, alert.mediaId, alert.region);
         const current = [...availability.flatrate, ...availability.free].map((provider) => provider.id);
         const previous = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
-        const relevantProviderIds = alert.providerIds.length ? alert.providerIds : preferredProviderIds;
-        const preferred = relevantProviderIds.length
-          ? current.filter((id) => relevantProviderIds.includes(id))
-          : current;
+        const preferred = matchAlertProviderIds(alert.providerIds, preferredProviderIds, current);
         const newProviders = preferred.filter((id) => !previous?.providerIds.includes(id));
 
         if (previous && newProviders.length) {

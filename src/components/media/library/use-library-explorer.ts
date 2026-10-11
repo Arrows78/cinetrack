@@ -4,7 +4,6 @@ import type { ActiveFilterChip } from "@/components/media/library/active-filter-
 import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import {
   filterAndSortLibrary,
-  libraryMediaKey,
   resolveSavedLibraryFilters,
   type LibrarySortMode,
   type LibraryStatusFilter,
@@ -18,6 +17,7 @@ import { useSmartListMatches } from "@/components/media/library/use-smart-list-m
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useTracking } from "@/features/tracking/use-tracking";
+import { mediaKey } from "@/shared/utils/media-key";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
 import type { LibraryFilterState, LibrarySort } from "@/types/media";
@@ -161,13 +161,11 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
 
   const filtered = useMemo(() => {
     const listMediaKeys =
-      listFilter === "all"
-        ? null
-        : new Set((listItems.data ?? []).map((li) => libraryMediaKey(li.mediaType, li.mediaId)));
+      listFilter === "all" ? null : new Set((listItems.data ?? []).map((li) => mediaKey(li.mediaType, li.mediaId)));
     const smartListMediaKeys =
       smartListFilter === "all"
         ? null
-        : new Set(smartListMatches.items.map((media) => libraryMediaKey(media.mediaType, media.id)));
+        : new Set(smartListMatches.items.map((media) => mediaKey(media.mediaType, media.id)));
 
     // Browsing "all" surfaces list-only items across every list; a specific
     // list already has its own scoped, already-fetched data.

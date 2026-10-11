@@ -5,6 +5,7 @@ import type { DismissMediaInput } from "@/features/recommendations/recommendatio
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { mediaKey } from "@/shared/utils/media-key";
 import type { MediaType } from "@/types/media";
 
 export function useDismissedRecommendations() {
@@ -50,5 +51,5 @@ export function useDismissedRecommendations() {
  */
 export function useDismissedRecommendationKeys(): Set<string> {
   const { data } = useDismissedRecommendations();
-  return useMemo(() => new Set((data ?? []).map((item) => `${item.mediaType}:${item.mediaId}`)), [data]);
+  return useMemo(() => new Set((data ?? []).map((item) => mediaKey(item.mediaType, item.mediaId))), [data]);
 }

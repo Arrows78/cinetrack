@@ -261,7 +261,7 @@ describe("buildSmartListEvalContext", () => {
   it("keys snapshots by mediaType-mediaId and keeps the series with an episode waiting", () => {
     const ctx = buildSmartListEvalContext([8], [snapshot({ mediaId: 550, mediaType: "movie" })], [7]);
     expect(ctx.seriesIdsWithEpisodeWaiting.has(7)).toBe(true);
-    expect(ctx.snapshotsByMediaKey.get("movie-550")).toBeDefined();
+    expect(ctx.snapshotsByMediaKey.get("movie:550")).toBeDefined();
     expect(ctx.preferredProviderIds).toEqual([8]);
   });
 });

@@ -1,11 +1,9 @@
 import { calendarService } from "@/features/calendar";
+import { matchAlertProviderIds } from "@/shared/utils/alert-providers";
 import { availabilityRepository } from "@/features/availability/availability-repository";
 import { libraryRepository } from "@/features/library/library-repository";
+import { mediaKey } from "@/shared/utils/media-key";
 import type { CalendarEntry, TrackingEntry } from "@/types/media";
-
-// TMDB numbers movies and series separately, so a bare media id is not an
-// identity: a movie and a series can share one.
-const mediaKey = (item: { mediaId: number; mediaType: string }): string => `${item.mediaType}-${item.mediaId}`;
 
 // A calendar entry is only "mine" once the user actually follows that title
 // (it's in their library) — otherwise it's just TMDB's global
@@ -16,7 +14,7 @@ const mediaKey = (item: { mediaId: number; mediaType: string }): string => `${it
 // allowed to notify (see buildNotifiableCalendarEntries) as well as what the
 // tracking page shows by default.
 function isCalendarEntryMine(entry: CalendarEntry, libraryKeys: ReadonlySet<string>): boolean {
-  return libraryKeys.has(mediaKey(entry));
+  return libraryKeys.has(mediaKey(entry.mediaType, entry.mediaId));
 }
 
 function fromCalendarEntry(entry: CalendarEntry, libraryKeys: ReadonlySet<string>): TrackingEntry {
@@ -50,7 +48,7 @@ export const trackingService = {
       availabilityRepository.listAlerts(),
     ]);
 
-    const libraryKeySet = new Set(libraryKeys.map(mediaKey));
+    const libraryKeySet = new Set(libraryKeys.map((key) => mediaKey(key.mediaType, key.mediaId)));
     const releaseEntries = calendarEntries.map((entry) => fromCalendarEntry(entry, libraryKeySet));
 
     const availabilityEntries = await Promise.all(
@@ -59,10 +57,7 @@ export const trackingService = {
         .map(async (alert): Promise<TrackingEntry> => {
           const snapshot = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
           const currentProviderIds = snapshot?.providerIds ?? [];
-          const relevantProviderIds = alert.providerIds.length ? alert.providerIds : preferredProviderIds;
-          const matchedProviderIds = relevantProviderIds.length
-            ? currentProviderIds.filter((id) => relevantProviderIds.includes(id))
-            : currentProviderIds;
+          const matchedProviderIds = matchAlertProviderIds(alert.providerIds, preferredProviderIds, currentProviderIds);
           return {
             id: `availability-${alert.id}`,
             mediaId: alert.mediaId,
@@ -89,7 +84,7 @@ export const trackingService = {
   // because it happens to be releasing soon somewhere in TMDB's catalogue.
   async buildNotifiableCalendarEntries(days = 60): Promise<CalendarEntry[]> {
     const [entries, libraryKeys] = await Promise.all([calendarService.build(days), libraryRepository.listMediaKeys()]);
-    const libraryKeySet = new Set(libraryKeys.map(mediaKey));
+    const libraryKeySet = new Set(libraryKeys.map((key) => mediaKey(key.mediaType, key.mediaId)));
     return entries.filter((entry) => isCalendarEntryMine(entry, libraryKeySet));
   },
 };
