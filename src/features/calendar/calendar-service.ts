@@ -98,6 +98,7 @@ async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceRe
         const recentSeasonNumbers = details.seasons
           .map((season) => season.seasonNumber)
           .filter((number) => number > 0)
+          .sort((a, b) => a - b)
           .slice(-2);
         const seasons = (
           await Promise.all(
@@ -146,6 +147,16 @@ async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceRe
   return { entries, failure: errors.length > 0 && errors.length === tracked.length ? { error: errors[0] } : undefined };
 }
 
+function compareCalendarEntries(left: CalendarEntry, right: CalendarEntry): number {
+  return (
+    left.date.localeCompare(right.date) ||
+    left.title.localeCompare(right.title) ||
+    (left.seasonNumber ?? 0) - (right.seasonNumber ?? 0) ||
+    (left.episodeNumber ?? 0) - (right.episodeNumber ?? 0) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
 export const calendarService = {
   async build(days = 60): Promise<CalendarEntry[]> {
     const from = startOfDay(new Date());
@@ -170,6 +181,11 @@ export const calendarService = {
       throw movies.failure.error;
     }
 
-    return [...movies.entries, ...episodes.entries].sort((left, right) => left.date.localeCompare(right.date));
+    // The lookups finish in whatever order TMDB answers, and the upcoming feed
+    // can repeat a movie across pages while it shifts: one entry per id, in a
+    // fixed order — date, then title, then season and episode.
+    const unique = new Map<string, CalendarEntry>();
+    for (const entry of [...movies.entries, ...episodes.entries]) unique.set(entry.id, entry);
+    return [...unique.values()].sort(compareCalendarEntries);
   },
 };

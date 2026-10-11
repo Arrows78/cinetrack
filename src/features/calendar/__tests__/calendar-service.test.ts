@@ -134,6 +134,50 @@ describe("calendarService", () => {
     expect(entries[0]!.mediaId).toBe(11);
   });
 
+  it("orders entries that share a date by title, whatever order the lookups finish in", async () => {
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 12 }, { seriesId: 11 }, { seriesId: 10 }]);
+    mocks.getSeriesDetails.mockImplementation((seriesId: number) => Promise.resolve(series(seriesId, [1])));
+    // The first series answers last: completion order is the reverse of the list.
+    mocks.getSeasonDetails.mockImplementation(
+      (seriesId: number) =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve(season(1, [{ id: seriesId, airDate: day(2) }])), (13 - seriesId) * 5)
+        )
+    );
+    mocks.getUpcomingMovies.mockResolvedValue({ ...emptyPage, results: [movie(5, day(2))] });
+
+    const entries = await calendarService.build(60);
+
+    expect(entries.map((entry) => entry.title)).toEqual(["Film 5", "Série 10", "Série 11", "Série 12"]);
+  });
+
+  it("lists a movie once when the upcoming feed repeats it across pages", async () => {
+    mocks.getUpcomingMovies
+      .mockResolvedValueOnce({ page: 1, totalPages: 2, totalResults: 3, results: [movie(1, day(3)), movie(2, day(4))] })
+      .mockResolvedValueOnce({
+        page: 2,
+        totalPages: 2,
+        totalResults: 3,
+        results: [movie(2, day(4)), movie(3, day(5))],
+      });
+
+    const entries = await calendarService.build(60);
+
+    expect(entries.map((entry) => entry.mediaId)).toEqual([1, 2, 3]);
+  });
+
+  it("looks at the two latest seasons even when TMDB lists them out of order", async () => {
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 10 }]);
+    mocks.getSeriesDetails.mockResolvedValue(series(10, [3, 1, 2]));
+    mocks.getSeasonDetails.mockImplementation((_seriesId: number, seasonNumber: number) =>
+      Promise.resolve(season(seasonNumber, [{ id: seasonNumber, airDate: day(3) }]))
+    );
+
+    const entries = await calendarService.build(60);
+
+    expect(entries.map((entry) => entry.seasonNumber)).toEqual([2, 3]);
+  });
+
   it("returns entries sorted by date", async () => {
     mocks.getUpcomingMovies.mockResolvedValue({
       ...emptyPage,
@@ -175,7 +219,10 @@ describe("calendarService", () => {
       Array.from({ length: trackedCount }, (_, index) => ({ seriesId: index + 1 }))
     );
     mocks.getSeriesDetails.mockImplementation((seriesId: number) => Promise.resolve(series(seriesId, [1])));
-    mocks.getSeasonDetails.mockResolvedValue(season(1, [{ id: 1, airDate: day(1) }]));
+    // TMDB episode ids are unique across series.
+    mocks.getSeasonDetails.mockImplementation((seriesId: number) =>
+      Promise.resolve(season(1, [{ id: seriesId, airDate: day(1) }]))
+    );
 
     const entries = await calendarService.build(60);
 
