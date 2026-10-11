@@ -40,6 +40,7 @@ CineTrack is a local-first desktop application built with **Tauri**, **React**, 
 - Filter and sort your library by media type, status, date, title, or rating, with removable active-filter chips and reusable saved filters.
 - Create smart lists — automatically updated views defined by rules (status, genre, runtime, rating, streaming provider, or "series with episodes waiting") — evaluated live against your current library.
 - Mark films as watched or unwatched, rate and tag titles, and mark favourites.
+- Library statuses follow what you watch: a film is completed when seen and back to planned when not, a series starts with its first episode and completes once it has ended and every episode is watched (and goes back down when you un-mark one), and watching resumes a paused or dropped series. Pick a status by hand and it stays; choose "Automatic" to hand it back to your viewing. See [`docs/library-status.md`](docs/library-status.md).
 - Review recent actions in a local activity timeline.
 - Manage multiple profiles, each with its own library and history — switch, create, or remove local-only profiles freely offline; with optional Clerk sign-in configured (see "Personalise" below), a profile can also be linked to an account so it's only reachable by that account. Local profiles can pick an avatar and colour, be renamed, and be protected by an optional PIN.
 - Import a TV Time GDPR export (watched episodes and movies with their original dates, plus the to-watch list) as a one-time bulk migration.

@@ -55,6 +55,15 @@ describe("libraryRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("save_library_item", { media, patch: { status: "completed" } });
   });
 
+  it("resetStatusToAuto() invokes reset_library_status_to_auto and passes the updated entry through", async () => {
+    const updated = libraryItem({ status: "watching" });
+    invokeMock.mockResolvedValueOnce(updated);
+    const { libraryRepository } = await import("../library-repository");
+
+    await expect(libraryRepository.resetStatusToAuto(7, "series")).resolves.toEqual(updated);
+    expect(invokeMock).toHaveBeenCalledWith("reset_library_status_to_auto", { mediaId: 7, mediaType: "series" });
+  });
+
   it("remove() invokes remove_library_item with mediaId/mediaType", async () => {
     invokeMock.mockResolvedValueOnce(undefined);
     const { libraryRepository } = await import("../library-repository");

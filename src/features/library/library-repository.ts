@@ -50,6 +50,13 @@ export const libraryRepository = {
     await invokeTypedCommand(libraryCommands.remove, { mediaId, mediaType });
   },
 
+  // "Automatic" in the library editor: the status follows the viewing again
+  // (see docs/library-status.md). Resolves to the updated entry, or null when
+  // the title is not in the library.
+  async resetStatusToAuto(mediaId: number, mediaType: MediaSummary["mediaType"]): Promise<LibraryItem | null> {
+    return invokeTypedCommand(libraryCommands.resetStatusToAuto, { mediaId, mediaType });
+  },
+
   async has(mediaId: number, mediaType: MediaSummary["mediaType"]): Promise<boolean> {
     return invokeTypedCommand(libraryCommands.has, { mediaId, mediaType });
   },

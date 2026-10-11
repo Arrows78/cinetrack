@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
@@ -242,6 +242,82 @@ describe("LibraryEditor", () => {
     screen.getByRole("button", { name: /save/i }).click();
 
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+  });
+
+  describe("automatic status", () => {
+    const resetStatusToAuto = vi.fn();
+
+    function mockEntry(data: typeof libraryItem | null, saved: object) {
+      save.mockResolvedValue(saved as never);
+      resetStatusToAuto.mockReset().mockResolvedValue(undefined);
+      useLibraryItemMock.mockReturnValue({
+        data,
+        isLoading: false,
+        isError: false,
+        save,
+        resetStatusToAuto,
+        remove: vi.fn(),
+        isSaving: false,
+        refetch,
+      });
+    }
+
+    it("switches to Automatic: the status stays out of the patch and is recomputed after the save", async () => {
+      mockEntry({ ...libraryItem, statusOrigin: "manual" } as typeof libraryItem, {
+        ...libraryItem,
+        statusOrigin: "manual",
+      });
+
+      renderLoaded();
+      fireEvent.change(screen.getByLabelText("Status"), { target: { value: "auto" } });
+      expect(screen.getByText("Follows what you watch — currently Watching.")).toBeInTheDocument();
+      screen.getByRole("button", { name: /save/i }).click();
+
+      await waitFor(() => expect(resetStatusToAuto).toHaveBeenCalledTimes(1));
+      const [patch] = save.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(patch).not.toHaveProperty("status");
+    });
+
+    it("shows an already automatic entry as Automatic and does not reset it again", async () => {
+      mockEntry({ ...libraryItem, statusOrigin: "auto" } as typeof libraryItem, {
+        ...libraryItem,
+        statusOrigin: "auto",
+      });
+
+      renderLoaded();
+      expect(screen.getByLabelText("Status")).toHaveValue("auto");
+      screen.getByRole("button", { name: /save/i }).click();
+
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+      const [patch] = save.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(patch).not.toHaveProperty("status");
+      expect(resetStatusToAuto).not.toHaveBeenCalled();
+    });
+
+    it("picking a concrete status turns Automatic off and saves the choice", async () => {
+      mockEntry({ ...libraryItem, statusOrigin: "auto" } as typeof libraryItem, {
+        ...libraryItem,
+        statusOrigin: "manual",
+      });
+
+      renderLoaded();
+      fireEvent.change(screen.getByLabelText("Status"), { target: { value: "paused" } });
+      screen.getByRole("button", { name: /save/i }).click();
+
+      await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ status: "paused" })));
+      expect(resetStatusToAuto).not.toHaveBeenCalled();
+    });
+
+    it("explains Automatic for a title that is not in the library yet, and applies it once saved", async () => {
+      mockEntry(null, { ...libraryItem, statusOrigin: "manual" });
+
+      renderLoaded();
+      fireEvent.change(screen.getByLabelText("Status"), { target: { value: "auto" } });
+      expect(screen.getByText("Follows what you watch once you have started.")).toBeInTheDocument();
+      screen.getByRole("button", { name: /save/i }).click();
+
+      await waitFor(() => expect(resetStatusToAuto).toHaveBeenCalledTimes(1));
+    });
   });
 
   it("moves the star rating via the keyboard and saves the new value", () => {

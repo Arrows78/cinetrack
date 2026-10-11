@@ -956,6 +956,9 @@
     "gridView": "Vue en grille",
     "listView": "Vue en liste",
     "status": "Statut",
+    "statusAutomatic": "Automatique",
+    "statusAutomaticHint": "Suit ce que vous regardez — actuellement {{status}}.",
+    "statusAutomaticHintNew": "Suit ce que vous regardez dès que vous commencez.",
     "statuses": {
       "planned": "À voir",
       "watching": "En cours",

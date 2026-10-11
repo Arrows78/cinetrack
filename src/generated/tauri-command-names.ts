@@ -17,6 +17,7 @@ export const tauriCommandNames = [
   "save_library_item",
   "remove_library_item",
   "remove_planned_library_item",
+  "reset_library_status_to_auto",
   "add_planned_library_item",
   "list_library_media_keys",
   "get_random_library_item",

@@ -161,6 +161,13 @@ export function useLibraryItem(media: MediaSummary) {
       await invalidateEverythingTheLibraryFeeds();
     },
   });
+  const resetStatusToAuto = useMutation({
+    mutationFn: () => libraryRepository.resetStatusToAuto(media.id, media.mediaType),
+    onSuccess: async (item) => {
+      queryClient.setQueryData(itemKey, item);
+      await invalidateEverythingTheLibraryFeeds();
+    },
+  });
   const remove = useMutation({
     mutationFn: () => libraryRepository.remove(media.id, media.mediaType),
     onSuccess: async () => {
@@ -168,7 +175,13 @@ export function useLibraryItem(media: MediaSummary) {
       await invalidateEverythingTheLibraryFeeds();
     },
   });
-  return { ...query, save: save.mutateAsync, remove: remove.mutateAsync, isSaving: save.isPending || remove.isPending };
+  return {
+    ...query,
+    save: save.mutateAsync,
+    resetStatusToAuto: resetStatusToAuto.mutateAsync,
+    remove: remove.mutateAsync,
+    isSaving: save.isPending || resetStatusToAuto.isPending || remove.isPending,
+  };
 }
 
 // Opportunistic correction for a library entry whose cached year/rating

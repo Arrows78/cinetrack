@@ -16,6 +16,9 @@ import { toast } from "@/components/ui/use-toast";
 import { useLibraryDistinctTags, useLibraryItem } from "@/features/library/use-library";
 import type { LibraryStatus, MediaSummary } from "@/types/media";
 
+// The status select's "follow the viewing" value; every other value is a LibraryStatus.
+const AUTOMATIC = "auto";
+
 const sameTags = (left: string[], right: string[]) =>
   left.length === right.length && left.every((tag, index) => tag === right[index]);
 
@@ -24,6 +27,9 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   const library = useLibraryItem(media);
   const distinctTags = useLibraryDistinctTags();
   const [status, setStatus] = useState<LibraryStatus>("planned");
+  // "Automatic": the status follows what is watched (movie seen, episodes
+  // watched) instead of being a choice — see docs/library-status.md.
+  const [automatic, setAutomatic] = useState(false);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -47,6 +53,9 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     const next = library.data;
     setLoadedLibraryData(next);
     setStatus((current) => (!previous || current === previous.status ? next.status : current));
+    setAutomatic((current) =>
+      !previous || current === (previous.statusOrigin === "auto") ? next.statusOrigin === "auto" : current
+    );
     setUserRating((current) =>
       !previous || current === (previous.userRating ?? null) ? (next.userRating ?? null) : current
     );
@@ -58,6 +67,7 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
     // so a later Save doesn't re-create it with the removed rating and notes.
     setLoadedLibraryData(undefined);
     setStatus("planned");
+    setAutomatic(false);
     setUserRating(null);
     setNotes("");
     setTags([]);
@@ -105,7 +115,10 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
   const save = () =>
     library
       .save({
-        status,
+        // An automatic status is left out of the patch: sending it would
+        // turn the status into a manual choice. "Automatic" is applied after
+        // the save, below.
+        ...(automatic ? {} : { status }),
         // favourite is intentionally not part of this patch — FavouriteButton
         // (in the page hero) owns it now, saving immediately on its own; see
         // that component's doc comment for why splitting it out of this
@@ -117,6 +130,10 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
         tags,
         rewatchCount: Number.isFinite(rewatchCount) ? Math.max(0, Math.floor(rewatchCount)) : 0,
       })
+      // Switching to "Automatic" (or saving a new entry with it) recomputes
+      // the status from the viewing; an entry that already is automatic is
+      // left as it is.
+      .then((item) => (automatic && item.statusOrigin !== "auto" ? library.resetStatusToAuto() : item))
       .then(() => {
         toast({ description: t("library.saved"), variant: "success" });
       })
@@ -142,16 +159,38 @@ export function LibraryEditor({ media }: { media: MediaSummary }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <label className="grid gap-1 text-body-sm">
-          <span className="text-muted-foreground">{t("library.status")}</span>
-          <Select value={status} onChange={(event) => setStatus(event.target.value as LibraryStatus)}>
-            {statuses.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </Select>
-        </label>
+        <div className="grid content-start gap-1 text-body-sm">
+          <label className="grid gap-1">
+            <span className="text-muted-foreground">{t("library.status")}</span>
+            <Select
+              value={automatic ? AUTOMATIC : status}
+              aria-describedby={automatic ? "library-status-automatic-hint" : undefined}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === AUTOMATIC) {
+                  setAutomatic(true);
+                  return;
+                }
+                setAutomatic(false);
+                setStatus(value as LibraryStatus);
+              }}
+            >
+              <option value={AUTOMATIC}>{t("library.statusAutomatic")}</option>
+              {statuses.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {automatic ? (
+            <span id="library-status-automatic-hint" className="text-caption text-muted-foreground">
+              {library.data
+                ? t("library.statusAutomaticHint", { status: t(`library.statuses.${library.data.status}`) })
+                : t("library.statusAutomaticHintNew")}
+            </span>
+          ) : null}
+        </div>
         <div className="grid gap-1 text-body-sm">
           <span className="text-muted-foreground">{t("library.myRating")}</span>
           <StarRating

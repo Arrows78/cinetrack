@@ -34,6 +34,13 @@ const saveMock = vi.fn(async (subject: MediaSummary, patch: LibraryPatch) => {
 const removeMock = vi.fn(async (mediaId: number, mediaType: string) => {
   items = items.filter((i) => !(i.mediaId === mediaId && i.mediaType === mediaType));
 });
+const resetStatusToAutoMock = vi.fn(async (mediaId: number, mediaType: string) => {
+  const index = items.findIndex((i) => i.mediaId === mediaId && i.mediaType === mediaType);
+  if (index < 0) return null;
+  const updated = { ...items[index]!, status: "watching", statusOrigin: "auto" } as LibraryItem;
+  items = items.map((i, idx) => (idx === index ? updated : i));
+  return updated;
+});
 const removeIfPlannedMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => true);
 const hasMock = vi.fn<(mediaId: number, mediaType: string) => Promise<boolean>>(async () => false);
 const addIfAbsentMock = vi.fn<(media: MediaSummary) => Promise<boolean>>(async () => true);
@@ -53,6 +60,7 @@ vi.mock("@/features/library/library-repository", () => ({
     save: saveMock,
     addIfAbsent: (media: MediaSummary) => addIfAbsentMock(media),
     remove: removeMock,
+    resetStatusToAuto: (mediaId: number, mediaType: string) => resetStatusToAutoMock(mediaId, mediaType),
     removeIfPlanned: (mediaId: number, mediaType: string) => removeIfPlannedMock(mediaId, mediaType),
     has: (mediaId: number, mediaType: string) => hasMock(mediaId, mediaType),
     refreshCatalogMetadata: (mediaId: number, mediaType: string, year: number | null, rating: number | null) =>
@@ -146,6 +154,24 @@ describe("useLibraryItem", () => {
     expect(saveMock).toHaveBeenCalledWith(media, { userRating: 5 });
     await waitFor(() => expect(item.current.data).toEqual({ mediaId: 7, mediaType: "movie", userRating: 5 }));
     await waitFor(() => expect(library.current.data).toHaveLength(1));
+  });
+
+  it("resetting the status to automatic updates the cached item and the library list", async () => {
+    items = [{ mediaId: 7, mediaType: "movie", status: "paused", statusOrigin: "manual" } as LibraryItem];
+    const { useLibraryItem, useLibrary } = await import("../use-library");
+    const wrapper = createWrapper();
+    const { result: item } = renderHook(() => useLibraryItem(media), { wrapper });
+    const { result: library } = renderHook(() => useLibrary(), { wrapper });
+    await waitFor(() => expect(item.current.data?.status).toBe("paused"));
+    await waitFor(() => expect(library.current.data).toHaveLength(1));
+
+    await act(async () => {
+      await item.current.resetStatusToAuto();
+    });
+
+    expect(resetStatusToAutoMock).toHaveBeenCalledWith(7, "movie");
+    await waitFor(() => expect(item.current.data?.status).toBe("watching"));
+    await waitFor(() => expect(library.current.data?.[0]?.status).toBe("watching"));
   });
 
   it("removing clears the item and invalidates the library list", async () => {

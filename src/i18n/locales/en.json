@@ -956,6 +956,9 @@
     "gridView": "Grid view",
     "listView": "List view",
     "status": "Status",
+    "statusAutomatic": "Automatic",
+    "statusAutomaticHint": "Follows what you watch — currently {{status}}.",
+    "statusAutomaticHintNew": "Follows what you watch once you have started.",
     "statuses": {
       "planned": "To watch",
       "watching": "Watching",

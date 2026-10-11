@@ -55,6 +55,7 @@ export const libraryCommands = {
   has: defineCommand<LibraryIdentityArgs, boolean>("has_library_item"),
   addIfAbsent: defineCommand<AddPlannedLibraryItemArgs, boolean>("add_planned_library_item"),
   removeIfPlanned: defineCommand<LibraryIdentityArgs, boolean>("remove_planned_library_item"),
+  resetStatusToAuto: defineCommand<LibraryIdentityArgs, LibraryItem | null>("reset_library_status_to_auto"),
   listMediaKeys: defineCommand<undefined, LibraryMediaKey[]>("list_library_media_keys"),
   getRandom: defineCommand<GetRandomArgs, LibraryMediaKey | null>("get_random_library_item"),
   getItemsByKeys: defineCommand<GetItemsByKeysArgs, LibraryItem[]>("get_library_items_by_keys"),
