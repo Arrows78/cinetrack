@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
@@ -76,10 +74,9 @@ pub struct MovieImportOutcome {
 /// imported" from "already tracked" (the frontend surfaces the difference as
 /// a distinct duplicate count, and only the ids returned here are safe to
 /// hand to an "undo this import" action — an already-watched episode was
-/// never this import's to undo). `apply_episodes_impl` itself only reports a
-/// count, so the already-watched set is queried up front, against the exact
-/// same condition it uses internally, to recover which specific ids they
-/// were.
+/// never this import's to undo). The ids come from the write itself
+/// (`EpisodesOutcome::changed_episode_ids`), decided under its own lock, so
+/// two imports of the same series can never both claim an episode.
 pub(super) async fn import_series_progress_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -97,24 +94,6 @@ pub(super) async fn import_series_progress_impl(
         .map(|episode| episode.watched_at.clone())
         .max()
         .unwrap();
-
-    let already_watched: HashSet<i64> = sqlx::query_as(
-        "SELECT episode_id FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1",
-    )
-    .bind(profile_id)
-    .bind(series.id)
-    .fetch_all(pool)
-    .await
-    .map_err(ApiError::from)?
-    .into_iter()
-    .map(|(id,): (i64,)| id)
-    .collect();
-
-    let newly_inserted_ids: Vec<i64> = episodes
-        .iter()
-        .map(|episode| episode.episode_id)
-        .filter(|id| !already_watched.contains(id))
-        .collect();
 
     let episode_inputs: Vec<EpisodeInput> = episodes
         .into_iter()
@@ -140,7 +119,9 @@ pub(super) async fn import_series_progress_impl(
     .await?;
 
     Ok(SeriesImportOutcome {
-        inserted_episode_ids: newly_inserted_ids,
+        // What the write itself changed, decided under its own lock: an
+        // already-watched episode is never this import's to undo.
+        inserted_episode_ids: applied.changed_episode_ids,
         created_library_item_id: applied.created_library_item_id,
     })
 }
@@ -150,11 +131,17 @@ pub(super) async fn import_movie_seen_impl(
     profile_id: &str,
     movie: ImportableMovie,
 ) -> Result<MovieImportOutcome, ApiError> {
+    // The seen check sits under the write lock of the write it guards: two
+    // concurrent imports of one movie must not both pass it.
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
     let already_seen: (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM seen_movies WHERE profile_id = $1 AND movie_id = $2")
             .bind(profile_id)
             .bind(movie.movie_id)
-            .fetch_one(pool)
+            .fetch_one(&mut *tx)
             .await
             .map_err(ApiError::from)?;
     if already_seen.0 > 0 {
@@ -163,8 +150,6 @@ pub(super) async fn import_movie_seen_impl(
             created_library_item_id: None,
         });
     }
-
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     sqlx::query(
         "INSERT INTO seen_movies (uuid, profile_id, movie_id, title, poster_path, backdrop_path, watched_at, created_at, updated_at)
@@ -659,6 +644,31 @@ mod tests {
             .unwrap();
         assert_eq!((outcome.removed, outcome.kept), (0, 1));
         assert_eq!(library_count(&pool).await, 1);
+    }
+
+    #[tokio::test]
+    async fn an_episode_listed_twice_in_one_import_is_written_once() {
+        let pool = migrated_pool().await;
+        let outcome = import_series_progress_impl(
+            &pool,
+            "default",
+            series(10),
+            vec![
+                episode(11, 1, "2020-01-01T00:00:00.000Z"),
+                episode(11, 1, "2020-03-01T00:00:00.000Z"),
+            ],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(outcome.inserted_episode_ids, vec![11]);
+        let events: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM viewing_events WHERE media_id = 10 AND event_type = 'watched'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(events, 1, "one viewing event per episode");
     }
 
     #[tokio::test]

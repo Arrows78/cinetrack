@@ -326,6 +326,8 @@ pub(crate) async fn apply_episodes_and_log_impl(
 #[derive(Debug, Default)]
 pub(crate) struct EpisodesOutcome {
     pub(crate) changed: i64,
+    /// The episodes that changed state, in the order they were given.
+    pub(crate) changed_episode_ids: Vec<i64>,
     pub(crate) created_library_item_id: Option<String>,
 }
 
@@ -365,6 +367,9 @@ pub(crate) async fn apply_episodes_outcome_impl(
             .map_err(ApiError::from)?;
     let watched_ids: HashSet<i64> = watched_rows.into_iter().map(|(id,)| id).collect();
 
+    // An episode listed twice in one call changes state once: the second
+    // copy would otherwise log a second viewing event for one watch.
+    let mut listed = HashSet::new();
     let changed_episodes: Vec<&EpisodeInput> = episodes
         .iter()
         .filter(|episode| {
@@ -374,6 +379,7 @@ pub(crate) async fn apply_episodes_outcome_impl(
                 watched_ids.contains(&episode.id)
             }
         })
+        .filter(|episode| listed.insert(episode.id))
         .collect();
 
     if changed_episodes.is_empty() {
@@ -545,6 +551,7 @@ pub(crate) async fn apply_episodes_outcome_impl(
     tx.commit().await.map_err(ApiError::from)?;
     Ok(EpisodesOutcome {
         changed: changed_episodes.len() as i64,
+        changed_episode_ids: changed_episodes.iter().map(|episode| episode.id).collect(),
         created_library_item_id,
     })
 }
