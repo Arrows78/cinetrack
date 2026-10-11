@@ -151,6 +151,10 @@ export const formatEpisodeCode = (season: number, episode: number, options?: { p
     episode: options?.padded ? pad2(episode) : episode,
   });
 
+/** An episode's title, or "Episode N" when TMDB has none (or only blank): a header, a link label or a notification must never come out empty. */
+export const formatEpisodeTitle = (title: string | null | undefined, episodeNumber: number) =>
+  title?.trim() || i18n.t("media.episodeFallbackTitle", { number: episodeNumber });
+
 export const formatEpisodeNumber = (episode: number, options?: { padded?: boolean }) =>
   i18n.t("common.episodeNumber", { episode: options?.padded ? pad2(episode) : episode });
 

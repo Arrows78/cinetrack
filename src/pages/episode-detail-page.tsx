@@ -26,7 +26,14 @@ import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-see
 import { hasAired, useEpisodeProgress } from "@/features/progress/use-progress";
 import { useEpisodeImages, useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
 import type { Season } from "@/types/media";
-import { buildTmdbImageUrl, formatDate, formatEpisodeCode, formatRating, formatRuntime } from "@/shared/utils/format";
+import {
+  buildTmdbImageUrl,
+  formatDate,
+  formatEpisodeCode,
+  formatEpisodeTitle,
+  formatRating,
+  formatRuntime,
+} from "@/shared/utils/format";
 
 export function EpisodeDetailPage() {
   const { t } = useTranslation();
@@ -96,7 +103,25 @@ export function EpisodeDetailPage() {
   const sortedEpisodes = season.episodes.slice().sort((a, b) => a.episodeNumber - b.episodeNumber);
   const episode = sortedEpisodes.find((item) => item.episodeNumber === parsedEpisodeNumber);
   if (!episode) {
-    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+    // TMDB can renumber or drop an episode between two visits: a link or a
+    // bookmark to it must lead somewhere, not stop on a bare dead end.
+    return (
+      <EmptyState
+        icon={TriangleAlert}
+        title={t("pages.notFound")}
+        description={t("pages.notFoundDesc")}
+        action={
+          <Button asChild variant="outline">
+            <Link
+              to="/series/$seriesId/season/$seasonNumber"
+              params={{ seriesId: String(series.id), seasonNumber: String(season.seasonNumber) }}
+            >
+              {t("media.backToSeason")}
+            </Link>
+          </Button>
+        }
+      />
+    );
   }
   const episodeIndex = sortedEpisodes.indexOf(episode);
   const previousEpisode = sortedEpisodes[episodeIndex - 1] ?? null;
@@ -166,7 +191,7 @@ export function EpisodeDetailPage() {
 
       <Card>
         <SectionHeader
-          title={episode.title}
+          title={formatEpisodeTitle(episode.title, episode.episodeNumber)}
           subtitle={
             <>
               {formatEpisodeCode(season.seasonNumber, episode.episodeNumber, { padded: true })} ·{" "}
@@ -235,12 +260,12 @@ export function EpisodeDetailPage() {
           <Link
             to="/series/$seriesId/season/$seasonNumber/episode/$episodeNumber"
             params={episodeLinkParams(previousEpisode.episodeNumber)}
-            aria-label={`${t("media.previousEpisode")}: ${previousEpisode.title}`}
+            aria-label={`${t("media.previousEpisode")}: ${formatEpisodeTitle(previousEpisode.title, previousEpisode.episodeNumber)}`}
             className="flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate" aria-hidden="true">
-              {previousEpisode.title}
+              {formatEpisodeTitle(previousEpisode.title, previousEpisode.episodeNumber)}
             </span>
           </Link>
         ) : (
@@ -250,11 +275,11 @@ export function EpisodeDetailPage() {
           <Link
             to="/series/$seriesId/season/$seasonNumber/episode/$episodeNumber"
             params={episodeLinkParams(nextEpisode.episodeNumber)}
-            aria-label={`${t("media.nextEpisode")}: ${nextEpisode.title}`}
+            aria-label={`${t("media.nextEpisode")}: ${formatEpisodeTitle(nextEpisode.title, nextEpisode.episodeNumber)}`}
             className="flex min-w-0 items-center gap-1.5 text-right text-body-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <span className="truncate" aria-hidden="true">
-              {nextEpisode.title}
+              {formatEpisodeTitle(nextEpisode.title, nextEpisode.episodeNumber)}
             </span>
             <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
           </Link>

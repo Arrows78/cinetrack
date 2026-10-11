@@ -175,6 +175,31 @@ describe("EpisodeDetailPage", () => {
     expect(screen.getByText(i18n.t("pages.notFound"))).toBeInTheDocument();
   });
 
+  it("offers a way back to the season when the episode is no longer listed (TMDB renumbered or removed it)", () => {
+    paramsHolder.episodeNumber = "99";
+    renderPage();
+
+    const link = screen.getByRole("link", { name: i18n.t("media.backToSeason") });
+    expect(link.getAttribute("href")).toContain('"seasonNumber":"1"');
+  });
+
+  it("labels an untitled episode, and its untitled neighbours, with their number instead of nothing", () => {
+    seasonQueryMock.mockReturnValue(
+      makeQuery(
+        makeSeason([
+          { ...episode1, title: "" },
+          { ...episode2, title: "" },
+          { ...episode3, title: "  " },
+        ])
+      )
+    );
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "Episode 2" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Previous episode: Episode 1" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Next episode: Episode 3" })).toBeInTheDocument();
+  });
+
   it("shows the hero skeleton while the series or season query is pending", () => {
     seriesQueryMock.mockReturnValue(makeQuery(undefined, { isPending: true }));
     const { container } = renderPage();

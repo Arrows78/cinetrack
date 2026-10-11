@@ -30,6 +30,18 @@ describe("NextEpisodeCard", () => {
     expect(screen.queryByText("Next episode")).not.toBeInTheDocument();
   });
 
+  it("labels an untitled episode with its number instead of leaving the title empty", () => {
+    render(
+      <NextEpisodeCard
+        episode={makeEpisode({ seasonNumber: 2, episodeNumber: 5, title: "" })}
+        isSaving={false}
+        onWatched={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("S02E05 · Episode 5")).toBeInTheDocument();
+  });
+
   it("renders the padded episode code, title, and overview when an episode is present", () => {
     const episode = makeEpisode({ seasonNumber: 1, episodeNumber: 3, title: "The Buys" });
     render(<NextEpisodeCard episode={episode} isSaving={false} onWatched={vi.fn()} />);

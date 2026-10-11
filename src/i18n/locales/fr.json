@@ -97,6 +97,7 @@
       "rumored": "Rumeur"
     },
     "episodeFallbackTitle": "Épisode {{number}}",
+    "backToSeason": "Retour à la saison",
     "noEpisodesInSeason": "Aucun épisode n'est encore listé pour cette saison.",
     "nothingAiredTitle": "Rien à regarder pour l'instant",
     "nothingAiredDescription": "Aucun épisode de cette série n'a encore été diffusé.",

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { formatEpisodeCode, formatRelativeCountdown } from "@/shared/utils/format";
+import { formatEpisodeCode, formatEpisodeTitle, formatRelativeCountdown } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 
 export function NextEpisodeCard({
@@ -36,7 +36,8 @@ export function NextEpisodeCard({
             {episode.airDate ? <Badge variant="secondary">{formatRelativeCountdown(episode.airDate)}</Badge> : null}
           </div>
           <h3 className="mt-1 line-clamp-2 font-display text-heading-lg font-bold">
-            {formatEpisodeCode(episode.seasonNumber, episode.episodeNumber, { padded: true })} · {episode.title}
+            {formatEpisodeCode(episode.seasonNumber, episode.episodeNumber, { padded: true })} ·{" "}
+            {formatEpisodeTitle(episode.title, episode.episodeNumber)}
           </h3>
           <p className="mt-2 line-clamp-2 text-body-sm text-muted-foreground">{episode.overview}</p>
         </div>
