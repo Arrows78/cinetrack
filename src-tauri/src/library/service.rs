@@ -14,6 +14,7 @@ use super::repository::{
     add_if_absent_impl, refresh_catalog_metadata_impl, remove_if_planned_impl, remove_impl,
     upsert_impl,
 };
+use super::status::reset_status_to_auto_impl;
 use crate::database::current_profile_id;
 use crate::error::ApiError;
 use crate::models::MediaType;
@@ -94,6 +95,21 @@ impl<'a> LibraryService<'a> {
     pub(super) async fn add_if_absent(&self, media: MediaSummaryInput) -> Result<bool, ApiError> {
         let profile_id = self.profile_id().await?;
         add_if_absent_impl(self.pool, media, &profile_id).await
+    }
+
+    /// "Automatic" in the library editor: the status follows the viewing
+    /// again (see library/status.rs). Returns the updated entry, `None` when
+    /// the title is not in the library.
+    pub(super) async fn reset_status_to_auto(
+        &self,
+        media_id: i64,
+        media_type: MediaType,
+    ) -> Result<Option<LibraryItem>, ApiError> {
+        let profile_id = self.profile_id().await?;
+        if !reset_status_to_auto_impl(self.pool, &profile_id, media_id, media_type).await? {
+            return Ok(None);
+        }
+        get_impl(self.pool, &profile_id, media_id, media_type).await
     }
 
     pub(super) async fn remove_if_planned(

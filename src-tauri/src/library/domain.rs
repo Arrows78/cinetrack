@@ -36,10 +36,9 @@ impl LibraryStatus {
 /// Who set a library entry's current status. Generates
 /// `src/generated/dto/LibraryStatusOrigin.ts`.
 ///
-/// `Manual` is a status the viewer chose (editor, quick add); `Auto` one the
-/// viewing auto-sync derived (see `auto_sync_status_impl`). Only an `Auto`
-/// Completed series may be reopened when TMDB reports more episodes than
-/// watched: a manual Completed is a decision, not a derived state.
+/// `Manual` is a status the viewer chose (editor, quick add); `Auto` one that
+/// follows the viewing and is recomputed whenever it changes. See
+/// `docs/library-status.md` and `library/status.rs` for the rules.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
 #[cfg_attr(feature = "export-bindings", ts(export))]
@@ -63,30 +62,5 @@ impl LibraryStatusOrigin {
                 "Unknown library status origin in database: {value}"
             ))
         })
-    }
-}
-
-/// Rank used only to decide whether an automatic status sync is allowed to
-/// move a library item forward. Manual edits remain the only way to move it
-/// back to a lower lifecycle state.
-pub(super) fn auto_sync_rank(status: LibraryStatus) -> u8 {
-    match status {
-        LibraryStatus::Planned => 0,
-        LibraryStatus::Watching | LibraryStatus::Paused | LibraryStatus::Dropped => 1,
-        LibraryStatus::Completed => 2,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn automatic_sync_never_ranks_started_states_above_completed() {
-        assert_eq!(auto_sync_rank(LibraryStatus::Planned), 0);
-        assert_eq!(auto_sync_rank(LibraryStatus::Watching), 1);
-        assert_eq!(auto_sync_rank(LibraryStatus::Paused), 1);
-        assert_eq!(auto_sync_rank(LibraryStatus::Dropped), 1);
-        assert_eq!(auto_sync_rank(LibraryStatus::Completed), 2);
     }
 }

@@ -30,7 +30,7 @@ export function useMovieSeen(movieId: number) {
       queryKeys.local.stats(profileId),
       queryKeys.local.viewingEventsForMedia(profileId, "movie", variables.movie.id),
       // Marking a movie seen can auto-complete an existing library entry
-      // (see auto_sync_status_impl in src-tauri/src/commands/library.rs) —
+      // (see docs/library-status.md) —
       // reusing the same invalidation list library mutations use (rather
       // than only its library/libraryPage keys) so the home page's "people
       // you watch"/"because you liked" rails, whose exclusion set and
@@ -72,7 +72,7 @@ export function episodeProgressKeys(profileId: string, seriesId: number): QueryK
     queryKeys.local.tracking(profileId),
     queryKeys.local.viewingEventsForMedia(profileId, "series", seriesId),
     // Watching an episode can auto-start/complete an existing library entry
-    // (see auto_sync_status_impl in src-tauri/src/commands/library.rs) — see
+    // (see docs/library-status.md) — see
     // useMovieSeen's identical comment above for why this needs the full
     // library invalidation list, not just library/libraryPage.
     ...libraryInvalidationKeys(profileId),

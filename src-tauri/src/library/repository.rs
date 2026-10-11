@@ -5,10 +5,12 @@ use tauri::State;
 
 #[cfg(test)]
 use super::commands::{get_library_item, list_library, remove_library_item, save_library_item};
-use super::domain::{LibraryStatus, LibraryStatusOrigin, auto_sync_rank};
-use super::models::{AutoSyncMedia, LibraryItem, LibraryPatch, LibraryRow, MediaSummaryInput};
+use super::domain::{LibraryStatus, LibraryStatusOrigin};
+#[cfg(test)]
+use super::models::AutoSyncMedia;
 #[cfg(test)]
 use super::models::{LibraryFilterParams, LibraryListParams, LibraryMediaKey, LibrarySort};
+use super::models::{LibraryItem, LibraryPatch, LibraryRow, MediaSummaryInput};
 use super::queries::get_impl;
 #[cfg(test)]
 use super::queries::{
@@ -18,6 +20,8 @@ use super::queries::{
     list_status_counts_impl,
 };
 use super::rewatch_events;
+#[cfg(test)]
+use super::status::auto_sync_status_impl;
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
@@ -262,122 +266,6 @@ pub(super) async fn upsert_impl(
     Ok(item)
 }
 
-/// Called from progress::repository and integrations::tvtime::importer,
-/// inside the same transaction as a "vu" toggle, to keep a library entry's
-/// status roughly in sync with actual viewing: watching a movie completes
-/// it, watching an episode starts a series, finishing every episode
-/// completes it.
-///
-/// Creates the library entry if none exists yet (status = `target`,
-/// logging a `LibraryAdd` history entry the same way a manual add does) —
-/// viewing activity is now itself enough to bring a title into the library,
-/// rather than requiring an explicit add first. If an entry already exists,
-/// this never lowers its rank: unwatching something, or watching a stray
-/// episode of an already dropped/completed show, must not silently undo a
-/// manual status change. Only an explicit manual edit (`save_library_item`)
-/// can move an existing status back down.
-///
-/// Returns the uuid of the entry it created, `None` when it only left an
-/// existing one alone or moved its status up — which is how a caller (the TV
-/// Time import) tells "this write brought the title into the library" from
-/// "it was already there".
-pub(crate) async fn auto_sync_status_impl(
-    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
-    pool: &SqlitePool,
-    profile_id: &str,
-    target: LibraryStatus,
-    now: &str,
-    media: &AutoSyncMedia,
-) -> Result<Option<String>, ApiError> {
-    let current: Option<LibraryRow> = sqlx::query_as(
-        "SELECT * FROM library_items WHERE profile_id = $1 AND media_id = $2 AND media_type = $3 LIMIT 1",
-    )
-    .bind(profile_id)
-    .bind(media.media_id)
-    .bind(media.media_type.as_db_str())
-    .fetch_optional(&mut **tx)
-    .await
-    .map_err(ApiError::from)?;
-
-    let Some(row) = current else {
-        let is_currently_watching = target == LibraryStatus::Watching;
-        let started_at = is_currently_watching.then(|| now.to_string());
-        let completed_at = (target == LibraryStatus::Completed).then(|| now.to_string());
-        let uuid = new_uuid();
-
-        sqlx::query(
-            "INSERT INTO library_items (
-              uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
-              status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at,
-              status_origin
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,NULL,NULL,$12,$13,$14,0,$15,$15,'auto')",
-        )
-        .bind(&uuid)
-        .bind(profile_id)
-        .bind(media.media_id)
-        .bind(media.media_type.as_db_str())
-        .bind(&media.title)
-        .bind(&media.poster_path)
-        .bind(&media.backdrop_path)
-        .bind(media.year)
-        .bind(media.rating)
-        .bind(serde_json::to_string(&media.genres).unwrap())
-        .bind(target.as_db_str())
-        .bind("[]")
-        .bind(&started_at)
-        .bind(&completed_at)
-        .bind(now)
-        .execute(&mut **tx)
-        .await
-        .map_err(ApiError::from)?;
-
-        let history_item = ViewingHistoryItem {
-            id: new_uuid(),
-            media_id: media.media_id,
-            media_type: media.media_type,
-            title: media.title.clone(),
-            action: HistoryAction::LibraryAdd,
-            timestamp: now.to_string(),
-            season_number: None,
-            episode_number: None,
-            episode_title: None,
-            metadata: Some(json!({ "profileId": profile_id })),
-        };
-        add_history_item_impl(&mut **tx, pool, history_item).await?;
-        return Ok(Some(uuid));
-    };
-
-    let current_status = LibraryStatus::from_db_str(&row.status)?;
-    if auto_sync_rank(target) <= auto_sync_rank(current_status) {
-        return Ok(None);
-    }
-
-    let completed_at = if target == LibraryStatus::Completed {
-        Some(now.to_string())
-    } else {
-        row.completed_at
-    };
-    // Same rule as a manual edit (`upsert_impl`): a title that becomes
-    // Watching gets a start date unless it already has one.
-    let started_at = if target == LibraryStatus::Watching {
-        row.started_at.or_else(|| Some(now.to_string()))
-    } else {
-        row.started_at
-    };
-    sqlx::query(
-        "UPDATE library_items SET status = $1, started_at = $2, completed_at = $3, updated_at = $4, status_origin = 'auto' WHERE uuid = $5",
-    )
-    .bind(target.as_db_str())
-    .bind(&started_at)
-    .bind(&completed_at)
-    .bind(now)
-    .bind(&row.uuid)
-    .execute(&mut **tx)
-    .await
-    .map_err(ApiError::from)?;
-    Ok(None)
-}
-
 /// History metadata for a library removal: carries a snapshot of the
 /// removed entry's catalogue fields so "undo" can re-add it offline.
 fn removal_metadata(profile_id: &str, snapshot: MediaSnapshot<'_>) -> serde_json::Value {
@@ -485,7 +373,8 @@ pub(super) async fn add_if_absent_impl(
     media: MediaSummaryInput,
     profile_id: &str,
 ) -> Result<bool, ApiError> {
-    if get_impl(pool, profile_id, media.id, media.media_type)
+    let (media_id, media_type) = (media.id, media.media_type);
+    if get_impl(pool, profile_id, media_id, media_type)
         .await?
         .is_some()
     {
@@ -501,6 +390,10 @@ pub(super) async fn add_if_absent_impl(
         profile_id,
     )
     .await?;
+    // Progress that outlived an earlier stay in the library decides the status
+    // (an episode-by-episode series back to Watching, a seen movie to
+    // Completed) instead of Planned.
+    super::status::adopt_existing_progress_impl(pool, profile_id, media_id, media_type).await?;
     Ok(true)
 }
 

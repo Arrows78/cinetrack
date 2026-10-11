@@ -21,7 +21,7 @@ pub use crate::library::{
     list_library_ids_matching_filters, list_library_media_keys, list_library_page,
     list_planned_library_candidates, list_stale_planned_library_items,
     refresh_library_catalog_metadata, remove_library_item, remove_planned_library_item,
-    save_library_item,
+    reset_library_status_to_auto, save_library_item,
 };
 pub use crate::lists::{
     add_custom_list_item, create_custom_list, create_saved_filter, create_smart_list,

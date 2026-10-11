@@ -2,14 +2,21 @@
 //! add/remove, catalogue totals changing under the user, and a backup restore
 //! in the middle — with a model compared to the database after every step.
 //!
-//! Rules the model encodes (the observed, documented behaviour):
-//! - viewing never lowers a status: Planned < Watching = Paused = Dropped <
-//!   Completed, and a title that is not in the library yet is created at the
-//!   target status;
+//! Rules the model encodes (docs/library-status.md, implemented in
+//! library/status.rs — the model re-states them independently):
+//! - a status derives from the facts: a movie is Completed when seen and
+//!   Planned otherwise; a series is Planned with nothing watched, Watching
+//!   with some watched, Completed once every episode is watched and the
+//!   series is over (Ended / Canceled);
+//! - an automatic status follows the facts in both directions on every
+//!   viewing change, TMDB refresh and reset; a status the viewer picked by
+//!   hand is left alone, except that watching moves a manual Planned or
+//!   Watching entry forward, resumes a Paused or Dropped series, and a
+//!   refresh completes a manual Watching one;
+//! - a title that is not in the library yet is created by its first watch;
 //! - a manual edit sets any status, whatever the viewing says;
-//! - a refresh from the catalogue reopens a Completed series that now has
-//!   unwatched episodes, and only that — and only when auto-sync (not the
-//!   viewer) set the Completed (`status_origin`).
+//! - re-adding a title that already has progress, and the editor's
+//!   "Automatic", adopt the derived status (origin automatic);
 //! - rewatches: watching a seen movie again, or raising a seen title's
 //!   library rewatch count, logs standing `rewatched` events; lowering the
 //!   count takes the most recent back; unwatching a movie cancels its
@@ -24,6 +31,7 @@ use tauri::{Manager, State};
 use super::domain::LibraryStatus;
 use super::models::{LibraryPatch, MediaSummaryInput};
 use super::repository::{add_if_absent_impl, remove_if_planned_impl, remove_impl, upsert_impl};
+use super::status::reset_status_to_auto_impl;
 use super::status_transitions_tests::{ep, migrated_pool, show, show_media};
 use crate::backup::{export_backup_data, import_backup_data};
 use crate::models::MediaType;
@@ -35,15 +43,6 @@ use crate::progress::{
 type Key = (i64, &'static str);
 /// media_id, media_type, status, started_at, completed_at
 type LibraryDatesRow = (i64, String, String, Option<String>, Option<String>, String);
-
-fn rank(status: &str) -> u8 {
-    match status {
-        "planned" => 0,
-        "watching" | "paused" | "dropped" => 1,
-        "completed" => 2,
-        other => panic!("unexpected status {other}"),
-    }
-}
 
 fn status_of(name: &str) -> LibraryStatus {
     match name {
@@ -73,6 +72,8 @@ struct Model {
     /// Cached `tracked_series.total_episodes`, present once a series has been
     /// toggled at least once.
     tracked_total: HashMap<i64, i64>,
+    /// Cached `tracked_series.status` (TMDB's series status).
+    tracked_status: HashMap<i64, &'static str>,
     adds: HashMap<Key, i64>,
     removes: HashMap<Key, i64>,
     /// `library_items.rewatch_count` of every library entry.
@@ -129,18 +130,77 @@ impl Model {
         }
     }
 
-    fn auto_sync(&mut self, key: Key, target: &'static str) {
-        match self.lib.get(&key).copied() {
-            None => {
-                self.create(key, target);
-                self.origin.insert(key, "auto");
-            }
-            Some(current) if rank(target) > rank(current) => {
-                self.lib.insert(key, target);
-                self.origin.insert(key, "auto");
-            }
-            Some(_) => {}
+    /// The status the facts imply (see the module docs).
+    fn derived(
+        &self,
+        key: Key,
+        catalogue: &[Entry],
+        total: Option<i64>,
+        series_status: Option<&str>,
+    ) -> &'static str {
+        if key.1 == "movie" {
+            return if self.seen_movies.contains(&key.0) {
+                "completed"
+            } else {
+                "planned"
+            };
         }
+        let regular = self.regular_seen(key.0, catalogue);
+        if regular < 1 {
+            "planned"
+        } else if matches!(total, Some(t) if t > 0 && regular >= t)
+            && matches!(series_status, Some("Ended" | "Canceled"))
+        {
+            "completed"
+        } else {
+            "watching"
+        }
+    }
+
+    /// The facts as the database stores them (cached total and status).
+    fn stored_derived(&self, key: Key, catalogue: &[Entry]) -> &'static str {
+        let total = self.tracked_total.get(&key.0).copied().filter(|t| *t > 0);
+        let status = self.tracked_status.get(&key.0).copied();
+        self.derived(key, catalogue, total, status)
+    }
+
+    /// Re-states `library::status::decide`: how a trigger ("watched",
+    /// "unwatched", "refreshed", "reset") moves the status of `key`, given the
+    /// derived status for the facts the caller has.
+    fn react(&mut self, key: Key, trigger: &str, derived: &'static str) {
+        let Some(current) = self.lib.get(&key).copied() else {
+            if trigger == "watched" {
+                self.create(key, derived);
+                self.origin.insert(key, "auto");
+            }
+            return;
+        };
+        let origin = self.origin.get(&key).copied().unwrap_or("manual");
+        let next = match (origin, trigger) {
+            (_, "reset") | ("auto", _) => derived,
+            ("manual", "unwatched") => return,
+            ("manual", "watched") => match current {
+                "planned" => derived,
+                "watching" if derived == "completed" => "completed",
+                "watching" | "completed" => return,
+                // paused / dropped: resume, or complete if finished
+                _ => match derived {
+                    "completed" => "completed",
+                    "planned" => return,
+                    _ => "watching",
+                },
+            },
+            ("manual", "refreshed") => match current {
+                "watching" if derived == "completed" => "completed",
+                _ => return,
+            },
+            other => panic!("unexpected {other:?}"),
+        };
+        if next == current && (origin == "auto" || trigger != "reset") {
+            return;
+        }
+        self.lib.insert(key, next);
+        self.origin.insert(key, "auto");
     }
 
     /// A status the viewer picks: manual whenever it actually changes.
@@ -221,7 +281,7 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
             // One step per hour, strictly increasing.
             let at = format!("2026-01-{:02}T{:02}:00:00.000Z", 1 + step / 24, step % 24);
 
-            match next(12) {
+            match next(13) {
                 // Episodes (single or whole list), watch or unwatch.
                 0..=2 => {
                     let entry = &catalogue[next(catalogue.len() as u64) as usize];
@@ -248,19 +308,12 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     if changed {
                         let total = model.tracked_total.entry(entry.id).or_insert(0);
                         *total = (*total).max(entry.total);
-                        if watched {
-                            let regular = model.regular_seen(entry.id, &catalogue);
-                            let target = if regular >= entry.total && entry.status == "Ended" {
-                                Some("completed")
-                            } else if regular >= 1 {
-                                Some("watching")
-                            } else {
-                                None
-                            };
-                            if let Some(target) = target {
-                                model.auto_sync((entry.id, "series"), target);
-                            }
-                        }
+                        model.tracked_status.insert(entry.id, entry.status);
+                        let key = (entry.id, "series");
+                        // A viewing action knows TMDB's own total and status.
+                        let derived =
+                            model.derived(key, &catalogue, Some(entry.total), Some(entry.status));
+                        model.react(key, if watched { "watched" } else { "unwatched" }, derived);
                     }
                 }
                 // Movie toggle.
@@ -282,8 +335,10 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     toggle_movie_seen(movie, watched, at.clone(), None, pool_state)
                         .await
                         .unwrap();
-                    if watched && changed {
-                        model.auto_sync((id, "movie"), "completed");
+                    if changed {
+                        let key = (id, "movie");
+                        let derived = model.derived(key, &catalogue, None, None);
+                        model.react(key, if watched { "watched" } else { "unwatched" }, derived);
                     }
                     if !watched && changed {
                         model.rewatches.remove(&(id, "movie"));
@@ -338,6 +393,11 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                             assert_eq!(added, !model.lib.contains_key(&key), "{context}: add");
                             if added {
                                 model.create(key, "planned");
+                                // Progress that outlived an earlier stay decides the status.
+                                let derived = model.stored_derived(key, &catalogue);
+                                if derived != "planned" {
+                                    model.react(key, "reset", derived);
+                                }
                             }
                         }
                         1 => {
@@ -376,14 +436,10 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                     if let Some(cached) = model.tracked_total.get_mut(&entry.id) {
                         // A refresh never stores a total below what is already watched.
                         *cached = total.max(regular);
+                        model.tracked_status.insert(entry.id, entry.status);
                         let key = (entry.id, "series");
-                        if model.lib.get(&key) == Some(&"completed")
-                            && model.origin.get(&key) == Some(&"auto")
-                            && regular >= 1
-                            && regular < total
-                        {
-                            model.lib.insert(key, "watching");
-                        }
+                        let derived = model.stored_derived(key, &catalogue);
+                        model.react(key, "refreshed", derived);
                     }
                 }
                 // Watch a movie again (an explicit "watch again").
@@ -433,6 +489,29 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                         model.create(key, "planned");
                     }
                     model.set_counter(key, count);
+                }
+                // The editor's "Automatic": the status follows the viewing again.
+                11 => {
+                    let is_movie = next(3) == 0;
+                    let id = if is_movie {
+                        movies[next(2) as usize]
+                    } else {
+                        catalogue[next(2) as usize].id
+                    };
+                    let key: Key = (id, if is_movie { "movie" } else { "series" });
+                    let media_type = if is_movie {
+                        MediaType::Movie
+                    } else {
+                        MediaType::Series
+                    };
+                    let exists = reset_status_to_auto_impl(&pool, "default", id, media_type)
+                        .await
+                        .unwrap();
+                    assert_eq!(exists, model.lib.contains_key(&key), "{context}: reset");
+                    if exists {
+                        let derived = model.stored_derived(key, &catalogue);
+                        model.react(key, "reset", derived);
+                    }
                 }
                 // Backup: take a snapshot, or restore the last one.
                 _ => {

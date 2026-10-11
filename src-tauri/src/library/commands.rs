@@ -146,6 +146,23 @@ pub async fn remove_planned_library_item(
     .await
 }
 
+/// "Automatic" in the library editor: the title's status follows its viewing
+/// again. Returns the updated entry, `None` when the title is not in the
+/// library.
+#[tauri::command]
+pub async fn reset_library_status_to_auto(
+    media_id: i64,
+    media_type: MediaType,
+    pool: State<'_, SqlitePool>,
+) -> Result<Option<LibraryItem>, ApiError> {
+    timed("reset_library_status_to_auto", async {
+        LibraryService::new(pool.inner())
+            .reset_status_to_auto(media_id, media_type)
+            .await
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn list_library_media_keys(
     pool: State<'_, SqlitePool>,

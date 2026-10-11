@@ -3,15 +3,18 @@ use std::collections::HashSet;
 use serde_json::json;
 use sqlx::SqlitePool;
 
-use super::domain::{auto_sync_target, known_runtime};
+use super::domain::known_runtime;
 use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
 use super::queries::is_movie_seen_impl;
 #[cfg(test)]
 use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
-use crate::database::new_uuid;
+use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
-use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl, insert_rewatch_event};
+use crate::library::{
+    AutoSyncMedia, StatusFacts, StatusTrigger, insert_rewatch_event, reconcile_status_impl,
+    reconcile_title_impl, series_facts,
+};
 use crate::models::MediaType;
 
 /// Thin wrapper over `toggle_movie_seen_with_note_impl` for callers (the
@@ -173,27 +176,33 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
     };
     add_history_item_impl(&mut *tx, pool, history_item).await?;
 
-    if watched {
-        let media = AutoSyncMedia {
-            media_id: movie.id,
-            media_type: MediaType::Movie,
-            title: movie.title.clone(),
-            poster_path: movie.poster_path.clone(),
-            backdrop_path: movie.backdrop_path.clone(),
-            year: movie.year,
-            rating: movie.rating,
-            genres: movie.genres.clone(),
-        };
-        auto_sync_status_impl(
-            &mut tx,
-            pool,
-            profile_id,
-            LibraryStatus::Completed,
-            watched_at,
-            &media,
-        )
-        .await?;
-    }
+    // The library status follows the viewing (see library/status.rs): a movie
+    // seen is Completed, a movie taken back to not seen goes back to Planned
+    // unless the viewer set the status by hand.
+    let media = AutoSyncMedia {
+        media_id: movie.id,
+        media_type: MediaType::Movie,
+        title: movie.title.clone(),
+        poster_path: movie.poster_path.clone(),
+        backdrop_path: movie.backdrop_path.clone(),
+        year: movie.year,
+        rating: movie.rating,
+        genres: movie.genres.clone(),
+    };
+    reconcile_status_impl(
+        &mut tx,
+        pool,
+        profile_id,
+        &media,
+        &StatusFacts::Movie { seen: watched },
+        if watched {
+            StatusTrigger::Watched
+        } else {
+            StatusTrigger::Unwatched
+        },
+        watched_at,
+    )
+    .await?;
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(())
@@ -472,41 +481,46 @@ pub(crate) async fn apply_episodes_outcome_impl(
     .await
     .map_err(ApiError::from)?;
 
-    // Auto-sync toward Watching/Completed only — never toward a "lower"
-    // status (see auto_sync_status_impl's own doc comment for the full
-    // rule) — and only on a watch, never an unwatch: this block recomputes
-    // from the live watched-count regardless of which action triggered it,
-    // so without this guard, un-marking one episode of an otherwise fully
-    // (or partially) watched series could push an existing status *up*
-    // (e.g. Planned -> Watching) purely as a side effect of removing
-    // progress. Uses `series.number_of_episodes` directly (not the
-    // `total_episodes` local, which falls back to `watched_episodes` for
-    // the tracked_series rollup above) so a series with an unknown TMDB
-    // episode count can still register as "Watching" but never falsely
-    // "Completed" from a single episode.
-    let mut created_library_item_id = None;
-    if watched {
-        let auto_sync_target = auto_sync_target(
-            watched_episodes,
-            series.number_of_episodes,
-            series.status.as_deref(),
-        );
-        if let Some(target) = auto_sync_target {
-            let media = AutoSyncMedia {
-                media_id: series.id,
-                media_type: MediaType::Series,
-                title: series.title.clone(),
-                poster_path: series.poster_path.clone(),
-                backdrop_path: series.backdrop_path.clone(),
-                year: series.year,
-                rating: series.rating,
-                genres: series.genres.clone(),
-            };
-            created_library_item_id =
-                auto_sync_status_impl(&mut tx, pool, profile_id, target, watched_at, &media)
-                    .await?;
-        }
-    }
+    // The library status follows the viewing, in both directions (see
+    // library/status.rs and docs/library-status.md): the first episode starts
+    // a series, the last one of a finished series completes it, un-marking
+    // one takes an automatic status back down. A status the viewer chose by
+    // hand is left alone, except that watching resumes a paused or dropped
+    // series. The total passed down is TMDB's own episode count (not the
+    // `total_episodes` rollup above, which falls back to the watched count),
+    // so a series with an unknown length can start but never complete.
+    let media = AutoSyncMedia {
+        media_id: series.id,
+        media_type: MediaType::Series,
+        title: series.title.clone(),
+        poster_path: series.poster_path.clone(),
+        backdrop_path: series.backdrop_path.clone(),
+        year: series.year,
+        rating: series.rating,
+        genres: series.genres.clone(),
+    };
+    let facts = series_facts(
+        &mut tx,
+        profile_id,
+        series.id,
+        series.number_of_episodes,
+        series.status.clone(),
+    )
+    .await?;
+    let created_library_item_id = reconcile_status_impl(
+        &mut tx,
+        pool,
+        profile_id,
+        &media,
+        &facts,
+        if watched {
+            StatusTrigger::Watched
+        } else {
+            StatusTrigger::Unwatched
+        },
+        watched_at,
+    )
+    .await?;
 
     if let Some(history) = history {
         let item = ViewingHistoryItem {
@@ -580,12 +594,19 @@ pub(super) async fn refresh_tracked_series_status_impl(
     status: Option<String>,
     total_episodes: Option<i64>,
 ) -> Result<(), ApiError> {
+    // One IMMEDIATE transaction for the cache write and the status
+    // reconsideration that follows it, so the status is always derived from
+    // the cache it was just written next to.
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
     let current: Option<(Option<String>, i64)> = sqlx::query_as(
         "SELECT status, total_episodes FROM tracked_series WHERE profile_id = $1 AND series_id = $2",
     )
     .bind(profile_id)
     .bind(series_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(ApiError::from)?;
 
@@ -601,7 +622,7 @@ pub(super) async fn refresh_tracked_series_status_impl(
     )
     .bind(profile_id)
     .bind(series_id)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await
     .map_err(ApiError::from)?;
     let next_total_episodes = total_episodes
@@ -615,38 +636,29 @@ pub(super) async fn refresh_tracked_series_status_impl(
         .bind(next_total_episodes)
         .bind(profile_id)
         .bind(series_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
     }
 
-    // Auto-sync never lowers a status, so a series that reached Completed
-    // before TMDB announced (or aired) more episodes would stay Completed
-    // forever. Only a Completed that auto-sync itself set (`status_origin =
-    // 'auto'`) is reopened: one the viewer picked by hand is a decision, not
-    // a derived state, and a refresh must not override it. Entries with no
-    // recorded progress are left alone too, having nothing to compare
-    // against. Re-checked even when the cache above was already up to date,
-    // and a no-op once the status is no longer Completed.
-    sqlx::query(
-        "UPDATE library_items
-         SET status = 'watching',
-             completed_at = NULL,
-             started_at = COALESCE(started_at, strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'),
-             updated_at = strftime('%Y-%m-%dT%H:%M:%f', 'now') || 'Z'
-         WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series' AND status = 'completed'
-           AND status_origin = 'auto'
-           AND (SELECT COUNT(*) FROM episode_progress
-                WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0)
-               BETWEEN 1 AND $3 - 1",
+    // The cache is TMDB's current word on how long the series is and whether
+    // it is over, so the library status is reconsidered against it: an
+    // automatic Completed is reopened when more episodes were announced, an
+    // automatic Watching completes once the finale is reported and every
+    // episode is watched, and a status the viewer chose is left alone (apart
+    // from a manual Watching completing on its own). Re-checked even when the
+    // cache was already up to date: it is a no-op when nothing changes.
+    let now = now_iso(&mut *tx).await?;
+    reconcile_title_impl(
+        &mut tx,
+        profile_id,
+        series_id,
+        MediaType::Series,
+        StatusTrigger::Refreshed,
+        &now,
     )
-    .bind(profile_id)
-    .bind(series_id)
-    .bind(next_total_episodes)
-    .execute(pool)
-    .await
-    .map_err(ApiError::from)?;
-    Ok(())
+    .await?;
+    tx.commit().await.map_err(ApiError::from)
 }
 
 /// Rating (1-5) on an already-watched episode — plain UPDATE, no upsert:
@@ -1258,11 +1270,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unwatching_episodes_never_downgrades_a_completed_library_entry() {
+    async fn unwatching_an_episode_takes_an_automatic_completed_back_to_watching() {
         let pool = migrated_pool().await;
         let s = ended_series(9, Some(2));
-        // Watching both episodes auto-creates the library entry as
-        // "completed" (2/2 watched) — no separate seeding needed.
+        // Watching both episodes of a finished series auto-creates the
+        // library entry as "completed" (2/2 watched).
         apply_episodes_impl(
             &pool,
             "default",
@@ -1277,6 +1289,75 @@ mod tests {
             library_status(&pool, 9, "series").await,
             Some("completed".to_string())
         );
+
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1)],
+            false,
+            "2026-01-01T00:00:01.000Z",
+        )
+        .await
+        .unwrap();
+        // 1/2 watched: the automatic Completed no longer holds.
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("watching".to_string())
+        );
+
+        // Nothing watched at all: back to Planned, like a title never started.
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(2, 2)],
+            false,
+            "2026-01-01T00:00:02.000Z",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("planned".to_string())
+        );
+
+        // Watching again follows it forward once more.
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:03.000Z",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            library_status(&pool, 9, "series").await,
+            Some("completed".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn unwatching_never_touches_a_completed_status_the_viewer_chose() {
+        let pool = migrated_pool().await;
+        let s = ended_series(9, Some(2));
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &s,
+            &[episode(1, 1), episode(2, 2)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+        // The viewer sets Completed by hand: from now on it is a decision.
+        sqlx::query("UPDATE library_items SET status_origin = 'manual' WHERE media_id = 9")
+            .execute(&pool)
+            .await
+            .unwrap();
 
         apply_episodes_impl(
             &pool,
@@ -1905,8 +1986,10 @@ mod tests {
         refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(2))
             .await
             .unwrap();
-        sqlx::query("UPDATE library_items SET status = 'completed' WHERE media_id = 9")
-            .execute(&pool)
+        sqlx::query(
+            "UPDATE library_items SET status = 'completed', status_origin = 'manual' WHERE media_id = 9",
+        )
+        .execute(&pool)
             .await
             .unwrap();
         refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(2))
@@ -2410,7 +2493,7 @@ mod tests {
 
         fn rank(status: Option<&str>) -> u8 {
             match status {
-                None => 0,
+                None | Some("planned") => 0,
                 Some("watching") => 1,
                 Some("completed") => 2,
                 Some(other) => panic!("unexpected auto status {other}"),
@@ -2457,7 +2540,11 @@ mod tests {
 
             let mut seen_episodes: BTreeSet<(i64, i64)> = BTreeSet::new();
             let mut seen_movies: BTreeSet<i64> = BTreeSet::new();
-            let mut expected_status: HashMap<(i64, &str), u8> = HashMap::new();
+            // Titles that have a library entry (created by their first watch).
+            // Every entry here is automatic, so its status must equal the
+            // status derived from what is watched right now, in both
+            // directions (see library/status.rs).
+            let mut in_library: BTreeSet<(i64, &str)> = BTreeSet::new();
 
             for step in 0..60_u64 {
                 let at = format!("2026-01-01T{:02}:{:02}:00.000Z", step / 60, step % 60);
@@ -2490,21 +2577,7 @@ mod tests {
                             .await
                             .unwrap();
                         if watched && changed {
-                            let regular = episodes
-                                .iter()
-                                .filter(|ep| {
-                                    ep.season_number > 0 && seen_episodes.contains(&(*id, ep.id))
-                                })
-                                .count() as i64;
-                            let target = if regular >= *total && *status == "Ended" {
-                                2
-                            } else if regular >= 1 {
-                                1
-                            } else {
-                                0
-                            };
-                            let entry = expected_status.entry((*id, "series")).or_insert(0);
-                            *entry = (*entry).max(target);
+                            in_library.insert((*id, "series"));
                         }
                     }
                     _ => {
@@ -2519,7 +2592,7 @@ mod tests {
                             .await
                             .unwrap();
                         if watched && changed {
-                            expected_status.insert((id, "movie"), 2);
+                            in_library.insert((id, "movie"));
                         }
                     }
                 }
@@ -2609,12 +2682,35 @@ mod tests {
                     );
                 }
 
-                // Library status follows the auto-sync model, never down.
+                // The library status is the derived status of what is watched
+                // now: up when watching, back down when un-marking.
                 for (id, media_type) in
                     [(9, "series"), (10, "series"), (55, "movie"), (56, "movie")]
                 {
                     let actual = library_status(&pool, id, media_type).await;
-                    let expected = expected_status.get(&(id, media_type)).copied().unwrap_or(0);
+                    if !in_library.contains(&(id, media_type)) {
+                        assert_eq!(actual, None, "{context}: {media_type} {id} not in library");
+                        continue;
+                    }
+                    let expected = if media_type == "movie" {
+                        if seen_movies.contains(&id) { 2 } else { 0 }
+                    } else {
+                        let (_, status, total, episodes) =
+                            catalogue.iter().find(|entry| entry.0 == id).unwrap();
+                        let regular = episodes
+                            .iter()
+                            .filter(|ep| {
+                                ep.season_number > 0 && seen_episodes.contains(&(id, ep.id))
+                            })
+                            .count() as i64;
+                        if regular >= 1 && regular >= *total && *status == "Ended" {
+                            2
+                        } else if regular >= 1 {
+                            1
+                        } else {
+                            0
+                        }
+                    };
                     assert_eq!(
                         rank(actual.as_deref()),
                         expected,

@@ -4,9 +4,8 @@
  * Who set a library entry's current status. Generates
  * `src/generated/dto/LibraryStatusOrigin.ts`.
  *
- * `Manual` is a status the viewer chose (editor, quick add); `Auto` one the
- * viewing auto-sync derived (see `auto_sync_status_impl`). Only an `Auto`
- * Completed series may be reopened when TMDB reports more episodes than
- * watched: a manual Completed is a decision, not a derived state.
+ * `Manual` is a status the viewer chose (editor, quick add); `Auto` one that
+ * follows the viewing and is recomputed whenever it changes. See
+ * `docs/library-status.md` and `library/status.rs` for the rules.
  */
 export type LibraryStatusOrigin = "manual" | "auto";

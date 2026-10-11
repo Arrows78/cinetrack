@@ -2,6 +2,7 @@ use sqlx::{Sqlite, SqlitePool, Transaction};
 
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
+use crate::models::MediaType;
 use crate::preferences::ACCOUNT_SCOPE_PREFERENCE_KEYS;
 
 use super::models::{
@@ -1096,6 +1097,65 @@ async fn apply_one_remote_change(
     Ok(())
 }
 
+/// The title (movie or series) a change to viewing data is about, so its
+/// library status can be reconsidered once the batch is applied. Read before
+/// the change is applied: a delete carries no payload, and the row it removes
+/// is the only place the title can still be found.
+async fn title_of_change(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    change: &RemoteSyncChange,
+) -> Result<Option<(i64, MediaType)>, ApiError> {
+    if change.operation == "delete" {
+        let sql = match change.entity_type.as_str() {
+            "library_item" => {
+                "SELECT media_id, media_type FROM library_items WHERE profile_id=?1 AND uuid=?2"
+            }
+            "seen_movie" => {
+                "SELECT movie_id, 'movie' FROM seen_movies WHERE profile_id=?1 AND uuid=?2"
+            }
+            "episode_progress" => {
+                "SELECT series_id, 'series' FROM episode_progress WHERE profile_id=?1 AND uuid=?2"
+            }
+            "tracked_series" => {
+                "SELECT series_id, 'series' FROM tracked_series WHERE profile_id=?1 AND uuid=?2"
+            }
+            _ => return Ok(None),
+        };
+        let row: Option<(i64, String)> = sqlx::query_as(sql)
+            .bind(profile_id)
+            .bind(&change.entity_id)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(ApiError::from)?;
+        return Ok(row.and_then(|(id, media_type)| media_type_of(&media_type).map(|t| (id, t))));
+    }
+    let Some(data) = change.data.as_ref() else {
+        return Ok(None);
+    };
+    let id_of = |key: &str| data.get(key).and_then(serde_json::Value::as_i64);
+    Ok(match change.entity_type.as_str() {
+        "library_item" => id_of("mediaId").zip(
+            data.get("mediaType")
+                .and_then(serde_json::Value::as_str)
+                .and_then(media_type_of),
+        ),
+        "seen_movie" => id_of("movieId").map(|id| (id, MediaType::Movie)),
+        "episode_progress" | "tracked_series" => {
+            id_of("seriesId").map(|id| (id, MediaType::Series))
+        }
+        _ => None,
+    })
+}
+
+fn media_type_of(value: &str) -> Option<MediaType> {
+    match value {
+        "movie" => Some(MediaType::Movie),
+        "series" => Some(MediaType::Series),
+        _ => None,
+    }
+}
+
 pub async fn apply_remote_changes(
     pool: &SqlitePool,
     changes: &[RemoteSyncChange],
@@ -1114,9 +1174,16 @@ pub async fn apply_remote_changes(
         .map_err(ApiError::from)?;
 
     let mut max_sequence = initial_cursor;
+    // Titles whose viewing data this batch touches: their library status is
+    // reconsidered at the end (see below).
+    let mut touched_titles: std::collections::BTreeSet<(i64, i64)> =
+        std::collections::BTreeSet::new();
     for change in &ordered {
         if change.sequence <= max_sequence {
             continue;
+        }
+        if let Some((id, media_type)) = title_of_change(&mut tx, &profile_id, change).await? {
+            touched_titles.insert((id, if media_type == MediaType::Movie { 0 } else { 1 }));
         }
         // A change of a type this build doesn't know (written by a newer
         // app version) can't be applied, but it must still move the cursor:
@@ -1168,6 +1235,35 @@ pub async fn apply_remote_changes(
         .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
+
+    // The batch may have brought watched episodes (or a seen movie, or new
+    // totals) from another device without the library status that goes with
+    // them, or two devices may have moved the status differently. Every
+    // touched title's status is reconsidered from the progress now stored
+    // here; a status that changes as a result is queued for the cloud (the
+    // outbox is on again), and the other device reaches the same value from
+    // the same facts, so the devices converge rather than ping-pong. A status
+    // the viewer chose by hand is not touched, except for the same forward
+    // moves watching itself makes. See library/status.rs.
+    if !touched_titles.is_empty() {
+        let now = now_iso(&mut *tx).await?;
+        for (id, kind) in touched_titles {
+            let media_type = if kind == 0 {
+                MediaType::Movie
+            } else {
+                MediaType::Series
+            };
+            crate::library::reconcile_title_impl(
+                &mut tx,
+                &profile_id,
+                id,
+                media_type,
+                crate::library::StatusTrigger::Refreshed,
+                &now,
+            )
+            .await?;
+        }
+    }
     tx.commit().await.map_err(ApiError::from)
 }
 

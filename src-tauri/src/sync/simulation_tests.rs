@@ -296,7 +296,12 @@ pub(super) async fn local_library_delete(pool: &SqlitePool, media_id: i64) {
         .unwrap();
 }
 
-async fn local_seen_upsert(pool: &SqlitePool, movie_id: i64, watched_at: &str, at: &str) {
+pub(super) async fn local_seen_upsert(
+    pool: &SqlitePool,
+    movie_id: i64,
+    watched_at: &str,
+    at: &str,
+) {
     sqlx::query(
         "INSERT INTO seen_movies(uuid,profile_id,movie_id,title,watched_at,created_at,updated_at) \
          VALUES(?1,'default',?2,'T',?3,?4,?4) \
@@ -311,7 +316,7 @@ async fn local_seen_upsert(pool: &SqlitePool, movie_id: i64, watched_at: &str, a
     .unwrap();
 }
 
-async fn local_seen_delete(pool: &SqlitePool, movie_id: i64) {
+pub(super) async fn local_seen_delete(pool: &SqlitePool, movie_id: i64) {
     sqlx::query("DELETE FROM seen_movies WHERE profile_id='default' AND movie_id=?1")
         .bind(movie_id)
         .execute(pool)
@@ -319,7 +324,7 @@ async fn local_seen_delete(pool: &SqlitePool, movie_id: i64) {
         .unwrap();
 }
 
-async fn local_episode_upsert(
+pub(super) async fn local_episode_upsert(
     pool: &SqlitePool,
     series_id: i64,
     episode_id: i64,

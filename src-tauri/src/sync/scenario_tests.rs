@@ -7,9 +7,10 @@ use sqlx::SqlitePool;
 use super::models::RemoteSyncChange;
 use super::service;
 use super::simulation_tests::{
-    FakeServer, SIM_ACCOUNT, local_library_delete, local_library_upsert, local_list_create,
-    local_list_delete, local_list_item_add, local_list_rename, new_device, outbox_len, pull, push,
-    settle, sync_round, ts,
+    FakeServer, SIM_ACCOUNT, local_episode_upsert, local_library_delete, local_library_upsert,
+    local_list_create, local_list_delete, local_list_item_add, local_list_rename,
+    local_seen_delete, local_seen_upsert, new_device, outbox_len, pull, push, settle, sync_round,
+    ts,
 };
 
 async fn lib_status(pool: &SqlitePool, media_id: i64) -> Option<String> {
@@ -512,4 +513,81 @@ async fn account_preferences_from_the_cloud_are_limited_to_the_account_scope_key
         6,
         "rejected documents still move the cursor"
     );
+}
+
+async fn insert_library_entry(
+    pool: &SqlitePool,
+    media_id: i64,
+    media_type: &str,
+    status: &str,
+    origin: &str,
+) {
+    sqlx::query(
+        "INSERT INTO library_items(uuid,profile_id,media_id,media_type,title,status,status_origin,created_at,updated_at) \
+         VALUES(lower(hex(randomblob(8))),'default',?1,?2,'T',?3,?4,'t','t')",
+    )
+    .bind(media_id)
+    .bind(media_type)
+    .bind(status)
+    .bind(origin)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn status_and_origin(pool: &SqlitePool, media_id: i64, media_type: &str) -> (String, String) {
+    sqlx::query_as(
+        "SELECT status, status_origin FROM library_items WHERE media_id=?1 AND media_type=?2",
+    )
+    .bind(media_id)
+    .bind(media_type)
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+/// Progress pulled from another device brings the library status that goes
+/// with it: an automatic status is recomputed from what is now watched here
+/// (both ways), a status the viewer chose is not lowered or otherwise moved.
+#[tokio::test]
+async fn progress_pulled_from_another_device_brings_the_automatic_status_with_it() {
+    let (a, b) = (new_device().await, new_device().await);
+    let mut server = FakeServer::default();
+    // Device B has the series and the movie in its library, status automatic;
+    // plus a series whose status the viewer chose (Paused).
+    insert_library_entry(&b, 9, "series", "planned", "auto").await;
+    insert_library_entry(&b, 55, "movie", "planned", "auto").await;
+    insert_library_entry(&b, 10, "series", "paused", "manual").await;
+
+    // Device A watches two episodes of 9, one of 10, and the movie.
+    local_episode_upsert(&a, 9, 901, 1, &ts(1)).await;
+    local_episode_upsert(&a, 9, 902, 1, &ts(2)).await;
+    local_episode_upsert(&a, 10, 1001, 1, &ts(3)).await;
+    local_seen_upsert(&a, 55, &ts(4), &ts(4)).await;
+    settle(&[&a, &b], &mut server).await;
+
+    assert_eq!(
+        status_and_origin(&b, 9, "series").await,
+        ("watching".into(), "auto".into())
+    );
+    assert_eq!(
+        status_and_origin(&b, 55, "movie").await,
+        ("completed".into(), "auto".into())
+    );
+    assert_eq!(
+        status_and_origin(&b, 10, "series").await,
+        ("paused".into(), "manual".into()),
+        "a status the viewer chose is not moved by a sync"
+    );
+
+    // Device A takes it all back: B follows down.
+    local_episode_upsert(&a, 9, 901, 0, &ts(5)).await;
+    local_episode_upsert(&a, 9, 902, 0, &ts(6)).await;
+    local_seen_delete(&a, 55).await;
+    settle(&[&a, &b], &mut server).await;
+
+    // The un-watch reached B as episode rows with watched = 0 (and a delete
+    // for the movie): nothing is watched any more.
+    assert_eq!(status_and_origin(&b, 9, "series").await.0, "planned");
+    assert_eq!(status_and_origin(&b, 55, "movie").await.0, "planned");
 }

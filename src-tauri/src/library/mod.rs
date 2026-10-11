@@ -7,6 +7,7 @@ mod queries;
 mod repository;
 mod rewatch_events;
 mod service;
+mod status;
 
 pub use commands::{
     add_planned_library_item, get_best_recommendation_seed, get_library_item,
@@ -15,7 +16,7 @@ pub use commands::{
     list_library_ids_matching_filters, list_library_media_keys, list_library_page,
     list_planned_library_candidates, list_stale_planned_library_items,
     refresh_library_catalog_metadata, remove_library_item, remove_planned_library_item,
-    save_library_item,
+    reset_library_status_to_auto, save_library_item,
 };
 pub(crate) use domain::{LibraryStatus, LibraryStatusOrigin};
 pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
@@ -23,14 +24,17 @@ pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
 // `#[cfg(test)]`-only — see that module's `timed_library_page`.
 #[cfg(test)]
 pub(crate) use models::LibrarySort;
-pub(crate) use repository::{
-    CreatedLibraryItem, UntouchedRemoval, auto_sync_status_impl, remove_untouched_items_impl,
-};
+pub(crate) use repository::{CreatedLibraryItem, UntouchedRemoval, remove_untouched_items_impl};
 pub(crate) use rewatch_events::insert_rewatch_event;
+pub(crate) use status::{
+    StatusFacts, StatusTrigger, reconcile_status_impl, reconcile_title_impl, series_facts,
+};
 
 #[cfg(test)]
 mod sequence_tests;
 #[cfg(test)]
 mod stale_planned_tests;
+#[cfg(test)]
+mod status_flow_tests;
 #[cfg(test)]
 mod status_transitions_tests;

@@ -5,7 +5,7 @@ use sqlx::SqlitePool;
 
 use crate::database::new_uuid;
 use crate::error::ApiError;
-use crate::library::{AutoSyncMedia, LibraryStatus, auto_sync_status_impl};
+use crate::library::{AutoSyncMedia, StatusFacts, StatusTrigger, reconcile_status_impl};
 #[cfg(test)]
 use crate::library::{CreatedLibraryItem, remove_untouched_items_impl};
 use crate::models::MediaType;
@@ -63,7 +63,7 @@ pub struct MovieImportOutcome {
 /// commands this preserves the original watch date of every episode
 /// (per-episode `watched_at` override, see `EpisodeInput`) and does not log
 /// to the activity log — viewing_events carry the history. (A library entry
-/// auto-created as a side effect of this import, via `auto_sync_status_impl`
+/// auto-created as a side effect of this import, via `reconcile_status_impl`
 /// inside `apply_episodes_and_log_impl`, still logs its own `LibraryAdd`
 /// entry — that's a separate, genuine "added to library" event, not part of
 /// the watch history this comment is about.) Reuses
@@ -205,13 +205,14 @@ pub(super) async fn import_movie_seen_impl(
         rating: movie.rating,
         genres: movie.genres.clone(),
     };
-    let created_library_item_id = auto_sync_status_impl(
+    let created_library_item_id = reconcile_status_impl(
         &mut tx,
         pool,
         profile_id,
-        LibraryStatus::Completed,
-        &movie.watched_at,
         &media,
+        &StatusFacts::Movie { seen: true },
+        StatusTrigger::Watched,
+        &movie.watched_at,
     )
     .await?;
 

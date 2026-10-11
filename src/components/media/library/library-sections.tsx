@@ -296,7 +296,7 @@ export function SeriesLibrarySections({
   // calls finished *and* that has no aired unwatched episode left is
   // dropped (still visible on /library) — held back while that resolves
   // rather than flashing in and out. A series whose total hasn't synced yet
-  // (0 — see auto_sync_target's zero-total guard) counts as in-progress.
+  // (0 — an unknown total never completes a series, see docs/library-status.md) counts as in-progress.
   const resolvedStarted = useNextEpisodes(started.map((item) => toTrackedSeriesItem(item, trackedById.get(item.id))));
   const kept = started.flatMap((item, index) => {
     const result = resolvedStarted.results[index]!;
