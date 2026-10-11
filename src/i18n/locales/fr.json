@@ -569,6 +569,7 @@
     "currentProgress": "Progression actuelle",
     "episodesFraction": "{{watched}}/{{total}} ép.",
     "seasonsAndEpisodes": "Saisons et épisodes",
+    "noSeasons": "Aucune saison n'est encore disponible pour cette série.",
     "seasonsAndEpisodesDesc": "Chaque épisode peut être marqué vu ou non vu, avec une progression par saison et globale.",
     "markSeasonSeen": "Marquer la saison comme vue",
     "markSeasonUnseen": "Marquer la saison comme non vue",

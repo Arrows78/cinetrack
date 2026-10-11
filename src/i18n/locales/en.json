@@ -569,6 +569,7 @@
     "currentProgress": "Current progress",
     "episodesFraction": "{{watched}}/{{total}} ep.",
     "seasonsAndEpisodes": "Seasons & Episodes",
+    "noSeasons": "No season is available for this series yet.",
     "seasonsAndEpisodesDesc": "Each episode can be marked as watched or unwatched, with progress per season and overall.",
     "markSeasonSeen": "Mark season as watched",
     "markSeasonUnseen": "Mark season as unwatched",

@@ -22,6 +22,7 @@ import { ExportSeriesButton } from "@/components/media/detail/export-series-butt
 import { ProgressBar } from "@/components/media/primitives/progress-bar";
 import { Badge } from "@/components/ui/badge";
 import { Panel } from "@/components/ui/panel";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SectionNav } from "@/components/ui/section-nav";
 import { SeasonAccordion } from "@/components/media/detail/season-accordion";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -76,6 +77,10 @@ export function SeriesDetailPage() {
     seasonNumbers.length > 0 &&
     seasons.length === seasonNumbers.length &&
     seasonQueries.every((query) => !query.isPending && !query.isError);
+  // Seasons arrive one request each: until they have, the aired/watched
+  // counts below only cover some of the series, so nothing that says "caught
+  // up" can be trusted yet.
+  const seasonsPending = seasonNumbers.length > 0 && seasonQueries.some((query) => query.isPending);
   const [confirmingUnmark, setConfirmingUnmark] = useState(false);
   const progress = calculateSeriesProgress(id, seasons, progressQuery.data ?? []);
   // "Seen" once everything aired is watched — `completed` alone also needs
@@ -197,11 +202,19 @@ export function SeriesDetailPage() {
           </div>
         }
       />
-      <NextEpisodeCard
-        episode={nextEpisode}
-        isSaving={progressQuery.isSaving}
-        onWatched={(episode, note) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true, note })}
-      />
+      {seasonsPending ? (
+        <Skeleton role="status" aria-label={t("media.seasonsLoading")} className="h-28" />
+      ) : nextEpisode || failedSeasonQueries.length === 0 ? (
+        // A season that failed to load can hide the very episode that is next:
+        // "all up to date" would then be a guess, so the card stays away and
+        // the seasons section below says what went wrong.
+        <NextEpisodeCard
+          episode={nextEpisode}
+          emptyReason={progress.totalEpisodes === 0 ? "nothingAired" : undefined}
+          isSaving={progressQuery.isSaving}
+          onWatched={(episode, note) => void progressQuery.toggleEpisodeSeen({ series, episode, watched: true, note })}
+        />
+      ) : null}
       {/* Right after the hero, not after gallery/trailer/availability below —
           this is the most frequent action on the page (status, personal
           rating, tags), it shouldn't need a long scroll to reach. */}
@@ -216,7 +229,7 @@ export function SeriesDetailPage() {
           <Panel tone="subtle" className="p-6">
             <div className="flex items-center justify-between gap-2">
               <p className="text-overline font-bold uppercase text-muted-foreground">{t("series.currentProgress")}</p>
-              {progress.isUpToDate ? <Badge variant="success">{t("media.upToDate")}</Badge> : null}
+              {progress.isUpToDate && allSeasonsLoaded ? <Badge variant="success">{t("media.upToDate")}</Badge> : null}
             </div>
             <div className="mt-3 flex items-end justify-between gap-3">
               <p className="font-display text-display-md font-bold leading-none">
@@ -284,18 +297,26 @@ export function SeriesDetailPage() {
             onRetry={() => failedSeasonQueries.forEach((query) => void query.refetch())}
           />
         ) : null}
-        <SeasonAccordion
-          series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }}
-          seasons={seasons}
-          watchedEpisodes={progressQuery.data ?? []}
-          isSaving={progressQuery.isSaving}
-          onToggleEpisode={(episode, watched, note) =>
-            progressQuery.toggleEpisodeSeen({ series, episode, watched, note })
-          }
-          onToggleEpisodes={(episodes, target) => progressQuery.markEpisodesSeen({ series, episodes, target })}
-          onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })}
-          initialOpenSeason={initialOpenSeason}
-        />
+        {seasonNumbers.length === 0 ? (
+          <p className="text-body-sm text-muted-foreground">{t("series.noSeasons")}</p>
+        ) : null}
+        {seasonsPending ? (
+          <Skeleton role="status" aria-label={t("media.seasonsLoading")} className="mb-3 h-24" />
+        ) : null}
+        {seasonNumbers.length > 0 ? (
+          <SeasonAccordion
+            series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }}
+            seasons={seasons}
+            watchedEpisodes={progressQuery.data ?? []}
+            isSaving={progressQuery.isSaving}
+            onToggleEpisode={(episode, watched, note) =>
+              progressQuery.toggleEpisodeSeen({ series, episode, watched, note })
+            }
+            onToggleEpisodes={(episodes, target) => progressQuery.markEpisodesSeen({ series, episodes, target })}
+            onToggleSeason={(season, watched) => progressQuery.markSeasonSeen({ series, season, watched })}
+            initialOpenSeason={initialOpenSeason}
+          />
+        ) : null}
       </section>
       <ConfirmUnmarkDialog
         scope="series"

@@ -11,10 +11,15 @@ import type { Episode } from "@/types/media";
 
 export function NextEpisodeCard({
   episode,
+  emptyReason = "caughtUp",
   isSaving,
   onWatched,
 }: {
   episode: Episode | null;
+  // Why there is no episode to offer: the viewer has watched everything that
+  // aired ("caughtUp"), or nothing has aired at all yet ("nothingAired") —
+  // "all up to date" would be wrong for a series nobody could have started.
+  emptyReason?: "caughtUp" | "nothingAired";
   isSaving: boolean;
   onWatched: (episode: Episode, note?: string) => void;
 }) {
@@ -23,8 +28,12 @@ export function NextEpisodeCard({
   if (!episode)
     return (
       <Panel>
-        <p className="font-semibold">{t("media.upToDate")}</p>
-        <p className="text-body-sm text-muted-foreground">{t("media.noAiredEpisode")}</p>
+        <p className="font-semibold">
+          {emptyReason === "nothingAired" ? t("media.nothingAiredTitle") : t("media.upToDate")}
+        </p>
+        <p className="text-body-sm text-muted-foreground">
+          {emptyReason === "nothingAired" ? t("media.nothingAiredDescription") : t("media.noAiredEpisode")}
+        </p>
       </Panel>
     );
   return (

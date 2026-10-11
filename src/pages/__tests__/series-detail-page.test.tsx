@@ -111,8 +111,16 @@ vi.mock("@/components/media/detail/season-accordion", () => ({
 
 const nextEpisodeCardPropsMock = vi.fn();
 vi.mock("@/components/media/tracking/next-episode-card", () => ({
-  NextEpisodeCard: ({ episode, onWatched }: { episode: Episode | null; onWatched: (episode: Episode) => void }) => {
-    nextEpisodeCardPropsMock(episode);
+  NextEpisodeCard: ({
+    episode,
+    onWatched,
+    emptyReason,
+  }: {
+    episode: Episode | null;
+    onWatched: (episode: Episode) => void;
+    emptyReason?: string;
+  }) => {
+    nextEpisodeCardPropsMock(episode, emptyReason);
     return (
       <div data-testid="next-episode-card">
         {episode ? (
@@ -544,7 +552,7 @@ describe("SeriesDetailPage", () => {
 
     // getNextEpisode: episodes 1 and 2 are watched, episode 3 already aired
     // and is unwatched -> it's the next episode.
-    expect(nextEpisodeCardPropsMock).toHaveBeenCalledWith(episodes[2]);
+    expect(nextEpisodeCardPropsMock).toHaveBeenCalledWith(episodes[2], undefined);
   });
 
   it("shows a partial-error state when a season query fails, and its retry calls that season's refetch", () => {
@@ -763,6 +771,98 @@ describe("SeriesDetailPage", () => {
     // Caught up but not "completed" (an unaired episode is left): the
     // series still reads as seen, so the toggle offers to unmark it.
     expect(screen.getByTestId("seen-toggle")).toHaveAttribute("data-seen", "true");
+  });
+
+  describe("seasons that are loading, missing or not aired", () => {
+    it("shows a loading state for the seasons, and neither 'up to date' nor a next-episode card, until they arrive", () => {
+      seasonQueriesMock.mockReturnValue([{ data: undefined, isPending: true, isError: false, refetch: vi.fn() }]);
+      episodeProgressMock.mockReturnValue({ ...episodeProgressMock(), data: [] });
+
+      renderPage();
+
+      expect(screen.getAllByRole("status", { name: "Loading seasons…" }).length).toBeGreaterThan(0);
+      expect(screen.queryByTestId("next-episode-card")).not.toBeInTheDocument();
+      expect(screen.queryByText("All up to date")).not.toBeInTheDocument();
+    });
+
+    it("does not claim 'up to date' on the progress panel while another season is still loading", () => {
+      const future = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90).toISOString();
+      const seasonOne = buildSeason({
+        episodes: [...episodes, { ...episodes[2]!, id: 1004, episodeNumber: 4, airDate: future }],
+      });
+      seasonQueriesMock.mockReturnValue([
+        { data: seasonOne, isPending: false, isError: false, refetch: vi.fn() },
+        { data: undefined, isPending: true, isError: false, refetch: vi.fn() },
+      ]);
+      seriesQueryMock.mockReturnValue({
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+        data: buildSeries({
+          seasons: [
+            { id: 100, seasonNumber: 1, name: "Season 1", overview: "", episodeCount: 3, episodes: [] },
+            { id: 101, seasonNumber: 2, name: "Season 2", overview: "", episodeCount: 8, episodes: [] },
+          ],
+        }),
+      });
+      episodeProgressMock.mockReturnValue({
+        ...episodeProgressMock(),
+        data: episodes.map((episode, index) => ({
+          ...watchedProgress[0]!,
+          id: `p${index}`,
+          episodeId: episode.id,
+          episodeNumber: episode.episodeNumber,
+        })),
+      });
+
+      renderPage();
+
+      expect(screen.queryByText("All up to date")).not.toBeInTheDocument();
+    });
+
+    it("says so when the series has no season at all, instead of an empty section", () => {
+      seriesQueryMock.mockReturnValue({
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+        data: buildSeries({ seasons: [], numberOfSeasons: 0, numberOfEpisodes: undefined }),
+      });
+      seasonQueriesMock.mockReturnValue([]);
+      episodeProgressMock.mockReturnValue({ ...episodeProgressMock(), data: [] });
+
+      renderPage();
+
+      expect(screen.getByText("No season is available for this series yet.")).toBeInTheDocument();
+      expect(screen.queryByTestId("season-accordion")).not.toBeInTheDocument();
+    });
+
+    it("tells 'nothing has aired yet' apart from 'caught up' when every listed episode is still to come", () => {
+      const future = new Date(Date.now() + 1000 * 60 * 60 * 24 * 90).toISOString();
+      seasonQueriesMock.mockReturnValue([
+        {
+          data: buildSeason({ episodes: episodes.map((episode) => ({ ...episode, airDate: future })) }),
+          isPending: false,
+          isError: false,
+          refetch: vi.fn(),
+        },
+      ]);
+      episodeProgressMock.mockReturnValue({ ...episodeProgressMock(), data: [] });
+
+      renderPage();
+
+      expect(nextEpisodeCardPropsMock).toHaveBeenLastCalledWith(null, "nothingAired");
+    });
+
+    it("hides the 'caught up' card when a season failed to load and no episode is left in the others", () => {
+      seasonQueriesMock.mockReturnValue([{ data: undefined, isPending: false, isError: true, refetch: vi.fn() }]);
+      episodeProgressMock.mockReturnValue({ ...episodeProgressMock(), data: [] });
+
+      renderPage();
+
+      expect(screen.queryByTestId("next-episode-card")).not.toBeInTheDocument();
+    });
   });
 
   it("marks the series seen with the flipped completed state when the seen toggle is clicked", () => {
