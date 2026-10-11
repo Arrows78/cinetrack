@@ -87,162 +87,7 @@ pub(super) async fn list_page_impl(
         .map(|raw| LibraryCursorPayload::decode(raw, params.sort))
         .transpose()?;
 
-    let mut qb: QueryBuilder<Sqlite> =
-        QueryBuilder::new("SELECT * FROM library_items WHERE profile_id = ");
-    qb.push_bind(profile_id.to_string());
-
-    if let Some(media_type) = params.media_type {
-        qb.push(" AND media_type = ")
-            .push_bind(media_type.as_db_str());
-    }
-    if let Some(status) = params.status {
-        qb.push(" AND status = ").push_bind(status.as_db_str());
-    }
-    if params.favourites_only {
-        qb.push(" AND favourite = 1");
-    }
-    if let Some(genre) = params
-        .genre
-        .as_deref()
-        .map(str::trim)
-        .filter(|g| !g.is_empty())
-    {
-        // Same quoted substring match as list_ids_matching_filters_impl —
-        // genres is a JSON-serialized string array, no relational table.
-        qb.push(" AND genres LIKE ")
-            .push_bind(format!("%\"{genre}\"%"));
-    }
-    if let Some(search) = params
-        .search
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-    {
-        // A leading `%` means this can never use a B-tree index on `title`
-        // the way a prefix search (`title LIKE 'foo%'`) could — confirmed by
-        // `stats::performance`'s own benchmark, where every other
-        // `list_library_page` case stays sub-millisecond at 50k rows but
-        // this one's latency grows with `library_items` (see
-        // docs/performance.md). Not switched to FTS5 preemptively: revisit
-        // if this ever shows up as a real user-facing delay rather than a
-        // benchmark number.
-        // A title is also found by its private notes or its tags — the same
-        // fields the client-side pass (library-filtering.ts) searches, so the
-        // /library page and the movie and series hubs answer one query alike.
-        // `tags` is a JSON array: the match is on its serialized text.
-        let pattern = like_contains_pattern(search);
-        qb.push(" AND (title LIKE ")
-            .push_bind(pattern.clone())
-            .push(" COLLATE NOCASE ESCAPE '\\' OR COALESCE(notes, '') LIKE ")
-            .push_bind(pattern.clone())
-            .push(" COLLATE NOCASE ESCAPE '\\' OR tags LIKE ")
-            .push_bind(pattern)
-            .push(" COLLATE NOCASE ESCAPE '\\')");
-    }
-
-    match (params.sort, &cursor) {
-        (
-            LibrarySort::Recent,
-            Some(LibraryCursorPayload::Recent {
-                updated_at,
-                media_id,
-                media_type,
-            }),
-        ) => {
-            qb.push(" AND (updated_at, media_id, media_type) < (")
-                .push_bind(updated_at.clone())
-                .push(", ")
-                .push_bind(*media_id)
-                .push(", ")
-                .push_bind(media_type.clone())
-                .push(")");
-        }
-        (
-            LibrarySort::Title,
-            Some(LibraryCursorPayload::Title {
-                title,
-                media_id,
-                media_type,
-            }),
-        ) => {
-            qb.push(" AND (title, media_id, media_type) > (")
-                .push_bind(title.clone())
-                .push(", ")
-                .push_bind(*media_id)
-                .push(", ")
-                .push_bind(media_type.clone())
-                .push(")");
-        }
-        (
-            LibrarySort::Rating,
-            Some(LibraryCursorPayload::Rating {
-                rating,
-                media_id,
-                media_type,
-            }),
-        ) => {
-            qb.push(" AND (COALESCE(user_rating, rating, -1.0), media_id, media_type) < (")
-                .push_bind(*rating)
-                .push(", ")
-                .push_bind(*media_id)
-                .push(", ")
-                .push_bind(media_type.clone())
-                .push(")");
-        }
-        (
-            LibrarySort::DateAdded,
-            Some(LibraryCursorPayload::DateAdded {
-                created_at,
-                media_id,
-                media_type,
-            }),
-        ) => {
-            qb.push(" AND (created_at, media_id, media_type) < (")
-                .push_bind(created_at.clone())
-                .push(", ")
-                .push_bind(*media_id)
-                .push(", ")
-                .push_bind(media_type.clone())
-                .push(")");
-        }
-        (
-            LibrarySort::DateCompleted,
-            Some(LibraryCursorPayload::DateCompleted {
-                completed_at,
-                media_id,
-                media_type,
-            }),
-        ) => {
-            qb.push(" AND (COALESCE(completed_at, ''), media_id, media_type) < (")
-                .push_bind(completed_at.clone())
-                .push(", ")
-                .push_bind(*media_id)
-                .push(", ")
-                .push_bind(media_type.clone())
-                .push(")");
-        }
-        (_, None) => {}
-        // Guarded against by LibraryCursorPayload::decode's tag check above —
-        // a mismatched (sort, cursor variant) pair never reaches this match.
-        (_, Some(_)) => unreachable!("cursor variant already validated against the requested sort"),
-    }
-
-    match params.sort {
-        LibrarySort::Recent => qb.push(" ORDER BY updated_at DESC, media_id DESC, media_type DESC"),
-        LibrarySort::Title => qb.push(" ORDER BY title ASC, media_id ASC, media_type ASC"),
-        LibrarySort::Rating => qb.push(
-            " ORDER BY COALESCE(user_rating, rating, -1.0) DESC, media_id DESC, media_type DESC",
-        ),
-        LibrarySort::DateAdded => {
-            qb.push(" ORDER BY created_at DESC, media_id DESC, media_type DESC")
-        }
-        // Never-completed items (completed_at NULL) sort after every real
-        // date — '' is lexically smaller than any ISO timestamp.
-        LibrarySort::DateCompleted => {
-            qb.push(" ORDER BY COALESCE(completed_at, '') DESC, media_id DESC, media_type DESC")
-        }
-    };
-    qb.push(" LIMIT ").push_bind(limit + 1);
+    let mut qb = build_page_query("", profile_id, &params, cursor.as_ref(), limit);
 
     let mut rows: Vec<LibraryRow> = qb
         .build_query_as()
@@ -297,6 +142,184 @@ pub(super) async fn list_page_impl(
         .map(LibraryItem::try_from)
         .collect::<Result<Vec<_>, _>>()?;
     Ok(LibraryPage { items, next_cursor })
+}
+
+/// The page read itself, split from its execution so the query-plan tests run
+/// the real statement (`prefix` is `"EXPLAIN QUERY PLAN "` there, empty here).
+pub(super) fn build_page_query(
+    prefix: &str,
+    profile_id: &str,
+    params: &LibraryListParams,
+    cursor: Option<&LibraryCursorPayload>,
+    limit: i64,
+) -> QueryBuilder<Sqlite> {
+    let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(format!(
+        "{prefix}SELECT * FROM library_items WHERE profile_id = "
+    ));
+    qb.push_bind(profile_id.to_string());
+
+    if let Some(media_type) = params.media_type {
+        qb.push(" AND media_type = ")
+            .push_bind(media_type.as_db_str());
+    }
+    if let Some(status) = params.status {
+        qb.push(" AND status = ").push_bind(status.as_db_str());
+    }
+    if params.favourites_only {
+        qb.push(" AND favourite = 1");
+    }
+    if let Some(genre) = params
+        .genre
+        .as_deref()
+        .map(str::trim)
+        .filter(|g| !g.is_empty())
+    {
+        // Same quoted substring match as list_ids_matching_filters_impl —
+        // genres is a JSON-serialized string array, no relational table.
+        qb.push(" AND genres LIKE ")
+            .push_bind(format!("%\"{genre}\"%"));
+    }
+    if let Some(search) = params
+        .search
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        // A leading `%` means this can never use a B-tree index on `title`
+        // the way a prefix search (`title LIKE 'foo%'`) could — confirmed by
+        // `stats::performance`'s own benchmark, where every other
+        // `list_library_page` case stays sub-millisecond at 50k rows but
+        // this one's latency grows with `library_items` (see
+        // docs/performance.md). Not switched to FTS5 preemptively: revisit
+        // if this ever shows up as a real user-facing delay rather than a
+        // benchmark number.
+        // A title is also found by its private notes or its tags — the same
+        // fields the client-side pass (library-filtering.ts) searches, so the
+        // /library page and the movie and series hubs answer one query alike.
+        // `tags` is a JSON array: the match is on its serialized text.
+        let pattern = like_contains_pattern(search);
+        qb.push(" AND (title LIKE ")
+            .push_bind(pattern.clone())
+            .push(" COLLATE NOCASE ESCAPE '\\' OR COALESCE(notes, '') LIKE ")
+            .push_bind(pattern.clone())
+            .push(" COLLATE NOCASE ESCAPE '\\' OR tags LIKE ")
+            .push_bind(pattern)
+            .push(" COLLATE NOCASE ESCAPE '\\')");
+    }
+
+    match (params.sort, cursor) {
+        (
+            LibrarySort::Recent,
+            Some(LibraryCursorPayload::Recent {
+                updated_at,
+                media_id,
+                media_type,
+            }),
+        ) => {
+            qb.push(" AND (updated_at, media_id, media_type) < (")
+                .push_bind(updated_at.clone())
+                .push(", ")
+                .push_bind(*media_id)
+                .push(", ")
+                .push_bind(media_type.clone())
+                .push(")");
+        }
+        (
+            LibrarySort::Title,
+            Some(LibraryCursorPayload::Title {
+                title,
+                media_id,
+                media_type,
+            }),
+        ) => {
+            qb.push(" AND (title, media_id, media_type) > (")
+                .push_bind(title.clone())
+                .push(", ")
+                .push_bind(*media_id)
+                .push(", ")
+                .push_bind(media_type.clone())
+                .push(")");
+        }
+        (
+            LibrarySort::Rating,
+            Some(LibraryCursorPayload::Rating {
+                rating,
+                media_id,
+                media_type,
+            }),
+        ) => {
+            // The first comparison repeats the row-value one's leading column
+            // on purpose: SQLite only turns a plain-column row-value into an
+            // index range, so for an expression index this bound is what lets
+            // a deep page start at the cursor instead of at the first row.
+            qb.push(" AND COALESCE(user_rating, rating, -1.0) <= ")
+                .push_bind(*rating)
+                .push(" AND (COALESCE(user_rating, rating, -1.0), media_id, media_type) < (")
+                .push_bind(*rating)
+                .push(", ")
+                .push_bind(*media_id)
+                .push(", ")
+                .push_bind(media_type.clone())
+                .push(")");
+        }
+        (
+            LibrarySort::DateAdded,
+            Some(LibraryCursorPayload::DateAdded {
+                created_at,
+                media_id,
+                media_type,
+            }),
+        ) => {
+            qb.push(" AND (created_at, media_id, media_type) < (")
+                .push_bind(created_at.clone())
+                .push(", ")
+                .push_bind(*media_id)
+                .push(", ")
+                .push_bind(media_type.clone())
+                .push(")");
+        }
+        (
+            LibrarySort::DateCompleted,
+            Some(LibraryCursorPayload::DateCompleted {
+                completed_at,
+                media_id,
+                media_type,
+            }),
+        ) => {
+            // Same redundant leading bound as the rating sort above.
+            qb.push(" AND COALESCE(completed_at, '') <= ")
+                .push_bind(completed_at.clone())
+                .push(" AND (COALESCE(completed_at, ''), media_id, media_type) < (")
+                .push_bind(completed_at.clone())
+                .push(", ")
+                .push_bind(*media_id)
+                .push(", ")
+                .push_bind(media_type.clone())
+                .push(")");
+        }
+        (_, None) => {}
+        // Guarded against by LibraryCursorPayload::decode's tag check above —
+        // a mismatched (sort, cursor variant) pair never reaches this match.
+        (_, Some(_)) => unreachable!("cursor variant already validated against the requested sort"),
+    }
+
+    match params.sort {
+        LibrarySort::Recent => qb.push(" ORDER BY updated_at DESC, media_id DESC, media_type DESC"),
+        LibrarySort::Title => qb.push(" ORDER BY title ASC, media_id ASC, media_type ASC"),
+        LibrarySort::Rating => qb.push(
+            " ORDER BY COALESCE(user_rating, rating, -1.0) DESC, media_id DESC, media_type DESC",
+        ),
+        LibrarySort::DateAdded => {
+            qb.push(" ORDER BY created_at DESC, media_id DESC, media_type DESC")
+        }
+        // Never-completed items (completed_at NULL) sort after every real
+        // date — '' is lexically smaller than any ISO timestamp.
+        LibrarySort::DateCompleted => {
+            qb.push(" ORDER BY COALESCE(completed_at, '') DESC, media_id DESC, media_type DESC")
+        }
+    };
+    qb.push(" LIMIT ").push_bind(limit + 1);
+    qb
 }
 
 pub(super) async fn get_impl<'e, E>(
@@ -667,4 +690,38 @@ pub(super) async fn list_ids_matching_filters_impl(
             media_type: MediaType::from_db_str(&media_type),
         })
         .collect())
+}
+
+/// The plan SQLite chooses for a page read, one line per step joined with
+/// ` | ` — what `stats::performance::query_plans` asserts on, so those tests
+/// run the statement the command runs, not a copy of it.
+#[cfg(test)]
+pub(crate) async fn explain_page_query(
+    pool: &SqlitePool,
+    profile_id: &str,
+    params: LibraryListParams,
+) -> Result<String, ApiError> {
+    let limit = params.limit.clamp(PAGE_MIN_LIMIT, PAGE_MAX_LIMIT);
+    let cursor = params
+        .cursor
+        .as_deref()
+        .map(|raw| LibraryCursorPayload::decode(raw, params.sort))
+        .transpose()?;
+    let mut qb = build_page_query(
+        "EXPLAIN QUERY PLAN ",
+        profile_id,
+        &params,
+        cursor.as_ref(),
+        limit,
+    );
+    let rows: Vec<(i64, i64, i64, String)> = qb
+        .build_query_as()
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(rows
+        .into_iter()
+        .map(|(_, _, _, detail)| detail)
+        .collect::<Vec<_>>()
+        .join(" | "))
 }

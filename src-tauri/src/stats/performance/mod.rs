@@ -1,8 +1,10 @@
 mod benchmark;
 mod fixtures;
+mod index_reads;
 mod library_reads;
 mod memory;
 mod query_plans;
+mod read_catalogue;
 mod report;
 
 #[tokio::test]

@@ -24,6 +24,8 @@ pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
 // `#[cfg(test)]`-only — see that module's `timed_library_page`.
 #[cfg(test)]
 pub(crate) use models::LibrarySort;
+#[cfg(test)]
+pub(crate) use queries::explain_page_query;
 pub(crate) use repository::{CreatedLibraryItem, UntouchedRemoval, remove_untouched_items_impl};
 pub(crate) use rewatch_events::insert_rewatch_event;
 pub(crate) use status::{StatusTrigger, reconcile_status_impl, reconcile_title_impl};

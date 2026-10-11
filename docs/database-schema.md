@@ -4,10 +4,9 @@ The database is local SQLite, embedded in the app via Tauri — no server, every
 
 Every table's primary key is a `uuid TEXT PRIMARY KEY`, generated app-side in Rust (`new_uuid()`, a UUIDv7, in [`src-tauri/src/database/mod.rs`](../src-tauri/src/database/mod.rs)) — there is no separate internal integer id. Two tables deliberately don't follow this: `preferences` (`key` is already a stable natural primary key) and `availability_snapshots` (a pure cache keyed by `(media_id, media_type, region)`, with no row ever referenced individually).
 
-**18 active tables · 16 migrations · 1 database file per machine.**
+**19 active tables · 19 migrations · 1 database file per machine.**
 
-The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus sixteen follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql`, `017-library-cursor-pagination-indexes.sql`, `018-add-sync-outbox.sql`, `019-add-rating-to-episode-progress.sql`, `020-add-dismissed-recommendations.sql`, `021-sync-activity-log-and-episode-rating.sql`, `022-split-notification-preferences.sql`, `023-add-profile-pin.sql`, `024-add-library-status-origin.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
-The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus sixteen follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql`, `017-library-cursor-pagination-indexes.sql`, `018-add-sync-outbox.sql`, `019-add-rating-to-episode-progress.sql`, `020-add-dismissed-recommendations.sql`, `021-sync-activity-log-and-episode-rating.sql`, `022-split-notification-preferences.sql`, `023-add-profile-pin.sql`, `024-add-insert-seq-to-viewing-events.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
+The canonical DDL is SQL, under [`src-tauri/src/database/migrations/`](../src-tauri/src/database/migrations/) — `001-initial-schema.sql` plus eighteen follow-ups: `009-availability-alerts-unique.sql`, `010-merge-watchlist-into-library.sql`, `011-add-status-to-tracked-series.sql`, `012-remove-rewatching-status.sql`, `013-add-note-to-viewing-events.sql`, `014-add-smart-lists.sql`, `015-add-saved-filters.sql`, `016-index-large-library-stats.sql`, `017-library-cursor-pagination-indexes.sql`, `018-add-sync-outbox.sql`, `019-add-rating-to-episode-progress.sql`, `020-add-dismissed-recommendations.sql`, `021-sync-activity-log-and-episode-rating.sql`, `022-split-notification-preferences.sql`, `023-add-profile-pin.sql`, `024-add-library-status-origin.sql`, `025-add-insert-seq-to-viewing-events.sql`, `026-index-library-sorts-and-drop-unused-indexes.sql` (versions jump from 1 to 9 because an earlier 8-step pre-launch sequence was squashed into version 1 — see the comment in `src/db/migrations/index.ts`). The frontend imports these same files via `src/db/migrations/index.ts`/`canonical.ts` — there's no separate hand-written TS migration set to drift from the Rust side. This document is a readable companion to those files, not a replacement for them.
 
 `supabase/migrations/` is a **separate** schema, in a separate Postgres database on Supabase, applied with `supabase db push` rather than by this app's own migration runner — it's the cloud-sync/community counterpart described in "Cloud sync" below, not part of the local SQLite file this document otherwise covers.
 
@@ -74,7 +73,20 @@ The full record of a movie or show in a profile's library: its **status** (`plan
 | `started_at`, `completed_at`, `rewatch_count` | …         | dates set based on status changes; `rewatch_count` follows the standing `rewatched` events (see `viewing_events`) |
 | `created_at`, `updated_at`                    | TEXT      | ISO dates                                                                                                         |
 
-Indexes: `(profile_id, status, updated_at DESC)`, `(media_id, media_type)`, plus two added by migration 16 for large-library stats queries: `(profile_id, media_type, status, completed_at ASC)` and a partial index `(profile_id, user_rating) WHERE user_rating IS NOT NULL`. Migration 17 replaced the plain `(profile_id, updated_at DESC)` index with `(profile_id, updated_at DESC, media_id DESC, media_type DESC)` — matching the tiebreak order the Library listing query already sorts by — and added two more for the Library page's cursor-paginated grid/list: `(profile_id, title ASC, media_id ASC, media_type ASC)` and `(profile_id, COALESCE(user_rating, rating, -1.0) DESC, media_id DESC, media_type DESC)`, one per sort mode `list_library_page` supports (see `src-tauri/src/library/queries.rs`'s `list_page_impl`).
+Indexes — one per sort the Library page's keyset cursor supports (see `src-tauri/src/library/queries.rs`'s `build_page_query`), so a page never sorts, plus the ones the aggregates read. Every ordered index ends with the `media_id, media_type` tie-break the cursor compares on:
+
+| Index                                       | Columns                                                                                  | Read by                                                                                                            |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `idx_library_profile_updated`               | `(profile_id, updated_at DESC, media_id DESC, media_type DESC)`                          | "recent" sort, the full read, favourites                                                                           |
+| `idx_library_profile_title`                 | `(profile_id, title ASC, media_id ASC, media_type ASC)`                                  | "title" sort                                                                                                       |
+| `idx_library_profile_rating_cursor`         | `(profile_id, COALESCE(user_rating, rating, -1.0) DESC, media_id DESC, media_type DESC)` | "rating" sort, the minimum-rating filter                                                                           |
+| `idx_library_profile_created`               | `(profile_id, created_at DESC, media_id DESC, media_type DESC)`                          | "date added" sort (migration 26)                                                                                   |
+| `idx_library_profile_completed_cursor`      | `(profile_id, COALESCE(completed_at, '') DESC, media_id DESC, media_type DESC)`          | "date completed" sort (migration 26)                                                                               |
+| `idx_library_profile_status`                | `(profile_id, status, updated_at DESC, media_id DESC, media_type DESC)`                  | status filter in page order, counts per status (covering), planned/stale/watching reads (extended by migration 26) |
+| `idx_library_profile_type_status_completed` | `(profile_id, media_type, status, completed_at ASC)`                                     | completed-by-type candidates, completed-series milestones (covering)                                               |
+| `idx_library_profile_rating`                | `(profile_id, user_rating) WHERE user_rating IS NOT NULL`                                | rating distribution, rated titles                                                                                  |
+
+The unique key `(profile_id, media_id, media_type)` serves every point lookup and the by-keys batch read. The expression indexes (`rating`, `completed`) are only used as a range when the cursor repeats the expression's leading comparison on its own (`build_page_query` does), because SQLite turns a row-value comparison into an index range only for plain columns. The `(media_id, media_type)` index of migration 1 was dropped by migration 26: every read names the profile first.
 
 `status_origin` records who set the current status: `manual` for a status the viewer chose (a new entry, or a save that changes the status), `auto` for one that follows the viewing — it is recomputed from the progress on every watch, un-watch, TMDB refresh and sync, in both directions, and the editor's "Automatic" option and a re-add of a title that already has progress make it `auto` again. A `manual` status is left alone apart from the forward moves watching makes (see [`library-status.md`](library-status.md), the normative description of every rule). Migration 24 backfills conservatively: every existing row is `manual`, except a Completed series whose recorded progress already covers its cached total, which is `auto`. The column is carried in the sync payload (`statusOrigin`, recreated outbox triggers; a payload without it keeps the stored value, or is `manual` for a new row) and in backups (`LibraryItem.statusOrigin`, optional; a backup made before it existed restores as `manual`).
 
@@ -98,7 +110,7 @@ Every watch (or un-watch) generates a row here: a whole movie or a specific epis
 | `insert_seq`                                    | INTEGER   | position in the order events were **logged** (migration 25): unique, increasing, `NOT NULL DEFAULT 0`; see below |
 | `created_at`                                    | TEXT      | ISO date; no `updated_at` — **append-only** log, no row is ever modified after the fact                          |
 
-Indexes: `(profile_id, watched_at DESC)`, `(media_id, media_type)`, plus two added by migration 16 for large-library stats queries: `(profile_id, media_id, media_type, episode_id, watched_at DESC, created_at DESC)` and `(profile_id, media_id, media_type, watched_at DESC)`.
+Indexes: `(profile_id, watched_at DESC)` (the year's events), `(profile_id, media_id, media_type, watched_at DESC)` (one title's history), the log-order index and the `UNIQUE (insert_seq)` index described under "Order of events". Migration 26 dropped `(media_id, media_type)` and `(profile_id, media_id, media_type, episode_id, watched_at DESC, created_at DESC)`, which no read used any more.
 
 **Rewatches.** A `rewatched` event is written only by the explicit "Watch again" of a seen movie and by a higher `library_items.rewatch_count` saved in the library editor (never inferred from the history); series-level ones have no `episode_id`. The rewatch statistics read them under the same current-state rule as every other statistic — see `docs/architecture.md`'s "Statistics semantics" for the full rules, including how a lower count or an unwatch takes them back.
 
@@ -118,7 +130,7 @@ A simple "seen" toggle for movies, faster than going through the full library. U
 | `watched_at`                            | TEXT | watch date (can predate the import, e.g. TV Time)  |
 | `created_at`, `updated_at`              | TEXT | ISO dates — row insertion vs. last modification    |
 
-Indexes: `(profile_id, watched_at DESC)`, `(movie_id)`.
+Index: none of its own — `UNIQUE(profile_id, movie_id)` serves the only read (is this movie seen). Migration 26 dropped `(profile_id, watched_at DESC)` and `(movie_id)`, which nothing read.
 
 Relations: a profile has `0..n` movies marked as seen.
 
@@ -135,7 +147,7 @@ One row per watched episode. This is the source of truth for where a profile sta
 | `created_at`, `updated_at`                          | TEXT       | ISO dates                                                                                     |
 | `rating`                                            | INT        | 1-5, nullable (migration 19); included in the `sync_outbox` payload from migration 21 onwards |
 
-Indexes: `(profile_id, series_id, watched)`, `(episode_id)`.
+Indexes: `(profile_id, series_id, watched)` (the episodes watched of one series, and the per-series count the tracked-series list joins on). Migration 26 dropped `(episode_id)`, which nothing read.
 
 Relations: a profile has `0..n` episodes marked as watched.
 
@@ -152,7 +164,7 @@ One row per show a profile actively tracks. The number of watched episodes is **
 | `status`                                | TEXT | TMDB production status ("Returning Series", "Ended", …), nullable — unknown for rows written before this column existed or imported from TV Time |
 | `created_at`, `updated_at`              | TEXT | ISO dates                                                                                                                                        |
 
-Indexes: `(profile_id, updated_at DESC)`, `(series_id)`.
+Indexes: none of its own — `UNIQUE(profile_id, series_id)` serves the join with `episode_progress` and the library membership check. Migration 26 dropped `(profile_id, updated_at DESC)` (the list orders its rows after counting each series' episodes, so the index was never the order read) and `(series_id)`.
 
 Relations: a profile tracks `0..n` shows.
 
@@ -175,7 +187,7 @@ Every notable action — adding to a list, a movie marked watched, an episode or
 | `timestamp`                                        | TEXT | when the action happened, indexed for fast sorting                       |
 | `created_at`, `updated_at`                         | TEXT | ISO dates — when the row was written/modified, distinct from `timestamp` |
 
-Indexes: `(profile_id, timestamp DESC)`, `(media_id, media_type)`.
+Index: `(profile_id, timestamp DESC)` — the History page's keyset pagination. Migration 26 dropped `(media_id, media_type)`.
 
 `metadata.media` — written for `movie:watched`/`movie:unwatched` (`progress/repository.rs`) and `watchlist:remove` (`library/repository.rs`) — is a snapshot of the title's catalogue fields (`title`, `posterPath`, `backdropPath`, `runtime`, `year`, `rating`, `genres`; `MediaSnapshot` in `history/models.rs`). It is what lets the History screen undo these entries offline: `use-undo-history-item.ts` rebuilds the title from it, and only an older entry without a snapshot falls back to TMDB (with a translated error when that is unreachable). No migration: the column was already free-form JSON.
 
@@ -213,7 +225,7 @@ A movie or show inside a list, with its position for display order.
 | `position`                      | INT  | order within the list, `>= 0`                                          |
 | `added_at`, `updated_at`        | TEXT | date added, then last modified (reordering) — no separate `created_at` |
 
-Indexes: `(list_id, position)`, `(media_id, media_type)`.
+Indexes: `(list_id, position)` (the list's items in order, and the next position); `UNIQUE(list_id, media_id, media_type)` serves the "is this title in the list" check. Migration 26 dropped `(media_id, media_type)`.
 
 Relations: a list contains `0..n` items. Adding a title already present is a no-op: it keeps its position and its stored title/poster.
 
@@ -271,7 +283,7 @@ Relations: a profile creates `0..n` saved filters. Deleting the profile deletes 
 | `enabled`                         | BOOL | defaults to true               |
 | `created_at`, `updated_at`        | TEXT | ISO dates                      |
 
-Indexes: `(profile_id, created_at DESC)`, `(enabled, profile_id)`, plus a `UNIQUE(profile_id, media_id, media_type)` index added by migration 9 to stop a profile from ending up with two alerts for the same title.
+Indexes: `(profile_id, created_at DESC)`, plus a `UNIQUE(profile_id, media_id, media_type)` index added by migration 9 to stop a profile from ending up with two alerts for the same title. Migration 26 dropped `(enabled, profile_id)`: nothing filters alerts on `enabled`.
 
 Relations: a profile creates `0..n` alerts.
 

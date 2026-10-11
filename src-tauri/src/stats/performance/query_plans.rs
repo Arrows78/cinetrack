@@ -149,16 +149,20 @@ async fn planned_library_candidates_query_stays_index_driven() {
     .unwrap();
     let plan = joined_plan(&rows);
 
-    // SQLite prefers idx_library_profile_updated here over
-    // idx_library_profile_type_status_completed — it already satisfies the
-    // ORDER BY without a separate sort step, even though media_type/status
-    // then filter as a post-scan predicate rather than an index range. Both
-    // are legitimate, non-scanning choices; which one wins is the query
-    // planner's call, not a contract this test should pin.
+    // The status index carries the page order (`updated_at DESC, media_id
+    // DESC, ...`), so the status filter and the order are one index range and
+    // the media type filters the rows read from it. Which library index wins
+    // is the planner's call; what this pins is that none of them is skipped
+    // for a scan and that nothing is sorted.
     assert!(
-        plan.contains("idx_library_profile_updated")
+        plan.contains("idx_library_profile_status")
+            || plan.contains("idx_library_profile_updated")
             || plan.contains("idx_library_profile_type_status_completed"),
         "expected planned-candidates to use an existing library index, got: {plan}"
+    );
+    assert!(
+        !plan.contains("USE TEMP B-TREE"),
+        "planned-candidates should read in order, not sort: {plan}"
     );
     assert!(
         !plan.contains("SCAN library_items"),

@@ -359,8 +359,8 @@ async fn seed_newer_features(pool: &SqlitePool, version: i64) {
     }
 }
 
-const REGISTERED_VERSIONS: [i64; 18] = [
-    1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+const REGISTERED_VERSIONS: [i64; 19] = [
+    1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
 ];
 
 /// No table may vanish (except the merged `watchlist_items`) or lose a column.
