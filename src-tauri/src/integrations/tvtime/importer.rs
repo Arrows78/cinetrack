@@ -3,7 +3,7 @@ use sqlx::SqlitePool;
 
 use crate::database::new_uuid;
 use crate::error::ApiError;
-use crate::library::{AutoSyncMedia, StatusFacts, StatusTrigger, reconcile_status_impl};
+use crate::library::{AutoSyncMedia, StatusTrigger, reconcile_status_impl};
 #[cfg(test)]
 use crate::library::{CreatedLibraryItem, remove_untouched_items_impl};
 use crate::models::MediaType;
@@ -195,7 +195,6 @@ pub(super) async fn import_movie_seen_impl(
         pool,
         profile_id,
         &media,
-        &StatusFacts::Movie { seen: true },
         StatusTrigger::Watched,
         &movie.watched_at,
     )

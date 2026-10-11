@@ -179,39 +179,6 @@ pub(crate) fn decide(
     }
 }
 
-/// Facts for a series, read from the database. `total_episodes` and
-/// `series_status` are what the caller knows right now (a viewing action has
-/// the series details in hand); `None` falls back to what `tracked_series`
-/// cached from TMDB. The cached total is `0` when TMDB's count was never
-/// known (see `apply_episodes_outcome_impl`), which reads as "unknown" here,
-/// so a series of unknown length can start but never complete.
-pub(crate) async fn series_facts(
-    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
-    profile_id: &str,
-    series_id: i64,
-    total_episodes: Option<i64>,
-    series_status: Option<String>,
-) -> Result<StatusFacts, ApiError> {
-    let watched_episodes = watched_regular_episodes(&mut **tx, profile_id, series_id).await?;
-    let known_total = total_episodes.filter(|total| *total > 0);
-    let (total_episodes, series_status) = match (known_total, series_status) {
-        (Some(total), Some(status)) => (Some(total), Some(status)),
-        (total, status) => {
-            let (cached_total, cached_status) =
-                match cached_series(&mut **tx, profile_id, series_id).await? {
-                    Some((total, status)) => (Some(total).filter(|total| *total > 0), status),
-                    None => (None, None),
-                };
-            (total.or(cached_total), status.or(cached_status))
-        }
-    };
-    Ok(StatusFacts::Series {
-        watched_episodes,
-        total_episodes,
-        series_status,
-    })
-}
-
 async fn watched_regular_episodes<'e, E>(
     executor: E,
     profile_id: &str,
@@ -248,9 +215,15 @@ where
         .map_err(ApiError::from)
 }
 
-/// Facts of a title as the database knows them (the cached TMDB total and
-/// status for a series). Used when no caller has fresher information: a
-/// refresh, a sync, a reset.
+/// Facts of a title as the database holds them: whether the movie is seen, or
+/// the watched regular episodes of the series with `tracked_series`'s cached
+/// TMDB total and status. The cached total is `0` when TMDB's count was never
+/// known (see `apply_episodes_outcome_impl`), which reads as "unknown", so a
+/// series of unknown length can start but never complete.
+///
+/// This is the only source of facts: a viewing action, a refresh, a sync and a
+/// reset all decide from the same rows, so none of them can reach a status
+/// another would take back.
 async fn stored_facts(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     profile_id: &str,
@@ -269,7 +242,20 @@ async fn stored_facts(
             .map_err(ApiError::from)?;
             Ok(StatusFacts::Movie { seen: seen > 0 })
         }
-        MediaType::Series => series_facts(tx, profile_id, media_id, None, None).await,
+        MediaType::Series => {
+            let watched_episodes =
+                watched_regular_episodes(&mut **tx, profile_id, media_id).await?;
+            let (total_episodes, series_status) =
+                match cached_series(&mut **tx, profile_id, media_id).await? {
+                    Some((total, status)) => (Some(total).filter(|total| *total > 0), status),
+                    None => (None, None),
+                };
+            Ok(StatusFacts::Series {
+                watched_episodes,
+                total_episodes,
+                series_status,
+            })
+        }
     }
 }
 
@@ -408,15 +394,28 @@ async fn create_entry(
     Ok(uuid)
 }
 
-/// Reconsiders a title's status after a viewing action, with the facts the
-/// caller already holds. Creates the library entry when the title was
-/// watched and is not in the library yet (watching is itself enough to bring
-/// a title in). Returns the uuid of the entry it created, `None` otherwise —
-/// which is how the TV Time import tells "this write brought the title into
-/// the library" from "it was already there".
+/// Reconsiders a title's status after a viewing action, from the facts the
+/// database holds. Creates the library entry when the title was watched and is
+/// not in the library yet (watching is itself enough to bring a title in).
+/// Returns the uuid of the entry it created, `None` otherwise — which is how
+/// the TV Time import tells "this write brought the title into the library"
+/// from "it was already there".
 ///
-/// Must run inside the same transaction as the viewing write it follows.
+/// Must run inside the same transaction as the viewing write it follows, after
+/// that write (the facts are read back from the tables).
 pub(crate) async fn reconcile_status_impl(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    pool: &SqlitePool,
+    profile_id: &str,
+    media: &AutoSyncMedia,
+    trigger: StatusTrigger,
+    now: &str,
+) -> Result<Option<String>, ApiError> {
+    let facts = stored_facts(tx, profile_id, media.media_id, media.media_type).await?;
+    reconcile_with_facts(tx, pool, profile_id, media, &facts, trigger, now).await
+}
+
+async fn reconcile_with_facts(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     pool: &SqlitePool,
     profile_id: &str,
@@ -553,7 +552,7 @@ pub(crate) async fn auto_sync_status_impl(
             series_status: None,
         }
     };
-    reconcile_status_impl(
+    reconcile_with_facts(
         tx,
         pool,
         profile_id,

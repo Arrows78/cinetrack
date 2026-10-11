@@ -26,12 +26,12 @@ pub(crate) use models::{AutoSyncMedia, LibraryItem, LibraryRow};
 pub(crate) use models::LibrarySort;
 pub(crate) use repository::{CreatedLibraryItem, UntouchedRemoval, remove_untouched_items_impl};
 pub(crate) use rewatch_events::insert_rewatch_event;
-pub(crate) use status::{
-    StatusFacts, StatusTrigger, reconcile_status_impl, reconcile_title_impl, series_facts,
-};
+pub(crate) use status::{StatusTrigger, reconcile_status_impl, reconcile_title_impl};
 
 #[cfg(test)]
 mod edge_case_tests;
+#[cfg(test)]
+mod multi_profile_tests;
 #[cfg(test)]
 mod sequence_tests;
 #[cfg(test)]

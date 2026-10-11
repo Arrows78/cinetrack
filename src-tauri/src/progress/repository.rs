@@ -12,8 +12,7 @@ use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
 use crate::library::{
-    AutoSyncMedia, StatusFacts, StatusTrigger, insert_rewatch_event, reconcile_status_impl,
-    reconcile_title_impl, series_facts,
+    AutoSyncMedia, StatusTrigger, insert_rewatch_event, reconcile_status_impl, reconcile_title_impl,
 };
 use crate::models::MediaType;
 
@@ -194,7 +193,6 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
         pool,
         profile_id,
         &media,
-        &StatusFacts::Movie { seen: watched },
         if watched {
             StatusTrigger::Watched
         } else {
@@ -290,7 +288,7 @@ pub(crate) async fn rewatch_movie_impl(
 /// Applies a watched/unwatched change to a set of episodes: writes only the
 /// episodes whose state actually changes, records a matching viewing_events
 /// row for each, refreshes the tracked_series rollup
-/// (`total_episodes = series.numberOfEpisodes`, 0 when unknown), and — when
+/// (`total_episodes` = TMDB's count, 0 when unknown), and — when
 /// `history` is given and at least one episode changed — logs that history
 /// entry in the same transaction. Returns the number of episodes that
 /// changed. `pub(crate)` so tvtime's importer can reuse the same
@@ -441,43 +439,36 @@ pub(crate) async fn apply_episodes_outcome_impl(
         .map_err(ApiError::from)?;
     }
 
-    // TMDB's own episode count, or 0 when it is not known: the cache keeps
-    // "unknown" apart from "as many as watched" so that a later refresh or a
-    // sync can never take a guess for the length of the series (a Completed
-    // status is decided from this number, see library/status.rs). The readers
-    // that need a displayable total take the larger of it and the watched
-    // count (`list_tracked_series_impl`).
-    let total_episodes = series
-        .number_of_episodes
-        .filter(|total| *total > 0)
-        .unwrap_or(0);
-
-    sqlx::query(
+    // `tracked_series` caches TMDB's word on the series: its episode count
+    // (0 when TMDB never gave one: "unknown" is kept apart from "as many as
+    // watched", so no refresh or sync can take a guess for the length of the
+    // series) and its status. A count this call holds replaces the cached one
+    // — TMDB's latest answer, never below what is already watched, so a
+    // progress bar cannot pass 100% — and a call without one leaves it. The
+    // library status below is decided from this very row, so a watch and a
+    // later refresh can never read two different totals. Readers that
+    // display a total take the larger of it and the watched count
+    // (`list_tracked_series_impl`).
+    const WATCHED_REGULAR: &str = "(SELECT COUNT(*) FROM episode_progress
+              WHERE profile_id = $2 AND series_id = $3 AND watched = 1 AND season_number > 0)";
+    sqlx::query(sqlx::AssertSqlSafe(format!(
         "INSERT INTO tracked_series (uuid, profile_id, series_id, title, poster_path, backdrop_path, total_episodes, status, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)
+         VALUES ($1,$2,$3,$4,$5,$6, CASE WHEN $7 > 0 THEN MAX($7, {WATCHED_REGULAR}) ELSE 0 END, $8,$9,$9)
          ON CONFLICT (profile_id, series_id) DO UPDATE SET
            title = excluded.title,
            poster_path = excluded.poster_path,
            backdrop_path = excluded.backdrop_path,
-           -- MAX, not a plain overwrite: `series.number_of_episodes` is
-           -- whatever the calling client happened to have in hand for this
-           -- one toggle, and is 0 when absent (e.g. a caller that never
-           -- fetched full series details). Either way it can be smaller than a total this row already recorded
-           -- correctly, and a plain overwrite would regress it — which
-           -- later lets watched_episodes exceed the stored total and show
-           -- as a >100% progress bar (see history-page.tsx's Series In
-           -- Progress list).
-           total_episodes = MAX(excluded.total_episodes, tracked_series.total_episodes),
+           total_episodes = CASE WHEN $7 > 0 THEN MAX($7, {WATCHED_REGULAR}) ELSE tracked_series.total_episodes END,
            status = COALESCE(excluded.status, tracked_series.status),
-           updated_at = excluded.updated_at",
-    )
+           updated_at = excluded.updated_at"
+    )))
     .bind(new_uuid())
     .bind(profile_id)
     .bind(series.id)
     .bind(&series.title)
     .bind(&series.poster_path)
     .bind(&series.backdrop_path)
-    .bind(total_episodes)
+    .bind(series.number_of_episodes)
     .bind(&series.status)
     .bind(watched_at)
     .execute(&mut *tx)
@@ -489,10 +480,7 @@ pub(crate) async fn apply_episodes_outcome_impl(
     // a series, the last one of a finished series completes it, un-marking
     // one takes an automatic status back down. A status the viewer chose by
     // hand is left alone, except that watching resumes a paused or dropped
-    // series. The total passed down is TMDB's own episode count, or the
-    // cached one when this call did not have it; either way it is 0/absent
-    // when TMDB never gave one, so a series with an unknown length can start
-    // but never complete.
+    // series.
     let media = AutoSyncMedia {
         media_id: series.id,
         media_type: MediaType::Series,
@@ -503,20 +491,11 @@ pub(crate) async fn apply_episodes_outcome_impl(
         rating: series.rating,
         genres: series.genres.clone(),
     };
-    let facts = series_facts(
-        &mut tx,
-        profile_id,
-        series.id,
-        series.number_of_episodes,
-        series.status.clone(),
-    )
-    .await?;
     let created_library_item_id = reconcile_status_impl(
         &mut tx,
         pool,
         profile_id,
         &media,
-        &facts,
         if watched {
             StatusTrigger::Watched
         } else {

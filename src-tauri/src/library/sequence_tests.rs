@@ -306,13 +306,16 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                         .await
                         .unwrap();
                     if changed {
-                        let total = model.tracked_total.entry(entry.id).or_insert(0);
-                        *total = (*total).max(entry.total);
+                        // A viewing action writes TMDB's own total (never below
+                        // what is watched) and status into the cache, and the
+                        // status is decided from that cache.
+                        let regular = model.regular_seen(entry.id, &catalogue);
+                        model
+                            .tracked_total
+                            .insert(entry.id, entry.total.max(regular));
                         model.tracked_status.insert(entry.id, entry.status);
                         let key = (entry.id, "series");
-                        // A viewing action knows TMDB's own total and status.
-                        let derived =
-                            model.derived(key, &catalogue, Some(entry.total), Some(entry.status));
+                        let derived = model.stored_derived(key, &catalogue);
                         model.react(key, if watched { "watched" } else { "unwatched" }, derived);
                     }
                 }

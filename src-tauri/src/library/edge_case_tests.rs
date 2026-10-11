@@ -55,3 +55,42 @@ async fn a_total_tmdb_never_gave_cannot_complete_a_series_through_a_refresh() {
         );
     }
 }
+
+#[tokio::test]
+async fn a_total_that_decreases_is_the_same_total_for_a_watch_and_for_the_refresh_after_it() {
+    let pool = migrated_pool().await;
+    let app = tauri::test::mock_app();
+    app.manage(pool.clone());
+    apply_episodes_impl(
+        &pool,
+        "default",
+        &show(SERIES, 5, "Returning Series"),
+        &[ep(901, 1), ep(902, 2), ep(903, 3)],
+        true,
+        "2026-01-01T00:00:00.000Z",
+    )
+    .await
+    .unwrap();
+
+    // TMDB now counts four episodes and says the series is over; the viewer
+    // watches the fourth.
+    apply_episodes_impl(
+        &pool,
+        "default",
+        &show(SERIES, 4, "Ended"),
+        &[ep(904, 4)],
+        true,
+        "2026-01-02T00:00:00.000Z",
+    )
+    .await
+    .unwrap();
+    assert_eq!(status(&pool).await, Some(LibraryStatus::Completed));
+
+    // A later refresh that brings no count must not take it back: the watch
+    // and the refresh read the same total.
+    let state: State<'_, SqlitePool> = app.state();
+    refresh_tracked_series_status(SERIES, Some("Ended".to_string()), None, state)
+        .await
+        .unwrap();
+    assert_eq!(status(&pool).await, Some(LibraryStatus::Completed));
+}

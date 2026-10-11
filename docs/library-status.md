@@ -139,22 +139,28 @@ import.
 | Trigger                       | Code                                                                                                                                                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Watched / Unwatched, movie    | `progress/repository.rs` `toggle_movie_seen_with_note_impl` → `reconcile_status_impl`                                                                                                                                           |
-| Watched / Unwatched, episodes | `progress/repository.rs` `apply_episodes_outcome_impl` → `series_facts` + `reconcile_status_impl`                                                                                                                               |
+| Watched / Unwatched, episodes | `progress/repository.rs` `apply_episodes_outcome_impl` → cache write + `reconcile_status_impl`                                                                                                                                  |
 | TV Time import                | `integrations/tvtime/importer.rs` (movies, through `reconcile_status_impl`; episodes through the call above)                                                                                                                    |
 | Refreshed, TMDB               | `progress/repository.rs` `refresh_tracked_series_status_impl` → `reconcile_title_impl`, written from a series page and from the Today Hub (`use-watch-next.ts`, which has just fetched TMDB's details for every started series) |
 | Refreshed, sync               | `sync/service.rs` `apply_remote_changes`: every title whose viewing data a pulled batch touched is reconsidered once the batch is applied                                                                                       |
 | Reset, « Automatic »          | `reset_library_status_to_auto` command → `reset_status_to_auto_impl`                                                                                                                                                            |
 | Reset, re-add                 | `add_if_absent_impl` → `adopt_existing_progress_impl`                                                                                                                                                                           |
 
-Facts come from the database in one transaction with the write that changed
-them. A viewing action uses the series details it already holds (TMDB's own
-total and status), and the cached total and status in `tracked_series` for
-whatever it does not hold; a refresh, a sync or a reset use the cache alone.
-The cached total is `0` when TMDB's count was never known (a refresh without a
-count leaves it as it was), and `0` reads as « unknown » — never as « as long
-as what is watched », which would « complete » a series of unknown length. The
-tracked-series list shows the larger of the cached total and the watched count,
-so the interface never displays « 0 episodes ».
+Facts come from the database, in the same transaction as the write that
+changed them, and from nowhere else: `stored_facts` reads the seen movie, or the
+watched regular episodes of the series with the TMDB total and status cached in
+`tracked_series`. A viewing action first writes what it knows of TMDB into that
+cache (the series details it holds: the episode count, never below what is
+watched, and the status), then decides from the cache; a refresh writes TMDB's
+word there and decides; a sync or a reset decide from whatever is stored. So a
+watch and the refresh that follows it can never read two different totals and
+take each other's status back.
+
+The cached total is `0` when TMDB's count was never known (a write without a
+count leaves the total as it was), and `0` reads as « unknown » — never as « as
+long as what is watched », which would « complete » a series of unknown length.
+The tracked-series list shows the larger of the cached total and the watched
+count, so the interface never displays « 0 episodes ».
 
 ## Cloud sync
 
