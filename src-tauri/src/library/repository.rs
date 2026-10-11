@@ -970,6 +970,54 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn list_page_impl_search_also_finds_a_title_by_its_notes_or_tags() {
+        let pool = migrated_pool().await;
+        for (id, title, notes, tags) in [
+            (1, "Alpha", Some("seen at the cinema"), vec!["rooftop"]),
+            (2, "Beta", None, vec!["Cinema night"]),
+            (3, "Gamma", Some("nothing"), vec!["other"]),
+        ] {
+            upsert_impl(
+                &pool,
+                MediaSummaryInput {
+                    title: title.to_string(),
+                    ..media(id)
+                },
+                LibraryPatch {
+                    notes: Some(notes.map(str::to_string)),
+                    tags: Some(tags.into_iter().map(str::to_string).collect()),
+                    ..Default::default()
+                },
+                "default",
+            )
+            .await
+            .unwrap();
+        }
+        let search = |text: &str| LibraryListParams {
+            media_type: None,
+            status: None,
+            favourites_only: false,
+            search: Some(text.to_string()),
+            sort: LibrarySort::Title,
+            genre: None,
+            cursor: None,
+            limit: 10,
+        };
+        let ids = |page: crate::library::models::LibraryPage| -> Vec<i64> {
+            page.items.iter().map(|item| item.media_id).collect()
+        };
+
+        let by_notes_and_tags = list_page_impl(&pool, "default", search("CINEMA"))
+            .await
+            .unwrap();
+        assert_eq!(ids(by_notes_and_tags), vec![1, 2]);
+        let by_title = list_page_impl(&pool, "default", search("gam"))
+            .await
+            .unwrap();
+        assert_eq!(ids(by_title), vec![3]);
+    }
+
+    #[tokio::test]
     async fn paging_through_every_sort_returns_each_title_once_in_order() {
         let pool = migrated_pool().await;
         // Shared ids across media types, repeated titles, missing ratings

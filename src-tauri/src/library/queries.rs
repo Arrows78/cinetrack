@@ -126,9 +126,18 @@ pub(super) async fn list_page_impl(
         // docs/performance.md). Not switched to FTS5 preemptively: revisit
         // if this ever shows up as a real user-facing delay rather than a
         // benchmark number.
-        qb.push(" AND title LIKE ")
-            .push_bind(like_contains_pattern(search))
-            .push(" COLLATE NOCASE ESCAPE '\\'");
+        // A title is also found by its private notes or its tags — the same
+        // fields the client-side pass (library-filtering.ts) searches, so the
+        // /library page and the movie and series hubs answer one query alike.
+        // `tags` is a JSON array: the match is on its serialized text.
+        let pattern = like_contains_pattern(search);
+        qb.push(" AND (title LIKE ")
+            .push_bind(pattern.clone())
+            .push(" COLLATE NOCASE ESCAPE '\\' OR COALESCE(notes, '') LIKE ")
+            .push_bind(pattern.clone())
+            .push(" COLLATE NOCASE ESCAPE '\\' OR tags LIKE ")
+            .push_bind(pattern)
+            .push(" COLLATE NOCASE ESCAPE '\\')");
     }
 
     match (params.sort, &cursor) {
