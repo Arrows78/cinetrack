@@ -92,6 +92,26 @@ describe("portableData", () => {
     expect(invokeCommandMock).toHaveBeenCalledWith("refresh_preferences");
   });
 
+  // The interface language is detected on its own, before preferences are
+  // readable: a restored language that only landed in the table would show
+  // after the reload as the previous interface language, over a catalogue
+  // fetched in the restored one.
+  it("switches the interface to the restored language preference", async () => {
+    const { default: i18n } = await import("@/i18n");
+    await i18n.changeLanguage("en");
+    const { portableData } = await import("../portable-data");
+
+    await portableData.import({
+      format: "cinetrack-backup",
+      version: 1,
+      exportedAt: "",
+      data: { ...emptyData(), preferences: { language: "fr" } },
+    });
+
+    expect(i18n.language).toBe("fr");
+    await i18n.changeLanguage("en");
+  });
+
   // Zod strips unknown keys: without `statusOrigin` in the schema, a restore
   // would turn every automatic Completed into a manual one, and the series
   // would stop reopening when new episodes are announced.

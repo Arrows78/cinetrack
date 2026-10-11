@@ -79,5 +79,9 @@ export const portableData = {
     const { data } = parseBackup(backup);
     await invokeTypedCommand(backupCommands.importData, { data });
     await preferencesRepository.refresh();
+    // The interface language is detected separately from the preference (see
+    // LanguageController): bring it in line before the page reloads.
+    const restoredLanguage = data.preferences.language;
+    if (restoredLanguage === "en" || restoredLanguage === "fr") await i18n.changeLanguage(restoredLanguage);
   },
 };

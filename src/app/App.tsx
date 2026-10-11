@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { toast } from "@/components/ui/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
+import { LanguageController } from "@/components/layout/language-controller";
 import { ThemeController } from "@/components/layout/theme-controller";
 import { AmbientMotionController } from "@/components/layout/ambient-motion-controller";
 import { MilestoneCelebrationController } from "@/components/layout/milestone-celebration-controller";
@@ -167,6 +168,7 @@ export function App() {
   return (
     <TooltipProvider delayDuration={TOOLTIP_DELAY_MS}>
       <ThemeController />
+      <LanguageController />
       <AmbientMotionController />
       <MilestoneCelebrationController />
 
