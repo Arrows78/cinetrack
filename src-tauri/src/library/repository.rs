@@ -33,6 +33,11 @@ pub(super) async fn upsert_impl(
     patch: LibraryPatch,
     profile_id: &str,
 ) -> Result<LibraryItem, ApiError> {
+    if patch.rewatch_count.is_some_and(|count| count < 0) {
+        return Err(ApiError::bad_request(
+            "The rewatch count cannot be negative",
+        ));
+    }
     // BEGIN IMMEDIATE before reading the current row: the read decides both
     // which fields this write keeps and whether a history row is appended, so
     // it has to sit under the same write lock as the write itself. Read

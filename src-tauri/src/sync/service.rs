@@ -1053,6 +1053,16 @@ async fn apply_one_remote_change(
                     .data
                     .as_ref()
                     .ok_or_else(|| ApiError::bad_request("Remote upsert has no payload"))?;
+                // A viewing event with an unreadable date would make every
+                // statistic fail: it is skipped (and logged) like any other
+                // document that cannot be applied.
+                if change.entity_type == "viewing_event" {
+                    crate::database::require_instant(
+                        data.get("watchedAt")
+                            .and_then(serde_json::Value::as_str)
+                            .unwrap_or_default(),
+                    )?;
+                }
                 let written = upsert_entity(tx, profile_id, &change.entity_type, data).await?;
                 if change.entity_type == "custom_list_item" {
                     if written {

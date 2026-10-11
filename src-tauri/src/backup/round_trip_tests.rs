@@ -735,6 +735,23 @@ async fn restoring_a_backup_without_log_positions_replays_the_events_by_date() {
     assert_eq!(events_in_log_order(&restored).await, vec!["w2", "w1", "u1"]);
 }
 
+/// A backup with a viewing event whose date cannot be read would break every
+/// statistic once restored: it is refused before anything is replaced.
+#[tokio::test]
+async fn a_backup_with_an_unreadable_event_date_is_refused_before_anything_is_replaced() {
+    let existing = migrated_pool().await;
+    log_event(&existing, "w1", "watched", "2026-03-05T10:00:00.000Z").await;
+    let mut snapshot = export_impl(&existing).await.unwrap();
+    snapshot.viewing_events[0].watched_at = "not a date".to_string();
+    log_event(&existing, "w2", "watched", "2026-03-06T10:00:00.000Z").await;
+    let before = events_in_log_order(&existing).await;
+
+    let refused = import_impl(&existing, snapshot).await.unwrap_err();
+
+    assert_eq!(refused.status, Some(400));
+    assert_eq!(events_in_log_order(&existing).await, before);
+}
+
 /// Every table, every column, no exclusion: what a failed restore must leave
 /// byte for byte identical.
 async fn full_dump(pool: &SqlitePool) -> Vec<(String, Vec<String>)> {

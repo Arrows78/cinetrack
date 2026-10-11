@@ -9,26 +9,11 @@ use chrono_tz::Tz;
 
 use crate::error::ApiError;
 
-/// Parses a stored or client-supplied instant. The app writes RFC 3339
-/// (`2026-03-01T10:00:00.000Z`); a zone-less date-time (as some imported
-/// data carries) is read as UTC, and a bare date as UTC midnight.
+/// Parses a stored instant (see `crate::database::parse_instant`).
 pub(in crate::stats) fn parse_instant(value: &str) -> Result<DateTime<Utc>, ApiError> {
-    if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
-        return Ok(parsed.with_timezone(&Utc));
-    }
-    for format in ["%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%d %H:%M:%S%.f"] {
-        if let Ok(naive) = NaiveDateTime::parse_from_str(value, format) {
-            return Ok(naive.and_utc());
-        }
-    }
-    if let Ok(date) = NaiveDate::parse_from_str(value, "%Y-%m-%d")
-        && let Some(naive) = date.and_hms_opt(0, 0, 0)
-    {
-        return Ok(naive.and_utc());
-    }
-    Err(ApiError::internal(format!(
-        "Malformed date in the viewing history: '{value}'"
-    )))
+    crate::database::parse_instant(value).ok_or_else(|| {
+        ApiError::internal(format!("Malformed date in the viewing history: '{value}'"))
+    })
 }
 
 /// Converts instants to the viewer's local wall-clock time.

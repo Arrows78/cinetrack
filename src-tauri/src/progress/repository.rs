@@ -8,7 +8,7 @@ use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
 use super::queries::is_movie_seen_impl;
 #[cfg(test)]
 use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
-use crate::database::{new_uuid, now_iso};
+use crate::database::{new_uuid, now_iso, require_instant};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
 use crate::library::{
@@ -50,6 +50,8 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
     watched_at: &str,
     note: Option<String>,
 ) -> Result<(), ApiError> {
+    // An unreadable date in the log would make every statistic fail.
+    require_instant(watched_at)?;
     // BEGIN IMMEDIATE (rather than plain pool.begin()'s deferred BEGIN)
     // acquires SQLite's write lock up front, before the idempotency check
     // below even runs — a concurrent second call blocks here (sqlx's
@@ -223,6 +225,7 @@ pub(crate) async fn rewatch_movie_impl(
     watched_at: &str,
     note: Option<String>,
 ) -> Result<(), ApiError> {
+    require_instant(watched_at)?;
     // Same reason as toggle_movie_seen_with_note_impl: the seen check and the
     // duplicate check have to sit under the write lock of the write they guard.
     let mut tx = pool
@@ -342,6 +345,12 @@ pub(crate) async fn apply_episodes_outcome_impl(
     history: Option<EpisodeHistoryInput>,
     note: Option<String>,
 ) -> Result<EpisodesOutcome, ApiError> {
+    require_instant(watched_at)?;
+    for episode in episodes {
+        if let Some(own_date) = episode.watched_at.as_deref() {
+            require_instant(own_date)?;
+        }
+    }
     // BEGIN IMMEDIATE up front, before reading which episodes are already
     // watched, for the same reason toggle_movie_seen_impl does: a plain
     // pool.begin() (deferred) or a read taken outside any transaction lets

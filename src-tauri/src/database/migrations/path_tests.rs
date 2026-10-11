@@ -1035,3 +1035,57 @@ async fn migration_25_numbers_existing_viewing_events_in_log_order_and_numbers_n
     .await;
     assert!(duplicate.is_err());
 }
+
+#[tokio::test]
+async fn viewing_event_numbering_follows_a_multi_row_insert_and_an_insert_select() {
+    let db = pool().await;
+    apply_pending_migrations(&db).await.unwrap();
+    run(
+        &db,
+        "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('p', 'P', 't', 't')",
+    )
+    .await;
+    // One statement, three rows (what a backup restore does 200 at a time),
+    // and a row that brings its own place in between.
+    run(
+        &db,
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+         VALUES ('a', 'p', 1, 'movie', 'M', 'watched', 't', 't'),
+                ('b', 'p', 1, 'movie', 'M', 'unwatched', 't', 't'),
+                ('c', 'p', 1, 'movie', 'M', 'watched', 't', 't')",
+    )
+    .await;
+    run(
+        &db,
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at, insert_seq)
+         VALUES ('own', 'p', 2, 'movie', 'M', 'watched', 't', 't', 100)",
+    )
+    .await;
+    // INSERT ... SELECT: numbered in the order the rows are produced.
+    run(
+        &db,
+        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+         SELECT 'copy-' || uuid, profile_id, 3, media_type, title, event_type, watched_at, created_at
+         FROM viewing_events WHERE media_id = 1 ORDER BY uuid DESC",
+    )
+    .await;
+
+    let numbered: Vec<(String, i64)> =
+        sqlx::query_as("SELECT uuid, insert_seq FROM viewing_events ORDER BY insert_seq")
+            .fetch_all(&db)
+            .await
+            .unwrap();
+    let order: Vec<&str> = numbered.iter().map(|(uuid, _)| uuid.as_str()).collect();
+    assert_eq!(
+        order,
+        vec!["a", "b", "c", "own", "copy-c", "copy-b", "copy-a"]
+    );
+    assert_eq!(
+        numbered[3].1, 100,
+        "a row that brings its own place keeps it"
+    );
+    assert!(
+        numbered.windows(2).all(|pair| pair[0].1 < pair[1].1),
+        "strictly increasing, no ties: {numbered:?}"
+    );
+}

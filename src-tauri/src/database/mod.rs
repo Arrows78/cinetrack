@@ -1,3 +1,4 @@
+mod instant;
 pub mod migrations;
 
 #[cfg(test)]
@@ -11,6 +12,8 @@ use serde::Serialize;
 use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use tauri::{AppHandle, Manager, Runtime};
+
+pub use instant::{parse_instant, require_instant};
 
 use crate::error::ApiError;
 

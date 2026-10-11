@@ -515,6 +515,11 @@ fn events_in_log_order(mut events: Vec<ViewingEvent>) -> Vec<ViewingEvent> {
 }
 
 pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
+    // One unreadable date in the log would make every statistic fail once the
+    // restore has replaced the database, so such a file is refused up front.
+    for event in &data.viewing_events {
+        crate::database::require_instant(&event.watched_at)?;
+    }
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     // The export never carries a PIN (hash and salt are device secrets), so

@@ -591,3 +591,38 @@ async fn progress_pulled_from_another_device_brings_the_automatic_status_with_it
     assert_eq!(status_and_origin(&b, 9, "series").await.0, "planned");
     assert_eq!(status_and_origin(&b, 55, "movie").await.0, "planned");
 }
+
+/// A viewing event whose date cannot be read would make every statistic fail:
+/// it is skipped like any document that cannot be applied, and the ones
+/// around it still arrive.
+#[tokio::test]
+async fn a_pulled_viewing_event_with_an_unreadable_date_is_skipped() {
+    let device = new_device().await;
+    let event = |id: &str, sequence: i64, watched_at: &str| RemoteSyncChange {
+        sequence,
+        entity_type: "viewing_event".to_string(),
+        entity_id: id.to_string(),
+        operation: "upsert".to_string(),
+        version: 1,
+        data: Some(serde_json::json!({
+            "uuid": id, "mediaId": 55, "mediaType": "movie", "title": "Movie",
+            "eventType": "watched", "watchedAt": watched_at, "createdAt": watched_at,
+        })),
+    };
+    service::apply_remote_changes(
+        &device,
+        &[
+            event("good", 1, "2026-01-01T00:00:00.000Z"),
+            event("bad", 2, "not a date"),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let stored: Vec<String> = sqlx::query_scalar("SELECT uuid FROM viewing_events ORDER BY uuid")
+        .fetch_all(&device)
+        .await
+        .unwrap();
+    assert_eq!(stored, vec!["good".to_string()]);
+    assert_eq!(service::cursor(&device).await.unwrap(), 2);
+}
