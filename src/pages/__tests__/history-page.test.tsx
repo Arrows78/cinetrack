@@ -737,7 +737,7 @@ describe("HistoryPage", () => {
     it("labels an older entry with its full date instead of 'Today'/'Yesterday'", () => {
       mockUseHistory.mockReturnValue(
         historyQueryResult({
-          data: { pages: [[makeHistoryItem({ id: "1", timestamp: "2020-03-12T10:00:00.000Z" })]] },
+          data: { pages: [[makeHistoryItem({ id: "1", timestamp: new Date(2020, 2, 12, 10).toISOString() })]] },
         })
       );
       renderPage();
@@ -753,10 +753,10 @@ describe("HistoryPage", () => {
           data: {
             pages: [
               [
-                makeHistoryItem({ id: "1", title: "Newest", timestamp: "2026-01-03T00:00:00.000Z" }),
-                makeHistoryItem({ id: "2", title: "MiddleA", timestamp: "2026-01-02T12:00:00.000Z" }),
-                makeHistoryItem({ id: "3", title: "MiddleB", timestamp: "2026-01-02T08:00:00.000Z" }),
-                makeHistoryItem({ id: "4", title: "Oldest", timestamp: "2026-01-01T00:00:00.000Z" }),
+                makeHistoryItem({ id: "1", title: "Newest", timestamp: new Date(2026, 0, 3, 9).toISOString() }),
+                makeHistoryItem({ id: "2", title: "MiddleA", timestamp: new Date(2026, 0, 2, 12).toISOString() }),
+                makeHistoryItem({ id: "3", title: "MiddleB", timestamp: new Date(2026, 0, 2, 8).toISOString() }),
+                makeHistoryItem({ id: "4", title: "Oldest", timestamp: new Date(2026, 0, 1, 9).toISOString() }),
               ],
             ],
           },
