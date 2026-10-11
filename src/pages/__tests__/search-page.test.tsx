@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PropsWithChildren } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
@@ -841,7 +841,7 @@ describe("SearchPage — search history and suggestions dropdown", () => {
     expect(searchHistoryState.addSearch).not.toHaveBeenCalled();
   });
 
-  it("clears the whole history from the dropdown's own action", () => {
+  it("clears the whole history only once the confirmation dialog is accepted", async () => {
     searchHistoryState.recentSearches = ["dune", "batman"];
     renderPage();
 
@@ -850,7 +850,23 @@ describe("SearchPage — search history and suggestions dropdown", () => {
     fireEvent.mouseDown(clearButton);
     fireEvent.click(clearButton);
 
+    expect(searchHistoryState.clearHistory).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("search.clearHistoryConfirm") }));
+
     expect(searchHistoryState.clearHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the history when the confirmation dialog is cancelled", async () => {
+    searchHistoryState.recentSearches = ["dune"];
+    renderPage();
+
+    fireEvent.focus(screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("search.clearHistory") }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("common.cancel") }));
+
+    expect(searchHistoryState.clearHistory).not.toHaveBeenCalled();
   });
 
   it("shows a handful of live matches as suggestions once there's a real query, and selecting one navigates and records history", async () => {

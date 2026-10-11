@@ -332,6 +332,9 @@
     "suggestionsLabel": "Search suggestions",
     "recentSearches": "Recent searches",
     "clearHistory": "Clear",
+    "clearHistoryConfirmTitle": "Clear recent searches?",
+    "clearHistoryConfirmDescription": "Your recent searches will be removed from this list. This can't be undone.",
+    "clearHistoryConfirm": "Clear searches",
     "removeRecentSearch": "Remove \"{{query}}\" from recent searches"
   },
   "searchBar": {

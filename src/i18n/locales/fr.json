@@ -332,6 +332,9 @@
     "suggestionsLabel": "Suggestions de recherche",
     "recentSearches": "Recherches récentes",
     "clearHistory": "Effacer",
+    "clearHistoryConfirmTitle": "Effacer les recherches récentes ?",
+    "clearHistoryConfirmDescription": "Vos recherches récentes seront retirées de cette liste. Cette action est irréversible.",
+    "clearHistoryConfirm": "Effacer les recherches",
     "removeRecentSearch": "Retirer « {{query}} » des recherches récentes"
   },
   "searchBar": {

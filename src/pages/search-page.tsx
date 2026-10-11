@@ -4,6 +4,7 @@ import { useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router
 import { History, Search, SearchX, X } from "lucide-react";
 import { ActiveFilterChips, type ActiveFilterChip } from "@/components/media/library/active-filter-chips";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/states/empty-state";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { GridSkeleton } from "@/components/states/loading-skeletons";
@@ -151,6 +152,9 @@ export function SearchPage() {
   const dropdownId = useId();
   const dropdownOptionId = (index: number) => `${dropdownId}-option-${index}`;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // Emptying the history can't be undone, so it asks first (the dialog lives
+  // here, not in the dropdown, which closes as soon as the field loses focus).
+  const [confirmingClearHistory, setConfirmingClearHistory] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const closeDropdown = () => {
     setIsDropdownOpen(false);
@@ -372,7 +376,7 @@ export function SearchPage() {
                         <button
                           type="button"
                           onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => searchHistory.clearHistory()}
+                          onClick={() => setConfirmingClearHistory(true)}
                           className="text-caption font-medium text-primary hover:underline"
                         >
                           {t("search.clearHistory")}
@@ -446,6 +450,19 @@ export function SearchPage() {
           <SavedFiltersBar page="search" currentFilters={currentFilters} onApply={applySavedFilters} />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmingClearHistory}
+        onOpenChange={setConfirmingClearHistory}
+        title={t("search.clearHistoryConfirmTitle")}
+        description={t("search.clearHistoryConfirmDescription")}
+        confirmLabel={t("search.clearHistoryConfirm")}
+        cancelLabel={t("common.cancel")}
+        onConfirm={() => {
+          searchHistory.clearHistory();
+          setConfirmingClearHistory(false);
+        }}
+      />
 
       <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
 
