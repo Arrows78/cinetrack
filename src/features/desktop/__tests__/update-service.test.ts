@@ -59,12 +59,16 @@ describe("updateService.checkAndInstall", () => {
 
   it("treats a rejected updater_is_configured call as not configured", async () => {
     invokeMock.mockRejectedValue(new Error("ipc failure"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const { updateService } = await importFresh();
 
     const result = await updateService.checkAndInstall();
 
     expect(result).toBe(i18n.t("desktop.updateChannelNotConfigured"));
     expect(checkMock).not.toHaveBeenCalled();
+    // Reported, not swallowed: "not configured" would otherwise hide a failing command.
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("ipc failure"));
+    warn.mockRestore();
   });
 
   it("returns up-to-date when check() resolves falsy (no update available)", async () => {

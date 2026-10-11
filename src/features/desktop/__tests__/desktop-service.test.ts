@@ -1,15 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { registerMock, unregisterMock, onOpenUrlMock, listenMock, navigateMock, isTauriAppMock, getPreferencesMock } =
-  vi.hoisted(() => ({
-    registerMock: vi.fn(),
-    unregisterMock: vi.fn(),
-    onOpenUrlMock: vi.fn(),
-    listenMock: vi.fn(),
-    navigateMock: vi.fn(),
-    isTauriAppMock: vi.fn(),
-    getPreferencesMock: vi.fn(),
-  }));
+const {
+  registerMock,
+  unregisterMock,
+  onOpenUrlMock,
+  listenMock,
+  navigateMock,
+  isTauriAppMock,
+  getPreferencesMock,
+  loggerWarnMock,
+} = vi.hoisted(() => ({
+  registerMock: vi.fn(),
+  unregisterMock: vi.fn(),
+  onOpenUrlMock: vi.fn(),
+  listenMock: vi.fn(),
+  navigateMock: vi.fn(),
+  isTauriAppMock: vi.fn(),
+  getPreferencesMock: vi.fn(),
+  loggerWarnMock: vi.fn(),
+}));
+
+vi.mock("@/shared/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn() },
+}));
 
 vi.mock("@/features/preferences/preferences-repository", () => ({
   preferencesRepository: { getPreferences: getPreferencesMock },
@@ -53,12 +66,10 @@ describe("desktopService.initialize", () => {
   let deepLinkUnlisten: ReturnType<typeof vi.fn>;
   let navigateUnlisten: ReturnType<typeof vi.fn>;
   let deepLinkEventUnlisten: ReturnType<typeof vi.fn>;
-  let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     isTauriAppMock.mockReturnValue(true);
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     registerMock.mockResolvedValue(undefined);
     unregisterMock.mockResolvedValue(undefined);
@@ -85,10 +96,6 @@ describe("desktopService.initialize", () => {
     });
   });
 
-  afterEach(() => {
-    warnSpy.mockRestore();
-  });
-
   it("returns a no-op cleanup outside Tauri and skips all wiring", async () => {
     isTauriAppMock.mockReturnValue(false);
 
@@ -107,7 +114,7 @@ describe("desktopService.initialize", () => {
     expect(onOpenUrlMock).toHaveBeenCalledWith(expect.any(Function));
     expect(listenMock).toHaveBeenCalledWith("cinetrack:navigate", expect.any(Function));
     expect(listenMock).toHaveBeenCalledWith("cinetrack:deep-link", expect.any(Function));
-    expect(warnSpy).not.toHaveBeenCalled();
+    expect(loggerWarnMock).not.toHaveBeenCalled();
 
     cleanup();
 
@@ -121,10 +128,26 @@ describe("desktopService.initialize", () => {
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");
 
     await desktopService.initialize();
-    const shortcutHandler = registerMock.mock.calls[0]![1] as () => void;
-    shortcutHandler();
+    const shortcutHandler = registerMock.mock.calls[0]![1] as (event: { state: string }) => void;
+    shortcutHandler({ state: "Pressed" });
 
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "cinetrack:command-palette" }));
+    dispatchSpy.mockRestore();
+  });
+
+  // The plugin calls the handler for the key going down and for it coming
+  // back up: opening the palette twice made the second call record the
+  // palette's own input as the element to give focus back to.
+  it("opens the palette once per key press, not again on the release", async () => {
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+
+    await desktopService.initialize();
+    const shortcutHandler = registerMock.mock.calls[0]![1] as (event: { state: string }) => void;
+    shortcutHandler({ state: "Pressed" });
+    shortcutHandler({ state: "Released" });
+
+    const opened = dispatchSpy.mock.calls.filter(([event]) => event.type === "cinetrack:command-palette");
+    expect(opened).toHaveLength(1);
     dispatchSpy.mockRestore();
   });
 
@@ -135,7 +158,9 @@ describe("desktopService.initialize", () => {
     const cleanup = await desktopService.initialize();
     cleanup();
 
-    expect(warnSpy).toHaveBeenCalledWith("Global shortcut unavailable", error);
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.stringContaining(`Global shortcut unavailable: ${error.message}`)
+    );
     expect(unregisterMock).not.toHaveBeenCalled();
   });
 
@@ -146,7 +171,7 @@ describe("desktopService.initialize", () => {
     const cleanup = await desktopService.initialize();
     cleanup();
 
-    expect(warnSpy).toHaveBeenCalledWith("Deep links unavailable", error);
+    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining(`Deep links unavailable: ${error.message}`));
     expect(deepLinkUnlisten).not.toHaveBeenCalled();
   });
 
@@ -160,7 +185,9 @@ describe("desktopService.initialize", () => {
     const cleanup = await desktopService.initialize();
     cleanup();
 
-    expect(warnSpy).toHaveBeenCalledWith("Tray navigation unavailable", error);
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.stringContaining(`Tray navigation unavailable: ${error.message}`)
+    );
     expect(navigateUnlisten).not.toHaveBeenCalled();
   });
 
@@ -178,7 +205,9 @@ describe("desktopService.initialize", () => {
     const cleanup = await desktopService.initialize();
     cleanup();
 
-    expect(warnSpy).toHaveBeenCalledWith("Single-instance deep links unavailable", error);
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.stringContaining(`Single-instance deep links unavailable: ${error.message}`)
+    );
     expect(deepLinkEventUnlisten).not.toHaveBeenCalled();
   });
 
@@ -265,7 +294,9 @@ describe("desktopService.initialize", () => {
     const cleanup = await desktopService.initialize();
     cleanup();
 
-    expect(warnSpy).toHaveBeenCalledWith("Global shortcut unavailable", error);
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.stringContaining(`Global shortcut unavailable: ${error.message}`)
+    );
     expect(unregisterMock).not.toHaveBeenCalled();
   });
 
@@ -332,7 +363,9 @@ describe("desktopService.initialize", () => {
 
       await expect(desktopService.updateGlobalShortcut("mod+shift+j")).resolves.toBeUndefined();
 
-      expect(warnSpy).toHaveBeenCalledWith("Previous global shortcut could not be released", error);
+      expect(loggerWarnMock).toHaveBeenCalledWith(
+        expect.stringContaining(`Previous global shortcut could not be released: ${error.message}`)
+      );
     });
 
     it("registers the new shortcut before releasing the old one", async () => {

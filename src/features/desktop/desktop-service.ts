@@ -1,9 +1,16 @@
 import { router } from "@/app/router-config";
 import { isTauriApp } from "@/shared/lib/platform";
 import { defaultPreferences, preferencesRepository } from "@/features/preferences/preferences-repository";
+import { errorMessage } from "@/shared/lib/errors";
 import { toTauriGlobalShortcut } from "@/shared/lib/keyboard-shortcut";
+import { logger } from "@/shared/lib/logger";
 
-const openCommandPalette = () => window.dispatchEvent(new Event("cinetrack:command-palette"));
+// tauri-plugin-global-shortcut calls its handler when the combination goes
+// down and again when it comes back up: only the press opens the palette.
+const openCommandPalette = (event?: { state?: string }) => {
+  if (event?.state === "Released") return;
+  window.dispatchEvent(new Event("cinetrack:command-palette"));
+};
 
 // Tracks whichever global-shortcut string is actually registered right now
 // (in tauri-plugin-global-shortcut's own format), so both initialize()'s
@@ -44,7 +51,7 @@ export const desktopService = {
       // registeredGlobalShortcut back to null once it's held a value.
       cleanups.push(() => void unregister(registeredGlobalShortcut!));
     } catch (error) {
-      console.warn("Global shortcut unavailable", error);
+      logger.warn(`Global shortcut unavailable: ${errorMessage(error)}`);
     }
     try {
       cleanups.push(
@@ -54,12 +61,12 @@ export const desktopService = {
         })
       );
     } catch (error) {
-      console.warn("Deep links unavailable", error);
+      logger.warn(`Deep links unavailable: ${errorMessage(error)}`);
     }
     try {
       cleanups.push(await listen<string>("cinetrack:navigate", (event) => navigate(event.payload)));
     } catch (error) {
-      console.warn("Tray navigation unavailable", error);
+      logger.warn(`Tray navigation unavailable: ${errorMessage(error)}`);
     }
     try {
       cleanups.push(
@@ -69,7 +76,7 @@ export const desktopService = {
         })
       );
     } catch (error) {
-      console.warn("Single-instance deep links unavailable", error);
+      logger.warn(`Single-instance deep links unavailable: ${errorMessage(error)}`);
     }
     return () => cleanups.forEach((cleanup) => cleanup());
   },
@@ -97,7 +104,7 @@ export const desktopService = {
       try {
         await unregister(previousShortcut);
       } catch (error) {
-        console.warn("Previous global shortcut could not be released", error);
+        logger.warn(`Previous global shortcut could not be released: ${errorMessage(error)}`);
       }
     }
   },

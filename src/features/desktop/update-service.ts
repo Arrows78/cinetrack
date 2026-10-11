@@ -1,7 +1,9 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import i18n from "@/i18n";
+import { errorMessage } from "@/shared/lib/errors";
 import { defineCommand, invokeTypedCommand } from "@/shared/lib/invoke";
+import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
 
@@ -13,7 +15,10 @@ export const updateService = {
   async checkAndInstall(onProgress?: (downloaded: number, total?: number) => void): Promise<string> {
     if (!isTauriApp()) return i18n.t("desktop.updateNativeOnly");
 
-    const configured = await invokeTypedCommand(updaterCommands.isConfigured).catch(() => false);
+    const configured = await invokeTypedCommand(updaterCommands.isConfigured).catch((error: unknown) => {
+      logger.warn(`Couldn't tell whether the update channel is configured: ${errorMessage(error)}`);
+      return false;
+    });
     if (!configured) {
       return i18n.t("desktop.updateChannelNotConfigured");
     }
