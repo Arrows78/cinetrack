@@ -342,6 +342,14 @@ describe("SeasonPage", () => {
     expect(screen.getByText(i18n.t("media.noOverview"))).toBeInTheDocument();
   });
 
+  it("says so when TMDB lists no episode for the season yet, instead of an empty card", () => {
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season Two", [])));
+    renderPage();
+
+    expect(screen.getByText("No episode is listed for this season yet.")).toBeInTheDocument();
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+  });
+
   it("falls back to media.fallbackTitle when the season has no name", () => {
     seasonQueryMock.mockReturnValue(makeQuery(makeSeason("", [episode1])));
     renderPage();

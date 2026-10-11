@@ -146,6 +146,9 @@ export function SeasonPage() {
         />
         <p className="mb-4 text-body-lg text-muted-foreground">{season.overview || t("media.noOverview")}</p>
         <div className="space-y-4">
+          {season.episodes.length === 0 ? (
+            <p className="text-body-sm text-muted-foreground">{t("media.noEpisodesInSeason")}</p>
+          ) : null}
           {season.episodes.map((episode) => (
             <EpisodeCard
               key={episode.id}

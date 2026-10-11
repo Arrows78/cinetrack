@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
@@ -86,13 +86,15 @@ export function SeasonAccordion({
   // not only earlier episodes of the same season.
   const allSeriesEpisodes = useMemo(() => seasons.flatMap((season) => season.episodes), [seasons]);
 
-  const initialOpenItemRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    initialOpenItemRef.current?.scrollIntoView({ block: "start" });
-    // Deliberately once-on-mount: this should only ever land the viewport on
-    // the deep-linked season right after arriving here, not on every later
-    // re-render this component's own state (watched episodes, isSaving...)
-    // produces.
+  // A deep link ("This week" rail) lands on one season. Its item can mount
+  // after this component does — seasons come in one request each — so the
+  // scroll happens when that item first appears, once, and never again on the
+  // later re-renders that watching an episode causes.
+  const hasScrolledToInitialSeason = useRef(false);
+  const scrollToInitialSeason = useCallback((node: HTMLDivElement | null) => {
+    if (!node || hasScrolledToInitialSeason.current) return;
+    hasScrolledToInitialSeason.current = true;
+    node.scrollIntoView({ block: "start" });
   }, []);
 
   // Counts only the episodes that belong to `season` and aren't watched yet:
@@ -147,7 +149,7 @@ export function SeasonAccordion({
             <AccordionItem
               key={season.seasonNumber}
               value={`season-${season.seasonNumber}`}
-              ref={season.seasonNumber === initialOpenSeason ? initialOpenItemRef : undefined}
+              ref={season.seasonNumber === initialOpenSeason ? scrollToInitialSeason : undefined}
             >
               <AccordionTrigger className="group rounded-2xl border border-border bg-foreground/[0.03] px-5 py-4 hover:bg-foreground/[0.04] data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
                 <div className="w-full space-y-3 text-left">
@@ -163,7 +165,7 @@ export function SeasonAccordion({
                         </motion.div>
                       )}
                       <p className={cn("font-semibold", isComplete && "text-primary")}>
-                        {season.name || `${t("media.season")} ${season.seasonNumber}`}
+                        {season.name || t("media.fallbackTitle", { number: season.seasonNumber })}
                       </p>
                     </div>
                     <span className="text-caption text-muted-foreground">
@@ -209,6 +211,9 @@ export function SeasonAccordion({
                 </div>
 
                 <div className="space-y-0.5">
+                  {season.episodes.length === 0 ? (
+                    <p className="px-1 py-2 text-body-sm text-muted-foreground">{t("media.noEpisodesInSeason")}</p>
+                  ) : null}
                   {season.episodes.map((episode) => {
                     const isWatched = watchedSet.has(episode.id);
                     // Aired only — otherwise an ongoing season with an

@@ -400,3 +400,57 @@ describe("EpisodeDots", () => {
     expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument();
   });
 });
+
+describe("SeasonAccordion deep link and empty seasons", () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("scrolls to the deep-linked season even when its data arrives after the first render", () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const handlers = {
+      onToggleEpisode: vi.fn().mockResolvedValue(undefined),
+      onToggleEpisodes: vi.fn().mockResolvedValue(undefined),
+      onToggleSeason: vi.fn().mockResolvedValue(undefined),
+    };
+    const { rerender } = render(
+      <SeasonAccordion series={series} seasons={[]} watchedEpisodes={[]} initialOpenSeason={2} {...handlers} />
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(
+      <SeasonAccordion series={series} seasons={seasons} watchedEpisodes={[]} initialOpenSeason={2} {...handlers} />
+    );
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    // Later renders (watching an episode) must not drag the page back.
+    rerender(
+      <SeasonAccordion
+        series={series}
+        seasons={seasons}
+        watchedEpisodes={[makeProgress(101, 1, 1)]}
+        initialOpenSeason={2}
+        {...handlers}
+      />
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("says so when a season has no episode listed yet", () => {
+    const empty = makeSeason(4, "Season Four", []);
+    render(
+      <SeasonAccordion
+        series={series}
+        seasons={[empty]}
+        watchedEpisodes={[]}
+        initialOpenSeason={4}
+        onToggleEpisode={vi.fn()}
+        onToggleEpisodes={vi.fn()}
+        onToggleSeason={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("No episode is listed for this season yet.")).toBeInTheDocument();
+  });
+});
