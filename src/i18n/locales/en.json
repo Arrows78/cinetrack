@@ -348,6 +348,7 @@
     "byType": "Filter by type",
     "activeFiltersLabel": "Active filters",
     "removeFilter": "Remove filter {{filter}}",
+    "clearAll": "Clear all",
     "chips": {
       "type": "Type: {{value}}",
       "scope": "Scope: {{value}}",
