@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import type { MediaSummary, PageResult } from "@/types/media";
@@ -170,5 +170,43 @@ describe("useSearch", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(discoverSeriesMock).not.toHaveBeenCalled();
     expect(result.current.items).toEqual([]);
+  });
+  it("lists a title once when the next page repeats it (TMDB's pages overlap while popularity moves)", async () => {
+    searchMock.mockResolvedValueOnce(page([summary(1, "A"), summary(2, "B")], 1, 2));
+    searchMock.mockResolvedValueOnce(page([summary(2, "B"), summary(3, "C")], 2, 2));
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("batman", "movie"), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+
+    await waitFor(() => expect(result.current.items.map((item) => item.id)).toEqual([1, 2, 3]));
+  });
+
+  it("keeps a movie and a series that share a TMDB id as two results", async () => {
+    searchMock.mockResolvedValueOnce(page([summary(7, "Movie 7"), { ...summary(7, "Series 7"), mediaType: "series" }]));
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("seven", "all"), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+  });
+
+  it("shows the answer to the latest query even when an older, slower request settles after it", async () => {
+    let releaseSlow: (value: PageResult<MediaSummary>) => void = () => {};
+    searchMock.mockImplementationOnce(() => new Promise((resolve) => (releaseSlow = resolve)));
+    searchMock.mockImplementationOnce(async () => page([summary(2, "fast result")]));
+    const { useSearch } = await import("../use-search");
+    const { result, rerender } = renderHook(({ query }) => useSearch(query, "movie"), {
+      wrapper: createWrapper(),
+      initialProps: { query: "ba" },
+    });
+
+    rerender({ query: "bat" });
+    await waitFor(() => expect(result.current.items.map((item) => item.title)).toEqual(["fast result"]));
+    await act(async () => releaseSlow(page([summary(1, "stale result")])));
+
+    expect(result.current.items.map((item) => item.title)).toEqual(["fast result"]);
   });
 });

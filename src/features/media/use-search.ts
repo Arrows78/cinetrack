@@ -2,7 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
-import { nextPage } from "@/features/media/use-media";
+import { nextPage, uniqueMedia } from "@/features/media/use-media";
 import type { MediaSummary, PageResult, SearchScope } from "@/types/media";
 
 interface SearchOptions {
@@ -89,6 +89,6 @@ export function useSearch(query: string, scope: SearchScope, options?: SearchOpt
 
   return {
     ...searchQuery,
-    items: searchQuery.data?.pages.flatMap((page) => page.results) ?? [],
+    items: uniqueMedia(searchQuery.data?.pages ?? []),
   };
 }

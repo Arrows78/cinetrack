@@ -7,6 +7,26 @@ import type { PageResult } from "@/types/media";
 export const nextPage = <T>(lastPage: PageResult<T>) =>
   lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined;
 
+/**
+ * The pages of an infinite listing as one list, each title once. TMDB's pages
+ * overlap while popularity moves between two requests, and a repeated title
+ * is a duplicated card (and a duplicated grid key). A movie and a series
+ * sharing a TMDB id are different titles, so the media type is part of the key.
+ */
+export function uniqueMedia<T extends { id: number; mediaType: string }>(pages: Array<{ results: T[] }>): T[] {
+  const seen = new Set<string>();
+  const items: T[] = [];
+  for (const page of pages) {
+    for (const item of page.results) {
+      const key = `${item.mediaType}-${item.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(item);
+    }
+  }
+  return items;
+}
+
 export function useHomeFeed() {
   return useQuery({
     queryKey: queryKeys.remote.home,
@@ -21,7 +41,7 @@ export function useMovies() {
     initialPageParam: 1,
     getNextPageParam: nextPage,
   });
-  return { ...query, items: query.data?.pages.flatMap((page) => page.results) ?? [] };
+  return { ...query, items: uniqueMedia(query.data?.pages ?? []) };
 }
 
 export function useSeries() {
@@ -31,7 +51,7 @@ export function useSeries() {
     initialPageParam: 1,
     getNextPageParam: nextPage,
   });
-  return { ...query, items: query.data?.pages.flatMap((page) => page.results) ?? [] };
+  return { ...query, items: uniqueMedia(query.data?.pages ?? []) };
 }
 
 export function useMovieDetails(movieId: number) {
