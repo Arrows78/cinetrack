@@ -10,6 +10,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { cn } from "@/shared/lib/cn";
+import { logger } from "@/shared/lib/logger";
 import { MEDIA_POSTER_OVERLAY_CLASSNAME, MEDIA_POSTER_SCRIM } from "@/shared/constants/decorative-gradients";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating } from "@/shared/utils/format";
 import { progressBarTone } from "@/shared/utils/series-status";
@@ -75,9 +76,15 @@ function SeenQuickAction({ media }: { media: MediaSummary }) {
         type="button"
         aria-label={label}
         aria-pressed={Boolean(seenQuery.data)}
-        disabled={seenQuery.isSaving}
+        // A failed read leaves `data` undefined, which would pass for "not
+        // seen": the write below would then be a guess, as on the movie page.
+        disabled={seenQuery.isSaving || seenQuery.isError}
         onClick={() => {
-          void seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data });
+          // The failure toast comes from the app-wide MutationCache handler;
+          // this only keeps the rejection from escaping the click handler.
+          seenQuery.toggleMovieSeen({ movie: media, watched: !seenQuery.data }).catch((error: unknown) => {
+            logger.error(`Quick mark-seen failed for movie ${media.id}: ${error}`);
+          });
         }}
         className={cn(quickActionButtonClassName, seenQuery.data && "bg-success text-success-foreground")}
       >

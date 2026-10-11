@@ -3,6 +3,7 @@ import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useLibraryItem } from "@/features/library/use-library";
+import { logger } from "@/shared/lib/logger";
 import type { MediaSummary } from "@/types/media";
 
 /**
@@ -31,7 +32,13 @@ export function FavouriteButton({ media }: { media: MediaSummary }) {
         aria-label={t("library.favourite")}
         aria-pressed={favourite}
         disabled={library.isLoading || library.isSaving}
-        onClick={() => void library.save({ favourite: !favourite })}
+        onClick={() => {
+          // The failure toast comes from the app-wide MutationCache handler;
+          // this only keeps the rejection from escaping the click handler.
+          library.save({ favourite: !favourite }).catch((error: unknown) => {
+            logger.error(`Favourite toggle failed for ${media.mediaType} ${media.id}: ${error}`);
+          });
+        }}
       >
         <Heart className={favourite ? "size-4 fill-current" : "size-4"} />
       </Button>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useIsInLibrary, useLibraryQuickToggle } from "@/features/library/use-library";
+import { logger } from "@/shared/lib/logger";
 import type { MediaSummary } from "@/types/media";
 
 // Shared by the grid card's bookmark icon and the detail-page button — same
@@ -14,13 +15,21 @@ export function useAddToLibraryToggle(media: MediaSummary, options?: { enabled?:
   const { addPlanned, removeIfPlanned, forceRemove, isSaving } = useLibraryQuickToggle();
   const [confirmingForceRemove, setConfirmingForceRemove] = useState(false);
 
+  // Every caller fires this from a click handler without awaiting it, so a
+  // failed write must not escape as an unhandled rejection. The user-facing
+  // toast comes from the app-wide MutationCache error handler (see
+  // query-client.ts); this only keeps the failure in the log.
   const toggle = async () => {
-    if (isInLibrary) {
-      const removed = await removeIfPlanned({ mediaId: media.id, mediaType: media.mediaType });
-      if (!removed) setConfirmingForceRemove(true);
-      return;
+    try {
+      if (isInLibrary) {
+        const removed = await removeIfPlanned({ mediaId: media.id, mediaType: media.mediaType });
+        if (!removed) setConfirmingForceRemove(true);
+        return;
+      }
+      await addPlanned(media);
+    } catch (error) {
+      logger.error(`Library toggle failed for ${media.mediaType} ${media.id}: ${error}`);
     }
-    await addPlanned(media);
   };
 
   // Awaited before closing (not "close, then fire and forget") so the

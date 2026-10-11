@@ -23,10 +23,11 @@ vi.mock("@/features/library/library-repository", () => ({
 }));
 
 const isMovieSeenMock = vi.fn();
+const toggleMovieSeenMock = vi.fn();
 vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
     isMovieSeen: (...args: unknown[]) => isMovieSeenMock(...args),
-    toggleMovieSeen: vi.fn(),
+    toggleMovieSeen: (...args: unknown[]) => toggleMovieSeenMock(...args),
   },
 }));
 
@@ -46,6 +47,7 @@ describe("MediaCard", () => {
   beforeEach(() => {
     libraryHasMock.mockReset().mockResolvedValue(false);
     isMovieSeenMock.mockReset().mockResolvedValue(false);
+    toggleMovieSeenMock.mockReset().mockResolvedValue(undefined);
     removeIfPlannedMock.mockReset().mockResolvedValue(true);
     forceRemoveMock.mockReset().mockResolvedValue(undefined);
   });
@@ -176,5 +178,33 @@ describe("MediaCard", () => {
     );
 
     expect(screen.queryByText("All up to date")).not.toBeInTheDocument();
+  });
+
+  describe("mark-seen quick action", () => {
+    it("is disabled when the seen state could not be read, so a wrong guess is never written back", async () => {
+      isMovieSeenMock.mockRejectedValue(new Error("database is locked"));
+      renderCard(makeMedia({ id: 3, mediaType: "movie" }));
+
+      await waitFor(() => expect(screen.getByRole("button", { name: "Mark watched" })).toBeDisabled());
+    });
+
+    it("does not leave an unhandled rejection when the write fails", async () => {
+      toggleMovieSeenMock.mockRejectedValue(new Error("database is locked"));
+      const unhandled = vi.fn();
+      process.on("unhandledRejection", unhandled);
+      try {
+        renderCard(makeMedia({ id: 3, mediaType: "movie" }));
+        const button = await screen.findByRole("button", { name: "Mark watched" });
+        await waitFor(() => expect(button).toBeEnabled());
+
+        button.click();
+        await waitFor(() => expect(toggleMovieSeenMock).toHaveBeenCalled());
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        expect(unhandled).not.toHaveBeenCalled();
+      } finally {
+        process.off("unhandledRejection", unhandled);
+      }
+    });
   });
 });

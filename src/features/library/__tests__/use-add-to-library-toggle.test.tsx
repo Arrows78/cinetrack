@@ -56,6 +56,18 @@ describe("useAddToLibraryToggle", () => {
     expect(result.current.confirmingForceRemove).toBe(false);
   });
 
+  it("resolves instead of rejecting when the library write fails (the failure toast is the app-wide handler's job)", async () => {
+    hasMock.mockResolvedValue(false);
+    saveMock.mockRejectedValueOnce(new Error("database is locked"));
+    const { useAddToLibraryToggle } = await import("../use-add-to-library-toggle");
+    const { result } = renderHook(() => useAddToLibraryToggle(media), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isInLibrary).toBe(false));
+
+    await act(async () => {
+      await expect(result.current.toggle()).resolves.toBeUndefined();
+    });
+  });
+
   it("removes a still-planned title directly, without a confirmation dialog", async () => {
     hasMock.mockResolvedValue(true);
     removeIfPlannedMock.mockResolvedValue(true);
