@@ -1,5 +1,5 @@
 import { addDays, format as formatDateFns } from "date-fns";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n";
 import {
   ageFromBirthday,
@@ -13,7 +13,6 @@ import {
   formatRuntime,
   formatWatchDurationBreakdown,
   percent,
-  pluralize,
   yearFromDate,
 } from "../format";
 
@@ -79,6 +78,18 @@ describe("formatRelativeDate", () => {
   it("falls back on missing or invalid input", () => {
     expect(formatRelativeDate(null)).toBe("Date inconnue");
     expect(formatRelativeDate("not-a-date")).toBe("not-a-date");
+  });
+
+  it("reads a date-only value as the local day, not UTC midnight", () => {
+    vi.useFakeTimers();
+    try {
+      // 06:00 local on the 14th: the day started six hours ago. Read as UTC
+      // midnight, west of UTC it would be the evening of the 13th.
+      vi.setSystemTime(new Date(2026, 6, 14, 6, 0, 0));
+      expect(formatRelativeDate("2026-07-14")).toBe(formatRelativeDate(new Date(2026, 6, 14).toISOString()));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -245,16 +256,22 @@ describe("percent", () => {
     expect(percent(0, 200)).toBe(0);
   });
 
+  it("never produces NaN or a figure outside 0-100 for non-finite input", () => {
+    for (const [value, total] of [
+      [Number.NaN, 10],
+      [3, Number.NaN],
+      [Number.POSITIVE_INFINITY, 10],
+      [3, Number.POSITIVE_INFINITY],
+    ] as const) {
+      const result = percent(value, total);
+      expect(Number.isFinite(result)).toBe(true);
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(100);
+    }
+  });
+
   it("stays within 0-100 for out-of-range counts", () => {
     expect(percent(8, 6)).toBe(100);
     expect(percent(-1, 6)).toBe(0);
-  });
-});
-
-describe("pluralize", () => {
-  it("uses the singular for 0 and 1, the plural above", () => {
-    expect(pluralize(0, "film", "films")).toBe("film");
-    expect(pluralize(1, "film", "films")).toBe("film");
-    expect(pluralize(2, "film", "films")).toBe("films");
   });
 });

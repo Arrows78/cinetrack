@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/shared/lib/logger";
+import { percent } from "@/shared/utils/format";
 import {
   applyTvTimeImport,
   extractCsvEntries,
@@ -288,7 +289,7 @@ export function TvTimeImportCard() {
             // layout was randomly jumping around during an import.
             <div className="mt-3" role="status" aria-live="polite">
               <ProgressBar
-                value={Math.round((progress.done / progress.total) * 100)}
+                value={percent(progress.done, progress.total)}
                 label={`${t(`tvtimeImport.phase.${progress.phase}`)} · ${progress.done}/${progress.total}`}
                 showPercent
               />

@@ -80,7 +80,7 @@ export const formatRelativeDate = (value?: string | null) => {
   if (!value) return i18n.t("common.unknownDate");
 
   try {
-    return formatDistanceToNow(new Date(value), { addSuffix: true, locale: dateLocale() });
+    return formatDistanceToNow(parseCalendarDate(value), { addSuffix: true, locale: dateLocale() });
   } catch {
     return value;
   }
@@ -201,12 +201,11 @@ export const formatWatchDurationBreakdown = (minutes: number): string => {
 // Rounded, but never a misleading edge: 199/200 is 99%, not "100%" (which
 // reads as complete), and 1/300 is 1%, not "0%" (which reads as untouched).
 export const percent = (value: number, total: number) => {
+  if (!Number.isFinite(value) || !Number.isFinite(total)) return 0;
   if (total <= 0 || value <= 0) return 0;
   if (value >= total) return 100;
   return Math.min(99, Math.max(1, Math.round((value / total) * 100)));
 };
-
-export const pluralize = (value: number, one: string, many: string) => (value > 1 ? many : one);
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = BYTES_PER_KB * 1024;
