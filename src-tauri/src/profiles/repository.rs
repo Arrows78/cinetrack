@@ -643,6 +643,76 @@ mod tests {
         );
     }
 
+    /// Two profiles that follow exactly the same titles (same media ids, same
+    /// names) must stay fully separate when one of them is deleted: the
+    /// cascade removes every row of the deleted profile — in every scoped
+    /// table, including the ones the test above never fills — and none of the
+    /// other's.
+    #[tokio::test]
+    async fn removing_a_profile_leaves_a_profile_with_the_same_titles_untouched() {
+        let pool = migrated_pool().await;
+        let alex = create_impl(&pool, "Alex", None, None).await.unwrap();
+        let sam = create_impl(&pool, "Sam", None, None).await.unwrap();
+
+        for profile in [&alex.id, &sam.id] {
+            let statements = [
+                "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, created_at, updated_at)
+                 VALUES ('library-' || $1, $1, 1, 'movie', 'Same', 'now', 'now')",
+                "INSERT INTO seen_movies (uuid, profile_id, movie_id, title, watched_at, created_at, updated_at)
+                 VALUES ('seen-' || $1, $1, 1, 'Same', 'now', 'now', 'now')",
+                "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, created_at, updated_at)
+                 VALUES ('episode-' || $1, $1, 1, 1, 1, 1, 'now', 'now')",
+                "INSERT INTO tracked_series (uuid, profile_id, series_id, title, created_at, updated_at)
+                 VALUES ('tracked-' || $1, $1, 1, 'Same', 'now', 'now')",
+                "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+                 VALUES ('event-' || $1, $1, 1, 'movie', 'Same', 'watched', 'now', 'now')",
+                "INSERT INTO activity_log (uuid, profile_id, media_id, media_type, title, action, timestamp, created_at, updated_at)
+                 VALUES ('activity-' || $1, $1, 1, 'movie', 'Same', 'movie:watched', 'now', 'now', 'now')",
+                "INSERT INTO availability_alerts (uuid, profile_id, media_id, media_type, title, region, provider_ids, created_at, updated_at)
+                 VALUES ('alert-' || $1, $1, 1, 'movie', 'Same', 'FR', '[]', 'now', 'now')",
+                "INSERT INTO custom_lists (uuid, profile_id, name, created_at, updated_at)
+                 VALUES ('list-' || $1, $1, 'Same list', 'now', 'now')",
+                "INSERT INTO custom_list_items (uuid, list_id, media_id, media_type, title, position, added_at, updated_at)
+                 VALUES ('item-' || $1, 'list-' || $1, 1, 'movie', 'Same', 0, 'now', 'now')",
+                "INSERT INTO smart_lists (uuid, profile_id, name, rules, created_at, updated_at)
+                 VALUES ('smart-' || $1, $1, 'Same', '{}', 'now', 'now')",
+                "INSERT INTO saved_filters (uuid, profile_id, page, name, filters, created_at, updated_at)
+                 VALUES ('filter-' || $1, $1, 'library', 'Same', '{}', 'now', 'now')",
+                "INSERT INTO dismissed_recommendations (uuid, profile_id, media_id, media_type, title, dismissed_at, created_at, updated_at)
+                 VALUES ('dismissed-' || $1, $1, 1, 'movie', 'Same', 'now', 'now', 'now')",
+            ];
+            for statement in statements {
+                sqlx::query(statement)
+                    .bind(profile)
+                    .execute(&pool)
+                    .await
+                    .unwrap_or_else(|error| panic!("{statement}: {error}"));
+            }
+        }
+
+        remove_impl(&pool, &alex.id).await.unwrap();
+
+        for table in crate::database::PROFILE_SCOPED_TABLES {
+            for (profile, expected, whose) in [(&alex.id, 0, "removed"), (&sam.id, 1, "other")] {
+                let row: (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+                    "SELECT COUNT(*) FROM {table} WHERE profile_id = $1"
+                )))
+                .bind(profile)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+                assert_eq!(row.0, expected, "{table}: the {whose} profile's rows");
+            }
+        }
+        let items: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM custom_list_items WHERE list_id = $1")
+                .bind(format!("list-{}", sam.id))
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(items.0, 1, "custom_list_items of the other profile's list");
+    }
+
     #[tokio::test]
     async fn auto_claims_the_unclaimed_default_profile_for_the_first_account() {
         let pool = migrated_pool().await;
