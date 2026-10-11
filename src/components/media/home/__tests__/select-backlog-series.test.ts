@@ -24,8 +24,12 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
   return { id: 900, seasonNumber: 1, episodeNumber: 1, title: "Episode", overview: "", ...overrides };
 }
 
-function makeResult(series: TrackedSeriesItem, nextEpisode: Episode | null): NextEpisodeResult {
-  return { series, nextEpisode, remaining: 0, isLoading: false, isError: false };
+function makeResult(
+  series: TrackedSeriesItem,
+  nextEpisode: Episode | null,
+  remaining = Math.max(0, series.totalEpisodes - series.watchedEpisodes)
+): NextEpisodeResult {
+  return { series, nextEpisode, remaining, isLoading: false, isError: false };
 }
 
 describe("selectBacklogSeries", () => {
@@ -37,6 +41,14 @@ describe("selectBacklogSeries", () => {
     expect(selectBacklogSeries([belowThreshold, atThreshold], results)).toEqual([
       { series: atThreshold, remaining: BACKLOG_THRESHOLD },
     ]);
+  });
+
+  it("counts what has aired, not the cached total: TMDB announcing a season does not make a backlog", () => {
+    // Cached total 14, watched 10 — but only one episode is out.
+    const justOneOut = makeSeries({ seriesId: 4, totalEpisodes: 14, watchedEpisodes: 10 });
+    const results = [makeResult(justOneOut, makeEpisode(), 1)];
+
+    expect(selectBacklogSeries([justOneOut], results)).toEqual([]);
   });
 
   it("excludes a series past the threshold once its resolved next episode is null (nothing aired-and-unwatched left, just TMDB's total outrunning what's aired)", () => {

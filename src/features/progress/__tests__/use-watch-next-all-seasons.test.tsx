@@ -132,4 +132,27 @@ describe("Watch Next across every season", () => {
     expect(result.current.entries).toEqual([]);
     expect(getSeasonDetailsMock).toHaveBeenCalledTimes(3);
   });
+
+  it("counts what is left from the aired episodes, not from the cached total", async () => {
+    // The cache says 6 episodes and 1 watched (5 left), but season 2's second
+    // episode and all of season 3 are announced, not out: 2 are really left.
+    const unaired = (item: Episode): Episode => ({ ...item, airDate: "2999-01-01" });
+    seasonsByNumber.set(2, season(2, [s2[0]!, unaired(s2[1]!)]));
+    seasonsByNumber.set(3, season(3, s3.map(unaired)));
+    getEpisodeProgressMock.mockResolvedValue(progressFor([s1[0]!]));
+
+    try {
+      const { useWatchNext } = await import("../use-watch-next");
+      const { result } = renderHook(() => useWatchNext([{ ...series, totalEpisodes: 6, watchedEpisodes: 1 }]), {
+        wrapper: createWrapper(),
+      });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      // s1E2 and s2E1.
+      expect(result.current.entries[0]?.remaining).toBe(2);
+    } finally {
+      seasonsByNumber.set(2, season(2, s2));
+      seasonsByNumber.set(3, season(3, s3));
+    }
+  });
 });

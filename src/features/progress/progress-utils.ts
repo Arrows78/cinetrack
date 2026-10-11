@@ -25,15 +25,23 @@ export function airedEpisodes(season: Pick<Season, "episodes">): Episode[] {
   return season.episodes.filter((episode) => hasAired(episode, season));
 }
 
-export function getNextEpisode(seasons: Season[], watched: EpisodeProgress[]): Episode | null {
+/** Every aired episode not yet watched, in season then episode order — what is "left to watch" right now. */
+export function airedUnwatchedEpisodes(seasons: Season[], watched: EpisodeProgress[]): Episode[] {
   const watchedIds = new Set(watched.filter((item) => item.watched).map((item) => item.episodeId));
-  return (
-    seasons
-      .slice()
-      .sort((a, b) => a.seasonNumber - b.seasonNumber)
-      .flatMap((season) => airedEpisodes(season).sort((a, b) => a.episodeNumber - b.episodeNumber))
-      .find((episode) => !watchedIds.has(episode.id)) ?? null
-  );
+  return seasons
+    .slice()
+    .sort((a, b) => a.seasonNumber - b.seasonNumber)
+    .flatMap((season) => airedEpisodes(season).sort((a, b) => a.episodeNumber - b.episodeNumber))
+    .filter((episode) => !watchedIds.has(episode.id));
+}
+
+export function getNextEpisode(seasons: Season[], watched: EpisodeProgress[]): Episode | null {
+  return airedUnwatchedEpisodes(seasons, watched)[0] ?? null;
+}
+
+/** How many aired episodes are still unwatched — unlike a cached total minus the watched count, never includes an episode that has not come out. */
+export function countAiredUnwatched(seasons: Season[], watched: EpisodeProgress[]): number {
+  return airedUnwatchedEpisodes(seasons, watched).length;
 }
 
 export function calculateSeriesProgress(

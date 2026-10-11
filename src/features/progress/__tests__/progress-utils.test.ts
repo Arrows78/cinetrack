@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { calculateSeriesProgress, getNextEpisode, hasAired } from "../progress-utils";
+import { calculateSeriesProgress, countAiredUnwatched, getNextEpisode, hasAired } from "../progress-utils";
 import type { Episode, EpisodeProgress, Season } from "@/types/media";
 
 const episode = (overrides: Partial<Episode> = {}): Episode => ({
@@ -310,5 +310,45 @@ describe("hasAired", () => {
       expect(progress).toMatchObject({ totalEpisodes: 1, watchedEpisodes: 0, progressPercent: 0, completed: false });
       expect(progress.isUpToDate).toBe(false);
     });
+  });
+});
+
+describe("countAiredUnwatched", () => {
+  const watchedRow = (episodeId: number, watched = true): EpisodeProgress => ({
+    id: String(episodeId),
+    profileId: null,
+    seriesId: 9,
+    episodeId,
+    seasonNumber: 1,
+    episodeNumber: episodeId,
+    watched,
+    watchedAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    rating: null,
+  });
+
+  it("counts only aired episodes that are not watched, and always agrees with getNextEpisode", () => {
+    const s = season([
+      episode({ id: 1, episodeNumber: 1 }),
+      episode({ id: 2, episodeNumber: 2 }),
+      episode({ id: 3, episodeNumber: 3 }),
+      episode({ id: 4, episodeNumber: 4, airDate: "2999-01-01" }),
+      episode({ id: 5, episodeNumber: 5, airDate: null }),
+    ]);
+
+    expect(countAiredUnwatched([s], [watchedRow(1)])).toBe(2);
+    expect(getNextEpisode([s], [watchedRow(1)])?.id).toBe(2);
+    const allAired = [watchedRow(1), watchedRow(2), watchedRow(3)];
+    expect(countAiredUnwatched([s], allAired)).toBe(0);
+    expect(getNextEpisode([s], allAired)).toBeNull();
+  });
+
+  it("ignores a row that is no longer watched, and handles empty input", () => {
+    const s = season([episode({ id: 1 })]);
+
+    expect(countAiredUnwatched([s], [watchedRow(1, false)])).toBe(1);
+    expect(countAiredUnwatched([season([])], [])).toBe(0);
+    expect(countAiredUnwatched([], [])).toBe(0);
   });
 });

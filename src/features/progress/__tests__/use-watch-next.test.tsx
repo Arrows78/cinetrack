@@ -64,8 +64,11 @@ vi.mock("@/features/progress/progress-repository", () => ({
   },
 }));
 
+const countAiredUnwatchedMock = vi.fn(() => 2);
+
 vi.mock("@/features/progress/progress-utils", () => ({
   getNextEpisode: getNextEpisodeMock,
+  countAiredUnwatched: countAiredUnwatchedMock,
 }));
 
 function createWrapper() {

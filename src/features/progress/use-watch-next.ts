@@ -4,7 +4,7 @@ import { queryClient } from "@/app/query-client";
 import { mediaRepository } from "@/features/media/media-repository";
 import { episodeProgressKeys, useRefreshTrackedSeriesBatch } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
-import { getNextEpisode } from "@/features/progress/progress-utils";
+import { countAiredUnwatched, getNextEpisode } from "@/features/progress/progress-utils";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_1_HOUR, STALE_30_MIN } from "@/shared/constants/query";
@@ -37,6 +37,8 @@ export interface NextEpisodeResult {
 /** What one resolution pass learns about a series: its next episode, and TMDB's current word on how long it is and whether it is over. */
 interface ResolvedSeries {
   nextEpisode: Episode | null;
+  /** Aired episodes still unwatched, counted over every season — known only once every season was read (a series with watched episodes), never from a partial read. */
+  airedUnwatched?: number;
   tmdbStatus?: string;
   tmdbTotalEpisodes?: number;
 }
@@ -76,7 +78,12 @@ async function resolveNextEpisode(seriesId: number): Promise<ResolvedSeries> {
       })
     )
   );
-  return { nextEpisode: getNextEpisode(seasons, progress), ...tmdb };
+  return {
+    nextEpisode: getNextEpisode(seasons, progress),
+    // Every season was read only when the series has been started (see above).
+    ...(hasWatched ? { airedUnwatched: countAiredUnwatched(seasons, progress) } : {}),
+    ...tmdb,
+  };
 }
 
 /**
@@ -101,7 +108,10 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     nextEpisode: queries[index]?.data?.nextEpisode ?? null,
     tmdbStatus: queries[index]?.data?.tmdbStatus,
     tmdbTotalEpisodes: queries[index]?.data?.tmdbTotalEpisodes,
-    remaining: Math.max(0, series.totalEpisodes - series.watchedEpisodes),
+    // What is actually out and unwatched when it could be counted; otherwise
+    // the cached total minus watched, which for a running series also counts
+    // episodes TMDB has announced but not yet aired.
+    remaining: queries[index]?.data?.airedUnwatched ?? Math.max(0, series.totalEpisodes - series.watchedEpisodes),
     isLoading: queries[index]?.isLoading ?? false,
     isError: queries[index]?.isError ?? false,
   }));

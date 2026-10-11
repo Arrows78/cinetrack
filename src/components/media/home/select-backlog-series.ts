@@ -27,10 +27,16 @@ export function selectBacklogSeries(
   trackedSeries: TrackedSeriesItem[],
   nextEpisodeResults: NextEpisodeResult[]
 ): BacklogSeries[] {
-  const hasAiredUnwatched = new Set(
-    nextEpisodeResults.filter((result) => result.nextEpisode !== null).map((result) => result.series.seriesId)
+  const resolved = new Map(
+    nextEpisodeResults.filter((result) => result.nextEpisode !== null).map((result) => [result.series.seriesId, result])
   );
   return trackedSeries
-    .map((series) => ({ series, remaining: series.totalEpisodes - series.watchedEpisodes }))
-    .filter(({ series, remaining }) => remaining >= BACKLOG_THRESHOLD && hasAiredUnwatched.has(series.seriesId));
+    .flatMap((series) => {
+      const result = resolved.get(series.seriesId);
+      if (!result) return [];
+      // `result.remaining` counts aired episodes when the resolution could
+      // (see useNextEpisodes); the cached total is only the fallback.
+      return [{ series, remaining: result.remaining }];
+    })
+    .filter(({ remaining }) => remaining >= BACKLOG_THRESHOLD);
 }
