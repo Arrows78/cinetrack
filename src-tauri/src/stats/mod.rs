@@ -59,6 +59,31 @@ use viewing_events::{
 #[cfg(test)]
 mod edge_tests;
 
+/// What the statistics currently count as seen — one `(media type, media id,
+/// episode id)` per seen movie or episode — for the tests that compare it
+/// with the progress tables.
+#[cfg(test)]
+pub(crate) async fn counted_seen_keys(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Vec<(String, i64, Option<i64>)> {
+    let mut keys: Vec<_> =
+        list_viewing_events_since_impl(pool, profile_id, "0000-01-01T00:00:00.000Z")
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|event| {
+                (
+                    event.media_type.as_db_str().to_string(),
+                    event.media_id,
+                    event.episode_id,
+                )
+            })
+            .collect();
+    keys.sort();
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::models::*;

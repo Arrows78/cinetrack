@@ -2,6 +2,7 @@
 mod atomicity_tests;
 mod commands;
 mod domain;
+mod event_order;
 mod models;
 mod queries;
 mod repository;
@@ -14,6 +15,7 @@ pub use commands::{
     rewatch_movie, set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
 };
 pub(crate) use domain::known_runtime;
+pub(crate) use event_order::align_event_order_with_progress;
 pub(crate) use models::{EpisodeInput, EpisodeProgress, SeriesInput, TrackedSeriesItem};
 
 // The TV Time importer intentionally reuses the exact same transactional

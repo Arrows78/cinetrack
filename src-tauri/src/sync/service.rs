@@ -1120,6 +1120,9 @@ async fn title_of_change(
             "tracked_series" => {
                 "SELECT series_id, 'series' FROM tracked_series WHERE profile_id=?1 AND uuid=?2"
             }
+            "viewing_event" => {
+                "SELECT media_id, media_type FROM viewing_events WHERE profile_id=?1 AND uuid=?2"
+            }
             _ => return Ok(None),
         };
         let row: Option<(i64, String)> = sqlx::query_as(sql)
@@ -1144,6 +1147,11 @@ async fn title_of_change(
         "episode_progress" | "tracked_series" => {
             id_of("seriesId").map(|id| (id, MediaType::Series))
         }
+        "viewing_event" => id_of("mediaId").zip(
+            data.get("mediaType")
+                .and_then(serde_json::Value::as_str)
+                .and_then(media_type_of),
+        ),
         _ => None,
     })
 }
@@ -1253,6 +1261,11 @@ pub async fn apply_remote_changes(
             } else {
                 MediaType::Series
             };
+            // The viewing log arrives in the cloud's order, not the order it
+            // was logged in here: settle which event is the latest of each
+            // title against the progress tables first (progress/event_order.rs).
+            crate::progress::align_event_order_with_progress(&mut tx, &profile_id, id, media_type)
+                .await?;
             crate::library::reconcile_title_impl(
                 &mut tx,
                 &profile_id,
