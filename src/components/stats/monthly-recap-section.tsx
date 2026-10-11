@@ -13,7 +13,7 @@ import { PartialErrorState } from "@/components/states/partial-error-state";
 import { ExportPreviewDialog } from "@/components/stats/export-preview-dialog";
 import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
-import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
+import { formatDate, formatRating, formatWatchDurationBreakdown } from "@/shared/utils/format";
 
 function currentMonthLabel(): string {
   return format(new Date(), "yyyy-MM");
@@ -83,9 +83,9 @@ export function MonthlyRecapSection() {
         {
           monthLabel,
           timeWatchedLabel: formatWatchDurationBreakdown(data.minutesWatched),
-          moviesEpisodesLabel: `${data.moviesWatched} ${t("stats.films")} · ${data.episodesWatched} ${t("stats.episodes")}`,
+          moviesEpisodesLabel: `${t("stats.filmCount", { count: data.moviesWatched })} · ${t("stats.episodeCount", { count: data.episodesWatched })}`,
           topRatedTitle: data.topRatedTitle
-            ? `${data.topRatedTitle.title} · ${data.topRatedTitle.rating.toFixed(1)}`
+            ? `${data.topRatedTitle.title} · ${formatRating(data.topRatedTitle.rating)}`
             : null,
           favouriteGenre: data.favouriteGenre,
           biggestBinge: data.biggestBingeDay

@@ -132,7 +132,7 @@ export function StatsPage() {
         {
           year: wrapped.data.year,
           hoursWatchedLabel: hours(wrapped.data.minutes),
-          moviesEpisodesLabel: `${wrapped.data.movies} ${t("stats.films")} · ${wrapped.data.episodes} ${t("stats.episodes")}`,
+          moviesEpisodesLabel: `${t("stats.filmCount", { count: wrapped.data.movies })} · ${t("stats.episodeCount", { count: wrapped.data.episodes })}`,
           favouriteGenre: wrapped.data.favouriteGenre,
           activeDaysLabel: t("stats.activeDays", { count: wrapped.data.activeDays }),
           topTitles: wrapped.data.topTitles,
@@ -550,7 +550,8 @@ export function StatsPage() {
             <div className="mt-4 grid gap-2 text-body-sm">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <p>
-                  {wrapped.data.movies} {t("stats.films")} · {wrapped.data.episodes} {t("stats.episodes")}
+                  {t("stats.filmCount", { count: wrapped.data.movies })} ·{" "}
+                  {t("stats.episodeCount", { count: wrapped.data.episodes })}
                 </p>
                 {yearComparison ? (
                   <DeltaBadge delta={yearComparison.countDelta} formatValue={(value) => String(value)} period="year" />
