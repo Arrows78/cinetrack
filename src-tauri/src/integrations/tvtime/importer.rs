@@ -616,6 +616,52 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_watch_after_the_import_keeps_the_entry_even_when_its_status_did_not_move() {
+        let pool = migrated_pool().await;
+        let imported = import_series_progress_impl(
+            &pool,
+            "default",
+            series(10),
+            vec![episode(11, 1, "2020-01-01T00:00:00.000Z")],
+        )
+        .await
+        .unwrap();
+        let created: Vec<CreatedLibraryItem> = imported
+            .created_library_item_id
+            .into_iter()
+            .map(|id| CreatedLibraryItem {
+                id,
+                imported_at: "2026-06-01T00:00:00.000Z".to_string(),
+            })
+            .collect();
+
+        // The viewer then watches one more episode of the series: it is
+        // Watching before and after, but the viewer has touched the title.
+        crate::progress::apply_episodes_impl(
+            &pool,
+            "default",
+            &series(10),
+            &[EpisodeInput {
+                id: 12,
+                season_number: 1,
+                episode_number: 2,
+                runtime: None,
+                watched_at: None,
+            }],
+            true,
+            "2026-07-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        let outcome = remove_untouched_items_impl(&pool, "default", &created)
+            .await
+            .unwrap();
+        assert_eq!((outcome.removed, outcome.kept), (0, 1));
+        assert_eq!(library_count(&pool).await, 1);
+    }
+
+    #[tokio::test]
     async fn an_interrupted_import_can_be_undone_for_what_it_got_through() {
         let pool = migrated_pool().await;
         // Two movies were imported, the process stopped before the third; the

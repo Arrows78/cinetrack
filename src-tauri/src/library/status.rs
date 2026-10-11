@@ -321,7 +321,8 @@ async fn apply_set(
     };
     sqlx::query(
         "UPDATE library_items
-         SET status = $1, status_origin = 'auto', started_at = $2, completed_at = $3, updated_at = $4
+         SET status = $1, status_origin = 'auto', started_at = $2, completed_at = $3,
+             updated_at = MAX(updated_at, $4)
          WHERE uuid = $5",
     )
     .bind(next.as_db_str())
@@ -332,6 +333,22 @@ async fn apply_set(
     .execute(&mut **tx)
     .await
     .map_err(ApiError::from)?;
+    Ok(())
+}
+
+/// Marks an entry as touched at `now`, never moving its `updated_at` back
+/// (a watch can carry an earlier date than the last edit).
+async fn touch(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    uuid: &str,
+    now: &str,
+) -> Result<(), ApiError> {
+    sqlx::query("UPDATE library_items SET updated_at = $1 WHERE uuid = $2 AND updated_at < $1")
+        .bind(now)
+        .bind(uuid)
+        .execute(&mut **tx)
+        .await
+        .map_err(ApiError::from)?;
     Ok(())
 }
 
@@ -411,7 +428,17 @@ pub(crate) async fn reconcile_status_impl(
     let row = load_row(tx, profile_id, media.media_id, media.media_type).await?;
     let current = row.as_ref().map(current_of).transpose()?;
     match decide(current, facts, trigger) {
-        StatusDecision::Keep => Ok(None),
+        StatusDecision::Keep => {
+            // The viewer watched or un-watched something of this title: even
+            // when its status did not move, the entry has been touched (the
+            // undo of a TV Time import keeps what was touched after it).
+            if let Some(row) = row.as_ref()
+                && matches!(trigger, StatusTrigger::Watched | StatusTrigger::Unwatched)
+            {
+                touch(tx, &row.uuid, now).await?;
+            }
+            Ok(None)
+        }
         StatusDecision::Create(status) => create_entry(tx, pool, profile_id, media, status, now)
             .await
             .map(Some),

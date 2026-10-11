@@ -129,6 +129,11 @@ edit and an automatic move:
 - a move that keeps the status (for example « Automatic » on an entry that was
   already right) leaves both dates alone.
 
+A watch or an un-watch also moves the entry's `updated_at` (never backwards),
+even when the status stays the same: that is what « touched » means for the
+undo of a TV Time import, which keeps an entry the viewer touched after the
+import.
+
 ## Where each trigger comes from
 
 | Trigger                       | Code                                                                                                                                                                                                                            |
