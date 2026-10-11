@@ -49,7 +49,7 @@ const dropdownItemKey = (item: DropdownItem) =>
   item.kind === "history"
     ? `history-${item.term}`
     : item.kind === "media"
-      ? `media-${item.media.id}`
+      ? `media-${item.media.mediaType}-${item.media.id}`
       : `person-${item.person.id}`;
 
 const dropdownItemLabel = (item: DropdownItem) =>
@@ -123,7 +123,12 @@ export function SearchPage() {
   const peopleResults = peopleQuery.data?.results ?? [];
 
   const hasFilters = Boolean(genreMovie || genreSeries || provider || company);
-  const showResults = hasFilters || debouncedQuery.trim().length >= MIN_SEARCH_QUERY_LENGTH;
+  const hasQuery = debouncedQuery.trim().length >= MIN_SEARCH_QUERY_LENGTH;
+  // Filters (genre, platform, studio) narrow movies and series; they mean
+  // nothing for people. In the people scope only a typed query opens the
+  // results view: with filters alone it would wait on a search that is never
+  // sent.
+  const showResults = isPersonScope ? hasQuery : hasFilters || hasQuery;
   // No query typed yet and no filter applied: browse the same catalogue
   // sections as the home dashboard instead of an empty "start typing" state.
   // Same query key as useHomeFeed on the home page, so this is a cache hit
@@ -337,7 +342,9 @@ export function SearchPage() {
       <div className="space-y-5">
         <SectionHeader
           title={t("search.globalSearch")}
-          subtitle={hasFilters ? t("search.showingResults", { filters: filterTitle }) : t("search.subtitle")}
+          subtitle={
+            hasFilters && !isPersonScope ? t("search.showingResults", { filters: filterTitle }) : t("search.subtitle")
+          }
           icon={Search}
           isPageTitle
         />

@@ -688,6 +688,23 @@ describe("SearchPage — person scope", () => {
     expect(screen.queryByTestId("media-grid")).not.toBeInTheDocument();
   });
 
+  it("browses the catalogue instead of loading forever when the people scope has filters but no query", () => {
+    // A disabled query (no text to search) stays pending: filters do not apply to
+    // people, so there is nothing for this view to wait for.
+    peopleSearchMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isPending: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    const { container } = renderPage("?scope=person&genreMovie=28");
+
+    expect(container.querySelector(".animate-shimmer")).not.toBeInTheDocument();
+    expect(screen.getByTestId("catalogue-sections")).toBeInTheDocument();
+  });
+
   it("shows the no-results empty state when the person search comes back empty", () => {
     renderPage("?q=nobody&scope=person");
 
@@ -854,6 +871,27 @@ describe("SearchPage — search history and suggestions dropdown", () => {
 
     expect(searchHistoryState.addSearch).toHaveBeenCalledWith("dune");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/movies/$movieId", params: { movieId: "1" } });
+  });
+
+  it("lists a movie and a series that share a TMDB id as two suggestions without a duplicate-key warning", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    searchHookMock.mockReturnValue({
+      ...defaultSearchResult(),
+      items: [
+        buildSummary({ id: 5, mediaType: "movie", title: "Seven" }),
+        buildSummary({ id: 5, mediaType: "series", title: "Seven, the series" }),
+      ],
+    });
+    renderPage();
+
+    const input = screen.getByRole("textbox", { name: i18n.t("searchBar.placeholder") });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "seven" } });
+
+    expect(await screen.findAllByRole("option")).toHaveLength(2);
+    const duplicateKeyWarnings = consoleError.mock.calls.filter((call) => String(call[0]).includes("same key"));
+    consoleError.mockRestore();
+    expect(duplicateKeyWarnings).toHaveLength(0);
   });
 
   it("navigates a series suggestion to its detail page", async () => {
