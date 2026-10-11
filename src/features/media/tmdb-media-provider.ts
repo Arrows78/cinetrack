@@ -197,7 +197,7 @@ export class TmdbMediaProvider implements MediaProvider {
       watch_region: context.region,
     });
 
-    return response.results
+    return (response.results ?? [])
       .filter((provider) => !provider.display_priorities || provider.display_priorities[context.region] !== undefined)
       .sort((a, b) => {
         const left = a.display_priorities?.[context.region] ?? a.display_priority;
@@ -265,7 +265,7 @@ export class TmdbMediaProvider implements MediaProvider {
       query,
       page,
     });
-    const results = response.results
+    const results = (response.results ?? [])
       .filter(
         (result): result is TmdbMultiSearchResultDto & { media_type: "movie" | "tv" } =>
           result.media_type === "movie" || result.media_type === "tv"
@@ -286,7 +286,7 @@ export class TmdbMediaProvider implements MediaProvider {
       language,
       external_source: "tvdb_id",
     });
-    const match = response.tv_results[0];
+    const match = response.tv_results?.[0];
     return match ? mapSeriesDto(match) : null;
   }
 
@@ -298,7 +298,7 @@ export class TmdbMediaProvider implements MediaProvider {
     const context = await this.context(region);
     const path = mediaType === "movie" ? `/movie/${mediaId}/watch/providers` : `/tv/${mediaId}/watch/providers`;
     const response = await tmdbFetch<TmdbProviderResultsResponse>(path);
-    const result = response.results[context.region] ?? {};
+    const result = response.results?.[context.region] ?? {};
     return {
       region: context.region,
       link: result.link,
@@ -323,10 +323,19 @@ export class TmdbMediaProvider implements MediaProvider {
   async getVideos(mediaType: MediaType, mediaId: number): Promise<MediaVideo[]> {
     const { language } = await this.context();
     const path = mediaType === "movie" ? `/movie/${mediaId}/videos` : `/tv/${mediaId}/videos`;
-    const response = await tmdbFetch<TmdbVideoResponse>(path, { language });
-    return response.results
+    // TMDB's `language` filter alone returns only videos tagged with that
+    // language: a French user would see no trailer at all for a title whose
+    // trailer is English. English and untagged videos are asked for too, and
+    // listed after the ones in the user's language.
+    const preferred = language.slice(0, 2);
+    const response = await tmdbFetch<TmdbVideoResponse>(path, {
+      language,
+      include_video_language: `${preferred},en,null`,
+    });
+    const rank = (video: { iso_639_1?: string | null }) => (video.iso_639_1 === preferred ? 0 : 1);
+    return (response.results ?? [])
       .filter((video) => video.site === "YouTube")
-      .sort((a, b) => Number(b.official) - Number(a.official))
+      .sort((a, b) => rank(a) - rank(b) || Number(b.official) - Number(a.official))
       .map(mapVideo);
   }
 

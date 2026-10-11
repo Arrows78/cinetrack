@@ -227,6 +227,8 @@ export interface TmdbVideoDto {
   site: string;
   type: string;
   official: boolean;
+  /** The language the video is tagged with; absent or null for an untagged one. */
+  iso_639_1?: string | null;
 }
 export interface TmdbVideoResponse {
   results: TmdbVideoDto[];

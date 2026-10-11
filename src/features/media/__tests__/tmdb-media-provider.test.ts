@@ -440,6 +440,72 @@ describe("TmdbMediaProvider", () => {
     });
   });
 
+  describe("videos without a translation", () => {
+    it("asks TMDB for videos in the user's language, English and untagged, since the language filter alone hides every English trailer", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+      mocks.tmdbFetch.mockResolvedValue({ results: [] });
+
+      await provider.getVideos("series", 5);
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith("/tv/5/videos", {
+        language: "fr-FR",
+        include_video_language: "fr,en,null",
+      });
+    });
+
+    it("lists a trailer in the user's language before an English one, official first inside each language", async () => {
+      mocks.getPreferences.mockResolvedValue(basePreferences({ language: "fr" }));
+      const video = (id: string, iso_639_1: string, official: boolean): TmdbVideoDto => ({
+        id,
+        key: id,
+        name: id,
+        site: "YouTube",
+        type: "Trailer",
+        official,
+        iso_639_1,
+      });
+      mocks.tmdbFetch.mockResolvedValue({
+        results: [
+          video("en-official", "en", true),
+          video("fr-unofficial", "fr", false),
+          video("fr-official", "fr", true),
+        ],
+      });
+
+      const videos = await provider.getVideos("movie", 1);
+
+      expect(videos.map((item) => item.key)).toEqual(["fr-official", "fr-unofficial", "en-official"]);
+    });
+
+    it("returns no videos when TMDB answers without a results list", async () => {
+      mocks.tmdbFetch.mockResolvedValue({});
+      expect(await provider.getVideos("movie", 1)).toEqual([]);
+    });
+  });
+
+  describe("answers missing a list", () => {
+    it("search (all) maps a response without results to an empty page", async () => {
+      mocks.tmdbFetch.mockResolvedValue({ page: 1, total_pages: 0, total_results: 0 });
+      expect((await provider.search("zzzz", "all")).results).toEqual([]);
+    });
+
+    it("getWatchAvailability copes with a response without results", async () => {
+      mocks.tmdbFetch.mockResolvedValue({});
+      const availability = await provider.getWatchAvailability("movie", 1);
+      expect(availability.flatrate).toEqual([]);
+    });
+
+    it("getWatchProviders copes with a response without results", async () => {
+      mocks.tmdbFetch.mockResolvedValue({});
+      expect(await provider.getWatchProviders("movie")).toEqual([]);
+    });
+
+    it("findSeriesByTvdbId returns null when tv_results is missing", async () => {
+      mocks.tmdbFetch.mockResolvedValue({});
+      expect(await provider.findSeriesByTvdbId(1)).toBeNull();
+    });
+  });
+
   describe("findSeriesByTvdbId", () => {
     it("maps the first tv_results match to a Series", async () => {
       mocks.tmdbFetch.mockResolvedValue({ tv_results: [tvDto({ id: 99 })] });
