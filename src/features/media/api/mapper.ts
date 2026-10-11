@@ -58,10 +58,18 @@ const resolveGenreNames = (ids: number[] | undefined, list: ReadonlyArray<{ id: 
 // this takes the first non-empty one rather than just the first entry.
 // Falls back to the US rating (the one certification most likely to exist)
 // when the user's own region has no rated release at all.
+// TMDB answers "" for an unknown date and 0 for an unknown runtime or total
+// (a film that is not out yet, an announced show). Kept as-is they read as
+// real values downstream: "0 min", a "" date that every `?? fallback` lets
+// through, a total of 0 episodes. They become null/undefined here, once.
+const dateOrNull = (value?: string | null): string | null => value || null;
+const positiveOrNull = (value?: number | null): number | null =>
+  typeof value === "number" && value > 0 ? value : null;
+
 const resolveMovieCertification = (dto: TmdbReleaseDatesDto | undefined, region: string): string | null => {
   const results = dto?.results ?? [];
   const forRegion = (iso: string) =>
-    results.find((entry) => entry.iso_3166_1 === iso)?.release_dates.find((entry) => entry.certification)
+    results.find((entry) => entry.iso_3166_1 === iso)?.release_dates?.find((entry) => entry.certification)
       ?.certification;
   return forRegion(region) ?? forRegion(DEFAULT_TMDB_REGION) ?? null;
 };
@@ -92,26 +100,38 @@ const MAX_REVIEWS = 5;
 const mapReviews = (reviews?: TmdbReviewsDto): MediaReview[] =>
   (reviews?.results ?? []).slice(0, MAX_REVIEWS).map((review) => ({
     id: review.id,
-    author: review.author_details.username || review.author,
-    avatarUrl: resolveAvatarUrl(review.author_details.avatar_path),
-    rating: review.author_details.rating,
+    author: review.author_details?.username || review.author,
+    avatarUrl: resolveAvatarUrl(review.author_details?.avatar_path),
+    rating: review.author_details?.rating,
     content: review.content,
     createdAt: review.created_at,
     url: review.url,
   }));
 
-const mapCast = (cast?: TmdbCastDto[]): CastMember[] =>
-  (cast ?? [])
-    .slice()
-    .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
-    .slice(0, 12)
-    .map((member) => ({
+// A person credited twice on the same title (two roles) is one entry: the
+// cast list keys its cards by person id, and two cards for one actor read as
+// a bug. The roles are joined on the first credit.
+const mapCast = (cast?: TmdbCastDto[]): CastMember[] => {
+  const byId = new Map<number, CastMember>();
+  for (const member of (cast ?? []).slice().sort((a, b) => (a.order ?? 999) - (b.order ?? 999))) {
+    const character = member.character || undefined;
+    const existing = byId.get(member.id);
+    if (existing) {
+      if (character && !existing.character?.split(" / ").includes(character)) {
+        existing.character = existing.character ? `${existing.character} / ${character}` : character;
+      }
+      continue;
+    }
+    byId.set(member.id, {
       id: member.id,
       name: member.name,
-      character: member.character,
+      character,
       profilePath: member.profile_path,
       order: member.order,
-    }));
+    });
+  }
+  return [...byId.values()].slice(0, 12);
+};
 
 // Only "Director" jobs — that's all the people-based discovery rail and
 // collection features need for v1 (see CrewMember's doc comment in
@@ -157,16 +177,16 @@ export const mapMovieDto = (dto: TmdbMovieDto, region: string = DEFAULT_TMDB_REG
   overview: dto.overview,
   posterPath: dto.poster_path,
   backdropPath: dto.backdrop_path,
-  releaseDate: dto.release_date,
+  releaseDate: dateOrNull(dto.release_date),
   year: yearFromDate(dto.release_date),
-  rating: dto.vote_average,
+  rating: dto.vote_average ?? 0,
   genres: dto.genres?.map((genre) => genre.name) ?? resolveGenreNames(dto.genre_ids, GENRES.movies),
   genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.production_countries?.map((country) => country.name) ?? [],
   language: dto.spoken_languages?.[0]?.english_name,
   status: dto.status,
-  runtime: dto.runtime,
-  duration: dto.runtime,
+  runtime: positiveOrNull(dto.runtime),
+  duration: positiveOrNull(dto.runtime),
   cast: mapCast(dto.credits?.cast),
   directors: mapCrew(dto.credits?.crew),
   writers: mapWriters(dto.credits?.crew),
@@ -184,7 +204,7 @@ export const mapCollectionDto = (dto: TmdbCollectionDto): MovieCollection => ({
   overview: dto.overview,
   posterPath: dto.poster_path,
   backdropPath: dto.backdrop_path,
-  parts: dto.parts.map((part) => mapMovieDto(part)),
+  parts: (dto.parts ?? []).map((part) => mapMovieDto(part)),
 });
 
 const mapSeasonPreviewDto = (dto: TmdbSeasonPreviewDto): Season => ({
@@ -193,8 +213,8 @@ const mapSeasonPreviewDto = (dto: TmdbSeasonPreviewDto): Season => ({
   name: dto.name,
   overview: dto.overview,
   posterPath: dto.poster_path,
-  airDate: dto.air_date,
-  episodeCount: dto.episode_count,
+  airDate: dateOrNull(dto.air_date),
+  episodeCount: dto.episode_count ?? 0,
   episodes: [],
 });
 
@@ -206,20 +226,21 @@ export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGIO
   overview: dto.overview,
   posterPath: dto.poster_path,
   backdropPath: dto.backdrop_path,
-  releaseDate: dto.first_air_date,
+  releaseDate: dateOrNull(dto.first_air_date),
   year: yearFromDate(dto.first_air_date),
-  rating: dto.vote_average,
+  rating: dto.vote_average ?? 0,
   genres: dto.genres?.map((genre) => genre.name) ?? resolveGenreNames(dto.genre_ids, GENRES.series),
   genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.origin_country ?? [],
   language: dto.languages?.[0],
   status: dto.status,
-  runtime: dto.episode_run_time?.[0] ?? null,
+  runtime: dto.episode_run_time?.find((minutes) => minutes > 0) ?? null,
   cast: mapCast(dto.credits?.cast),
   directors: mapCrew(dto.credits?.crew),
   writers: mapWriters(dto.credits?.crew),
-  numberOfSeasons: dto.number_of_seasons ?? dto.seasons?.length ?? 0,
-  numberOfEpisodes: dto.number_of_episodes,
+  // Specials (season 0) are not counted, same as number_of_seasons itself.
+  numberOfSeasons: dto.number_of_seasons || dto.seasons?.filter((season) => season.season_number > 0).length || 0,
+  numberOfEpisodes: positiveOrNull(dto.number_of_episodes) ?? undefined,
   imdbId: dto.external_ids?.imdb_id ?? null,
   certification: resolveSeriesCertification(dto.content_ratings, region),
   keywords: (dto.keywords?.results ?? []).map((keyword) => keyword.name),
@@ -235,26 +256,29 @@ export const mapEpisodeDto = (dto: TmdbEpisodeDto): Episode => ({
   episodeNumber: dto.episode_number,
   title: dto.name,
   overview: dto.overview,
-  airDate: dto.air_date,
-  runtime: dto.runtime,
+  airDate: dateOrNull(dto.air_date),
+  runtime: positiveOrNull(dto.runtime),
   stillPath: dto.still_path,
-  rating: dto.vote_average,
+  rating: dto.vote_average ?? null,
   guestStars: mapCast(dto.guest_stars),
 });
 
 export const mapEpisodeStillPaths = (dto: TmdbEpisodeImagesDto): string[] =>
   (dto.stills ?? []).slice(0, MAX_GALLERY_BACKDROPS).map((image) => image.file_path);
 
-export const mapSeasonDetailsDto = (dto: TmdbSeasonDetailsDto): Season => ({
-  id: dto.id,
-  seasonNumber: dto.season_number,
-  name: dto.name,
-  overview: dto.overview,
-  posterPath: dto.poster_path,
-  airDate: dto.air_date,
-  episodeCount: dto.episodes.length,
-  episodes: dto.episodes.map(mapEpisodeDto),
-});
+export const mapSeasonDetailsDto = (dto: TmdbSeasonDetailsDto): Season => {
+  const episodes = dto.episodes ?? [];
+  return {
+    id: dto.id,
+    seasonNumber: dto.season_number,
+    name: dto.name,
+    overview: dto.overview,
+    posterPath: dto.poster_path,
+    airDate: dateOrNull(dto.air_date),
+    episodeCount: episodes.length,
+    episodes: episodes.map(mapEpisodeDto),
+  };
+};
 
 export const mapSearchResult = (dto: TmdbMovieDto | TmdbTvDto, mediaType: MediaType): MediaSummary =>
   mediaType === "movie" ? mapMovieDto(dto as TmdbMovieDto) : mapSeriesDto(dto as TmdbTvDto);
@@ -263,7 +287,7 @@ export const mapPage = <Dto, Item>(response: TmdbListResponse<Dto>, mapper: (dto
   page: response.page,
   totalPages: response.total_pages,
   totalResults: response.total_results,
-  results: response.results.map(mapper),
+  results: (response.results ?? []).map(mapper),
 });
 
 export const mapWatchProvider = (dto: TmdbWatchProviderDto): WatchProvider => ({
@@ -282,16 +306,27 @@ export const mapVideo = (dto: TmdbVideoDto): MediaVideo => ({
   official: dto.official,
 });
 
-export const mapPerson = (dto: TmdbPersonDto): PersonSummary => ({
-  id: dto.id,
-  name: dto.name,
-  profilePath: dto.profile_path,
-  knownForDepartment: dto.known_for_department,
-  knownFor: (dto.known_for ?? dto.combined_credits?.cast ?? [])
-    .filter((item) => item.media_type === "movie" || item.media_type === "tv")
-    .slice(0, 20)
-    .map((item) => mapSearchResult(item, item.media_type === "movie" ? "movie" : "series")),
-});
+const mediaKey = (item: { media_type: string; id: number }) => `${item.media_type}-${item.id}`;
+
+export const mapPerson = (dto: TmdbPersonDto): PersonSummary => {
+  const seen = new Set<string>();
+  // The same title can be credited more than once (several roles): a
+  // "known for" strip shows it once, and its grid keys cards by type and id.
+  const known = (dto.known_for ?? dto.combined_credits?.cast ?? []).filter((item) => {
+    if (item.media_type !== "movie" && item.media_type !== "tv") return false;
+    const key = mediaKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return {
+    id: dto.id,
+    name: dto.name,
+    profilePath: dto.profile_path,
+    knownForDepartment: dto.known_for_department || undefined,
+    knownFor: known.slice(0, 20).map((item) => mapSearchResult(item, item.media_type === "movie" ? "movie" : "series")),
+  };
+};
 
 const mapPersonCredit = (item: TmdbPersonCreditDto, department: "cast" | "crew"): PersonCreditItem => ({
   ...mapSearchResult(item, item.media_type === "movie" ? "movie" : "series"),
@@ -300,16 +335,34 @@ const mapPersonCredit = (item: TmdbPersonCreditDto, department: "cast" | "crew")
   episodeCount: item.episode_count,
 });
 
+// One entry per title and department: TMDB lists a credit per role or job
+// ("Writer", "Screenplay", a voice and an on-screen part), which would
+// otherwise show the same title as several cards. The roles are joined.
+const mergePersonCredits = (credits: PersonCreditItem[]): PersonCreditItem[] => {
+  const merged = new Map<string, PersonCreditItem>();
+  for (const credit of credits) {
+    const key = `${credit.department}-${credit.mediaType}-${credit.id}`;
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, credit);
+    } else if (credit.role && !existing.role.split(" / ").includes(credit.role)) {
+      existing.role = existing.role ? `${existing.role} / ${credit.role}` : credit.role;
+    }
+  }
+  return [...merged.values()];
+};
+
 // The full body of work (unlike PersonSummary.knownFor, which is a curated,
 // cast-only strip): cast and crew credits merged into one list, most recent
-// release/air date first, so the person's detail page can show everything
-// they've worked on rather than just what they're best known for.
+// release/air date first (undated projects last), so the person's detail page
+// can show everything they've worked on rather than just what they're best
+// known for.
 export const mapPersonDetail = (dto: TmdbPersonDto): PersonDetail => {
   const isPlayable = (item: TmdbPersonCreditDto) => item.media_type === "movie" || item.media_type === "tv";
-  const credits = [
+  const credits = mergePersonCredits([
     ...(dto.combined_credits?.cast ?? []).filter(isPlayable).map((item) => mapPersonCredit(item, "cast")),
     ...(dto.combined_credits?.crew ?? []).filter(isPlayable).map((item) => mapPersonCredit(item, "crew")),
-  ];
+  ]);
   const filmography = credits.sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
 
   return {
