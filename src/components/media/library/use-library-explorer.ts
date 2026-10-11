@@ -4,6 +4,7 @@ import type { ActiveFilterChip } from "@/components/media/library/active-filter-
 import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import {
   filterAndSortLibrary,
+  librarySortLabelKey,
   resolveSavedLibraryFilters,
   type LibrarySortMode,
   type LibraryStatusFilter,
@@ -293,7 +294,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
           {
             key: "sort",
             label: t("filters.chips.sort", {
-              value: sort === "title" ? t("library.title") : t("library.rating"),
+              value: t(librarySortLabelKey(sort)),
             }),
             onRemove: () => setSort("recent"),
           },

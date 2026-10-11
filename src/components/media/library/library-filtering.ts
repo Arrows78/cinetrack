@@ -29,6 +29,11 @@ export interface LibraryFilterCriteria {
   nextEpisodeDateBySeriesId?: Map<number, string>;
 }
 
+/** The `library.*` label of a sort mode — what its option and its active-filter chip both say. */
+export function librarySortLabelKey(sort: LibrarySortMode) {
+  return `library.${sort}` as const;
+}
+
 /**
  * A saved filter outlives the custom list it points at: reapplying one whose
  * list was deleted since would filter by an id the backend answers "not
@@ -157,20 +162,32 @@ export function filterAndSortLibrary(
             } as MediaGridItem,
           }));
 
+  // Ties break on (id, media type) the way the server's keyset order does
+  // (library/queries.rs), so the same library reads in the same order whether
+  // this pass or SQLite sorted it — and never in whatever order the rows
+  // happened to arrive.
+  const byIdentity = (a: MediaGridItem, b: MediaGridItem, direction: 1 | -1) =>
+    direction * (a.id - b.id) || direction * (a.mediaType < b.mediaType ? -1 : a.mediaType > b.mediaType ? 1 : 0);
+  // ISO timestamps compare as plain strings; localeCompare would apply
+  // locale collation rules to what is not text.
+  const compareIso = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
   return [...fromLibrary, ...listOnly]
     .sort((a, b) => {
-      if (sort === "title") return a.media.title.localeCompare(b.media.title);
-      if (sort === "rating") return (b.media.rating ?? 0) - (a.media.rating ?? 0);
+      if (sort === "title") return a.media.title.localeCompare(b.media.title) || byIdentity(a.media, b.media, 1);
+      if (sort === "rating") {
+        return (b.media.rating ?? 0) - (a.media.rating ?? 0) || byIdentity(a.media, b.media, -1);
+      }
       if (sort === "nextEpisode") {
         // Ascending (soonest first), unlike every other sort's newest/
         // highest-first order — and an empty sortKey (nothing airing in the
         // tracked window) always sorts last, never first.
-        if (!a.sortKey && !b.sortKey) return 0;
+        if (!a.sortKey && !b.sortKey) return byIdentity(a.media, b.media, -1);
         if (!a.sortKey) return 1;
         if (!b.sortKey) return -1;
-        return a.sortKey.localeCompare(b.sortKey);
+        return compareIso(a.sortKey, b.sortKey) || byIdentity(a.media, b.media, -1);
       }
-      return b.sortKey.localeCompare(a.sortKey);
+      return compareIso(b.sortKey, a.sortKey) || byIdentity(a.media, b.media, -1);
     })
     .map((entry) => entry.media);
 }

@@ -1,7 +1,17 @@
+import i18n from "@/i18n";
 import { describe, expect, it } from "vitest";
-import { filterAndSortLibrary, resolveSavedLibraryFilters, type LibraryFilterCriteria } from "../library-filtering";
+import {
+  filterAndSortLibrary,
+  librarySortLabelKey,
+  resolveSavedLibraryFilters,
+  type LibraryFilterCriteria,
+} from "../library-filtering";
 import { mediaKey } from "@/shared/utils/media-key";
 import type { CustomListItem, LibraryFilterState, LibraryItem } from "@/types/media";
+
+// Default "recent" order is newest first: a lower media id is a touch newer, so
+// a test that does not care about order reads its rows in the order it wrote them.
+const staggered = (mediaId: number) => `2026-01-01T00:${String(59 - (mediaId % 60)).padStart(2, "0")}:00.000Z`;
 
 function libraryItem(overrides: Partial<LibraryItem> & Pick<LibraryItem, "id" | "mediaId" | "title">): LibraryItem {
   return {
@@ -21,7 +31,7 @@ function libraryItem(overrides: Partial<LibraryItem> & Pick<LibraryItem, "id" | 
     completedAt: null,
     rewatchCount: 0,
     createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: staggered(overrides.mediaId),
     ...overrides,
   };
 }
@@ -34,7 +44,7 @@ function listItem(
     mediaType: "movie",
     posterPath: null,
     position: 0,
-    addedAt: "2026-01-01T00:00:00.000Z",
+    addedAt: staggered(overrides.mediaId),
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
@@ -194,6 +204,24 @@ describe("filterAndSortLibrary", () => {
       "Banana",
       "Cherry",
     ]);
+  });
+
+  it("breaks every tie the way the server does, whatever order the rows arrive in", () => {
+    const rows = [
+      libraryItem({ id: "1", mediaId: 1, title: "Same", rating: 7, updatedAt: "2026-01-01T00:00:00.000Z" }),
+      libraryItem({ id: "2", mediaId: 2, title: "Same", rating: 7, updatedAt: "2026-01-01T00:00:00.000Z" }),
+      libraryItem({ id: "3", mediaId: 3, title: "Same", rating: 7, updatedAt: "2026-01-01T00:00:00.000Z" }),
+    ];
+    const idsOf = (items: LibraryItem[], sort: "title" | "rating" | "recent") =>
+      filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, sort }).map((media) => media.id);
+
+    // Title ascends by id; every other sort descends, as in library/queries.rs.
+    expect(idsOf(rows, "title")).toEqual([1, 2, 3]);
+    expect(idsOf([...rows].reverse(), "title")).toEqual([1, 2, 3]);
+    for (const sort of ["rating", "recent"] as const) {
+      expect(idsOf(rows, sort)).toEqual([3, 2, 1]);
+      expect(idsOf([...rows].reverse(), sort)).toEqual([3, 2, 1]);
+    }
   });
 
   it("sorts by rating descending, treating a null rating as 0", () => {
@@ -519,5 +547,14 @@ describe("resolveSavedLibraryFilters", () => {
 
   it("leaves every other field as saved", () => {
     expect(resolveSavedLibraryFilters(saved, [])).toEqual({ ...saved, listFilter: "all" });
+  });
+});
+
+describe("librarySortLabelKey", () => {
+  it("names every sort mode by its own label, never another's", () => {
+    const modes = ["recent", "title", "rating", "dateAdded", "dateCompleted", "nextEpisode"] as const;
+    const keys = modes.map(librarySortLabelKey);
+    expect(new Set(keys).size).toBe(modes.length);
+    for (const key of keys) expect(i18n.exists(String(key))).toBe(true);
   });
 });
