@@ -479,6 +479,32 @@ describe("MovieDetailPage", () => {
     expect(toggleMovieSeenMock).not.toHaveBeenCalled();
   });
 
+  it("leaves a failed rewatch to the global mutation error toast instead of an unhandled rejection", async () => {
+    const movie = buildMovie();
+    movieQueryMock.mockReturnValue({
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: movie,
+    });
+    rewatchMovieMock.mockRejectedValueOnce(new Error("save failed"));
+    seenQueryMock.mockReturnValue({
+      data: true,
+      isSaving: false,
+      isError: false,
+      toggleMovieSeen: toggleMovieSeenMock,
+      rewatchMovie: rewatchMovieMock,
+    });
+
+    renderPage();
+    screen.getByRole("button", { name: "Watch again" }).click();
+
+    await waitFor(() => expect(rewatchMovieMock).toHaveBeenCalledWith({ movie }));
+    // The rejection was swallowed by the handler: the page is still rendered.
+    expect(screen.getByRole("button", { name: "Watch again" })).toBeInTheDocument();
+  });
+
   it("disables 'Watch again' while a save is in flight", () => {
     seenQueryMock.mockReturnValue({
       data: true,
