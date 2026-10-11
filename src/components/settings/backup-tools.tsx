@@ -41,7 +41,8 @@ export function BackupTools() {
       anchor.click();
       URL.revokeObjectURL(url);
       toast({ description: t("backup.exported"), variant: "success" });
-    } catch {
+    } catch (error) {
+      logger.warn(`Backup export failed: ${errorMessage(error)}`);
       toast({ description: t("backup.exportFailed"), variant: "error" });
     } finally {
       setIsExporting(false);

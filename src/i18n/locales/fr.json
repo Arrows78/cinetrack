@@ -399,6 +399,8 @@
     "calendarNotifications": "Notifications calendrier",
     "availabilityAlerts": "Alertes de disponibilité",
     "desktopNotifications": "Notifications bureau",
+    "notificationsPermissionDenied": "Les notifications sont bloquées pour CineTrack. Autorisez-les dans les réglages du système, puis réessayez.",
+    "notificationsToggleFailed": "Impossible de demander l'autorisation d'envoyer des notifications. Réessayez.",
     "onThisDay": "Souvenirs « Ce jour-là »",
     "desktopSecurity": "Desktop et sécurité",
     "desktopSecurityDesc": "Token chiffré, raccourcis, démarrage, mises à jour et récupération.",

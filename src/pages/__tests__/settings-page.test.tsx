@@ -511,6 +511,37 @@ describe("SettingsPage — preferences", () => {
     );
   });
 
+  it("says why when the system refuses the notification permission", async () => {
+    requestPermissionMock.mockResolvedValue(false);
+    renderPage();
+    await screen.findByText("Default profile");
+
+    screen.getByRole("button", { name: "Desktop notifications" }).click();
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith({
+        description: i18n.t("settings.notificationsPermissionDenied"),
+        variant: "error",
+      })
+    );
+  });
+
+  it("reports a failing permission request instead of leaving it unhandled", async () => {
+    requestPermissionMock.mockRejectedValue(new Error("plugin unavailable"));
+    renderPage();
+    await screen.findByText("Default profile");
+
+    screen.getByRole("button", { name: "Desktop notifications" }).click();
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith({
+        description: i18n.t("settings.notificationsToggleFailed"),
+        variant: "error",
+      })
+    );
+    expect(updatePreferenceMock).not.toHaveBeenCalledWith("desktopNotificationsEnabled", true);
+  });
+
   it("adds a streaming platform to preferredProviderIds when its chip is toggled on", async () => {
     renderPage();
     await screen.findByText("Default profile");

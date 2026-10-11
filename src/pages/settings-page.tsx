@@ -33,7 +33,10 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 import { useProfiles, useProfileSwitching } from "@/features/profiles/use-profiles";
 import { COLOR_PRESETS, type AccentColor, type AvatarPresetKey } from "@/shared/constants/colors";
 import { PLATFORMS } from "@/shared/constants/discover";
+import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/shared/lib/cn";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import type { UserPreferences, UserProfile } from "@/types/media";
 
 // Every one of these sections always renders (none depend on async data
@@ -550,7 +553,20 @@ export function SettingsPage() {
   // availabilityMonitor.checkAll's own desktopNotificationsEnabled gating.
   const toggleDesktopNotifications = async () => {
     const enabled = !preferences?.desktopNotificationsEnabled;
-    if (enabled && !(await notificationService.requestPermission())) return;
+    if (enabled) {
+      let granted: boolean;
+      try {
+        granted = await notificationService.requestPermission();
+      } catch (error) {
+        logger.warn(`Requesting the notification permission failed: ${errorMessage(error)}`);
+        toast({ description: t("settings.notificationsToggleFailed"), variant: "error" });
+        return;
+      }
+      if (!granted) {
+        toast({ description: t("settings.notificationsPermissionDenied"), variant: "error" });
+        return;
+      }
+    }
     await updatePreference({ key: "desktopNotificationsEnabled", value: enabled });
   };
   const toggleStreamingProvider = async (providerId: number) => {

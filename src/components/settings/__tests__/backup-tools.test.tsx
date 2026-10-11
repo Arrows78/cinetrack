@@ -179,6 +179,15 @@ describe("BackupTools", () => {
       await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" })));
       expect(screen.getByRole("button", { name: "Export" })).not.toBeDisabled();
     });
+
+    it("logs why an export failed, not just that it did", async () => {
+      exportMock.mockRejectedValueOnce(new Error("disk full"));
+      renderBackupTools();
+
+      screen.getByRole("button", { name: "Export" }).click();
+
+      await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("disk full")));
+    });
   });
 
   describe("import", () => {

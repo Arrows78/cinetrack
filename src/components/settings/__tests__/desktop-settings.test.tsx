@@ -622,6 +622,22 @@ describe("DesktopSettings", () => {
       expect(screen.queryByText("Restore the automatic backup?")).not.toBeInTheDocument();
     });
 
+    it("startRestore reports a backup that can't be read instead of failing silently", async () => {
+      getAutomaticBackupInfoMock.mockRejectedValueOnce(new Error("unreadable folder"));
+      render(<DesktopSettings />);
+
+      screen.getByRole("button", { name: "Restore backup" }).click();
+
+      await waitFor(() =>
+        expect(toastMock).toHaveBeenCalledWith({
+          description: "Operation failed.",
+          variant: "error",
+        })
+      );
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("unreadable folder"));
+      expect(screen.queryByText("Restore the automatic backup?")).not.toBeInTheDocument();
+    });
+
     it("startRestore opens the ConfirmDialog with the backup date when info is found", async () => {
       getAutomaticBackupInfoMock.mockResolvedValueOnce({ exportedAt: "2026-08-10T00:00:00.000Z" });
       render(<DesktopSettings />);

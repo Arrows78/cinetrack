@@ -399,6 +399,8 @@
     "calendarNotifications": "Calendar notifications",
     "availabilityAlerts": "Availability alerts",
     "desktopNotifications": "Desktop notifications",
+    "notificationsPermissionDenied": "Notifications are blocked for CineTrack. Allow them in your system settings, then try again.",
+    "notificationsToggleFailed": "Couldn't ask for the notification permission. Please try again.",
     "onThisDay": "\"On this day\" memories",
     "desktopSecurity": "Desktop & Security",
     "desktopSecurityDesc": "Encrypted token, shortcuts, startup, updates and recovery.",

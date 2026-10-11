@@ -170,7 +170,14 @@ export function DesktopSettings() {
     }
   };
   const startRestore = async () => {
-    const info = await maintenanceService.getAutomaticBackupInfo();
+    let info: Awaited<ReturnType<typeof maintenanceService.getAutomaticBackupInfo>>;
+    try {
+      info = await maintenanceService.getAutomaticBackupInfo();
+    } catch (error) {
+      logger.warn(`Reading the automatic backup failed: ${errorMessage(error)}`);
+      toast({ description: displayMessage(error, t("desktop.operationFailed")), variant: "error" });
+      return;
+    }
     if (!info) {
       toast({ description: t("backup.noAutomaticBackup"), variant: "error" });
       return;
