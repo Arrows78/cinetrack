@@ -6,6 +6,7 @@ import { AsyncActionFeedback } from "@/components/ui/async-action-feedback";
 import { EmptyState } from "@/components/states/empty-state";
 import { LoadingScreen } from "@/components/states/loading-screen";
 import { maintenanceService } from "@/features/backup";
+import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 import { useBootRecovery } from "@/features/desktop/use-boot-recovery";
 import { isTauriApp } from "@/shared/lib/platform";
@@ -24,7 +25,8 @@ function useRestoreAutomaticBackup() {
     try {
       await maintenanceService.restoreAutomaticBackup();
       window.location.reload();
-    } catch {
+    } catch (error) {
+      logger.warn(`Restoring the automatic backup at startup failed: ${errorMessage(error)}`);
       setIsRestoring(false);
       // Never the raw error here — this is one of the first screens an
       // already distressed user sees, and the underlying error can be a

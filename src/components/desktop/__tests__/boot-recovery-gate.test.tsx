@@ -28,6 +28,11 @@ vi.mock("@/features/backup/maintenance-service", () => ({
   maintenanceService: { restoreAutomaticBackup: () => restoreAutomaticBackup() },
 }));
 
+const loggerWarnMock = vi.fn();
+vi.mock("@/shared/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn() },
+}));
+
 const reloadMock = vi.fn();
 Object.defineProperty(window, "location", {
   value: { ...window.location, reload: reloadMock },
@@ -134,6 +139,8 @@ describe("BootRecoveryGate", () => {
     await waitFor(() => expect(screen.getByText("Couldn't restore the automatic backup.")).toBeInTheDocument());
     expect(screen.queryByText("No automatic backup was found.")).not.toBeInTheDocument();
     expect(reloadMock).not.toHaveBeenCalled();
+    // Hidden from the screen, but never lost: it goes to the diagnostic log.
+    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("No automatic backup was found."));
   });
 
   it("shows the blocked screen with no continue option when a migration failed", async () => {
