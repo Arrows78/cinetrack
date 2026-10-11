@@ -3,11 +3,10 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-import i18n from "@/i18n";
 import { AppRouter } from "@/app/router";
+import { checkBackgroundNotifications, runPeriodicChecks } from "@/app/periodic-checks";
 import { BrowserPreviewBanner } from "@/components/desktop/browser-preview-banner";
 import { Toaster } from "@/components/ui/toaster";
-import { toast } from "@/components/ui/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineIndicator } from "@/components/layout/offline-indicator";
 import { LanguageController } from "@/components/layout/language-controller";
@@ -15,13 +14,9 @@ import { ThemeController } from "@/components/layout/theme-controller";
 import { AmbientMotionController } from "@/components/layout/ambient-motion-controller";
 import { MilestoneCelebrationController } from "@/components/layout/milestone-celebration-controller";
 import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate";
-import { availabilityMonitor } from "@/features/availability/availability-monitor";
 import { desktopService } from "@/features/desktop/desktop-service";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { logger } from "@/shared/lib/logger";
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
-import { trackingService } from "@/features/tracking/tracking-service";
-import { notificationService } from "@/features/desktop/notification-service";
 import { syncService } from "@/features/sync/sync-service";
 import type { BootRecovery } from "@/features/desktop/boot-recovery-repository";
 import { errorMessage } from "@/shared/lib/errors";
@@ -30,31 +25,6 @@ import { appBootStartedAt } from "@/shared/lib/startup-timing";
 import { TOOLTIP_DELAY_MS } from "@/shared/constants/query";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrayLanguage } from "@/app/use-tray-language";
-
-// Module-level rather than declared inside App's effect: both the one-off
-// boot-time check and the recurring interval below (its own effect, so its
-// own re-checking availabilityCheckIntervalHours can take effect without
-// re-running the rest of App's boot sequence) need to call this same logic.
-async function checkBackgroundNotifications() {
-  const preferences = await preferencesRepository.getPreferences();
-  const availabilityOutcome = await availabilityMonitor.checkAll({
-    alertsEnabled: preferences.availabilityAlertsEnabled,
-    desktopNotificationsEnabled: preferences.desktopNotificationsEnabled,
-    preferredProviderIds: preferences.preferredProviderIds,
-  });
-  // Every single alert failing is a real outage (TMDB down, no network),
-  // not a quiet day — say so once, rather than letting the user believe
-  // their alerts are working. A partial failure stays log-only: the
-  // alerts that did succeed still did their job.
-  if (availabilityOutcome.checked > 0 && availabilityOutcome.failures === availabilityOutcome.checked) {
-    toast({ description: i18n.t("tracking.availabilityCheckFailed"), variant: "error" });
-  }
-  if (!preferences.notificationsEnabled) return;
-  // Only entries the user actually tracks (library movies, tracked-series
-  // episodes) can reach a notification — see buildNotifiableCalendarEntries.
-  const entries = await trackingService.buildNotifiableCalendarEntries();
-  await notificationService.notifyDue(entries, preferences);
-}
 
 // Module-level, not component state: React StrictMode intentionally mounts
 // this component's effect twice in dev (mount -> cleanup -> mount again) —
@@ -157,7 +127,7 @@ export function App() {
 
     const interval = window.setInterval(
       () => {
-        void checkBackgroundNotifications().catch((error: unknown) => {
+        void runPeriodicChecks().catch((error: unknown) => {
           logger.warn(`Background notification check failed: ${errorMessage(error)}`);
         });
       },

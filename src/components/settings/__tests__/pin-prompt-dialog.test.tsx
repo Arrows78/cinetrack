@@ -60,4 +60,16 @@ describe("PinPromptDialog", () => {
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAttribute("aria-describedby", alert.id);
   });
+
+  it("logs a verification that failed outright instead of reporting it as a wrong PIN silently", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    render(<Harness onVerify={vi.fn().mockRejectedValue(new Error("ipc down"))} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open prompt" }));
+    fireEvent.change(await screen.findByLabelText("PIN"), { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+
+    await screen.findByRole("alert");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("ipc down"));
+    warn.mockRestore();
+  });
 });

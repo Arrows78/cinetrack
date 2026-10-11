@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DIALOG_CONTENT_CLASSNAME, DIALOG_OVERLAY_CLASSNAME } from "@/components/ui/sheet";
 import { useRestoreFocus } from "@/components/ui/use-restore-focus";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 
 export interface PinPromptDialogProps {
   open: boolean;
@@ -49,7 +51,8 @@ export function PinPromptDialog({ open, profileName, onOpenChange, onVerify, onS
         setPin("");
         setIsVerifying(false);
       }
-    } catch {
+    } catch (verifyError) {
+      logger.warn(`PIN verification failed: ${errorMessage(verifyError)}`);
       setError(true);
       setPin("");
       setIsVerifying(false);
