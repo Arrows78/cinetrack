@@ -219,8 +219,20 @@ const BYTES_PER_GB = BYTES_PER_MB * 1024;
  */
 export const formatBytes = (bytes: number): string => {
   const value = Math.max(0, bytes);
+  // The decimal separator follows the language too: "42,3 Mo", not "42.3 Mo".
+  const oneDecimal = (amount: number) =>
+    new Intl.NumberFormat(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(amount);
   if (value < BYTES_PER_KB) return i18n.t("common.sizeBytes", { count: Math.round(value) });
-  if (value < BYTES_PER_MB) return i18n.t("common.sizeKB", { value: (value / BYTES_PER_KB).toFixed(1) });
-  if (value < BYTES_PER_GB) return i18n.t("common.sizeMB", { value: (value / BYTES_PER_MB).toFixed(1) });
-  return i18n.t("common.sizeGB", { value: (value / BYTES_PER_GB).toFixed(1) });
+  if (value < BYTES_PER_MB) return i18n.t("common.sizeKB", { value: oneDecimal(value / BYTES_PER_KB) });
+  if (value < BYTES_PER_GB) return i18n.t("common.sizeMB", { value: oneDecimal(value / BYTES_PER_MB) });
+  return i18n.t("common.sizeGB", { value: oneDecimal(value / BYTES_PER_GB) });
 };
+
+/**
+ * "July 2026" / "juillet 2026" for a "YYYY-MM" month key. The first of the
+ * month is read as local midnight (`parseISO`), like every other date-only
+ * value here: `new Date("2026-07-01")` is UTC midnight, which west of UTC is
+ * still June 30 and would label the month before.
+ */
+export const formatMonthLabel = (month: string): string =>
+  new Intl.DateTimeFormat(i18n.language, { month: "long", year: "numeric" }).format(parseISO(`${month}-01`));

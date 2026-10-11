@@ -1,12 +1,14 @@
 import { addDays, format as formatDateFns } from "date-fns";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n";
 import {
   ageFromBirthday,
   buildTmdbImageUrl,
+  formatBytes,
   formatDate,
   formatEpisodeCode,
   formatEpisodeNumber,
+  formatMonthLabel,
   formatRating,
   formatRelativeCountdown,
   formatRelativeDate,
@@ -273,5 +275,46 @@ describe("percent", () => {
   it("stays within 0-100 for out-of-range counts", () => {
     expect(percent(8, 6)).toBe(100);
     expect(percent(-1, 6)).toBe(0);
+  });
+});
+
+describe("formatMonthLabel", () => {
+  const previousZone = process.env.TZ;
+  afterEach(async () => {
+    if (previousZone === undefined) delete process.env.TZ;
+    else process.env.TZ = previousZone;
+    await i18n.changeLanguage("en");
+  });
+
+  it("labels the month itself in a time zone west of UTC", async () => {
+    process.env.TZ = "America/New_York";
+    await i18n.changeLanguage("en");
+    expect(formatMonthLabel("2026-07")).toBe("July 2026");
+  });
+
+  it("follows the active language", async () => {
+    await i18n.changeLanguage("fr");
+    expect(formatMonthLabel("2026-07")).toBe("juillet 2026");
+  });
+});
+
+describe("formatBytes", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("uses the language's own decimal separator", async () => {
+    await i18n.changeLanguage("en");
+    expect(formatBytes(1.5 * 1024 * 1024)).toBe("1.5 MB");
+    await i18n.changeLanguage("fr");
+    expect(formatBytes(1.5 * 1024 * 1024)).toBe("1,5 Mo");
+  });
+});
+
+describe("pluralize", () => {
+  it("uses the singular for 0 and 1, the plural above", () => {
+    expect(pluralize(0, "film", "films")).toBe("film");
+    expect(pluralize(1, "film", "films")).toBe("film");
+    expect(pluralize(2, "film", "films")).toBe("films");
   });
 });

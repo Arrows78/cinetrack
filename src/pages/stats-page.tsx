@@ -42,7 +42,7 @@ import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { StatsSkeleton } from "@/components/states/loading-skeletons";
 import { logger } from "@/shared/lib/logger";
 import { displayMessage } from "@/shared/lib/user-facing-error";
-import { formatDate, formatWatchDurationBreakdown } from "@/shared/utils/format";
+import { formatDate, formatMonthLabel, formatWatchDurationBreakdown } from "@/shared/utils/format";
 import { staggerDelayMs } from "@/shared/utils/animation";
 
 function DeltaBadge({
@@ -81,9 +81,8 @@ function DeltaBadge({
 }
 
 export function StatsPage() {
-  const { t, i18n } = useTranslation();
-  const monthLabel = (month: string) =>
-    new Intl.DateTimeFormat(i18n.language, { month: "long", year: "numeric" }).format(new Date(`${month}-01`));
+  const { t } = useTranslation();
+  const monthLabel = formatMonthLabel;
   const hours = (minutes: number) =>
     t("stats.durationHoursMinutes", { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
   const currentYear = new Date().getFullYear();
