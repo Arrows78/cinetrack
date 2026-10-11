@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { statsRepository } from "@/features/stats/stats-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -70,9 +71,12 @@ export function useWatchMilestones() {
 // stale "on this day" for yesterday.
 export function useOnThisDay(enabled: boolean) {
   const profileId = useActiveProfileId();
-  const today = new Date().toISOString();
+  const now = new Date();
+  const today = now.toISOString();
   return useQuery({
-    queryKey: [...queryKeys.local.stats(profileId), "onThisDay", today.slice(0, 10)],
+    // The local calendar day, like the month-day Rust compares in the viewer's
+    // time zone: a UTC date would flip hours away from the viewer's midnight.
+    queryKey: [...queryKeys.local.stats(profileId), "onThisDay", format(now, "yyyy-MM-dd")],
     queryFn: () => statsRepository.getOnThisDayEvents(today),
     enabled,
   });

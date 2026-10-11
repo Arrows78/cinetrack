@@ -187,7 +187,8 @@ export const statsRepository = {
       episodes: selected.filter((event) => event.episodeId !== null && event.episodeId !== undefined).length,
       minutes: selected.reduce((sum, event) => sum + (event.durationMinutes ?? 0), 0),
       topTitles: [...titleCounts.entries()]
-        .sort((a, b) => b[1] - a[1])
+        // Equal counts order by title, so the top five never depends on the order the events arrive in.
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .slice(0, 5)
         .map(([title, count]) => ({ title, count })),
       favouriteGenre,

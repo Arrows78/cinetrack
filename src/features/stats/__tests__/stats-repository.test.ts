@@ -145,21 +145,32 @@ describe("statsRepository.getYearSummary", () => {
   });
 
   it("buckets watch counts per calendar day for the activity calendar", async () => {
-    // Kept safely mid-day UTC (not near a day boundary) so this doesn't
-    // depend on the test runner's local timezone — same reasoning as
-    // localDay's other callers (activeDays above).
+    // Built from local mid-day (not UTC), so no zone from UTC-12 to UTC+14
+    // moves a watch onto a neighbouring day.
+    const at = (day: number, hour: number, minute = 0) => new Date(2026, 1, day, hour, minute).toISOString();
     mockYear([
-      viewingEvent({ mediaId: 1, watchedAt: "2026-02-01T12:00:00.000Z" }),
-      viewingEvent({ mediaId: 1, watchedAt: "2026-02-01T13:00:00.000Z" }),
-      viewingEvent({ mediaId: 1, watchedAt: "2026-02-02T12:00:00.000Z" }),
+      viewingEvent({ mediaId: 1, watchedAt: at(1, 12) }),
+      viewingEvent({ mediaId: 1, watchedAt: at(1, 13) }),
+      viewingEvent({ mediaId: 1, watchedAt: at(2, 12) }),
       // An unwatched rollback on the same day must not inflate the count.
-      viewingEvent({ mediaId: 1, eventType: "unwatched", watchedAt: "2026-02-02T12:05:00.000Z" }),
+      viewingEvent({ mediaId: 1, eventType: "unwatched", watchedAt: at(2, 12, 5) }),
     ]);
     const { statsRepository: repo } = await import("../stats-repository");
 
     const summary = await repo.getYearSummary(2026);
 
     expect(summary.dailyCounts).toEqual({ "2026-02-01": 2, "2026-02-02": 1 });
+  });
+
+  it("breaks equal top-title counts by title, whatever order the events arrive in", async () => {
+    const titles = ["Zulu", "Alpha", "Mike", "Bravo", "Yankee", "Charlie", "Xray"];
+    const at = (index: number) => new Date(2026, 1, 1 + index, 12).toISOString();
+    mockYear(titles.map((title, index) => viewingEvent({ mediaId: index + 1, title, watchedAt: at(index) })));
+    const { statsRepository: repo } = await import("../stats-repository");
+
+    const summary = await repo.getYearSummary(2026);
+
+    expect(summary.topTitles.map((entry) => entry.title)).toEqual(["Alpha", "Bravo", "Charlie", "Mike", "Xray"]);
   });
 
   it("excludes an unwatched rollback event from the aggregation", async () => {

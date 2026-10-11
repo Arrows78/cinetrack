@@ -91,6 +91,26 @@ describe("stats hooks", () => {
     expect(getOnThisDayEventsMock).toHaveBeenCalled();
   });
 
+  it("useOnThisDay moves to the next day at local midnight, not at UTC midnight", async () => {
+    getOnThisDayEventsMock.mockClear();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // 22:00 on the 9th, then 01:00 on the 10th, both local. West of UTC the
+      // two share one UTC date, which used to keep serving the 9th's events.
+      vi.setSystemTime(new Date(2026, 2, 9, 22, 0));
+      const { useOnThisDay } = await import("../use-stats");
+      const { result, rerender } = renderHook(() => useOnThisDay(true), { wrapper: createWrapper() });
+      await waitFor(() => expect(result.current.data).toEqual([{ id: "evt-1" }]));
+      expect(getOnThisDayEventsMock).toHaveBeenCalledTimes(1);
+
+      vi.setSystemTime(new Date(2026, 2, 10, 1, 0));
+      rerender();
+      await waitFor(() => expect(getOnThisDayEventsMock).toHaveBeenCalledTimes(2));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("useMonthlyRecap forwards the selected month to the repository", async () => {
     const { useMonthlyRecap } = await import("../use-stats");
     const { result } = renderHook(() => useMonthlyRecap("2026-03"), { wrapper: createWrapper() });
