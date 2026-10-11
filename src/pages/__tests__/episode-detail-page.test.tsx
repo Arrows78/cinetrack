@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
@@ -43,6 +43,11 @@ vi.mock("@/features/progress/use-progress", async (importOriginal) => {
     useEpisodeProgress: () => progressQueryMock(),
   };
 });
+
+const spoilerProtectionHolder = vi.hoisted(() => ({ enabled: false }));
+vi.mock("@/features/preferences/use-preferences", () => ({
+  usePreferences: () => ({ data: { spoilerProtection: spoilerProtectionHolder.enabled } }),
+}));
 
 vi.mock("@/components/media/detail/media-details-hero", () => ({
   MediaDetailsHero: ({
@@ -158,6 +163,45 @@ describe("EpisodeDetailPage", () => {
     markEpisodesSeenMock.mockReset();
     setEpisodeRatingMock.mockReset();
     progressQueryMock.mockReset().mockReturnValue(makeProgressQuery([]));
+  });
+
+  describe("with spoiler protection on", () => {
+    beforeEach(() => {
+      spoilerProtectionHolder.enabled = true;
+    });
+    afterEach(() => {
+      spoilerProtectionHolder.enabled = false;
+    });
+
+    it("hides the title, synopsis and neighbours' titles of an unwatched episode", () => {
+      renderPage();
+
+      expect(screen.queryByText("Half Loop")).not.toBeInTheDocument();
+      expect(screen.queryByText("The middle one.")).not.toBeInTheDocument();
+      expect(screen.queryByText("Good News About Hell")).not.toBeInTheDocument();
+      expect(screen.queryByText("In Perpetuity")).not.toBeInTheDocument();
+      expect(screen.getByText(i18n.t("media.hiddenOverview"))).toBeInTheDocument();
+    });
+
+    it("shows a watched episode and its watched neighbour as usual", () => {
+      progressQueryMock.mockReturnValue(makeProgressQuery([1, 2]));
+      renderPage();
+
+      expect(screen.getByText("Half Loop")).toBeInTheDocument();
+      expect(screen.getByText("The middle one.")).toBeInTheDocument();
+      expect(screen.getByText("Good News About Hell")).toBeInTheDocument();
+      // Episode 3 is still unwatched.
+      expect(screen.queryByText("In Perpetuity")).not.toBeInTheDocument();
+    });
+
+    it("reveals the episode on request", () => {
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("media.revealSpoilers") }));
+
+      expect(screen.getByText("Half Loop")).toBeInTheDocument();
+      expect(screen.getByText("The middle one.")).toBeInTheDocument();
+    });
   });
 
   it("shows the not-found empty state when a param is not numeric", () => {

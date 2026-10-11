@@ -8,7 +8,7 @@ import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
 import { Badge } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { usePreferences } from "@/features/preferences/use-preferences";
+import { useSpoilerProtection } from "@/components/media/tracking/use-spoiler-protection";
 import { hasAired } from "@/features/progress/use-progress";
 import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
 import { cn } from "@/shared/lib/cn";
@@ -49,10 +49,10 @@ export function EpisodeCard({
   seasonNumber?: number;
 }) {
   const { t } = useTranslation();
-  const preferences = usePreferences();
+  const spoilerProtection = useSpoilerProtection();
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const watched = Boolean(episode.watched);
-  const hidden = Boolean(preferences.data?.spoilerProtection && !watched);
+  const hidden = spoilerProtection && !watched;
   // A future/unannounced air date only blocks marking-as-watched, not the
   // reverse — an already-watched row (e.g. from a bad TMDB date correction)
   // must stay toggleable back off.

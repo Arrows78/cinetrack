@@ -610,6 +610,14 @@ export const componentInventory = [
     "Renders the primary desktop navigation and active-route state."
   ),
   component(
+    "LanguageController",
+    "components/layout/language-controller.tsx",
+    "Layout",
+    "infrastructure",
+    "internal",
+    "Keeps the interface language in line with the persisted language preference."
+  ),
+  component(
     "ThemeController",
     "components/layout/theme-controller.tsx",
     "Layout",

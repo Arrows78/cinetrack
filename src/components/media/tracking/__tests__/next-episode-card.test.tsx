@@ -1,10 +1,15 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { addDays, format } from "date-fns";
 
 import i18n from "@/i18n";
 import type { Episode } from "@/types/media";
 import { NextEpisodeCard } from "../next-episode-card";
+
+const preferencesHolder = vi.hoisted(() => ({ spoilerProtection: false }));
+vi.mock("@/features/preferences/use-preferences", () => ({
+  usePreferences: () => ({ data: { spoilerProtection: preferencesHolder.spoilerProtection } }),
+}));
 
 function makeEpisode(overrides: Partial<Episode> = {}): Episode {
   return {
@@ -50,6 +55,44 @@ describe("NextEpisodeCard", () => {
     // formatEpisodeCode(1, 3, { padded: true }) -> "S01E03"
     expect(screen.getByText("S01E03 · The Buys")).toBeInTheDocument();
     expect(screen.getByText("A tense stakeout goes sideways.")).toBeInTheDocument();
+  });
+
+  describe("with spoiler protection on", () => {
+    beforeEach(() => {
+      preferencesHolder.spoilerProtection = true;
+    });
+    afterEach(() => {
+      preferencesHolder.spoilerProtection = false;
+    });
+
+    it("hides the title and the synopsis of the episode still to watch", () => {
+      render(<NextEpisodeCard episode={makeEpisode()} isSaving={false} onWatched={vi.fn()} />);
+
+      expect(screen.getByText(`S01E03 · ${i18n.t("media.hiddenTitle")}`)).toBeInTheDocument();
+      expect(screen.queryByText("The Buys", { exact: false })).not.toBeInTheDocument();
+      expect(screen.queryByText("A tense stakeout goes sideways.")).not.toBeInTheDocument();
+      expect(screen.getByText(i18n.t("media.hiddenOverview"))).toBeInTheDocument();
+    });
+
+    it("reveals them on request, and still marks the episode watched", () => {
+      const onWatched = vi.fn();
+      const episode = makeEpisode();
+      render(<NextEpisodeCard episode={episode} isSaving={false} onWatched={onWatched} />);
+
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("media.revealSpoilers") }));
+
+      expect(screen.getByText("S01E03 · The Buys")).toBeInTheDocument();
+      expect(screen.getByText("A tense stakeout goes sideways.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("media.markAsSeen") }));
+      expect(onWatched).toHaveBeenCalledWith(episode);
+    });
+
+    it("keeps the countdown badge: the air date is not the spoiler", () => {
+      const episode = makeEpisode({ airDate: format(addDays(new Date(), 2), "yyyy-MM-dd") });
+      render(<NextEpisodeCard episode={episode} isSaving={false} onWatched={vi.fn()} />);
+
+      expect(screen.getByText("In 2 days")).toBeInTheDocument();
+    });
   });
 
   it("shows a countdown badge when the episode has an air date", () => {

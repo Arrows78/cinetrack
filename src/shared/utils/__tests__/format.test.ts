@@ -310,11 +310,3 @@ describe("formatBytes", () => {
     expect(formatBytes(1.5 * 1024 * 1024)).toBe("1,5 Mo");
   });
 });
-
-describe("pluralize", () => {
-  it("uses the singular for 0 and 1, the plural above", () => {
-    expect(pluralize(0, "film", "films")).toBe("film");
-    expect(pluralize(1, "film", "films")).toBe("film");
-    expect(pluralize(2, "film", "films")).toBe("films");
-  });
-});

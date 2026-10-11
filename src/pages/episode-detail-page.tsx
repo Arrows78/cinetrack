@@ -1,11 +1,21 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
-import { Calendar, ChevronLeft, ChevronRight, Clock4, ImageOff, NotebookPen, TriangleAlert } from "lucide-react";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock4,
+  EyeOff,
+  ImageOff,
+  NotebookPen,
+  TriangleAlert,
+} from "lucide-react";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-previous-episodes-dialog";
 import { SeenToggle } from "@/components/media/tracking/seen-toggle";
 import { EpisodeRatingControl } from "@/components/media/tracking/episode-rating-control";
+import { useSpoilerProtection } from "@/components/media/tracking/use-spoiler-protection";
 import { AddToLibraryButton } from "@/components/media/tracking/add-to-library-button";
 import { CastList } from "@/components/media/detail/cast-list";
 import { MediaDetailsHero } from "@/components/media/detail/media-details-hero";
@@ -25,7 +35,7 @@ import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { hasAired, useEpisodeProgress } from "@/features/progress/use-progress";
 import { useEpisodeImages, useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
-import type { Season } from "@/types/media";
+import type { Episode, Season } from "@/types/media";
 import {
   buildTmdbImageUrl,
   formatDate,
@@ -52,6 +62,9 @@ export function EpisodeDetailPage() {
   // the other queries instead of waiting on them.
   const imagesQuery = useEpisodeImages(parsedSeriesId, parsedSeasonNumber, parsedEpisodeNumber);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const spoilerProtection = useSpoilerProtection();
+  // Reveal is per episode: stepping to the previous/next one hides it again.
+  const [revealedEpisodeId, setRevealedEpisodeId] = useState<number | null>(null);
 
   // Same backlog-prompt pattern as season-page.tsx/season-accordion.tsx:
   // marking this one episode watched can still offer to catch up on earlier
@@ -131,7 +144,14 @@ export function EpisodeDetailPage() {
   const watched = watchedSet.has(episode.id);
   const currentRating = (progressQuery.data ?? []).find((item) => item.episodeId === episode.id)?.rating ?? null;
   const isUnreleased = !watched && !hasAired(episode, season);
-  const stillUrl = buildTmdbImageUrl(episode.stillPath, "w780");
+  // What would spoil an episode not watched yet: its title, synopsis, still,
+  // images, guest stars and rating. Watched episodes are never hidden.
+  const hidden = spoilerProtection && !watched && revealedEpisodeId !== episode.id;
+  const neighbourTitle = (neighbour: Episode) =>
+    spoilerProtection && !watchedSet.has(neighbour.id)
+      ? t("media.hiddenTitle")
+      : formatEpisodeTitle(neighbour.title, neighbour.episodeNumber);
+  const stillUrl = hidden ? undefined : buildTmdbImageUrl(episode.stillPath, "w780");
 
   const episodeLinkParams = (targetEpisodeNumber: number) => ({
     seriesId: String(series.id),
@@ -191,7 +211,7 @@ export function EpisodeDetailPage() {
 
       <Card>
         <SectionHeader
-          title={formatEpisodeTitle(episode.title, episode.episodeNumber)}
+          title={hidden ? t("media.hiddenTitle") : formatEpisodeTitle(episode.title, episode.episodeNumber)}
           subtitle={
             <>
               {formatEpisodeCode(season.seasonNumber, episode.episodeNumber, { padded: true })} ·{" "}
@@ -211,7 +231,11 @@ export function EpisodeDetailPage() {
               <img src={stillUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full items-center justify-center">
-                <ImageOff className="size-8 text-muted-foreground" />
+                {hidden ? (
+                  <EyeOff className="size-8 text-muted-foreground" />
+                ) : (
+                  <ImageOff className="size-8 text-muted-foreground" />
+                )}
               </div>
             )}
           </div>
@@ -227,7 +251,7 @@ export function EpisodeDetailPage() {
                   {formatRuntime(episode.runtime)}
                 </span>
               ) : null}
-              {episode.rating ? (
+              {episode.rating && !hidden ? (
                 <span
                   aria-label={t("media.ratingLabel", { rating: formatRating(episode.rating) })}
                   className="flex items-center gap-1 text-rating"
@@ -240,18 +264,27 @@ export function EpisodeDetailPage() {
                 </span>
               ) : null}
             </div>
-            <p className="text-body-lg text-muted-foreground">{episode.overview || t("media.noOverview")}</p>
+            {hidden ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <p className="text-body-lg text-muted-foreground">{t("media.hiddenOverview")}</p>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setRevealedEpisodeId(episode.id)}>
+                  {t("media.revealSpoilers")}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-body-lg text-muted-foreground">{episode.overview || t("media.noOverview")}</p>
+            )}
           </div>
         </div>
       </Card>
 
-      {episode.guestStars?.length ? (
+      {episode.guestStars?.length && !hidden ? (
         <section>
           <SectionHeader title={t("media.guestStars")} />
           <CastList cast={episode.guestStars} />
         </section>
       ) : null}
-      <MediaGallery backdropPaths={imagesQuery.data} />
+      {hidden ? null : <MediaGallery backdropPaths={imagesQuery.data} />}
 
       <WatchHistoryPanel mediaId={series.id} mediaType="series" episodeId={episode.id} />
 
@@ -260,12 +293,12 @@ export function EpisodeDetailPage() {
           <Link
             to="/series/$seriesId/season/$seasonNumber/episode/$episodeNumber"
             params={episodeLinkParams(previousEpisode.episodeNumber)}
-            aria-label={`${t("media.previousEpisode")}: ${formatEpisodeTitle(previousEpisode.title, previousEpisode.episodeNumber)}`}
+            aria-label={`${t("media.previousEpisode")}: ${neighbourTitle(previousEpisode)}`}
             className="flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate" aria-hidden="true">
-              {formatEpisodeTitle(previousEpisode.title, previousEpisode.episodeNumber)}
+              {neighbourTitle(previousEpisode)}
             </span>
           </Link>
         ) : (
@@ -275,11 +308,11 @@ export function EpisodeDetailPage() {
           <Link
             to="/series/$seriesId/season/$seasonNumber/episode/$episodeNumber"
             params={episodeLinkParams(nextEpisode.episodeNumber)}
-            aria-label={`${t("media.nextEpisode")}: ${formatEpisodeTitle(nextEpisode.title, nextEpisode.episodeNumber)}`}
+            aria-label={`${t("media.nextEpisode")}: ${neighbourTitle(nextEpisode)}`}
             className="flex min-w-0 items-center gap-1.5 text-right text-body-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <span className="truncate" aria-hidden="true">
-              {formatEpisodeTitle(nextEpisode.title, nextEpisode.episodeNumber)}
+              {neighbourTitle(nextEpisode)}
             </span>
             <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
           </Link>

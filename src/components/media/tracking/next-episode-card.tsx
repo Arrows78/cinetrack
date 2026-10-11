@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { useSpoilerProtection } from "@/components/media/tracking/use-spoiler-protection";
 import { formatEpisodeCode, formatEpisodeTitle, formatRelativeCountdown } from "@/shared/utils/format";
 import type { Episode } from "@/types/media";
 
@@ -25,6 +26,9 @@ export function NextEpisodeCard({
 }) {
   const { t } = useTranslation();
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const spoilerProtection = useSpoilerProtection();
+  // Reveal is per episode: moving on to the next one hides it again.
+  const [revealedEpisodeId, setRevealedEpisodeId] = useState<number | null>(null);
   if (!episode)
     return (
       <Panel>
@@ -36,6 +40,9 @@ export function NextEpisodeCard({
         </p>
       </Panel>
     );
+  // This is by definition an episode not watched yet: with the protection on,
+  // its title and synopsis are what would spoil it.
+  const hidden = spoilerProtection && revealedEpisodeId !== episode.id;
   return (
     <Panel tone="highlight">
       <div className="flex items-start justify-between gap-4">
@@ -46,9 +53,18 @@ export function NextEpisodeCard({
           </div>
           <h3 className="mt-1 line-clamp-2 font-display text-heading-lg font-bold">
             {formatEpisodeCode(episode.seasonNumber, episode.episodeNumber, { padded: true })} ·{" "}
-            {formatEpisodeTitle(episode.title, episode.episodeNumber)}
+            {hidden ? t("media.hiddenTitle") : formatEpisodeTitle(episode.title, episode.episodeNumber)}
           </h3>
-          <p className="mt-2 line-clamp-2 text-body-sm text-muted-foreground">{episode.overview}</p>
+          {hidden ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="text-body-sm text-muted-foreground">{t("media.hiddenOverview")}</p>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setRevealedEpisodeId(episode.id)}>
+                {t("media.revealSpoilers")}
+              </Button>
+            </div>
+          ) : (
+            <p className="mt-2 line-clamp-2 text-body-sm text-muted-foreground">{episode.overview}</p>
+          )}
         </div>
         <Play className="size-6 text-primary" />
       </div>

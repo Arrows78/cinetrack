@@ -42,6 +42,8 @@
     "unknownYear": "Unknown year",
     "noOverview": "No overview available for this content.",
     "hiddenTitle": "Hidden title",
+    "hiddenOverview": "Synopsis hidden to avoid spoilers.",
+    "revealSpoilers": "Show anyway",
     "markSeen": "Mark watched",
     "markUnseen": "Mark unwatched",
     "loading": "Loading…",

@@ -42,6 +42,8 @@
     "unknownYear": "Année inconnue",
     "noOverview": "Aucun synopsis disponible.",
     "hiddenTitle": "Titre masqué",
+    "hiddenOverview": "Synopsis masqué pour éviter les spoilers.",
+    "revealSpoilers": "Afficher quand même",
     "markSeen": "Marquer vu",
     "markUnseen": "Marquer non vu",
     "loading": "Chargement…",
