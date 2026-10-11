@@ -291,9 +291,9 @@ async fn snapshot(app: &TestApp) -> Snapshot {
     );
     read!(
         "stats:overview",
-        get_stats_overview(WINDOW_START.to_string(), month_labels(), 0, db(app))
+        get_stats_overview(WINDOW_START.to_string(), month_labels(), 0, None, db(app))
     );
-    read!("stats:yearly", list_yearly_activity(0, db(app)));
+    read!("stats:yearly", list_yearly_activity(0, None, db(app)));
     read!(
         "stats:recap",
         get_monthly_recap(
@@ -301,21 +301,22 @@ async fn snapshot(app: &TestApp) -> Snapshot {
             "2026-01-01T00:00:00.000Z".to_string(),
             "2026-02-01T00:00:00.000Z".to_string(),
             0,
+            None,
             db(app)
         )
     );
     read!(
         "stats:rewatch",
-        get_rewatch_stats(WINDOW_START.to_string(), month_labels(), 0, db(app))
+        get_rewatch_stats(WINDOW_START.to_string(), month_labels(), 0, None, db(app))
     );
     read!(
         "stats:ratings",
-        get_rating_distribution(WINDOW_START.to_string(), 0, db(app))
+        get_rating_distribution(WINDOW_START.to_string(), 0, None, db(app))
     );
     read!("stats:milestones", get_watch_milestones(db(app)));
     read!(
         "stats:activity",
-        get_activity_stats(WINDOW_START.to_string(), NOW.to_string(), 0, db(app))
+        get_activity_stats(WINDOW_START.to_string(), NOW.to_string(), 0, None, db(app))
     );
     read!("stats:extras", get_library_extras(db(app)));
     read!(
