@@ -26,8 +26,19 @@ export interface NextEpisodeResult {
   series: TrackedSeriesItem;
   nextEpisode: Episode | null;
   remaining: number;
+  /** TMDB's current status for the series (`Ended`, `Returning Series`, ...), once resolved. */
+  tmdbStatus?: string;
+  /** TMDB's current episode count for the series, once resolved. */
+  tmdbTotalEpisodes?: number;
   isLoading: boolean;
   isError: boolean;
+}
+
+/** What one resolution pass learns about a series: its next episode, and TMDB's current word on how long it is and whether it is over. */
+interface ResolvedSeries {
+  nextEpisode: Episode | null;
+  tmdbStatus?: string;
+  tmdbTotalEpisodes?: number;
 }
 
 /**
@@ -41,7 +52,7 @@ export interface NextEpisodeResult {
  * entries the detail pages and the calendar use), so looking at every season
  * does not mean one fresh TMDB request per season per resolution.
  */
-async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
+async function resolveNextEpisode(seriesId: number): Promise<ResolvedSeries> {
   const [details, progress] = await Promise.all([
     mediaRepository.getSeriesDetails(seriesId),
     progressRepository.getEpisodeProgress(seriesId),
@@ -53,7 +64,8 @@ async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
     .filter((seasonNumber) => seasonNumber > 0)
     .sort((a, b) => a - b);
   const candidates = hasWatched ? seasonNumbers : seasonNumbers.slice(0, 1);
-  if (!candidates.length) return null;
+  const tmdb = { tmdbStatus: details.status, tmdbTotalEpisodes: details.numberOfEpisodes };
+  if (!candidates.length) return { nextEpisode: null, ...tmdb };
 
   const seasons = await Promise.all(
     candidates.map((seasonNumber) =>
@@ -64,7 +76,7 @@ async function resolveNextEpisode(seriesId: number): Promise<Episode | null> {
       })
     )
   );
-  return getNextEpisode(seasons, progress);
+  return { nextEpisode: getNextEpisode(seasons, progress), ...tmdb };
 }
 
 /**
@@ -86,7 +98,9 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
 
   const results: NextEpisodeResult[] = seriesList.map((series, index) => ({
     series,
-    nextEpisode: queries[index]?.data ?? null,
+    nextEpisode: queries[index]?.data?.nextEpisode ?? null,
+    tmdbStatus: queries[index]?.data?.tmdbStatus,
+    tmdbTotalEpisodes: queries[index]?.data?.tmdbTotalEpisodes,
     remaining: Math.max(0, series.totalEpisodes - series.watchedEpisodes),
     isLoading: queries[index]?.isLoading ?? false,
     isError: queries[index]?.isError ?? false,
@@ -161,27 +175,44 @@ export function useTodayHubEpisodes(
   const { results, isLoading } = useNextEpisodes(trackedSeries);
   const groups = useMemo(() => partitionNextEpisodes(results, new Date()), [results]);
 
-  // tracked_series.total_episodes is a cache only a series' detail page
-  // refreshed until now, so a show with a freshly aired episode kept a
-  // total equal to its watched count (and a library status of Completed).
-  // This pass has already proven the show has an aired, unwatched episode:
-  // bump the cached total past the watched count, which also reopens an
-  // auto-Completed library entry in Rust (refresh_tracked_series_status_impl).
-  // Once per series per mount — the detail page later writes the exact total.
-  // Batched, so the caches are invalidated once rather than once per series.
+  // tracked_series.total_episodes and .status are a cache that only a
+  // series' detail page used to refresh, so a series nobody reopened kept
+  // whatever it had at its last toggle: a show with a freshly aired episode
+  // kept a total equal to its watched count, and a caught-up show whose
+  // finale had since been reported never became Completed. This pass has
+  // just fetched TMDB's current details for every started series, so it
+  // writes them back: the library status is then reconsidered in Rust
+  // (refresh_tracked_series_status_impl → library/status.rs) — an automatic
+  // Completed is reopened when episodes were added, an automatic Watching
+  // completes once the series is over and every episode is watched.
+  // Once per series per mount; the detail page later writes the exact total
+  // too. Batched, so the caches are invalidated once rather than once per
+  // series.
   const refreshTrackedSeries = useRefreshTrackedSeriesBatch();
   const reconciled = useRef(new Set<number>());
   useEffect(() => {
     const refreshes = results
       .filter(
-        ({ series, nextEpisode }) =>
-          nextEpisode !== null && series.watchedEpisodes > 0 && !reconciled.current.has(series.seriesId)
+        ({ series, isLoading, isError }) =>
+          series.watchedEpisodes > 0 && !isLoading && !isError && !reconciled.current.has(series.seriesId)
       )
-      .map(({ series }) => ({
-        seriesId: series.seriesId,
-        status: series.status,
-        totalEpisodes: Math.max(series.totalEpisodes, series.watchedEpisodes + 1),
-      }));
+      .flatMap(({ series, nextEpisode, tmdbStatus, tmdbTotalEpisodes }) => {
+        // Nothing was learned from TMDB for this series: leave it alone.
+        if (tmdbStatus === undefined && !tmdbTotalEpisodes && nextEpisode === null) return [];
+        // A series with an aired, unwatched episode has at least one more
+        // episode than watched, whatever the cached total says.
+        const lowerBound = series.watchedEpisodes + (nextEpisode ? 1 : 0);
+        return [
+          {
+            seriesId: series.seriesId,
+            status: tmdbStatus ?? series.status,
+            totalEpisodes: Math.max(
+              tmdbTotalEpisodes && tmdbTotalEpisodes > 0 ? tmdbTotalEpisodes : series.totalEpisodes,
+              lowerBound
+            ),
+          },
+        ];
+      });
     if (!refreshes.length) return;
     for (const { seriesId } of refreshes) reconciled.current.add(seriesId);
     refreshTrackedSeries(refreshes)
