@@ -37,6 +37,7 @@ import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { EmptyState } from "@/components/states/empty-state";
 import { usePresentSectionIds } from "@/hooks/use-present-section-ids";
 import { useImageCache } from "@/features/media/use-image-cache";
+import { tmdbStatusLabel } from "@/shared/utils/tmdb-status";
 import { formatRelativeCountdown } from "@/shared/utils/format";
 import {
   calculateSeriesProgress,
@@ -246,7 +247,7 @@ export function SeriesDetailPage() {
               {[
                 { label: t("media.seasons"), value: series.numberOfSeasons },
                 { label: t("media.episodes"), value: series.numberOfEpisodes ?? "—" },
-                { label: t("media.status"), value: series.status || "—" },
+                { label: t("media.status"), value: series.status ? tmdbStatusLabel(series.status, t) : "—" },
                 { label: t("media.genres"), value: series.genres.join(", ") || "—" },
                 ...(series.directors?.length
                   ? [{ label: t("media.director"), value: series.directors.map((person) => person.name).join(", ") }]

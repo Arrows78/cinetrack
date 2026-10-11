@@ -84,7 +84,23 @@
     "addWatchNoteLabel": "Votre note",
     "addWatchNotePlaceholder": "Qu'en avez-vous pensé ?",
     "watchHistoryTitle": "Journal de visionnage",
-    "watchHistoryUnavailable": "Impossible de charger votre journal de visionnage — réessayez dans un instant."
+    "watchHistoryUnavailable": "Impossible de charger votre journal de visionnage — réessayez dans un instant.",
+    "tmdbStatus": {
+      "returningSeries": "Série en cours",
+      "ended": "Terminée",
+      "canceled": "Annulée",
+      "inProduction": "En production",
+      "planned": "Prévue",
+      "pilot": "Pilote",
+      "released": "Sortie",
+      "postProduction": "En post-production",
+      "rumored": "Rumeur"
+    },
+    "episodeFallbackTitle": "Épisode {{number}}",
+    "noEpisodesInSeason": "Aucun épisode n'est encore listé pour cette saison.",
+    "nothingAiredTitle": "Rien à regarder pour l'instant",
+    "nothingAiredDescription": "Aucun épisode de cette série n'a encore été diffusé.",
+    "seasonsLoading": "Chargement des saisons…"
   },
   "availability": {
     "alert": "Alerte de disponibilité",

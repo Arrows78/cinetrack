@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { RatingStar } from "@/components/media/primitives/rating-star";
+import { tmdbStatusLabel } from "@/shared/utils/tmdb-status";
 import { buildTmdbImageUrl, buildTmdbPosterSrcSet, formatRating, formatRuntime } from "@/shared/utils/format";
 import type { MediaSummary } from "@/types/media";
 import fallbackPoster from "@/assets/poster-placeholder.svg";
@@ -63,7 +64,9 @@ export function MediaDetailsHero({
               >
                 {media.mediaType === "movie" ? t("media.movie") : t("media.series")}
               </Badge>
-              {media.status ? <span className="text-caption text-muted-foreground">{media.status}</span> : null}
+              {media.status ? (
+                <span className="text-caption text-muted-foreground">{tmdbStatusLabel(media.status, t)}</span>
+              ) : null}
             </div>
 
             {/* Title — the page's own <h1>: movie/series detail pages have

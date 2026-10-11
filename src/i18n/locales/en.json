@@ -84,7 +84,23 @@
     "addWatchNoteLabel": "Your note",
     "addWatchNotePlaceholder": "What did you think?",
     "watchHistoryTitle": "Watch diary",
-    "watchHistoryUnavailable": "Couldn't load your watch diary — try again in a moment."
+    "watchHistoryUnavailable": "Couldn't load your watch diary — try again in a moment.",
+    "tmdbStatus": {
+      "returningSeries": "Returning series",
+      "ended": "Ended",
+      "canceled": "Canceled",
+      "inProduction": "In production",
+      "planned": "Planned",
+      "pilot": "Pilot",
+      "released": "Released",
+      "postProduction": "Post-production",
+      "rumored": "Rumored"
+    },
+    "episodeFallbackTitle": "Episode {{number}}",
+    "noEpisodesInSeason": "No episode is listed for this season yet.",
+    "nothingAiredTitle": "Nothing to watch yet",
+    "nothingAiredDescription": "No episode of this series has aired yet.",
+    "seasonsLoading": "Loading seasons…"
   },
   "availability": {
     "alert": "Availability alert",

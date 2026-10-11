@@ -30,6 +30,7 @@ import { PartialErrorState } from "@/components/states/partial-error-state";
 import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { isDegradedRemoteError } from "@/shared/lib/errors";
+import { tmdbStatusLabel } from "@/shared/utils/tmdb-status";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useMovieDetails } from "@/features/media/use-media";
@@ -144,7 +145,7 @@ export function MovieDetailPage() {
               { label: t("movies.country"), value: movie.country?.join(", ") || "—" },
               { label: t("movies.language"), value: movie.language || "—" },
               { label: t("media.genres"), value: movie.genres.join(", ") || "—" },
-              { label: t("media.status"), value: movie.status || "—" },
+              { label: t("media.status"), value: movie.status ? tmdbStatusLabel(movie.status, t) : "—" },
               ...(movie.directors?.length
                 ? [{ label: t("media.director"), value: movie.directors.map((person) => person.name).join(", ") }]
                 : []),

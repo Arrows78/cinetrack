@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import i18n from "@/i18n";
 import type { MediaSummary } from "@/types/media";
@@ -46,5 +46,22 @@ describe("MediaDetailsHero", () => {
   it("falls back to the media's own poster when no override is given", () => {
     const { container } = render(<MediaDetailsHero media={buildMedia({ posterPath: "/series-poster.jpg" })} />);
     expect(container.querySelector("img[src*='series-poster.jpg']")).toBeInTheDocument();
+  });
+  describe("TMDB status", () => {
+    afterEach(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    it("shows the status in the interface language, not TMDB's English string", async () => {
+      await i18n.changeLanguage("fr");
+      render(<MediaDetailsHero media={buildMedia({ mediaType: "series", status: "Returning Series" })} />);
+      expect(screen.queryByText("Returning Series")).not.toBeInTheDocument();
+      expect(screen.getByText("Série en cours")).toBeInTheDocument();
+    });
+
+    it("keeps an unknown status as TMDB sent it rather than hiding it", () => {
+      render(<MediaDetailsHero media={buildMedia({ status: "Some New Status" })} />);
+      expect(screen.getByText("Some New Status")).toBeInTheDocument();
+    });
   });
 });
