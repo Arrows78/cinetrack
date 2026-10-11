@@ -5,6 +5,7 @@ use super::models::UserProfile;
 use super::service::ProfileService;
 use crate::diagnostics::timed;
 use crate::error::ApiError;
+use crate::preferences::PreferencesCache;
 
 #[tauri::command]
 pub async fn list_profiles(pool: State<'_, SqlitePool>) -> Result<Vec<UserProfile>, ApiError> {
@@ -90,11 +91,16 @@ pub async fn remove_profile(
     profile_id: String,
     current_pin: Option<String>,
     pool: State<'_, SqlitePool>,
+    cache: State<'_, PreferencesCache>,
 ) -> Result<(), ApiError> {
     timed("remove_profile", async {
         ProfileService::new(pool.inner())
             .remove(&profile_id, current_pin.as_deref())
-            .await
+            .await?;
+        // The removal may have reset `activeProfileId` straight in the table
+        // (see `remove_impl`), behind the cache's back.
+        crate::preferences::refresh(cache.inner());
+        Ok(())
     })
     .await
 }
@@ -145,6 +151,7 @@ pub async fn verify_profile_pin(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::preferences::PreferencesCache;
     use sqlx::sqlite::SqlitePoolOptions;
     use tauri::Manager;
 
@@ -247,12 +254,56 @@ mod tests {
         let pool = migrated_pool().await;
         let app = tauri::test::mock_app();
         app.manage(pool);
+        app.manage(PreferencesCache::default());
         let state: State<'_, SqlitePool> = app.state();
+        let cache: State<'_, PreferencesCache> = app.state();
         assert!(
-            remove_profile("default".to_string(), None, state)
+            remove_profile("default".to_string(), None, state, cache)
                 .await
                 .is_err()
         );
+    }
+
+    /// Removing the active profile resets `activeProfileId` straight in the
+    /// table. The in-memory preferences cache must not keep serving the
+    /// deleted profile as the active one: every read until the frontend
+    /// happened to call `set_active_profile` again would see a profile that
+    /// no longer exists.
+    #[tokio::test]
+    async fn removing_the_active_profile_does_not_leave_it_in_the_preferences_cache() {
+        let pool = migrated_pool().await;
+        let app = tauri::test::mock_app();
+        app.manage(pool);
+        app.manage(PreferencesCache::default());
+        let pool_state: State<'_, SqlitePool> = app.state();
+        let cache: State<'_, PreferencesCache> = app.state();
+
+        let alex = create_profile("Alex".to_string(), None, None, pool_state.clone())
+            .await
+            .unwrap();
+        crate::preferences::set_active_profile(
+            alex.id.clone(),
+            None,
+            None,
+            pool_state.clone(),
+            cache.clone(),
+        )
+        .await
+        .unwrap();
+        // Primed with Alex as the active profile.
+        let before = crate::preferences::get_preferences(pool_state.clone(), cache.clone())
+            .await
+            .unwrap();
+        assert_eq!(before.active_profile_id, alex.id);
+
+        remove_profile(alex.id.clone(), None, pool_state.clone(), cache.clone())
+            .await
+            .unwrap();
+
+        let after = crate::preferences::get_preferences(pool_state, cache)
+            .await
+            .unwrap();
+        assert_eq!(after.active_profile_id, "default");
     }
 
     #[tokio::test]

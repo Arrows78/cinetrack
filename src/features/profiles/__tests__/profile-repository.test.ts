@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
-import type { UserPreferences, UserProfile } from "@/types/media";
+import type { UserProfile } from "@/types/media";
 
 const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({
@@ -19,8 +19,7 @@ const profile = (overrides: Partial<UserProfile> = {}): UserProfile => ({
 // The default-profile seed, supabase auto-claim logic and cascading delete
 // now live in Rust and are exercised there (see
 // src-tauri/src/profiles/'s own tests) — this only verifies the
-// repository wraps invoke() with the right command name/args, plus the one
-// bit of orchestration still in TS: remove() resetting activeProfileId.
+// repository wraps invoke() with the right command name/args.
 describe("profileRepository", () => {
   beforeEach(() => {
     invokeMock.mockReset();
@@ -122,93 +121,13 @@ describe("profileRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("resolve_profile_for_supabase_user", { supabaseUserId: "user-1" });
   });
 
-  it("remove() resets activeProfileId to default when the removed profile was active", async () => {
-    const preferences: UserPreferences = {
-      theme: "dark",
-      accentColor: "violet",
-      language: "en",
-      region: "FR",
-      defaultSearchType: "all",
-      reduceMotion: false,
-      compactMode: false,
-      sidebarCollapsed: false,
-      libraryViewMode: "grid",
-      spoilerProtection: true,
-      notificationsEnabled: false,
-      availabilityAlertsEnabled: false,
-      desktopNotificationsEnabled: false,
-      notifyHoursBefore: 24,
-      availabilityCheckIntervalHours: 6,
-      recentSearches: [],
-      preferredProviderIds: [],
-      activeProfileId: "removed-id",
-      backupDirectory: null,
-      backupFrequency: "daily",
-      hideWatchedInDiscovery: false,
-      onThisDayEnabled: false,
-      onboardingCompleted: false,
-      tourCompleted: false,
-      commandPaletteShortcut: "mod+k",
-      globalCommandPaletteShortcut: "mod+shift+k",
-      userProfile: { id: DEFAULT_PROFILE_ID, name: null },
-    };
-    invokeMock.mockImplementation(async (command: string) => {
-      if (command === "remove_profile") return undefined;
-      if (command === "get_preferences") return preferences;
-      if (command === "set_active_profile") return { ...preferences, activeProfileId: DEFAULT_PROFILE_ID };
-      throw new Error(`Unhandled command: ${command}`);
-    });
+  it("remove() only invokes remove_profile: Rust resets the active profile in the same transaction", async () => {
+    invokeMock.mockResolvedValue(undefined);
     const { profileRepository } = await import("../profile-repository");
 
-    await profileRepository.remove("removed-id");
+    await profileRepository.remove("removed-id", "1234");
 
-    expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id", currentPin: null });
-    expect(invokeMock).toHaveBeenCalledWith("set_active_profile", {
-      profileId: DEFAULT_PROFILE_ID,
-      supabaseUserId: null,
-      pin: null,
-    });
-  });
-
-  it("remove() leaves activeProfileId untouched when the removed profile wasn't active", async () => {
-    const preferences: UserPreferences = {
-      theme: "dark",
-      accentColor: "violet",
-      language: "en",
-      region: "FR",
-      defaultSearchType: "all",
-      reduceMotion: false,
-      compactMode: false,
-      sidebarCollapsed: false,
-      libraryViewMode: "grid",
-      spoilerProtection: true,
-      notificationsEnabled: false,
-      availabilityAlertsEnabled: false,
-      desktopNotificationsEnabled: false,
-      notifyHoursBefore: 24,
-      availabilityCheckIntervalHours: 6,
-      recentSearches: [],
-      preferredProviderIds: [],
-      activeProfileId: DEFAULT_PROFILE_ID,
-      backupDirectory: null,
-      backupFrequency: "daily",
-      hideWatchedInDiscovery: false,
-      onThisDayEnabled: false,
-      onboardingCompleted: false,
-      tourCompleted: false,
-      commandPaletteShortcut: "mod+k",
-      globalCommandPaletteShortcut: "mod+shift+k",
-      userProfile: { id: DEFAULT_PROFILE_ID, name: null },
-    };
-    invokeMock.mockImplementation(async (command: string) => {
-      if (command === "remove_profile") return undefined;
-      if (command === "get_preferences") return preferences;
-      throw new Error(`Unhandled command: ${command}`);
-    });
-    const { profileRepository } = await import("../profile-repository");
-
-    await profileRepository.remove("other-id");
-
-    expect(invokeMock).not.toHaveBeenCalledWith("set_active_profile", expect.anything());
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("remove_profile", { profileId: "removed-id", currentPin: "1234" });
   });
 });

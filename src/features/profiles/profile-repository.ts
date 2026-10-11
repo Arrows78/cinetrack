@@ -1,6 +1,4 @@
-import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { profileCommands } from "@/features/profiles/profile-commands";
-import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { UserProfile } from "@/types/media";
 
@@ -72,12 +70,10 @@ export const profileRepository = {
     return invokeTypedCommand(profileCommands.verifyPin, { profileId, pin });
   },
 
+  // Removing the active profile resets `activeProfileId` to the default one
+  // inside the same Rust transaction (and drops the preferences cache), so
+  // nothing is left to do here.
   async remove(profileId: string, currentPin?: string | null): Promise<void> {
     await invokeTypedCommand(profileCommands.remove, { profileId, currentPin: currentPin ?? null });
-
-    const preferences = await preferencesRepository.getPreferences();
-    if (preferences.activeProfileId === profileId) {
-      await preferencesRepository.setActiveProfile(DEFAULT_PROFILE_ID);
-    }
   },
 };
