@@ -127,6 +127,57 @@ describe("ProfileGate cloud continuity", () => {
     expect(screen.queryByRole("button", { name: i18n.t("errors.retry") })).not.toBeInTheDocument();
   });
 
+  it("shows an error with a retry, instead of loading forever, when the local profile can't be recreated", async () => {
+    mocks.useProfile.mockReturnValue(profileQuery(null));
+    mocks.cloudGet.mockResolvedValue({ userId: "user-1", displayName: "Alice", avatarPath: null });
+    mocks.createLocalProfile.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
+
+    const { rerender } = render(
+      <ProfileGate>
+        <div data-testid="child">child</div>
+      </ProfileGate>,
+      { wrapper: wrapper() }
+    );
+
+    expect(await screen.findByText(i18n.t("profileGate.createError"))).toBeInTheDocument();
+    // Re-rendering (any state change) must not fire a second creation by itself.
+    rerender(
+      <ProfileGate>
+        <div data-testid="child">child</div>
+      </ProfileGate>
+    );
+    expect(mocks.createLocalProfile).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("errors.retry") }));
+    await waitFor(() => expect(mocks.createLocalProfile).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows an error with a retry when the active profile can't be switched to the account's", async () => {
+    mocks.useProfile.mockReturnValue(profileQuery({ id: "profile-1", name: "Alice", avatar: null }));
+    mocks.usePreferences.mockReturnValue({
+      data: { activeProfileId: "default" },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mocks.cloudGet.mockResolvedValue({ userId: "user-1", displayName: "Alice", avatarPath: null });
+    mocks.setActiveProfile.mockRejectedValueOnce(new Error("forbidden"));
+
+    render(
+      <ProfileGate>
+        <div data-testid="child">child</div>
+      </ProfileGate>,
+      { wrapper: wrapper() }
+    );
+
+    expect(await screen.findByText(i18n.t("profileGate.switchError"))).toBeInTheDocument();
+    expect(screen.queryByTestId("child")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("errors.retry") }));
+    await waitFor(() => expect(mocks.setActiveProfile).toHaveBeenCalledTimes(2));
+  });
+
   it("surfaces cloud profile failures with a cloud-specific message on a device with no local profile, and allows retry", async () => {
     mocks.useProfile.mockReturnValue(profileQuery(null));
     mocks.cloudGet.mockRejectedValue(new Error("cloud unavailable"));

@@ -737,6 +737,7 @@
     "avatarLabel": "Choose an avatar (optional)",
     "createSubmit": "Create my profile",
     "createError": "Couldn't create the profile. Please try again.",
+    "switchError": "Couldn't open your profile on this device. Please try again.",
     "signOut": "Sign out"
   },
   "onboarding": {

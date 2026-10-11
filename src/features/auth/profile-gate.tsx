@@ -1,4 +1,4 @@
-import { useEffect, type PropsWithChildren } from "react";
+import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -49,35 +49,57 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
     staleTime: 60_000,
   });
   const refetchCloudProfile = cloudProfileQuery.refetch;
+  const createLocalProfile = createProfile.create;
+  const isCreatingProfile = createProfile.isSaving;
 
   const resolvedProfileId = profileQuery.data?.id;
   const activeProfileId = preferencesQuery.data?.activeProfileId;
+
+  // A failed step is shown (with a retry) rather than retried by the effects
+  // below on every render, or left on the loading screen forever. The refs
+  // make each step run once per attempt; the retry buttons reset them.
+  const [creationError, setCreationError] = useState<unknown>(null);
+  const [switchError, setSwitchError] = useState<unknown>(null);
+  const [switchAttempt, setSwitchAttempt] = useState(0);
+  const creationStarted = useRef(false);
+  const cloudSeedStarted = useRef(false);
 
   useEffect(() => {
     if (!profileQuery.isSuccess || !cloudProfileQuery.isSuccess) return;
 
     // New device: reconstruct the local partition from the private account
     // profile before the sync coordinator pulls library/history data into it.
-    if (!profileQuery.data && cloudProfileQuery.data && !createProfile.isSaving) {
-      void createProfile.create({
+    if (!profileQuery.data && cloudProfileQuery.data) {
+      if (isCreatingProfile || creationStarted.current) return;
+      creationStarted.current = true;
+      createLocalProfile({
         name: cloudProfileQuery.data.displayName,
         avatar: cloudProfileQuery.data.avatarPath,
         supabaseUserId,
+      }).catch((error: unknown) => {
+        logger.warn(`Couldn't recreate the local profile from the account profile: ${errorMessage(error)}`);
+        setCreationError(error);
       });
       return;
     }
 
     /// Existing install upgrading into cloud sync: seed the private remote
     // identity once. This does not publish a community profile.
-    if (profileQuery.data?.name && cloudProfileQuery.data === null) {
-      void cloudProfileRepository
+    if (profileQuery.data?.name && cloudProfileQuery.data === null && !cloudSeedStarted.current) {
+      cloudSeedStarted.current = true;
+      cloudProfileRepository
         .save(profileQuery.data.name, profileQuery.data.avatar)
-        .then(() => refetchCloudProfile());
+        .then(() => refetchCloudProfile())
+        .catch((error: unknown) =>
+          logger.warn(`Couldn't seed the cloud account profile, continuing locally: ${errorMessage(error)}`)
+        );
     }
   }, [
     cloudProfileQuery.data,
     cloudProfileQuery.isSuccess,
-    createProfile,
+    createLocalProfile,
+    creationError,
+    isCreatingProfile,
     refetchCloudProfile,
     profileQuery.data,
     profileQuery.isSuccess,
@@ -94,21 +116,52 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
     if (!resolvedProfileId || activeProfileId === resolvedProfileId) return;
 
     let cancelled = false;
-    void preferencesRepository.setActiveProfile(resolvedProfileId, supabaseUserId).then(() => {
-      // removeQueries, not invalidateQueries — this switches which local
-      // profile is active, so the previous profile's cached library/
-      // history/etc. must be evicted immediately rather than merely marked
-      // stale (which would still render it until the refetch resolves).
-      if (!cancelled) queryClient.removeQueries({ queryKey: ["local"] });
-    });
+    preferencesRepository
+      .setActiveProfile(resolvedProfileId, supabaseUserId)
+      .then(() => {
+        // removeQueries, not invalidateQueries — this switches which local
+        // profile is active, so the previous profile's cached library/
+        // history/etc. must be evicted immediately rather than merely marked
+        // stale (which would still render it until the refetch resolves).
+        if (!cancelled) queryClient.removeQueries({ queryKey: ["local"] });
+      })
+      .catch((error: unknown) => {
+        logger.warn(`Couldn't switch to the account's profile: ${errorMessage(error)}`);
+        if (!cancelled) setSwitchError(error);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [resolvedProfileId, activeProfileId, queryClient, supabaseUserId]);
+  }, [resolvedProfileId, activeProfileId, queryClient, supabaseUserId, switchAttempt]);
 
-  if (profileQuery.isLoading || preferencesQuery.isLoading || cloudProfileQuery.isLoading || createProfile.isSaving) {
+  if (profileQuery.isLoading || preferencesQuery.isLoading || cloudProfileQuery.isLoading || isCreatingProfile) {
     return <LoadingScreen label={t("profileGate.resolving")} />;
+  }
+
+  if (creationError) {
+    return (
+      <RemoteErrorState
+        error={creationError}
+        description={t("profileGate.createError")}
+        onRetry={() => {
+          creationStarted.current = false;
+          setCreationError(null);
+        }}
+      />
+    );
+  }
+  if (switchError) {
+    return (
+      <RemoteErrorState
+        error={switchError}
+        description={t("profileGate.switchError")}
+        onRetry={() => {
+          setSwitchError(null);
+          setSwitchAttempt((attempt) => attempt + 1);
+        }}
+      />
+    );
   }
 
   // Without these, a failed read fell through to `!profileQuery.data` /

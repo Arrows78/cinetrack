@@ -737,6 +737,7 @@
     "avatarLabel": "Choisissez un avatar (facultatif)",
     "createSubmit": "Créer mon profil",
     "createError": "Impossible de créer le profil. Réessayez.",
+    "switchError": "Impossible d'ouvrir votre profil sur cet appareil. Réessayez.",
     "signOut": "Se déconnecter"
   },
   "onboarding": {
