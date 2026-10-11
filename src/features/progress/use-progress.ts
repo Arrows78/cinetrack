@@ -209,7 +209,8 @@ export function useRefreshTrackedSeriesStatus() {
 export interface TrackedSeriesRefresh {
   seriesId: number;
   status: string | null;
-  totalEpisodes: number;
+  /** TMDB's episode count, `null` when it gave none (the cached total is then left as it is). */
+  totalEpisodes: number | null;
 }
 
 /**

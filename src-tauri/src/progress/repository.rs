@@ -290,7 +290,7 @@ pub(crate) async fn rewatch_movie_impl(
 /// Applies a watched/unwatched change to a set of episodes: writes only the
 /// episodes whose state actually changes, records a matching viewing_events
 /// row for each, refreshes the tracked_series rollup
-/// (`total_episodes = series.numberOfEpisodes ?? watchedCount`), and — when
+/// (`total_episodes = series.numberOfEpisodes`, 0 when unknown), and — when
 /// `history` is given and at least one episode changed — logs that history
 /// entry in the same transaction. Returns the number of episodes that
 /// changed. `pub(crate)` so tvtime's importer can reuse the same
@@ -435,18 +435,16 @@ pub(crate) async fn apply_episodes_outcome_impl(
         .map_err(ApiError::from)?;
     }
 
-    let count_row: (i64,) =
-        // Specials (season 0) are left out, like TMDB's number_of_episodes
-        // and the frontend's own totals — counting them could reach the
-        // total without the actual series being finished.
-        sqlx::query_as("SELECT COUNT(*) FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0")
-            .bind(profile_id)
-            .bind(series.id)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(ApiError::from)?;
-    let watched_episodes = count_row.0;
-    let total_episodes = series.number_of_episodes.unwrap_or(watched_episodes);
+    // TMDB's own episode count, or 0 when it is not known: the cache keeps
+    // "unknown" apart from "as many as watched" so that a later refresh or a
+    // sync can never take a guess for the length of the series (a Completed
+    // status is decided from this number, see library/status.rs). The readers
+    // that need a displayable total take the larger of it and the watched
+    // count (`list_tracked_series_impl`).
+    let total_episodes = series
+        .number_of_episodes
+        .filter(|total| *total > 0)
+        .unwrap_or(0);
 
     sqlx::query(
         "INSERT INTO tracked_series (uuid, profile_id, series_id, title, poster_path, backdrop_path, total_episodes, status, created_at, updated_at)
@@ -457,9 +455,8 @@ pub(crate) async fn apply_episodes_outcome_impl(
            backdrop_path = excluded.backdrop_path,
            -- MAX, not a plain overwrite: `series.number_of_episodes` is
            -- whatever the calling client happened to have in hand for this
-           -- one toggle, and falls back to `watched_episodes` when absent
-           -- (e.g. a caller that never fetched full series details). Either
-           -- way it can be smaller than a total this row already recorded
+           -- one toggle, and is 0 when absent (e.g. a caller that never
+           -- fetched full series details). Either way it can be smaller than a total this row already recorded
            -- correctly, and a plain overwrite would regress it — which
            -- later lets watched_episodes exceed the stored total and show
            -- as a >100% progress bar (see history-page.tsx's Series In
@@ -486,9 +483,10 @@ pub(crate) async fn apply_episodes_outcome_impl(
     // a series, the last one of a finished series completes it, un-marking
     // one takes an automatic status back down. A status the viewer chose by
     // hand is left alone, except that watching resumes a paused or dropped
-    // series. The total passed down is TMDB's own episode count (not the
-    // `total_episodes` rollup above, which falls back to the watched count),
-    // so a series with an unknown length can start but never complete.
+    // series. The total passed down is TMDB's own episode count, or the
+    // cached one when this call did not have it; either way it is 0/absent
+    // when TMDB never gave one, so a series with an unknown length can start
+    // but never complete.
     let media = AutoSyncMedia {
         media_id: series.id,
         media_type: MediaType::Series,
@@ -625,7 +623,11 @@ pub(super) async fn refresh_tracked_series_status_impl(
     .fetch_one(&mut *tx)
     .await
     .map_err(ApiError::from)?;
+    // A total of 0 is "TMDB (or the seasons it listed) gave no count": it
+    // leaves the cache as it was instead of pretending the series is exactly
+    // as long as what has been watched.
     let next_total_episodes = total_episodes
+        .filter(|total| *total > 0)
         .map(|total| total.max(watched_regular))
         .unwrap_or(current_total_episodes);
     if current_status != status || current_total_episodes != next_total_episodes {
@@ -2227,7 +2229,9 @@ mod tests {
         .unwrap();
 
         // A degraded TMDB response (a season that came back with no
-        // episodes) makes the page recompute a total of 0.
+        // episodes) makes the page recompute a total of 0: no count at all,
+        // so the total TMDB gave before is kept rather than replaced by the
+        // watched count (which would read as "caught up").
         refresh_tracked_series_status_impl(
             &pool,
             "default",
@@ -2238,6 +2242,20 @@ mod tests {
         .await
         .unwrap();
 
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.total_episodes, 10);
+
+        // A real count below what is watched is lifted to the watched count.
+        refresh_tracked_series_status_impl(
+            &pool,
+            "default",
+            9,
+            Some("Returning Series".to_string()),
+            Some(2),
+        )
+        .await
+        .unwrap();
         let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
         let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
         assert_eq!(entry.total_episodes, 3);

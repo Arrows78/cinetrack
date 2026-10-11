@@ -31,6 +31,8 @@ pub(crate) use status::{
 };
 
 #[cfg(test)]
+mod edge_case_tests;
+#[cfg(test)]
 mod sequence_tests;
 #[cfg(test)]
 mod stale_planned_tests;

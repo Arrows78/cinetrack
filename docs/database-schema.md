@@ -148,7 +148,7 @@ One row per show a profile actively tracks. The number of watched episodes is **
 | `uuid` **PK**                           | TEXT | public identifier of the row                                                                                                                     |
 | `profile_id`, `series_id` `FK` **UK**   | …    | → `profiles.uuid` ; natural composite key                                                                                                        |
 | `title`, `poster_path`, `backdrop_path` | TEXT | TMDB copy taken when added                                                                                                                       |
-| `total_episodes`                        | INT  | total known from TMDB, defaults to 0                                                                                                             |
+| `total_episodes`                        | INT  | total known from TMDB; 0 = never known (reads as unknown, see `library-status.md`)                                                               |
 | `status`                                | TEXT | TMDB production status ("Returning Series", "Ended", …), nullable — unknown for rows written before this column existed or imported from TV Time |
 | `created_at`, `updated_at`              | TEXT | ISO dates                                                                                                                                        |
 

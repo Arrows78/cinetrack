@@ -181,10 +181,10 @@ pub(crate) fn decide(
 
 /// Facts for a series, read from the database. `total_episodes` and
 /// `series_status` are what the caller knows right now (a viewing action has
-/// the series details in hand); `None` falls back to the cached TMDB status
-/// but never to a cached total, because the cache's total falls back to the
-/// watched count when TMDB's was unknown — using it would "complete" a series
-/// whose real length nobody has seen.
+/// the series details in hand); `None` falls back to what `tracked_series`
+/// cached from TMDB. The cached total is `0` when TMDB's count was never
+/// known (see `apply_episodes_outcome_impl`), which reads as "unknown" here,
+/// so a series of unknown length can start but never complete.
 pub(crate) async fn series_facts(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     profile_id: &str,
@@ -193,15 +193,21 @@ pub(crate) async fn series_facts(
     series_status: Option<String>,
 ) -> Result<StatusFacts, ApiError> {
     let watched_episodes = watched_regular_episodes(&mut **tx, profile_id, series_id).await?;
-    let series_status = match series_status {
-        Some(status) => Some(status),
-        None => cached_series(&mut **tx, profile_id, series_id)
-            .await?
-            .and_then(|(_, status)| status),
+    let known_total = total_episodes.filter(|total| *total > 0);
+    let (total_episodes, series_status) = match (known_total, series_status) {
+        (Some(total), Some(status)) => (Some(total), Some(status)),
+        (total, status) => {
+            let (cached_total, cached_status) =
+                match cached_series(&mut **tx, profile_id, series_id).await? {
+                    Some((total, status)) => (Some(total).filter(|total| *total > 0), status),
+                    None => (None, None),
+                };
+            (total.or(cached_total), status.or(cached_status))
+        }
     };
     Ok(StatusFacts::Series {
         watched_episodes,
-        total_episodes: total_episodes.filter(|total| *total > 0),
+        total_episodes,
         series_status,
     })
 }
@@ -263,20 +269,7 @@ async fn stored_facts(
             .map_err(ApiError::from)?;
             Ok(StatusFacts::Movie { seen: seen > 0 })
         }
-        MediaType::Series => {
-            let watched_episodes =
-                watched_regular_episodes(&mut **tx, profile_id, media_id).await?;
-            let cached = cached_series(&mut **tx, profile_id, media_id).await?;
-            let (total_episodes, series_status) = match cached {
-                Some((total, status)) => (Some(total).filter(|total| *total > 0), status),
-                None => (None, None),
-            };
-            Ok(StatusFacts::Series {
-                watched_episodes,
-                total_episodes,
-                series_status,
-            })
-        }
+        MediaType::Series => series_facts(tx, profile_id, media_id, None, None).await,
     }
 }
 

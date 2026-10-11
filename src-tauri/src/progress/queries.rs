@@ -118,7 +118,9 @@ pub(super) async fn list_tracked_series_impl(
             title: row.title,
             poster_path: row.poster_path,
             backdrop_path: row.backdrop_path,
-            total_episodes: row.total_episodes,
+            // 0 in the cache means TMDB's count was never known: show the
+            // watched count rather than "0 episodes".
+            total_episodes: row.total_episodes.max(row.watched_episodes),
             watched_episodes: row.watched_episodes,
             status: row.status,
             created_at: row.created_at,

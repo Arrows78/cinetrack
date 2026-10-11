@@ -210,16 +210,16 @@ export function useTodayHubEpisodes(
         // Nothing was learned from TMDB for this series: leave it alone.
         if (tmdbStatus === undefined && !tmdbTotalEpisodes && nextEpisode === null) return [];
         // A series with an aired, unwatched episode has at least one more
-        // episode than watched, whatever the cached total says.
+        // episode than watched, whatever the cached total says. Without a
+        // count from TMDB there is no total to write (the cached one is
+        // either TMDB's earlier answer, which stays, or unknown): a guess
+        // here could later complete the series.
         const lowerBound = series.watchedEpisodes + (nextEpisode ? 1 : 0);
         return [
           {
             seriesId: series.seriesId,
             status: tmdbStatus ?? series.status,
-            totalEpisodes: Math.max(
-              tmdbTotalEpisodes && tmdbTotalEpisodes > 0 ? tmdbTotalEpisodes : series.totalEpisodes,
-              lowerBound
-            ),
+            totalEpisodes: tmdbTotalEpisodes && tmdbTotalEpisodes > 0 ? Math.max(tmdbTotalEpisodes, lowerBound) : null,
           },
         ];
       });

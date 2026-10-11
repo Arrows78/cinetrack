@@ -143,10 +143,13 @@ edit and an automatic move:
 
 Facts come from the database in one transaction with the write that changed
 them. A viewing action uses the series details it already holds (TMDB's own
-total and status); a refresh, a sync or a reset use the cached total and
-status in `tracked_series`. The cached total is never used on a viewing action,
-because it falls back to the watched count when TMDB's was unknown, which would
-« complete » a series of unknown length.
+total and status), and the cached total and status in `tracked_series` for
+whatever it does not hold; a refresh, a sync or a reset use the cache alone.
+The cached total is `0` when TMDB's count was never known (a refresh without a
+count leaves it as it was), and `0` reads as « unknown » — never as « as long
+as what is watched », which would « complete » a series of unknown length. The
+tracked-series list shows the larger of the cached total and the watched count,
+so the interface never displays « 0 episodes ».
 
 ## Cloud sync
 

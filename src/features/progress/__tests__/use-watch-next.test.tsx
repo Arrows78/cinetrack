@@ -348,7 +348,7 @@ describe("useTodayHubEpisodes", () => {
 });
 
 describe("useTodayHubEpisodes cache reconciliation", () => {
-  it("bumps the cached total past the watched count for a show with an aired unwatched episode", async () => {
+  it("writes no total for a show whose TMDB count is unknown, even with an aired unwatched episode", async () => {
     const { useTodayHubEpisodes } = await import("../use-watch-next");
     const { result } = renderHook(() => useTodayHubEpisodes([finishedSeries, notStartedSeries]), {
       wrapper: createWrapper(),
@@ -357,8 +357,24 @@ describe("useTodayHubEpisodes cache reconciliation", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledTimes(1));
 
-    // Never-started shows are left alone: nothing was completed there.
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, null, 11);
+    // Never-started shows are left alone: nothing was completed there. A
+    // guessed total would read as a known length later and could complete the
+    // series, so none is sent.
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, null, null);
+  });
+
+  it("bumps TMDB's total past the watched count for a show with an aired unwatched episode", async () => {
+    getSeriesDetailsMock.mockResolvedValueOnce({
+      seasons: [{ seasonNumber: 1 }],
+      numberOfEpisodes: 3,
+    } as never);
+    const { useTodayHubEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useTodayHubEpisodes([finishedSeries]), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledTimes(1));
+
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, null, finishedSeries.watchedEpisodes + 1);
   });
 
   it("writes TMDB's verdict back for a caught-up show, so a finished series can complete without being opened", async () => {
