@@ -174,7 +174,6 @@ Reads that stay O(rows of the profile) by design, and where: the tag autocomplet
 | Movies hub                 | 61                 | 14                | 0             |
 | Series hub                 | 61                 | 14                | 20            |
 | Home                       | 78                 | 28                | 256           |
-| Series page (20 seasons)   | 18                 | 14                | 22            |
 | Statistics                 | 12                 | 12                | 0             |
 
 The local count at 12 titles is the same as at 60 on every page above except Home, whose remaining growth is the per-series TMDB resolution.
