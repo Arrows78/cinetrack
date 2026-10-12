@@ -1,7 +1,9 @@
 use serde_json::Value;
 use sqlx::SqlitePool;
 
-use super::models::{Language, UserPreferences};
+#[cfg(desktop)]
+use super::models::Language;
+use super::models::UserPreferences;
 use super::repository::{PreferencesCache, get_preferences_cached, write_preference};
 use crate::database::current_profile_id;
 use crate::error::ApiError;
