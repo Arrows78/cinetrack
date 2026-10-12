@@ -27,6 +27,16 @@ pub struct EpisodeInput {
     pub watched_at: Option<String>,
 }
 
+/// One series of a `refresh_tracked_series_statuses` batch: the same three
+/// values `refresh_tracked_series_status` takes.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackedSeriesRefresh {
+    pub series_id: i64,
+    pub status: Option<String>,
+    pub total_episodes: Option<i64>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SeriesInput {

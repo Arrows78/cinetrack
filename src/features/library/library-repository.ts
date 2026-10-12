@@ -7,6 +7,7 @@ import {
   type LibraryPatch,
   type LibraryStatusCounts,
 } from "@/features/library/library-commands";
+import { createBatchLoader } from "@/shared/lib/batch-loader";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { LibraryItem, MediaSummary } from "@/types/media";
 
@@ -19,6 +20,17 @@ export type {
   LibraryMediaKey,
   LibraryStatusCounts,
 } from "@/features/library/library-commands";
+
+// Every card of a grid asks "is this title in my library" for itself; the
+// questions of one instant leave as one `list_library_keys_among` call.
+const membership = createBatchLoader<LibraryMediaKey, boolean>({
+  keyOf: (key) => `${key.mediaType}:${key.mediaId}`,
+  run: async (keys) => {
+    const present = await invokeTypedCommand(libraryCommands.keysAmong, { keys });
+    const presentKeys = new Set(present.map((key) => `${key.mediaType}:${key.mediaId}`));
+    return keys.map((key) => presentKeys.has(`${key.mediaType}:${key.mediaId}`));
+  },
+});
 
 // The status/startedAt/completedAt business rules, the save transaction
 // and active-profile resolution now live in Rust (see
@@ -57,8 +69,10 @@ export const libraryRepository = {
     return invokeTypedCommand(libraryCommands.resetStatusToAuto, { mediaId, mediaType });
   },
 
+  // Batched with every other `has` asked at the same moment (see
+  // `membership` above): one IPC round trip per screen, not one per card.
   async has(mediaId: number, mediaType: MediaSummary["mediaType"]): Promise<boolean> {
-    return invokeTypedCommand(libraryCommands.has, { mediaId, mediaType });
+    return membership.load({ mediaId, mediaType });
   },
 
   // Adds the title as "planned" only if it isn't in the library yet, never

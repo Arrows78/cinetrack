@@ -1,7 +1,11 @@
-use sqlx::SqlitePool;
+use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
 use super::models::{EpisodeProgress, TrackedSeriesItem};
 use crate::error::ApiError;
+
+/// A caller-bounded batch (the rows of one screen), not "give me everything":
+/// the same guard `library::queries` puts on its batch-by-keys read.
+const MAX_BATCH_IDS: usize = 500;
 
 #[derive(sqlx::FromRow)]
 struct EpisodeProgressRow {
@@ -15,6 +19,24 @@ struct EpisodeProgressRow {
     created_at: String,
     updated_at: String,
     rating: Option<i64>,
+}
+
+impl EpisodeProgressRow {
+    fn into_progress(self, profile_id: &str) -> EpisodeProgress {
+        EpisodeProgress {
+            id: self.uuid,
+            profile_id: Some(profile_id.to_string()),
+            series_id: self.series_id,
+            episode_id: self.episode_id,
+            season_number: self.season_number,
+            episode_number: self.episode_number,
+            watched: self.watched,
+            watched_at: self.watched_at,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            rating: self.rating,
+        }
+    }
 }
 
 #[derive(sqlx::FromRow)]
@@ -49,6 +71,65 @@ where
     Ok(row.0 > 0)
 }
 
+/// Which of `movie_ids` the profile has seen — a batch form of
+/// `is_movie_seen_impl`.
+pub(super) async fn list_seen_movie_ids_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    movie_ids: &[i64],
+) -> Result<Vec<i64>, ApiError> {
+    if movie_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let movie_ids = &movie_ids[..movie_ids.len().min(MAX_BATCH_IDS)];
+    let mut qb: QueryBuilder<Sqlite> =
+        QueryBuilder::new("SELECT movie_id FROM seen_movies WHERE profile_id = ");
+    qb.push_bind(profile_id.to_string());
+    qb.push(" AND movie_id IN (");
+    let mut separated = qb.separated(", ");
+    for movie_id in movie_ids {
+        separated.push_bind(*movie_id);
+    }
+    separated.push_unseparated(")");
+    qb.build_query_scalar()
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)
+}
+
+/// The watched episodes of several series in one read — a batch form of
+/// `get_episode_progress_impl`, flat: every row carries its `series_id`.
+pub(super) async fn get_episode_progress_batch_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    series_ids: &[i64],
+) -> Result<Vec<EpisodeProgress>, ApiError> {
+    if series_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let series_ids = &series_ids[..series_ids.len().min(MAX_BATCH_IDS)];
+    let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
+        "SELECT uuid, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at, rating
+         FROM episode_progress WHERE watched = 1 AND profile_id = ",
+    );
+    qb.push_bind(profile_id.to_string());
+    qb.push(" AND series_id IN (");
+    let mut separated = qb.separated(", ");
+    for series_id in series_ids {
+        separated.push_bind(*series_id);
+    }
+    separated.push_unseparated(")");
+    let rows: Vec<EpisodeProgressRow> = qb
+        .build_query_as()
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(rows
+        .into_iter()
+        .map(|row| row.into_progress(profile_id))
+        .collect())
+}
+
 pub(super) async fn get_episode_progress_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -66,19 +147,7 @@ pub(super) async fn get_episode_progress_impl(
 
     Ok(rows
         .into_iter()
-        .map(|row| EpisodeProgress {
-            id: row.uuid,
-            profile_id: Some(profile_id.to_string()),
-            series_id: row.series_id,
-            episode_id: row.episode_id,
-            season_number: row.season_number,
-            episode_number: row.episode_number,
-            watched: row.watched,
-            watched_at: row.watched_at,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-            rating: row.rating,
-        })
+        .map(|row| row.into_progress(profile_id))
         .collect())
 }
 

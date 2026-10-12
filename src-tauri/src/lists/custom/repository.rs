@@ -127,6 +127,26 @@ pub(super) async fn items_impl(
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
+/// Every item of every list the profile owns, in one read — the batch form of
+/// calling `items_impl` once per list. Ownership is the join itself: only the
+/// profile's own lists are reached.
+pub(super) async fn all_items_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+) -> Result<Vec<CustomListItem>, ApiError> {
+    let rows: Vec<CustomListItemRow> = sqlx::query_as(
+        "SELECT i.* FROM custom_list_items i
+         JOIN custom_lists l ON l.uuid = i.list_id
+         WHERE l.profile_id = $1
+         ORDER BY l.uuid, i.position",
+    )
+    .bind(profile_id)
+    .fetch_all(pool)
+    .await
+    .map_err(ApiError::from)?;
+    Ok(rows.into_iter().map(Into::into).collect())
+}
+
 pub(super) async fn add_impl(
     pool: &SqlitePool,
     profile_id: &str,

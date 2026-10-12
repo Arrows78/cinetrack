@@ -79,7 +79,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
     getEpisodeProgress: getEpisodeProgressMock,
     toggleEpisodeSeen: vi.fn(),
-    refreshTrackedSeriesStatus: vi.fn(),
+    refreshTrackedSeriesStatuses: vi.fn(async () => []),
   },
 }));
 

@@ -1,4 +1,4 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { customListRepository } from "@/features/custom-lists/custom-list-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -37,31 +37,29 @@ export function useCustomListItems(listId: string) {
   const remove = useInvalidatingMutation(
     ({ mediaId, mediaType }: { mediaId: number; mediaType: "movie" | "series" }) =>
       customListRepository.removeItem(listId, mediaId, mediaType),
-    [queryKeys.local.customList(profileId, listId)]
+    [queryKeys.local.customList(profileId, listId), queryKeys.local.customListsItems(profileId)]
   );
   return { ...query, remove: remove.mutateAsync, isSaving: remove.isPending };
 }
 
-// Merges every one of the profile's custom lists into one array (each item
+// Every one of the profile's custom lists merged into one array (each item
 // still carries its own `listId`, so a caller can narrow back to a single
 // list when needed) — used by LibraryExplorer to surface list-only titles
 // (added to a list but never given a library status) in the default
 // "browse everything" view, not just while a specific list is selected. One
-// query per list rather than a new bulk backend endpoint, matching the
-// pattern useNextEpisodes already uses for a dynamic set of per-item reads.
+// read for all the lists, not one per list: a profile with a dozen lists paid
+// a dozen IPC calls here on every page that mounts the explorer.
+// `listIds` only tells it whether there is anything to read.
 export function useAllCustomListItems(listIds: string[]) {
   const profileId = useActiveProfileId();
-  const queries = useQueries({
-    queries: listIds.map((listId) => ({
-      queryKey: queryKeys.local.customList(profileId, listId),
-      queryFn: () => customListRepository.items(listId),
-    })),
+  const hasLists = listIds.length > 0;
+  const query = useQuery({
+    queryKey: queryKeys.local.customListsItems(profileId),
+    queryFn: () => customListRepository.allItems(),
+    enabled: hasLists,
   });
-  const isLoading = queries.some((query) => query.isLoading);
-  const data: CustomListItem[] | undefined = queries.some((query) => query.data === undefined)
-    ? undefined
-    : queries.flatMap((query) => query.data ?? []);
-  return { data, isLoading };
+  if (!hasLists) return { data: [] as CustomListItem[], isLoading: false };
+  return { data: query.data, isLoading: query.isLoading };
 }
 
 export function useAddToCustomList() {

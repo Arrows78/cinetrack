@@ -7,8 +7,8 @@ use super::models::{
 use super::queries::{
     get_best_recommendation_seed_impl, get_impl, get_items_by_keys_impl, get_random_impl, has_impl,
     list_completed_candidates_impl, list_distinct_tags_impl, list_ids_matching_filters_impl,
-    list_impl, list_media_keys_impl, list_page_impl, list_planned_candidates_impl,
-    list_stale_planned_impl, list_status_counts_impl,
+    list_impl, list_keys_among_impl, list_media_keys_impl, list_page_impl,
+    list_planned_candidates_impl, list_stale_planned_impl, list_status_counts_impl,
 };
 use super::repository::{
     add_if_absent_impl, refresh_catalog_metadata_impl, remove_if_planned_impl, remove_impl,
@@ -140,6 +140,14 @@ impl<'a> LibraryService<'a> {
     ) -> Result<Vec<LibraryItem>, ApiError> {
         let profile_id = self.profile_id().await?;
         get_items_by_keys_impl(self.pool, &profile_id, &keys).await
+    }
+
+    pub(super) async fn keys_among(
+        &self,
+        keys: Vec<LibraryMediaKey>,
+    ) -> Result<Vec<LibraryMediaKey>, ApiError> {
+        let profile_id = self.profile_id().await?;
+        list_keys_among_impl(self.pool, &profile_id, &keys).await
     }
 
     pub(super) async fn status_counts(&self) -> Result<LibraryStatusCounts, ApiError> {

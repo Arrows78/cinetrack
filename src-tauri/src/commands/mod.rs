@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod batch_tests;
 mod boot;
 mod tray_language;
 mod updater;
@@ -19,16 +21,16 @@ pub use crate::library::{
     add_planned_library_item, get_best_recommendation_seed, get_library_item,
     get_library_items_by_keys, get_library_status_counts, get_random_library_item,
     has_library_item, list_completed_library_candidates, list_library, list_library_distinct_tags,
-    list_library_ids_matching_filters, list_library_media_keys, list_library_page,
-    list_planned_library_candidates, list_stale_planned_library_items,
+    list_library_ids_matching_filters, list_library_keys_among, list_library_media_keys,
+    list_library_page, list_planned_library_candidates, list_stale_planned_library_items,
     refresh_library_catalog_metadata, remove_library_item, remove_planned_library_item,
     reset_library_status_to_auto, save_library_item,
 };
 pub use crate::lists::{
     add_custom_list_item, create_custom_list, create_saved_filter, create_smart_list,
-    list_custom_list_items, list_custom_lists, list_saved_filters, list_smart_lists,
-    remove_custom_list, remove_custom_list_item, remove_saved_filter, remove_smart_list,
-    rename_saved_filter, update_smart_list,
+    list_all_custom_list_items, list_custom_list_items, list_custom_lists, list_saved_filters,
+    list_smart_lists, remove_custom_list, remove_custom_list_item, remove_saved_filter,
+    remove_smart_list, rename_saved_filter, update_smart_list,
 };
 pub use crate::preferences::{
     PreferencesCache, get_preferences, refresh_preferences, set_active_profile, update_preference,
@@ -39,7 +41,8 @@ pub use crate::profiles::{
     resolve_profile_for_supabase_user, set_profile_pin, update_profile, verify_profile_pin,
 };
 pub use crate::progress::{
-    get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
+    get_episode_progress, get_episode_progress_batch, is_movie_seen, list_seen_movie_ids,
+    list_tracked_series, refresh_tracked_series_status, refresh_tracked_series_statuses,
     rewatch_movie, set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
 };
 pub use crate::recommendations::{

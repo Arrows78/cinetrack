@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { progressRepository } from "@/features/progress/progress-repository";
-import { libraryInvalidationKeys } from "@/features/library/use-library";
+import { libraryInvalidationKeys, libraryStatusInvalidationKeys } from "@/features/library/use-library";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
@@ -211,27 +211,36 @@ export interface TrackedSeriesRefresh {
   status: string | null;
   /** TMDB's episode count, `null` when it gave none (the cached total is then left as it is). */
   totalEpisodes: number | null;
+  /**
+   * Whether this refresh moves the cached status or total away from what the
+   * caller read. A pass in which no refresh does leaves every cache as it
+   * was, so nothing is invalidated.
+   */
+  changesCache: boolean;
 }
 
 /**
  * Batch form of useRefreshTrackedSeriesStatus for the Today Hub, which can
- * refresh dozens of series at once: one invalidation pass after every call
- * settles, instead of one refetch per series. Resolves to the ids whose
- * refresh failed (already logged by the caller's choice).
+ * refresh dozens of series at once: one call to Rust for all of them, and one
+ * invalidation pass afterwards — only if some cached value really moved, and
+ * only of what a status move can change (not the whole library feed).
+ * Resolves to the ids whose refresh failed (already logged by Rust; the
+ * caller decides what else to do with them).
  */
 export function useRefreshTrackedSeriesBatch() {
   const profileId = useActiveProfileId();
   const queryClient = useQueryClient();
   return useCallback(
     async (refreshes: TrackedSeriesRefresh[]): Promise<number[]> => {
-      const outcomes = await Promise.allSettled(
-        refreshes.map(({ seriesId, status, totalEpisodes }) =>
-          progressRepository.refreshTrackedSeriesStatus(seriesId, status, totalEpisodes)
-        )
+      const failed = await progressRepository.refreshTrackedSeriesStatuses(
+        refreshes.map(({ seriesId, status, totalEpisodes }) => ({ seriesId, status, totalEpisodes }))
       );
-      const keys = [queryKeys.local.trackedSeries(profileId), ...libraryInvalidationKeys(profileId)];
-      await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
-      return refreshes.filter((_, index) => outcomes[index]!.status === "rejected").map(({ seriesId }) => seriesId);
+      const moved = refreshes.some(({ seriesId, changesCache }) => changesCache && !failed.includes(seriesId));
+      if (moved) {
+        const keys = [queryKeys.local.trackedSeries(profileId), ...libraryStatusInvalidationKeys(profileId)];
+        await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+      }
+      return failed;
     },
     [profileId, queryClient]
   );

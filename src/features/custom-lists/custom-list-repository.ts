@@ -22,6 +22,11 @@ export const customListRepository = {
     return invokeTypedCommand(customListCommands.listItems, { listId });
   },
 
+  // Every list's items in one call, each carrying its own `listId`.
+  async allItems(): Promise<CustomListItem[]> {
+    return invokeTypedCommand(customListCommands.listAllItems);
+  },
+
   async add(listId: string, media: MediaSummary): Promise<void> {
     await invokeTypedCommand(customListCommands.addItem, { listId, media });
   },

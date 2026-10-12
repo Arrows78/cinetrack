@@ -324,6 +324,37 @@ async fn progress_history_and_list_reads(pool: &SqlitePool) -> Vec<Read> {
         .await,
         sql(
             pool,
+            "library keys among a set",
+            "SELECT media_id, media_type FROM library_items WHERE profile_id = 'default'
+             AND ((media_id = 1 AND media_type = 'movie') OR (media_id = 2 AND media_type = 'series'))",
+            NONE,
+        )
+        .await,
+        sql(
+            pool,
+            "seen movies among a set",
+            "SELECT movie_id FROM seen_movies WHERE profile_id = 'default' AND movie_id IN (1, 2, 3)",
+            NONE,
+        )
+        .await,
+        sql(
+            pool,
+            "episodes watched of several series",
+            "SELECT uuid, series_id, episode_id FROM episode_progress
+             WHERE watched = 1 AND profile_id = 'default' AND series_id IN (1, 2, 3)",
+            NONE,
+        )
+        .await,
+        sql(
+            pool,
+            "items of every custom list of the profile",
+            "SELECT i.* FROM custom_list_items i JOIN custom_lists l ON l.uuid = i.list_id
+             WHERE l.profile_id = 'default' ORDER BY l.uuid, i.position",
+            sort("the lists come out grouped by id, each in position order"),
+        )
+        .await,
+        sql(
+            pool,
             "tracked series with their progress",
             "SELECT ts.uuid, ts.series_id, COUNT(ep.episode_id) AS watched_episodes
              FROM tracked_series ts

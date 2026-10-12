@@ -3,6 +3,7 @@ use tauri::State;
 
 use super::models::{
     EpisodeHistoryInput, EpisodeInput, EpisodeProgress, MovieInput, SeriesInput, TrackedSeriesItem,
+    TrackedSeriesRefresh,
 };
 use super::service::ProgressService;
 use crate::diagnostics::timed;
@@ -13,6 +14,21 @@ pub async fn is_movie_seen(movie_id: i64, pool: State<'_, SqlitePool>) -> Result
     timed("is_movie_seen", async {
         ProgressService::new(pool.inner())
             .is_movie_seen(movie_id)
+            .await
+    })
+    .await
+}
+
+/// The ids among `movie_ids` the profile has seen — what a list of movie rows
+/// asks instead of one `is_movie_seen` per row.
+#[tauri::command]
+pub async fn list_seen_movie_ids(
+    movie_ids: Vec<i64>,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<i64>, ApiError> {
+    timed("list_seen_movie_ids", async {
+        ProgressService::new(pool.inner())
+            .seen_movie_ids(&movie_ids)
             .await
     })
     .await
@@ -63,6 +79,22 @@ pub async fn get_episode_progress(
     .await
 }
 
+/// The watched episodes of several series at once, flat (each row carries its
+/// `series_id`) — what a list of series asks instead of one
+/// `get_episode_progress` per series.
+#[tauri::command]
+pub async fn get_episode_progress_batch(
+    series_ids: Vec<i64>,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<EpisodeProgress>, ApiError> {
+    timed("get_episode_progress_batch", async {
+        ProgressService::new(pool.inner())
+            .get_episode_progress_batch(&series_ids)
+            .await
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn toggle_episodes_watched(
     series: SeriesInput,
@@ -103,6 +135,21 @@ pub async fn refresh_tracked_series_status(
     timed("refresh_tracked_series_status", async {
         ProgressService::new(pool.inner())
             .refresh_tracked_series_status(series_id, status, total_episodes)
+            .await
+    })
+    .await
+}
+
+/// `refresh_tracked_series_status` for many series in one call (the Today Hub
+/// refreshes dozens at once). Resolves to the ids whose refresh failed.
+#[tauri::command]
+pub async fn refresh_tracked_series_statuses(
+    refreshes: Vec<TrackedSeriesRefresh>,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<i64>, ApiError> {
+    timed("refresh_tracked_series_statuses", async {
+        ProgressService::new(pool.inner())
+            .refresh_tracked_series_statuses(refreshes)
             .await
     })
     .await

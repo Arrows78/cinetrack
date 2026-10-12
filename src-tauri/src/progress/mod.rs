@@ -11,7 +11,8 @@ mod rewatch_tests;
 mod service;
 
 pub use commands::{
-    get_episode_progress, is_movie_seen, list_tracked_series, refresh_tracked_series_status,
+    get_episode_progress, get_episode_progress_batch, is_movie_seen, list_seen_movie_ids,
+    list_tracked_series, refresh_tracked_series_status, refresh_tracked_series_statuses,
     rewatch_movie, set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
 };
 pub(crate) use domain::known_runtime;

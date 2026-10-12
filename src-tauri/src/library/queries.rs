@@ -454,6 +454,48 @@ pub(super) async fn get_items_by_keys_impl(
     rows.into_iter().map(LibraryItem::try_from).collect()
 }
 
+/// Which of a caller-bounded set of keys are in the library — a batch form of
+/// `has_impl`, so a grid of cards asks once instead of once per card.
+pub(super) async fn list_keys_among_impl(
+    pool: &SqlitePool,
+    profile_id: &str,
+    keys: &[LibraryMediaKey],
+) -> Result<Vec<LibraryMediaKey>, ApiError> {
+    if keys.is_empty() {
+        return Ok(Vec::new());
+    }
+    let keys = &keys[..keys.len().min(MAX_BATCH_KEYS)];
+
+    let mut qb: QueryBuilder<Sqlite> =
+        QueryBuilder::new("SELECT media_id, media_type FROM library_items WHERE profile_id = ");
+    qb.push_bind(profile_id.to_string());
+    qb.push(" AND (");
+    for (index, key) in keys.iter().enumerate() {
+        if index > 0 {
+            qb.push(" OR ");
+        }
+        qb.push("(media_id = ")
+            .push_bind(key.media_id)
+            .push(" AND media_type = ")
+            .push_bind(key.media_type.as_db_str())
+            .push(")");
+    }
+    qb.push(")");
+
+    let rows: Vec<(i64, String)> = qb
+        .build_query_as()
+        .fetch_all(pool)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(rows
+        .into_iter()
+        .map(|(media_id, media_type)| LibraryMediaKey {
+            media_id,
+            media_type: MediaType::from_db_str(&media_type),
+        })
+        .collect())
+}
+
 /// One round-trip status breakdown, replacing a full library read reduced
 /// to a count in JS (e.g. the Home page's "planned" rail counter).
 pub(super) async fn list_status_counts_impl(

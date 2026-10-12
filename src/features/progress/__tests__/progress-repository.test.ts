@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeMedia } from "@/shared/test-utils";
+import { makeEpisodeProgress, makeMedia } from "@/shared/test-utils";
 import type { Episode, Season } from "@/types/media";
 
 const invokeMock = vi.fn();
@@ -41,12 +41,19 @@ describe("progressRepository", () => {
     invokeMock.mockReset();
   });
 
-  it("isMovieSeen() invokes is_movie_seen with movieId", async () => {
-    invokeMock.mockResolvedValueOnce(true);
+  it("isMovieSeen() asks list_seen_movie_ids, and the rows of one instant share a single call", async () => {
+    invokeMock.mockResolvedValueOnce([55, 57]);
     const { progressRepository } = await import("../progress-repository");
 
-    await expect(progressRepository.isMovieSeen(55)).resolves.toBe(true);
-    expect(invokeMock).toHaveBeenCalledWith("is_movie_seen", { movieId: 55 });
+    const answers = await Promise.all([
+      progressRepository.isMovieSeen(55),
+      progressRepository.isMovieSeen(56),
+      progressRepository.isMovieSeen(57),
+    ]);
+
+    expect(answers).toEqual([true, false, true]);
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("list_seen_movie_ids", { movieIds: [55, 56, 57] });
   });
 
   it("toggleMovieSeen() invokes toggle_movie_seen with the movie/watched/watchedAt/note", async () => {
@@ -94,12 +101,23 @@ describe("progressRepository", () => {
     expect(() => new Date(args.watchedAt).toISOString()).not.toThrow();
   });
 
-  it("getEpisodeProgress() invokes get_episode_progress with seriesId", async () => {
-    invokeMock.mockResolvedValueOnce([]);
+  it("getEpisodeProgress() asks get_episode_progress_batch and hands each series its own rows", async () => {
+    const nine = makeEpisodeProgress({ seriesId: 9, episodeId: 1 });
+    const ten = makeEpisodeProgress({ seriesId: 10, episodeId: 2 });
+    invokeMock.mockResolvedValueOnce([nine, ten]);
     const { progressRepository } = await import("../progress-repository");
 
-    await progressRepository.getEpisodeProgress(9);
-    expect(invokeMock).toHaveBeenCalledWith("get_episode_progress", { seriesId: 9 });
+    const [forNine, forTen, forEleven] = await Promise.all([
+      progressRepository.getEpisodeProgress(9),
+      progressRepository.getEpisodeProgress(10),
+      progressRepository.getEpisodeProgress(11),
+    ]);
+
+    expect(forNine).toEqual([nine]);
+    expect(forTen).toEqual([ten]);
+    expect(forEleven).toEqual([]);
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("get_episode_progress_batch", { seriesIds: [9, 10, 11] });
   });
 
   it("toggleEpisodesWatched() invokes toggle_episodes_watched with every field, defaulting history/note to null", async () => {
@@ -267,6 +285,26 @@ describe("progressRepository", () => {
       status: "Ended",
       totalEpisodes: null,
     });
+  });
+
+  it("refreshTrackedSeriesStatuses() sends every series in one refresh_tracked_series_statuses call", async () => {
+    invokeMock.mockResolvedValueOnce([3]);
+    const { progressRepository } = await import("../progress-repository");
+    const refreshes = [
+      { seriesId: 3, status: "Ended", totalEpisodes: 10 },
+      { seriesId: 4, status: null, totalEpisodes: null },
+    ];
+
+    await expect(progressRepository.refreshTrackedSeriesStatuses(refreshes)).resolves.toEqual([3]);
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("refresh_tracked_series_statuses", { refreshes });
+  });
+
+  it("refreshTrackedSeriesStatuses() makes no call for nothing to refresh", async () => {
+    const { progressRepository } = await import("../progress-repository");
+
+    await expect(progressRepository.refreshTrackedSeriesStatuses([])).resolves.toEqual([]);
+    expect(invokeMock).not.toHaveBeenCalled();
   });
 
   it("refreshTrackedSeriesStatus() passes totalEpisodes through when given", async () => {

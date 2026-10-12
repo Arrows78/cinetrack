@@ -24,6 +24,7 @@ export const customListCommands = {
   create: defineCommand<CreateCustomListArgs, CustomList>("create_custom_list"),
   remove: defineCommand<CustomListArgs, void>("remove_custom_list"),
   listItems: defineCommand<CustomListArgs, CustomListItem[]>("list_custom_list_items"),
+  listAllItems: defineCommand<undefined, CustomListItem[]>("list_all_custom_list_items"),
   addItem: defineCommand<AddCustomListItemArgs, void>("add_custom_list_item"),
   removeItem: defineCommand<RemoveCustomListItemArgs, void>("remove_custom_list_item"),
 } as const;

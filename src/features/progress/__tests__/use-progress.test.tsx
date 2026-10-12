@@ -59,6 +59,7 @@ const markSeriesMock = vi.fn(async () => undefined);
 const setEpisodeRatingMock = vi.fn(async () => undefined);
 const listTrackedSeriesMock = vi.fn(async () => [] as TrackedSeriesItem[]);
 const listViewingEventsForMediaMock = vi.fn(async () => [] as never);
+const refreshTrackedSeriesStatusesMock = vi.fn<(refreshes: unknown[]) => Promise<number[]>>(async () => []);
 const refreshTrackedSeriesStatusMock = vi.fn<
   (seriesId: number, status: string | null, totalEpisodes: number | null) => Promise<undefined>
 >(async () => undefined);
@@ -80,6 +81,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
     setEpisodeRating: setEpisodeRatingMock,
     listTrackedSeries: listTrackedSeriesMock,
     refreshTrackedSeriesStatus: refreshTrackedSeriesStatusMock,
+    refreshTrackedSeriesStatuses: refreshTrackedSeriesStatusesMock,
     listViewingEventsForMedia: listViewingEventsForMediaMock,
   },
 }));
@@ -314,26 +316,76 @@ describe("useRefreshTrackedSeriesStatus", () => {
 });
 
 describe("useRefreshTrackedSeriesBatch", () => {
-  it("refreshes every series, invalidates once, and reports the ones that failed", async () => {
-    refreshTrackedSeriesStatusMock.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("boom"));
+  it("sends every series in one call and reports the ones that failed", async () => {
+    refreshTrackedSeriesStatusesMock.mockResolvedValueOnce([2]);
     const { useRefreshTrackedSeriesBatch } = await import("../use-progress");
-    const { client, Wrapper } = createWrapper();
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useRefreshTrackedSeriesBatch(), { wrapper: Wrapper });
 
     let failed: number[] = [];
     await act(async () => {
       failed = await result.current([
-        { seriesId: 1, status: null, totalEpisodes: 4 },
-        { seriesId: 2, status: "Ended", totalEpisodes: 9 },
+        { seriesId: 1, status: null, totalEpisodes: 4, changesCache: true },
+        { seriesId: 2, status: "Ended", totalEpisodes: 9, changesCache: true },
       ]);
     });
 
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(1, null, 4);
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, "Ended", 9);
+    expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledTimes(1);
+    expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledWith([
+      { seriesId: 1, status: null, totalEpisodes: 4 },
+      { seriesId: 2, status: "Ended", totalEpisodes: 9 },
+    ]);
     expect(failed).toEqual([2]);
+  });
+
+  it("invalidates once, and only what a status move can change, when a cached value moved", async () => {
+    const { useRefreshTrackedSeriesBatch } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useRefreshTrackedSeriesBatch(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current([
+        { seriesId: 1, status: null, totalEpisodes: 4, changesCache: true },
+        { seriesId: 2, status: "Ended", totalEpisodes: 9, changesCache: false },
+      ]);
+    });
+
     const invalidated = invalidateSpy.mock.calls.map(([filters]) => filters?.queryKey);
     expect(invalidated.filter((key) => key?.[1] === "trackedSeries")).toHaveLength(1);
     expect(invalidated).toContainEqual(queryKeys.local.library(DEFAULT_PROFILE_ID));
+    expect(invalidated).toContainEqual(queryKeys.local.stats(DEFAULT_PROFILE_ID));
+    // Membership, tags, history, the calendar and dismissals are not touched by a status move.
+    expect(invalidated).not.toContainEqual(queryKeys.local.history(DEFAULT_PROFILE_ID));
+    expect(invalidated).not.toContainEqual(queryKeys.local.libraryMediaKeys(DEFAULT_PROFILE_ID));
+    expect(invalidated).not.toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+  });
+
+  it("invalidates nothing when every refresh left the cache as it was", async () => {
+    const { useRefreshTrackedSeriesBatch } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useRefreshTrackedSeriesBatch(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current([{ seriesId: 1, status: "Ended", totalEpisodes: 4, changesCache: false }]);
+    });
+
+    expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledTimes(1);
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not invalidate for a refresh that failed", async () => {
+    refreshTrackedSeriesStatusesMock.mockResolvedValueOnce([1]);
+    const { useRefreshTrackedSeriesBatch } = await import("../use-progress");
+    const { client, Wrapper } = createWrapper();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useRefreshTrackedSeriesBatch(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current([{ seriesId: 1, status: null, totalEpisodes: 4, changesCache: true }]);
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

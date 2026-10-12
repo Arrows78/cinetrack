@@ -245,6 +245,21 @@ export function libraryInvalidationKeys(profileId: string) {
   ];
 }
 
+// What a status moving on titles that stay in the library can change: the
+// lists and counts that read statuses, the statistics that count completed
+// titles, and the two candidate pools built from them. Narrower than
+// libraryInvalidationKeys above — the membership set, the tags, the history,
+// the tracking calendar and the dismissals are untouched by a status move.
+export function libraryStatusInvalidationKeys(profileId: string) {
+  return [
+    queryKeys.local.library(profileId),
+    queryKeys.local.libraryPage(profileId),
+    queryKeys.local.stats(profileId),
+    queryKeys.local.completedLibraryCandidates(profileId),
+    queryKeys.local.bestRecommendationSeed(profileId),
+  ];
+}
+
 // Backs the grid/detail-page quick "add to library" toggle — a lighter
 // weight pair than useLibraryItem (no full LibraryItem fetch) matching the
 // presence-only shape useIsInLibrary already provides for reads.

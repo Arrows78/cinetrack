@@ -64,6 +64,16 @@ describe("customListRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("remove_custom_list", { listId: "list-id" });
   });
 
+  it("allItems() invokes list_all_custom_list_items once, for every list", async () => {
+    const items = [item({ id: "a", listId: "list-1" }), item({ id: "b", listId: "list-2" })];
+    invokeMock.mockResolvedValueOnce(items);
+    const { customListRepository } = await import("../custom-list-repository");
+
+    await expect(customListRepository.allItems()).resolves.toEqual(items);
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("list_all_custom_list_items", undefined);
+  });
+
   it("items() invokes list_custom_list_items with the listId", async () => {
     invokeMock.mockResolvedValueOnce([item()]);
     const { customListRepository } = await import("../custom-list-repository");

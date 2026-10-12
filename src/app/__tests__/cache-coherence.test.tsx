@@ -34,6 +34,9 @@ const invokeMock = vi.fn(async (command: string, args?: Record<string, unknown>)
       return null;
     case "is_movie_seen":
       return false;
+    case "list_seen_movie_ids":
+    case "get_episode_progress_batch":
+    case "list_library_keys_among":
     case "get_episode_progress":
     case "list_viewing_events_for_media":
       return [];
@@ -216,8 +219,8 @@ describe("TV Time import and every profile-scoped reader", () => {
     await waitFor(() => expect(view.result.current.seen.isSuccess).toBe(true));
     await waitFor(() => expect(view.result.current.events.isSuccess).toBe(true));
     const before = {
-      progress: count("get_episode_progress"),
-      seen: count("is_movie_seen"),
+      progress: count("get_episode_progress_batch"),
+      seen: count("list_seen_movie_ids"),
       events: count("list_viewing_events_for_media"),
     };
 
@@ -225,8 +228,8 @@ describe("TV Time import and every profile-scoped reader", () => {
       await invalidateTvTimeImportQueries(client, PROFILE);
     });
 
-    await waitFor(() => expect(count("get_episode_progress")).toBeGreaterThan(before.progress));
-    await waitFor(() => expect(count("is_movie_seen")).toBeGreaterThan(before.seen));
+    await waitFor(() => expect(count("get_episode_progress_batch")).toBeGreaterThan(before.progress));
+    await waitFor(() => expect(count("list_seen_movie_ids")).toBeGreaterThan(before.seen));
     await waitFor(() => expect(count("list_viewing_events_for_media")).toBeGreaterThan(before.events));
   });
 });

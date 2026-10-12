@@ -1,5 +1,11 @@
-import { progressCommands, type EpisodeHistoryInput, type SeriesInput } from "@/features/progress/progress-commands";
+import {
+  progressCommands,
+  type EpisodeHistoryInput,
+  type SeriesInput,
+  type TrackedSeriesStatusRefresh,
+} from "@/features/progress/progress-commands";
 import { airedEpisodes } from "@/features/progress/progress-utils";
+import { createBatchLoader } from "@/shared/lib/batch-loader";
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type {
   Episode,
@@ -15,6 +21,28 @@ const nowIso = () => new Date().toISOString();
 
 export type { SeriesInput } from "@/features/progress/progress-commands";
 
+// A list of movie rows or series rows asks "seen?" / "which episodes?" once
+// per row; the questions of one instant leave as one call (see
+// shared/lib/batch-loader.ts), so a screen's IPC cost does not grow with its
+// number of rows. Each row keeps its own cache entry and its own answer.
+const movieSeen = createBatchLoader<number, boolean>({
+  keyOf: String,
+  run: async (movieIds) => {
+    const seen = new Set(await invokeTypedCommand(progressCommands.seenMovieIds, { movieIds }));
+    return movieIds.map((movieId) => seen.has(movieId));
+  },
+});
+
+const episodeProgress = createBatchLoader<number, EpisodeProgress[]>({
+  keyOf: String,
+  run: async (seriesIds) => {
+    const rows = await invokeTypedCommand(progressCommands.getEpisodeProgressBatch, { seriesIds });
+    const bySeries = new Map<number, EpisodeProgress[]>(seriesIds.map((seriesId) => [seriesId, []]));
+    for (const row of rows) bySeries.get(row.seriesId)?.push(row);
+    return seriesIds.map((seriesId) => bySeries.get(seriesId) ?? []);
+  },
+});
+
 // The seen_movies/episode_progress/tracked_series/viewing_events writes live
 // in Rust (see src-tauri/src/commands/progress.rs) — this repository is a
 // thin invoke() wrapper around them. History logging for episode/season/
@@ -26,7 +54,7 @@ export type { SeriesInput } from "@/features/progress/progress-commands";
 // already-fetched data and live in progress-utils.ts, not here.
 export const progressRepository = {
   async isMovieSeen(movieId: number): Promise<boolean> {
-    return invokeTypedCommand(progressCommands.isMovieSeen, { movieId });
+    return movieSeen.load(movieId);
   },
 
   // `note` is only ever meaningful when `watched` is true — the Rust side
@@ -50,7 +78,7 @@ export const progressRepository = {
   },
 
   async getEpisodeProgress(seriesId: number): Promise<EpisodeProgress[]> {
-    return invokeTypedCommand(progressCommands.getEpisodeProgress, { seriesId });
+    return episodeProgress.load(seriesId);
   },
 
   // Single-episode toggle — the only toggleEpisodesWatched caller that ever
@@ -129,6 +157,14 @@ export const progressRepository = {
     totalEpisodes: number | null = null
   ): Promise<void> {
     await invokeTypedCommand(progressCommands.refreshTrackedSeriesStatus, { seriesId, status, totalEpisodes });
+  },
+
+  // `refreshTrackedSeriesStatus` for many series in one call — what the Today
+  // Hub uses, which refreshes dozens at once. Resolves to the ids whose
+  // refresh failed; the others went through.
+  async refreshTrackedSeriesStatuses(refreshes: TrackedSeriesStatusRefresh[]): Promise<number[]> {
+    if (refreshes.length === 0) return [];
+    return invokeTypedCommand(progressCommands.refreshTrackedSeriesStatuses, { refreshes });
   },
 
   // One title's full watch history (every viewing_events row, most recent

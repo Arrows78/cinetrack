@@ -35,6 +35,27 @@ describe("libraryRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("list_library", { mediaType: "movie" });
   });
 
+  it("has() asks list_library_keys_among, and the cards of one instant share a single call", async () => {
+    invokeMock.mockResolvedValueOnce([{ mediaId: 1, mediaType: "movie" }]);
+    const { libraryRepository } = await import("../library-repository");
+
+    const answers = await Promise.all([
+      libraryRepository.has(1, "movie"),
+      libraryRepository.has(1, "series"),
+      libraryRepository.has(2, "movie"),
+    ]);
+
+    expect(answers).toEqual([true, false, false]);
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith("list_library_keys_among", {
+      keys: [
+        { mediaId: 1, mediaType: "movie" },
+        { mediaId: 1, mediaType: "series" },
+        { mediaId: 2, mediaType: "movie" },
+      ],
+    });
+  });
+
   it("get() invokes get_library_item with mediaId/mediaType", async () => {
     invokeMock.mockResolvedValueOnce(libraryItem());
     const { libraryRepository } = await import("../library-repository");

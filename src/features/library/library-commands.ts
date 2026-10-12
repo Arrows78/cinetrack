@@ -37,6 +37,7 @@ type SaveLibraryItemArgs = {
 type ListLibraryArgs = { mediaType: MediaSummary["mediaType"] | null };
 type GetRandomArgs = { mediaType: MediaSummary["mediaType"] | null };
 type GetItemsByKeysArgs = { keys: LibraryMediaKey[] };
+type KeysAmongArgs = { keys: LibraryMediaKey[] };
 type PlannedCandidatesArgs = { mediaType: MediaSummary["mediaType"]; limit: number };
 type StalePlannedArgs = { updatedAtOrBefore: string; limit: number };
 type CompletedCandidatesArgs = { mediaType?: MediaSummary["mediaType"]; limit: number };
@@ -53,6 +54,7 @@ export const libraryCommands = {
   save: defineCommand<SaveLibraryItemArgs, LibraryItem>("save_library_item"),
   remove: defineCommand<LibraryIdentityArgs, void>("remove_library_item"),
   has: defineCommand<LibraryIdentityArgs, boolean>("has_library_item"),
+  keysAmong: defineCommand<KeysAmongArgs, LibraryMediaKey[]>("list_library_keys_among"),
   addIfAbsent: defineCommand<AddPlannedLibraryItemArgs, boolean>("add_planned_library_item"),
   removeIfPlanned: defineCommand<LibraryIdentityArgs, boolean>("remove_planned_library_item"),
   resetStatusToAuto: defineCommand<LibraryIdentityArgs, LibraryItem | null>("reset_library_status_to_auto"),

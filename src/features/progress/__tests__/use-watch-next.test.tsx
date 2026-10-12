@@ -47,7 +47,9 @@ const getSeasonDetailsMock = vi.fn(async () => ({ seasonNumber: 1, episodes: [] 
 const getEpisodeProgressMock = vi.fn(async () => [] as never);
 const getNextEpisodeMock = vi.fn(() => nextEpisode);
 const toggleEpisodeSeenMock = vi.fn(async () => undefined);
-const refreshTrackedSeriesStatusMock = vi.fn(async () => undefined);
+const refreshTrackedSeriesStatusesMock = vi.fn(
+  async (...refreshes: unknown[]) => (refreshes.length ? [] : []) as number[]
+);
 
 vi.mock("@/features/media/media-repository", () => ({
   mediaRepository: {
@@ -60,7 +62,7 @@ vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
     getEpisodeProgress: getEpisodeProgressMock,
     toggleEpisodeSeen: toggleEpisodeSeenMock,
-    refreshTrackedSeriesStatus: refreshTrackedSeriesStatusMock,
+    refreshTrackedSeriesStatuses: refreshTrackedSeriesStatusesMock,
   },
 }));
 
@@ -87,7 +89,7 @@ beforeEach(async () => {
   getEpisodeProgressMock.mockClear();
   getNextEpisodeMock.mockClear();
   toggleEpisodeSeenMock.mockClear();
-  refreshTrackedSeriesStatusMock.mockClear();
+  refreshTrackedSeriesStatusesMock.mockClear();
 });
 
 describe("useWatchNext", () => {
@@ -355,12 +357,12 @@ describe("useTodayHubEpisodes cache reconciliation", () => {
     });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledTimes(1));
 
     // Never-started shows are left alone: nothing was completed there. A
     // guessed total would read as a known length later and could complete the
     // series, so none is sent.
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, null, null);
+    expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledWith([{ seriesId: 2, status: null, totalEpisodes: null }]);
   });
 
   it("bumps TMDB's total past the watched count for a show with an aired unwatched episode", async () => {
@@ -372,9 +374,15 @@ describe("useTodayHubEpisodes cache reconciliation", () => {
     const { result } = renderHook(() => useTodayHubEpisodes([finishedSeries]), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledTimes(1));
 
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(2, null, finishedSeries.watchedEpisodes + 1);
+    expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledWith([
+      {
+        seriesId: 2,
+        status: null,
+        totalEpisodes: finishedSeries.watchedEpisodes + 1,
+      },
+    ]);
   });
 
   it("writes TMDB's verdict back for a caught-up show, so a finished series can complete without being opened", async () => {
@@ -388,9 +396,11 @@ describe("useTodayHubEpisodes cache reconciliation", () => {
     const { result } = renderHook(() => useTodayHubEpisodes([finishedSeries]), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledTimes(1));
 
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(finishedSeries.seriesId, "Ended", 10);
+    expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledWith([
+      { seriesId: finishedSeries.seriesId, status: "Ended", totalEpisodes: 10 },
+    ]);
     getNextEpisodeMock.mockReturnValue(nextEpisode);
   });
 
@@ -404,9 +414,11 @@ describe("useTodayHubEpisodes cache reconciliation", () => {
     const { result } = renderHook(() => useTodayHubEpisodes([finishedSeries]), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    await waitFor(() => expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledTimes(1));
 
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith(finishedSeries.seriesId, "Returning Series", 14);
+    expect(refreshTrackedSeriesStatusesMock).toHaveBeenCalledWith([
+      { seriesId: finishedSeries.seriesId, status: "Returning Series", totalEpisodes: 14 },
+    ]);
   });
 
   it("does not touch a show with no aired unwatched episode", async () => {
@@ -416,7 +428,7 @@ describe("useTodayHubEpisodes cache reconciliation", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(refreshTrackedSeriesStatusMock).not.toHaveBeenCalled();
+    expect(refreshTrackedSeriesStatusesMock).not.toHaveBeenCalled();
     getNextEpisodeMock.mockReturnValue(nextEpisode);
   });
 });

@@ -64,6 +64,10 @@ export const queryKeys = {
     profiles: ["local", "profiles"] as const,
     customLists: (profileId: string) => ["local", "customLists", profileId] as const,
     customList: (profileId: string, listId: string) => ["local", "customLists", profileId, listId] as const,
+    // Every list's items in one read. Nested under customLists() so whatever
+    // invalidates the lists (a create, a delete, an add) refreshes it too;
+    // a removal from one list names it explicitly (see useCustomListItems).
+    customListsItems: (profileId: string) => ["local", "customLists", profileId, "items"] as const,
     smartLists: (profileId: string) => ["local", "smartLists", profileId] as const,
     savedFilters: (profileId: string, page: string) => ["local", "savedFilters", profileId, page] as const,
     calendar: (profileId: string) => ["local", "calendar", profileId] as const,

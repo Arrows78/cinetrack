@@ -215,11 +215,16 @@ export function useTodayHubEpisodes(
         // either TMDB's earlier answer, which stays, or unknown): a guess
         // here could later complete the series.
         const lowerBound = series.watchedEpisodes + (nextEpisode ? 1 : 0);
+        const status = tmdbStatus ?? series.status;
+        const totalEpisodes =
+          tmdbTotalEpisodes && tmdbTotalEpisodes > 0 ? Math.max(tmdbTotalEpisodes, lowerBound) : null;
         return [
           {
             seriesId: series.seriesId,
-            status: tmdbStatus ?? series.status,
-            totalEpisodes: tmdbTotalEpisodes && tmdbTotalEpisodes > 0 ? Math.max(tmdbTotalEpisodes, lowerBound) : null,
+            status,
+            totalEpisodes,
+            changesCache:
+              status !== series.status || (totalEpisodes !== null && totalEpisodes !== series.totalEpisodes),
           },
         ];
       });

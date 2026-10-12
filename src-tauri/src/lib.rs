@@ -67,6 +67,10 @@ use commands::{
     list_library_ids_matching_filters, list_library_media_keys, list_planned_library_candidates,
     list_stale_planned_library_items, refresh_library_catalog_metadata,
 };
+use commands::{
+    get_episode_progress_batch, list_all_custom_list_items, list_library_keys_among,
+    list_seen_movie_ids, refresh_tracked_series_statuses,
+};
 
 // Last-resort safety net: `Builder::run` returns a clean `Result` (setup
 // failures — see the `.setup()` closure below — surface here rather than
@@ -180,6 +184,7 @@ pub fn run() {
             list_library_page,
             get_library_item,
             has_library_item,
+            list_library_keys_among,
             save_library_item,
             remove_library_item,
             remove_planned_library_item,
@@ -197,12 +202,15 @@ pub fn run() {
             list_library_distinct_tags,
             refresh_library_catalog_metadata,
             is_movie_seen,
+            list_seen_movie_ids,
             toggle_movie_seen,
             rewatch_movie,
             get_episode_progress,
+            get_episode_progress_batch,
             toggle_episodes_watched,
             list_tracked_series,
             refresh_tracked_series_status,
+            refresh_tracked_series_statuses,
             set_episode_rating,
             list_dismissed_recommendations,
             dismiss_recommendation,
@@ -241,6 +249,7 @@ pub fn run() {
             create_custom_list,
             remove_custom_list,
             list_custom_list_items,
+            list_all_custom_list_items,
             add_custom_list_item,
             remove_custom_list_item,
             list_smart_lists,

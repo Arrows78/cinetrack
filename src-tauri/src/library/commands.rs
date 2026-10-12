@@ -199,6 +199,19 @@ pub async fn get_library_items_by_keys(
     .await
 }
 
+/// The keys among `keys` that are in the library — what a grid of cards asks
+/// instead of one `has_library_item` per card.
+#[tauri::command]
+pub async fn list_library_keys_among(
+    keys: Vec<LibraryMediaKey>,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<LibraryMediaKey>, ApiError> {
+    timed("list_library_keys_among", async {
+        LibraryService::new(pool.inner()).keys_among(keys).await
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn get_library_status_counts(
     pool: State<'_, SqlitePool>,

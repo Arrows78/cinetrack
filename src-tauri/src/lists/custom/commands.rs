@@ -3,7 +3,7 @@ use tauri::State;
 
 use super::models::{CustomList, CustomListItem, MediaSummaryInput};
 use super::repository::{
-    add_impl, create_impl, items_impl, list_impl, remove_impl, remove_item_impl,
+    add_impl, all_items_impl, create_impl, items_impl, list_impl, remove_impl, remove_item_impl,
 };
 use crate::database::current_profile_id;
 use crate::diagnostics::timed;
@@ -52,6 +52,20 @@ pub async fn list_custom_list_items(
     timed("list_custom_list_items", async {
         let profile_id = current_profile_id(&pool).await?;
         items_impl(&pool, &profile_id, &list_id).await
+    })
+    .await
+}
+
+/// The items of every list of the profile at once, each carrying its own
+/// `list_id` — what the library explorer asks instead of one
+/// `list_custom_list_items` per list.
+#[tauri::command]
+pub async fn list_all_custom_list_items(
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<CustomListItem>, ApiError> {
+    timed("list_all_custom_list_items", async {
+        let profile_id = current_profile_id(&pool).await?;
+        all_items_impl(&pool, &profile_id).await
     })
     .await
 }
