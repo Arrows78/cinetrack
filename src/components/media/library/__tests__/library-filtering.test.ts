@@ -327,6 +327,29 @@ describe("filterAndSortLibrary", () => {
     expect(result).toEqual(["AiringSoon", "AiringLater", "NoUpcomingEpisode"]);
   });
 
+  it("breaks a tie between series airing on the same day by id, newest first", () => {
+    const items = [
+      libraryItem({ id: "1", mediaId: 1, title: "First", mediaType: "series" }),
+      libraryItem({ id: "2", mediaId: 2, title: "Second", mediaType: "series" }),
+    ];
+    const nextEpisodeDateBySeriesId = new Map([
+      [1, "2026-02-15"],
+      [2, "2026-02-15"],
+    ]);
+
+    for (const rows of [items, [...items].reverse()]) {
+      expect(
+        titlesOf(
+          filterAndSortLibrary(rows, [], NO_PROGRESS, {
+            ...BASE_CRITERIA,
+            sort: "nextEpisode",
+            nextEpisodeDateBySeriesId,
+          })
+        )
+      ).toEqual(["Second", "First"]);
+    }
+  });
+
   it("sorts list-only items by next episode too, when the series is known", () => {
     const items: LibraryItem[] = [];
     const listOnly = [listItem({ id: "l1", mediaId: 5, title: "ListOnlySeries", mediaType: "series" })];
