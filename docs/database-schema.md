@@ -46,6 +46,12 @@ No declared relation — table intentionally independent from profiles. No `uuid
 
 Only some keys leave this device at all. `ACCOUNT_SCOPE_PREFERENCE_KEYS` (`src-tauri/src/preferences/models.rs`) — currently `language`, `region`, `preferredProviderIds`, `spoilerProtection`, `hideWatchedInDiscovery`, `accentColor`, `onThisDayEnabled` — are the only rows cloud sync ever queues; the rest (`theme`, `compactMode`, `sidebarCollapsed`, the notification and availability-check keys, `notifyHoursBefore`, `backupDirectory`, `backupFrequency`, the shortcut keys, `activeProfileId`, ...) describe this specific installation and stay local. See "Cloud sync" below.
 
+**Defaults are defined once, in Rust.** A key with no row reads as `UserPreferences::default()` (`src-tauri/src/preferences/models.rs`). The frontend's zod schema (`src/shared/constants/preferences-schema.ts`) repeats those values only to restore backups and to stand in while preferences load; `src-tauri/src/preferences/default-preferences.json` is the one document both sides are tested against (a Rust test and `preferences-schema.test.ts`), so a default changed on one side alone fails the build.
+
+**The interface language follows the `language` preference.** i18next starts from the language detected on the device (`src/i18n/index.ts`), which is known before any preference can be read; `LanguageController` then keeps the two in line (a language restored from a backup or pulled from another device wins; on the first read of a session the untouched default `en` does not override a detected `fr`, it is recorded instead). The native tray menu has its own labels in Rust (`src-tauri/src/tray.rs`) and is told the language through `set_tray_language`.
+
+Removing the active profile resets `activeProfileId` straight in this table inside the removal transaction; the `remove_profile` command then drops the in-memory preferences cache, which would otherwise keep serving the deleted profile as the active one.
+
 ## Library & progress
 
 The functional core of the app. Three ideas deliberately coexist: a current _state_ (`library_items`, `status`), an immutable _event log_ (`viewing_events`, used for statistics), and lighter tables that are faster to query for day-to-day interactive use (seen/unseen, episode progress, tracked shows).
