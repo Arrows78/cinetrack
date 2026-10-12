@@ -387,6 +387,44 @@ fn an_unknown_or_empty_zone_is_refused_and_no_zone_keeps_the_fixed_offset() {
     );
 }
 
+/// What `Intl.DateTimeFormat().resolvedOptions().timeZone` reports depends on
+/// the operating system and its tz database vintage: a zone a runtime can name
+/// must never be a 400, or the statistics page would be unusable for that
+/// viewer (old aliases, the renamed zones, half-hour and 45-minute offsets).
+#[test]
+fn the_identifiers_runtimes_report_are_all_known() {
+    for name in [
+        "UTC",
+        "Etc/UTC",
+        "GMT",
+        "Europe/Paris",
+        "Europe/Kyiv",
+        "Europe/Kiev",
+        "America/Ciudad_Juarez",
+        "America/Argentina/Buenos_Aires",
+        "America/Buenos_Aires",
+        "Asia/Calcutta",
+        "Asia/Kolkata",
+        "Asia/Katmandu",
+        "Pacific/Chatham",
+        "Pacific/Kiritimati",
+        "Australia/Lord_Howe",
+        "US/Pacific",
+        "Etc/GMT+5",
+    ] {
+        assert!(LocalClock::from_request(0, Some(name)).is_ok(), "{name}");
+    }
+    // Offsets of those zones are applied at each instant, not only whole hours.
+    let kathmandu = LocalClock::from_request(0, Some("Asia/Kathmandu")).unwrap();
+    assert_eq!(
+        kathmandu
+            .local("2026-06-30T18:20:00.000Z")
+            .unwrap()
+            .to_string(),
+        "2026-07-01 00:05:00"
+    );
+}
+
 /// The commands accept the zone next to the legacy offset: a client that
 /// sends only the offset keeps working, one that sends the zone gets the
 /// real-zone figures, and a bad zone is a 400 — never a silent fallback.
