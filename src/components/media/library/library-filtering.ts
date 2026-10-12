@@ -166,8 +166,10 @@ export function filterAndSortLibrary(
   // (library/queries.rs), so the same library reads in the same order whether
   // this pass or SQLite sorted it — and never in whatever order the rows
   // happened to arrive.
+  // Two items never share an id *and* a media type (the key is unique), so the
+  // media type only has to separate a movie from a series with the same id.
   const byIdentity = (a: MediaGridItem, b: MediaGridItem, direction: 1 | -1) =>
-    direction * (a.id - b.id) || direction * (a.mediaType < b.mediaType ? -1 : a.mediaType > b.mediaType ? 1 : 0);
+    direction * (a.id - b.id) || direction * (a.mediaType < b.mediaType ? -1 : 1);
   // ISO timestamps compare as plain strings; localeCompare would apply
   // locale collation rules to what is not text.
   const compareIso = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);

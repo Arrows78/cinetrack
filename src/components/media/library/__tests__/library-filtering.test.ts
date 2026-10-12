@@ -224,6 +224,21 @@ describe("filterAndSortLibrary", () => {
     }
   });
 
+  it("separates a movie from a series with the same id by media type, the way the server does", () => {
+    const rows = [
+      libraryItem({ id: "m", mediaId: 5, mediaType: "movie", title: "Same", rating: 7 }),
+      libraryItem({ id: "s", mediaId: 5, mediaType: "series", title: "Same", rating: 7 }),
+    ];
+    const typesOf = (items: LibraryItem[], sort: "title" | "rating") =>
+      filterAndSortLibrary(items, [], NO_PROGRESS, { ...BASE_CRITERIA, sort }).map((media) => media.mediaType);
+
+    // Ascending (title) puts the movie first, descending (rating) the series.
+    expect(typesOf(rows, "title")).toEqual(["movie", "series"]);
+    expect(typesOf([...rows].reverse(), "title")).toEqual(["movie", "series"]);
+    expect(typesOf(rows, "rating")).toEqual(["series", "movie"]);
+    expect(typesOf([...rows].reverse(), "rating")).toEqual(["series", "movie"]);
+  });
+
   it("sorts by rating descending, treating a null rating as 0", () => {
     const items = [
       libraryItem({ id: "1", mediaId: 1, title: "NoRating", rating: null }),

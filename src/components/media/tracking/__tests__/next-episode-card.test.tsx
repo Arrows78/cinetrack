@@ -35,6 +35,14 @@ describe("NextEpisodeCard", () => {
     expect(screen.queryByText("Next episode")).not.toBeInTheDocument();
   });
 
+  it("says nothing has aired yet, rather than up to date, when no episode of the series has aired", () => {
+    render(<NextEpisodeCard episode={null} emptyReason="nothingAired" isSaving={false} onWatched={vi.fn()} />);
+
+    expect(screen.getByText("Nothing to watch yet")).toBeInTheDocument();
+    expect(screen.getByText("No episode of this series has aired yet.")).toBeInTheDocument();
+    expect(screen.queryByText("All up to date")).not.toBeInTheDocument();
+  });
+
   it("labels an untitled episode with its number instead of leaving the title empty", () => {
     render(
       <NextEpisodeCard
