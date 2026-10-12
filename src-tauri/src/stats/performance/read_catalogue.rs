@@ -765,3 +765,42 @@ async fn every_foreign_key_column_leads_an_index() {
         "foreign keys with no index starting at their column: {orphans:?}"
     );
 }
+
+/// Every table that holds a profile's rows must be in `PROFILE_SCOPED_TABLES`
+/// (which the profile delete, the backup purge and the schema check share), or
+/// be one of the two cloud-sync bookkeeping tables, which cascade on their own
+/// foreign key and are deliberately neither exported nor purged by a restore.
+#[tokio::test]
+async fn every_table_with_a_profile_column_is_classified() {
+    const SYNC_BOOKKEEPING: [&str; 2] = ["sync_entity_state", "sync_outbox"];
+    let pool = migrated_pool().await;
+    let tables: Vec<(String,)> = sqlx::query_as(
+        "SELECT m.name FROM sqlite_master m, pragma_table_info(m.name) c
+         WHERE m.type = 'table' AND c.name = 'profile_id' ORDER BY m.name",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let unclassified: Vec<String> = tables
+        .into_iter()
+        .map(|(name,)| name)
+        .filter(|name| {
+            !PROFILE_SCOPED_TABLES.contains(&name.as_str())
+                && !SYNC_BOOKKEEPING.contains(&name.as_str())
+        })
+        .collect();
+    assert!(
+        unclassified.is_empty(),
+        "tables with a profile_id that deleting a profile, a backup restore or sync would forget: {unclassified:?}"
+    );
+    for table in PROFILE_SCOPED_TABLES {
+        let has_column: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info(?1) WHERE name = 'profile_id'",
+        )
+        .bind(table)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(has_column, 1, "{table} is listed but has no profile_id");
+    }
+}

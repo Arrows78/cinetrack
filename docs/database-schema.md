@@ -229,6 +229,22 @@ Indexes: `(list_id, position)` (the list's items in order, and the next position
 
 Relations: a list contains `0..n` items. Adding a title already present is a no-op: it keeps its position and its stored title/poster.
 
+### `dismissed_recommendations`
+
+A "not interested" on a recommended title: one row per profile and title, excluded from Watch Tonight and the recommendation rails, lifted when the title is planned afterwards (see `library_items` above). Added by migration 20.
+
+| Column                            | Type | Notes                                             |
+| --------------------------------- | ---- | ------------------------------------------------- |
+| `uuid` **PK**                     | TEXT | public identifier of the row                      |
+| `profile_id` `FK`                 | TEXT | → `profiles.uuid`                                 |
+| `media_id`, `media_type`, `title` | …    | which title was dismissed; `poster_path` nullable |
+| `dismissed_at`                    | TEXT | when the viewer dismissed it                      |
+| `created_at`, `updated_at`        | TEXT | ISO dates                                         |
+
+Indexes: `(profile_id, created_at DESC)` (the list), `UNIQUE(profile_id, media_id, media_type)`.
+
+Relations: a profile dismisses `0..n` titles; deleting the profile cascades.
+
 ## Smart lists & saved filters
 
 Two lighter-weight personalization tables, both added after the initial schema: a smart list is a saved _rule_, not a saved set of items (contrast with `custom_lists`/`custom_list_items` above), and a saved filter is a named shortcut back to a specific filter/sort combination on a given page.
@@ -320,7 +336,7 @@ Generic key/value bookkeeping: this install's `deviceId` (a UUID, generated once
 | `deleted`                                       | INTEGER | 0/1 — set when a remote delete was applied |
 | `updated_at`                                    | TEXT    | ISO date                                   |
 
-Lets a freshly-created local row start its very first push from `base_version = 0` (via `COALESCE(..., 0)` in every trigger) rather than guessing.
+Foreign key `profile_id` → `profiles.uuid`, `ON DELETE CASCADE`; the primary key is its only index (migration 26 dropped a duplicate of it). Lets a freshly-created local row start its very first push from `base_version = 0` (via `COALESCE(..., 0)` in every trigger) rather than guessing.
 
 ### `sync_outbox`
 
@@ -335,7 +351,7 @@ Lets a freshly-created local row start its very first push from `base_version = 
 | `created_at`                  | TEXT    | ISO date                                                                                       |
 | `attempt_count`, `last_error` |         | retry bookkeeping                                                                              |
 
-`UNIQUE(profile_id, entity_type, entity_id)`: a second local edit to the same row before the first has synced replaces the pending mutation in place rather than queuing two — only the latest value ever needs to reach the server. Populated by the `AFTER INSERT/UPDATE/DELETE` triggers on `library_items`, `seen_movies`, `episode_progress`, `tracked_series`, `viewing_events`, `custom_lists`, `custom_list_items`, `smart_lists`, `saved_filters`, `availability_alerts`, `dismissed_recommendations` (migration 20), and `activity_log` (migration 21). `account_preferences` is the one synced entity type with no trigger of its own, captured instead directly in `preferences::repository::write_preference` (see `preferences` above; `preferences` has no `profile_id` column to key a trigger's `sync_outbox` row off in the first place).
+Indexes: `(profile_id, created_at, mutation_id)` (the next batch to push). `UNIQUE(profile_id, entity_type, entity_id)`: a second local edit to the same row before the first has synced replaces the pending mutation in place rather than queuing two — only the latest value ever needs to reach the server. Populated by the `AFTER INSERT/UPDATE/DELETE` triggers on `library_items`, `seen_movies`, `episode_progress`, `tracked_series`, `viewing_events`, `custom_lists`, `custom_list_items`, `smart_lists`, `saved_filters`, `availability_alerts`, `dismissed_recommendations` (migration 20), and `activity_log` (migration 21). `account_preferences` is the one synced entity type with no trigger of its own, captured instead directly in `preferences::repository::write_preference` (see `preferences` above; `preferences` has no `profile_id` column to key a trigger's `sync_outbox` row off in the first place).
 
 Relations: a profile has `0..n` queued mutations; deleting the profile cascades.
 
@@ -451,10 +467,10 @@ erDiagram
     CUSTOM_LISTS ||--o{ CUSTOM_LIST_ITEMS : contains
 ```
 
-`PREFERENCES` and `AVAILABILITY_SNAPSHOTS` are deliberately isolated, with no FK to `PROFILES`. So are `sync_control`, `sync_metadata`, and `sync_entity_state` (omitted above for the same reason as `PREFERENCES`/indexes generally — pure bookkeeping, not a modeled business entity); `sync_metadata` in particular has no `profile_id` column at all.
+`PREFERENCES` and `AVAILABILITY_SNAPSHOTS` are deliberately isolated, with no FK to `PROFILES`. So are `sync_control` and `sync_metadata` (omitted above — pure bookkeeping, not a modeled business entity); `sync_metadata` has no `profile_id` column at all. `sync_entity_state` and `dismissed_recommendations` do reference `PROFILES` (cascade) and are omitted from the diagram for brevity.
 
 `PROFILES.supabase_user_id` deliberately has no relationship line in this diagram: its conceptual "parent" is a Clerk user (`user_xxx`), which lives outside this SQLite file. It's a correlation value, not a constraint enforced by the engine.
 
 ---
 
-The 11 relations to `profiles`, plus the one from `custom_list_items` to `custom_lists`, are declared as `ON DELETE CASCADE` — deleting a profile or a list deletes everything that belongs to it, all the way down the chain. The `profiles.supabase_user_id` link conditions access to a profile on a Clerk sign-in.
+The 13 relations to `profiles` (the 11 tables of `PROFILE_SCOPED_TABLES` in `src-tauri/src/database/mod.rs`, plus `sync_entity_state` and `sync_outbox`, which cascade on their own foreign key and are neither exported by a backup nor purged by a restore), plus the one from `custom_list_items` to `custom_lists`, are declared as `ON DELETE CASCADE`. A test (`stats/performance/read_catalogue.rs`) fails when a table gains a `profile_id` without being classified in one of those two groups, and another when a foreign key has no index starting at its column — deleting a profile or a list deletes everything that belongs to it, all the way down the chain. The `profiles.supabase_user_id` link conditions access to a profile on a Clerk sign-in.

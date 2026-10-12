@@ -145,6 +145,42 @@ build gate. If `main` has no successful run yet, or that run's artifact
 expired (30-day retention) or predates this feature, the comparison step is
 skipped with a warning rather than failing the job.
 
+## Indexes and query plans
+
+Every read the application runs against the personal tables is listed with its plan in `stats/performance/read_catalogue.rs`. Three properties are tests, not thresholds: no read scans a table or sorts rows it could read in order unless the catalogue says why (random pick, backup export, a global cache of a few rows...); every declared index is the plan of at least one read (an index nobody reads still costs every insert); every foreign key leads an index. Adding an index or a read means adding its line there.
+
+`pnpm perf:library-indexes` (release build, in-memory SQLite, Rust only, median of 15) measured the library page reads before and after migration 26:
+
+| Read (50k titles)              | Before  | After   |
+| ------------------------------ | ------- | ------- |
+| page, "date added" sort        | 19.6 ms | 0.28 ms |
+| page, "date completed" sort    | 20.9 ms | 0.29 ms |
+| page 40 deep, "date added"     | 19.1 ms | 0.28 ms |
+| page 40 deep, "date completed" | 17.6 ms | 0.29 ms |
+| page, status + media type      | 5.9 ms  | 0.16 ms |
+| page, rare status              | 0.44 ms | 0.28 ms |
+
+At 10k titles the date sorts go from 2.8 ms to 0.3 ms. Reads that were already index-driven (title and rating sorts, favourites, recommendation seed) did not move, so no index was added for them. Writing 20k viewing events and 10k episode progress rows did not get slower with twelve indexes fewer (noise-level change on this machine).
+
+Reads that stay O(rows of the profile) by design, and where: the tag autocomplete (`list_library_distinct_tags`), the full `list_library` read, the sync outbox drain (ordered by an expression, sorts the whole outbox on every batch of 200: worth an index-friendly order if a large import is ever synced), the global availability snapshots cache.
+
+## IPC calls per page
+
+`src/app/__tests__/ipc-calls-per-page.test.tsx` loads the real app on each main route with `invoke()` replaced by a counter, at two library sizes (12 and 60 titles), and asserts that no local command's call count grows with the library. TMDB requests are counted and printed but not asserted: resolving each followed series' next episode is one request per series (and per season for a started one), cached 30 minutes to 24 hours.
+
+| Page (60 titles, 10 lists) | Local calls before | Local calls after | TMDB requests |
+| -------------------------- | ------------------ | ----------------- | ------------- |
+| Library                    | 54                 | 14                | 0             |
+| Movies hub                 | 61                 | 14                | 0             |
+| Series hub                 | 61                 | 14                | 20            |
+| Home                       | 78                 | 28                | 256           |
+| Series page (20 seasons)   | 18                 | 14                | 22            |
+| Statistics                 | 12                 | 12                | 0             |
+
+The local count at 12 titles is the same as at 60 on every page above except Home, whose remaining growth is the per-series TMDB resolution.
+
+What went: one `has_library_item` per card, one `is_movie_seen` per movie row, one `get_episode_progress` per series, one `list_custom_list_items` per list, one `refresh_tracked_series_status` per series (the Today Hub refreshed every started series on every visit, then invalidated the whole library feed even when nothing had changed).
+
 ## Known full-library reads (client-side filtering)
 
 `list_library` is bounded and scoped by media type for the locked /movies and
