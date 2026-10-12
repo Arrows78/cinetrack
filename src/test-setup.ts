@@ -1,8 +1,22 @@
-import { expect } from "vitest";
+import { beforeAll, expect } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { toHaveNoViolations } from "jest-axe";
 
 expect.extend(toHaveNoViolations);
+
+// The interface language's resources are a dynamically imported chunk, so
+// `i18n.t(...)` / `i18n.exists(...)` answer "missing" until that import has
+// finished. A test that never awaits it passed or failed depending on machine
+// load (the full suite flaked on exactly that). Wait for it once per file.
+beforeAll(async () => {
+  try {
+    await (
+      await import("@/i18n")
+    ).i18nReady;
+  } catch {
+    // A test that mocks "@/i18n" has no readiness to wait for.
+  }
+});
 
 // Recent Node.js versions ship an experimental global `localStorage` that
 // conflicts with jsdom's own per-window implementation, leaving
