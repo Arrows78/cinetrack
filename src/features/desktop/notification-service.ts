@@ -4,15 +4,15 @@ import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 import type { CalendarEntry, UserPreferences } from "@/types/media";
+import { sentNotificationsKey } from "@/shared/constants/local-storage-keys";
 
 // A reminder delivered to one viewer must not consume another viewer's reminder.
-const sentKey = (profileId: string) => `cinetrack.sent-notifications.v2:${profileId}`;
 /** Maximum number of sent notification IDs retained to prevent re-notifying. */
 const MAX_SENT_NOTIFICATIONS = 500;
 
 function readSentNotifications(profileId: string): Set<string> {
   try {
-    const value = JSON.parse(localStorage.getItem(sentKey(profileId)) ?? "[]") as unknown;
+    const value = JSON.parse(localStorage.getItem(sentNotificationsKey(profileId)) ?? "[]") as unknown;
     return new Set(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
   } catch {
     return new Set();
@@ -92,7 +92,7 @@ export const notificationService = {
       // replace the error a failed send is already propagating.
       try {
         localStorage.setItem(
-          sentKey(preferences.activeProfileId),
+          sentNotificationsKey(preferences.activeProfileId),
           JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS))
         );
       } catch (error) {

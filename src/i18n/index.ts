@@ -1,7 +1,8 @@
 import i18n, { type BackendModule, type ReadCallback } from "i18next";
 import { initReactI18next } from "react-i18next";
+import { LANGUAGE_STORAGE_KEY } from "@/shared/constants/local-storage-keys";
 
-const storedLanguage = typeof window === "undefined" ? null : window.localStorage.getItem("cinetrack.language");
+const storedLanguage = typeof window === "undefined" ? null : window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
 const browserLanguage =
   typeof navigator === "undefined" ? "fr" : navigator.language.toLowerCase().startsWith("fr") ? "fr" : "en";
 const initialLanguage = storedLanguage === "en" || storedLanguage === "fr" ? storedLanguage : browserLanguage;
@@ -41,7 +42,7 @@ if (typeof document !== "undefined") {
 
 i18n.on("languageChanged", (language) => {
   if (typeof window !== "undefined" && (language === "fr" || language === "en")) {
-    window.localStorage.setItem("cinetrack.language", language);
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   }
   if (typeof document !== "undefined") {
     document.documentElement.lang = language;

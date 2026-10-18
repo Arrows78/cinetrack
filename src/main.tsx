@@ -29,13 +29,14 @@ import "@fontsource/syne/600.css";
 import "@fontsource/syne/700.css";
 import "@fontsource/syne/800.css";
 import "@/styles/index.css";
+import { LEGACY_QUERY_CACHE_KEY } from "@/shared/constants/local-storage-keys";
 
 // One-time cleanup for installs upgrading from a version that persisted
 // local.* query data (library/history/notes/preferences) to
 // localStorage — removing the persister going forward doesn't erase what
 // it already wrote. Safe to call unconditionally: a no-op once the key is
 // gone.
-window.localStorage.removeItem("cinetrack.query-cache.v1");
+window.localStorage.removeItem(LEGACY_QUERY_CACHE_KEY);
 
 // Waits for the active language's locale chunk (see i18n/index.ts's
 // dynamically-imported backend) and for Clerk's bundled clerk-js to finish

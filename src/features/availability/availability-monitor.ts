@@ -5,6 +5,7 @@ import { mediaRepository } from "@/features/media/media-repository";
 import { notificationService } from "@/features/desktop";
 import { logger } from "@/shared/lib/logger";
 import type { AvailabilityAlert } from "@/types/media";
+import { availabilityBaselineKey } from "@/shared/constants/local-storage-keys";
 
 export interface AvailabilityCheckOutcome {
   /** Alerts whose provider set gained something the user asked to be told about. */
@@ -33,11 +34,10 @@ interface CheckAllOptions {
 // profile) apart from the shared snapshot: the snapshot is a cache of the
 // title and any profile's check overwrites it, so reading "what is new"
 // from it let profile A's check swallow the change profile B was waiting for.
-const baselineKey = (alertId: string) => `cinetrack.availability-baseline.v1:${alertId}`;
 
 function readBaseline(alertId: string): number[] | null {
   try {
-    const value = JSON.parse(localStorage.getItem(baselineKey(alertId)) ?? "null") as unknown;
+    const value = JSON.parse(localStorage.getItem(availabilityBaselineKey(alertId)) ?? "null") as unknown;
     return Array.isArray(value) ? value.filter((id): id is number => typeof id === "number") : null;
   } catch {
     return null;
@@ -46,7 +46,7 @@ function readBaseline(alertId: string): number[] | null {
 
 function writeBaseline(alertId: string, providerIds: number[]): void {
   try {
-    localStorage.setItem(baselineKey(alertId), JSON.stringify(providerIds));
+    localStorage.setItem(availabilityBaselineKey(alertId), JSON.stringify(providerIds));
   } catch (error) {
     logger.warn(`[availability] Could not persist the baseline for alert ${alertId}: ${error}`);
   }
@@ -55,7 +55,7 @@ function writeBaseline(alertId: string, providerIds: number[]): void {
 /** Drops an alert's baseline once the alert is gone, so its key doesn't outlive it in localStorage. */
 function forgetBaseline(alertId: string): void {
   try {
-    localStorage.removeItem(baselineKey(alertId));
+    localStorage.removeItem(availabilityBaselineKey(alertId));
   } catch (error) {
     logger.warn(`[availability] Could not drop the baseline for alert ${alertId}: ${error}`);
   }

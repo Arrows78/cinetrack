@@ -17,6 +17,7 @@ import { preferencesRepository } from "@/features/preferences/preferences-reposi
 import { STALE_24_HOURS } from "@/shared/constants/query";
 import { logger } from "@/shared/lib/logger";
 import type { UserPreferences } from "@/types/media";
+import { LAST_AUTO_BACKUP_FAILED_KEY, LAST_AUTO_BACKUP_KEY } from "@/shared/constants/local-storage-keys";
 
 const BACKUP_DIR = "backups";
 const AUTO_BACKUP_PREFIX = "auto-";
@@ -30,12 +31,10 @@ const PRE_RESTORE_FILE = "backups/pre-restore.json";
 // fallback so upgrading doesn't orphan an existing automatic backup until
 // the next one happens to be created under the new naming scheme.
 const LEGACY_BACKUP_FILE = "backups/latest.json";
-const LAST_BACKUP_KEY = "cinetrack.last-auto-backup";
 // Just a status flag (no personal data) — not the same category of thing
 // removed from localStorage elsewhere in this app. Lets Settings show
 // "last backup failed" even when an older successful backup still exists
 // on disk, which getAutomaticBackupInfo()'s date alone can't distinguish.
-const LAST_BACKUP_FAILED_KEY = "cinetrack.last-auto-backup-failed";
 
 // Embeds the backup's own exportedAt in the filename (colons/dots swapped
 // for dashes — Windows rejects `:` in filenames) so plain alphabetical
@@ -179,17 +178,17 @@ export const maintenanceService = {
       const { backupFrequency } = await preferencesRepository.getPreferences();
       const interval = intervalForFrequency(backupFrequency);
       if (interval === null) return;
-      const last = Number(window.localStorage.getItem(LAST_BACKUP_KEY) ?? 0);
+      const last = Number(window.localStorage.getItem(LAST_AUTO_BACKUP_KEY) ?? 0);
       if (Date.now() - last < interval) return;
     }
     try {
       const backup = await portableData.export();
       await writeNamedBackup(autoBackupFileName(backup.exportedAt), JSON.stringify(backup, null, 2));
       await pruneOldAutoBackups();
-      window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
-      window.localStorage.removeItem(LAST_BACKUP_FAILED_KEY);
+      window.localStorage.setItem(LAST_AUTO_BACKUP_KEY, String(Date.now()));
+      window.localStorage.removeItem(LAST_AUTO_BACKUP_FAILED_KEY);
     } catch (error) {
-      window.localStorage.setItem(LAST_BACKUP_FAILED_KEY, "1");
+      window.localStorage.setItem(LAST_AUTO_BACKUP_FAILED_KEY, "1");
       throw error;
     }
   },
@@ -245,7 +244,7 @@ export const maintenanceService = {
    */
   async getLastBackupStatus(): Promise<{ exportedAt: string | null; failed: boolean }> {
     const info = await maintenanceService.getAutomaticBackupInfo();
-    const failed = window.localStorage.getItem(LAST_BACKUP_FAILED_KEY) === "1";
+    const failed = window.localStorage.getItem(LAST_AUTO_BACKUP_FAILED_KEY) === "1";
     return { exportedAt: info?.exportedAt ?? null, failed };
   },
 };

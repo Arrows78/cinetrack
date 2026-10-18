@@ -7,10 +7,10 @@ import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
+import { BROWSER_TOKEN_KEY } from "@/shared/constants/local-storage-keys";
 
 const CLIENT_NAME = "cinetrack";
 const TOKEN_KEY = "tmdb-bearer-token";
-const BROWSER_KEY = "cinetrack.tmdb-token";
 
 type VaultSource = "env" | "vault" | "browser" | null;
 
@@ -83,7 +83,7 @@ export const tokenVault = {
     }
 
     if (!isTauriApp()) {
-      token = window.localStorage.getItem(BROWSER_KEY);
+      token = window.localStorage.getItem(BROWSER_TOKEN_KEY);
 
       setSnapshot({
         unlocked: Boolean(token),
@@ -134,7 +134,7 @@ export const tokenVault = {
     }
 
     if (!isTauriApp()) {
-      window.localStorage.setItem(BROWSER_KEY, clean);
+      window.localStorage.setItem(BROWSER_TOKEN_KEY, clean);
       token = clean;
 
       setSnapshot({

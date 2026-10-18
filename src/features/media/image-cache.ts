@@ -1,7 +1,7 @@
 import { logger } from "@/shared/lib/logger";
+import { IMAGE_CACHE_META_KEY } from "@/shared/constants/local-storage-keys";
 
 const CACHE_NAME = "cinetrack-images-v1";
-const META_KEY = "cinetrack.image-cache.meta.v1";
 const LIMIT = 250;
 const PREFETCH_CONCURRENCY = 6;
 export const imageCache = {
@@ -10,7 +10,7 @@ export const imageCache = {
     const cache = await caches.open(CACHE_NAME);
     let meta: Record<string, number> = {};
     try {
-      const parsed: unknown = JSON.parse(localStorage.getItem(META_KEY) ?? "{}");
+      const parsed: unknown = JSON.parse(localStorage.getItem(IMAGE_CACHE_META_KEY) ?? "{}");
       if (parsed && typeof parsed === "object") {
         meta = Object.fromEntries(
           Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === "number")
@@ -41,11 +41,11 @@ export const imageCache = {
       await cache.delete(url);
       delete meta[url];
     }
-    localStorage.setItem(META_KEY, JSON.stringify(meta));
+    localStorage.setItem(IMAGE_CACHE_META_KEY, JSON.stringify(meta));
   },
   async clear() {
     if ("caches" in window) await caches.delete(CACHE_NAME);
-    localStorage.removeItem(META_KEY);
+    localStorage.removeItem(IMAGE_CACHE_META_KEY);
   },
   /**
    * Aggregate size (in bytes) of everything currently in the cache — powers
