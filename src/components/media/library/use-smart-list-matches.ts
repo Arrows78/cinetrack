@@ -69,7 +69,9 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
   // Server-side prefilter on the plain-column dimensions, narrowing the
   // candidate set before the full-row fetch below — replaces a full
   // useLibrary() read reduced to a filter in JS.
-  const idsQuery = useLibraryIdsMatchingFilters(rules ? toLibraryFilterParams(rules) : {});
+  const idsQuery = useLibraryIdsMatchingFilters(rules ? toLibraryFilterParams(rules) : {}, {
+    enabled: rules != null,
+  });
   const candidateKeys = rules ? (idsQuery.data ?? []) : [];
   const libraryItemsQuery = useLibraryItemsByKeys(candidateKeys);
   const trackedSeriesQuery = useTrackedSeries();

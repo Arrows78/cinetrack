@@ -92,6 +92,30 @@ describe("availabilityMonitor.seedBaseline", () => {
   });
 });
 
+describe("availabilityMonitor.forgetBaseline", () => {
+  it("removes the stored baseline of an alert and leaves the others", () => {
+    localStorage.setItem("cinetrack.availability-baseline.v1:alert-1", "[8]");
+    localStorage.setItem("cinetrack.availability-baseline.v1:alert-2", "[9]");
+
+    availabilityMonitor.forgetBaseline("alert-1");
+
+    expect(localStorage.getItem("cinetrack.availability-baseline.v1:alert-1")).toBeNull();
+    expect(localStorage.getItem("cinetrack.availability-baseline.v1:alert-2")).toBe("[9]");
+  });
+
+  it("logs instead of throwing when storage refuses", () => {
+    const spy = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    try {
+      expect(() => availabilityMonitor.forgetBaseline("alert-1")).not.toThrow();
+      expect(loggerWarn).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
 describe("availabilityMonitor.checkAll", () => {
   beforeEach(() => {
     vi.clearAllMocks();

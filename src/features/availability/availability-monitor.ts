@@ -52,6 +52,15 @@ function writeBaseline(alertId: string, providerIds: number[]): void {
   }
 }
 
+/** Drops an alert's baseline once the alert is gone, so its key doesn't outlive it in localStorage. */
+function forgetBaseline(alertId: string): void {
+  try {
+    localStorage.removeItem(baselineKey(alertId));
+  } catch (error) {
+    logger.warn(`[availability] Could not drop the baseline for alert ${alertId}: ${error}`);
+  }
+}
+
 // The boot-time check and the recurring interval can overlap (a slow TMDB
 // run outlasting the interval): a second pass reading the snapshots before
 // the first wrote them back would notify for the same new provider again.
@@ -59,6 +68,8 @@ function writeBaseline(alertId: string, providerIds: number[]): void {
 let inFlight: Promise<AvailabilityCheckOutcome> | null = null;
 
 export const availabilityMonitor = {
+  forgetBaseline,
+
   checkAll(options: CheckAllOptions = {}): Promise<AvailabilityCheckOutcome> {
     if (inFlight) return inFlight;
     const run = this.runCheck(options).finally(() => {

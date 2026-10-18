@@ -411,8 +411,8 @@ describe("HistoryPage", () => {
         const lastCall = mockUseHistory.mock.calls[mockUseHistory.mock.calls.length - 1] as [
           { from?: string; to?: string },
         ];
-        expect(lastCall[0].from).toBe("2026-01-01T00:00:00.000Z");
-        expect(lastCall[0].to).toBe("2026-01-31T23:59:59.999Z");
+        expect(lastCall[0].from).toBe(new Date(2026, 0, 1, 0, 0, 0, 0).toISOString());
+        expect(lastCall[0].to).toBe(new Date(2026, 0, 31, 23, 59, 59, 999).toISOString());
       });
 
       const chipLabel = i18n.t("filters.chips.dateRange", { from: "2026-01-01", to: "2026-01-31" });
@@ -429,6 +429,28 @@ describe("HistoryPage", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Undo" }));
       expect(mutateAsyncMock).toHaveBeenCalledWith(item);
+    });
+
+    it("keeps the undo action hover-revealed on a pointer device but always visible on touch", () => {
+      const item = makeHistoryItem({ id: "1", action: "movie:watched", title: "Dune" });
+      mockUseHistory.mockReturnValue(historyQueryResult({ data: { pages: [[item]] } }));
+      const original = window.matchMedia;
+      try {
+        const { unmount } = renderPage();
+        expect(screen.getByRole("button", { name: "Undo" })).toHaveClass("opacity-0");
+        unmount();
+
+        window.matchMedia = ((query: string) => ({
+          matches: query === "(pointer: coarse)",
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        })) as unknown as typeof window.matchMedia;
+        renderPage();
+        expect(screen.getByRole("button", { name: "Undo" })).not.toHaveClass("opacity-0");
+      } finally {
+        window.matchMedia = original;
+      }
     });
 
     it("hides the undo action for an entry with no well-defined reversal", () => {
@@ -657,6 +679,22 @@ describe("HistoryPage", () => {
 
       const titles = screen.getAllByText(/^LowProgress$|^HighProgress$/).map((el) => el.textContent);
       expect(titles).toEqual(["HighProgress", "LowProgress"]);
+    });
+
+    it("shows TMDB statuses in the interface language, keeping an unknown one as sent", () => {
+      mockUseTrackedSeries.mockReturnValue(
+        trackedSeriesQueryResult({
+          data: [
+            makeTrackedSeries({ seriesId: 1, title: "Airing", status: "Returning Series" }),
+            makeTrackedSeries({ seriesId: 2, title: "Odd", status: "Brand New Status" }),
+          ],
+        })
+      );
+      renderPage();
+
+      const select = screen.getByLabelText("Filter by status");
+      expect(within(select).getByRole("option", { name: "Returning series" })).toHaveValue("Returning Series");
+      expect(within(select).getByRole("option", { name: "Brand New Status" })).toBeInTheDocument();
     });
 
     it("filters tracked series by status", () => {

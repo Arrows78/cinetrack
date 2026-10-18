@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
+import { invalidateLocaleDependentQueries } from "@/features/preferences/use-preferences";
 import { getCurrentUserId, getDataClient } from "@/shared/lib/supabase-data-client";
 import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
@@ -69,8 +70,27 @@ async function pushOutbox(auth: Session, profileId: string): Promise<{ pushed: n
   return { pushed, conflicts };
 }
 
-async function pullChanges(auth: Session, profileId: string): Promise<number> {
-  let pulled = 0;
+// Language and region are account preferences that every TMDB-derived cache
+// depends on; a pull that carries one of them needs the same refetch a local
+// change triggers (see invalidateLocaleDependentQueries).
+const LOCALE_PREFERENCE_KEYS = new Set(["language", "region"]);
+
+function changesLocalePreference(change: RemoteSyncChange): boolean {
+  if (change.entityType !== "account_preferences") return false;
+  // A delete carries no payload: it may well reset a locale key.
+  if (change.operation === "delete" || !change.data || typeof change.data !== "object") return true;
+  return LOCALE_PREFERENCE_KEYS.has(String((change.data as { key?: unknown }).key));
+}
+
+interface PullProgress {
+  pulled: number;
+  localeChanged: boolean;
+}
+
+// Progress is reported through a shared object rather than the return value
+// so a pull that throws after some pages were already applied still tells the
+// caller what changed locally.
+async function pullChanges(auth: Session, profileId: string, progress: PullProgress): Promise<void> {
   let previousCursor: number | null = null;
 
   for (;;) {
@@ -109,11 +129,10 @@ async function pullChanges(auth: Session, profileId: string): Promise<number> {
       createdAt: row.created_at,
     }));
     await syncRepository.applyRemote(profileId, changes);
-    pulled += changes.length;
+    progress.pulled += changes.length;
+    if (changes.some(changesLocalePreference)) progress.localeChanged = true;
     if (changes.length < SYNC_PULL_SIZE) break;
   }
-
-  return pulled;
 }
 
 async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
@@ -124,18 +143,31 @@ async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
   // Rust only agrees to start when the active local profile is the one linked
   // to this Clerk account, and every later step is bound to that profile.
   const profileId = await syncRepository.prepare(auth.userId);
-  const firstPush = await pushOutbox(auth, profileId);
-  const pulled = await pullChanges(auth, profileId);
-  // A pull may have rebased pending local edits onto a newer remote version.
-  // Flush them now instead of waiting for the next periodic wake-up.
-  const secondPush = await pushOutbox(auth, profileId);
-  // Recorded even when nothing moved: a successful round with no pending
-  // changes is still a successful "last synced" check-in.
-  await syncRepository.markCompleted(profileId);
-
-  if (pulled > 0) {
-    await queryClient?.invalidateQueries({ queryKey: ["local"] });
+  const progress: PullProgress = { pulled: 0, localeChanged: false };
+  let firstPush: { pushed: number; conflicts: number };
+  let secondPush: { pushed: number; conflicts: number };
+  try {
+    firstPush = await pushOutbox(auth, profileId);
+    await pullChanges(auth, profileId, progress);
+    // A pull may have rebased pending local edits onto a newer remote version.
+    // Flush them now instead of waiting for the next periodic wake-up.
+    secondPush = await pushOutbox(auth, profileId);
+    // Recorded even when nothing moved: a successful round with no pending
+    // changes is still a successful "last synced" check-in.
+    await syncRepository.markCompleted(profileId);
+  } finally {
+    // Even when a later step throws: rows applied by an earlier page are
+    // already in SQLite, and the UI must not keep showing the old data.
+    if (progress.pulled > 0 && queryClient) {
+      try {
+        await queryClient.invalidateQueries({ queryKey: ["local"] });
+        if (progress.localeChanged) await invalidateLocaleDependentQueries(queryClient, profileId);
+      } catch (error) {
+        logger.warn(`Cloud sync could not refresh the local queries: ${errorMessage(error)}`);
+      }
+    }
   }
+  const pulled = progress.pulled;
 
   const result = {
     pushed: firstPush.pushed + secondPush.pushed,

@@ -91,6 +91,28 @@ describe("MediaCard", () => {
     await waitFor(() => expect(libraryRepository.addIfAbsent).toHaveBeenCalled());
   });
 
+  it("reveals the quick actions on hover for a pointer, but keeps them visible on touch", async () => {
+    const original = window.matchMedia;
+    try {
+      const { unmount } = renderCard(makeMedia({ id: 7, mediaType: "movie" }));
+      const hidden = await screen.findByRole("button", { name: "Add to library" });
+      expect(hidden.parentElement).toHaveClass("opacity-0");
+      unmount();
+
+      window.matchMedia = ((query: string) => ({
+        matches: query === "(pointer: coarse)",
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })) as unknown as typeof window.matchMedia;
+      renderCard(makeMedia({ id: 7, mediaType: "movie" }));
+      const visible = await screen.findByRole("button", { name: "Add to library" });
+      expect(visible.parentElement).not.toHaveClass("opacity-0");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("offers to really remove a title once removeIfPlanned reports it has real progress", async () => {
     libraryHasMock.mockResolvedValue(true);
     removeIfPlannedMock.mockResolvedValue(false);

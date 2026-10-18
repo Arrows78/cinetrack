@@ -1,8 +1,35 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import type { UserPreferences } from "@/types/media";
+
+/**
+ * Everything cached in the previous language/region that has to be refetched
+ * once either changes — whether the change was made here (usePreferences) or
+ * arrived from another device through cloud sync, so both go through this one
+ * list instead of two copies that could drift.
+ */
+export async function invalidateLocaleDependentQueries(
+  queryClient: QueryClient,
+  profileId: string | undefined
+): Promise<void> {
+  const activeProfileId = profileId ?? DEFAULT_PROFILE_ID;
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["remote"] }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(activeProfileId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(activeProfileId) }),
+    // Cached under a profile key but built from TMDB responses in the
+    // previous language/region: Watch Tonight's picks and the "people
+    // you watch" credits (see use-watch-tonight.ts, use-people-you-watch.ts).
+    queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        queryKey[0] === "local" &&
+        queryKey[2] === activeProfileId &&
+        (queryKey[1] === "watchTonight" || queryKey[1] === "peopleYouWatchCredits" || queryKey[1] === "watchNext"),
+    }),
+  ]);
+}
 
 export function usePreferences() {
   const queryClient = useQueryClient();
@@ -22,26 +49,7 @@ export function usePreferences() {
       queryClient.setQueryData(queryKeys.local.preferences, data);
 
       if (variables.key === "language" || variables.key === "region") {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["remote"] }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.local.calendar(previousProfileId ?? DEFAULT_PROFILE_ID),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.local.tracking(previousProfileId ?? DEFAULT_PROFILE_ID),
-          }),
-          // Cached under a profile key but built from TMDB responses in the
-          // previous language/region: Watch Tonight's picks and the "people
-          // you watch" credits (see use-watch-tonight.ts, use-people-you-watch.ts).
-          queryClient.invalidateQueries({
-            predicate: ({ queryKey }) =>
-              queryKey[0] === "local" &&
-              queryKey[2] === (previousProfileId ?? DEFAULT_PROFILE_ID) &&
-              (queryKey[1] === "watchTonight" ||
-                queryKey[1] === "peopleYouWatchCredits" ||
-                queryKey[1] === "watchNext"),
-          }),
-        ]);
+        await invalidateLocaleDependentQueries(queryClient, previousProfileId);
       }
     },
   });

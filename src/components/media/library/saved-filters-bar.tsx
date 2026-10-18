@@ -9,6 +9,8 @@ import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useSavedFilters } from "@/features/saved-filters/use-saved-filters";
 import { cn } from "@/shared/lib/cn";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import type { SavedFilterPage, SavedFilterState } from "@/types/media";
 
 const MAX_SAVED_FILTER_NAME_LENGTH = 100;
@@ -74,7 +76,9 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
 
   const handleSave = () => {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    // isSaving: Enter (or a second click) while a save is in flight would
+    // create the same saved filter twice.
+    if (!trimmed || savedFilters.isSaving) return;
     setSaveError(null);
     void savedFilters
       .create({ name: trimmed, filters: currentFilters })
@@ -82,17 +86,23 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
         setName("");
         setIsCreating(false);
       })
-      .catch(() => setSaveError(t("filters.savedFilters.saveFailed")));
+      .catch((error: unknown) => {
+        logger.error(`Saving a filter failed: ${errorMessage(error)}`);
+        setSaveError(t("filters.savedFilters.saveFailed"));
+      });
   };
 
   const handleRename = (savedFilterId: string) => {
     const trimmed = editingName.trim();
-    if (!trimmed) return;
+    if (!trimmed || savedFilters.isSaving) return;
     setRenameError(null);
     void savedFilters
       .rename({ savedFilterId, name: trimmed })
       .then(() => setEditingId(null))
-      .catch(() => setRenameError(t("filters.savedFilters.renameFailed")));
+      .catch((error: unknown) => {
+        logger.error(`Renaming a saved filter failed: ${errorMessage(error)}`);
+        setRenameError(t("filters.savedFilters.renameFailed"));
+      });
   };
 
   // A saved filter is "active" when the page's current filter state is
@@ -126,7 +136,7 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
                   variant="ghost"
                   aria-label={t("filters.savedFilters.renameSave")}
                   className="size-6 rounded-full"
-                  disabled={!editingName.trim()}
+                  disabled={!editingName.trim() || savedFilters.isSaving}
                   onClick={() => handleRename(saved.id)}
                 >
                   <Check className="size-3" />
@@ -211,7 +221,13 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
                 if (event.key === "Enter") handleSave();
               }}
             />
-            <Button type="button" size="sm" variant="outline" disabled={!name.trim()} onClick={handleSave}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!name.trim() || savedFilters.isSaving}
+              onClick={handleSave}
+            >
               <BookmarkPlus className="mr-2 size-4" />
               {t("filters.savedFilters.save")}
             </Button>
@@ -248,7 +264,10 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
           void savedFilters
             .remove(pendingRemoval.id)
             .then(() => setPendingRemoval(null))
-            .catch(() => setRemoveError(t("filters.savedFilters.deleteFailed")));
+            .catch((error: unknown) => {
+              logger.error(`Deleting a saved filter failed: ${errorMessage(error)}`);
+              setRemoveError(t("filters.savedFilters.deleteFailed"));
+            });
         }}
       />
     </div>

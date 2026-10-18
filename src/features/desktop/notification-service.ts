@@ -1,5 +1,7 @@
 import { differenceInHours, endOfDay, isAfter, parseISO, startOfDay } from "date-fns";
 import i18n from "@/i18n";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 import type { CalendarEntry, UserPreferences } from "@/types/media";
 
@@ -86,10 +88,16 @@ export const notificationService = {
         count += 1;
       }
     } finally {
-      localStorage.setItem(
-        sentKey(preferences.activeProfileId),
-        JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS))
-      );
+      // Guarded: a storage failure here (quota, blocked storage) must not
+      // replace the error a failed send is already propagating.
+      try {
+        localStorage.setItem(
+          sentKey(preferences.activeProfileId),
+          JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS))
+        );
+      } catch (error) {
+        logger.warn(`Could not persist the sent-notifications record: ${errorMessage(error)}`);
+      }
     }
     return count;
   },

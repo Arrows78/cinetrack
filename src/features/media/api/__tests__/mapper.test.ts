@@ -206,7 +206,21 @@ describe("mapMovieDto", () => {
   });
 
   it("prefers the full genres array over genre_ids when both are present", () => {
-    expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }], genre_ids: [53] })).genres).toEqual(["Drame"]);
+    expect(mapMovieDto(movieDto({ genres: [{ id: 18, name: "Drame" }], genre_ids: [53] })).genres).toEqual(["Drama"]);
+  });
+
+  it("stores canonical English labels for localized detail genres, keeping the TMDB name only for unknown ids", () => {
+    expect(
+      mapMovieDto(
+        movieDto({
+          genres: [
+            { id: 35, name: "Comédie" },
+            { id: 999999, name: "Inconnu" },
+          ],
+        })
+      ).genres
+    ).toEqual(["Comedy", "Inconnu"]);
+    expect(mapSeriesDto(tvDto({ genres: [{ id: 35, name: "Comédie" }] })).genres).toEqual(["Comedy"]);
   });
 
   it("drops unknown genre ids instead of producing an empty label", () => {

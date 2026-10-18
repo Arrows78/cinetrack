@@ -239,6 +239,35 @@ describe("DesktopSettings", () => {
       );
     });
 
+    it("clears the password and token fields after a successful save, but keeps them when it fails", async () => {
+      saveMock.mockRejectedValueOnce(new Error("boom"));
+      render(<DesktopSettings />);
+      const password = screen.getByLabelText(/Vault password/);
+      const token = screen.getByLabelText(/New TMDB Bearer token/);
+      fireEvent.change(password, { target: { value: "hunter2" } });
+      fireEvent.change(token, { target: { value: "abc123" } });
+
+      screen.getByRole("button", { name: "Save" }).click();
+      await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "error" })));
+      expect(password).toHaveValue("hunter2");
+      expect(token).toHaveValue("abc123");
+
+      screen.getByRole("button", { name: "Save" }).click();
+      await waitFor(() => expect(password).toHaveValue(""));
+      expect(token).toHaveValue("");
+    });
+
+    it("clears the password field after an unlock", async () => {
+      unlockMock.mockResolvedValueOnce(true);
+      render(<DesktopSettings />);
+      const password = screen.getByLabelText(/Vault password/);
+      fireEvent.change(password, { target: { value: "hunter2" } });
+
+      screen.getByRole("button", { name: "Unlock" }).click();
+
+      await waitFor(() => expect(password).toHaveValue(""));
+    });
+
     it("Unlock (truthy resolution) shows the unlockSuccess toast", async () => {
       unlockMock.mockResolvedValueOnce(true);
       render(<DesktopSettings />);

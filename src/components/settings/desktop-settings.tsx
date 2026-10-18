@@ -230,7 +230,14 @@ export function DesktopSettings() {
             <div className="flex gap-2">
               <Button
                 disabled={busy || !password || !token.trim()}
-                onClick={() => void run(() => tokenVault.save(password, token))}
+                onClick={() =>
+                  void run(async () => {
+                    await tokenVault.save(password, token);
+                    // Secrets don't linger in component state once stored.
+                    setPassword("");
+                    setToken("");
+                  })
+                }
               >
                 {t("desktop.save")}
               </Button>
@@ -238,9 +245,11 @@ export function DesktopSettings() {
                 variant="outline"
                 disabled={busy || !password}
                 onClick={() =>
-                  void run(async () =>
-                    (await tokenVault.unlock(password)) ? t("desktop.unlockSuccess") : t("desktop.unlockNoToken")
-                  )
+                  void run(async () => {
+                    const unlocked = await tokenVault.unlock(password);
+                    setPassword("");
+                    return unlocked ? t("desktop.unlockSuccess") : t("desktop.unlockNoToken");
+                  })
                 }
               >
                 {t("desktop.unlock")}

@@ -80,6 +80,33 @@ describe("SavedFiltersBar", () => {
     expect(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") })).toBeDisabled();
   });
 
+  it("ignores a second save (Enter or click) while one is still in flight", () => {
+    useSavedFiltersMock.mockReturnValue({ ...useSavedFiltersMock(), isSaving: true });
+    render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
+    const input = screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.nameLabel") });
+    fireEvent.change(input, { target: { value: "My view" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(createMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") })).toBeDisabled();
+  });
+
+  it("ignores a second rename while one is still in flight", () => {
+    useSavedFiltersMock.mockReturnValue({ ...useSavedFiltersMock(), isSaving: true });
+    render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("filters.savedFilters.rename", { name: "Paused shows" }) })
+    );
+    const input = screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.renameLabel") });
+    fireEvent.change(input, { target: { value: "Renamed" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(renameMock).not.toHaveBeenCalled();
+  });
+
   it("shows a translated error and keeps the typed name when saving rejects", async () => {
     createMock.mockRejectedValueOnce(new Error("boom"));
     render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);

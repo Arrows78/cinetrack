@@ -16,11 +16,17 @@ export function useAvailabilityAlerts() {
     queryFn: () => availabilityRepository.listAlerts(),
   });
   const removeMutation = useInvalidatingMutation(
-    (id: string) => availabilityRepository.remove(id),
+    async (id: string) => {
+      await availabilityRepository.remove(id);
+      availabilityMonitor.forgetBaseline(id);
+    },
     [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
   );
   const removeManyMutation = useInvalidatingMutation(
-    (ids: string[]) => availabilityRepository.removeMany(ids),
+    async (ids: string[]) => {
+      await availabilityRepository.removeMany(ids);
+      ids.forEach((id) => availabilityMonitor.forgetBaseline(id));
+    },
     [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
   );
   return {
@@ -116,7 +122,13 @@ export function useAvailabilityAlert(
     enabled: options?.enabled ?? true,
   });
   const mutation = useMutation({
-    mutationFn: () => availabilityRepository.toggle(media, region, providerIds),
+    mutationFn: async () => {
+      const previous = query.data;
+      const alert = await availabilityRepository.toggle(media, region, providerIds);
+      // Toggled off: the alert is gone, so is the baseline it was tracked against.
+      if (!alert && previous) availabilityMonitor.forgetBaseline(previous.id);
+      return alert;
+    },
     onSuccess: (data) => {
       client.setQueryData([...queryKeys.local.availabilityAlerts(profileId), media.mediaType, media.id], data);
       void client.invalidateQueries({ queryKey: queryKeys.local.availabilityAlerts(profileId) });

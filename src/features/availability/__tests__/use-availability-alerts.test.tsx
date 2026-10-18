@@ -54,13 +54,18 @@ vi.mock("@/features/availability/availability-repository", () => ({
     toggle: (mediaArg: MediaSummary, region: string, providerIds: number[]) =>
       toggleMock(mediaArg, region, providerIds),
     remove: (id: string) => removeMock(id),
+    removeMany: (ids: string[]) => Promise.all(ids.map((id) => removeMock(id))),
     listSnapshots: () => listSnapshotsMock(),
   },
 }));
 
+const forgetBaselineMock = vi.fn<(id: string) => void>();
 const seedBaselineMock = vi.fn<(alert: unknown) => Promise<boolean>>(async () => true);
 vi.mock("@/features/availability/availability-monitor", () => ({
-  availabilityMonitor: { seedBaseline: (alertArg: unknown) => seedBaselineMock(alertArg) },
+  availabilityMonitor: {
+    seedBaseline: (alertArg: unknown) => seedBaselineMock(alertArg),
+    forgetBaseline: (id: string) => forgetBaselineMock(id),
+  },
 }));
 
 vi.mock("@/features/preferences/preferences-repository", () => ({
@@ -84,6 +89,7 @@ beforeEach(() => {
   removeMock.mockClear().mockResolvedValue(undefined);
   listSnapshotsMock.mockClear().mockResolvedValue([snapshot]);
   getPreferencesMock.mockClear();
+  forgetBaselineMock.mockClear();
 });
 
 describe("useAvailabilityAlerts", () => {
@@ -113,6 +119,58 @@ describe("useAvailabilityAlerts", () => {
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.availabilityAlerts(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+  });
+});
+
+describe("baseline cleanup", () => {
+  it("forgets the baseline of a removed alert", async () => {
+    const { useAvailabilityAlerts } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAvailabilityAlerts(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.remove(alert.id);
+    });
+
+    expect(forgetBaselineMock).toHaveBeenCalledWith(alert.id);
+  });
+
+  it("forgets the baseline of every alert removed in bulk, only once they are removed", async () => {
+    const { useAvailabilityAlerts } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAvailabilityAlerts(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    removeMock.mockRejectedValueOnce(new Error("boom"));
+    await act(async () => {
+      await result.current.removeMany(["a", "b"]).catch(() => undefined);
+    });
+    expect(forgetBaselineMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.removeMany(["a", "b"]);
+    });
+    expect(forgetBaselineMock.mock.calls.map((call) => call[0])).toEqual(["a", "b"]);
+  });
+
+  it("forgets the baseline when a toggle switches the alert off, not when it creates one", async () => {
+    const { useAvailabilityAlert } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    getAlertMock.mockResolvedValue(alert);
+    const { result } = renderHook(() => useAvailabilityAlert(media, "FR", [8]), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data).toEqual(alert));
+
+    await act(async () => {
+      await result.current.toggle();
+    });
+    expect(forgetBaselineMock).not.toHaveBeenCalled();
+
+    toggleMock.mockResolvedValue(null);
+    await act(async () => {
+      await result.current.toggle();
+    });
+    expect(forgetBaselineMock).toHaveBeenCalledWith(alert.id);
   });
 });
 

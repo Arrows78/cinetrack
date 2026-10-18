@@ -277,6 +277,23 @@ describe("notificationService", () => {
       expect(localStorage.getItem(SENT_KEY)).toBe(JSON.stringify(["entry-episode"]));
     });
 
+    it("lets the original send error through when persisting the sent record also fails", async () => {
+      mocks.isTauriApp.mockReturnValue(true);
+      mocks.isPermissionGranted.mockResolvedValue(true);
+      mocks.sendNotification.mockImplementationOnce(() => {
+        throw new Error("os refused");
+      });
+      const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("quota");
+      });
+
+      try {
+        await expect(notificationService.notifyDue([episodeEntry()], basePreferences)).rejects.toThrow("os refused");
+      } finally {
+        setItem.mockRestore();
+      }
+    });
+
     it("skips entries whose release date is already past", async () => {
       stubNotification("granted");
       const entry = episodeEntry({ date: "2026-01-10" });

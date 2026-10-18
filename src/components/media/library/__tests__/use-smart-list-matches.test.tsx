@@ -23,12 +23,14 @@ vi.mock("@/features/preferences/preferences-repository", () => ({
 // and still real below.
 let libraryItems: LibraryItem[] = [];
 let libraryIsError = false;
+const idsMatchingFiltersSpy = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
-    idsMatchingFilters: () =>
-      libraryIsError
+    idsMatchingFilters: (...args: unknown[]) =>
+      idsMatchingFiltersSpy(...args) ||
+      (libraryIsError
         ? Promise.reject(new Error("boom"))
-        : Promise.resolve(libraryItems.map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType }))),
+        : Promise.resolve(libraryItems.map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType })))),
     getItemsByKeys: () => Promise.resolve(libraryItems),
   },
 }));
@@ -89,6 +91,7 @@ function createWrapper() {
 }
 
 beforeEach(() => {
+  idsMatchingFiltersSpy.mockReset();
   getPreferencesMock
     .mockReset()
     .mockResolvedValue({ activeProfileId: DEFAULT_PROFILE_ID, preferredProviderIds: [], region: "FR" } as never);
@@ -145,6 +148,8 @@ describe("useSmartListMatches", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.items).toEqual([]);
+    // No smart list selected: no library query at all, not a wasted full-library id scan.
+    expect(idsMatchingFiltersSpy).not.toHaveBeenCalled();
   });
 
   it("filters the library by the given rules", async () => {

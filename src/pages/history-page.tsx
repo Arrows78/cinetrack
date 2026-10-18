@@ -4,9 +4,11 @@ import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Virtuoso } from "react-virtuoso";
-import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { endOfDay, format, isToday, isYesterday, parseISO, startOfDay } from "date-fns";
 import type { Locale } from "date-fns";
 import { enUS, fr } from "date-fns/locale";
+import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
+import { tmdbStatusLabel } from "@/shared/utils/tmdb-status";
 import {
   History,
   Clapperboard,
@@ -222,6 +224,7 @@ function describeLibraryUpdate(item: ViewingHistoryItem, t: TFunction) {
 
 export function HistoryPage() {
   const { t, i18n } = useTranslation();
+  const isTouch = useIsTouchDevice();
   const dateLocale = i18n.language.startsWith("fr") ? fr : enUS;
   const trackedSeriesQuery = useTrackedSeries();
   const undo = useUndoHistoryItem();
@@ -260,11 +263,13 @@ export function HistoryPage() {
 
   const historyQuery = useHistory({
     search: debouncedQuery || undefined,
-    // Inclusive end-of-day bound — a plain date input only carries the day,
-    // and comparing it against full ISO timestamps at midnight would drop
+    // A plain date input only carries the day: the bounds are the user's
+    // *local* start and (inclusive) end of that day, the same days the list's
+    // day headers are grouped by, converted to the UTC instants the
+    // timestamps are stored as. Comparing against midnight alone would drop
     // every entry logged later that same day.
-    from: fromDate ? `${fromDate}T00:00:00.000Z` : undefined,
-    to: toDate ? `${toDate}T23:59:59.999Z` : undefined,
+    from: fromDate ? startOfDay(parseISO(fromDate)).toISOString() : undefined,
+    to: toDate ? endOfDay(parseISO(toDate)).toISOString() : undefined,
   });
 
   const currentFilters: HistoryFilterState = { typeFilter, search: debouncedQuery, from: fromDate, to: toDate };
@@ -489,7 +494,13 @@ export function HistoryPage() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="relative z-10 size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                            className={cn(
+                              "relative z-10 size-8 shrink-0",
+                              // Hover-revealed on a pointer device only: on touch there is no hover, so
+                              // an invisible button would still take taps and undo an entry unseen.
+                              !isTouch &&
+                                "opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                            )}
                             aria-label={t("history.undo")}
                             disabled={undo.isPending}
                             // Failure toast is handled by the app-wide
@@ -553,7 +564,7 @@ export function HistoryPage() {
                 <option value="all">{t("filters.all")}</option>
                 {trackedSeriesStatuses.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {tmdbStatusLabel(status, t)}
                   </option>
                 ))}
               </Select>
