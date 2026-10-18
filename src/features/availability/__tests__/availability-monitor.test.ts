@@ -95,6 +95,7 @@ describe("availabilityMonitor.seedBaseline", () => {
 describe("availabilityMonitor.checkAll", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mocks.listAlerts.mockResolvedValue([alert()]);
     mocks.getWatchAvailability.mockResolvedValue(availability([8]));
     mocks.getSnapshot.mockResolvedValue(snapshot([]));
@@ -145,6 +146,28 @@ describe("availabilityMonitor.checkAll", () => {
 
     expect(mocks.send).not.toHaveBeenCalled();
     expect(outcome.changes).toBe(1);
+  });
+
+  it("keeps each profile's alert independent when the shared snapshot is overwritten between checks", async () => {
+    const alertA = alert({ id: "alert-a", profileId: "profile-a" });
+    const alertB = alert({ id: "alert-b", profileId: "profile-b" });
+    // Both alerts were baselined while nothing was available.
+    mocks.getSnapshot.mockResolvedValue(snapshot([]));
+    mocks.listAlerts.mockResolvedValue([alertA]);
+    await availabilityMonitor.seedBaseline(alertA);
+    mocks.listAlerts.mockResolvedValue([alertB]);
+    await availabilityMonitor.seedBaseline(alertB);
+
+    // Profile A's check runs first and "consumes" the new provider in the shared snapshot.
+    mocks.listAlerts.mockResolvedValue([alertA]);
+    expect((await availabilityMonitor.checkAll({ alertsEnabled: true })).changes).toBe(1);
+    mocks.getSnapshot.mockResolvedValue(snapshot([8]));
+
+    mocks.listAlerts.mockResolvedValue([alertB]);
+    const outcomeB = await availabilityMonitor.checkAll({ alertsEnabled: true });
+
+    expect(outcomeB.changes).toBe(1);
+    expect(mocks.send).toHaveBeenCalledTimes(2);
   });
 
   it("does not notify when there is no previous snapshot to compare against", async () => {
