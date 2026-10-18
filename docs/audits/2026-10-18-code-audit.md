@@ -39,61 +39,63 @@ exécution dans la fenêtre Tauri.
   `shared/constants/local-storage-keys.ts`, valeurs inchangées, avec un test
   contre les doublons.
 
-## À décider ou à faire
+## Second lot : points traités
 
-Ces points demandent un choix produit, une migration ou une mesure native.
+- **PIN.** Compteur d’échecs par profil avec verrouillage progressif (réponse
+  429, message traduit), hachage Argon2id avec reprise transparente des
+  anciens hachages SHA-256, fin de la dispense de PIN pour un profil lié à un
+  compte (le sélecteur de profil demande désormais le PIN), identifiant de
+  compte retiré de `list_profiles`. Migration 27. Les compteurs ne sont pas
+  restaurés avec une sauvegarde.
+- **Jeton TMDB** conservé dans l’état Rust (`set_tmdb_token`), plus transmis à
+  chaque commande, absent du bundle de production, chemins TMDB limités par
+  liste blanche.
+- **Alertes de disponibilité** : `set_availability_alert` idempotent remplace
+  la bascule.
+- **Profils** : nom, avatar et nombre limités, liaison de compte dans une
+  transaction. **Préférences** : une valeur hors bornes retombe sur son défaut,
+  compteur de génération contre les lectures périmées. **Migrations** : une
+  base plus récente que l’application bloque le démarrage.
+- **Import TV Time** : lot borné et validé côté Rust ; côté TypeScript,
+  regroupement par identifiant de série, phases séquencées (liste de suivi en
+  dernier), détails relus après un appariement TVDB, service découpé.
+- **Interface** : confirmation de l’annulation d’historique et du décochage
+  d’un épisode noté ou balayé, confettis après succès de l’écriture, filtres
+  sauvegardés limités à leur page, titres « liste seule » visibles sur
+  `/library`, delta annuel des statistiques fiable, tâches de journal, cache
+  d’images et sauvegarde automatique sans course ni promesse non gérée.
+- **Refactorisation** : registre unique des entités de synchronisation avec
+  tests de parité, `sync/service.rs` de 1 309 à 117 lignes de façade,
+  export et import de sauvegarde dans leurs modules, helpers partagés pour
+  `viewing_events`, `library_items` et « épisodes réguliers vus », recherche
+  par clés via `json_each` (la troncature silencieuse à 500 est remplacée par
+  une erreur au-delà de 5 000), couche partagée de lecture des détails TMDB,
+  module unique d’invalidation, registre des clés `localStorage`.
 
-1. **Code PIN d’un profil lié à un compte.** `set_active_profile` dispense du
-   PIN quand l’appelant renvoie l’identifiant de compte du profil, lequel
-   est renvoyé en clair par `list_profiles`. Une vraie preuve exige de
-   valider le jeton Clerk côté Rust.
-2. **Aucune limite d’essais sur le PIN**, et un hachage SHA-256 sans coût.
-   Il faut un compteur d’échecs par profil (colonne ou table, donc une
-   migration) et une fonction de dérivation lente.
-3. **Jeton TMDB.** Il est transmis à chaque commande et peut être embarqué
-   dans le bundle via `VITE_TMDB_API_TOKEN`. Le placer dans l’état Rust.
-   Durcir aussi `is_valid_tmdb_path` (`%2e%2e`, `\`) par liste blanche.
-4. **Alertes de disponibilité.** `toggle_availability_alert` supprime l’alerte
-   au second appel : remplacer par des commandes explicites
-   « définir l’alerte ».
-5. **Import TV Time.** Séries homonymes fusionnées (clé par nom plutôt que par
-   identifiant), phases concurrentes qui rendent l’annulation non
-   déterministe, dates et taille du lot non validées côté Rust, revisionnages
-   de films perdus.
-6. **Validation des profils.** Longueur du nom, avatar libre, nombre de profils,
-   liaison de compte sans PIN ni transaction.
-7. **Migrations.** Aucune garde quand `user_version` dépasse la dernière
-   migration connue (base ouverte par une version plus récente).
-8. **Interface.** L’annulation d’une entrée d’historique et le décochage d’un
-   épisode (surtout par balayage) n’ont pas de confirmation ; les confettis
-   partent avant le résultat de l’écriture ; le filtre de type de
-   l’historique s’applique aux pages déjà chargées ; les filtres sauvegardés
-   sont partagés entre `/library`, `/movies` et `/series` ; la pagination
-   serveur omet les titres présents uniquement dans une liste ; le delta
-   annuel des statistiques est faux pendant le chargement.
-9. **Écart d’interprétation.** Le prévisionnel ne compte plus que les séries
-   « en cours » : à confirmer si les séries « à voir » doivent y figurer.
+## Reste à faire
+
+1. **Filtre de type de l’historique côté Rust.** Ajouter `mediaType` aux
+   filtres de la commande ; en attendant, l’interface charge les pages
+   suivantes (6 au plus) tant que la liste filtrée est vide.
+2. **Page Statistiques.** Les sept requêtes recalculent le même CTE
+   d’événements actifs. Les mutualiser demande un cache avec invalidation
+   (y compris après `sync::apply`).
+3. **Tri par titre** insensible à la casse et aux accents : curseur, index et
+   tests de plans de requête à changer ensemble.
+4. **Importeur TV Time Rust** : migrer sa copie de l’insertion
+   `viewing_events` vers le helper partagé.
+5. **Littéral `"default"`** encore présent dans `preferences` et les tests de
+   `lists`.
+6. **À confirmer :** `s_id` d’un export TV Time est bien l’identifiant TheTVDB ;
+   le prévisionnel ne compte que les séries « en cours » ; « date de
+   visionnage personnalisée » d’un épisode est détectée par un écart de plus
+   de 60 s avec la création (heuristique).
+7. **Recette native** : les parcours PIN verrouillé, connexion tardive et
+   restauration sur un profil synchronisé n’ont pas été exercés dans la
+   fenêtre Tauri.
 
 ## Constat écarté
 
 La construction du contexte des listes intelligentes ne lisait pas un
 instantané de la mauvaise région : son seul appelant filtre déjà sur la région
 des préférences. Aucune modification.
-
-## Prochaines refactorisations
-
-- Registre unique des types d’entités de synchronisation (cinq listes
-  parallèles à garder cohérentes à la main) et test de parité avec
-  `PROFILE_SCOPED_TABLES`.
-- Découper `sync/service.rs` (amorçage, file d’envoi, application) et
-  déplacer réellement l’export et l’import dans `backup/export.rs` et
-  `backup/import.rs`.
-- Un seul helper d’insertion de `viewing_events` (quatre copies) et un
-  fragment SQL partagé pour « épisodes réguliers vus » (quatre copies).
-- Charger une fois le journal d’événements actifs pour la page Statistiques
-  (sept requêtes recalculent le même CTE).
-- Couche unique de lecture des détails TMDB avec cache partagé (calendrier,
-  prochains épisodes, « Ce soir », import TV Time) et module d’invalidation
-  par domaine.
-- Découper `tvtime-import-service.ts` (792 lignes) en appariement,
-  application et annulation.
