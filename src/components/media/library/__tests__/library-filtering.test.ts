@@ -596,3 +596,40 @@ describe("librarySortLabelKey", () => {
     for (const key of keys) expect(i18n.exists(String(key))).toBe(true);
   });
 });
+
+describe("filterAndSortLibrary on a large library", () => {
+  // The /movies and /series hubs read a whole media type at once (their
+  // "My list" tabs bucket by progress), and rendering is virtualised, so this
+  // pass is the client-side cost that scales with the library. The bound is
+  // deliberately loose: it catches an accidental O(n²), not a slow machine.
+  it("filters and sorts 10,000 titles well under a second", () => {
+    const items = Array.from({ length: 10_000 }, (_, index) =>
+      libraryItem({
+        id: `item-${index}`,
+        mediaId: index + 1,
+        title: `Title ${index}`,
+        genres: index % 3 === 0 ? ["Drama"] : ["Comedy"],
+        status: index % 2 === 0 ? "planned" : "completed",
+        tags: ["a", "b"],
+      })
+    );
+    const criteria: LibraryFilterCriteria = {
+      typeFilter: "all",
+      statusFilter: "all",
+      favouritesOnly: false,
+      search: "title 9",
+      sort: "recent",
+      genreFilter: "Drama",
+      listMediaKeys: null,
+      smartListMediaKeys: null,
+      nextEpisodeDateBySeriesId: new Map(),
+    };
+
+    const startedAt = performance.now();
+    const result = filterAndSortLibrary(items, [], new Map(), criteria);
+    const elapsed = performance.now() - startedAt;
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(elapsed).toBeLessThan(1000);
+  });
+});
