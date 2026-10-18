@@ -55,13 +55,32 @@ describe("availabilityRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("get_availability_alert", { mediaId: 7, mediaType: "movie" });
   });
 
-  it("toggle() invokes toggle_availability_alert with media/region/providerIds", async () => {
+  it("setAlert() invokes set_availability_alert with media/region/providerIds and the wanted state", async () => {
     invokeMock.mockResolvedValueOnce(alert());
     const { availabilityRepository } = await import("../availability-repository");
     const media = makeMedia({ id: 7, title: "Alerte" });
 
-    await availabilityRepository.toggle(media, "FR", [8]);
-    expect(invokeMock).toHaveBeenCalledWith("toggle_availability_alert", { media, region: "FR", providerIds: [8] });
+    await expect(availabilityRepository.setAlert(media, "FR", [8], true)).resolves.toEqual(alert());
+    expect(invokeMock).toHaveBeenCalledWith("set_availability_alert", {
+      media,
+      region: "FR",
+      providerIds: [8],
+      enabled: true,
+    });
+  });
+
+  it("setAlert(..., false) asks for the alert to be gone and passes the null result through", async () => {
+    invokeMock.mockResolvedValueOnce(null);
+    const { availabilityRepository } = await import("../availability-repository");
+    const media = makeMedia({ id: 7, title: "Alerte" });
+
+    await expect(availabilityRepository.setAlert(media, "FR", [8], false)).resolves.toBeNull();
+    expect(invokeMock).toHaveBeenCalledWith("set_availability_alert", {
+      media,
+      region: "FR",
+      providerIds: [8],
+      enabled: false,
+    });
   });
 
   it("remove() invokes remove_availability_alert with the id", async () => {

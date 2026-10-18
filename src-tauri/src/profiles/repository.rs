@@ -1,25 +1,64 @@
-use std::fmt::Write as _;
-
-use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 
 use super::models::{ProfileRow, UserProfile};
+use super::pin::{check_pin, hash_new_pin};
 use crate::database::{current_profile_id, new_uuid, now_iso};
 use crate::error::ApiError;
 
-/// sha256(salt + pin), hex-encoded. Not a network-facing auth boundary —
-/// see the doc comment on the `sha2` dependency in Cargo.toml for why a
-/// plain salted hash (no argon2/bcrypt) is proportionate here.
-fn hash_pin(pin: &str, salt: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(salt.as_bytes());
-    hasher.update(pin.as_bytes());
-    let digest = hasher.finalize();
-    let mut hex = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        let _ = write!(hex, "{byte:02x}");
+/// Same bound as a custom list's name (`lists::custom`).
+pub(super) const MAX_PROFILE_NAME_LENGTH: usize = 100;
+/// Avatars are a preset key or a short path; this only keeps a free-form
+/// string from growing without limit.
+pub(super) const MAX_AVATAR_LENGTH: usize = 200;
+/// More than a household needs; stops a runaway caller from filling the
+/// profile switcher (and the sync bookkeeping kept per profile).
+pub(super) const MAX_PROFILES: i64 = 20;
+
+fn validated_name(name: &str) -> Result<&str, ApiError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(ApiError::bad_request("Profile name is required."));
     }
-    hex
+    if trimmed.chars().count() > MAX_PROFILE_NAME_LENGTH {
+        return Err(ApiError::bad_request(format!(
+            "The profile name cannot exceed {MAX_PROFILE_NAME_LENGTH} characters."
+        )));
+    }
+    Ok(trimmed)
+}
+
+/// An empty avatar means none. Otherwise it is stored as given, as long as it
+/// is short and printable.
+fn validated_avatar(avatar: Option<String>) -> Result<Option<String>, ApiError> {
+    let Some(avatar) = avatar else {
+        return Ok(None);
+    };
+    let trimmed = avatar.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.chars().count() > MAX_AVATAR_LENGTH {
+        return Err(ApiError::bad_request(format!(
+            "The avatar cannot exceed {MAX_AVATAR_LENGTH} characters."
+        )));
+    }
+    if trimmed.chars().any(char::is_control) {
+        return Err(ApiError::bad_request(
+            "The avatar contains invalid characters.",
+        ));
+    }
+    Ok(Some(trimmed.to_string()))
+}
+
+/// The column is UNIQUE (one account, one local profile): say so instead of
+/// surfacing the raw constraint failure.
+fn account_conflict(error: sqlx::Error) -> ApiError {
+    if let sqlx::Error::Database(db_error) = &error
+        && db_error.is_unique_violation()
+    {
+        return ApiError::conflict("This account is already linked to another profile.");
+    }
+    ApiError::from(error)
 }
 
 pub(super) async fn list_impl(pool: &SqlitePool) -> Result<Vec<UserProfile>, ApiError> {
@@ -47,30 +86,37 @@ pub(super) async fn create_impl(
     avatar: Option<String>,
     supabase_user_id: Option<String>,
 ) -> Result<UserProfile, ApiError> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return Err(ApiError::bad_request("Profile name is required."));
-    }
+    let name = validated_name(name)?;
+    let avatar = validated_avatar(avatar)?;
     let profile = UserProfile {
         id: new_uuid(),
-        name: trimmed.to_string(),
+        name: name.to_string(),
         avatar,
         created_at: now_iso(pool).await?,
         supabase_user_id,
         has_pin: false,
     };
 
-    sqlx::query(
-        "INSERT INTO profiles (uuid, name, avatar, created_at, updated_at, supabase_user_id) VALUES ($1, $2, $3, $4, $4, $5)",
+    // The cap is checked by the INSERT itself so two concurrent creations
+    // cannot both slip under it.
+    let inserted = sqlx::query(
+        "INSERT INTO profiles (uuid, name, avatar, created_at, updated_at, supabase_user_id)
+         SELECT $1, $2, $3, $4, $4, $5 WHERE (SELECT COUNT(*) FROM profiles) < $6",
     )
     .bind(&profile.id)
     .bind(&profile.name)
     .bind(&profile.avatar)
     .bind(&profile.created_at)
     .bind(&profile.supabase_user_id)
+    .bind(MAX_PROFILES)
     .execute(pool)
     .await
-    .map_err(ApiError::from)?;
+    .map_err(account_conflict)?;
+    if inserted.rows_affected() == 0 {
+        return Err(ApiError::bad_request(format!(
+            "No more than {MAX_PROFILES} profiles can be created."
+        )));
+    }
 
     Ok(profile)
 }
@@ -107,6 +153,11 @@ pub(super) async fn find_by_supabase_user_id_impl(
     Ok(row.map(Into::into))
 }
 
+/// Links a profile to an account. The checks and the update share one
+/// transaction, so two callers racing for the same profile or account cannot
+/// both pass the checks; the UNIQUE index is still the last word and its
+/// failure is reported as a conflict, not as raw SQL. The caller is expected
+/// to have passed the profile's PIN lock first (see `authorize_pin_protected_access`).
 pub(super) async fn link_to_supabase_user_impl(
     pool: &SqlitePool,
     profile_id: &str,
@@ -115,12 +166,25 @@ pub(super) async fn link_to_supabase_user_impl(
     if supabase_user_id.trim().is_empty() {
         return Err(ApiError::bad_request("An account id is required."));
     }
-    let profile = get_by_id_impl(pool, profile_id)
-        .await?
-        .ok_or_else(|| ApiError::not_found("Profile not found."))?;
-    match profile.supabase_user_id.as_deref() {
+    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+
+    let linked: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT supabase_user_id FROM profiles WHERE uuid = $1")
+            .bind(profile_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+    let Some((linked,)) = linked else {
+        return Err(ApiError::not_found("Profile not found."));
+    };
+    match linked.as_deref() {
         // Already linked to this account: nothing to do (idempotent).
-        Some(linked) if linked == supabase_user_id => return Ok(profile),
+        Some(linked) if linked == supabase_user_id => {
+            drop(tx);
+            return get_by_id_impl(pool, profile_id)
+                .await?
+                .ok_or_else(|| ApiError::not_found("Profile not found."));
+        }
         // A profile belongs to one account for good; re-pointing it would
         // hand that person's library to whoever signs in next.
         Some(_) => {
@@ -130,25 +194,24 @@ pub(super) async fn link_to_supabase_user_impl(
         }
         None => {}
     }
-    // One account, one local profile (the column is UNIQUE): say so instead
-    // of surfacing a raw constraint failure.
-    if find_by_supabase_user_id_impl(pool, supabase_user_id)
-        .await?
-        .is_some()
-    {
-        return Err(ApiError::bad_request(
-            "This account is already linked to another profile.",
+
+    let updated_at = now_iso(&mut *tx).await?;
+    let updated = sqlx::query(
+        "UPDATE profiles SET supabase_user_id = $1, updated_at = $2
+         WHERE uuid = $3 AND supabase_user_id IS NULL",
+    )
+    .bind(supabase_user_id)
+    .bind(&updated_at)
+    .bind(profile_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(account_conflict)?;
+    if updated.rows_affected() == 0 {
+        return Err(ApiError::conflict(
+            "This profile was linked to an account in the meantime.",
         ));
     }
-
-    let updated_at = now_iso(pool).await?;
-    sqlx::query("UPDATE profiles SET supabase_user_id = $1, updated_at = $2 WHERE uuid = $3")
-        .bind(supabase_user_id)
-        .bind(&updated_at)
-        .bind(profile_id)
-        .execute(pool)
-        .await
-        .map_err(ApiError::from)?;
+    tx.commit().await.map_err(ApiError::from)?;
 
     get_by_id_impl(pool, profile_id)
         .await?
@@ -171,8 +234,12 @@ pub(super) async fn resolve_for_supabase_user_impl(
 
     let profiles = list_impl(pool).await?;
     let default_profile = profiles.into_iter().find(|profile| profile.id == "default");
+    // A PIN-protected default is not claimed on sight: the claim hands over
+    // everything it holds, so it goes through `link_profile_to_supabase_user`,
+    // which asks for the PIN.
     if let Some(default_profile) = default_profile
         && default_profile.supabase_user_id.is_none()
+        && !default_profile.has_pin
     {
         return Ok(Some(
             link_to_supabase_user_impl(pool, "default", supabase_user_id).await?,
@@ -188,10 +255,8 @@ pub(super) async fn update_impl(
     name: &str,
     avatar: Option<String>,
 ) -> Result<UserProfile, ApiError> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return Err(ApiError::bad_request("Profile name is required."));
-    }
+    let trimmed = validated_name(name)?;
+    let avatar = validated_avatar(avatar)?;
     let updated_at = now_iso(pool).await?;
     sqlx::query("UPDATE profiles SET name = $1, avatar = $2, updated_at = $3 WHERE uuid = $4")
         .bind(trimmed)
@@ -288,11 +353,11 @@ pub(super) async fn set_pin_impl(
     pin: &str,
 ) -> Result<UserProfile, ApiError> {
     validate_pin_shape(pin)?;
-    let salt = new_uuid();
-    let hash = hash_pin(pin, &salt);
+    let (hash, salt) = hash_new_pin(pin)?;
     let updated_at = now_iso(pool).await?;
     sqlx::query(
-        "UPDATE profiles SET pin_hash = $1, pin_salt = $2, updated_at = $3 WHERE uuid = $4",
+        "UPDATE profiles SET pin_hash = $1, pin_salt = $2, pin_failed_attempts = 0,
+           pin_locked_until = NULL, updated_at = $3 WHERE uuid = $4",
     )
     .bind(&hash)
     .bind(&salt)
@@ -313,7 +378,8 @@ pub(super) async fn clear_pin_impl(
 ) -> Result<UserProfile, ApiError> {
     let updated_at = now_iso(pool).await?;
     sqlx::query(
-        "UPDATE profiles SET pin_hash = NULL, pin_salt = NULL, updated_at = $1 WHERE uuid = $2",
+        "UPDATE profiles SET pin_hash = NULL, pin_salt = NULL, pin_failed_attempts = 0,
+           pin_locked_until = NULL, updated_at = $1 WHERE uuid = $2",
     )
     .bind(&updated_at)
     .bind(profile_id)
@@ -326,26 +392,17 @@ pub(super) async fn clear_pin_impl(
         .ok_or_else(|| ApiError::not_found("Profile not found."))
 }
 
+/// Whether `pin` is the profile's PIN — counted against its attempt limit
+/// (see `pin::check_pin`); a locked profile answers with a 429 error.
 pub(super) async fn verify_pin_impl(
     pool: &SqlitePool,
     profile_id: &str,
     pin: &str,
 ) -> Result<bool, ApiError> {
-    let row: Option<(Option<String>, Option<String>)> =
-        sqlx::query_as("SELECT pin_hash, pin_salt FROM profiles WHERE uuid = $1")
-            .bind(profile_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(ApiError::from)?;
-    let Some((Some(stored_hash), Some(salt))) = row else {
-        // No profile, or no PIN set on it: nothing to verify against, so
-        // treat it as "not protected" rather than an error — a caller
-        // checking `has_pin` first won't hit this in practice, but a
-        // profile whose PIN was cleared between the check and this call
-        // should just fail closed as "no PIN" rather than 404ing.
-        return Ok(false);
-    };
-    Ok(hash_pin(pin, &salt) == stored_hash)
+    // No profile, or no PIN set on it: nothing to verify against, so
+    // treat it as "not protected" rather than an error (fails closed as
+    // `false`).
+    check_pin(pool, profile_id, pin).await
 }
 
 /// The PIN lock, enforced here rather than only by the UI's PIN prompt: any
@@ -791,11 +848,179 @@ mod tests {
         let error = link_to_supabase_user_impl(&pool, &other.id, "user_a")
             .await
             .unwrap_err();
-        assert_eq!(error.status, Some(400));
+        assert_eq!(error.status, Some(409));
+        assert!(!error.message.contains("UNIQUE"), "{}", error.message);
         assert!(
             link_to_supabase_user_impl(&pool, &other.id, "  ")
                 .await
                 .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn creating_a_profile_for_an_account_that_has_one_is_a_clean_conflict() {
+        let pool = migrated_pool().await;
+        create_impl(&pool, "Alex", None, Some("user_a".to_string()))
+            .await
+            .unwrap();
+        let error = create_impl(&pool, "Sam", None, Some("user_a".to_string()))
+            .await
+            .unwrap_err();
+        assert_eq!(error.status, Some(409));
+        assert!(!error.message.contains("UNIQUE"), "{}", error.message);
+    }
+
+    #[tokio::test]
+    async fn a_profile_name_is_bounded() {
+        let pool = migrated_pool().await;
+        let at_limit = "a".repeat(MAX_PROFILE_NAME_LENGTH);
+        create_impl(&pool, &at_limit, None, None).await.unwrap();
+
+        let too_long = "a".repeat(MAX_PROFILE_NAME_LENGTH + 1);
+        assert_eq!(
+            create_impl(&pool, &too_long, None, None)
+                .await
+                .unwrap_err()
+                .status,
+            Some(400)
+        );
+        let created = create_impl(&pool, "Alex", None, None).await.unwrap();
+        assert_eq!(
+            update_impl(&pool, &created.id, &too_long, None)
+                .await
+                .unwrap_err()
+                .status,
+            Some(400)
+        );
+        // Counted in characters, not bytes.
+        create_impl(&pool, &"é".repeat(MAX_PROFILE_NAME_LENGTH), None, None)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn an_avatar_is_trimmed_bounded_and_printable() {
+        let pool = migrated_pool().await;
+        let created = create_impl(&pool, "Alex", Some("  cat ".to_string()), None)
+            .await
+            .unwrap();
+        assert_eq!(created.avatar.as_deref(), Some("cat"));
+
+        let blank = create_impl(&pool, "Sam", Some("   ".to_string()), None)
+            .await
+            .unwrap();
+        assert_eq!(blank.avatar, None);
+
+        for bad in [
+            "a".repeat(MAX_AVATAR_LENGTH + 1),
+            "ca\nt".to_string(),
+            "cat\u{0}".to_string(),
+        ] {
+            assert_eq!(
+                create_impl(&pool, "Bad", Some(bad.clone()), None)
+                    .await
+                    .unwrap_err()
+                    .status,
+                Some(400)
+            );
+            assert_eq!(
+                update_impl(&pool, &created.id, "Alex", Some(bad))
+                    .await
+                    .unwrap_err()
+                    .status,
+                Some(400)
+            );
+        }
+        let stored = get_by_id_impl(&pool, &created.id).await.unwrap().unwrap();
+        assert_eq!(stored.avatar.as_deref(), Some("cat"));
+    }
+
+    #[tokio::test]
+    async fn the_number_of_profiles_is_capped() {
+        let pool = migrated_pool().await;
+        // The default profile counts.
+        list_impl(&pool).await.unwrap();
+        for index in 1..MAX_PROFILES {
+            create_impl(&pool, &format!("Profile {index}"), None, None)
+                .await
+                .unwrap();
+        }
+        let error = create_impl(&pool, "One too many", None, None)
+            .await
+            .unwrap_err();
+        assert_eq!(error.status, Some(400));
+        assert!(error.message.contains("20"), "{}", error.message);
+        assert_eq!(list_impl(&pool).await.unwrap().len() as i64, MAX_PROFILES);
+
+        // Removing one makes room again.
+        let first = list_impl(&pool).await.unwrap().remove(1);
+        remove_impl(&pool, &first.id).await.unwrap();
+        create_impl(&pool, "Back in", None, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn linking_a_pin_protected_profile_needs_its_pin() {
+        let pool = migrated_pool().await;
+        let locked = create_impl(&pool, "Alex", None, None).await.unwrap();
+        set_pin_impl(&pool, &locked.id, "4242").await.unwrap();
+        let service = super::super::service::ProfileService::new(&pool);
+
+        for pin in [None, Some("0000")] {
+            let error = service
+                .link_to_supabase_user(&locked.id, "user_a", pin)
+                .await
+                .unwrap_err();
+            assert_eq!(error.status, Some(403));
+        }
+        let still = get_by_id_impl(&pool, &locked.id).await.unwrap().unwrap();
+        assert!(still.supabase_user_id.is_none());
+
+        let linked = service
+            .link_to_supabase_user(&locked.id, "user_a", Some("4242"))
+            .await
+            .unwrap();
+        assert_eq!(linked.supabase_user_id.as_deref(), Some("user_a"));
+    }
+
+    #[tokio::test]
+    async fn a_pin_protected_default_profile_is_not_auto_claimed_by_the_first_account() {
+        let pool = migrated_pool().await;
+        list_impl(&pool).await.unwrap();
+        set_pin_impl(&pool, "default", "4242").await.unwrap();
+
+        assert!(
+            resolve_for_supabase_user_impl(&pool, "user_a")
+                .await
+                .unwrap()
+                .is_none()
+        );
+        let default = get_by_id_impl(&pool, "default").await.unwrap().unwrap();
+        assert!(default.supabase_user_id.is_none());
+    }
+
+    #[tokio::test]
+    async fn listing_profiles_to_the_webview_does_not_expose_the_account_id() {
+        let pool = migrated_pool().await;
+        create_impl(&pool, "Alex", None, Some("user_a".to_string()))
+            .await
+            .unwrap();
+        let listed = super::super::service::ProfileService::new(&pool)
+            .list()
+            .await
+            .unwrap();
+        assert!(listed.iter().any(|profile| profile.name == "Alex"));
+        assert!(
+            listed
+                .iter()
+                .all(|profile| profile.supabase_user_id.is_none())
+        );
+        assert!(!serde_json::to_string(&listed).unwrap().contains("user_a"));
+        // The lookup by account still sees the link.
+        assert!(
+            find_by_supabase_user_id_impl(&pool, "user_a")
+                .await
+                .unwrap()
+                .is_some()
         );
     }
 

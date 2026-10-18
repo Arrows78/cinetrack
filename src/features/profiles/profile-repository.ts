@@ -28,8 +28,16 @@ export const profileRepository = {
     return invokeTypedCommand(profileCommands.findBySupabaseUserId, { supabaseUserId });
   },
 
-  async linkToSupabaseUser(profileId: string, supabaseUserId: string): Promise<UserProfile> {
-    return invokeTypedCommand(profileCommands.linkToSupabaseUser, { profileId, supabaseUserId });
+  async linkToSupabaseUser(
+    profileId: string,
+    supabaseUserId: string,
+    currentPin?: string | null
+  ): Promise<UserProfile> {
+    return invokeTypedCommand(profileCommands.linkToSupabaseUser, {
+      profileId,
+      supabaseUserId,
+      currentPin: currentPin ?? null,
+    });
   },
 
   /**

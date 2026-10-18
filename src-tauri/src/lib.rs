@@ -33,24 +33,25 @@ use tauri::{Emitter, Manager};
 use diagnostics::export_diagnostics_summary;
 
 use commands::{
-    PreferencesCache, add_custom_list_item, add_planned_library_item, check_data_integrity,
-    clear_profile_pin, create_custom_list, create_profile, create_smart_list, export_backup_data,
-    find_profile_by_supabase_user_id, get_availability_alert, get_availability_snapshot,
-    get_boot_recovery, get_episode_progress, get_library_item, get_preferences, get_stats_overview,
-    has_library_item, import_backup_data, import_movie_seen, import_series_progress, is_movie_seen,
-    link_profile_to_supabase_user, list_availability_alerts, list_availability_snapshots,
-    list_backup_directory, list_custom_list_items, list_custom_lists, list_history, list_library,
-    list_library_page, list_on_this_day_events, list_profiles, list_recent_viewing_events,
-    list_smart_lists, list_tracked_series, list_viewing_events_for_media,
-    list_viewing_events_for_year, list_yearly_activity, read_backup_from_path, refresh_preferences,
-    refresh_tracked_series_status, remove_availability_alert, remove_backup_file,
-    remove_custom_list, remove_custom_list_item, remove_library_item, remove_planned_library_item,
-    remove_profile, remove_saved_filter, remove_smart_list, reset_library_status_to_auto,
-    resolve_profile_for_supabase_user, rewatch_movie, save_availability_snapshot,
-    save_library_item, set_active_profile, set_episode_rating, set_profile_pin, set_tray_language,
-    tmdb_request, toggle_availability_alert, toggle_episodes_watched, toggle_movie_seen,
-    undo_tvtime_import_library, update_preference, update_profile, update_smart_list,
-    updater_is_configured, verify_profile_pin, write_backup_to_path,
+    PreferencesCache, TmdbToken, add_custom_list_item, add_planned_library_item,
+    check_data_integrity, clear_profile_pin, create_custom_list, create_profile, create_smart_list,
+    export_backup_data, find_profile_by_supabase_user_id, get_availability_alert,
+    get_availability_snapshot, get_boot_recovery, get_episode_progress, get_library_item,
+    get_preferences, get_stats_overview, has_library_item, import_backup_data, import_movie_seen,
+    import_series_progress, is_movie_seen, link_profile_to_supabase_user, list_availability_alerts,
+    list_availability_snapshots, list_backup_directory, list_custom_list_items, list_custom_lists,
+    list_history, list_library, list_library_page, list_on_this_day_events, list_profiles,
+    list_recent_viewing_events, list_smart_lists, list_tracked_series,
+    list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
+    read_backup_from_path, refresh_preferences, refresh_tracked_series_status,
+    remove_availability_alert, remove_backup_file, remove_custom_list, remove_custom_list_item,
+    remove_library_item, remove_planned_library_item, remove_profile, remove_saved_filter,
+    remove_smart_list, reset_library_status_to_auto, resolve_profile_for_supabase_user,
+    rewatch_movie, save_availability_snapshot, save_library_item, set_active_profile,
+    set_availability_alert, set_episode_rating, set_profile_pin, set_tmdb_token, set_tray_language,
+    tmdb_request, toggle_episodes_watched, toggle_movie_seen, undo_tvtime_import_library,
+    update_preference, update_profile, update_smart_list, updater_is_configured,
+    verify_profile_pin, write_backup_to_path,
 };
 use commands::{
     ack_sync_mutations, apply_remote_sync_changes, get_sync_cursor, get_sync_device_id,
@@ -174,6 +175,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             tmdb_request,
+            set_tmdb_token,
             get_boot_recovery,
             updater_is_configured,
             set_tray_language,
@@ -233,7 +235,7 @@ pub fn run() {
             get_watch_forecast,
             list_availability_alerts,
             get_availability_alert,
-            toggle_availability_alert,
+            set_availability_alert,
             remove_availability_alert,
             get_availability_snapshot,
             save_availability_snapshot,
@@ -304,6 +306,7 @@ pub fn run() {
             app.manage(pool);
             app.manage(boot_recovery);
             app.manage(PreferencesCache::default());
+            app.manage(TmdbToken::default());
 
             let salt_path = app.path().app_local_data_dir()?.join("stronghold-salt.txt");
 

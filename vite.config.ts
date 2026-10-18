@@ -3,8 +3,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 
-export default defineConfig(() => ({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
+  // A dependency (Clerk) reads `import.meta.env[name]` dynamically, which makes Vite inline the
+  // whole env object — every VITE_ variable of `.env`, the TMDB token included — wherever it is
+  // used. A production bundle must never carry that token (a release gets it from the Stronghold
+  // vault, see src/shared/config/env.ts), so it is pinned to undefined there, in the object too.
+  define: mode === "production" ? { "import.meta.env.VITE_TMDB_API_TOKEN": "undefined" } : {},
   clearScreen: false,
   resolve: {
     alias: {

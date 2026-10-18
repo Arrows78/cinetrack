@@ -89,6 +89,13 @@ fn append_line(level: &str, message: &str) {
     }
 }
 
+/// Writes one warn-level line to the diagnostics log, for a recoverable
+/// problem a command worked around (an unreadable stored value replaced by its
+/// default, ...) that would otherwise leave no trace.
+pub fn warn(message: &str) {
+    append_line("warn", &format!("layer=backend {message}"));
+}
+
 /// Which side of the IPC boundary wrote a given timing line — the whole
 /// point of this module's `layer=` prefix (see `timed` below). `Unknown`
 /// exists only for log lines written before this distinction existed (or

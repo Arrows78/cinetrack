@@ -124,8 +124,10 @@ export function useAvailabilityAlert(
   const mutation = useMutation({
     mutationFn: async () => {
       const previous = query.data;
-      const alert = await availabilityRepository.toggle(media, region, providerIds);
-      // Toggled off: the alert is gone, so is the baseline it was tracked against.
+      // The button flips what it shows, but what is sent is the state wanted, not a flip: a
+      // double click sends the same request twice and ends in the same state as one.
+      const alert = await availabilityRepository.setAlert(media, region, providerIds, !previous);
+      // Switched off: the alert is gone, so is the baseline it was tracked against.
       if (!alert && previous) availabilityMonitor.forgetBaseline(previous.id);
       return alert;
     },

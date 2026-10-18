@@ -47,11 +47,12 @@ pub async fn find_profile_by_supabase_user_id(
 pub async fn link_profile_to_supabase_user(
     profile_id: String,
     supabase_user_id: String,
+    current_pin: Option<String>,
     pool: State<'_, SqlitePool>,
 ) -> Result<UserProfile, ApiError> {
     timed("link_profile_to_supabase_user", async {
         ProfileService::new(pool.inner())
-            .link_to_supabase_user(&profile_id, &supabase_user_id)
+            .link_to_supabase_user(&profile_id, &supabase_user_id, current_pin.as_deref())
             .await
     })
     .await
@@ -198,10 +199,14 @@ mod tests {
         let app = tauri::test::mock_app();
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
-        let linked =
-            link_profile_to_supabase_user("default".to_string(), "user_2abc".to_string(), state)
-                .await
-                .unwrap();
+        let linked = link_profile_to_supabase_user(
+            "default".to_string(),
+            "user_2abc".to_string(),
+            None,
+            state,
+        )
+        .await
+        .unwrap();
         assert_eq!(linked.supabase_user_id.as_deref(), Some("user_2abc"));
     }
 

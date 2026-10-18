@@ -138,7 +138,7 @@ export function CommandPalette() {
 
   const theme = preferences.data?.theme ?? defaultPreferences.theme;
   const nextTheme = theme === "dark" ? "light" : "dark";
-  const updatePreference = preferences.updatePreference;
+  const setPreference = preferences.setPreference;
 
   // Contextual actions — only meaningful on a movie/series detail page, so
   // both hooks below stay disabled (no IPC call at all) everywhere else:
@@ -217,12 +217,12 @@ export function CommandPalette() {
         section: "command",
         run: () => {
           setOpen(false);
-          void updatePreference({ key: "theme", value: nextTheme });
+          setPreference({ key: "theme", value: nextTheme });
         },
       },
     ];
     return [...actions, ...contextualItems, ...pages];
-  }, [navigationItems, nextTheme, t, updatePreference, contextualItems, navigate]);
+  }, [navigationItems, nextTheme, t, setPreference, contextualItems, navigate]);
 
   // Accent- and case-insensitive, so "parametres" finds "Paramètres".
   const filteredCommands = useMemo(() => {

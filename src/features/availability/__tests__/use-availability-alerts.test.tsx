@@ -29,8 +29,8 @@ const alert: AvailabilityAlert = {
 
 const listAlertsMock = vi.fn(async (): Promise<AvailabilityAlert[]> => [alert]);
 const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<AvailabilityAlert | null>>(async () => null);
-const toggleMock = vi.fn<
-  (media: MediaSummary, region: string, providerIds: number[]) => Promise<AvailabilityAlert | null>
+const setAlertMock = vi.fn<
+  (media: MediaSummary, region: string, providerIds: number[], enabled: boolean) => Promise<AvailabilityAlert | null>
 >(async () => alert);
 const removeMock = vi.fn<(id: string) => Promise<undefined>>(async () => undefined);
 const snapshot: AvailabilitySnapshot = {
@@ -51,8 +51,8 @@ vi.mock("@/features/availability/availability-repository", () => ({
   availabilityRepository: {
     listAlerts: () => listAlertsMock(),
     getAlert: (mediaId: number, mediaType: string) => getAlertMock(mediaId, mediaType),
-    toggle: (mediaArg: MediaSummary, region: string, providerIds: number[]) =>
-      toggleMock(mediaArg, region, providerIds),
+    setAlert: (mediaArg: MediaSummary, region: string, providerIds: number[], enabled: boolean) =>
+      setAlertMock(mediaArg, region, providerIds, enabled),
     remove: (id: string) => removeMock(id),
     removeMany: (ids: string[]) => Promise.all(ids.map((id) => removeMock(id))),
     listSnapshots: () => listSnapshotsMock(),
@@ -85,7 +85,7 @@ function createWrapper() {
 beforeEach(() => {
   listAlertsMock.mockClear().mockResolvedValue([alert]);
   getAlertMock.mockClear().mockResolvedValue(null);
-  toggleMock.mockClear().mockResolvedValue(alert);
+  setAlertMock.mockClear().mockResolvedValue(alert);
   removeMock.mockClear().mockResolvedValue(undefined);
   listSnapshotsMock.mockClear().mockResolvedValue([snapshot]);
   getPreferencesMock.mockClear();
@@ -165,8 +165,10 @@ describe("baseline cleanup", () => {
       await result.current.toggle();
     });
     expect(forgetBaselineMock).not.toHaveBeenCalled();
+    // An alert exists, so the wanted state is "off".
+    expect(setAlertMock).toHaveBeenLastCalledWith(media, "FR", [8], false);
 
-    toggleMock.mockResolvedValue(null);
+    setAlertMock.mockResolvedValue(null);
     await act(async () => {
       await result.current.toggle();
     });
@@ -207,7 +209,8 @@ describe("useAvailabilityAlert", () => {
       await result.current.toggle();
     });
 
-    expect(toggleMock).toHaveBeenCalledWith(media, "FR", [8]);
+    // No alert yet: the wanted state is "on" — not a blind flip.
+    expect(setAlertMock).toHaveBeenCalledWith(media, "FR", [8], true);
 
     const perMediaKey = [...queryKeys.local.availabilityAlerts(DEFAULT_PROFILE_ID), media.mediaType, media.id];
     expect(setQueryDataSpy).toHaveBeenCalledWith(perMediaKey, alert);
@@ -235,7 +238,7 @@ describe("useAvailabilityAlert", () => {
     );
 
     seedBaselineMock.mockClear();
-    toggleMock.mockResolvedValue(null);
+    setAlertMock.mockResolvedValue(null);
     await act(async () => {
       await result.current.toggle();
     });

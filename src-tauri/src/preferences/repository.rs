@@ -1,4 +1,5 @@
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::{Map, Value};
 use sqlx::SqlitePool;
@@ -11,11 +12,61 @@ use crate::error::ApiError;
 /// `cache` variable in preferences-repository.ts: preferences are read
 /// constantly, but this app is a single window/instance, so a cache
 /// invalidated on every write is always fresh and avoids a round trip.
-pub struct PreferencesCache(pub Mutex<Option<UserPreferences>>);
+///
+/// The second field is a generation counter, bumped (together with the cache
+/// change itself, under the cache lock) by every write and every
+/// invalidation. A load reads it before it queries the database and only
+/// stores its result when it is still the same afterwards: without it, a load
+/// that read the table just before a write committed would, finishing later,
+/// overwrite the newer value the write had put in the cache.
+pub struct PreferencesCache(pub Mutex<Option<UserPreferences>>, AtomicU64);
 
 impl Default for PreferencesCache {
     fn default() -> Self {
-        Self(Mutex::new(None))
+        Self(Mutex::new(None), AtomicU64::new(0))
+    }
+}
+
+impl PreferencesCache {
+    fn generation(&self) -> u64 {
+        self.1.load(Ordering::SeqCst)
+    }
+
+    /// Must be called with the cache lock held (`guard`), alongside the change
+    /// to its content.
+    fn bump_generation(&self) {
+        self.1.fetch_add(1, Ordering::SeqCst);
+    }
+
+    /// Empties the cache so the next read loads from the database.
+    pub(super) fn invalidate(&self) {
+        let mut guard = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        *guard = None;
+        self.bump_generation();
+    }
+
+    /// Stores a freshly loaded value unless a write or an invalidation got in
+    /// between (`generation_before` is the generation read before the load
+    /// began). When something did, the load may be stale: the cache's own
+    /// content, if any, is the newer truth and is what comes back; `None`
+    /// means there is nothing newer to return and the caller must load again.
+    fn store_loaded(
+        &self,
+        generation_before: u64,
+        loaded: &UserPreferences,
+    ) -> Option<UserPreferences> {
+        let mut guard = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if self.generation() == generation_before {
+            *guard = Some(loaded.clone());
+            return Some(loaded.clone());
+        }
+        guard.clone()
     }
 }
 
@@ -45,31 +96,43 @@ pub(super) async fn load_preferences(pool: &SqlitePool) -> Result<UserPreference
     let mut merged = defaults.clone();
     merged.extend(stored.iter().cloned());
 
-    let prefs: UserPreferences = match serde_json::from_value(Value::Object(merged)) {
-        Ok(prefs) => prefs,
-        Err(_) => {
+    let prefs = match preferences_from(&merged) {
+        Some(prefs) => prefs,
+        None => {
             // Well-formed JSON can still be a value the current schema no
-            // longer accepts (a retired accent colour, a wrong type). One bad
-            // row must not make every preference unreadable — nor block
-            // writing the others, which starts from this read — so keep only
-            // the stored values that each fit on their own over the defaults.
+            // longer accepts (a retired accent colour, a wrong type) or one
+            // that is well-typed but out of bounds (a region in lowercase,
+            // an interval of 99 hours). One bad row must not make every
+            // preference unreadable — nor block writing the others, which
+            // starts from this read — so keep only the stored values that
+            // each fit on their own over the defaults, and say which ones
+            // fell back.
             let mut tolerant = defaults;
             for (key, value) in stored {
                 let mut candidate = tolerant.clone();
-                candidate.insert(key, value);
-                if serde_json::from_value::<UserPreferences>(Value::Object(candidate.clone()))
-                    .is_ok()
-                {
+                candidate.insert(key.clone(), value);
+                if preferences_from(&candidate).is_some() {
                     tolerant = candidate;
+                } else {
+                    crate::diagnostics::warn(&format!(
+                        "preferences: the stored value of '{key}' is invalid, using its default"
+                    ));
                 }
             }
-            serde_json::from_value(Value::Object(tolerant)).map_err(|error| {
-                ApiError::bad_request(format!("Invalid stored preferences: {error}"))
+            preferences_from(&tolerant).ok_or_else(|| {
+                ApiError::internal("The default preferences are not valid.".to_string())
             })?
         }
     };
-    validate(&prefs)?;
     Ok(prefs)
+}
+
+/// The preferences a stored object makes, when they both deserialize and pass
+/// `validate`.
+fn preferences_from(object: &Map<String, Value>) -> Option<UserPreferences> {
+    let prefs: UserPreferences = serde_json::from_value(Value::Object(object.clone())).ok()?;
+    validate(&prefs).ok()?;
+    Some(prefs)
 }
 
 pub(super) async fn get_preferences_cached(
@@ -85,12 +148,19 @@ pub(super) async fn get_preferences_cached(
         return Ok(prefs);
     }
 
-    let prefs = load_preferences(pool).await?;
-    *cache
-        .0
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(prefs.clone());
-    Ok(prefs)
+    // A write racing with the load makes the load possibly stale (see
+    // `PreferencesCache`); try again, a few times at most, then serve what
+    // was read without caching it.
+    let mut loaded = None;
+    for _ in 0..3 {
+        let generation_before = cache.generation();
+        let prefs = load_preferences(pool).await?;
+        if let Some(current) = cache.store_loaded(generation_before, &prefs) {
+            return Ok(current);
+        }
+        loaded = Some(prefs);
+    }
+    loaded.ok_or_else(|| ApiError::internal("Preferences could not be loaded."))
 }
 
 pub(super) async fn write_preference(
@@ -191,6 +261,7 @@ pub(super) async fn write_preference(
         serde_json::from_value::<UserPreferences>(Value::Object(map)).ok()
     });
     *guard = patched.or_else(|| Some(updated.clone()));
+    cache.bump_generation();
     Ok(guard.clone().unwrap_or(updated))
 }
 
@@ -277,6 +348,125 @@ mod tests {
         .await
         .unwrap();
         assert!(matches!(updated.theme, Theme::Light));
+    }
+
+    #[tokio::test]
+    async fn a_well_typed_but_out_of_bounds_stored_value_falls_back_to_its_default_without_blocking_reads_or_writes()
+     {
+        let pool = migrated_pool().await;
+        // Each of these deserializes fine and is refused only by `validate`:
+        // before, any one of them made every read (and so every write) fail.
+        for (key, value) in [
+            ("region", "\"fr\""),
+            ("availabilityCheckIntervalHours", "99"),
+            ("notifyHoursBefore", "500"),
+            ("preferredProviderIds", "[8, -1]"),
+            ("theme", "\"light\""),
+        ] {
+            sqlx::query("INSERT INTO preferences (key, value, updated_at) VALUES ($1, $2, 'now')")
+                .bind(key)
+                .bind(value)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        let defaults = UserPreferences::default();
+
+        let prefs = load_preferences(&pool).await.unwrap();
+        assert_eq!(prefs.region, defaults.region);
+        assert_eq!(
+            prefs.availability_check_interval_hours,
+            defaults.availability_check_interval_hours
+        );
+        assert_eq!(prefs.notify_hours_before, defaults.notify_hours_before);
+        assert_eq!(
+            prefs.preferred_provider_ids,
+            defaults.preferred_provider_ids
+        );
+        // The valid rows next to them are kept.
+        assert!(matches!(prefs.theme, Theme::Light));
+
+        let cache = PreferencesCache::default();
+        let updated =
+            write_preference("reduceMotion".to_string(), Value::Bool(true), &pool, &cache)
+                .await
+                .unwrap();
+        assert!(updated.reduce_motion);
+        assert_eq!(updated.region, defaults.region);
+    }
+
+    #[tokio::test]
+    async fn two_stored_shortcuts_that_collide_keep_only_the_first_valid_one() {
+        let pool = migrated_pool().await;
+        let defaults = UserPreferences::default();
+        for key in ["commandPaletteShortcut", "globalCommandPaletteShortcut"] {
+            sqlx::query(
+                "INSERT INTO preferences (key, value, updated_at) VALUES ($1, '\"Ctrl+J\"', 'now')",
+            )
+            .bind(key)
+            .execute(&pool)
+            .await
+            .unwrap();
+        }
+        let prefs = load_preferences(&pool).await.unwrap();
+        assert_ne!(
+            prefs.command_palette_shortcut,
+            prefs.global_command_palette_shortcut
+        );
+        assert!(
+            prefs.command_palette_shortcut == "Ctrl+J"
+                || prefs.global_command_palette_shortcut == "Ctrl+J"
+        );
+        assert!(
+            prefs.command_palette_shortcut == defaults.command_palette_shortcut
+                || prefs.global_command_palette_shortcut
+                    == defaults.global_command_palette_shortcut
+        );
+    }
+
+    #[tokio::test]
+    async fn a_load_that_started_before_a_write_cannot_overwrite_the_newer_cached_value() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        // The load reads the table (theme: dark, the default)...
+        let generation_before = cache.generation();
+        let stale = load_preferences(&pool).await.unwrap();
+        assert!(matches!(stale.theme, Theme::Dark));
+
+        // ...a write commits and caches its value before the load finishes...
+        write_preference(
+            "theme".to_string(),
+            Value::String("light".to_string()),
+            &pool,
+            &cache,
+        )
+        .await
+        .unwrap();
+
+        // ...so the late result is not stored, and the newer value is served.
+        let served = cache.store_loaded(generation_before, &stale).unwrap();
+        assert!(matches!(served.theme, Theme::Light));
+        let cached = get_preferences_cached(&pool, &cache).await.unwrap();
+        assert!(matches!(cached.theme, Theme::Light));
+    }
+
+    #[tokio::test]
+    async fn a_load_that_started_before_an_invalidation_is_not_stored_and_is_retried() {
+        let pool = migrated_pool().await;
+        let cache = PreferencesCache::default();
+
+        let generation_before = cache.generation();
+        let stale = load_preferences(&pool).await.unwrap();
+        cache.invalidate();
+
+        // Nothing newer to serve: the caller has to load again.
+        assert!(cache.store_loaded(generation_before, &stale).is_none());
+        assert!(cache.0.lock().unwrap().is_none());
+
+        let fresh = get_preferences_cached(&pool, &cache).await.unwrap();
+        assert!(matches!(fresh.theme, Theme::Dark));
+        assert!(cache.0.lock().unwrap().is_some());
     }
 
     #[tokio::test]

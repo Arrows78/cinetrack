@@ -3,6 +3,7 @@
 
 export const tauriCommandNames = [
   "tmdb_request",
+  "set_tmdb_token",
   "get_boot_recovery",
   "updater_is_configured",
   "set_tray_language",
@@ -62,7 +63,7 @@ export const tauriCommandNames = [
   "get_watch_forecast",
   "list_availability_alerts",
   "get_availability_alert",
-  "toggle_availability_alert",
+  "set_availability_alert",
   "remove_availability_alert",
   "get_availability_snapshot",
   "save_availability_snapshot",

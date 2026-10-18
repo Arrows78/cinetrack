@@ -155,7 +155,7 @@ VITE_TMDB_API_TOKEN=your_tmdb_bearer_token_here
 
 The application expects the TMDB **API Read Access Token**, which is sent as a Bearer token to the TMDB API.
 
-> **Security note:** `VITE_TMDB_API_TOKEN` is inlined by Vite into the frontend bundle at build time. Keep it set in `.env` only for local/web development. Never set it when producing a desktop bundle for distribution (`pnpm tauri build`) — a value present at that time would ship in cleartext inside the built binary, bypassing the Stronghold vault. Distributed builds should rely solely on the in-app token vault (Settings → TMDB) or leave the variable unset.
+> **Security note:** `VITE_TMDB_API_TOKEN` is only read in development (`pnpm dev`, `pnpm tauri dev`): a production build (`pnpm build`, `pnpm tauri build`) leaves it out of the bundle even when it is set. Distributed builds rely on the in-app token vault (Settings → TMDB), whose token the app passes once to the Rust side — it is not sent along with each TMDB request.
 
 ### 4. (Optional) Configure sign-in and sync
 

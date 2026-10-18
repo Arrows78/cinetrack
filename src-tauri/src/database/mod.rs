@@ -19,6 +19,10 @@ use crate::error::ApiError;
 
 const DB_FILE_NAME: &str = "app.db";
 
+/// Uuid of the profile every database starts with (seeded by the initial
+/// migration) and the fallback owner of data that names no profile.
+pub const DEFAULT_PROFILE_ID: &str = "default";
+
 /// Every table that carries a direct
 /// `profile_id TEXT NOT NULL REFERENCES profiles(uuid) ON DELETE CASCADE`
 /// column (see migrations.rs's schema) — the single source of truth for
@@ -231,7 +235,7 @@ pub async fn current_profile_id(pool: &SqlitePool) -> Result<String, ApiError> {
 
     Ok(row
         .and_then(|(value,)| serde_json::from_str::<String>(&value).ok())
-        .unwrap_or_else(|| "default".to_string()))
+        .unwrap_or_else(|| DEFAULT_PROFILE_ID.to_string()))
 }
 
 /// The app-wide ISO-8601 UTC "now" (`2026-01-01T00:00:00.123Z`), matching

@@ -39,7 +39,7 @@ use crate::commands::{
     list_viewing_events_for_year, list_yearly_activity, refresh_tracked_series_status,
     remove_custom_list_item, remove_library_item, remove_planned_library_item, remove_smart_list,
     rename_saved_filter, save_availability_snapshot, save_library_item, set_active_profile,
-    set_episode_rating, set_profile_pin, toggle_availability_alert, toggle_episodes_watched,
+    set_availability_alert, set_episode_rating, set_profile_pin, toggle_episodes_watched,
     toggle_movie_seen, undismiss_recommendation, update_preference, update_smart_list,
     verify_profile_pin,
 };
@@ -575,10 +575,11 @@ async fn first_session(app: &TestApp) -> String {
         .unwrap();
 
     // Availability alert + snapshot, dismissed recommendation.
-    toggle_availability_alert(
+    set_availability_alert(
         j(media(78, "movie")),
         "FR".to_string(),
         vec![8, 337],
+        true,
         db(app),
     )
     .await
@@ -1099,10 +1100,11 @@ async fn random_sequences_with_restarts_in_the_middle_stay_identical_across_each
                 8 => {
                     let id = 200 + next(4) as i64;
                     let region = ["FR", "BE", "CA"][next(3) as usize];
-                    toggle_availability_alert(
+                    set_availability_alert(
                         j(media(id, "movie")),
                         region.to_string(),
                         vec![8],
+                        next(2) == 0,
                         db(&app),
                     )
                     .await
