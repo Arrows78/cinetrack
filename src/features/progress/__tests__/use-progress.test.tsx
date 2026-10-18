@@ -198,7 +198,6 @@ describe("useEpisodeProgress", () => {
     expect(invalidatedKeys).toContainEqual(queryKeys.local.episodeProgress(DEFAULT_PROFILE_ID, 9));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.watchNextEpisode(DEFAULT_PROFILE_ID, 9));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.trackedSeries(DEFAULT_PROFILE_ID));
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.library(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.viewingEventsForMedia(DEFAULT_PROFILE_ID, "series", 9));
   });

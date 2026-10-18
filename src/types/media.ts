@@ -284,6 +284,12 @@ export interface LibraryFilterState {
   search: string;
   /** Canonical genre label, or "all" — optional so a filter saved before this field existed still applies cleanly. */
   genreFilter?: string;
+  /**
+   * Id of the smart list the view was narrowed to — absent for "no smart list"
+   * (and in every filter saved before this field existed), so applying a saved
+   * filter always replaces whatever smart list was selected.
+   */
+  smartListFilter?: string;
 }
 
 // SearchPage's own filter-control state (src/pages/search-page.tsx) — a

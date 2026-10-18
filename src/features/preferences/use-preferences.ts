@@ -1,7 +1,10 @@
+import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import type { UserPreferences } from "@/types/media";
 
 /**
@@ -17,7 +20,6 @@ export async function invalidateLocaleDependentQueries(
   const activeProfileId = profileId ?? DEFAULT_PROFILE_ID;
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["remote"] }),
-    queryClient.invalidateQueries({ queryKey: queryKeys.local.calendar(activeProfileId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(activeProfileId) }),
     // Cached under a profile key but built from TMDB responses in the
     // previous language/region: Watch Tonight's picks and the "people
@@ -54,9 +56,24 @@ export function usePreferences() {
     },
   });
 
+  const { mutateAsync } = mutation;
+  // Fire-and-forget form of `updatePreference` for a control that has nothing
+  // to await (a toggle, a select): the failure toast comes from the app-wide
+  // MutationCache handler, so the rejection only has to be caught and logged
+  // — a bare `void updatePreference()` left it unhandled.
+  const setPreference = useCallback(
+    (variables: Parameters<typeof mutateAsync>[0]): void => {
+      mutateAsync(variables).catch((error: unknown) => {
+        logger.warn(`Saving the "${variables.key}" preference failed: ${errorMessage(error)}`);
+      });
+    },
+    [mutateAsync]
+  );
+
   return {
     ...query,
-    updatePreference: mutation.mutateAsync,
+    updatePreference: mutateAsync,
+    setPreference,
     isSaving: mutation.isPending,
   };
 }

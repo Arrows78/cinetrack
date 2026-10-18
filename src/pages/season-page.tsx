@@ -17,7 +17,8 @@ import { DegradedModeBadge } from "@/components/states/degraded-mode-badge";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { isDegradedRemoteError } from "@/shared/lib/errors";
 import { Card } from "@/components/ui/card";
-import { airedEpisodes, useEpisodeProgress } from "@/features/progress/use-progress";
+import { logger } from "@/shared/lib/logger";
+import { airedEpisodes, episodeProgressHasUserData, useEpisodeProgress } from "@/features/progress/use-progress";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 import { useSeasonDetails, useSeriesDetails } from "@/features/media/use-media";
 
@@ -40,11 +41,16 @@ export function SeasonPage() {
   const backlog = useEpisodeSeenBacklogPrompt({
     onMarkOne: (episode, watched, note) => {
       if (!seriesQuery.data) return;
-      void progressQuery.toggleEpisodeSeen({ series: seriesQuery.data, episode, watched, note });
+      // The failure toast comes from the MutationCache; this only logs.
+      progressQuery
+        .toggleEpisodeSeen({ series: seriesQuery.data, episode, watched, note })
+        .catch((error: unknown) => logger.warn(`Toggling episode ${episode.id} failed: ${String(error)}`));
     },
     onMarkMany: (episodes, target) => {
       if (!seriesQuery.data) return;
-      void progressQuery.markEpisodesSeen({ series: seriesQuery.data, episodes, target });
+      progressQuery
+        .markEpisodesSeen({ series: seriesQuery.data, episodes, target })
+        .catch((error: unknown) => logger.warn(`Marking episodes failed: ${String(error)}`));
     },
   });
 
@@ -78,6 +84,7 @@ export function SeasonPage() {
   const series = seriesQuery.data;
   const season = seasonQuery.data;
   const watchedSet = new Set((progressQuery.data ?? []).map((item) => item.episodeId));
+  const progressByEpisodeId = new Map((progressQuery.data ?? []).map((item) => [item.episodeId, item]));
   // Against aired episodes only: markSeasonSeen never marks an unaired one,
   // so requiring them kept a caught-up airing season on "mark as seen",
   // with a click that changed nothing.
@@ -161,6 +168,7 @@ export function SeasonPage() {
               episode={{ ...episode, watched: watchedSet.has(episode.id) }}
               season={season}
               disabled={progressQuery.isSaving || progressUnavailable}
+              hasUserData={episodeProgressHasUserData(progressByEpisodeId.get(episode.id))}
               seriesId={series.id}
               seasonNumber={season.seasonNumber}
               onToggleSeen={(note) =>

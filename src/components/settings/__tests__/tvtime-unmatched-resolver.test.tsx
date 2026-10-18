@@ -5,6 +5,7 @@ import i18n from "@/i18n";
 import type { MediaSummary, PageResult } from "@/types/media";
 import type { RetryableUnmatched } from "@/features/tvtime/tvtime-import-service";
 import { logger } from "@/shared/lib/logger";
+import { queryClient } from "@/app/query-client";
 import { TvTimeUnmatchedResolver } from "../tvtime-unmatched-resolver";
 
 function page(results: MediaSummary[]): PageResult<MediaSummary> {
@@ -96,6 +97,7 @@ describe("TvTimeUnmatchedResolver", () => {
 
   beforeEach(() => {
     searchMock.mockReset().mockResolvedValue(page([]));
+    queryClient.clear();
     getSeriesDetailsMock.mockReset();
     resolveRetryableSeriesMock.mockReset().mockResolvedValue({
       episodesImported: 1,

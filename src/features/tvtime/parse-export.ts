@@ -2,6 +2,12 @@ import { parseCsv } from "./csv";
 
 export interface TvTimeEpisode {
   seriesName: string;
+  /**
+   * TV Time's show id (`s_id`, the TheTVDB id) when the row carries one.
+   * Identity of the show wherever present: two series sharing a name ("The
+   * Office") have different ids and must never be merged by name.
+   */
+  seriesId?: number | null;
   seasonNumber: number;
   episodeNumber: number;
   watchedAt: string;
@@ -29,6 +35,8 @@ export interface TvTimeExport {
   tvdbIdsByName: Map<string, number>;
   /** Lowercase series names TV Time has marked favourited (from user_tv_show_data.csv's is_favorited column). */
   favouriteSeriesNames: Set<string>;
+  /** Favourited shows by TV Time show id — preferred over the name when an episode row carries its id. */
+  favouriteSeriesIds: Set<number>;
   /**
    * A series' rating, keyed by lowercase name (from tv_show_rate.csv),
    * already converted from TV Time's 5-star scale to CineTrack's 0-10
@@ -37,6 +45,8 @@ export interface TvTimeExport {
    * maximum) rating.
    */
   seriesRatingsByName: Map<string, number>;
+  /** Same ratings keyed by TV Time show id — preferred over the name when an episode row carries its id. */
+  seriesRatingsById: Map<number, number>;
   /**
    * Otherwise-well-formed watch rows dropped because `created_at` was
    * missing or unparseable. Never backfilled with today's date — a fake
@@ -106,9 +116,20 @@ export function emptyExport(): TvTimeExport {
     tvdbIdsByName: new Map(),
     favouriteSeriesNames: new Set(),
     seriesRatingsByName: new Map(),
+    favouriteSeriesIds: new Set(),
+    seriesRatingsById: new Map(),
     skippedRows: { episodes: 0, movies: 0 },
   };
 }
+
+const parseShowId = (value: string | undefined): number | null => {
+  const id = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(id) ? id : null;
+};
+
+/** Identity of a series across the export: its TV Time id when known, its lowercase name otherwise. */
+export const seriesKeyOf = (seriesId: number | null | undefined, seriesName: string): string =>
+  seriesId != null ? `id:${seriesId}` : `name:${seriesName.toLowerCase()}`;
 
 /**
  * Parses one export file into the accumulator. Files can be provided in any
@@ -135,6 +156,7 @@ export function parseTvTimeFile(text: string, into: TvTimeExport): TvTimeFileKin
       }
       into.episodes.push({
         seriesName,
+        seriesId: parseShowId(row.s_id),
         seasonNumber,
         episodeNumber,
         watchedAt,
@@ -186,7 +208,10 @@ export function parseTvTimeFile(text: string, into: TvTimeExport): TvTimeFileKin
   if (kind === "show-data") {
     for (const row of rows) {
       const name = row.tv_show_name?.trim();
-      if (name && row.is_favorited === "1") into.favouriteSeriesNames.add(name.toLowerCase());
+      if (row.is_favorited !== "1") continue;
+      const id = parseShowId(row.tv_show_id);
+      if (id !== null) into.favouriteSeriesIds.add(id);
+      if (name) into.favouriteSeriesNames.add(name.toLowerCase());
     }
   }
 
@@ -194,7 +219,10 @@ export function parseTvTimeFile(text: string, into: TvTimeExport): TvTimeFileKin
     for (const row of rows) {
       const name = row.tv_show_name?.trim();
       const rating = convertStarRating(row.rating ?? "");
-      if (name && rating !== null) into.seriesRatingsByName.set(name.toLowerCase(), rating);
+      if (rating === null) continue;
+      const id = parseShowId(row.tv_show_id);
+      if (id !== null) into.seriesRatingsById.set(id, rating);
+      if (name) into.seriesRatingsByName.set(name.toLowerCase(), rating);
     }
   }
 
@@ -205,7 +233,7 @@ export function parseTvTimeFile(text: string, into: TvTimeExport): TvTimeFileKin
 export function normalizeExport(data: TvTimeExport): TvTimeExport {
   const episodeMap = new Map<string, TvTimeEpisode>();
   for (const episode of data.episodes) {
-    const key = `${episode.seriesName.toLowerCase()}|${episode.seasonNumber}|${episode.episodeNumber}`;
+    const key = `${seriesKeyOf(episode.seriesId, episode.seriesName)}|${episode.seasonNumber}|${episode.episodeNumber}`;
     const existing = episodeMap.get(key);
     if (!existing || episode.watchedAt < existing.watchedAt) episodeMap.set(key, episode);
   }
@@ -231,6 +259,8 @@ export function normalizeExport(data: TvTimeExport): TvTimeExport {
     tvdbIdsByName: data.tvdbIdsByName,
     favouriteSeriesNames: data.favouriteSeriesNames,
     seriesRatingsByName: data.seriesRatingsByName,
+    favouriteSeriesIds: data.favouriteSeriesIds,
+    seriesRatingsById: data.seriesRatingsById,
     skippedRows: data.skippedRows,
   };
 }

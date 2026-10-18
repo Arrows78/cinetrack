@@ -22,7 +22,7 @@ const UI_TOGGLES: UiToggle[] = [
 ];
 
 /** Accent color, language, region, default search type and display toggles. */
-export function AppearanceCard({ preferences, updatePreference, isSaving }: PreferenceCardProps) {
+export function AppearanceCard({ preferences, updatePreference, setPreference, isSaving }: PreferenceCardProps) {
   const { t, i18n } = useTranslation();
   const setLanguage = async (language: "fr" | "en") => {
     await updatePreference({ key: "language", value: language });
@@ -44,7 +44,7 @@ export function AppearanceCard({ preferences, updatePreference, isSaving }: Pref
                     disabled={isSaving}
                     aria-pressed={selected}
                     aria-label={t(`colors.${key}`)}
-                    onClick={() => void updatePreference({ key: "accentColor", value: key })}
+                    onClick={() => setPreference({ key: "accentColor", value: key })}
                     className="flex flex-col items-center gap-1.5 disabled:opacity-50"
                   >
                     <div
@@ -85,7 +85,7 @@ export function AppearanceCard({ preferences, updatePreference, isSaving }: Pref
             <Select
               value={preferences?.region ?? defaultPreferences.region}
               disabled={isSaving}
-              onChange={(event) => void updatePreference({ key: "region", value: event.target.value })}
+              onChange={(event) => setPreference({ key: "region", value: event.target.value })}
             >
               <option value="FR">{t("settings.regionOptions.france")}</option>
               <option value="BE">{t("settings.regionOptions.belgium")}</option>
@@ -103,7 +103,7 @@ export function AppearanceCard({ preferences, updatePreference, isSaving }: Pref
           <p className="mb-3 text-body-sm font-medium">{t("settings.defaultSearch")}</p>
           <FilterBar
             value={preferences?.defaultSearchType ?? defaultPreferences.defaultSearchType}
-            onChange={(value) => void updatePreference({ key: "defaultSearchType", value })}
+            onChange={(value) => setPreference({ key: "defaultSearchType", value })}
             groupLabel={t("settings.defaultSearch")}
             disabled={isSaving}
             options={[
@@ -121,7 +121,7 @@ export function AppearanceCard({ preferences, updatePreference, isSaving }: Pref
               label={t(labelKey)}
               pressed={preferences?.[key] ?? defaultPreferences[key]}
               disabled={isSaving}
-              onPressedChange={() => void updatePreference({ key, value: !preferences?.[key] })}
+              onPressedChange={() => setPreference({ key, value: !preferences?.[key] })}
             />
           ))}
         </div>

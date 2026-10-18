@@ -183,9 +183,9 @@ describe("SeasonPage", () => {
     paramsHolder.seasonNumber = "1";
     seriesQueryMock.mockReset().mockReturnValue(makeQuery(defaultSeries));
     seasonQueryMock.mockReset().mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
-    toggleEpisodeSeenMock.mockReset();
-    markSeasonSeenMock.mockReset();
-    markEpisodesSeenMock.mockReset();
+    toggleEpisodeSeenMock.mockReset().mockResolvedValue(undefined);
+    markSeasonSeenMock.mockReset().mockResolvedValue(undefined);
+    markEpisodesSeenMock.mockReset().mockResolvedValue(undefined);
     progressQueryMock.mockReset().mockReturnValue(makeProgressQuery([]));
   });
 
@@ -507,6 +507,22 @@ describe("SeasonPage", () => {
       episodes: [episode1, episode2, episode3],
       target: episode3,
     });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["only this", () => i18n.t("media.markPreviousOnlyThisCta"), toggleEpisodeSeenMock],
+    ["include previous", () => i18n.t("media.markPreviousIncludeCta", { count: 2 }), markEpisodesSeenMock],
+  ])("logs instead of leaving a rejected write unhandled when confirming '%s'", async (_label, name, writeMock) => {
+    writeMock.mockRejectedValueOnce(new Error("write failed"));
+    seasonQueryMock.mockReturnValue(makeQuery(makeSeason("Season One", [episode1, episode2, episode3])));
+    progressQueryMock.mockReturnValue(makeProgressQuery([]));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle-episode-3" }));
+    fireEvent.click(screen.getByRole("button", { name: name() }));
+
+    await waitFor(() => expect(writeMock).toHaveBeenCalled());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 

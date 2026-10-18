@@ -111,7 +111,7 @@ function AvailabilityCheckCard({
 
 export function SettingsPage() {
   const { t } = useTranslation();
-  const { data: preferences, updatePreference, isSaving, isError, error, refetch } = usePreferences();
+  const { data: preferences, updatePreference, setPreference, isSaving, isError, error, refetch } = usePreferences();
   if (isError) {
     return <RemoteErrorState error={error} onRetry={() => void refetch()} />;
   }
@@ -144,7 +144,12 @@ export function SettingsPage() {
           title={t("settings.uiPreferences")}
           subtitle={t("settings.customizeDisplay")}
         />
-        <AppearanceCard preferences={preferences} updatePreference={updatePreference} isSaving={isSaving} />
+        <AppearanceCard
+          preferences={preferences}
+          updatePreference={updatePreference}
+          setPreference={setPreference}
+          isSaving={isSaving}
+        />
       </section>
 
       <section id={SETTINGS_STREAMING_ID} className="scroll-mt-28">
@@ -164,7 +169,7 @@ export function SettingsPage() {
             intervalHours={
               preferences?.availabilityCheckIntervalHours ?? defaultPreferences.availabilityCheckIntervalHours
             }
-            onChange={(hours) => void updatePreference({ key: "availabilityCheckIntervalHours", value: hours })}
+            onChange={(hours) => setPreference({ key: "availabilityCheckIntervalHours", value: hours })}
             isSaving={isSaving}
           />
         </div>
@@ -177,7 +182,12 @@ export function SettingsPage() {
           title={t("settings.sections.notifications")}
           subtitle={t("settings.sections.notificationsDesc")}
         />
-        <NotificationsCard preferences={preferences} updatePreference={updatePreference} isSaving={isSaving} />
+        <NotificationsCard
+          preferences={preferences}
+          updatePreference={updatePreference}
+          setPreference={setPreference}
+          isSaving={isSaving}
+        />
       </section>
 
       <section id={SETTINGS_ACCOUNT_ID} className="scroll-mt-28">

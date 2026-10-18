@@ -23,7 +23,7 @@ export function OnboardingGate({ children }: PropsWithChildren) {
   const libraryKeysQuery = useLibraryMediaKeys();
   const onboardingCompleted = preferencesQuery.data?.onboardingCompleted ?? defaultPreferences.onboardingCompleted;
   const hasExistingLibrary = (libraryKeysQuery.data?.length ?? 0) > 0;
-  const { updatePreference } = preferencesQuery;
+  const { setPreference } = preferencesQuery;
   const stillLoading = preferencesQuery.isLoading || libraryKeysQuery.isLoading;
   // Every other SQLite-backed page in the app degrades in place on a failed
   // read (see CLAUDE.md's browser-preview note) rather than blocking
@@ -67,9 +67,9 @@ export function OnboardingGate({ children }: PropsWithChildren) {
   // shouldShowOnboarding's own doc comment.
   useEffect(() => {
     if (!preferencesQuery.isLoading && !onboardingCompleted && hasExistingLibrary) {
-      void updatePreference({ key: "onboardingCompleted", value: true });
+      setPreference({ key: "onboardingCompleted", value: true });
     }
-  }, [preferencesQuery.isLoading, onboardingCompleted, hasExistingLibrary, updatePreference]);
+  }, [preferencesQuery.isLoading, onboardingCompleted, hasExistingLibrary, setPreference]);
 
   // Outside the Tauri window (`pnpm dev`, the visual-regression suite) no
   // preference or library read can ever succeed, so the disposition above is

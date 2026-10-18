@@ -153,6 +153,17 @@ async function readNamedBackup(fileName: string): Promise<string | null> {
   return readTextFile(fileName, { baseDir: BaseDirectory.AppData });
 }
 
+// The inverse of autoBackupFileName for the one exportedAt shape this app
+// writes (`Date#toISOString`). Any other shape is ambiguous once its `:`/`.`
+// are dashes, so it yields null and the caller reads the file instead.
+const AUTO_BACKUP_NAME_DATE = /^auto-(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z\.json$/;
+function exportedAtFromFileName(file: string): string | null {
+  const match = AUTO_BACKUP_NAME_DATE.exec(file.slice(BACKUP_DIR.length + 1));
+  if (!match) return null;
+  const iso = `${match[1]}T${match[2]}:${match[3]}:${match[4]}.${match[5]}Z`;
+  return Number.isNaN(Date.parse(iso)) ? null : iso;
+}
+
 async function readLatestAutoBackup(): Promise<string | null> {
   const files = await listAutoBackups();
   const latest = files[files.length - 1];
@@ -179,7 +190,12 @@ export const maintenanceService = {
       const interval = intervalForFrequency(backupFrequency);
       if (interval === null) return;
       const last = Number(window.localStorage.getItem(LAST_AUTO_BACKUP_KEY) ?? 0);
-      if (Date.now() - last < interval) return;
+      // A negative elapsed time means the clock went backwards since that
+      // backup (a corrected or reset system clock): "not due yet" would hold
+      // until the clock caught up with the old stamp, possibly for years, so
+      // the backup is treated as due and the stamp rewritten below.
+      const elapsed = Date.now() - last;
+      if (elapsed >= 0 && elapsed < interval) return;
     }
     try {
       const backup = await portableData.export();
@@ -231,6 +247,13 @@ export const maintenanceService = {
    * they commit.
    */
   async getAutomaticBackupInfo(): Promise<{ exportedAt: string } | null> {
+    // The file name carries the backup's own exportedAt: reading it is a
+    // directory listing instead of loading and parsing the whole backup
+    // (megabytes for a large library) just to show one date.
+    const files = await listAutoBackups();
+    const latest = files[files.length - 1];
+    const fromName = latest ? exportedAtFromFileName(latest) : null;
+    if (fromName) return { exportedAt: fromName };
     const raw = await readLatestAutoBackup();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { exportedAt?: unknown };

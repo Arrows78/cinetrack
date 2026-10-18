@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as LoggerModule from "../logger";
 
 const mocks = vi.hoisted(() => ({
   exists: vi.fn(),
@@ -26,7 +27,7 @@ vi.mock("@/shared/lib/platform", () => ({
   isTauriApp: mocks.isTauriApp,
 }));
 
-import { logger } from "../logger";
+let logger: typeof LoggerModule.logger;
 
 const LOG_FILE = "logs/cinetrack.log";
 const ROTATED_LOG_FILE = "logs/cinetrack.log.1";
@@ -40,8 +41,11 @@ describe("logger", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Fresh module: the "log directory created" flag and the write queue are module state.
+    vi.resetModules();
+    ({ logger } = await import("../logger"));
     infoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined);
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -365,6 +369,56 @@ describe("logger", () => {
       await expect(logger.clear()).resolves.toBeUndefined();
 
       expect(mocks.writeTextFile).toHaveBeenCalledWith(LOG_FILE, "", { baseDir: "AppData" });
+    });
+  });
+
+  describe("serialised writes", () => {
+    beforeEach(() => {
+      mocks.isTauriApp.mockReturnValue(true);
+    });
+
+    it("creates the log directory once and keeps every line, in order, when logged in the same tick", async () => {
+      logger.info("one");
+      logger.warn("two");
+      logger.error("three");
+      await flush();
+
+      expect(mocks.mkdir).toHaveBeenCalledTimes(1);
+      const lines = mocks.writeTextFile.mock.calls.map((call) => call[1] as string);
+      expect(lines).toHaveLength(3);
+      expect(lines[0]).toMatch(/one\n$/);
+      expect(lines[1]).toMatch(/two\n$/);
+      expect(lines[2]).toMatch(/three\n$/);
+    });
+
+    it("never runs two appends concurrently, so a rotation cannot swallow another line", async () => {
+      let active = 0;
+      let maxActive = 0;
+      mocks.writeTextFile.mockImplementation(async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        active -= 1;
+      });
+
+      logger.info("a");
+      logger.info("b");
+      logger.info("c");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(maxActive).toBe(1);
+      expect(mocks.writeTextFile).toHaveBeenCalledTimes(3);
+    });
+
+    it("retries creating the directory on the next line after a mkdir failure", async () => {
+      mocks.mkdir.mockRejectedValueOnce(new Error("denied"));
+
+      logger.info("lost");
+      logger.info("kept");
+      await flush();
+
+      expect(mocks.mkdir).toHaveBeenCalledTimes(2);
+      expect(mocks.writeTextFile).toHaveBeenCalledTimes(1);
     });
   });
 });

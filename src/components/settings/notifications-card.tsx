@@ -10,7 +10,7 @@ import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 
 /** Calendar reminders, availability alerts, desktop toasts and the reminder lead time. */
-export function NotificationsCard({ preferences, updatePreference, isSaving }: PreferenceCardProps) {
+export function NotificationsCard({ preferences, updatePreference, setPreference, isSaving }: PreferenceCardProps) {
   const { t } = useTranslation();
   const toggleCalendarNotifications = async () => {
     await updatePreference({ key: "notificationsEnabled", value: !preferences?.notificationsEnabled });
@@ -68,9 +68,7 @@ export function NotificationsCard({ preferences, updatePreference, isSaving }: P
           <Select
             value={preferences?.notifyHoursBefore ?? defaultPreferences.notifyHoursBefore}
             disabled={isSaving}
-            onChange={(event) =>
-              void updatePreference({ key: "notifyHoursBefore", value: Number(event.target.value) }).catch(() => {})
-            }
+            onChange={(event) => setPreference({ key: "notifyHoursBefore", value: Number(event.target.value) })}
           >
             {[
               ...new Set([

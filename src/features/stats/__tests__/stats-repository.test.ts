@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
 import { getViewerTimeZone } from "@/shared/lib/time-zone";
@@ -13,7 +15,7 @@ vi.mock("@/shared/lib/invoke", async (importOriginal) => {
   };
 });
 
-import { monthOverMonthComparison, yearOverYearComparison } from "../stats-repository";
+import { PACE_WINDOW_DAYS, monthOverMonthComparison, yearOverYearComparison } from "../stats-repository";
 import type { YearSummary } from "../stats-repository";
 
 function makeYearSummary(overrides: Partial<YearSummary> = {}): YearSummary {
@@ -310,5 +312,29 @@ describe("statsRepository.getYearlyActivity", () => {
       tzOffsetMinutes: new Date().getTimezoneOffset(),
       timeZone: getViewerTimeZone(),
     });
+  });
+});
+
+describe("PACE_WINDOW_DAYS", () => {
+  it("matches the window length get_watch_forecast divides the recent episodes by in Rust", () => {
+    const rust = readFileSync(resolve(__dirname, "../../../../src-tauri/src/stats/queries/forecast.rs"), "utf8");
+    const match = /const PACE_WINDOW_DAYS: f64 = ([\d.]+);/.exec(rust);
+    expect(match).not.toBeNull();
+    expect(Number(match![1])).toBe(PACE_WINDOW_DAYS);
+  });
+
+  it("sends the start of that window, and nothing else derived from it", async () => {
+    invokeCommandMock.mockReset();
+    invokeCommandMock.mockResolvedValue({
+      backlogEpisodes: 0,
+      backlogMinutes: 0,
+      episodesPerWeek: 0,
+      catchUpDate: null,
+    });
+    const { statsRepository: repo } = await import("../stats-repository");
+    await repo.getForecast();
+    const args = invokeCommandMock.mock.calls[0]![1] as { paceWindowStart: string; now: string };
+    const days = (new Date(args.now).getTime() - new Date(args.paceWindowStart).getTime()) / 86_400_000;
+    expect(Math.round(days)).toBe(PACE_WINDOW_DAYS);
   });
 });

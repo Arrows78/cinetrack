@@ -12,8 +12,14 @@ import { MarkPreviousEpisodesDialog } from "@/components/media/tracking/mark-pre
 import { useConfetti } from "@/hooks/use-confetti";
 import { CONFETTI_DELAY_MS, CONFETTI_SEASON_COMPLETE_DELAY_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
+import { logger } from "@/shared/lib/logger";
 import type { Episode, EpisodeProgress, MediaSummary, Season } from "@/types/media";
-import { airedEpisodes as airedEpisodesOf, calculateSeriesProgress, hasAired } from "@/features/progress/use-progress";
+import {
+  airedEpisodes as airedEpisodesOf,
+  calculateSeriesProgress,
+  episodeProgressHasUserData,
+  hasAired,
+} from "@/features/progress/use-progress";
 import { useEpisodeSeenBacklogPrompt } from "@/features/progress/use-episode-seen-backlog-prompt";
 
 /* Episode filmstrip — each episode is a sprocket-hole perforation; watched
@@ -80,6 +86,10 @@ export function SeasonAccordion({
   const { t } = useTranslation();
   const { celebrate } = useConfetti();
   const watchedSet = useMemo(() => new Set(watchedEpisodes.map((item) => item.episodeId)), [watchedEpisodes]);
+  const progressByEpisodeId = useMemo(
+    () => new Map(watchedEpisodes.map((item) => [item.episodeId, item])),
+    [watchedEpisodes]
+  );
   const progress = calculateSeriesProgress(series.id, seasons, watchedEpisodes);
   // Every season's episodes, not just the one being toggled — lets the
   // backlog prompt below offer to catch up an unfinished earlier season too,
@@ -100,15 +110,24 @@ export function SeasonAccordion({
   // Counts only the episodes that belong to `season` and aren't watched yet:
   // a catch-up can also carry episodes of earlier seasons (see the backlog
   // prompt below), which say nothing about whether this one just completed.
-  const celebrateIfSeasonCompletes = (season: Season, newlyWatched: Episode[]) => {
+  const seasonCompletes = (season: Season, newlyWatched: Episode[]): boolean => {
     const airedEpisodes = airedEpisodesOf(season);
     const alreadyWatched = airedEpisodes.filter((ep) => watchedSet.has(ep.id)).length;
     const newlyWatchedHere = newlyWatched.filter(
       (ep) => ep.seasonNumber === season.seasonNumber && hasAired(ep, season) && !watchedSet.has(ep.id)
     ).length;
-    if (airedEpisodes.length > 0 && alreadyWatched + newlyWatchedHere === airedEpisodes.length) {
-      setTimeout(celebrate, CONFETTI_SEASON_COMPLETE_DELAY_MS);
-    }
+    return airedEpisodes.length > 0 && alreadyWatched + newlyWatchedHere === airedEpisodes.length;
+  };
+  // Confetti is for a write that went through: it waits for the write's
+  // result and stays silent on a rejection (the failure toast comes from the
+  // app-wide MutationCache handler, so this only logs).
+  const writeThenCelebrate = (write: Promise<unknown>, celebrateDelayMs: number | null) => {
+    write.then(
+      () => {
+        if (celebrateDelayMs !== null) setTimeout(celebrate, celebrateDelayMs);
+      },
+      (error: unknown) => logger.warn(`Marking episodes failed: ${String(error)}`)
+    );
   };
   const [seasonToUnmark, setSeasonToUnmark] = useState<Season | null>(null);
 
@@ -119,12 +138,12 @@ export function SeasonAccordion({
   // that prompt, rather than reading it from a stale closure.
   const backlog = useEpisodeSeenBacklogPrompt<Season>({
     onMarkOne: (episode, watched, note, season) => {
-      if (watched) celebrateIfSeasonCompletes(season, [episode]);
-      void onToggleEpisode(episode, watched, note);
+      const completes = watched && seasonCompletes(season, [episode]);
+      writeThenCelebrate(onToggleEpisode(episode, watched, note), completes ? CONFETTI_SEASON_COMPLETE_DELAY_MS : null);
     },
     onMarkMany: (episodes, target, season) => {
-      celebrateIfSeasonCompletes(season, episodes);
-      void onToggleEpisodes(episodes, target);
+      const completes = seasonCompletes(season, episodes);
+      writeThenCelebrate(onToggleEpisodes(episodes, target), completes ? CONFETTI_SEASON_COMPLETE_DELAY_MS : null);
     },
   });
 
@@ -189,8 +208,7 @@ export function SeasonAccordion({
                         setSeasonToUnmark(season);
                         return;
                       }
-                      void onToggleSeason(season, true);
-                      setTimeout(celebrate, CONFETTI_DELAY_MS);
+                      writeThenCelebrate(onToggleSeason(season, true), CONFETTI_DELAY_MS);
                     }}
                     // Nothing aired yet (an announced season, or one TMDB lists
                     // with no episodes): marking it would write nothing.
@@ -232,6 +250,7 @@ export function SeasonAccordion({
                         season={season}
                         disabled={isSaving}
                         isLastUnwatched={isLastUnwatched}
+                        hasUserData={episodeProgressHasUserData(progressByEpisodeId.get(episode.id))}
                         seriesId={series.id}
                         seasonNumber={season.seasonNumber}
                         onToggleSeen={(note) =>
@@ -254,7 +273,7 @@ export function SeasonAccordion({
         onConfirm={() => {
           const season = seasonToUnmark;
           setSeasonToUnmark(null);
-          if (season) void onToggleSeason(season, false);
+          if (season) writeThenCelebrate(onToggleSeason(season, false), null);
         }}
       />
       <MarkPreviousEpisodesDialog

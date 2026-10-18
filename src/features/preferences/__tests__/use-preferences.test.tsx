@@ -125,7 +125,7 @@ describe("usePreferences mutation side effects", () => {
     invokeMock.mockClear();
   });
 
-  it("invalidates remote, calendar and tracking queries when the changed key is 'language'", async () => {
+  it("invalidates remote and tracking queries when the changed key is 'language'", async () => {
     const { usePreferences } = await import("../use-preferences");
     const { client, Wrapper } = createWrapperWithClient();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
@@ -138,12 +138,11 @@ describe("usePreferences mutation side effects", () => {
 
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(["remote"]);
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
-    expect(invalidateSpy).toHaveBeenCalledTimes(4);
+    expect(invalidateSpy).toHaveBeenCalledTimes(3);
   });
 
-  it("invalidates remote, calendar and tracking queries when the changed key is 'region'", async () => {
+  it("invalidates remote and tracking queries when the changed key is 'region'", async () => {
     const { usePreferences } = await import("../use-preferences");
     const { client, Wrapper } = createWrapperWithClient();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
@@ -156,9 +155,8 @@ describe("usePreferences mutation side effects", () => {
 
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(["remote"]);
-    expect(invalidatedKeys).toContainEqual(queryKeys.local.calendar(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
-    expect(invalidateSpy).toHaveBeenCalledTimes(4);
+    expect(invalidateSpy).toHaveBeenCalledTimes(3);
   });
 
   it("does not invalidate remote/calendar/tracking queries for an unrelated key like 'theme'", async () => {

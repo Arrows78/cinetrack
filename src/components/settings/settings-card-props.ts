@@ -5,5 +5,6 @@ import type { UserPreferences } from "@/types/media";
 export type PreferenceCardProps = {
   preferences: UserPreferences | undefined;
   updatePreference: ReturnType<typeof usePreferences>["updatePreference"];
+  setPreference: ReturnType<typeof usePreferences>["setPreference"];
   isSaving: boolean;
 };

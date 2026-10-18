@@ -91,6 +91,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
       backupFrequency: mockBackupFrequency,
     },
     updatePreference: (...args: unknown[]) => updatePreferenceMock(...args),
+    setPreference: (...args: unknown[]) => updatePreferenceMock(...args),
     isSaving: false,
   }),
 }));

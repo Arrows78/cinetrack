@@ -444,7 +444,15 @@ export function LibraryExplorer({
             ))}
           </Select>
         ) : null}
-        <SavedFiltersBar page="library" currentFilters={currentFilters} onApply={applySavedFilters} />
+        <SavedFiltersBar
+          page="library"
+          currentFilters={currentFilters}
+          onApply={applySavedFilters}
+          // The hubs only list the views saved for their own media type;
+          // /library keeps every one, including those saved before hubs
+          // were told apart.
+          isVisible={lockedMediaType ? (filters) => filters.typeFilter === lockedMediaType : undefined}
+        />
       </div>
 
       <ActiveFilterChips chips={chips} onClearAll={clearFilters} />

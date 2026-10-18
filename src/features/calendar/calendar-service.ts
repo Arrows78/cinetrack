@@ -1,5 +1,6 @@
 import { addDays, endOfDay, isAfter, isBefore, parseISO, startOfDay } from "date-fns";
 import { queryClient } from "@/app/query-client";
+import { fetchMovieDetailsCached, fetchSeriesDetailsCached } from "@/features/media";
 import { mediaRepository } from "@/features/media/media-repository";
 import { libraryRepository } from "@/features/library/library-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
@@ -83,12 +84,7 @@ async function fetchLibraryMovieEntries(from: Date, to: Date): Promise<SourceRes
     items,
     async (item) => {
       try {
-        const movie = await queryClient.fetchQuery({
-          queryKey: queryKeys.remote.movieDetails(item.mediaId),
-          queryFn: () => mediaRepository.getMovieDetails(item.mediaId),
-          staleTime: STALE_1_HOUR,
-          retry: false,
-        });
+        const movie = await fetchMovieDetailsCached(item.mediaId, { staleTime: STALE_1_HOUR, retry: false });
         if (!movie.releaseDate) return;
         const date = parseISO(movie.releaseDate);
         if (isBefore(date, from) || isAfter(date, to)) return;
@@ -132,9 +128,7 @@ async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceRe
         // behavior — this call already has its own catch-and-skip below, so
         // a query-level retry would only add backoff delay before reaching
         // the same "skip this series" outcome.
-        const details = await queryClient.fetchQuery({
-          queryKey: queryKeys.remote.seriesDetails(trackedSeries.seriesId),
-          queryFn: () => mediaRepository.getSeriesDetails(trackedSeries.seriesId),
+        const details = await fetchSeriesDetailsCached(trackedSeries.seriesId, {
           staleTime: STALE_5_MIN,
           retry: false,
         });

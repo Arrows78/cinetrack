@@ -41,6 +41,7 @@ describe("OnboardingGate", () => {
       error: null,
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     libraryMediaKeysMock.mockReset().mockReturnValue({
       data: [],
@@ -60,6 +61,7 @@ describe("OnboardingGate", () => {
       error: null,
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     render(
       <OnboardingGate>
@@ -79,6 +81,7 @@ describe("OnboardingGate", () => {
       error: null,
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     render(
       <OnboardingGate>
@@ -113,6 +116,7 @@ describe("OnboardingGate", () => {
       error: new Error("boom"),
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     render(
       <OnboardingGate>
@@ -148,6 +152,7 @@ describe("OnboardingGate", () => {
       error: null,
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     render(
       <OnboardingGate>
@@ -194,6 +199,7 @@ describe("OnboardingGate", () => {
       error: new Error("boom"),
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     const { rerender } = render(
       <OnboardingGate>
@@ -213,6 +219,7 @@ describe("OnboardingGate", () => {
       error: null,
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     rerender(
       <OnboardingGate>
@@ -233,6 +240,7 @@ describe("OnboardingGate", () => {
       error: null,
       refetch: refetchPreferencesMock,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
     });
     libraryMediaKeysMock.mockReturnValue({
       data: [{ mediaId: 1, mediaType: "movie" }],

@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
-import { HistoryPage } from "../history-page";
+import { HistoryPage, TYPE_FILTER_SCAN_MAX_PAGES } from "../history-page";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import type { TrackedSeriesItem, ViewingHistoryItem } from "@/types/media";
@@ -121,7 +121,7 @@ function baseHistoryQuery() {
     refetch: vi.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
+    fetchNextPage: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -422,13 +422,102 @@ describe("HistoryPage", () => {
       expect(getRouterSearch()).not.toContain("to");
     });
 
-    it("shows an undo action for an undoable entry, and calls it with that entry", () => {
+    it("asks for confirmation before undoing an entry, then calls it with that entry", async () => {
       const item = makeHistoryItem({ id: "1", action: "movie:watched", title: "Dune" });
       mockUseHistory.mockReturnValue(historyQueryResult({ data: { pages: [[item]] } }));
+      mutateAsyncMock.mockClear();
       renderPage();
 
       fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      expect(mutateAsyncMock).not.toHaveBeenCalled();
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("history.undoConfirmAction") }));
       expect(mutateAsyncMock).toHaveBeenCalledWith(item);
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
+
+    it("does not undo when the confirmation is cancelled", async () => {
+      const item = makeHistoryItem({ id: "1", action: "movie:watched", title: "Dune" });
+      mockUseHistory.mockReturnValue(historyQueryResult({ data: { pages: [[item]] } }));
+      mutateAsyncMock.mockClear();
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("common.cancel") }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(mutateAsyncMock).not.toHaveBeenCalled();
+    });
+
+    it("closes the confirmation even when the undo rejects", async () => {
+      const item = makeHistoryItem({ id: "1", action: "movie:watched", title: "Dune" });
+      mockUseHistory.mockReturnValue(historyQueryResult({ data: { pages: [[item]] } }));
+      mutateAsyncMock.mockRejectedValueOnce(new Error("boom"));
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("history.undoConfirmAction") }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
+
+    it("keeps fetching following pages while the type filter leaves nothing to show, instead of claiming no activity", async () => {
+      const fetchNextPage = vi.fn().mockResolvedValue(undefined);
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: [[makeHistoryItem({ id: "1", mediaType: "series", title: "A Show" })]] },
+          hasNextPage: true,
+          fetchNextPage,
+        })
+      );
+      renderPage("?type=movie");
+
+      await waitFor(() => expect(fetchNextPage).toHaveBeenCalled());
+    });
+
+    it("stops scanning once the bounded number of pages is loaded, and then shows the empty state", async () => {
+      const fetchNextPage = vi.fn().mockResolvedValue(undefined);
+      const seriesPage = [makeHistoryItem({ id: "1", mediaType: "series", title: "A Show" })];
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: Array.from({ length: TYPE_FILTER_SCAN_MAX_PAGES }, () => seriesPage) },
+          hasNextPage: true,
+          fetchNextPage,
+        })
+      );
+      renderPage("?type=movie");
+
+      expect(await screen.findByText(i18n.t("history.noActivity"))).toBeInTheDocument();
+      expect(fetchNextPage).not.toHaveBeenCalled();
+    });
+
+    it("still scans one page below the bound, and logs instead of throwing when that fetch fails", async () => {
+      const fetchNextPage = vi.fn().mockRejectedValue(new Error("offline"));
+      const seriesPage = [makeHistoryItem({ id: "1", mediaType: "series", title: "A Show" })];
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: Array.from({ length: TYPE_FILTER_SCAN_MAX_PAGES - 1 }, () => seriesPage) },
+          hasNextPage: true,
+          fetchNextPage,
+        })
+      );
+      renderPage("?type=movie");
+
+      await waitFor(() => expect(fetchNextPage).toHaveBeenCalledTimes(1));
+    });
+
+    it("does not auto-fetch when the filtered list already has entries", () => {
+      const fetchNextPage = vi.fn().mockResolvedValue(undefined);
+      mockUseHistory.mockReturnValue(
+        historyQueryResult({
+          data: { pages: [[makeHistoryItem({ id: "1", mediaType: "movie", title: "Dune" })]] },
+          hasNextPage: true,
+          fetchNextPage,
+        })
+      );
+      renderPage("?type=movie");
+
+      expect(fetchNextPage).not.toHaveBeenCalled();
     });
 
     it("keeps the undo action hover-revealed on a pointer device but always visible on touch", () => {

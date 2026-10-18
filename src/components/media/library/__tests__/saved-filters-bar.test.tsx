@@ -47,6 +47,30 @@ describe("SavedFiltersBar", () => {
     expect(useSavedFiltersMock).toHaveBeenCalledWith("library");
   });
 
+  it("lists only the saved filters the surface can make sense of when told which ones to show", () => {
+    useSavedFiltersMock.mockReturnValue({
+      data: [
+        savedFilterA,
+        { ...savedFilterA, id: "saved-b", name: "Hidden view", filters: { statusFilter: "dropped" } },
+      ],
+      create: createMock,
+      rename: renameMock,
+      remove: removeMock,
+      isSaving: false,
+    });
+    render(
+      <SavedFiltersBar
+        page="library"
+        currentFilters={{ statusFilter: "paused" }}
+        onApply={vi.fn()}
+        isVisible={(filters) => filters.statusFilter === "paused"}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Paused shows" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Hidden view" })).not.toBeInTheDocument();
+  });
+
   it("lists saved filters and applies one when its name is clicked", () => {
     const onApply = vi.fn();
     render(<SavedFiltersBar page="library" currentFilters={{ statusFilter: "paused" }} onApply={onApply} />);

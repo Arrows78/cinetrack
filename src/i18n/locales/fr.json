@@ -287,6 +287,9 @@
     "filterFromDate": "Depuis le",
     "filterToDate": "Jusqu'au",
     "undo": "Annuler",
+    "undoConfirmTitle": "Annuler cette entrée ?",
+    "undoConfirmDescription": "La modification enregistrée pour « {{title}} » sera annulée.",
+    "undoConfirmAction": "Annuler l'entrée",
     "undoNeedsCatalogue": "Cette entrée ancienne ne peut être annulée que si le catalogue de films et séries est joignable. Vérifiez votre connexion et réessayez.",
     "undoKeptLibraryItem": "Ce titre n'est plus « à voir » depuis son ajout : il a été conservé dans votre bibliothèque.",
     "seriesInProgress": "Séries en cours",
@@ -451,7 +454,9 @@
         "setLabel": "Définir un code PIN",
         "changeLabel": "Changer le code PIN",
         "removeLabel": "Retirer le code PIN",
-        "locked": "Protégé par un code PIN"
+        "locked": "Protégé par un code PIN",
+        "lockedWithDelay": "Trop de codes PIN erronés. Réessayez dans {{seconds}} secondes.",
+        "lockedNoDelay": "Trop de codes PIN erronés. Réessayez dans un instant."
       },
       "pinPrompt": {
         "title": "Saisissez le code PIN de {{name}}",
@@ -598,6 +603,8 @@
     "unmarkSeasonConfirmDescription": "Tous les épisodes de cette saison redeviennent non vus. Leurs notes et leurs dates de visionnage sont supprimées ; l'historique garde une trace du changement.",
     "unmarkSeriesConfirmTitle": "Marquer toute la série comme non vue ?",
     "unmarkSeriesConfirmDescription": "Tous les épisodes de toutes les saisons redeviennent non vus. Leurs notes et leurs dates de visionnage sont supprimées ; l'historique garde une trace du changement.",
+    "unmarkEpisodeConfirmTitle": "Marquer cet épisode comme non vu ?",
+    "unmarkEpisodeConfirmDescription": "Cet épisode redevient non vu. Sa note et sa date de visionnage sont supprimées ; l'historique garde une trace du changement.",
     "unmarkConfirm": "Marquer comme non vu"
   },
   "stats": {

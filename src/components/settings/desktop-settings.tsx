@@ -113,7 +113,7 @@ function KeyboardShortcutsRow() {
 
 export function DesktopSettings() {
   const { t } = useTranslation();
-  const { data: preferences, updatePreference, isSaving } = usePreferences();
+  const { data: preferences, setPreference, isSaving } = usePreferences();
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [autoStart, setAutoStart] = useState(false);
@@ -333,7 +333,7 @@ export function DesktopSettings() {
                     value={preferences?.backupFrequency ?? defaultPreferences.backupFrequency}
                     disabled={isSaving}
                     onChange={(event) =>
-                      void updatePreference({
+                      setPreference({
                         key: "backupFrequency",
                         value: event.target.value as UserPreferences["backupFrequency"],
                       })

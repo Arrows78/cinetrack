@@ -207,3 +207,63 @@ describe("parseTvTimeFiles", () => {
     expect(unrecognizedFiles).toEqual(["account_info.csv"]);
   });
 });
+
+describe("show identity (TV Time show id)", () => {
+  it("reads the show id of every episode row and ignores one that is not a number", () => {
+    const into = emptyExport();
+    parseTvTimeFile(RECORDS_V2, into);
+    const byName = new Map(into.episodes.map((episode) => [episode.seriesName, episode.seriesId]));
+    expect(byName.get("Bodyguard (2018)")).toBe(349310);
+    expect(byName.get("The Witcher")).toBe(362696);
+
+    const withoutId = emptyExport();
+    parseTvTimeFile(RECORDS_V2.replace("349310,3660,Bodyguard (2018)", ",3660,Bodyguard (2018)"), withoutId);
+    expect(withoutId.episodes.find((episode) => episode.seriesName === "Bodyguard (2018)")?.seriesId).toBeNull();
+  });
+
+  it("keeps two same-named shows apart when their ids differ, and merges one show's duplicate rows", () => {
+    const into = emptyExport();
+    const row = (id: number, ep: number, at: string) =>
+      `${id},3000,The Office,${ep},1,watch-episode-1,${at},watch-episode-x,1,1,${ep},1,1,${at},,,,,,,,,,,,true,,,`;
+    const header = RECORDS_V2.split("\n")[0]!;
+    parseTvTimeFile(
+      [
+        header,
+        row(73244, 1, "2024-01-02 00:00:00"),
+        row(73244, 1, "2024-01-01 00:00:00"),
+        row(290507, 1, "2024-03-01 00:00:00"),
+      ].join("\n"),
+      into
+    );
+
+    const data = normalizeExport(into);
+
+    expect(data.episodes).toHaveLength(2);
+    const bySeries = new Map(data.episodes.map((episode) => [episode.seriesId, episode.watchedAt]));
+    // The earliest watch of the first show survives; the other show is untouched.
+    expect(bySeries.get(73244)).toBe("2024-01-01T00:00:00.000Z");
+    expect(bySeries.get(290507)).toBe("2024-03-01T00:00:00.000Z");
+  });
+
+  it("collects favourites and ratings by show id as well as by name", () => {
+    const into = emptyExport();
+    parseTvTimeFile(SHOW_DATA, into);
+    parseTvTimeFile(SHOW_RATING, into);
+
+    expect([...into.favouriteSeriesIds]).toEqual([70329]);
+    expect(into.seriesRatingsById.get(257655)).toBe(10);
+    expect(into.seriesRatingsById.get(257656)).toBe(5);
+    expect(into.favouriteSeriesNames.has("my wife and kids")).toBe(true);
+  });
+
+  it("still records a favourite or rating by name when the show id is unreadable", () => {
+    const into = emptyExport();
+    parseTvTimeFile(SHOW_DATA.replace("1,70329,1,1,123", "1,n/a,1,1,123"), into);
+    parseTvTimeFile(SHOW_RATING.replace("257655,5", "n/a,5"), into);
+
+    expect(into.favouriteSeriesIds.size).toBe(0);
+    expect(into.favouriteSeriesNames.has("my wife and kids")).toBe(true);
+    expect(into.seriesRatingsById.size).toBe(1);
+    expect(into.seriesRatingsByName.get("arrow")).toBe(10);
+  });
+});

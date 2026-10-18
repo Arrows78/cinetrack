@@ -43,6 +43,7 @@ vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: mocks.loggerWarn },
 }));
 
+import { queryClient } from "@/app/query-client";
 import { watchTonightService } from "../watch-tonight-service";
 
 const movie = (id: number, overrides: Partial<Movie> = {}): Movie => ({
@@ -129,6 +130,7 @@ describe("watchTonightService", () => {
   });
 
   beforeEach(() => {
+    queryClient.clear();
     vi.clearAllMocks();
     seedLibrary([]);
     mocks.listDismissed.mockResolvedValue([]);

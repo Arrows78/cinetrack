@@ -14,7 +14,14 @@ import type {
 
 export type { WatchForecast } from "@/types/media";
 
-const PACE_WINDOW_DAYS = 60;
+/**
+ * Length of the window `get_watch_forecast` measures the recent viewing pace
+ * over. Rust divides the episodes in the window by this same length
+ * (`PACE_WINDOW_DAYS` in src-tauri/src/stats/queries/forecast.rs) but takes the
+ * window's start as an input, so the two values must agree — a parity test
+ * reads the Rust constant. This is the only TS copy; nothing else recomputes it.
+ */
+export const PACE_WINDOW_DAYS = 60;
 // A streak or a catch-up pace never needs to look back further than this —
 // bounds list_recent_viewing_events()/get_activity_stats/get_watch_forecast
 // so they stay a cheap recent-window fetch instead of a profile's entire
