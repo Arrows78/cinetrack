@@ -1,4 +1,10 @@
 use super::*;
+use crate::backup::export::{export_impl, parse_metadata, parse_number_array};
+use crate::backup::import::{IMPORT_BATCH_SIZE, import_impl};
+use crate::history::HistoryAction;
+use crate::library::{LibraryStatus, LibraryStatusOrigin};
+use crate::models::MediaType;
+use crate::stats::ViewingEventType;
 use tauri::Manager;
 
 async fn migrated_pool() -> SqlitePool {
@@ -44,6 +50,8 @@ async fn full_row_structs_cover_every_table_column_or_document_why_not() {
                 "supabase_user_id",
                 "pin_hash",
                 "pin_salt",
+                "pin_failed_attempts",
+                "pin_locked_until",
                 "created_at",
                 "updated_at",
             ]),

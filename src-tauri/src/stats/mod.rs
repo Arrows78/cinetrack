@@ -6,6 +6,7 @@ mod commands;
 mod consistency_tests;
 #[cfg(test)]
 mod current_state_tests;
+mod event_log;
 mod models;
 #[cfg(test)]
 mod performance;
@@ -21,6 +22,7 @@ pub use commands::{
     get_year_favourite_genre, list_on_this_day_events, list_recent_viewing_events,
     list_viewing_events_for_media, list_viewing_events_for_year, list_yearly_activity,
 };
+pub(crate) use event_log::{NewViewingEvent, insert_viewing_event};
 use models::{
     ActivityStats, LibraryExtras, MonthlyRecap, RatingDistribution, RewatchStats, StatsOverview,
     WatchForecast, WatchMilestone, YearlyActivityBucket,

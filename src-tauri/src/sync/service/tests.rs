@@ -1,4 +1,5 @@
 use super::*;
+use crate::sync::models::{RemoteSyncChange, SyncConflict, SyncMutationAck};
 use sqlx::sqlite::SqlitePoolOptions;
 
 async fn pool() -> SqlitePool {

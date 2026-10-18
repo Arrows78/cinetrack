@@ -6,6 +6,7 @@ use tauri::State;
 #[cfg(test)]
 use super::commands::{get_library_item, list_library, remove_library_item, save_library_item};
 use super::domain::{LibraryStatus, LibraryStatusOrigin};
+use super::insert::{OnConflict, insert_item};
 #[cfg(test)]
 use super::models::AutoSyncMedia;
 #[cfg(test)]
@@ -153,54 +154,7 @@ async fn upsert_core(
         status_origin: Some(status_origin),
     };
 
-    sqlx::query(
-        "INSERT INTO library_items (
-          uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
-          status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at,
-          status_origin
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
-        ON CONFLICT (profile_id, media_id, media_type) DO UPDATE SET
-          title = excluded.title,
-          poster_path = excluded.poster_path,
-          backdrop_path = excluded.backdrop_path,
-          year = excluded.year,
-          rating = excluded.rating,
-          genres = excluded.genres,
-          status = excluded.status,
-          favourite = excluded.favourite,
-          user_rating = excluded.user_rating,
-          notes = excluded.notes,
-          tags = excluded.tags,
-          started_at = excluded.started_at,
-          completed_at = excluded.completed_at,
-          rewatch_count = excluded.rewatch_count,
-          updated_at = excluded.updated_at,
-          status_origin = excluded.status_origin",
-    )
-    .bind(&item.id)
-    .bind(&item.profile_id)
-    .bind(item.media_id)
-    .bind(item.media_type.as_db_str())
-    .bind(&item.title)
-    .bind(&item.poster_path)
-    .bind(&item.backdrop_path)
-    .bind(item.year)
-    .bind(item.rating)
-    .bind(serde_json::to_string(&item.genres).unwrap())
-    .bind(item.status.as_db_str())
-    .bind(item.favourite)
-    .bind(item.user_rating)
-    .bind(&item.notes)
-    .bind(serde_json::to_string(&item.tags).unwrap())
-    .bind(&item.started_at)
-    .bind(&item.completed_at)
-    .bind(item.rewatch_count)
-    .bind(&item.created_at)
-    .bind(&item.updated_at)
-    .bind(status_origin.as_db_str())
-    .execute(&mut *tx)
-    .await
-    .map_err(ApiError::from)?;
+    insert_item(&mut tx, &item, OnConflict::Update).await?;
 
     // A title planned after a "not interested" is a newer, explicit intent
     // than the dismissal, so planning it (a new entry, or an existing one

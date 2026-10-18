@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use serde_json::json;
 use sqlx::SqlitePool;
 
-use super::domain::known_runtime;
+use super::domain::{known_runtime, regular_episodes_watched};
 use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
 use super::queries::is_movie_seen_impl;
 #[cfg(test)]
@@ -16,6 +16,7 @@ use crate::library::{
     reconcile_status_impl, reconcile_title_impl,
 };
 use crate::models::MediaType;
+use crate::stats::{NewViewingEvent, ViewingEventType, insert_viewing_event};
 
 /// Thin wrapper over `toggle_movie_seen_with_note_impl` for callers (the
 /// existing test suite below, mainly) that never attach a per-watch note —
@@ -127,21 +128,27 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
         .map_err(ApiError::from)?;
     }
 
-    sqlx::query(
-        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, note, created_at)
-         VALUES ($1,$2,$3,'movie',$4,$5,$6,$7,NULL,NULL,NULL,$8,$6)",
+    insert_viewing_event(
+        &mut tx,
+        &NewViewingEvent {
+            profile_id,
+            media_id: movie.id,
+            media_type: MediaType::Movie,
+            title: &movie.title,
+            event_type: if watched {
+                ViewingEventType::Watched
+            } else {
+                ViewingEventType::Unwatched
+            },
+            watched_at,
+            duration_minutes: known_runtime(movie.runtime),
+            episode_id: None,
+            season_number: None,
+            episode_number: None,
+            note: event_note,
+        },
     )
-    .bind(new_uuid())
-    .bind(profile_id)
-    .bind(movie.id)
-    .bind(&movie.title)
-    .bind(if watched { "watched" } else { "unwatched" })
-    .bind(watched_at)
-    .bind(known_runtime(movie.runtime))
-    .bind(event_note)
-    .execute(&mut *tx)
-    .await
-    .map_err(ApiError::from)?;
+    .await?;
 
     let history_item = ViewingHistoryItem {
         id: new_uuid(),
@@ -439,24 +446,27 @@ pub(crate) async fn apply_episodes_outcome_impl(
                 .map_err(ApiError::from)?;
         }
 
-        sqlx::query(
-            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, note, created_at)
-             VALUES ($1,$2,$3,'series',$4,$5,$6,$7,$8,$9,$10,$11,$6)",
+        insert_viewing_event(
+            &mut tx,
+            &NewViewingEvent {
+                profile_id,
+                media_id: series.id,
+                media_type: MediaType::Series,
+                title: &series.title,
+                event_type: if watched {
+                    ViewingEventType::Watched
+                } else {
+                    ViewingEventType::Unwatched
+                },
+                watched_at: episode_watched_at,
+                duration_minutes: known_runtime(episode.runtime).or(known_runtime(series.runtime)),
+                episode_id: Some(episode.id),
+                season_number: Some(episode.season_number),
+                episode_number: Some(episode.episode_number),
+                note: event_note,
+            },
         )
-        .bind(new_uuid())
-        .bind(profile_id)
-        .bind(series.id)
-        .bind(&series.title)
-        .bind(if watched { "watched" } else { "unwatched" })
-        .bind(episode_watched_at)
-        .bind(known_runtime(episode.runtime).or(known_runtime(series.runtime)))
-        .bind(episode.id)
-        .bind(episode.season_number)
-        .bind(episode.episode_number)
-        .bind(event_note)
-        .execute(&mut *tx)
-        .await
-        .map_err(ApiError::from)?;
+        .await?;
     }
 
     // Unwatching the last watched episode leaves nothing to have rewatched.
@@ -474,8 +484,12 @@ pub(crate) async fn apply_episodes_outcome_impl(
     // later refresh can never read two different totals. Readers that
     // display a total take the larger of it and the watched count
     // (`list_tracked_series_impl`).
-    const WATCHED_REGULAR: &str = "(SELECT COUNT(*) FROM episode_progress
-              WHERE profile_id = $2 AND series_id = $3 AND watched = 1 AND season_number > 0)";
+    const WATCHED_REGULAR: &str = concat!(
+        "(SELECT COUNT(*) FROM episode_progress
+              WHERE profile_id = $2 AND series_id = $3 AND ",
+        regular_episodes_watched!(),
+        ")"
+    );
     sqlx::query(sqlx::AssertSqlSafe(format!(
         "INSERT INTO tracked_series (uuid, profile_id, series_id, title, poster_path, backdrop_path, total_episodes, status, created_at, updated_at)
          VALUES ($1,$2,$3,$4,$5,$6, CASE WHEN $7 > 0 THEN MAX($7, {WATCHED_REGULAR}) ELSE 0 END, $8,$9,$9)
@@ -625,10 +639,11 @@ pub(super) async fn refresh_tracked_series_status_impl(
     // A total can never be below what is already watched: a smaller value
     // means TMDB answered with incomplete season data (a season with no
     // episodes), not that watched episodes disappeared.
-    let watched_regular: i64 = sqlx::query_scalar(
+    let watched_regular: i64 = sqlx::query_scalar(concat!(
         "SELECT COUNT(*) FROM episode_progress
-         WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0",
-    )
+         WHERE profile_id = $1 AND series_id = $2 AND ",
+        regular_episodes_watched!()
+    ))
     .bind(profile_id)
     .bind(series_id)
     .fetch_one(&mut *tx)

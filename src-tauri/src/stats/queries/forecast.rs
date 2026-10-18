@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 
 use super::WatchForecast;
 use crate::error::ApiError;
+use crate::progress::regular_episodes_watched;
 
 const FALLBACK_EPISODE_MINUTES: f64 = 40.0;
 const PACE_WINDOW_DAYS: f64 = 60.0;
@@ -34,12 +35,15 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
     // NULL argument is ignored", silently treating that series as having no
     // backlog instead of a full one.
     let backlog_row: BacklogRow = sqlx::query_as(
-        "SELECT COALESCE(SUM(MAX(ts.total_episodes - COALESCE(watched.count, 0), 0)), 0) AS backlog_episodes
+        concat!(
+            "SELECT COALESCE(SUM(MAX(ts.total_episodes - COALESCE(watched.count, 0), 0)), 0) AS backlog_episodes
          FROM tracked_series ts
          LEFT JOIN (
            SELECT series_id, COUNT(*) AS count
            FROM episode_progress
-           WHERE profile_id = $1 AND watched = 1 AND season_number > 0
+           WHERE profile_id = $1 AND ",
+            regular_episodes_watched!(),
+            "
            GROUP BY series_id
          ) watched ON watched.series_id = ts.series_id
          WHERE ts.profile_id = $1
@@ -47,7 +51,8 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
              SELECT 1 FROM library_items li
              WHERE li.profile_id = ts.profile_id AND li.media_id = ts.series_id AND li.media_type = 'series'
                AND li.status = 'watching'
-           )",
+           )"
+        ),
     )
     .bind(profile_id)
     .fetch_one(pool)

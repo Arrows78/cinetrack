@@ -21,9 +21,9 @@
 
 use sqlx::{Sqlite, Transaction};
 
-use crate::database::new_uuid;
 use crate::error::ApiError;
 use crate::models::MediaType;
+use crate::stats::{NewViewingEvent, ViewingEventType, insert_viewing_event};
 
 /// Raising the counter in the editor can type any number; this bounds how
 /// many events one save writes.
@@ -65,22 +65,23 @@ pub(crate) async fn insert_rewatch_event(
     watched_at: &str,
     note: Option<&str>,
 ) -> Result<(), ApiError> {
-    sqlx::query(
-        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, note, created_at)
-         VALUES ($1,$2,$3,$4,$5,'rewatched',$6,$7,NULL,NULL,NULL,$8,$6)",
+    insert_viewing_event(
+        tx,
+        &NewViewingEvent {
+            profile_id,
+            media_id,
+            media_type,
+            title,
+            event_type: ViewingEventType::Rewatched,
+            watched_at,
+            duration_minutes,
+            episode_id: None,
+            season_number: None,
+            episode_number: None,
+            note,
+        },
     )
-    .bind(new_uuid())
-    .bind(profile_id)
-    .bind(media_id)
-    .bind(media_type.as_db_str())
-    .bind(title)
-    .bind(watched_at)
-    .bind(duration_minutes)
-    .bind(note)
-    .execute(&mut **tx)
     .await
-    .map_err(ApiError::from)?;
-    Ok(())
 }
 
 /// Brings the title's rewatch events in line with a change of the library
