@@ -62,20 +62,9 @@ mod tests {
     use super::*;
     use crate::preferences::models::LibraryViewMode;
     use crate::preferences::repository::get_preferences_cached;
-    use sqlx::sqlite::SqlitePoolOptions;
     use tauri::Manager;
 
-    async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
-    }
+    use crate::test_support::migrated_pool;
 
     #[tokio::test]
     async fn get_preferences_command_returns_the_defaults() {

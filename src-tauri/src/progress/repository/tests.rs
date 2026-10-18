@@ -1,5 +1,4 @@
 use super::*;
-use sqlx::sqlite::SqlitePoolOptions;
 use tauri::{Manager, State};
 
 use crate::progress::{
@@ -8,15 +7,7 @@ use crate::progress::{
 };
 
 async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(4)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
+    crate::test_support::migrated_pool_with_connections(4).await
 }
 
 fn movie(id: i64) -> MovieInput {

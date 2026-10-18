@@ -10,7 +10,6 @@
 
 use serde_json::Value;
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
 
 use super::repository::{PortableData, export_impl, import_impl};
 
@@ -63,17 +62,7 @@ const TITLES: &[&str] = &[
     "Plain",
 ];
 
-async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
-}
+use crate::test_support::migrated_pool;
 
 async fn exec(pool: &SqlitePool, sql: &str, binds: &[Option<&str>]) {
     let mut query = sqlx::query(sqlx::AssertSqlSafe(sql.to_string()));

@@ -15,6 +15,8 @@ mod progress;
 mod recommendations;
 mod stats;
 mod sync;
+#[cfg(test)]
+mod test_support;
 // tray::build uses tauri::tray/tauri::menu, which only exist on desktop —
 // the module itself must be gated, not just its (already-gated) call site:
 // Rust compiles every `mod`-included file regardless of whether anything

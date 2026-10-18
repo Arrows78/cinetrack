@@ -1,18 +1,9 @@
 use super::*;
 use crate::history::{HistoryFilters, list_history_impl};
-use sqlx::sqlite::SqlitePoolOptions;
 use tauri::Manager;
 
 async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(4)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
+    crate::test_support::migrated_pool_with_connections(4).await
 }
 
 fn media(id: i64) -> MediaSummaryInput {

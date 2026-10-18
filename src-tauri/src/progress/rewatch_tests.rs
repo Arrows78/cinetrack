@@ -6,7 +6,6 @@
 
 use serde_json::json;
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
 use tauri::Manager;
 
 use crate::progress::{EpisodeInput, SeriesInput};
@@ -14,15 +13,7 @@ use crate::progress::{EpisodeInput, SeriesInput};
 const SINCE: &str = "2000-01-01T00:00:00.000Z";
 
 async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(2)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
+    crate::test_support::migrated_pool_with_connections(2).await
 }
 
 type App = tauri::App<tauri::test::MockRuntime>;

@@ -216,18 +216,9 @@ pub(super) async fn import_movie_seen_impl(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(2)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
+        crate::test_support::migrated_pool_with_connections(2).await
     }
 
     fn series(id: i64) -> SeriesInput {

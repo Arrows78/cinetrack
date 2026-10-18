@@ -197,21 +197,10 @@ pub(super) async fn write_preference(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::sqlite::SqlitePoolOptions;
 
     use crate::preferences::models::{LibraryViewMode, Theme};
 
-    async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
-    }
+    use crate::test_support::migrated_pool;
 
     #[tokio::test]
     async fn defaults_are_returned_when_nothing_is_stored() {

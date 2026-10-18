@@ -1,19 +1,10 @@
 use super::models::*;
 use super::*;
 use crate::models::MediaType;
-use sqlx::sqlite::SqlitePoolOptions;
 use tauri::{Manager, State};
 
 async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(2)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
+    crate::test_support::migrated_pool_with_connections(2).await
 }
 
 #[test]

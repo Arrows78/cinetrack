@@ -152,19 +152,10 @@ pub async fn verify_profile_pin(
 mod tests {
     use super::*;
     use crate::preferences::PreferencesCache;
-    use sqlx::sqlite::SqlitePoolOptions;
     use tauri::Manager;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(2)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
+        crate::test_support::migrated_pool_with_connections(2).await
     }
 
     #[tokio::test]
