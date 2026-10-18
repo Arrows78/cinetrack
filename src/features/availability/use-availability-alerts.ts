@@ -70,12 +70,12 @@ export function computeAlertStatuses(
   preferredProviderIds: number[] = []
 ): AvailabilityStatusGroups {
   const snapshotByKey = new Map(
-    snapshots.map((snapshot) => [mediaKey(snapshot.mediaType, snapshot.mediaId), snapshot])
+    snapshots.map((snapshot) => [`${mediaKey(snapshot.mediaType, snapshot.mediaId)}:${snapshot.region}`, snapshot])
   );
   const groups: AvailabilityStatusGroups = { availableNow: [], pending: [] };
 
   for (const alert of alerts.filter((item) => item.enabled)) {
-    const snapshot = snapshotByKey.get(mediaKey(alert.mediaType, alert.mediaId));
+    const snapshot = snapshotByKey.get(`${mediaKey(alert.mediaType, alert.mediaId)}:${alert.region}`);
     const currentProviderIds = snapshot?.providerIds ?? [];
     const matchedProviderIds = matchAlertProviderIds(alert.providerIds, preferredProviderIds, currentProviderIds);
     const status: AlertStatus = { alert, matchedProviderIds, available: matchedProviderIds.length > 0 };

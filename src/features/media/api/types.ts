@@ -101,6 +101,7 @@ export interface TmdbMovieDto {
   genre_ids?: number[];
   spoken_languages?: Array<{ english_name: string; name: string }>;
   production_countries?: Array<{ iso_3166_1: string; name: string }>;
+  production_companies?: Array<{ id: number; name: string }>;
   credits?: TmdbCreditsDto;
   belongs_to_collection?: TmdbCollectionSummaryDto | null;
   external_ids?: TmdbExternalIdsDto;

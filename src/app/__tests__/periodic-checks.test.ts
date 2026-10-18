@@ -31,8 +31,11 @@ vi.mock("@/shared/lib/logger", () => ({
 }));
 
 import { runPeriodicChecks } from "../periodic-checks";
+import { queryClient } from "../query-client";
+import { queryKeys } from "@/shared/constants/query-keys";
 
 const preferences = {
+  activeProfileId: "default",
   availabilityAlertsEnabled: true,
   desktopNotificationsEnabled: true,
   preferredProviderIds: [8],
@@ -40,6 +43,7 @@ const preferences = {
 };
 
 beforeEach(() => {
+  queryClient.clear();
   vi.clearAllMocks();
   mocks.createAutomaticBackup.mockResolvedValue(undefined);
   mocks.getPreferences.mockResolvedValue(preferences);
@@ -51,6 +55,14 @@ beforeEach(() => {
 // An app left running in the tray is only "started" once: the automatic
 // backup chosen as daily or weekly must not wait for the next launch.
 describe("runPeriodicChecks", () => {
+  it("refreshes visible availability and agenda data after a successful background check", async () => {
+    const keys = [queryKeys.local.availabilitySnapshots, queryKeys.local.tracking("default")];
+    for (const key of keys) queryClient.setQueryData(key, []);
+    mocks.checkAll.mockResolvedValue({ checked: 1, failures: 0, changes: 1 });
+    await runPeriodicChecks();
+    for (const key of keys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true);
+  });
+
   it("takes the automatic backup when it is due, then runs the notification checks", async () => {
     await runPeriodicChecks();
 

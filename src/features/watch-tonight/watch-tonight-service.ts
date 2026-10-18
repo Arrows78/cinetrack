@@ -67,7 +67,7 @@ function matchesGenre(item: MediaSummary, genre?: number): boolean {
 }
 
 function matchesOriginCountry(item: MediaSummary, originCountry?: string): boolean {
-  return !originCountry || Boolean(item.country?.includes(originCountry));
+  return !originCountry || Boolean((item.countryCodes ?? item.country)?.includes(originCountry));
 }
 
 function normalizeProviderIds(provider?: number | number[]): number[] | undefined {

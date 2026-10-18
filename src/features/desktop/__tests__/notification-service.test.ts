@@ -19,7 +19,7 @@ vi.mock("@tauri-apps/plugin-notification", () => ({
 
 import { notificationService } from "../notification-service";
 
-const SENT_KEY = "cinetrack.sent-notifications.v1";
+const SENT_KEY = "cinetrack.sent-notifications.v2:profile-1";
 
 type MockNotificationCtor = typeof Notification & {
   permission: NotificationPermission;
@@ -222,6 +222,16 @@ describe("notificationService", () => {
   });
 
   describe("notifyDue", () => {
+    it("delivers the same release once to each profile", async () => {
+      const ctor = stubNotification("granted");
+      expect(await notificationService.notifyDue([episodeEntry()], basePreferences)).toBe(1);
+      expect(
+        await notificationService.notifyDue([episodeEntry()], { ...basePreferences, activeProfileId: "profile-2" })
+      ).toBe(1);
+      expect(await notificationService.notifyDue([episodeEntry()], basePreferences)).toBe(0);
+      expect(ctor).toHaveBeenCalledTimes(2);
+    });
+
     beforeEach(() => {
       vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
     });

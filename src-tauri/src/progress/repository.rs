@@ -572,14 +572,14 @@ pub(crate) async fn apply_episodes_impl(
 // keeps whatever it had at the last toggle, which is why the progress-bar
 // color and the card's episode count can both look "wrong" next to what the
 // series' own detail page shows. That page always has TMDB's current
-// status and an aired-episode count in hand (a fresh fetch, not cached
+// status and announced episode count in hand (a fresh fetch, not cached
 // locally), so it opportunistically writes both back here — a no-op if the
 // series isn't tracked yet, or if neither value actually changed.
 // The Today Hub also calls it, with a lower-bound total, for a show it just
 // found an aired unwatched episode for, so the cache doesn't wait on a visit.
 // total_episodes is a plain overwrite (not MAX) here: unlike a toggle's
-// snapshot, this comes from a full, trusted recomputation over every known
-// episode, so a smaller value is a real correction, not regression.
+// snapshot, this comes from TMDB's full total, so a smaller value is a real
+// catalogue correction, not an aired-only progress denominator.
 pub(super) async fn refresh_tracked_series_status_impl(
     pool: &SqlitePool,
     profile_id: &str,

@@ -37,7 +37,9 @@ export function usePreferences() {
             predicate: ({ queryKey }) =>
               queryKey[0] === "local" &&
               queryKey[2] === (previousProfileId ?? DEFAULT_PROFILE_ID) &&
-              (queryKey[1] === "watchTonight" || queryKey[1] === "peopleYouWatchCredits"),
+              (queryKey[1] === "watchTonight" ||
+                queryKey[1] === "peopleYouWatchCredits" ||
+                queryKey[1] === "watchNext"),
           }),
         ]);
       }

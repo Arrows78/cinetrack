@@ -175,6 +175,9 @@
     "cat": "Cat"
   },
   "home": {
+    "partialFeedNotice_one": "Some catalogue section could not be loaded.",
+    "partialFeedNotice_other": "Some catalogue sections could not be loaded ({{count}}).",
+    "partialFeedRetry": "Retry",
     "noTokenTitle": "Track without a TMDB token",
     "noTokenDesc": "A TMDB token isn't required to use CineTrack — it only unlocks browsing and discovering new titles.",
     "noTokenWorksTitle": "Works right now, offline",
@@ -331,6 +334,9 @@
     "resultsCount_one": "{{count}} result",
     "resultsCount_other": "{{count}} results",
     "showingResults": "Showing results for {{filters}}",
+    "showingFilteredResults": "Results for “{{query}}” with {{filters}}",
+    "noMatchesLoaded": "No matches in these results yet",
+    "moreResultsToCheck": "More results are available. Load more to continue searching with these filters.",
     "suggestionsLabel": "Search suggestions",
     "recentSearches": "Recent searches",
     "clearHistory": "Clear",

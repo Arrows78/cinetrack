@@ -198,6 +198,17 @@ const matchingSnapshot: AvailabilitySnapshot = {
 };
 
 describe("computeAlertStatuses", () => {
+  it.each([false, true])("matches the alert's country regardless of snapshot order (reversed: %s)", async (reverse) => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const snapshots = [
+      { ...matchingSnapshot, providerIds: [] },
+      { ...matchingSnapshot, region: "US" },
+    ];
+    const groups = computeAlertStatuses([alert], reverse ? snapshots.reverse() : snapshots);
+    expect(groups.availableNow).toEqual([]);
+    expect(groups.pending.map((item) => item.alert.id)).toEqual([alert.id]);
+  });
+
   it("puts an enabled alert with a matching provider in the snapshot into availableNow", async () => {
     const { computeAlertStatuses } = await import("../use-availability-alerts");
     const groups = computeAlertStatuses([alert], [matchingSnapshot]);

@@ -3,13 +3,14 @@ import i18n from "@/i18n";
 import { isTauriApp } from "@/shared/lib/platform";
 import type { CalendarEntry, UserPreferences } from "@/types/media";
 
-const SENT_KEY = "cinetrack.sent-notifications.v1";
+// A reminder delivered to one viewer must not consume another viewer's reminder.
+const sentKey = (profileId: string) => `cinetrack.sent-notifications.v2:${profileId}`;
 /** Maximum number of sent notification IDs retained to prevent re-notifying. */
 const MAX_SENT_NOTIFICATIONS = 500;
 
-function readSentNotifications(): Set<string> {
+function readSentNotifications(profileId: string): Set<string> {
   try {
-    const value = JSON.parse(localStorage.getItem(SENT_KEY) ?? "[]") as unknown;
+    const value = JSON.parse(localStorage.getItem(sentKey(profileId)) ?? "[]") as unknown;
     return new Set(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
   } catch {
     return new Set();
@@ -61,7 +62,7 @@ export const notificationService = {
       !(await this.isPermissionGranted())
     )
       return 0;
-    const sent = readSentNotifications();
+    const sent = readSentNotifications(preferences.activeProfileId);
     let count = 0;
     const now = new Date();
     // Saved even when a send throws partway: otherwise every notification
@@ -85,7 +86,10 @@ export const notificationService = {
         count += 1;
       }
     } finally {
-      localStorage.setItem(SENT_KEY, JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS)));
+      localStorage.setItem(
+        sentKey(preferences.activeProfileId),
+        JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS))
+      );
     }
     return count;
   },

@@ -56,6 +56,7 @@ export function EpisodeDetailPage() {
   const seriesQuery = useSeriesDetails(parsedSeriesId);
   const seasonQuery = useSeasonDetails(parsedSeriesId, parsedSeasonNumber);
   const progressQuery = useEpisodeProgress(parsedSeriesId);
+  const progressUnavailable = progressQuery.isPending || progressQuery.isError;
   // A dedicated fetch (see getEpisodeImages' own comment) rather than
   // something the season query already carries — called with the route's
   // own params, not the resolved `episode` below, so it can run alongside
@@ -170,7 +171,7 @@ export function EpisodeDetailPage() {
             <div className="flex items-center gap-2">
               <SeenToggle
                 seen={watched}
-                disabled={progressQuery.isSaving || progressQuery.isError || isUnreleased}
+                disabled={progressQuery.isSaving || progressUnavailable || isUnreleased}
                 onToggle={() =>
                   backlog.requestToggle(episode, !watched, season.episodes, watchedSet, undefined, season)
                 }
@@ -183,7 +184,7 @@ export function EpisodeDetailPage() {
                     variant="ghost"
                     size="icon"
                     aria-label={t("media.addWatchNoteAction")}
-                    disabled={progressQuery.isSaving}
+                    disabled={progressQuery.isSaving || progressUnavailable}
                     onClick={() => setNoteDialogOpen(true)}
                   >
                     <NotebookPen className="size-4" />
@@ -195,11 +196,16 @@ export function EpisodeDetailPage() {
                 which would show this episode as unwatched — disabling the
                 toggle keeps that wrong read from being written back as if it
                 were real. */}
-            {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
+            {progressQuery.isError ? (
+              <PartialErrorState
+                message={t("media.seenStatusUnavailable")}
+                onRetry={() => void progressQuery.refetch()}
+              />
+            ) : null}
             {watched ? (
               <EpisodeRatingControl
                 rating={currentRating}
-                disabled={progressQuery.isSavingRating}
+                disabled={progressQuery.isSavingRating || progressUnavailable}
                 onRate={(value) =>
                   void progressQuery.setEpisodeRating({ seriesId: series.id, episodeId: episode.id, rating: value })
                 }

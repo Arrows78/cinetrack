@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import type { Episode, EpisodeProgress, Season, TrackedSeriesItem } from "@/types/media";
@@ -97,6 +97,19 @@ beforeEach(async () => {
 });
 
 describe("Watch Next across every season", () => {
+  it("can retry a failed next-episode resolution after the connection recovers", async () => {
+    getSeriesDetailsMock.mockRejectedValueOnce(new Error("Offline"));
+    getEpisodeProgressMock.mockResolvedValue(progressFor([s1[0]!]));
+    const { useNextEpisodes } = await import("../use-watch-next");
+    const { result } = renderHook(() => useNextEpisodes([series]), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.results[0]?.isError).toBe(true));
+    await act(async () => {
+      await result.current.refetch();
+    });
+    await waitFor(() => expect(result.current.entries[0]?.nextEpisode.id).toBe(12));
+    expect(result.current.results[0]?.isError).toBe(false);
+  });
+
   it("proposes a series whose only unwatched aired episode sits in an earlier season than the last one watched", async () => {
     // Season 1 complete, season 2 has a hole (E1 skipped), the viewer is in season 3.
     getEpisodeProgressMock.mockResolvedValue(progressFor([s1[0]!, s1[1]!, s2[1]!, s3[0]!, s3[1]!]));

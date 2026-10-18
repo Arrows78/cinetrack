@@ -120,7 +120,12 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     .filter((result) => result.nextEpisode !== null)
     .map(({ series, nextEpisode, remaining }) => ({ series, nextEpisode: nextEpisode!, remaining }));
 
-  return { entries, results, isLoading: queries.some((query) => query.isLoading) };
+  return {
+    entries,
+    results,
+    isLoading: queries.some((query) => query.isLoading),
+    refetch: () => Promise.all(queries.map((query) => query.refetch())),
+  };
 }
 
 export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {

@@ -80,6 +80,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
   const trackedSeries = trackedSeriesQuery.data ?? [];
   const preferredProviderIds = preferencesQuery.data?.preferredProviderIds ?? [];
   const snapshots = snapshotsQuery.data ?? [];
+  const regionalSnapshots = snapshots.filter((snapshot) => snapshot.region === preferencesQuery.data?.region);
 
   // maxRuntimeMinutes only ever excludes movies (see
   // matchesSmartListRules's doc comment), so only movies need their runtime
@@ -124,7 +125,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
 
   const items = rules
     ? (() => {
-        const context = buildSmartListEvalContext(preferredProviderIds, snapshots, seriesIdsWithEpisodeWaiting);
+        const context = buildSmartListEvalContext(preferredProviderIds, regionalSnapshots, seriesIdsWithEpisodeWaiting);
         return library
           .filter((item) =>
             matchesSmartListRules(
@@ -162,6 +163,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     idsQuery.isError ||
     libraryItemsQuery.isError ||
     trackedSeriesQuery.isError ||
+    preferencesQuery.isError ||
     snapshotsQuery.isError ||
     nextEpisodeFailure !== undefined ||
     runtimeFailure !== undefined;
@@ -169,6 +171,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     idsQuery.error ??
     libraryItemsQuery.error ??
     trackedSeriesQuery.error ??
+    preferencesQuery.error ??
     snapshotsQuery.error ??
     (nextEpisodeFailure ? new Error("Could not resolve the next episode of a series") : null) ??
     runtimeFailure?.error ??
@@ -183,7 +186,9 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
       void idsQuery.refetch();
       void libraryItemsQuery.refetch();
       void trackedSeriesQuery.refetch();
+      void preferencesQuery.refetch();
       void snapshotsQuery.refetch();
+      void nextEpisodes.refetch();
       for (const query of runtimeQueries) if (query.isError) void query.refetch();
     },
   };

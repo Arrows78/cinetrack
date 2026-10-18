@@ -75,7 +75,9 @@ export const availabilityMonitor = {
    * check interval) was absorbed silently and never notified. Best effort:
    * a failure only means the first scheduled check seeds it, as before.
    */
-  async seedBaseline(alert: Pick<AvailabilityAlert, "mediaId" | "mediaType" | "region"> & { id?: string }): Promise<boolean> {
+  async seedBaseline(
+    alert: Pick<AvailabilityAlert, "mediaId" | "mediaType" | "region"> & { id?: string }
+  ): Promise<boolean> {
     try {
       const existing = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
       // A snapshot another profile already cached is still this alert's

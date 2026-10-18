@@ -175,6 +175,9 @@
     "cat": "Chat"
   },
   "home": {
+    "partialFeedNotice_one": "Une rubrique du catalogue n’a pas pu être chargée.",
+    "partialFeedNotice_other": "Certaines rubriques du catalogue n’ont pas pu être chargées ({{count}}).",
+    "partialFeedRetry": "Réessayer",
     "noTokenTitle": "Suivez vos contenus sans token TMDB",
     "noTokenDesc": "Un token TMDB n'est pas nécessaire pour utiliser CineTrack — il ne fait que déverrouiller la découverte de nouveaux titres.",
     "noTokenWorksTitle": "Fonctionne dès maintenant, hors ligne",
@@ -331,6 +334,9 @@
     "resultsCount_one": "{{count}} résultat",
     "resultsCount_other": "{{count}} résultats",
     "showingResults": "Résultats pour {{filters}}",
+    "showingFilteredResults": "Résultats pour « {{query}} » avec {{filters}}",
+    "noMatchesLoaded": "Aucune correspondance dans les résultats chargés",
+    "moreResultsToCheck": "D’autres résultats sont disponibles. Chargez la suite pour continuer la recherche avec ces filtres.",
     "suggestionsLabel": "Suggestions de recherche",
     "recentSearches": "Recherches récentes",
     "clearHistory": "Effacer",

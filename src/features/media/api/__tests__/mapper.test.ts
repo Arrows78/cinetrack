@@ -33,6 +33,18 @@ const movieDto = (overrides: Partial<TmdbMovieDto> = {}): TmdbMovieDto => ({
   ...overrides,
 });
 
+it("preserves country names for display and maps country and studio identifiers for filters", () => {
+  const movie = mapMovieDto(
+    movieDto({
+      production_countries: [{ iso_3166_1: "FR", name: "France" }],
+      production_companies: [{ id: 420, name: "Marvel Studios" }],
+    })
+  );
+  expect(movie.country).toEqual(["France"]);
+  expect(movie.countryCodes).toEqual(["FR"]);
+  expect(movie.productionCompanyIds).toEqual([420]);
+});
+
 const tvDto = (overrides: Partial<TmdbTvDto> = {}): TmdbTvDto => ({
   id: 1399,
   name: "Game of Thrones",

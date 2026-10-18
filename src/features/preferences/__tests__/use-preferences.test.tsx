@@ -107,6 +107,19 @@ describe("usePreferences", () => {
 });
 
 describe("usePreferences mutation side effects", () => {
+  it("invalidates resolved next episodes after changing the catalogue language", async () => {
+    const { usePreferences } = await import("../use-preferences");
+    const { client, Wrapper } = createWrapperWithClient();
+    const key = queryKeys.local.watchNextEpisode(DEFAULT_PROFILE_ID, 9);
+    client.setQueryData(key, { nextEpisode: { title: "Pilot" } });
+    const { result } = renderHook(() => usePreferences(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => {
+      await result.current.updatePreference({ key: "language", value: "fr" });
+    });
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  });
+
   beforeEach(() => {
     stored = { ...defaultPreferences, userProfile: { ...defaultPreferences.userProfile } };
     invokeMock.mockClear();

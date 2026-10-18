@@ -29,6 +29,7 @@ export function SeasonPage() {
   const seriesQuery = useSeriesDetails(parsedSeriesId);
   const seasonQuery = useSeasonDetails(parsedSeriesId, parsedSeasonNumber);
   const progressQuery = useEpisodeProgress(parsedSeriesId);
+  const progressUnavailable = progressQuery.isPending || progressQuery.isError;
   const [confirmingUnmark, setConfirmingUnmark] = useState(false);
 
   // Called only from the interactive episode list below, which never
@@ -121,7 +122,7 @@ export function SeasonPage() {
             <SeenToggle
               seen={allWatched}
               // Nothing aired yet: marking the season would write nothing.
-              disabled={progressQuery.isSaving || progressQuery.isError || (!allWatched && seasonAired.length === 0)}
+              disabled={progressQuery.isSaving || progressUnavailable || (!allWatched && seasonAired.length === 0)}
               onToggle={() => {
                 // Unwatching deletes each episode's own rating and watch date,
                 // so it asks first (see ConfirmUnmarkDialog).
@@ -134,7 +135,12 @@ export function SeasonPage() {
                 which would show every episode as unwatched — disabling the
                 bulk "mark whole season seen" toggle keeps that wrong read
                 from being written back as if it were real. */}
-            {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
+            {progressQuery.isError ? (
+              <PartialErrorState
+                message={t("media.seenStatusUnavailable")}
+                onRetry={() => void progressQuery.refetch()}
+              />
+            ) : null}
           </div>
         }
       />
@@ -154,7 +160,7 @@ export function SeasonPage() {
               key={episode.id}
               episode={{ ...episode, watched: watchedSet.has(episode.id) }}
               season={season}
-              disabled={progressQuery.isSaving}
+              disabled={progressQuery.isSaving || progressUnavailable}
               seriesId={series.id}
               seasonNumber={season.seasonNumber}
               onToggleSeen={(note) =>
