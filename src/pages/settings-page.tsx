@@ -770,6 +770,40 @@ export function SettingsPage() {
               onPressedChange={() => void toggleDesktopNotifications()}
             />
           </CardContent>
+          <CardContent className="mt-4">
+            <label className="grid gap-2 text-body-sm">
+              <span className="font-medium">{t("settings.reminderLeadTime")}</span>
+              <Select
+                value={preferences?.notifyHoursBefore ?? defaultPreferences.notifyHoursBefore}
+                disabled={isSaving}
+                onChange={(event) =>
+                  void updatePreference({ key: "notifyHoursBefore", value: Number(event.target.value) }).catch(() => {})
+                }
+              >
+                {[
+                  ...new Set([
+                    0,
+                    6,
+                    12,
+                    24,
+                    48,
+                    72,
+                    168,
+                    preferences?.notifyHoursBefore ?? defaultPreferences.notifyHoursBefore,
+                  ]),
+                ]
+                  .sort((left, right) => left - right)
+                  .map((hours) => (
+                    <option key={hours} value={hours}>
+                      {hours === 0
+                        ? t("settings.reminderOnReleaseDay")
+                        : t("settings.reminderHoursBefore", { count: hours })}
+                    </option>
+                  ))}
+              </Select>
+            </label>
+            <p className="mt-2 text-caption text-muted-foreground">{t("settings.reminderLeadTimeDescription")}</p>
+          </CardContent>
         </Card>
       </section>
 
