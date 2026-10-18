@@ -6,9 +6,10 @@
 //! after shipping every library row over IPC. The rule is unchanged and
 //! encoded here exactly:
 //!
-//! - an item counts when it has at least one event in `[range_start,
-//!   range_end)` that is not an `unwatched` rollback (a watch that was later
-//!   cancelled still counts, as it always did);
+//! - an item counts when it has at least one *active* event in
+//!   `[range_start, range_end)`: the same current-state rule as every other
+//!   statistic (see `active_events.rs`), so a watch that was later undone
+//!   (an `unwatched` after it) no longer counts;
 //! - an item contributes each of its genres once per occurrence in its list;
 //! - the winner is the genre with the highest count; a tie goes to the genre
 //!   met first when the library is walked in its listing order
@@ -25,13 +26,13 @@ pub(in crate::stats) async fn get_year_favourite_genre_impl(
     range_start: &str,
     range_end: &str,
 ) -> Result<Option<String>, ApiError> {
-    sqlx::query_scalar(
-        "WITH watched AS (
+    sqlx::query_scalar(concat!(
+        active_events_cte!(),
+        ",
+         watched AS (
              SELECT DISTINCT media_id, media_type
-             FROM viewing_events
-             WHERE profile_id = $1
-               AND event_type <> 'unwatched'
-               AND watched_at >= $2
+             FROM active
+             WHERE watched_at >= $2
                AND watched_at < $3
          ),
          ranked AS (
@@ -51,8 +52,8 @@ pub(in crate::stats) async fn get_year_favourite_genre_impl(
          SELECT genre FROM ranked
          GROUP BY genre
          ORDER BY COUNT(*) DESC, MIN(position) ASC
-         LIMIT 1",
-    )
+         LIMIT 1"
+    ))
     .bind(profile_id)
     .bind(range_start)
     .bind(range_end)
@@ -140,8 +141,8 @@ mod tests {
     }
 
     /// The previous TypeScript computation, ported literally: walk the
-    /// library in listing order, keep the items with a matching event in the
-    /// year's non-`unwatched` events, count genres in a map that remembers
+    /// library in listing order, keep the items with a matching event among the
+    /// year's events that were not undone, count genres in a map that remembers
     /// insertion order, stable-sort by count descending, take the first.
     async fn previous_implementation(pool: &SqlitePool, profile: &str) -> Option<String> {
         let library: Vec<(i64, String, String)> = sqlx::query_as(
@@ -152,17 +153,33 @@ mod tests {
         .fetch_all(pool)
         .await
         .unwrap();
-        let events: Vec<(i64, String)> = sqlx::query_as(
-            "SELECT media_id, media_type FROM viewing_events
-             WHERE profile_id = $1 AND watched_at >= $2 AND watched_at < $3
-               AND event_type <> 'unwatched'",
+        // The events still standing: everything after a title's last
+        // `unwatched`, an `unwatched` itself never counting.
+        let logged: Vec<(i64, String, String, String)> = sqlx::query_as(
+            "SELECT media_id, media_type, event_type, watched_at FROM viewing_events
+             WHERE profile_id = $1 ORDER BY insert_seq",
         )
         .bind(profile)
-        .bind(START)
-        .bind(END)
         .fetch_all(pool)
         .await
         .unwrap();
+        let mut events: Vec<(i64, String)> = Vec::new();
+        for (media_id, media_type, _, _) in &logged {
+            let of_title: Vec<&(i64, String, String, String)> = logged
+                .iter()
+                .filter(|e| e.0 == *media_id && e.1 == *media_type)
+                .collect();
+            let cut = of_title
+                .iter()
+                .rposition(|e| e.2 == "unwatched")
+                .map_or(0, |at| at + 1);
+            if of_title[cut..]
+                .iter()
+                .any(|e| e.3.as_str() >= START && e.3.as_str() < END)
+            {
+                events.push((*media_id, media_type.clone()));
+            }
+        }
 
         let mut counts: Vec<(String, usize)> = Vec::new();
         for (media_id, media_type, genres) in library {
@@ -229,6 +246,66 @@ mod tests {
                 .await
                 .unwrap(),
             None
+        );
+    }
+
+    #[tokio::test]
+    async fn an_undone_watch_no_longer_counts() {
+        let pool = migrated_pool().await;
+        add_item(
+            &pool,
+            "default",
+            1,
+            "movie",
+            r#"["Drama"]"#,
+            "2026-01-02T00:00:00.000Z",
+        )
+        .await;
+        add_item(
+            &pool,
+            "default",
+            2,
+            "movie",
+            r#"["Comedy"]"#,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await;
+        add_event(
+            &pool,
+            "default",
+            1,
+            "movie",
+            "watched",
+            "2026-02-01T00:00:00.000Z",
+            1,
+        )
+        .await;
+        add_event(
+            &pool,
+            "default",
+            1,
+            "movie",
+            "unwatched",
+            "2026-02-02T00:00:00.000Z",
+            2,
+        )
+        .await;
+        add_event(
+            &pool,
+            "default",
+            2,
+            "movie",
+            "watched",
+            "2026-02-01T00:00:00.000Z",
+            3,
+        )
+        .await;
+
+        assert_eq!(
+            get_year_favourite_genre_impl(&pool, "default", START, END)
+                .await
+                .unwrap(),
+            Some("Comedy".to_string())
         );
     }
 

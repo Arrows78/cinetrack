@@ -104,7 +104,7 @@ Every watch (or un-watch) generates a row here: a whole movie or a specific epis
 | `profile_id` `FK`                               | TEXT      | → `profiles.uuid`                                                                                                |
 | `media_id`, `media_type`, `title`               | …         | which title the event is about                                                                                   |
 | `event_type`                                    | TEXT      | `watched` / `unwatched` / `rewatched` (an extra viewing of a seen title, see below)                              |
-| `watched_at`, `duration_minutes`                | TEXT, INT | timestamp + duration for stats                                                                                   |
+| `watched_at`, `duration_minutes`                | TEXT, INT | timestamp (canonical RFC 3339 UTC with millis, `…Z`) + duration for stats                                        |
 | `episode_id`, `season_number`, `episode_number` | INT       | null for a movie                                                                                                 |
 | `note`                                          | TEXT      | optional free-form note on the event, nullable (added by migration 13)                                           |
 | `insert_seq`                                    | INTEGER   | position in the order events were **logged** (migration 25): unique, increasing, `NOT NULL DEFAULT 0`; see below |
@@ -325,7 +325,7 @@ A single row (`id = 1`), toggling `suppress_outbox` while `apply_remote_changes`
 
 ### `sync_metadata`
 
-Generic key/value bookkeeping: this install's `deviceId` (a UUID, generated once), each profile's pull cursor (`cursor:<profile_id>`), and a one-time bootstrap marker (`bootstrap:<profile_id>`) recording that this profile's pre-existing rows have already been seeded into `sync_outbox`.
+Generic key/value bookkeeping: this install's `deviceId` (a UUID, generated once), each profile's pull cursor (`cursor:<profile_id>`), and a one-time bootstrap marker (`bootstrap:<profile_id>`) recording that this profile's pre-existing rows have already been seeded into `sync_outbox`. A backup restore deletes every `cursor:*` and `bootstrap:*` key (it also empties the outbox and `sync_entity_state` through the profile purge), so the next sync pulls from the start and reseeds instead of assuming the restored rows are already in the cloud.
 
 ### `sync_entity_state`
 

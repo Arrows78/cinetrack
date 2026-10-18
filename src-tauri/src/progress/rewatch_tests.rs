@@ -372,3 +372,51 @@ async fn a_series_counter_logs_title_level_rewatches_that_never_count_as_episode
     save_counter(&app, 11, "series", 4).await;
     assert_eq!(rewatch_events(&pool).await, 2);
 }
+
+async fn toggle_episode(app: &App, series_id: i64, watched: bool, at: &str) {
+    let series: SeriesInput = serde_json::from_value(json!({
+        "id": series_id, "title": "Title 10", "runtime": 40, "numberOfEpisodes": 5, "year": 2019,
+        "rating": 8.0, "genres": ["Drama"], "status": "Returning Series",
+    }))
+    .unwrap();
+    crate::progress::toggle_episodes_watched(
+        series,
+        vec![EpisodeInput {
+            id: 1001,
+            season_number: 1,
+            episode_number: 1,
+            runtime: Some(40),
+            watched_at: None,
+        }],
+        watched,
+        at.to_string(),
+        None,
+        None,
+        app.state(),
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn unwatching_the_last_episode_cancels_the_series_rewatches_and_resets_the_counter() {
+    let pool = migrated_pool().await;
+    let app = app_with(&pool);
+    toggle_episode(&app, 10, true, "2026-01-10T20:00:00.000Z").await;
+    save_counter(&app, 10, "series", 2).await;
+    assert_eq!(total_rewatches(&app).await, 2);
+
+    toggle_episode(&app, 10, false, "2026-02-05T20:00:00.000Z").await;
+
+    assert_eq!(rewatch_events(&pool).await, 0);
+    assert_eq!(total_rewatches(&app).await, 0);
+    assert_eq!(counter(&pool, 10, "series").await, 0);
+
+    // Repeating the unwatch changes nothing and logs nothing more.
+    let events = count(&pool, "SELECT COUNT(*) FROM viewing_events").await;
+    toggle_episode(&app, 10, false, "2026-02-06T20:00:00.000Z").await;
+    assert_eq!(
+        count(&pool, "SELECT COUNT(*) FROM viewing_events").await,
+        events
+    );
+}

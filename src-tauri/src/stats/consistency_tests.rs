@@ -330,7 +330,19 @@ async fn assert_views_agree_with(
             "{context}: tracked series {} watched count",
             item.series_id
         );
-        backlog += (item.total_episodes - regular_seen).max(0);
+        // Only a series the viewer is watching has a backlog to catch up on.
+        let watching = scalar(
+            pool_ref,
+            &format!(
+                "SELECT COUNT(*) FROM library_items
+                 WHERE media_id = {} AND media_type = 'series' AND status = 'watching'",
+                item.series_id
+            ),
+        )
+        .await;
+        if watching > 0 {
+            backlog += (item.total_episodes - regular_seen).max(0);
+        }
     }
     let forecast = crate::stats::get_watch_forecast(
         SINCE.to_string(),

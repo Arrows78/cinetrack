@@ -514,11 +514,29 @@ fn events_in_log_order(mut events: Vec<ViewingEvent>) -> Vec<ViewingEvent> {
     events
 }
 
-pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result<(), ApiError> {
+/// Rewrites a readable instant to the canonical stored form (RFC 3339 UTC,
+/// millis) so string comparisons in SQL order it correctly. An unreadable one
+/// is left as it was: only the viewing log refuses those.
+fn canonicalize_in_place(value: &mut String) {
+    if let Ok(canonical) = crate::database::canonical_instant(value) {
+        *value = canonical;
+    }
+}
+
+pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Result<(), ApiError> {
     // One unreadable date in the log would make every statistic fail once the
     // restore has replaced the database, so such a file is refused up front.
-    for event in &data.viewing_events {
-        crate::database::require_instant(&event.watched_at)?;
+    // The dates are stored in canonical form (SQL compares them as strings).
+    for event in &mut data.viewing_events {
+        event.watched_at = crate::database::canonical_instant(&event.watched_at)?;
+    }
+    for movie in &mut data.seen_movies {
+        canonicalize_in_place(&mut movie.watched_at);
+    }
+    for episode in &mut data.episode_progress {
+        if let Some(watched_at) = episode.watched_at.as_mut() {
+            canonicalize_in_place(watched_at);
+        }
     }
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
@@ -533,6 +551,14 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
     .fetch_all(&mut *tx)
     .await
     .map_err(ApiError::from)?;
+
+    // Same reasoning for the cloud account link: a profile already in this
+    // database keeps the link it has here (set or not), whatever the file says.
+    let existing_links: Vec<(String, Option<String>)> =
+        sqlx::query_as("SELECT uuid, supabase_user_id FROM profiles")
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
 
     // Child-first purge order: `custom_list_items` before `custom_lists`
     // (its own FK target), everything in `PROFILE_SCOPED_TABLES` before
@@ -576,8 +602,48 @@ pub(super) async fn import_impl(pool: &SqlitePool, data: PortableData) -> Result
             .map_err(ApiError::from)?;
     }
 
+    for (uuid, supabase_user_id) in &existing_links {
+        // Matches nothing when the backup has no such profile.
+        sqlx::query("UPDATE profiles SET supabase_user_id = $1 WHERE uuid = $2")
+            .bind(supabase_user_id)
+            .bind(uuid)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+    }
+
+    // The purge above emptied the outbox and the per-entity sync state (they
+    // cascade with the profiles), but not these: a kept cursor or bootstrap
+    // flag would tell the next sync the restored rows are already known to
+    // the cloud. Without them, it pulls from the start and reseeds.
+    sqlx::query("DELETE FROM sync_metadata WHERE key LIKE 'cursor:%' OR key LIKE 'bootstrap:%'")
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+
+    // Preferences go through the same rules as a write: an invalid value is
+    // dropped (the default applies), and an active profile the restore does
+    // not bring back falls back to the default one rather than breaking every
+    // later write scoped to it.
+    let mut preferences = crate::preferences::sanitize_imported(&data.preferences);
+    let active_is_restored = preferences
+        .get("activeProfileId")
+        .and_then(Value::as_str)
+        .is_none_or(|active| data.profiles.iter().any(|profile| profile.id == active));
+    if !active_is_restored {
+        preferences.remove("activeProfileId");
+        if !data.profiles.iter().any(|profile| profile.id == "default")
+            && let Some(first) = data.profiles.first()
+        {
+            preferences.insert(
+                "activeProfileId".to_string(),
+                Value::String(first.id.clone()),
+            );
+        }
+    }
+
     let now = crate::database::now_iso(&mut *tx).await?;
-    for (key, value) in &data.preferences {
+    for (key, value) in &preferences {
         sqlx::query("INSERT INTO preferences (key, value, updated_at) VALUES ($1,$2,$3)")
             .bind(key)
             .bind(value.to_string())
@@ -1824,6 +1890,87 @@ mod tests {
         .execute(pool)
         .await
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_restore_stores_dates_canonical_and_validates_preferences() {
+        let pool = migrated_pool().await;
+        sqlx::query(
+            "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, created_at)
+             VALUES ('e1','default',1,'movie','T','watched','2026-03-01T10:00:00.000Z','x')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let mut snapshot = export_impl(&pool).await.unwrap();
+        snapshot.viewing_events[0].watched_at = "2026-03-01T11:00:00+01:00".to_string();
+        snapshot.preferences = serde_json::from_value(serde_json::json!({
+            "theme": "light",
+            "region": "not-a-region",
+            "notifyHoursBefore": 9999,
+            "madeUpKey": 1,
+            "activeProfileId": "ghost",
+        }))
+        .unwrap();
+
+        import_impl(&pool, snapshot).await.unwrap();
+
+        let stored: String = sqlx::query_scalar("SELECT watched_at FROM viewing_events")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(stored, "2026-03-01T10:00:00.000Z");
+        let keys: Vec<String> = sqlx::query_scalar("SELECT key FROM preferences ORDER BY key")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            keys,
+            ["theme"],
+            "invalid, unknown and orphaned entries are dropped"
+        );
+        assert_eq!(
+            crate::database::current_profile_id(&pool).await.unwrap(),
+            "default"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_restore_resets_the_sync_cursors_and_keeps_the_local_cloud_link() {
+        let pool = migrated_pool().await;
+        sqlx::query("UPDATE profiles SET supabase_user_id = 'user_local' WHERE uuid = 'default'")
+            .execute(&pool)
+            .await
+            .unwrap();
+        for key in [
+            "cursor:default",
+            "bootstrap:default",
+            "bootstrap:v2:default",
+        ] {
+            sqlx::query("INSERT INTO sync_metadata(key,value,updated_at) VALUES ($1,'7','t')")
+                .bind(key)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        let mut snapshot = export_impl(&pool).await.unwrap();
+        snapshot.profiles[0].supabase_user_id = Some("user_from_file".to_string());
+
+        import_impl(&pool, snapshot).await.unwrap();
+
+        let left: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sync_metadata WHERE key LIKE 'cursor:%' OR key LIKE 'bootstrap:%'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(left, 0);
+        let link: Option<String> =
+            sqlx::query_scalar("SELECT supabase_user_id FROM profiles WHERE uuid = 'default'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(link.as_deref(), Some("user_local"));
     }
 
     #[tokio::test]

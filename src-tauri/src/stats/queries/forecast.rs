@@ -24,6 +24,9 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
     pace_window_start: &str,
     now: &str,
 ) -> Result<WatchForecast, ApiError> {
+    // Only the series being watched have a backlog to catch up on: one the
+    // viewer paused, dropped or finished (or has only planned) is not part of it.
+    //
     // COALESCE(watched.count, 0) before subtracting, not after: a series
     // with zero watched episodes has no row in the `watched` subquery at
     // all (LEFT JOIN produces NULL), and `total_episodes - NULL` is itself
@@ -43,6 +46,7 @@ pub(in crate::stats) async fn get_watch_forecast_impl(
            AND EXISTS (
              SELECT 1 FROM library_items li
              WHERE li.profile_id = ts.profile_id AND li.media_id = ts.series_id AND li.media_type = 'series'
+               AND li.status = 'watching'
            )",
     )
     .bind(profile_id)

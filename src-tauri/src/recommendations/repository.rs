@@ -20,8 +20,9 @@ pub(super) async fn list_impl(
 }
 
 /// Idempotent: dismissing an already-dismissed title is a no-op rather than
-/// a second insert (which the UNIQUE index on (profile_id, media_id,
-/// media_type) would otherwise reject) — same idempotent-mutation shape the
+/// a second insert (one statement, `ON CONFLICT DO NOTHING` on the UNIQUE
+/// index over (profile_id, media_id, media_type), so two concurrent calls
+/// cannot both pass a separate existence check and have one fail) — same idempotent-mutation shape the
 /// audit's data-integrity findings require elsewhere (see
 /// apply_episodes_and_log_impl's own doc comment).
 pub(super) async fn dismiss_impl(
@@ -29,23 +30,11 @@ pub(super) async fn dismiss_impl(
     profile_id: &str,
     media: MediaSummaryInput,
 ) -> Result<(), ApiError> {
-    let existing: Option<(String,)> = sqlx::query_as(
-        "SELECT uuid FROM dismissed_recommendations WHERE profile_id = $1 AND media_id = $2 AND media_type = $3",
-    )
-    .bind(profile_id)
-    .bind(media.id)
-    .bind(media.media_type.as_db_str())
-    .fetch_optional(pool)
-    .await
-    .map_err(ApiError::from)?;
-    if existing.is_some() {
-        return Ok(());
-    }
-
     let now = now_iso(pool).await?;
     sqlx::query(
         "INSERT INTO dismissed_recommendations (uuid,profile_id,media_id,media_type,title,poster_path,dismissed_at,created_at,updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$7,$7)",
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$7,$7)
+         ON CONFLICT (profile_id, media_id, media_type) DO NOTHING",
     )
     .bind(new_uuid())
     .bind(profile_id)
@@ -108,6 +97,22 @@ mod tests {
             title: title.to_string(),
             poster_path: Some("/poster.jpg".to_string()),
         }
+    }
+
+    #[tokio::test]
+    async fn two_concurrent_dismissals_of_one_title_both_succeed_with_one_row() {
+        let pool = migrated_pool().await;
+        let (a, b) = tokio::join!(
+            dismiss_impl(&pool, "default", media(7, MediaType::Movie, "Dune")),
+            dismiss_impl(&pool, "default", media(7, MediaType::Movie, "Dune")),
+        );
+        a.unwrap();
+        b.unwrap();
+        let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM dismissed_recommendations")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(rows, 1);
     }
 
     #[tokio::test]

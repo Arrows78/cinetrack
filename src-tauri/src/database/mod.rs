@@ -13,7 +13,7 @@ use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use tauri::{AppHandle, Manager, Runtime};
 
-pub use instant::{parse_instant, require_instant};
+pub use instant::{canonical_instant, parse_instant};
 
 use crate::error::ApiError;
 

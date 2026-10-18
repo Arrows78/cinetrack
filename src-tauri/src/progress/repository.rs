@@ -8,11 +8,12 @@ use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
 use super::queries::is_movie_seen_impl;
 #[cfg(test)]
 use super::queries::{get_episode_progress_impl, list_tracked_series_impl};
-use crate::database::{new_uuid, now_iso, require_instant};
+use crate::database::{canonical_instant, new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, MediaSnapshot, ViewingHistoryItem, add_history_item_impl};
 use crate::library::{
-    AutoSyncMedia, StatusTrigger, insert_rewatch_event, reconcile_status_impl, reconcile_title_impl,
+    AutoSyncMedia, StatusTrigger, cancel_series_rewatches_if_unseen, insert_rewatch_event,
+    reconcile_status_impl, reconcile_title_impl,
 };
 use crate::models::MediaType;
 
@@ -50,8 +51,10 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
     watched_at: &str,
     note: Option<String>,
 ) -> Result<(), ApiError> {
-    // An unreadable date in the log would make every statistic fail.
-    require_instant(watched_at)?;
+    // An unreadable date in the log would make every statistic fail, and one
+    // in another shape would sort wrongly as a string: store the canonical form.
+    let watched_at = canonical_instant(watched_at)?;
+    let watched_at = watched_at.as_str();
     // BEGIN IMMEDIATE (rather than plain pool.begin()'s deferred BEGIN)
     // acquires SQLite's write lock up front, before the idempotency check
     // below even runs — a concurrent second call blocks here (sqlx's
@@ -225,7 +228,8 @@ pub(crate) async fn rewatch_movie_impl(
     watched_at: &str,
     note: Option<String>,
 ) -> Result<(), ApiError> {
-    require_instant(watched_at)?;
+    let watched_at = canonical_instant(watched_at)?;
+    let watched_at = watched_at.as_str();
     // Same reason as toggle_movie_seen_with_note_impl: the seen check and the
     // duplicate check have to sit under the write lock of the write they guard.
     let mut tx = pool
@@ -345,10 +349,15 @@ pub(crate) async fn apply_episodes_outcome_impl(
     history: Option<EpisodeHistoryInput>,
     note: Option<String>,
 ) -> Result<EpisodesOutcome, ApiError> {
-    require_instant(watched_at)?;
+    let watched_at = canonical_instant(watched_at)?;
+    let watched_at = watched_at.as_str();
+    // Per-episode dates are validated up front and stored canonical too.
+    let mut episode_dates: std::collections::HashMap<i64, String> =
+        std::collections::HashMap::new();
     for episode in episodes {
         if let Some(own_date) = episode.watched_at.as_deref() {
-            require_instant(own_date)?;
+            let canonical = canonical_instant(own_date)?;
+            episode_dates.entry(episode.id).or_insert(canonical);
         }
     }
     // BEGIN IMMEDIATE up front, before reading which episodes are already
@@ -398,7 +407,9 @@ pub(crate) async fn apply_episodes_outcome_impl(
     let event_note = if watched { note.as_deref() } else { None };
 
     for episode in &changed_episodes {
-        let episode_watched_at = episode.watched_at.as_deref().unwrap_or(watched_at);
+        let episode_watched_at = episode_dates
+            .get(&episode.id)
+            .map_or(watched_at, String::as_str);
         if watched {
             sqlx::query(
                 "INSERT INTO episode_progress (uuid, profile_id, series_id, episode_id, season_number, episode_number, watched, watched_at, created_at, updated_at)
@@ -446,6 +457,11 @@ pub(crate) async fn apply_episodes_outcome_impl(
         .execute(&mut *tx)
         .await
         .map_err(ApiError::from)?;
+    }
+
+    // Unwatching the last watched episode leaves nothing to have rewatched.
+    if !watched {
+        cancel_series_rewatches_if_unseen(&mut tx, profile_id, series.id, watched_at).await?;
     }
 
     // `tracked_series` caches TMDB's word on the series: its episode count
@@ -625,6 +641,8 @@ pub(super) async fn refresh_tracked_series_status_impl(
         .filter(|total| *total > 0)
         .map(|total| total.max(watched_regular))
         .unwrap_or(current_total_episodes);
+    // A refresh that carries no status (TMDB gave none) keeps the one cached.
+    let status = status.or_else(|| current_status.clone());
     if current_status != status || current_total_episodes != next_total_episodes {
         sqlx::query(
             "UPDATE tracked_series SET status = $1, total_episodes = $2 WHERE profile_id = $3 AND series_id = $4",
@@ -1639,6 +1657,50 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn watch_dates_are_stored_in_canonical_utc_form() {
+        let pool = migrated_pool().await;
+        toggle_movie_seen_impl(
+            &pool,
+            "default",
+            movie(1),
+            true,
+            "2026-03-01T11:00:00+01:00",
+        )
+        .await
+        .unwrap();
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &series(9, None),
+            &[episode(100, 1)],
+            true,
+            "2026-03-02",
+        )
+        .await
+        .unwrap();
+
+        let dates: Vec<(String,)> =
+            sqlx::query_as("SELECT watched_at FROM viewing_events ORDER BY media_type")
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            dates.iter().map(|d| d.0.as_str()).collect::<Vec<_>>(),
+            ["2026-03-01T10:00:00.000Z", "2026-03-02T00:00:00.000Z"]
+        );
+        let seen: String = sqlx::query_scalar("SELECT watched_at FROM seen_movies")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(seen, "2026-03-01T10:00:00.000Z");
+        let progress: String = sqlx::query_scalar("SELECT watched_at FROM episode_progress")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(progress, "2026-03-02T00:00:00.000Z");
+    }
+
+    #[tokio::test]
     async fn does_not_reapply_an_already_applied_episode() {
         let pool = migrated_pool().await;
         let s = series(9, None);
@@ -1945,6 +2007,29 @@ mod tests {
         .unwrap();
 
         refresh_tracked_series_status_impl(&pool, "default", 9, Some("Ended".to_string()), None)
+            .await
+            .unwrap();
+
+        let tracked = list_tracked_series_impl(&pool, "default").await.unwrap();
+        let entry = tracked.iter().find(|item| item.series_id == 9).unwrap();
+        assert_eq!(entry.status.as_deref(), Some("Ended"));
+    }
+
+    #[tokio::test]
+    async fn a_refresh_without_a_status_keeps_the_cached_one() {
+        let pool = migrated_pool().await;
+        apply_episodes_impl(
+            &pool,
+            "default",
+            &ended_series(9, Some(3)),
+            &[episode(1, 1)],
+            true,
+            "2026-01-01T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        refresh_tracked_series_status_impl(&pool, "default", 9, None, Some(3))
             .await
             .unwrap();
 

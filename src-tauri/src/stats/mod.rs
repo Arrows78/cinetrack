@@ -2142,6 +2142,48 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn longest_streak_reads_the_whole_history_not_only_the_window() {
+        let pool = migrated_pool().await;
+        // A five-day run long before the window, one watch inside it.
+        for day in ["01", "02", "03", "04", "05"] {
+            insert_event(
+                &pool,
+                &format!("old-{day}"),
+                &format!("2020-03-{day}T12:00:00.000Z"),
+                "watched",
+                "movie",
+                None,
+                None,
+            )
+            .await;
+        }
+        insert_event(
+            &pool,
+            "recent",
+            "2026-06-15T12:00:00.000Z",
+            "watched",
+            "movie",
+            None,
+            None,
+        )
+        .await;
+
+        let stats = get_activity_stats_impl(
+            &pool,
+            "default",
+            "2025-06-15T00:00:00.000Z",
+            "2026-06-15T18:00:00.000Z",
+            0,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stats.longest_streak_days, 5);
+        assert_eq!(stats.current_streak_days, 1);
+        assert_eq!(stats.biggest_binge_day.map(|d| d.count), Some(1));
+    }
+
+    #[tokio::test]
     async fn biggest_binge_day_picks_the_day_with_the_most_watches_not_the_most_recent() {
         let pool = migrated_pool().await;
         insert_event(
@@ -2499,6 +2541,38 @@ mod tests {
         .unwrap();
 
         assert_eq!(forecast.backlog_episodes, 6);
+    }
+
+    #[tokio::test]
+    async fn forecast_backlog_only_counts_series_being_watched() {
+        let pool = migrated_pool().await;
+        insert_tracked_series(&pool, "s1", 1, 10).await; // watching: 10 left
+        for (uuid, id, status) in [
+            ("s2", 2, "paused"),
+            ("s3", 3, "dropped"),
+            ("s4", 4, "completed"),
+            ("s5", 5, "planned"),
+        ] {
+            insert_tracked_series(&pool, uuid, id, 20).await;
+            sqlx::query("UPDATE library_items SET status = $1 WHERE media_id = $2")
+                .bind(status)
+                .bind(id)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+
+        let forecast = get_watch_forecast_impl(
+            &pool,
+            "default",
+            "2025-01-01T00:00:00.000Z",
+            "2026-04-16T00:00:00.000Z",
+            "2026-06-15T00:00:00.000Z",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(forecast.backlog_episodes, 10);
     }
 
     #[tokio::test]

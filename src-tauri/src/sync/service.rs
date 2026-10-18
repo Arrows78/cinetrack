@@ -481,6 +481,8 @@ async fn delete_entity(
     entity_type: &str,
     entity_id: &str,
 ) -> Result<(), ApiError> {
+    // The uuid-keyed upserts only update a row of this same profile: a remote
+    // document must never overwrite another profile's row.
     let sql = match entity_type {
         "library_item" => "DELETE FROM library_items WHERE profile_id=?1 AND uuid=?2",
         "seen_movie" => "DELETE FROM seen_movies WHERE profile_id=?1 AND uuid=?2",
@@ -621,12 +623,12 @@ async fn run_upsert(
         "viewing_event" => {
             r#"INSERT INTO viewing_events(uuid,profile_id,media_id,media_type,title,event_type,watched_at,duration_minutes,episode_id,season_number,episode_number,created_at,note)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.eventType'),json_extract(?1,'$.watchedAt'),json_extract(?1,'$.durationMinutes'),json_extract(?1,'$.episodeId'),json_extract(?1,'$.seasonNumber'),json_extract(?1,'$.episodeNumber'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.note'))
-          ON CONFLICT(uuid) DO UPDATE SET title=excluded.title,event_type=excluded.event_type,watched_at=excluded.watched_at,duration_minutes=excluded.duration_minutes,note=excluded.note"#
+          ON CONFLICT(uuid) DO UPDATE SET title=excluded.title,event_type=excluded.event_type,watched_at=excluded.watched_at,duration_minutes=excluded.duration_minutes,note=excluded.note WHERE viewing_events.profile_id=excluded.profile_id"#
         }
         "custom_list" => {
             r#"INSERT INTO custom_lists(uuid,profile_id,name,description,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.name'),json_extract(?1,'$.description'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET name=excluded.name,description=excluded.description,updated_at=excluded.updated_at"#
+          ON CONFLICT(uuid) DO UPDATE SET name=excluded.name,description=excluded.description,updated_at=excluded.updated_at WHERE custom_lists.profile_id=excluded.profile_id"#
         }
         "custom_list_item" => {
             r#"INSERT INTO custom_list_items(uuid,list_id,media_id,media_type,title,poster_path,position,added_at,updated_at)
@@ -637,12 +639,12 @@ async fn run_upsert(
         "smart_list" => {
             r#"INSERT INTO smart_lists(uuid,profile_id,name,rules,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.name'),json_extract(?1,'$.rules'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET name=excluded.name,rules=excluded.rules,updated_at=excluded.updated_at"#
+          ON CONFLICT(uuid) DO UPDATE SET name=excluded.name,rules=excluded.rules,updated_at=excluded.updated_at WHERE smart_lists.profile_id=excluded.profile_id"#
         }
         "saved_filter" => {
             r#"INSERT INTO saved_filters(uuid,profile_id,page,name,filters,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.page'),json_extract(?1,'$.name'),json_extract(?1,'$.filters'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET page=excluded.page,name=excluded.name,filters=excluded.filters,updated_at=excluded.updated_at"#
+          ON CONFLICT(uuid) DO UPDATE SET page=excluded.page,name=excluded.name,filters=excluded.filters,updated_at=excluded.updated_at WHERE saved_filters.profile_id=excluded.profile_id"#
         }
         "availability_alert" => {
             r#"INSERT INTO availability_alerts(uuid,profile_id,media_id,media_type,title,region,provider_ids,enabled,created_at,updated_at)
@@ -657,7 +659,7 @@ async fn run_upsert(
         "activity_log" => {
             r#"INSERT INTO activity_log(uuid,profile_id,media_id,media_type,title,action,season_number,episode_number,episode_title,metadata,timestamp,created_at,updated_at)
           VALUES(json_extract(?1,'$.uuid'),?2,json_extract(?1,'$.mediaId'),json_extract(?1,'$.mediaType'),json_extract(?1,'$.title'),json_extract(?1,'$.action'),json_extract(?1,'$.seasonNumber'),json_extract(?1,'$.episodeNumber'),json_extract(?1,'$.episodeTitle'),json_extract(?1,'$.metadata'),json_extract(?1,'$.timestamp'),json_extract(?1,'$.createdAt'),json_extract(?1,'$.updatedAt'))
-          ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,action=excluded.action,season_number=excluded.season_number,episode_number=excluded.episode_number,episode_title=excluded.episode_title,metadata=excluded.metadata,timestamp=excluded.timestamp,updated_at=excluded.updated_at"#
+          ON CONFLICT(uuid) DO UPDATE SET media_id=excluded.media_id,media_type=excluded.media_type,title=excluded.title,action=excluded.action,season_number=excluded.season_number,episode_number=excluded.episode_number,episode_title=excluded.episode_title,metadata=excluded.metadata,timestamp=excluded.timestamp,updated_at=excluded.updated_at WHERE activity_log.profile_id=excluded.profile_id"#
         }
         _ => return Err(ApiError::bad_request("Unsupported sync entity type")),
     };
@@ -1055,14 +1057,27 @@ async fn apply_one_remote_change(
                     .ok_or_else(|| ApiError::bad_request("Remote upsert has no payload"))?;
                 // A viewing event with an unreadable date would make every
                 // statistic fail: it is skipped (and logged) like any other
-                // document that cannot be applied.
-                if change.entity_type == "viewing_event" {
-                    crate::database::require_instant(
+                // document that cannot be applied. A readable one is stored
+                // in canonical form, as SQL orders these dates as strings.
+                let normalized;
+                let data = if change.entity_type == "viewing_event" {
+                    let canonical = crate::database::canonical_instant(
                         data.get("watchedAt")
                             .and_then(serde_json::Value::as_str)
                             .unwrap_or_default(),
                     )?;
-                }
+                    let mut copy = data.clone();
+                    if let Some(object) = copy.as_object_mut() {
+                        object.insert(
+                            "watchedAt".to_string(),
+                            serde_json::Value::String(canonical),
+                        );
+                    }
+                    normalized = copy;
+                    &normalized
+                } else {
+                    data
+                };
                 let written = upsert_entity(tx, profile_id, &change.entity_type, data).await?;
                 if change.entity_type == "custom_list_item" {
                     if written {
@@ -1405,6 +1420,93 @@ mod tests {
             0,
             "adopting a remote uuid is not a local change to push back"
         );
+    }
+
+    fn change_of(entity_type: &str, entity_id: &str, data: serde_json::Value) -> RemoteSyncChange {
+        RemoteSyncChange {
+            sequence: 1,
+            entity_type: entity_type.to_string(),
+            entity_id: entity_id.to_string(),
+            operation: "upsert".to_string(),
+            version: 1,
+            data: Some(data),
+        }
+    }
+
+    /// A remote document whose uuid belongs to a row of another profile must
+    /// not rewrite that row: every uuid-keyed upsert is scoped to the
+    /// applying profile.
+    #[tokio::test]
+    async fn a_remote_upsert_never_overwrites_another_profiles_row() {
+        let pool = pool().await;
+        sqlx::query("INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('other','Other','t','t')")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO custom_lists (uuid, profile_id, name, created_at, updated_at) VALUES ('shared-uuid','other','Mine','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO smart_lists (uuid, profile_id, name, rules, created_at, updated_at) VALUES ('shared-smart','other','Mine','{}','t','t')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let changes = [
+            change_of(
+                "custom_list",
+                "shared-uuid",
+                serde_json::json!({"uuid":"shared-uuid","name":"Hijacked","createdAt":"t","updatedAt":"u"}),
+            ),
+            RemoteSyncChange {
+                sequence: 2,
+                ..change_of(
+                    "smart_list",
+                    "shared-smart",
+                    serde_json::json!({"uuid":"shared-smart","name":"Hijacked","rules":"{}","createdAt":"t","updatedAt":"u"}),
+                )
+            },
+        ];
+        apply_remote_changes(&pool, &changes).await.unwrap();
+
+        let names: Vec<(String, String)> = sqlx::query_as(
+            "SELECT profile_id, name FROM custom_lists UNION ALL SELECT profile_id, name FROM smart_lists",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            names,
+            vec![
+                ("other".to_string(), "Mine".to_string()),
+                ("other".to_string(), "Mine".to_string())
+            ]
+        );
+    }
+
+    /// A remote viewing event's date is stored in the canonical UTC form SQL
+    /// orders by.
+    #[tokio::test]
+    async fn a_remote_viewing_event_date_is_stored_canonical() {
+        let pool = pool().await;
+        let change = change_of(
+            "viewing_event",
+            "ev-1",
+            serde_json::json!({
+                "uuid":"ev-1","mediaId":1,"mediaType":"movie","title":"T","eventType":"watched",
+                "watchedAt":"2026-03-01T11:00:00+01:00","createdAt":"2026-03-01T11:00:00+01:00"
+            }),
+        );
+        apply_remote_changes(&pool, &[change]).await.unwrap();
+        let stored: String =
+            sqlx::query_scalar("SELECT watched_at FROM viewing_events WHERE uuid='ev-1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(stored, "2026-03-01T10:00:00.000Z");
     }
 
     async fn outbox_count(pool: &SqlitePool) -> i64 {

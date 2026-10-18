@@ -89,6 +89,11 @@ pub(super) async fn import_series_progress_impl(
             created_library_item_id: None,
         });
     }
+    // Canonical first: the latest is picked by string comparison.
+    let mut episodes = episodes;
+    for episode in &mut episodes {
+        episode.watched_at = crate::database::canonical_instant(&episode.watched_at)?;
+    }
     let latest_watched_at = episodes
         .iter()
         .map(|episode| episode.watched_at.clone())
@@ -129,8 +134,9 @@ pub(super) async fn import_series_progress_impl(
 pub(super) async fn import_movie_seen_impl(
     pool: &SqlitePool,
     profile_id: &str,
-    movie: ImportableMovie,
+    mut movie: ImportableMovie,
 ) -> Result<MovieImportOutcome, ApiError> {
+    movie.watched_at = crate::database::canonical_instant(&movie.watched_at)?;
     // The seen check sits under the write lock of the write it guards: two
     // concurrent imports of one movie must not both pass it.
     let mut tx = pool

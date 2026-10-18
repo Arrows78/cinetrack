@@ -12,7 +12,9 @@
 //! - a movie's rewatches are cancelled by unwatching it (and its counter goes
 //!   back to 0, see `progress::toggle_movie_seen_with_note_impl`); a series'
 //!   rewatches are title-level events (no episode) that only the counter
-//!   writes, and only lowering the counter takes back;
+//!   writes, and only lowering the counter takes back — or unwatching the
+//!   last watched episode (`cancel_series_rewatches_if_unseen`), which leaves
+//!   nothing to have rewatched and starts the counter over, like a movie;
 //! - raising the counter by N logs N events dated now; lowering it by N
 //!   deletes the N most recent rewatch events of the title; saving the same
 //!   value again writes nothing.
@@ -139,5 +141,42 @@ pub(crate) async fn apply_counter_change(
         .await
         .map_err(ApiError::from)?;
     }
+    Ok(())
+}
+
+/// Called after episodes were unwatched: a series with no watched episode left
+/// has nothing to rewatch, so its title-level rewatch events are deleted and
+/// the editor's counter goes back to 0 (the movie path does the same, see
+/// `progress::toggle_movie_seen_with_note_impl`). Nothing is logged, and a
+/// repeat (or a series that is still seen) changes nothing.
+pub(crate) async fn cancel_series_rewatches_if_unseen(
+    tx: &mut Transaction<'_, Sqlite>,
+    profile_id: &str,
+    series_id: i64,
+    now: &str,
+) -> Result<(), ApiError> {
+    if title_is_seen(tx, profile_id, series_id, MediaType::Series).await? {
+        return Ok(());
+    }
+    sqlx::query(
+        "DELETE FROM viewing_events
+         WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series'
+           AND event_type = 'rewatched' AND episode_id IS NULL",
+    )
+    .bind(profile_id)
+    .bind(series_id)
+    .execute(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
+    sqlx::query(
+        "UPDATE library_items SET rewatch_count = 0, updated_at = $3
+         WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series' AND rewatch_count > 0",
+    )
+    .bind(profile_id)
+    .bind(series_id)
+    .bind(now)
+    .execute(&mut **tx)
+    .await
+    .map_err(ApiError::from)?;
     Ok(())
 }

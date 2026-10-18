@@ -33,6 +33,22 @@ pub(super) async fn upsert_impl(
     patch: LibraryPatch,
     profile_id: &str,
 ) -> Result<LibraryItem, ApiError> {
+    Ok(upsert_core(pool, media, patch, profile_id, false)
+        .await?
+        .expect("an upsert that may replace always returns the saved item"))
+}
+
+/// The body of `upsert_impl`. With `only_if_absent`, an existing row is left
+/// exactly as it is and `None` comes back: the presence check and the insert
+/// then sit under the same write lock, so a row created in between (an
+/// automatic status, a concurrent add) is never overwritten.
+async fn upsert_core(
+    pool: &SqlitePool,
+    media: MediaSummaryInput,
+    patch: LibraryPatch,
+    profile_id: &str,
+    only_if_absent: bool,
+) -> Result<Option<LibraryItem>, ApiError> {
     if patch.rewatch_count.is_some_and(|count| count < 0) {
         return Err(ApiError::bad_request(
             "The rewatch count cannot be negative",
@@ -49,6 +65,9 @@ pub(super) async fn upsert_impl(
         .await
         .map_err(ApiError::from)?;
     let current = get_impl(&mut *tx, profile_id, media.id, media.media_type).await?;
+    if only_if_absent && current.is_some() {
+        return Ok(None);
+    }
     let is_new = current.is_none();
     let now = now_iso(&mut *tx).await?;
     let status = patch.status.unwrap_or_else(|| {
@@ -90,11 +109,23 @@ pub(super) async fn upsert_impl(
         media_id: media.id,
         media_type: media.media_type,
         title: media.title,
-        poster_path: media.poster_path,
-        backdrop_path: media.backdrop_path,
-        year: media.year,
-        rating: media.rating,
-        genres: media.genres,
+        // A partial summary (a caller that only knows some catalogue fields)
+        // never blanks what the row already holds.
+        poster_path: media
+            .poster_path
+            .or_else(|| current.as_ref().and_then(|c| c.poster_path.clone())),
+        backdrop_path: media
+            .backdrop_path
+            .or_else(|| current.as_ref().and_then(|c| c.backdrop_path.clone())),
+        year: media.year.or_else(|| current.as_ref().and_then(|c| c.year)),
+        rating: media
+            .rating
+            .or_else(|| current.as_ref().and_then(|c| c.rating)),
+        genres: if media.genres.is_empty() {
+            current.as_ref().map_or_else(Vec::new, |c| c.genres.clone())
+        } else {
+            media.genres
+        },
         status,
         favourite: patch
             .favourite
@@ -268,7 +299,7 @@ pub(super) async fn upsert_impl(
     }
 
     tx.commit().await.map_err(ApiError::from)?;
-    Ok(item)
+    Ok(Some(item))
 }
 
 /// History metadata for a library removal: carries a snapshot of the
@@ -379,13 +410,7 @@ pub(super) async fn add_if_absent_impl(
     profile_id: &str,
 ) -> Result<bool, ApiError> {
     let (media_id, media_type) = (media.id, media.media_type);
-    if get_impl(pool, profile_id, media_id, media_type)
-        .await?
-        .is_some()
-    {
-        return Ok(false);
-    }
-    upsert_impl(
+    let added = upsert_core(
         pool,
         media,
         LibraryPatch {
@@ -393,8 +418,12 @@ pub(super) async fn add_if_absent_impl(
             ..Default::default()
         },
         profile_id,
+        true,
     )
     .await?;
+    if added.is_none() {
+        return Ok(false);
+    }
     // Progress that outlived an earlier stay in the library decides the status
     // (an episode-by-episode series back to Watching, a seen movie to
     // Completed) instead of Planned.
@@ -1669,6 +1698,47 @@ mod tests {
                 .await
                 .unwrap()
                 .is_empty()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_partial_summary_keeps_the_catalogue_fields_the_row_already_has() {
+        let pool = migrated_pool().await;
+        let mut full = media(7);
+        full.poster_path = Some("/p.jpg".to_string());
+        upsert_impl(&pool, full, LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        let partial = MediaSummaryInput {
+            year: None,
+            rating: None,
+            genres: vec![],
+            ..media(7)
+        };
+        let saved = upsert_impl(&pool, partial, LibraryPatch::default(), "default")
+            .await
+            .unwrap();
+
+        assert_eq!(saved.poster_path.as_deref(), Some("/p.jpg"));
+        assert_eq!(saved.year, Some(2024));
+        assert_eq!(saved.rating, Some(7.5));
+        assert_eq!(saved.genres, vec!["Drama".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn concurrent_add_if_absent_calls_add_the_title_once() {
+        let pool = migrated_pool().await;
+        let (a, b) = tokio::join!(
+            add_if_absent_impl(&pool, media(7), "default"),
+            add_if_absent_impl(&pool, media(7), "default"),
+        );
+        assert_eq!(
+            [a.unwrap(), b.unwrap()]
+                .iter()
+                .filter(|added| **added)
+                .count(),
+            1
         );
     }
 
