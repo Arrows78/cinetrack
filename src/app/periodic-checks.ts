@@ -7,6 +7,8 @@ import { preferencesRepository } from "@/features/preferences/preferences-reposi
 import { trackingService } from "@/features/tracking/tracking-service";
 import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
+import { queryClient } from "@/app/query-client";
+import { queryKeys } from "@/shared/constants/query-keys";
 
 /** Availability alerts, then the calendar reminders — both honour their own preference. */
 export async function checkBackgroundNotifications(): Promise<void> {
@@ -16,6 +18,12 @@ export async function checkBackgroundNotifications(): Promise<void> {
     desktopNotificationsEnabled: preferences.desktopNotificationsEnabled,
     preferredProviderIds: preferences.preferredProviderIds,
   });
+  if (availabilityOutcome.checked > availabilityOutcome.failures) {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.local.availabilitySnapshots }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.local.tracking(preferences.activeProfileId) }),
+    ]);
+  }
   // Every single alert failing is a real outage (TMDB down, no network),
   // not a quiet day — say so once, rather than letting the user believe
   // their alerts are working. A partial failure stays log-only: the

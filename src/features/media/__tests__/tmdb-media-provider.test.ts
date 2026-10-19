@@ -147,6 +147,28 @@ describe("TmdbMediaProvider", () => {
     });
   });
 
+  describe("getHomeFeed partial failures", () => {
+    it("keeps the rails that loaded and reports the failed one", async () => {
+      mocks.tmdbFetch.mockImplementation((path: string) => {
+        if (path === "/tv/top_rated") return Promise.reject(new Error("boom"));
+        if (path.includes("/tv/") || path === "/trending/tv/week") return Promise.resolve(emptyListResponse);
+        return Promise.resolve({ ...emptyListResponse, results: [movieDto({ id: 4 })] });
+      });
+
+      const feed = await provider.getHomeFeed();
+
+      expect(feed.failedSections).toEqual(["topRatedSeries"]);
+      expect(feed.topRatedSeries).toEqual([]);
+      expect(feed.trendingMovies.map((m) => m.id)).toEqual([4]);
+    });
+
+    it("rejects when every rail fails", async () => {
+      mocks.tmdbFetch.mockRejectedValue(new Error("offline"));
+
+      await expect(provider.getHomeFeed()).rejects.toThrow("offline");
+    });
+  });
+
   describe("discoverMovies / discoverSeries", () => {
     it("sets watch_region/with_watch_providers/monetization when a provider is given (movies)", async () => {
       mocks.getPreferences.mockResolvedValue(basePreferences({ region: "GB" }));

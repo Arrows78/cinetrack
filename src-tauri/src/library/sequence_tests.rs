@@ -20,7 +20,8 @@
 //! - rewatches: watching a seen movie again, or raising a seen title's
 //!   library rewatch count, logs standing `rewatched` events; lowering the
 //!   count takes the most recent back; unwatching a movie cancels its
-//!   rewatches and resets its count; a count set on an unseen title writes
+//!   rewatches and resets its count, as does unwatching a series' last
+//!   watched episode; a count set on an unseen title writes
 //!   no event.
 
 use std::collections::{BTreeSet, HashMap};
@@ -317,6 +318,14 @@ async fn random_sequences_keep_library_progress_history_and_dates_consistent() {
                         let key = (entry.id, "series");
                         let derived = model.stored_derived(key, &catalogue);
                         model.react(key, if watched { "watched" } else { "unwatched" }, derived);
+                        // Unwatching the last watched episode cancels the
+                        // series' rewatches and resets its count.
+                        if !watched && !model.is_seen(key) {
+                            model.rewatches.remove(&key);
+                            if let Some(counter) = model.counters.get_mut(&key) {
+                                *counter = 0;
+                            }
+                        }
                     }
                 }
                 // Movie toggle.

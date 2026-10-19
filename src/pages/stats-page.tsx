@@ -174,10 +174,13 @@ export function StatsPage() {
   // (season-page.tsx, movie-detail-page.tsx, …) — an in-flight refetch after
   // a prior success should never flash the error branch.
   if (stats.isPending || wrapped.isPending) return <StatsSkeleton />;
-  if (stats.isError || wrapped.isError) {
+  // Only the main stats query takes over the page: a failure of the chosen
+  // year's Wrapped summary is shown inside the Wrapped card itself (below),
+  // so the year switcher stays reachable to move to a year that does load.
+  if (stats.isError) {
     return (
       <RemoteErrorState
-        error={stats.error ?? wrapped.error}
+        error={stats.error}
         onRetry={() => {
           void stats.refetch();
           void wrapped.refetch();
@@ -197,7 +200,13 @@ export function StatsPage() {
     { label: t("stats.libraryCompleted"), value: `${stats.data.libraryCompletionPercent}%`, icon: BarChart3 },
   ];
   const comparison = monthOverMonthComparison(stats.data.monthlyActivity);
-  const yearComparison = yearOverYearComparison(wrapped.data, previousYearWrapped.data);
+  // keepPreviousData keeps the prior year's summary on screen while a newly
+  // selected year loads: comparing placeholder data would put the delta
+  // against the wrong years, so it is shown only once both queries are real.
+  const yearComparison =
+    wrapped.data && !wrapped.isPlaceholderData && !previousYearWrapped.isPlaceholderData
+      ? yearOverYearComparison(wrapped.data, previousYearWrapped.data)
+      : null;
 
   const availableYears = yearlyActivity.data?.map((bucket) => bucket.year) ?? [];
   const minYear = availableYears.length ? Math.min(...availableYears, currentYear) : currentYear;
@@ -428,17 +437,19 @@ export function StatsPage() {
         <ViewingHeatmap data={stats.data.heatmap} />
       </Panel>
 
-      <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(10)}ms` }}>
-        <SectionHeader
-          title={t("stats.yearCalendar.title", { year: wrapped.data.year })}
-          subtitle={t("stats.yearCalendar.description")}
-          size="sub"
-          headingLevel={2}
-        />
-        <div className="mt-4">
-          <YearActivityCalendar year={wrapped.data.year} dailyCounts={wrapped.data.dailyCounts} />
-        </div>
-      </Panel>
+      {wrapped.data ? (
+        <Panel className="animate-in" style={{ animationDelay: `${staggerDelayMs(10)}ms` }}>
+          <SectionHeader
+            title={t("stats.yearCalendar.title", { year: wrapped.data.year })}
+            subtitle={t("stats.yearCalendar.description")}
+            size="sub"
+            headingLevel={2}
+          />
+          <div className="mt-4">
+            <YearActivityCalendar year={wrapped.data.year} dailyCounts={wrapped.data.dailyCounts} />
+          </div>
+        </Panel>
+      ) : null}
 
       <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(11)}ms` }}>
         <RatingDistributionSection />
@@ -481,7 +492,7 @@ export function StatsPage() {
           <article>
             <div className="flex items-center justify-between gap-2">
               <p className="text-caption font-semibold uppercase tracking-widest text-primary">
-                {t("stats.wrapped", { year: wrapped.data.year })}
+                {t("stats.wrapped", { year: wrapped.data?.year ?? selectedYear })}
               </p>
               <div className="flex items-center gap-1">
                 <IconTooltip label={t("stats.exportWrapped")}>
@@ -490,7 +501,7 @@ export function StatsPage() {
                     variant="ghost"
                     size="icon"
                     aria-label={t("stats.exportWrapped")}
-                    disabled={isExportingWrapped}
+                    disabled={isExportingWrapped || !wrapped.data}
                     onClick={() => void exportWrapped()}
                   >
                     <Download className="size-4" />
@@ -527,45 +538,55 @@ export function StatsPage() {
                 </IconTooltip>
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <p className="font-display text-display-title font-bold">
-                {formatWatchDurationBreakdown(wrapped.data.minutes)}
-              </p>
-              {yearComparison ? (
-                <DeltaBadge delta={yearComparison.minutesDelta} formatValue={hours} period="year" />
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-body-sm text-muted-foreground">
-                {t("stats.activeDays", { count: wrapped.data.activeDays })}
-              </p>
-              {yearComparison ? (
-                <DeltaBadge
-                  delta={yearComparison.activeDaysDelta}
-                  formatValue={(value) => String(value)}
-                  period="year"
-                />
-              ) : null}
-            </div>
-            <div className="mt-4 grid gap-2 text-body-sm">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <p>
-                  {t("stats.filmCount", { count: wrapped.data.movies })} ·{" "}
-                  {t("stats.episodeCount", { count: wrapped.data.episodes })}
-                </p>
-                {yearComparison ? (
-                  <DeltaBadge delta={yearComparison.countDelta} formatValue={(value) => String(value)} period="year" />
-                ) : null}
-              </div>
-              <p>
-                {t("stats.favouriteGenre")} <strong>{wrapped.data.favouriteGenre ?? "—"}</strong>
-              </p>
-              {wrapped.data.topTitles.map((item, index) => (
-                <p key={item.title} className="min-w-0 truncate" title={item.title}>
-                  {index + 1}. {item.title} · {t("stats.watchCount", { count: item.count })}
-                </p>
-              ))}
-            </div>
+            {wrapped.data ? (
+              <>
+                <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <p className="font-display text-display-title font-bold">
+                    {formatWatchDurationBreakdown(wrapped.data.minutes)}
+                  </p>
+                  {yearComparison ? (
+                    <DeltaBadge delta={yearComparison.minutesDelta} formatValue={hours} period="year" />
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="text-body-sm text-muted-foreground">
+                    {t("stats.activeDays", { count: wrapped.data.activeDays })}
+                  </p>
+                  {yearComparison ? (
+                    <DeltaBadge
+                      delta={yearComparison.activeDaysDelta}
+                      formatValue={(value) => String(value)}
+                      period="year"
+                    />
+                  ) : null}
+                </div>
+                <div className="mt-4 grid gap-2 text-body-sm">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p>
+                      {t("stats.filmCount", { count: wrapped.data.movies })} ·{" "}
+                      {t("stats.episodeCount", { count: wrapped.data.episodes })}
+                    </p>
+                    {yearComparison ? (
+                      <DeltaBadge
+                        delta={yearComparison.countDelta}
+                        formatValue={(value) => String(value)}
+                        period="year"
+                      />
+                    ) : null}
+                  </div>
+                  <p>
+                    {t("stats.favouriteGenre")} <strong>{wrapped.data.favouriteGenre ?? "—"}</strong>
+                  </p>
+                  {wrapped.data.topTitles.map((item, index) => (
+                    <p key={item.title} className="min-w-0 truncate" title={item.title}>
+                      {index + 1}. {item.title} · {t("stats.watchCount", { count: item.count })}
+                    </p>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <RemoteErrorState error={wrapped.error} onRetry={() => void wrapped.refetch()} />
+            )}
           </article>
         </Panel>
       </section>

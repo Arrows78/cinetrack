@@ -6,6 +6,7 @@ import type { MediaGridItem } from "@/components/media/primitives/media-grid";
 import {
   filterAndSortLibrary,
   librarySortLabelKey,
+  listOnlyLibraryItems,
   resolveSavedLibraryFilters,
   type LibrarySortMode,
   type LibraryStatusFilter,
@@ -61,8 +62,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
   // navigating away and back, and hold across /library, /movies and /series
   // since they all render this same explorer.
   const viewMode = preferences.data?.libraryViewMode ?? defaultPreferences.libraryViewMode;
-  const setViewMode = (mode: "grid" | "list") =>
-    void preferences.updatePreference({ key: "libraryViewMode", value: mode });
+  const setViewMode = (mode: "grid" | "list") => preferences.setPreference({ key: "libraryViewMode", value: mode });
   const [listFilter, setListFilter] = useState("all");
   const listItems = useCustomListItems(listFilter === "all" ? "" : listFilter);
   // A title added to a list but never given a library status (no
@@ -139,7 +139,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
 
   const serverItems = useMemo<MediaGridItem[]>(() => {
     if (!isServerPaginated) return [];
-    return (libraryPageQuery.data?.pages ?? [])
+    const libraryRows = (libraryPageQuery.data?.pages ?? [])
       .flatMap((page) => page.items)
       .map((item) => ({
         id: item.mediaId,
@@ -155,7 +155,42 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
         progress: item.mediaType === "series" ? progressBySeries.get(item.mediaId) : undefined,
         alreadySeen: item.mediaType === "movie" && item.status === "completed",
       }));
-  }, [isServerPaginated, libraryPageQuery.data, progressBySeries]);
+    // The server query only knows library rows, but the hubs and the
+    // list-filtered views also show a title that sits in a custom list without
+    // a library status (see allListItems above) — the same title must not be
+    // there on /movies and missing from /library. Such titles have no status,
+    // rating or progress, so they follow the library rows once the last page
+    // is in (never interleaved with a sort the server owns), and only while no
+    // filter that they can't satisfy is active.
+    if (libraryPageQuery.hasNextPage || !libraryPageQuery.data) return libraryRows;
+    const libraryKeys = new Set((libraryMediaKeysQuery.data ?? []).map((key) => mediaKey(key.mediaType, key.mediaId)));
+    return [
+      ...libraryRows,
+      ...listOnlyLibraryItems(libraryKeys, allListItems.data ?? [], {
+        typeFilter,
+        statusFilter,
+        favouritesOnly,
+        search: debouncedSearch,
+        sort,
+        genreFilter,
+        listMediaKeys: null,
+        smartListMediaKeys: null,
+      }),
+    ];
+  }, [
+    isServerPaginated,
+    libraryPageQuery.data,
+    libraryPageQuery.hasNextPage,
+    progressBySeries,
+    libraryMediaKeysQuery.data,
+    allListItems.data,
+    typeFilter,
+    statusFilter,
+    favouritesOnly,
+    debouncedSearch,
+    sort,
+    genreFilter,
+  ]);
 
   const loadNextServerPage = () => {
     if (libraryPageQuery.hasNextPage && !libraryPageQuery.isFetchingNextPage) void libraryPageQuery.fetchNextPage();
@@ -230,9 +265,17 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     sort: toLibrarySort(sort),
     search,
     genreFilter,
+    // Only present while a smart list narrows the view, so a saved filter
+    // without one isn't reported active under it (see SavedFiltersBar).
+    ...(smartListFilter !== "all" ? { smartListFilter } : {}),
   };
   const applySavedFilters = (savedFilters: LibraryFilterState) => {
-    const saved = resolveSavedLibraryFilters(savedFilters, lists.data ? listIds : undefined);
+    const saved = resolveSavedLibraryFilters(
+      savedFilters,
+      lists.data ? listIds : undefined,
+      // The hubs have no smart-list panel: nothing to restore there.
+      lockedMediaType || !smartLists.data ? undefined : smartLists.data.map((list) => list.id)
+    );
     setTypeFilter(lockedMediaType ?? saved.typeFilter);
     setStatusFilter(saved.statusFilter);
     setFavouritesOnly(saved.favouritesOnly);
@@ -240,6 +283,9 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     setSort(saved.sort);
     setSearch(saved.search);
     setGenreFilter(saved.genreFilter ?? "all");
+    // Replaces whatever smart list was selected: a saved view is complete
+    // state, not a layer on top of the previous one.
+    setSmartListFilter(saved.smartListFilter ?? "all");
   };
 
   // One removable chip per non-default filter condition currently applied —

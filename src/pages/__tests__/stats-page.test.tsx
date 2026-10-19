@@ -180,6 +180,24 @@ describe("StatsPage", () => {
     expect(wrappedRefetch).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the page and year switcher when only the chosen year's Wrapped fails, with a retry inside the card", async () => {
+    const wrappedRefetch = vi.fn();
+    wrappedMock.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new Error("boom"),
+      refetch: wrappedRefetch,
+    });
+
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Previous year" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export as image" })).toBeDisabled();
+    screen.getByRole("button", { name: "Try again" }).click();
+    expect(wrappedRefetch).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the skeleton while stats or wrapped data is not yet loaded", () => {
     statsState.data = undefined;
     renderPage();
@@ -362,6 +380,20 @@ describe("StatsPage", () => {
       expect(screen.getByText("+50h 0min vs last year")).toBeInTheDocument();
       // current 50 active days vs previous 30 -> +20
       expect(screen.getByText("+20 vs last year")).toBeInTheDocument();
+    });
+
+    it("hides the comparison while either year is still placeholder data from the previous selection", async () => {
+      for (const placeholderYear of [CURRENT_YEAR, CURRENT_YEAR - 1]) {
+        wrappedMock.mockReset().mockImplementation((year: number) => ({
+          ...wrappedFor(year),
+          data: year === CURRENT_YEAR ? makeWrapped(year) : { ...makeWrapped(year), movies: 5, episodes: 50 },
+          isPlaceholderData: year === placeholderYear,
+        }));
+        const { unmount } = renderPage();
+        await screen.findByText("Stats");
+        expect(screen.queryByText(/vs last year/)).not.toBeInTheDocument();
+        unmount();
+      }
     });
 
     it("hides the comparison when the previous year has no recorded activity", async () => {

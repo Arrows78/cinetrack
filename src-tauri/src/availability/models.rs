@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use crate::models::MediaType;
 
-/// Only the fields `toggle_availability_alert` reads off the frontend's
+/// Only the fields `set_availability_alert` reads off the frontend's
 /// `MediaSummary` object.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

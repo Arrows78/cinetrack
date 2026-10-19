@@ -1,4 +1,4 @@
 mod client;
 mod commands;
 
-pub use commands::tmdb_request;
+pub use commands::{TmdbToken, set_tmdb_token, tmdb_request};

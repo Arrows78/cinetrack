@@ -5,6 +5,7 @@ import {
   buildKeySetFromMediaKeys,
 } from "@/shared/utils/library-set";
 import { mediaRepository } from "@/features/media/media-repository";
+import { fetchMovieDetailsCached, fetchSeriesDetailsCached, mapDetailsWithConcurrency } from "@/features/media";
 import { recommendationsRepository } from "@/features/recommendations/recommendations-repository";
 import { mediaKey } from "@/shared/utils/media-key";
 import { logger } from "@/shared/lib/logger";
@@ -67,7 +68,7 @@ function matchesGenre(item: MediaSummary, genre?: number): boolean {
 }
 
 function matchesOriginCountry(item: MediaSummary, originCountry?: string): boolean {
-  return !originCountry || Boolean(item.country?.includes(originCountry));
+  return !originCountry || Boolean((item.countryCodes ?? item.country)?.includes(originCountry));
 }
 
 function normalizeProviderIds(provider?: number | number[]): number[] | undefined {
@@ -193,13 +194,12 @@ async function pickMovies(
   dismissedKeySet: Set<string>,
   genreAffinity: Map<string, number>
 ): Promise<Array<Movie & { watchTonightReason: WatchTonightReason | null }>> {
-  const detailed = await Promise.all(
-    planned.map((item) =>
-      mediaRepository.getMovieDetails(item.mediaId).catch((error) => {
-        logger.warn(`Failed to fetch movie details for ${item.mediaId}: ${error}`);
-        return null;
-      })
-    )
+  const detailed = await mapDetailsWithConcurrency(
+    planned,
+    (item) => fetchMovieDetailsCached(item.mediaId, { retry: false }),
+    (item, error) => {
+      logger.warn(`Failed to fetch movie details for ${item.mediaId}: ${error}`);
+    }
   );
   let candidates = detailed
     .filter((item): item is Movie => Boolean(item))
@@ -242,13 +242,12 @@ async function pickSeries(
   dismissedKeySet: Set<string>,
   genreAffinity: Map<string, number>
 ): Promise<Array<Series & { watchTonightReason: WatchTonightReason | null }>> {
-  const detailed = await Promise.all(
-    planned.map((item) =>
-      mediaRepository.getSeriesDetails(item.mediaId).catch((error) => {
-        logger.warn(`Failed to fetch series details for ${item.mediaId}: ${error}`);
-        return null;
-      })
-    )
+  const detailed = await mapDetailsWithConcurrency(
+    planned,
+    (item) => fetchSeriesDetailsCached(item.mediaId, { retry: false }),
+    (item, error) => {
+      logger.warn(`Failed to fetch series details for ${item.mediaId}: ${error}`);
+    }
   );
   let candidates = detailed
     .filter((item): item is Series => Boolean(item))

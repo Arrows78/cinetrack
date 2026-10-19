@@ -28,15 +28,18 @@ const MAX_RETRY_AFTER: Duration = Duration::from_secs(5);
 pub(super) const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
 
 /// The frontend controls `path`, but it still crosses the IPC boundary, so it
-/// is validated as untrusted input: it must stay inside the TMDB v3 API and
-/// cannot smuggle a traversal segment, an absolute URL, or a query/fragment
-/// that would break out of the `format!`-built URL.
+/// is validated as untrusted input by allowlist (`^/[A-Za-z0-9/_-]+$`, no empty
+/// segment): every TMDB v3 endpoint the app calls fits, and nothing that could
+/// escape the API once put in the `format!`-built URL does — no `.` (so no
+/// `..`, encoded or not: `%2e%2e` needs a `%`), no `\`, no `:` (an absolute
+/// URL), no `?` or `#`, no whitespace or control character.
 pub(super) fn is_valid_tmdb_path(path: &str) -> bool {
-    path.starts_with('/')
-        && !path.contains("..")
-        && !path.contains("://")
-        && !path.contains('?')
-        && !path.contains('#')
+    path.len() > 1
+        && path.starts_with('/')
+        && !path.contains("//")
+        && path
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'/' | b'_' | b'-'))
 }
 
 /// Upper bound on one `tmdb_request` call, retries included. The HTTP
@@ -168,6 +171,9 @@ mod tests {
         assert!(is_valid_tmdb_path("/tv/1399/season/1"));
         assert!(is_valid_tmdb_path("/search/multi"));
         assert!(is_valid_tmdb_path("/trending/movie/week"));
+        assert!(is_valid_tmdb_path("/tv/1399/season/1/episode/2/images"));
+        assert!(is_valid_tmdb_path("/watch/providers/movie"));
+        assert!(is_valid_tmdb_path("/find/121361"));
     }
 
     #[test]
@@ -182,6 +188,32 @@ mod tests {
         // Query or fragment injection into the format!-built URL.
         assert!(!is_valid_tmdb_path("/movie/550?api_key=stolen"));
         assert!(!is_valid_tmdb_path("/movie/550#fragment"));
+    }
+
+    #[test]
+    fn rejects_encoded_traversal_backslashes_and_other_characters_outside_the_allowlist() {
+        for path in [
+            "/movie/%2e%2e/secret",
+            "/movie/%2E%2E/secret",
+            "/movie/%2e%2e%2fsecret",
+            "/movie/..%2fsecret",
+            "/movie/.%2e/secret",
+            "/movie\\..\\secret",
+            "/movie/..\\secret",
+            "\\movie/550",
+            "/movie/550%00",
+            "/movie/550 ",
+            "/movie/55\n0",
+            "/movie//550",
+            "//evil.example/movie",
+            "/",
+            "/movie/550.json",
+            "/movie:550",
+            "/movie/55@0",
+            "/film/é",
+        ] {
+            assert!(!is_valid_tmdb_path(path), "{path:?} must be refused");
+        }
     }
 
     fn test_client() -> reqwest::Client {

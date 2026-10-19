@@ -61,23 +61,3 @@ pub struct SyncStatus {
     pub conflict_count: i64,
     pub last_synced_at: Option<String>,
 }
-
-pub const SYNC_ENTITY_TYPES: &[&str] = &[
-    "library_item",
-    "seen_movie",
-    "episode_progress",
-    "tracked_series",
-    "viewing_event",
-    "custom_list",
-    "custom_list_item",
-    "smart_list",
-    "saved_filter",
-    "availability_alert",
-    "dismissed_recommendation",
-    "activity_log",
-    "account_preferences",
-];
-
-pub fn validate_entity_type(value: &str) -> bool {
-    SYNC_ENTITY_TYPES.contains(&value)
-}

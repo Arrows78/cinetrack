@@ -149,8 +149,8 @@ export const progressRepository = {
   // actually changed — see refresh_tracked_series_status_impl. Unlike a
   // toggle's own total_episodes upsert, this one is a plain correction
   // (can move the stored total down, not just up): the caller is expected
-  // to have a fresh, complete aired-episode count in hand, not a partial
-  // toggle-time snapshot.
+  // to have TMDB's current announced total, not the aired-only count used
+  // for displaying progress. An unknown total is left unchanged.
   async refreshTrackedSeriesStatus(
     seriesId: number,
     status: string | null,

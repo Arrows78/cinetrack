@@ -9,6 +9,7 @@ import {
   filterAvailableItemsByKeySet,
   filterDismissedByKeySet,
 } from "@/shared/utils/library-set";
+import { fetchMediaDetailsCached, mapDetailsWithConcurrency } from "@/features/media/fetch-cached-details";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { useDismissedRecommendationKeys } from "@/features/recommendations/use-recommendations";
@@ -92,16 +93,12 @@ function useWatchedCredits(candidates: LibraryItem[]) {
   return useQuery({
     queryKey: queryKeys.local.peopleYouWatchCredits(profileId, signature),
     queryFn: async (): Promise<MediaSummary[]> => {
-      const results = await Promise.all(
-        candidates.map((item) =>
-          (item.mediaType === "movie"
-            ? mediaRepository.getMovieDetails(item.mediaId)
-            : mediaRepository.getSeriesDetails(item.mediaId)
-          ).catch((error: unknown) => {
-            logger.warn(`Failed to fetch ${item.mediaType} credits for people-you-watch (${item.mediaId}): ${error}`);
-            return null;
-          })
-        )
+      const results = await mapDetailsWithConcurrency(
+        candidates,
+        (item) => fetchMediaDetailsCached(item.mediaType, item.mediaId, { retry: false }),
+        (item, error) => {
+          logger.warn(`Failed to fetch ${item.mediaType} credits for people-you-watch (${item.mediaId}): ${error}`);
+        }
       );
       return results.filter((item): item is Movie | Series => Boolean(item));
     },

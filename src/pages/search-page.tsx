@@ -348,7 +348,11 @@ export function SearchPage() {
         <SectionHeader
           title={t("search.globalSearch")}
           subtitle={
-            hasFilters && !isPersonScope ? t("search.showingResults", { filters: filterTitle }) : t("search.subtitle")
+            hasFilters && !isPersonScope
+              ? hasQuery
+                ? t("search.showingFilteredResults", { query: debouncedQuery, filters: filterTitle })
+                : t("search.showingResults", { filters: filterTitle })
+              : t("search.subtitle")
           }
           icon={Search}
           isPageTitle
@@ -515,8 +519,8 @@ export function SearchPage() {
           {!searchQuery.isPending && !searchQuery.isError && !searchQuery.items.length ? (
             <EmptyState
               icon={SearchX}
-              title={t("pages.noResults")}
-              description={t("search.noResultsDesc")}
+              title={searchQuery.hasNextPage ? t("search.noMatchesLoaded") : t("pages.noResults")}
+              description={searchQuery.hasNextPage ? t("search.moreResultsToCheck") : t("search.noResultsDesc")}
               action={
                 debouncedQuery.trim() ? (
                   <Button type="button" variant="outline" onClick={switchToPersonScope}>

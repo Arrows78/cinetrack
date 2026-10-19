@@ -22,7 +22,6 @@ describe("queryKeys.local — profile isolation", () => {
     expect(queryKeys.local.libraryItem(a, "movie", 1)).not.toEqual(queryKeys.local.libraryItem(b, "movie", 1));
     expect(queryKeys.local.customLists(a)).not.toEqual(queryKeys.local.customLists(b));
     expect(queryKeys.local.customList(a, "list-1")).not.toEqual(queryKeys.local.customList(b, "list-1"));
-    expect(queryKeys.local.calendar(a)).not.toEqual(queryKeys.local.calendar(b));
     expect(queryKeys.local.availabilityAlerts(a)).not.toEqual(queryKeys.local.availabilityAlerts(b));
     expect(queryKeys.local.tracking(a)).not.toEqual(queryKeys.local.tracking(b));
     expect(queryKeys.local.watchTonight(a)).not.toEqual(queryKeys.local.watchTonight(b));

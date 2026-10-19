@@ -159,7 +159,11 @@ describe("OnThisDayInviteBanner", () => {
   });
 
   it("renders nothing when the preference is already on", () => {
-    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: true }, updatePreference: updatePreferenceMock });
+    usePreferencesMock.mockReturnValue({
+      data: { onThisDayEnabled: true },
+      updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
+    });
     useOnThisDayMock.mockReturnValue({ data: [event()] });
 
     const { container } = render(<OnThisDayInviteBanner />);
@@ -169,7 +173,11 @@ describe("OnThisDayInviteBanner", () => {
   });
 
   it("renders nothing while preferences are still loading", () => {
-    usePreferencesMock.mockReturnValue({ data: undefined, updatePreference: updatePreferenceMock });
+    usePreferencesMock.mockReturnValue({
+      data: undefined,
+      updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
+    });
     useOnThisDayMock.mockReturnValue({ data: undefined });
 
     const { container } = render(<OnThisDayInviteBanner />);
@@ -178,7 +186,11 @@ describe("OnThisDayInviteBanner", () => {
   });
 
   it("renders nothing when there is no match for today", () => {
-    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    usePreferencesMock.mockReturnValue({
+      data: { onThisDayEnabled: false },
+      updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
+    });
     useOnThisDayMock.mockReturnValue({ data: [] });
 
     const { container } = render(<OnThisDayInviteBanner />);
@@ -187,7 +199,11 @@ describe("OnThisDayInviteBanner", () => {
   });
 
   it("shows the invite with an Enable CTA when there is a match and the preference is off", () => {
-    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    usePreferencesMock.mockReturnValue({
+      data: { onThisDayEnabled: false },
+      updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
+    });
     useOnThisDayMock.mockReturnValue({ data: [event()] });
 
     render(<OnThisDayInviteBanner />);
@@ -196,7 +212,11 @@ describe("OnThisDayInviteBanner", () => {
   });
 
   it("enables the preference when the CTA is clicked", () => {
-    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    usePreferencesMock.mockReturnValue({
+      data: { onThisDayEnabled: false },
+      updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
+    });
     useOnThisDayMock.mockReturnValue({ data: [event()] });
 
     render(<OnThisDayInviteBanner />);
@@ -206,7 +226,11 @@ describe("OnThisDayInviteBanner", () => {
   });
 
   it("dismisses the banner for the day without touching the preference", () => {
-    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    usePreferencesMock.mockReturnValue({
+      data: { onThisDayEnabled: false },
+      updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
+    });
     useOnThisDayMock.mockReturnValue({ data: [event()] });
 
     render(<OnThisDayInviteBanner />);
@@ -218,7 +242,11 @@ describe("OnThisDayInviteBanner", () => {
 
   it("stays dismissed for the remainder of the day on a fresh render", () => {
     localStorage.setItem(ON_THIS_DAY_INVITE_DISMISSED_KEY, localDayKey());
-    usePreferencesMock.mockReturnValue({ data: { onThisDayEnabled: false }, updatePreference: updatePreferenceMock });
+    usePreferencesMock.mockReturnValue({
+      data: { onThisDayEnabled: false },
+      updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
+    });
     useOnThisDayMock.mockReturnValue({ data: [event()] });
 
     const { container } = render(<OnThisDayInviteBanner />);

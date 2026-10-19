@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   registerMock,
@@ -61,6 +61,23 @@ vi.mock("@/shared/lib/platform", () => ({
 
 import { desktopService } from "../desktop-service";
 
+// initialize() leaves its shortcut registered in module state until its
+// cleanup runs: every test hands its cleanup back through here so the next one
+// starts from "nothing registered".
+const pendingCleanups: Array<() => void> = [];
+async function initialize() {
+  const cleanup = await desktopService.initialize();
+  pendingCleanups.push(cleanup);
+  return cleanup;
+}
+async function flushQueue() {
+  for (let tick = 0; tick < 10; tick += 1) await Promise.resolve();
+}
+afterEach(async () => {
+  pendingCleanups.splice(0).forEach((cleanup) => cleanup());
+  await flushQueue();
+});
+
 type EventCallback = (event: { payload: string }) => void;
 
 describe("desktopService.initialize", () => {
@@ -103,7 +120,7 @@ describe("desktopService.initialize", () => {
   it("returns a no-op cleanup outside Tauri and skips all wiring", async () => {
     isTauriAppMock.mockReturnValue(false);
 
-    const cleanup = await desktopService.initialize();
+    const cleanup = await initialize();
     expect(cleanup()).toBeUndefined();
 
     expect(registerMock).not.toHaveBeenCalled();
@@ -112,7 +129,7 @@ describe("desktopService.initialize", () => {
   });
 
   it("wires up all four integrations and the returned cleanup tears each of them down", async () => {
-    const cleanup = await desktopService.initialize();
+    const cleanup = await initialize();
 
     expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+K", expect.any(Function));
     expect(onOpenUrlMock).toHaveBeenCalledWith(expect.any(Function));
@@ -121,6 +138,7 @@ describe("desktopService.initialize", () => {
     expect(loggerWarnMock).not.toHaveBeenCalled();
 
     cleanup();
+    await flushQueue();
 
     expect(unregisterMock).toHaveBeenCalledWith("CommandOrControl+Shift+K");
     expect(deepLinkUnlisten).toHaveBeenCalledTimes(1);
@@ -128,10 +146,63 @@ describe("desktopService.initialize", () => {
     expect(deepLinkEventUnlisten).toHaveBeenCalledTimes(1);
   });
 
+  // React StrictMode: mount, unmount and re-mount in one tick, so the first
+  // initialize()'s cleanup and the second one's register overlap.
+  describe("under StrictMode's mount/unmount/mount", () => {
+    it("ends with the shortcut held, never released by the first mount's cleanup, however the calls interleave", async () => {
+      const order: string[] = [];
+      registerMock.mockImplementation(async () => {
+        order.push("register");
+      });
+      unregisterMock.mockImplementation(async () => {
+        order.push("unregister");
+      });
+
+      const first = initialize();
+      const second = initialize();
+      const cleanupFirst = await first;
+      cleanupFirst();
+      await second;
+      await flushQueue();
+
+      // Whatever the order, the last event is a registration: the binding is held.
+      expect(order[order.length - 1]).toBe("register");
+      expect(order.filter((event) => event === "register").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("lets the second call take over a binding the first still holds when the plugin refuses the duplicate", async () => {
+      registerMock.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("already registered"));
+
+      const cleanupFirst = await initialize();
+      const cleanupSecond = await initialize();
+      expect(loggerWarnMock).not.toHaveBeenCalledWith(expect.stringContaining("Global shortcut unavailable"));
+
+      // The stale first cleanup must not release what the second one owns.
+      cleanupFirst();
+      await flushQueue();
+      expect(unregisterMock).not.toHaveBeenCalled();
+
+      cleanupSecond();
+      await flushQueue();
+      expect(unregisterMock).toHaveBeenCalledTimes(1);
+      expect(unregisterMock).toHaveBeenCalledWith("CommandOrControl+Shift+K");
+    });
+
+    it("logs and carries on when releasing the shortcut fails", async () => {
+      unregisterMock.mockRejectedValueOnce(new Error("os refused"));
+      const cleanup = await initialize();
+
+      cleanup();
+      await flushQueue();
+
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("Global shortcut could not be released"));
+    });
+  });
+
   it("invokes the registered global shortcut handler by dispatching a command-palette event", async () => {
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");
 
-    await desktopService.initialize();
+    await initialize();
     const shortcutHandler = registerMock.mock.calls[0]![1] as (event: { state: string }) => void;
     shortcutHandler({ state: "Pressed" });
 
@@ -145,7 +216,7 @@ describe("desktopService.initialize", () => {
   it("opens the palette once per key press, not again on the release", async () => {
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");
 
-    await desktopService.initialize();
+    await initialize();
     const shortcutHandler = registerMock.mock.calls[0]![1] as (event: { state: string }) => void;
     shortcutHandler({ state: "Pressed" });
     shortcutHandler({ state: "Released" });
@@ -159,7 +230,7 @@ describe("desktopService.initialize", () => {
     const error = new Error("shortcut boom");
     registerMock.mockRejectedValueOnce(error);
 
-    const cleanup = await desktopService.initialize();
+    const cleanup = await initialize();
     cleanup();
 
     expect(loggerWarnMock).toHaveBeenCalledWith(
@@ -172,7 +243,7 @@ describe("desktopService.initialize", () => {
     const error = new Error("deep link boom");
     onOpenUrlMock.mockRejectedValueOnce(error);
 
-    const cleanup = await desktopService.initialize();
+    const cleanup = await initialize();
     cleanup();
 
     expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining(`Deep links unavailable: ${error.message}`));
@@ -186,7 +257,7 @@ describe("desktopService.initialize", () => {
       throw new Error(`unexpected first call: ${eventName}`);
     });
 
-    const cleanup = await desktopService.initialize();
+    const cleanup = await initialize();
     cleanup();
 
     expect(loggerWarnMock).toHaveBeenCalledWith(
@@ -206,7 +277,7 @@ describe("desktopService.initialize", () => {
         throw error;
       });
 
-    const cleanup = await desktopService.initialize();
+    const cleanup = await initialize();
     cleanup();
 
     expect(loggerWarnMock).toHaveBeenCalledWith(
@@ -216,7 +287,7 @@ describe("desktopService.initialize", () => {
   });
 
   it("dispatches through the tray navigation listener with the exact payload", async () => {
-    await desktopService.initialize();
+    await initialize();
 
     navigateCallback({ payload: "/some/path" });
 
@@ -224,7 +295,7 @@ describe("desktopService.initialize", () => {
   });
 
   it("routes the first resolving URL from a deep-link open-url batch and ignores non-resolving ones", async () => {
-    await desktopService.initialize();
+    await initialize();
 
     openUrlCallback([
       "cinetrack://bogus/nothing",
@@ -238,7 +309,7 @@ describe("desktopService.initialize", () => {
   });
 
   it("does not navigate when none of the open-url batch resolves to a route", async () => {
-    await desktopService.initialize();
+    await initialize();
 
     openUrlCallback(["cinetrack://bogus/nothing", "cinetrack://movie/abc"]);
 
@@ -246,7 +317,7 @@ describe("desktopService.initialize", () => {
   });
 
   it("covers all routeFromUrl branches via the single-instance deep-link listener", async () => {
-    await desktopService.initialize();
+    await initialize();
 
     deepLinkCallback({ payload: "cinetrack://movie/123" });
     expect(navigateMock).toHaveBeenLastCalledWith({ to: "/movies/123" });
@@ -278,7 +349,7 @@ describe("desktopService.initialize", () => {
   it("registers whatever global shortcut is stored in preferences, converted to tauri-plugin-global-shortcut's format", async () => {
     getPreferencesMock.mockResolvedValue({ globalCommandPaletteShortcut: "mod+shift+j" });
 
-    await desktopService.initialize();
+    await initialize();
 
     expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+J", expect.any(Function));
   });
@@ -286,7 +357,7 @@ describe("desktopService.initialize", () => {
   it("falls back to the default global shortcut when preferences don't have one set", async () => {
     getPreferencesMock.mockResolvedValue({});
 
-    await desktopService.initialize();
+    await initialize();
 
     expect(registerMock).toHaveBeenCalledWith("CommandOrControl+Shift+K", expect.any(Function));
   });
@@ -295,7 +366,7 @@ describe("desktopService.initialize", () => {
     const error = new Error("preferences boom");
     getPreferencesMock.mockRejectedValueOnce(error);
 
-    const cleanup = await desktopService.initialize();
+    const cleanup = await initialize();
     cleanup();
 
     expect(loggerWarnMock).toHaveBeenCalledWith(
@@ -306,7 +377,7 @@ describe("desktopService.initialize", () => {
 
   describe("updateGlobalShortcut", () => {
     it("unregisters the previously-registered shortcut and registers the new one", async () => {
-      await desktopService.initialize();
+      await initialize();
       registerMock.mockClear();
 
       await desktopService.updateGlobalShortcut("mod+shift+j");
@@ -316,7 +387,7 @@ describe("desktopService.initialize", () => {
     });
 
     it("is a no-op when the new shortcut is the same as the currently registered one", async () => {
-      await desktopService.initialize();
+      await initialize();
       registerMock.mockClear();
       unregisterMock.mockClear();
 
@@ -345,7 +416,7 @@ describe("desktopService.initialize", () => {
     });
 
     it("rejects, and leaves the previous shortcut registered, when the new one can't be registered", async () => {
-      await desktopService.initialize();
+      await initialize();
       unregisterMock.mockClear();
       const error = new Error("already taken by another app");
       registerMock.mockRejectedValueOnce(error);
@@ -361,7 +432,7 @@ describe("desktopService.initialize", () => {
     });
 
     it("warns but still succeeds when the previous shortcut can't be released afterwards", async () => {
-      await desktopService.initialize();
+      await initialize();
       const error = new Error("release refused");
       unregisterMock.mockRejectedValueOnce(error);
 
@@ -373,7 +444,7 @@ describe("desktopService.initialize", () => {
     });
 
     it("registers the new shortcut before releasing the old one", async () => {
-      await desktopService.initialize();
+      await initialize();
       const order: string[] = [];
       registerMock.mockImplementationOnce(async () => void order.push("register"));
       unregisterMock.mockImplementationOnce(async () => void order.push("unregister"));

@@ -44,6 +44,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
     data: { theme: preferencesTheme },
     updatePreference: updatePreferenceMock,
+    setPreference: updatePreferenceMock,
   }),
 }));
 

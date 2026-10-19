@@ -7,7 +7,7 @@ mod updater;
 pub use crate::availability::{
     get_availability_alert, get_availability_snapshot, list_availability_alerts,
     list_availability_snapshots, remove_availability_alert, save_availability_snapshot,
-    toggle_availability_alert,
+    set_availability_alert,
 };
 pub use crate::backup::{
     check_data_integrity, export_backup_data, import_backup_data, list_backup_directory,
@@ -15,7 +15,8 @@ pub use crate::backup::{
 };
 pub use crate::history::list_history;
 pub use crate::integrations::{
-    import_movie_seen, import_series_progress, tmdb_request, undo_tvtime_import_library,
+    TmdbToken, import_movie_seen, import_series_progress, set_tmdb_token, tmdb_request,
+    undo_tvtime_import_library,
 };
 pub use crate::library::{
     add_planned_library_item, get_best_recommendation_seed, get_library_item,

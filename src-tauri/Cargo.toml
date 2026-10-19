@@ -39,11 +39,11 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 sqlx = { version = "0.9", default-features = false, features = ["sqlite", "runtime-tokio", "macros", "json"] }
 uuid = { version = "1", features = ["v4", "v7"] }
-# Hashes a profile's PIN lock (see profiles/repository.rs) — this is a
-# "keep my kid out of my profile" control, not a network-facing auth
-# boundary, so a lightweight, pure-Rust, no-build-script hash is
-# proportionate; argon2/bcrypt would be needless weight for this threat
-# model.
+# Hashes a profile's PIN lock (see profiles/pin.rs). New PINs use Argon2id
+# (this crate is already in the dependency tree through tauri-plugin-stronghold,
+# so no new code is vendored); sha2 only remains to verify the salted SHA-256
+# digests written before that, which are re-hashed on their next correct entry.
+rust-argon2 = "2"
 sha2 = "0.11"
 # Generates the TS mirror of an IPC DTO straight from its Rust struct/enum
 # (see docs/architecture.md's IPC boundary section) instead of hand-writing

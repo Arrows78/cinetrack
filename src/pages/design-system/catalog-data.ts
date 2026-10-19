@@ -1258,6 +1258,30 @@ export const componentInventory = [
     "Shows app/build version (copyable) and image-cache size with a confirmed clear action."
   ),
   component(
+    "AppearanceCard",
+    "components/settings/appearance-card.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Accent color, language, region, default search scope and interface toggles."
+  ),
+  component(
+    "NotificationsCard",
+    "components/settings/notifications-card.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Notification toggles with the OS permission request and the release reminder timing."
+  ),
+  component(
+    "ProfilesCard",
+    "components/settings/profiles-card.tsx",
+    "Settings",
+    "feature",
+    "reference",
+    "Lists, creates, edits and removes profiles, with PIN protection, signed-in or offline."
+  ),
+  component(
     "BackupTools",
     "components/settings/backup-tools.tsx",
     "Settings",

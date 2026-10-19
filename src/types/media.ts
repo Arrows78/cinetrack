@@ -57,6 +57,8 @@ export interface MediaSummary {
   genres: string[];
   genreIds?: number[];
   country?: string[];
+  /** ISO country codes for filtering; `country` retains the display names supplied by the catalogue. */
+  countryCodes?: string[];
   language?: string;
   status?: string;
   runtime?: number | null;
@@ -106,6 +108,7 @@ export interface CollectionSummary {
 
 export interface Movie extends MediaSummary {
   mediaType: "movie";
+  productionCompanyIds?: number[];
   duration?: number | null;
   /** The franchise/collection this movie belongs to on TMDB, or null/undefined if it isn't part of one. */
   collection?: CollectionSummary | null;
@@ -281,6 +284,12 @@ export interface LibraryFilterState {
   search: string;
   /** Canonical genre label, or "all" — optional so a filter saved before this field existed still applies cleanly. */
   genreFilter?: string;
+  /**
+   * Id of the smart list the view was narrowed to — absent for "no smart list"
+   * (and in every filter saved before this field existed), so applying a saved
+   * filter always replaces whatever smart list was selected.
+   */
+  smartListFilter?: string;
 }
 
 // SearchPage's own filter-control state (src/pages/search-page.tsx) — a
@@ -467,4 +476,15 @@ export interface HomeFeed {
   topRatedMovies: Movie[];
   nowPlayingMovies: Movie[];
   upcomingMovies: Movie[];
+  /** Rails whose request failed and came back empty; the rest of the feed is still usable. */
+  failedSections?: HomeFeedSection[];
 }
+
+export type HomeFeedSection =
+  | "trendingSeries"
+  | "topRatedSeries"
+  | "onTheAirSeries"
+  | "trendingMovies"
+  | "topRatedMovies"
+  | "nowPlayingMovies"
+  | "upcomingMovies";

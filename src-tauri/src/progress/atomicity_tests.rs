@@ -8,23 +8,12 @@
 //! table, one table at a time, so every write position of the sequence is hit.
 
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
 
 use super::models::{EpisodeHistoryInput, EpisodeInput, MovieInput, SeriesInput};
 use super::repository::{apply_episodes_and_log_impl, toggle_movie_seen_with_note_impl};
 use crate::history::HistoryAction;
 
-async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
-}
+use crate::test_support::migrated_pool;
 
 const TABLES: [&str; 6] = [
     "seen_movies",

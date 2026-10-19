@@ -47,6 +47,30 @@ describe("SavedFiltersBar", () => {
     expect(useSavedFiltersMock).toHaveBeenCalledWith("library");
   });
 
+  it("lists only the saved filters the surface can make sense of when told which ones to show", () => {
+    useSavedFiltersMock.mockReturnValue({
+      data: [
+        savedFilterA,
+        { ...savedFilterA, id: "saved-b", name: "Hidden view", filters: { statusFilter: "dropped" } },
+      ],
+      create: createMock,
+      rename: renameMock,
+      remove: removeMock,
+      isSaving: false,
+    });
+    render(
+      <SavedFiltersBar
+        page="library"
+        currentFilters={{ statusFilter: "paused" }}
+        onApply={vi.fn()}
+        isVisible={(filters) => filters.statusFilter === "paused"}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Paused shows" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Hidden view" })).not.toBeInTheDocument();
+  });
+
   it("lists saved filters and applies one when its name is clicked", () => {
     const onApply = vi.fn();
     render(<SavedFiltersBar page="library" currentFilters={{ statusFilter: "paused" }} onApply={onApply} />);
@@ -78,6 +102,33 @@ describe("SavedFiltersBar", () => {
     render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
     expect(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") })).toBeDisabled();
+  });
+
+  it("ignores a second save (Enter or click) while one is still in flight", () => {
+    useSavedFiltersMock.mockReturnValue({ ...useSavedFiltersMock(), isSaving: true });
+    render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") }));
+    const input = screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.nameLabel") });
+    fireEvent.change(input, { target: { value: "My view" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(createMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: i18n.t("filters.savedFilters.save") })).toBeDisabled();
+  });
+
+  it("ignores a second rename while one is still in flight", () => {
+    useSavedFiltersMock.mockReturnValue({ ...useSavedFiltersMock(), isSaving: true });
+    render(<SavedFiltersBar page="library" currentFilters={{}} onApply={vi.fn()} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("filters.savedFilters.rename", { name: "Paused shows" }) })
+    );
+    const input = screen.getByRole("textbox", { name: i18n.t("filters.savedFilters.renameLabel") });
+    fireEvent.change(input, { target: { value: "Renamed" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(renameMock).not.toHaveBeenCalled();
   });
 
   it("shows a translated error and keeps the typed name when saving rejects", async () => {

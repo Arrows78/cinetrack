@@ -70,7 +70,6 @@ export const queryKeys = {
     customListsItems: (profileId: string) => ["local", "customLists", profileId, "items"] as const,
     smartLists: (profileId: string) => ["local", "smartLists", profileId] as const,
     savedFilters: (profileId: string, page: string) => ["local", "savedFilters", profileId, page] as const,
-    calendar: (profileId: string) => ["local", "calendar", profileId] as const,
     availabilityAlerts: (profileId: string) => ["local", "availabilityAlerts", profileId] as const,
     availabilitySnapshots: ["local", "availabilitySnapshots"] as const,
     dismissedRecommendations: (profileId: string) => ["local", "dismissedRecommendations", profileId] as const,

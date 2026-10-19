@@ -33,9 +33,32 @@ pub fn require_instant(value: &str) -> Result<DateTime<Utc>, ApiError> {
         .ok_or_else(|| ApiError::bad_request(format!("Not a valid date and time: '{value}'")))
 }
 
+/// Validates an instant and returns it in the one form the database stores:
+/// RFC 3339, UTC, millisecond precision (`2026-03-01T10:00:00.000Z`). SQL
+/// compares and sorts these as strings, which is only right when every
+/// stored instant has the same shape. An already-canonical value comes back
+/// byte-identical.
+pub fn canonical_instant(value: &str) -> Result<String, ApiError> {
+    Ok(require_instant(value)?.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn canonical_form_is_utc_with_millis_and_stable_for_canonical_input() {
+        for (input, expected) in [
+            ("2026-03-01T10:00:00.000Z", "2026-03-01T10:00:00.000Z"),
+            ("2026-03-01T11:00:00+01:00", "2026-03-01T10:00:00.000Z"),
+            ("2026-03-01T10:00:00", "2026-03-01T10:00:00.000Z"),
+            ("2026-03-01 10:00:00.5", "2026-03-01T10:00:00.500Z"),
+            ("2026-03-01", "2026-03-01T00:00:00.000Z"),
+        ] {
+            assert_eq!(canonical_instant(input).unwrap(), expected, "{input}");
+        }
+        assert_eq!(canonical_instant("nope").unwrap_err().status, Some(400));
+    }
 
     #[test]
     fn reads_what_the_app_writes_and_the_zone_less_forms_imports_carry() {

@@ -10,7 +10,6 @@
 
 use serde_json::json;
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
 use tauri::{Manager, State};
 
 use crate::library::{list_library, remove_library_item};
@@ -21,15 +20,7 @@ const SINCE: &str = "2000-01-01T00:00:00.000Z";
 const NOW: &str = "2026-06-01T00:00:00.000Z";
 
 async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(2)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
+    crate::test_support::migrated_pool_with_connections(2).await
 }
 
 /// Small deterministic generator (same constants as the progress sequence
@@ -330,7 +321,19 @@ async fn assert_views_agree_with(
             "{context}: tracked series {} watched count",
             item.series_id
         );
-        backlog += (item.total_episodes - regular_seen).max(0);
+        // Only a series the viewer is watching has a backlog to catch up on.
+        let watching = scalar(
+            pool_ref,
+            &format!(
+                "SELECT COUNT(*) FROM library_items
+                 WHERE media_id = {} AND media_type = 'series' AND status = 'watching'",
+                item.series_id
+            ),
+        )
+        .await;
+        if watching > 0 {
+            backlog += (item.total_episodes - regular_seen).max(0);
+        }
     }
     let forecast = crate::stats::get_watch_forecast(
         SINCE.to_string(),

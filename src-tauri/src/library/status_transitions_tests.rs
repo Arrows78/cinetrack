@@ -3,7 +3,6 @@
 //! `completed_at`.
 
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
 
 use super::domain::LibraryStatus;
 use super::models::{LibraryPatch, MediaSummaryInput};
@@ -21,15 +20,7 @@ const ALL: [LibraryStatus; 5] = [
 ];
 
 pub(super) async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(4)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
+    crate::test_support::migrated_pool_with_connections(4).await
 }
 
 pub(super) fn show_media(id: i64) -> MediaSummaryInput {

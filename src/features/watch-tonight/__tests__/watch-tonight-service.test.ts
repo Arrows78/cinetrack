@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Movie, Series } from "@/types/media";
+import { mapMovieDto } from "@/features/media/api/mapper";
 
 const mocks = vi.hoisted(() => ({
   plannedCandidates: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: mocks.loggerWarn },
 }));
 
+import { queryClient } from "@/app/query-client";
 import { watchTonightService } from "../watch-tonight-service";
 
 const movie = (id: number, overrides: Partial<Movie> = {}): Movie => ({
@@ -107,7 +109,28 @@ function seedLibrary(items: LibraryFixtureItem[]) {
 }
 
 describe("watchTonightService", () => {
+  it("matches a planned movie's country using the actual TMDB mapping", async () => {
+    seedLibrary([{ mediaId: 40, mediaType: "movie", status: "planned" }]);
+    mocks.getMovieDetails.mockResolvedValueOnce(
+      mapMovieDto({
+        id: 40,
+        title: "Film français",
+        original_title: "Film français",
+        overview: "",
+        poster_path: null,
+        backdrop_path: null,
+        release_date: "2024-01-01",
+        vote_average: 8,
+        production_countries: [{ iso_3166_1: "FR", name: "France" }],
+      })
+    );
+    const result = await watchTonightService.pick({ originCountry: "FR" });
+    expect(result.movies.map((item) => item.id)).toEqual([40]);
+    expect(mocks.discoverMovies).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
+    queryClient.clear();
     vi.clearAllMocks();
     seedLibrary([]);
     mocks.listDismissed.mockResolvedValue([]);

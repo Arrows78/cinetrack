@@ -29,8 +29,8 @@ const alert: AvailabilityAlert = {
 
 const listAlertsMock = vi.fn(async (): Promise<AvailabilityAlert[]> => [alert]);
 const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<AvailabilityAlert | null>>(async () => null);
-const toggleMock = vi.fn<
-  (media: MediaSummary, region: string, providerIds: number[]) => Promise<AvailabilityAlert | null>
+const setAlertMock = vi.fn<
+  (media: MediaSummary, region: string, providerIds: number[], enabled: boolean) => Promise<AvailabilityAlert | null>
 >(async () => alert);
 const removeMock = vi.fn<(id: string) => Promise<undefined>>(async () => undefined);
 const snapshot: AvailabilitySnapshot = {
@@ -51,16 +51,21 @@ vi.mock("@/features/availability/availability-repository", () => ({
   availabilityRepository: {
     listAlerts: () => listAlertsMock(),
     getAlert: (mediaId: number, mediaType: string) => getAlertMock(mediaId, mediaType),
-    toggle: (mediaArg: MediaSummary, region: string, providerIds: number[]) =>
-      toggleMock(mediaArg, region, providerIds),
+    setAlert: (mediaArg: MediaSummary, region: string, providerIds: number[], enabled: boolean) =>
+      setAlertMock(mediaArg, region, providerIds, enabled),
     remove: (id: string) => removeMock(id),
+    removeMany: (ids: string[]) => Promise.all(ids.map((id) => removeMock(id))),
     listSnapshots: () => listSnapshotsMock(),
   },
 }));
 
+const forgetBaselineMock = vi.fn<(id: string) => void>();
 const seedBaselineMock = vi.fn<(alert: unknown) => Promise<boolean>>(async () => true);
 vi.mock("@/features/availability/availability-monitor", () => ({
-  availabilityMonitor: { seedBaseline: (alertArg: unknown) => seedBaselineMock(alertArg) },
+  availabilityMonitor: {
+    seedBaseline: (alertArg: unknown) => seedBaselineMock(alertArg),
+    forgetBaseline: (id: string) => forgetBaselineMock(id),
+  },
 }));
 
 vi.mock("@/features/preferences/preferences-repository", () => ({
@@ -80,10 +85,11 @@ function createWrapper() {
 beforeEach(() => {
   listAlertsMock.mockClear().mockResolvedValue([alert]);
   getAlertMock.mockClear().mockResolvedValue(null);
-  toggleMock.mockClear().mockResolvedValue(alert);
+  setAlertMock.mockClear().mockResolvedValue(alert);
   removeMock.mockClear().mockResolvedValue(undefined);
   listSnapshotsMock.mockClear().mockResolvedValue([snapshot]);
   getPreferencesMock.mockClear();
+  forgetBaselineMock.mockClear();
 });
 
 describe("useAvailabilityAlerts", () => {
@@ -113,6 +119,60 @@ describe("useAvailabilityAlerts", () => {
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(queryKeys.local.availabilityAlerts(DEFAULT_PROFILE_ID));
     expect(invalidatedKeys).toContainEqual(queryKeys.local.tracking(DEFAULT_PROFILE_ID));
+  });
+});
+
+describe("baseline cleanup", () => {
+  it("forgets the baseline of a removed alert", async () => {
+    const { useAvailabilityAlerts } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAvailabilityAlerts(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.remove(alert.id);
+    });
+
+    expect(forgetBaselineMock).toHaveBeenCalledWith(alert.id);
+  });
+
+  it("forgets the baseline of every alert removed in bulk, only once they are removed", async () => {
+    const { useAvailabilityAlerts } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAvailabilityAlerts(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    removeMock.mockRejectedValueOnce(new Error("boom"));
+    await act(async () => {
+      await result.current.removeMany(["a", "b"]).catch(() => undefined);
+    });
+    expect(forgetBaselineMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.removeMany(["a", "b"]);
+    });
+    expect(forgetBaselineMock.mock.calls.map((call) => call[0])).toEqual(["a", "b"]);
+  });
+
+  it("forgets the baseline when a toggle switches the alert off, not when it creates one", async () => {
+    const { useAvailabilityAlert } = await import("../use-availability-alerts");
+    const { Wrapper } = createWrapper();
+    getAlertMock.mockResolvedValue(alert);
+    const { result } = renderHook(() => useAvailabilityAlert(media, "FR", [8]), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data).toEqual(alert));
+
+    await act(async () => {
+      await result.current.toggle();
+    });
+    expect(forgetBaselineMock).not.toHaveBeenCalled();
+    // An alert exists, so the wanted state is "off".
+    expect(setAlertMock).toHaveBeenLastCalledWith(media, "FR", [8], false);
+
+    setAlertMock.mockResolvedValue(null);
+    await act(async () => {
+      await result.current.toggle();
+    });
+    expect(forgetBaselineMock).toHaveBeenCalledWith(alert.id);
   });
 });
 
@@ -149,7 +209,8 @@ describe("useAvailabilityAlert", () => {
       await result.current.toggle();
     });
 
-    expect(toggleMock).toHaveBeenCalledWith(media, "FR", [8]);
+    // No alert yet: the wanted state is "on" — not a blind flip.
+    expect(setAlertMock).toHaveBeenCalledWith(media, "FR", [8], true);
 
     const perMediaKey = [...queryKeys.local.availabilityAlerts(DEFAULT_PROFILE_ID), media.mediaType, media.id];
     expect(setQueryDataSpy).toHaveBeenCalledWith(perMediaKey, alert);
@@ -177,7 +238,7 @@ describe("useAvailabilityAlert", () => {
     );
 
     seedBaselineMock.mockClear();
-    toggleMock.mockResolvedValue(null);
+    setAlertMock.mockResolvedValue(null);
     await act(async () => {
       await result.current.toggle();
     });
@@ -198,6 +259,17 @@ const matchingSnapshot: AvailabilitySnapshot = {
 };
 
 describe("computeAlertStatuses", () => {
+  it.each([false, true])("matches the alert's country regardless of snapshot order (reversed: %s)", async (reverse) => {
+    const { computeAlertStatuses } = await import("../use-availability-alerts");
+    const snapshots = [
+      { ...matchingSnapshot, providerIds: [] },
+      { ...matchingSnapshot, region: "US" },
+    ];
+    const groups = computeAlertStatuses([alert], reverse ? snapshots.reverse() : snapshots);
+    expect(groups.availableNow).toEqual([]);
+    expect(groups.pending.map((item) => item.alert.id)).toEqual([alert.id]);
+  });
+
   it("puts an enabled alert with a matching provider in the snapshot into availableNow", async () => {
     const { computeAlertStatuses } = await import("../use-availability-alerts");
     const groups = computeAlertStatuses([alert], [matchingSnapshot]);

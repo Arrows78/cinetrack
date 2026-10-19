@@ -113,7 +113,7 @@ function KeyboardShortcutsRow() {
 
 export function DesktopSettings() {
   const { t } = useTranslation();
-  const { data: preferences, updatePreference, isSaving } = usePreferences();
+  const { data: preferences, setPreference, isSaving } = usePreferences();
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [autoStart, setAutoStart] = useState(false);
@@ -230,7 +230,14 @@ export function DesktopSettings() {
             <div className="flex gap-2">
               <Button
                 disabled={busy || !password || !token.trim()}
-                onClick={() => void run(() => tokenVault.save(password, token))}
+                onClick={() =>
+                  void run(async () => {
+                    await tokenVault.save(password, token);
+                    // Secrets don't linger in component state once stored.
+                    setPassword("");
+                    setToken("");
+                  })
+                }
               >
                 {t("desktop.save")}
               </Button>
@@ -238,9 +245,11 @@ export function DesktopSettings() {
                 variant="outline"
                 disabled={busy || !password}
                 onClick={() =>
-                  void run(async () =>
-                    (await tokenVault.unlock(password)) ? t("desktop.unlockSuccess") : t("desktop.unlockNoToken")
-                  )
+                  void run(async () => {
+                    const unlocked = await tokenVault.unlock(password);
+                    setPassword("");
+                    return unlocked ? t("desktop.unlockSuccess") : t("desktop.unlockNoToken");
+                  })
                 }
               >
                 {t("desktop.unlock")}
@@ -324,7 +333,7 @@ export function DesktopSettings() {
                     value={preferences?.backupFrequency ?? defaultPreferences.backupFrequency}
                     disabled={isSaving}
                     onChange={(event) =>
-                      void updatePreference({
+                      setPreference({
                         key: "backupFrequency",
                         value: event.target.value as UserPreferences["backupFrequency"],
                       })

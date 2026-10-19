@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   filterAndSortLibrary,
   librarySortLabelKey,
+  listOnlyLibraryItems,
   resolveSavedLibraryFilters,
   type LibraryFilterCriteria,
 } from "../library-filtering";
@@ -559,6 +560,66 @@ describe("filterAndSortLibrary", () => {
   });
 });
 
+describe("next-episode date lookup", () => {
+  it("never reads a series' next-episode date for a movie that shares its TMDB id", () => {
+    const items = [
+      libraryItem({ id: "m", mediaId: 7, title: "Movie Seven", mediaType: "movie" }),
+      libraryItem({ id: "s", mediaId: 7, title: "Series Seven", mediaType: "series" }),
+      libraryItem({ id: "o", mediaId: 8, title: "Other Series", mediaType: "series" }),
+    ];
+    const result = titlesOf(
+      filterAndSortLibrary(items, [], NO_PROGRESS, {
+        ...BASE_CRITERIA,
+        sort: "nextEpisode",
+        nextEpisodeDateBySeriesId: new Map([
+          [7, "2026-01-10"],
+          [8, "2026-01-20"],
+        ]),
+      })
+    );
+    // The movie has no next episode: it sorts after both series.
+    expect(result).toEqual(["Series Seven", "Other Series", "Movie Seven"]);
+  });
+
+  it("applies the same rule to a list-only movie sharing a series id", () => {
+    const listOnly = [
+      listItem({ id: "l1", mediaId: 7, title: "ListOnlyMovie", mediaType: "movie" }),
+      listItem({ id: "l2", mediaId: 7, title: "ListOnlySeries", mediaType: "series" }),
+    ];
+    const result = titlesOf(
+      filterAndSortLibrary([], listOnly, NO_PROGRESS, {
+        ...BASE_CRITERIA,
+        sort: "nextEpisode",
+        nextEpisodeDateBySeriesId: new Map([[7, "2026-01-10"]]),
+      })
+    );
+    expect(result).toEqual(["ListOnlySeries", "ListOnlyMovie"]);
+  });
+});
+
+describe("listOnlyLibraryItems", () => {
+  const listed = [
+    listItem({ id: "a", mediaId: 1, title: "Alpha", mediaType: "movie" }),
+    listItem({ id: "b", mediaId: 2, title: "Beta", mediaType: "series" }),
+    listItem({ id: "c", mediaId: 3, title: "Gamma", mediaType: "movie" }),
+  ];
+
+  it("keeps only the titles without a library row, ordered like the explorer", () => {
+    const result = listOnlyLibraryItems(new Set([mediaKey("movie", 3)]), listed, { ...BASE_CRITERIA, sort: "title" });
+    expect(titlesOf(result)).toEqual(["Alpha", "Beta"]);
+  });
+
+  it("honours the type filter and the search", () => {
+    const keys = new Set<string>();
+    expect(titlesOf(listOnlyLibraryItems(keys, listed, { ...BASE_CRITERIA, typeFilter: "series" }))).toEqual(["Beta"]);
+    expect(titlesOf(listOnlyLibraryItems(keys, listed, { ...BASE_CRITERIA, search: "gam" }))).toEqual(["Gamma"]);
+  });
+
+  it("is empty under a filter a list-only title cannot satisfy", () => {
+    expect(listOnlyLibraryItems(new Set(), listed, { ...BASE_CRITERIA, statusFilter: "watching" })).toEqual([]);
+  });
+});
+
 describe("resolveSavedLibraryFilters", () => {
   const saved: LibraryFilterState = {
     typeFilter: "all",
@@ -583,6 +644,17 @@ describe("resolveSavedLibraryFilters", () => {
     expect(resolveSavedLibraryFilters(saved, undefined).listFilter).toBe("list-gone");
   });
 
+  it("restores a smart list only when the caller can show it and it still exists", () => {
+    const withSmart = { ...saved, listFilter: "all", smartListFilter: "smart-1" };
+    expect(resolveSavedLibraryFilters(withSmart, [], ["smart-1"]).smartListFilter).toBe("smart-1");
+    expect(resolveSavedLibraryFilters(withSmart, [], ["smart-2"]).smartListFilter).toBeUndefined();
+    expect(resolveSavedLibraryFilters(withSmart, []).smartListFilter).toBeUndefined();
+    expect(resolveSavedLibraryFilters({ ...withSmart, smartListFilter: "all" }, [], ["all"]).smartListFilter).toBe(
+      undefined
+    );
+    expect(resolveSavedLibraryFilters(saved, [], ["smart-1"]).smartListFilter).toBeUndefined();
+  });
+
   it("leaves every other field as saved", () => {
     expect(resolveSavedLibraryFilters(saved, [])).toEqual({ ...saved, listFilter: "all" });
   });
@@ -594,5 +666,42 @@ describe("librarySortLabelKey", () => {
     const keys = modes.map(librarySortLabelKey);
     expect(new Set(keys).size).toBe(modes.length);
     for (const key of keys) expect(i18n.exists(String(key))).toBe(true);
+  });
+});
+
+describe("filterAndSortLibrary on a large library", () => {
+  // The /movies and /series hubs read a whole media type at once (their
+  // "My list" tabs bucket by progress), and rendering is virtualised, so this
+  // pass is the client-side cost that scales with the library. The bound is
+  // deliberately loose: it catches an accidental O(n²), not a slow machine.
+  it("filters and sorts 10,000 titles well under a second", () => {
+    const items = Array.from({ length: 10_000 }, (_, index) =>
+      libraryItem({
+        id: `item-${index}`,
+        mediaId: index + 1,
+        title: `Title ${index}`,
+        genres: index % 3 === 0 ? ["Drama"] : ["Comedy"],
+        status: index % 2 === 0 ? "planned" : "completed",
+        tags: ["a", "b"],
+      })
+    );
+    const criteria: LibraryFilterCriteria = {
+      typeFilter: "all",
+      statusFilter: "all",
+      favouritesOnly: false,
+      search: "title 9",
+      sort: "recent",
+      genreFilter: "Drama",
+      listMediaKeys: null,
+      smartListMediaKeys: null,
+      nextEpisodeDateBySeriesId: new Map(),
+    };
+
+    const startedAt = performance.now();
+    const result = filterAndSortLibrary(items, [], new Map(), criteria);
+    const elapsed = performance.now() - startedAt;
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(elapsed).toBeLessThan(1000);
   });
 });

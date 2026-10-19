@@ -10,7 +10,7 @@ import { Tile } from "@/components/ui/tile";
 import { toast } from "@/components/ui/use-toast";
 import { LoadingState } from "@/components/states/loading-state";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { mediaRepository } from "@/features/media/media-repository";
+import { fetchSeriesDetailsCached } from "@/features/media";
 import { useSearch } from "@/features/media/use-search";
 import {
   invalidateTvTimeImportQueries,
@@ -78,7 +78,7 @@ function UnmatchedItemRow({
       // here.
       let undo: TvTimeImportUndo | null;
       if (item.kind === "series") {
-        const series = await mediaRepository.getSeriesDetails(match.id);
+        const series = await fetchSeriesDetailsCached(match.id, { retry: false });
         undo = (await resolveRetryableSeries(item, series)).undo;
       } else if (item.kind === "movie") {
         undo = await resolveRetryableMovie(item, match);

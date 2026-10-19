@@ -34,20 +34,9 @@ mod tests {
     use crate::history::models::HistoryAction;
     use crate::history::repository::add_history_item_impl;
     use crate::models::MediaType;
-    use sqlx::sqlite::SqlitePoolOptions;
     use tauri::Manager;
 
-    async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
-    }
+    use crate::test_support::migrated_pool;
 
     fn entry(id: &str, timestamp: &str, title: &str) -> ViewingHistoryItem {
         ViewingHistoryItem {

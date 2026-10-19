@@ -1,5 +1,6 @@
 import type {
   HomeFeed,
+  HomeFeedSection,
   MediaSummary,
   MediaType,
   Movie,
@@ -75,32 +76,38 @@ export class TmdbMediaProvider implements MediaProvider {
     // of these 7 methods independently re-reads preferences for the same
     // single page load.
     const context = await this.context();
-    const [
-      trendingSeries,
-      topRatedSeries,
-      onTheAirSeries,
-      trendingMovies,
-      topRatedMovies,
-      nowPlayingMovies,
-      upcomingMovies,
-    ] = await Promise.all([
-      this.getTrendingSeries(1, context),
-      this.getTopRatedSeries(1, context),
-      this.getOnTheAirSeries(1, context),
-      this.getTrendingMovies(1, context),
-      this.getTopRatedMovies(1, context),
-      this.getNowPlayingMovies(1, context),
-      this.getUpcomingMovies(1, context),
-    ]);
+    const requests = {
+      trendingSeries: this.getTrendingSeries(1, context),
+      topRatedSeries: this.getTopRatedSeries(1, context),
+      onTheAirSeries: this.getOnTheAirSeries(1, context),
+      trendingMovies: this.getTrendingMovies(1, context),
+      topRatedMovies: this.getTopRatedMovies(1, context),
+      nowPlayingMovies: this.getNowPlayingMovies(1, context),
+      upcomingMovies: this.getUpcomingMovies(1, context),
+    };
+    const sections = Object.keys(requests) as HomeFeedSection[];
+    // allSettled, not all: one failing rail (a rate-limited call, a bad
+    // response) used to blank the whole home page. Only when every rail
+    // fails is the feed itself an error.
+    const settled = await Promise.allSettled(sections.map((section) => requests[section]));
+    const failedSections = sections.filter((_, index) => settled[index]!.status === "rejected");
+    if (failedSections.length === sections.length) {
+      throw (settled[0] as PromiseRejectedResult).reason;
+    }
+    const results = <T>(section: HomeFeedSection): T[] => {
+      const outcome = settled[sections.indexOf(section)]!;
+      return outcome.status === "fulfilled" ? ((outcome.value as PageResult<T>).results ?? []) : [];
+    };
 
     return {
-      trendingSeries: trendingSeries.results,
-      topRatedSeries: topRatedSeries.results,
-      onTheAirSeries: onTheAirSeries.results,
-      trendingMovies: trendingMovies.results,
-      topRatedMovies: topRatedMovies.results,
-      nowPlayingMovies: nowPlayingMovies.results,
-      upcomingMovies: upcomingMovies.results,
+      trendingSeries: results<Series>("trendingSeries"),
+      topRatedSeries: results<Series>("topRatedSeries"),
+      onTheAirSeries: results<Series>("onTheAirSeries"),
+      trendingMovies: results<Movie>("trendingMovies"),
+      topRatedMovies: results<Movie>("topRatedMovies"),
+      nowPlayingMovies: results<Movie>("nowPlayingMovies"),
+      upcomingMovies: results<Movie>("upcomingMovies"),
+      ...(failedSections.length ? { failedSections } : {}),
     };
   }
 

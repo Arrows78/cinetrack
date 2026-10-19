@@ -500,6 +500,24 @@ describe("TrackingList", () => {
     expect(screen.getByText("Discovery Series")).toBeInTheDocument();
   });
 
+  it("falls back to the list view when the availability filter hides the calendar toggle", () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-09-15T12:00:00Z") });
+    mockTracking({ data: [releaseMine, availableEntry] });
+    render(<TrackingList />);
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by scope" })).getByRole("button", { name: "All" })
+    );
+    fireEvent.click(within(screen.getByRole("tablist", { name: "View" })).getByRole("tab", { name: "Calendar" }));
+    expect(screen.getByRole("button", { name: "Previous month" })).toBeInTheDocument();
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Filter by type" })).getByRole("button", { name: "Availability" })
+    );
+
+    expect(screen.queryByRole("button", { name: "Previous month" })).not.toBeInTheDocument();
+  });
+
   it("hides the list/calendar toggle when only availability entries are shown", () => {
     mockTracking({ data: [availableEntry] });
     render(<TrackingList />);

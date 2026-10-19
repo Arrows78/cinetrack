@@ -10,9 +10,10 @@
 
 use serde_json::Value;
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
 
-use super::repository::{PortableData, export_impl, import_impl};
+use super::export::export_impl;
+use super::import::import_impl;
+use super::repository::PortableData;
 
 struct Rng(u64);
 
@@ -63,17 +64,7 @@ const TITLES: &[&str] = &[
     "Plain",
 ];
 
-async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
-}
+use crate::test_support::migrated_pool;
 
 async fn exec(pool: &SqlitePool, sql: &str, binds: &[Option<&str>]) {
     let mut query = sqlx::query(sqlx::AssertSqlSafe(sql.to_string()));
@@ -859,4 +850,82 @@ async fn every_table_is_backed_up_or_explicitly_exempt() {
         uncovered.is_empty(),
         "tables neither backed up nor exempt: {uncovered:?} — add them to PortableData (export and import) and TABLES, or to EXEMPT with a reason"
     );
+}
+
+/// The user journey the manual native checklist walks through, driven through
+/// the same transactional write the app commands use: a profile watches two
+/// episodes, undoes one, then the database is exported and restored elsewhere.
+/// The restored database must show the *undone* state, not the first watch.
+#[tokio::test]
+async fn a_watched_then_undone_episode_survives_export_and_restore() {
+    use crate::progress::{EpisodeInput, SeriesInput, apply_episodes_outcome_impl};
+
+    let series = SeriesInput {
+        id: 9,
+        title: "Show".to_string(),
+        poster_path: None,
+        backdrop_path: None,
+        runtime: Some(40),
+        number_of_episodes: Some(2),
+        year: Some(2021),
+        rating: None,
+        genres: vec![],
+        status: Some("Returning Series".to_string()),
+    };
+    let episode = |number: i64| EpisodeInput {
+        id: 900 + number,
+        season_number: 1,
+        episode_number: number,
+        runtime: Some(40),
+        watched_at: None,
+    };
+    let at = "2026-01-01T00:00:00.000Z";
+
+    let source = migrated_pool().await;
+    let both = [episode(1), episode(2)];
+    let watched =
+        apply_episodes_outcome_impl(&source, "default", &series, &both, true, at, None, None)
+            .await
+            .unwrap();
+    assert_eq!(watched.changed, 2);
+    let undone = apply_episodes_outcome_impl(
+        &source,
+        "default",
+        &series,
+        &[episode(2)],
+        false,
+        at,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(undone.changed, 1);
+    // Undoing again is a no-op, never a second log entry.
+    let repeated = apply_episodes_outcome_impl(
+        &source,
+        "default",
+        &series,
+        &[episode(2)],
+        false,
+        at,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(repeated.changed, 0);
+
+    let snapshot = export_to_json_and_back(&export_impl(&source).await.unwrap()).await;
+    let restored = migrated_pool().await;
+    import_impl(&restored, snapshot).await.unwrap();
+
+    assert_same_content(&source, &restored, "watch, undo, export, restore").await;
+    let watched_ids: Vec<i64> = sqlx::query_scalar(
+        "SELECT episode_id FROM episode_progress WHERE watched = 1 ORDER BY episode_id",
+    )
+    .fetch_all(&restored)
+    .await
+    .unwrap();
+    assert_eq!(watched_ids, vec![901]);
 }

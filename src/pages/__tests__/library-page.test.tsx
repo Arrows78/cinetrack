@@ -60,7 +60,12 @@ vi.mock("@/components/media/primitives/media-list", () => ({
 const updatePreferenceMock = vi.fn();
 const preferencesDataMock = vi.fn(() => ({ libraryViewMode: "grid" as "grid" | "list" }));
 vi.mock("@/features/preferences/use-preferences", () => ({
-  usePreferences: () => ({ data: preferencesDataMock(), updatePreference: updatePreferenceMock, isSaving: false }),
+  usePreferences: () => ({
+    data: preferencesDataMock(),
+    updatePreference: updatePreferenceMock,
+    setPreference: updatePreferenceMock,
+    isSaving: false,
+  }),
   // LibraryExplorer's saved-filters bar (see saved-filters-bar.tsx) resolves
   // the active profile via this hook — fixed to "default" so it isn't
   // this suite's concern which profile is active.
@@ -72,7 +77,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
 // so this suite's own filtering/list-management assertions don't also need
 // to account for a real invoke() round-trip.
 const savedFiltersState = {
-  data: [] as Array<{ id: string; name: string }>,
+  data: [] as Array<{ id: string; name: string; filters?: Record<string, unknown> }>,
   isLoading: false,
   isError: false,
   error: null as unknown,
@@ -380,6 +385,7 @@ beforeEach(() => {
     error: null,
     refetch: vi.fn(),
   });
+  savedFiltersState.data = [];
   customListsState.data = [];
   customListsState.isLoading = false;
   customListsState.isError = false;
@@ -429,6 +435,26 @@ describe("LibraryPage — lists", () => {
     expect(await screen.findByText("Dune")).toBeInTheDocument();
     expect(screen.getByText("Severance")).toBeInTheDocument();
     expect(screen.queryByLabelText("Filter by list")).not.toBeInTheDocument();
+  });
+
+  it("also shows, in the default browse view, a title that only sits in a list — the same one the hubs show", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+
+    expect(await screen.findByText("Dune")).toBeInTheDocument();
+    expect(await screen.findByText("Only In List")).toBeInTheDocument();
+    // Dune is a library row: it stays a single card.
+    expect(screen.getAllByText("Dune")).toHaveLength(1);
+  });
+
+  it("hides a list-only title from the default view once a filter it cannot satisfy is active", async () => {
+    customListsState.data = [{ id: "list-1", name: "Weekend", description: null }];
+    renderPage();
+    await screen.findByText("Only In List");
+
+    fireEvent.click(screen.getByRole("button", { name: /favourites/i }));
+
+    await waitFor(() => expect(screen.queryByText("Only In List")).not.toBeInTheDocument());
   });
 
   it("filtering by a list shows its items, including one not yet in the library, without duplicating one that is", async () => {
@@ -606,11 +632,14 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
     screen.getByRole("button", { name: /Custom lists/i }).click();
     const listButton = await screen.findByRole("button", { name: "Weekend" });
 
+    // The title also sits in the default grid (a list-only title is browsable
+    // from "all"), so the opened list is told apart by its own row action.
+    const removeFromList = { name: "Remove Only In List from this list" };
     fireEvent.click(listButton);
-    expect(await screen.findByText("Only In List")).toBeInTheDocument();
+    expect(await screen.findByRole("button", removeFromList)).toBeInTheDocument();
 
     fireEvent.click(listButton);
-    await waitFor(() => expect(screen.queryByText("Only In List")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("button", removeFromList)).not.toBeInTheDocument());
   });
 
   it("exports the opened list's own items (not another list's) as a downloaded JSON file", async () => {
@@ -625,7 +654,7 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
 
     screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Weekend" })).click();
-    await screen.findByText("Only In List");
+    await screen.findByRole("button", { name: "Remove Only In List from this list" });
 
     fireEvent.click(screen.getByRole("button", { name: "Export this list" }));
 
@@ -649,7 +678,7 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
 
     screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Weekend" })).click();
-    await screen.findByText("Only In List");
+    await screen.findByRole("button", { name: "Remove Only In List from this list" });
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
 
@@ -668,7 +697,7 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
 
     screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Weekend" })).click();
-    await screen.findByText("Only In List");
+    await screen.findByRole("button", { name: "Remove Only In List from this list" });
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
     (await screen.findByRole("button", { name: "Remove" })).click();
@@ -682,7 +711,7 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
 
     screen.getByRole("button", { name: /Custom lists/i }).click();
     (await screen.findByRole("button", { name: "Weekend" })).click();
-    await screen.findByText("Only In List");
+    await screen.findByRole("button", { name: "Remove Only In List from this list" });
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Only In List from this list" }));
     const cancelButton = await screen.findByRole("button", { name: "Cancel" });
@@ -691,7 +720,33 @@ describe("LibraryExplorer — ListItemRow (a list opened from the Custom lists p
     await waitFor(() => expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument());
     expect(listItemRemoveMock).not.toHaveBeenCalled();
     // The row itself is still there — only the dialog closed.
-    expect(screen.getByText("Only In List")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Only In List from this list" })).toBeInTheDocument();
+  });
+});
+
+describe("LibraryExplorer — saved filters per surface", () => {
+  const savedViews = [
+    { id: "s-all", name: "Older view", filters: { statusFilter: "paused" } },
+    { id: "s-movie", name: "Movie view", filters: { typeFilter: "movie", statusFilter: "all" } },
+    { id: "s-series", name: "Series view", filters: { typeFilter: "series", statusFilter: "all" } },
+  ];
+
+  it("lists every saved view on /library, including those saved before the hubs were told apart", async () => {
+    savedFiltersState.data = savedViews;
+    renderExplorer();
+
+    expect(await screen.findByRole("button", { name: "Older view" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Movie view" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Series view" })).toBeInTheDocument();
+  });
+
+  it("lists only the views saved for its own media type on a hub", async () => {
+    savedFiltersState.data = savedViews;
+    renderExplorer({ lockedMediaType: "movie" });
+
+    expect(await screen.findByRole("button", { name: "Movie view" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Series view" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Older view" })).not.toBeInTheDocument();
   });
 });
 

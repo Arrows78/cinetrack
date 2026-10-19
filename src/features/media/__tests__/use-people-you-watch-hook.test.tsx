@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryClient as appQueryClient } from "@/app/query-client";
 import type { PropsWithChildren } from "react";
 import { makeLibraryItem, makeMedia } from "@/shared/test-utils";
 import type { LibraryItem, LibraryMediaKey } from "@/types/media";
@@ -49,6 +50,7 @@ function createWrapper() {
 const keyFor = (item: LibraryItem): LibraryMediaKey => ({ mediaId: item.mediaId, mediaType: item.mediaType });
 
 beforeEach(() => {
+  appQueryClient.clear();
   completedCandidatesMock.mockReset();
   mediaKeysMock.mockReset();
   getMovieDetailsMock.mockReset();

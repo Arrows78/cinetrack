@@ -34,6 +34,12 @@ pub struct ImportableMovie {
     pub genres: Vec<String>,
 }
 
+/// The most episodes one `import_series_progress` call accepts. The frontend
+/// sends a series' episodes in one call; the longest running shows have a
+/// couple of thousand, so this leaves room while bounding what a single IPC
+/// payload can make the database write in one transaction.
+pub(super) const MAX_EPISODES_PER_IMPORT: usize = 5_000;
+
 /// Result of `import_series_progress_impl`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +95,23 @@ pub(super) async fn import_series_progress_impl(
             created_library_item_id: None,
         });
     }
+    if episodes.len() > MAX_EPISODES_PER_IMPORT {
+        return Err(ApiError::bad_request(format!(
+            "An import can hold at most {MAX_EPISODES_PER_IMPORT} episodes per series."
+        )));
+    }
+    // Canonical first: the latest is picked by string comparison, and SQL
+    // compares every stored instant as a string. One unreadable date refuses
+    // the whole batch before anything is written.
+    let mut episodes = episodes;
+    for episode in &mut episodes {
+        if episode.episode_id <= 0 || episode.season_number < 0 || episode.episode_number < 0 {
+            return Err(ApiError::bad_request(
+                "An imported episode needs a positive id and non-negative season and episode numbers.",
+            ));
+        }
+        episode.watched_at = crate::database::canonical_instant(&episode.watched_at)?;
+    }
     let latest_watched_at = episodes
         .iter()
         .map(|episode| episode.watched_at.clone())
@@ -129,8 +152,9 @@ pub(super) async fn import_series_progress_impl(
 pub(super) async fn import_movie_seen_impl(
     pool: &SqlitePool,
     profile_id: &str,
-    movie: ImportableMovie,
+    mut movie: ImportableMovie,
 ) -> Result<MovieImportOutcome, ApiError> {
+    movie.watched_at = crate::database::canonical_instant(&movie.watched_at)?;
     // The seen check sits under the write lock of the write it guards: two
     // concurrent imports of one movie must not both pass it.
     let mut tx = pool
@@ -210,18 +234,9 @@ pub(super) async fn import_movie_seen_impl(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::sqlite::SqlitePoolOptions;
 
     async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(2)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
+        crate::test_support::migrated_pool_with_connections(2).await
     }
 
     fn series(id: i64) -> SeriesInput {
@@ -269,6 +284,141 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(watched_at.0, "2020-01-01T00:00:00.000Z");
+    }
+
+    #[tokio::test]
+    async fn stores_every_episode_date_in_the_canonical_utc_millisecond_form() {
+        let pool = migrated_pool().await;
+        let episodes = vec![
+            episode(1, 1, "2020-01-01T01:00:00+01:00"),
+            episode(2, 2, "2020-06-01"),
+            episode(3, 3, "2020-07-01 10:30:00"),
+        ];
+        import_series_progress_impl(&pool, "default", series(9), episodes)
+            .await
+            .unwrap();
+
+        let stored: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT episode_id, watched_at FROM episode_progress WHERE series_id = 9 ORDER BY episode_id",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            stored,
+            vec![
+                (1, "2020-01-01T00:00:00.000Z".to_string()),
+                (2, "2020-06-01T00:00:00.000Z".to_string()),
+                (3, "2020-07-01T10:30:00.000Z".to_string()),
+            ]
+        );
+        let events: Vec<(String,)> = sqlx::query_as(
+            "SELECT watched_at FROM viewing_events WHERE media_id = 9 ORDER BY watched_at",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        assert!(
+            events
+                .iter()
+                .all(|(at,)| at.ends_with(".000Z") && at.len() == 24)
+        );
+    }
+
+    #[tokio::test]
+    async fn one_unreadable_date_refuses_the_whole_batch_before_writing_anything() {
+        let pool = migrated_pool().await;
+        let error = import_series_progress_impl(
+            &pool,
+            "default",
+            series(9),
+            vec![
+                episode(1, 1, "2020-01-01T00:00:00.000Z"),
+                episode(2, 2, "not a date"),
+            ],
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(error.status, Some(400));
+
+        for table in ["episode_progress", "viewing_events", "library_items"] {
+            let count: i64 =
+                sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(count, 0, "{table}");
+        }
+    }
+
+    #[tokio::test]
+    async fn refuses_a_batch_larger_than_the_bound_and_accepts_one_at_the_bound() {
+        let pool = migrated_pool().await;
+        let too_many: Vec<ImportableEpisode> = (1..=(MAX_EPISODES_PER_IMPORT as i64 + 1))
+            .map(|id| episode(id, id, "2020-01-01T00:00:00.000Z"))
+            .collect();
+        let error = import_series_progress_impl(&pool, "default", series(9), too_many)
+            .await
+            .unwrap_err();
+        assert_eq!(error.status, Some(400));
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM episode_progress")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn refuses_an_episode_with_a_non_positive_id_or_a_negative_number() {
+        let pool = migrated_pool().await;
+        for bad in [episode(0, 1, "2020-01-01"), episode(-4, 1, "2020-01-01")] {
+            assert_eq!(
+                import_series_progress_impl(&pool, "default", series(9), vec![bad])
+                    .await
+                    .unwrap_err()
+                    .status,
+                Some(400)
+            );
+        }
+        let mut negative = episode(5, 1, "2020-01-01");
+        negative.season_number = -1;
+        assert!(
+            import_series_progress_impl(&pool, "default", series(9), vec![negative])
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_movie_with_an_unreadable_date_is_refused_and_a_valid_one_is_canonicalised() {
+        let pool = migrated_pool().await;
+        let movie = |watched_at: &str| ImportableMovie {
+            movie_id: 55,
+            title: "Movie".to_string(),
+            poster_path: None,
+            backdrop_path: None,
+            runtime: Some(100),
+            watched_at: watched_at.to_string(),
+            year: None,
+            rating: None,
+            genres: vec![],
+        };
+        assert_eq!(
+            import_movie_seen_impl(&pool, "default", movie("yesterday"))
+                .await
+                .unwrap_err()
+                .status,
+            Some(400)
+        );
+        import_movie_seen_impl(&pool, "default", movie("2021-03-04T05:06:07+01:00"))
+            .await
+            .unwrap();
+        let (watched_at,): (String,) =
+            sqlx::query_as("SELECT watched_at FROM seen_movies WHERE movie_id = 55")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(watched_at, "2021-03-04T04:06:07.000Z");
     }
 
     #[tokio::test]

@@ -1,5 +1,6 @@
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
+use super::domain::regular_episodes_watched;
 use super::models::{EpisodeProgress, TrackedSeriesItem};
 use crate::error::ApiError;
 
@@ -161,17 +162,21 @@ pub(super) async fn list_tracked_series_impl(
     profile_id: &str,
 ) -> Result<Vec<TrackedSeriesItem>, ApiError> {
     let rows: Vec<TrackedSeriesRow> = sqlx::query_as(
-        "SELECT ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at,
+        concat!(
+            "SELECT ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at,
                 COUNT(ep.episode_id) as watched_episodes
          FROM tracked_series ts
-         LEFT JOIN episode_progress ep ON ep.profile_id = ts.profile_id AND ep.series_id = ts.series_id AND ep.watched = 1 AND ep.season_number > 0
+         LEFT JOIN episode_progress ep ON ep.profile_id = ts.profile_id AND ep.series_id = ts.series_id AND ",
+            regular_episodes_watched!("ep."),
+            "
          WHERE ts.profile_id = $1
            AND EXISTS (
              SELECT 1 FROM library_items li
              WHERE li.profile_id = ts.profile_id AND li.media_id = ts.series_id AND li.media_type = 'series'
            )
          GROUP BY ts.uuid, ts.series_id, ts.title, ts.poster_path, ts.backdrop_path, ts.total_episodes, ts.status, ts.created_at, ts.updated_at
-         ORDER BY ts.updated_at DESC",
+         ORDER BY ts.updated_at DESC"
+        ),
     )
     .bind(profile_id)
     .fetch_all(pool)

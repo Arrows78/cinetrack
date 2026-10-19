@@ -32,15 +32,16 @@ pub async fn get_availability_alert(
 }
 
 #[tauri::command]
-pub async fn toggle_availability_alert(
+pub async fn set_availability_alert(
     media: MediaSummaryInput,
     region: String,
     provider_ids: Vec<i64>,
+    enabled: bool,
     pool: State<'_, SqlitePool>,
 ) -> Result<Option<AvailabilityAlert>, ApiError> {
-    timed("toggle_availability_alert", async {
+    timed("set_availability_alert", async {
         AvailabilityService::new(pool.inner())
-            .toggle_alert(media, region, provider_ids)
+            .set_alert(media, region, provider_ids, enabled)
             .await
     })
     .await
@@ -127,7 +128,7 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let alert = toggle_availability_alert(
+        let alert = set_availability_alert(
             MediaSummaryInput {
                 id: 7,
                 media_type: MediaType::Movie,
@@ -135,6 +136,7 @@ mod tests {
             },
             "FR".to_string(),
             vec![8],
+            true,
             state.clone(),
         )
         .await
@@ -235,7 +237,7 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        toggle_availability_alert(
+        set_availability_alert(
             MediaSummaryInput {
                 id: 7,
                 media_type: MediaType::Movie,
@@ -243,6 +245,7 @@ mod tests {
             },
             "FR".to_string(),
             vec![8],
+            true,
             state.clone(),
         )
         .await

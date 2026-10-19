@@ -15,7 +15,7 @@ pub use commands::{
     list_tracked_series, refresh_tracked_series_status, refresh_tracked_series_statuses,
     rewatch_movie, set_episode_rating, toggle_episodes_watched, toggle_movie_seen,
 };
-pub(crate) use domain::known_runtime;
+pub(crate) use domain::{known_runtime, regular_episodes_watched};
 pub(crate) use event_order::align_event_order_with_progress;
 pub(crate) use models::{EpisodeInput, EpisodeProgress, SeriesInput, TrackedSeriesItem};
 

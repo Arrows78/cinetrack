@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n";
 import type { MediaSummary, Season, Series } from "@/types/media";
 import type { TvTimeExport } from "../parse-export";
+import type * as ParseExportModule from "../parse-export";
 import type * as ApiClientModule from "@/features/media/api/client";
 
 const searchMock = vi.fn();
@@ -71,13 +72,15 @@ const movieOutcome = (inserted: boolean, createdLibraryItemId: string | null = n
 });
 
 let exportData: TvTimeExport;
-vi.mock("../parse-export", () => ({
+vi.mock("../parse-export", async (importOriginal) => ({
+  ...(await importOriginal<typeof ParseExportModule>()),
   emptyExport: () => ({ episodes: [], movies: [], watchlist: [], tvdbIdsByName: new Map() }),
   parseTvTimeFile: vi.fn(),
   normalizeExport: () => exportData,
 }));
 
 const { logger } = await import("@/shared/lib/logger");
+const { queryClient } = await import("@/app/query-client");
 
 const {
   importTvTimeExport,
@@ -127,13 +130,20 @@ function emptyExportData(): TvTimeExport {
     tvdbIdsByName: new Map(),
     favouriteSeriesNames: new Set(),
     seriesRatingsByName: new Map(),
+    favouriteSeriesIds: new Set(),
+    seriesRatingsById: new Map(),
     skippedRows: { episodes: 0, movies: 0 },
   };
 }
 
 describe("importTvTimeExport", () => {
   beforeEach(() => {
+    // Series details are read through the shared query cache: start each test cold.
+    queryClient.clear();
     vi.clearAllMocks();
+    // A TVDB hit is followed by a details read of the matched id; unless a test
+    // says otherwise the catalogue answers with a plain series of that id.
+    getSeriesDetailsMock.mockReset().mockImplementation(async (id: number) => series({ id }));
     exportData = emptyExportData();
     librarySaveMock.mockResolvedValue(undefined);
     libraryGetMock.mockReset().mockResolvedValue(null);
@@ -1163,6 +1173,8 @@ describe("importTvTimeExport", () => {
         tvdbIdsByName: new Map([["breaking bad", 81189]]),
         favouriteSeriesNames: new Set(),
         seriesRatingsByName: new Map(),
+        favouriteSeriesIds: new Set(),
+        seriesRatingsById: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       // The series phase's own TMDB lookup deliberately never resolves within
@@ -1193,6 +1205,8 @@ describe("importTvTimeExport", () => {
         tvdbIdsByName: new Map([["breaking bad", 81189]]),
         favouriteSeriesNames: new Set(),
         seriesRatingsByName: new Map(),
+        favouriteSeriesIds: new Set(),
+        seriesRatingsById: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
@@ -1233,6 +1247,8 @@ describe("importTvTimeExport", () => {
         tvdbIdsByName: new Map(),
         favouriteSeriesNames: new Set(),
         seriesRatingsByName: new Map(),
+        favouriteSeriesIds: new Set(),
+        seriesRatingsById: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValueOnce(new TmdbRequestError("rate limited", 429)).mockResolvedValueOnce({
@@ -1265,6 +1281,8 @@ describe("importTvTimeExport", () => {
         tvdbIdsByName: new Map(),
         favouriteSeriesNames: new Set(),
         seriesRatingsByName: new Map(),
+        favouriteSeriesIds: new Set(),
+        seriesRatingsById: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock
@@ -1290,6 +1308,8 @@ describe("importTvTimeExport", () => {
         tvdbIdsByName: new Map(),
         favouriteSeriesNames: new Set(),
         seriesRatingsByName: new Map(),
+        favouriteSeriesIds: new Set(),
+        seriesRatingsById: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValue(new TmdbRequestError("rate limited", 429));
@@ -1310,6 +1330,8 @@ describe("importTvTimeExport", () => {
         tvdbIdsByName: new Map(),
         favouriteSeriesNames: new Set(),
         seriesRatingsByName: new Map(),
+        favouriteSeriesIds: new Set(),
+        seriesRatingsById: new Map(),
         skippedRows: { episodes: 0, movies: 0 },
       };
       searchMock.mockRejectedValue(new Error("network down"));
@@ -1473,5 +1495,201 @@ describe("undoTvTimeImport", () => {
     expect(toggleEpisodesWatchedMock).not.toHaveBeenCalled();
     expect(undoLibraryItemsMock).not.toHaveBeenCalled();
     expect(result).toEqual({ keptLibraryItems: 0 });
+  });
+});
+
+describe("importTvTimeExport — show identity, phase order, details, throttling", () => {
+  const ep = (seriesName: string, seriesId: number | null, episodeNumber = 1) => ({
+    seriesName,
+    seriesId,
+    seasonNumber: 1,
+    episodeNumber,
+    watchedAt: "2026-01-01T00:00:00.000Z",
+    runtimeMinutes: null,
+  });
+
+  beforeEach(() => {
+    queryClient.clear();
+    vi.clearAllMocks();
+    getSeriesDetailsMock.mockReset().mockImplementation(async (id: number) => series({ id }));
+    exportData = emptyExportData();
+    libraryGetMock.mockReset().mockResolvedValue(null);
+    librarySaveMock.mockReset().mockResolvedValue({ id: "saved" });
+    libraryAddIfAbsentMock.mockReset().mockResolvedValue(true);
+    importSeriesProgressMock.mockReset().mockResolvedValue(seriesOutcome([]));
+    importMovieSeenMock.mockReset().mockResolvedValue(movieOutcome(false));
+    getSeasonDetailsMock.mockReset().mockResolvedValue(season(100, 1, 1));
+    findSeriesByTvdbIdMock.mockReset().mockImplementation(async (tvdbId: number) => series({ id: tvdbId + 1000 }));
+  });
+
+  it("keeps two homonymous shows apart: one TVDB lookup and one import per TV Time show id", async () => {
+    exportData = {
+      ...emptyExportData(),
+      episodes: [ep("The Office", 73244), ep("The Office", 73244, 2), ep("The Office", 290507)],
+    };
+
+    await importTvTimeExport(["irrelevant"]);
+
+    expect(findSeriesByTvdbIdMock.mock.calls.map(([id]) => id).sort()).toEqual([290507, 73244]);
+    const imported = importSeriesProgressMock.mock.calls.map(([seriesArg, episodes]) => [
+      (seriesArg as Series).id,
+      (episodes as unknown[]).length,
+    ]);
+    expect(imported.sort()).toEqual([
+      [291507, 1],
+      [74244, 1],
+    ]);
+  });
+
+  it("still groups by lowercase name when a row carries no show id, and looks the TVDB id up by name", async () => {
+    exportData = {
+      ...emptyExportData(),
+      episodes: [ep("Breaking Bad", null), ep("breaking bad", null, 2)],
+      tvdbIdsByName: new Map([["breaking bad", 81189]]),
+    };
+
+    await importTvTimeExport(["irrelevant"]);
+
+    expect(findSeriesByTvdbIdMock).toHaveBeenCalledTimes(1);
+    expect(findSeriesByTvdbIdMock).toHaveBeenCalledWith(81189);
+  });
+
+  it("applies a favourite/rating by show id, never to a homonym by name", async () => {
+    exportData = {
+      ...emptyExportData(),
+      episodes: [ep("The Office", 73244), ep("The Office", 290507)],
+      favouriteSeriesIds: new Set([73244]),
+      favouriteSeriesNames: new Set(["the office"]),
+      seriesRatingsById: new Map([[73244, 9]]),
+      seriesRatingsByName: new Map([["the office", 9]]),
+    };
+
+    await importTvTimeExport(["irrelevant"]);
+
+    const saves = librarySaveMock.mock.calls.map(([seriesArg, patch]) => [(seriesArg as Series).id, patch]);
+    expect(saves).toEqual([[74244, { favourite: true, userRating: 9 }]]);
+  });
+
+  it("uses the name-keyed favourite/rating for a show without an id", async () => {
+    exportData = {
+      ...emptyExportData(),
+      episodes: [ep("Breaking Bad", null)],
+      favouriteSeriesNames: new Set(["breaking bad"]),
+      seriesRatingsByName: new Map([["breaking bad", 8]]),
+      tvdbIdsByName: new Map([["breaking bad", 81189]]),
+    };
+
+    await importTvTimeExport(["irrelevant"]);
+
+    expect(librarySaveMock).toHaveBeenCalledWith(expect.objectContaining({ id: 82189 }), {
+      favourite: true,
+      userRating: 8,
+    });
+  });
+
+  it("writes the watchlist only after the episodes and movies phases are done", async () => {
+    const order: string[] = [];
+    let releaseSeries!: () => void;
+    exportData = {
+      ...emptyExportData(),
+      episodes: [ep("Breaking Bad", 81189)],
+      movies: [{ title: "Dune", year: 2021, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+      watchlist: [{ title: "Arrival", mediaType: "movie", year: 2016 }],
+    };
+    importSeriesProgressMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseSeries = () => {
+            order.push("series written");
+            resolve(seriesOutcome([100]));
+          };
+        })
+    );
+    searchMock.mockImplementation(async (title: string) => ({
+      page: 1,
+      totalPages: 1,
+      totalResults: 1,
+      results: [
+        media({ id: title === "Dune" ? 5 : 6, title, mediaType: "movie", year: title === "Dune" ? 2021 : 2016 }),
+      ],
+    }));
+    importMovieSeenMock.mockImplementation(async () => {
+      order.push("movie written");
+      return movieOutcome(true);
+    });
+    libraryAddIfAbsentMock.mockImplementation(async () => {
+      order.push("watchlist written");
+      return true;
+    });
+
+    const done = importTvTimeExport(["irrelevant"]);
+    await vi.waitFor(() => expect(order).toContain("movie written"));
+    // The series write is still pending: the watchlist must not have started.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(order).not.toContain("watchlist written");
+    releaseSeries();
+    await done;
+
+    expect(order.indexOf("watchlist written")).toBeGreaterThan(order.indexOf("series written"));
+    expect(order.indexOf("watchlist written")).toBeGreaterThan(order.indexOf("movie written"));
+  });
+
+  it("reads the full details after a TVDB match and imports with them", async () => {
+    exportData = { ...emptyExportData(), episodes: [ep("Breaking Bad", 81189)] };
+    findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
+    getSeriesDetailsMock.mockResolvedValue(
+      series({ id: 62, numberOfEpisodes: 62, status: "Ended" } as Partial<Series>)
+    );
+
+    await importTvTimeExport(["irrelevant"]);
+
+    expect(getSeriesDetailsMock).toHaveBeenCalledWith(62);
+    expect(importSeriesProgressMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 62, numberOfEpisodes: 62, status: "Ended" }),
+      expect.anything()
+    );
+  });
+
+  it("falls back to the lookup payload, and says so, when the details read fails after a TVDB match", async () => {
+    exportData = { ...emptyExportData(), episodes: [ep("Breaking Bad", 81189)] };
+    findSeriesByTvdbIdMock.mockResolvedValue(series({ id: 62 }));
+    getSeriesDetailsMock.mockRejectedValue(new Error("details down"));
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
+
+    const summary = await importTvTimeExport(["irrelevant"]);
+
+    expect(importSeriesProgressMock).toHaveBeenCalledWith(expect.objectContaining({ id: 62 }), expect.anything());
+    expect(summary.unmatched).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("details of"));
+    warn.mockRestore();
+  });
+
+  it("reports a rate limit only to the import that hit it, even with two imports running at once", async () => {
+    vi.useFakeTimers();
+    try {
+      const { TmdbRequestError } = await import("@/features/media/api/client");
+      const movieExport = (title: string): TvTimeExport => ({
+        ...emptyExportData(),
+        movies: [{ title, year: 2010, watchedAt: "2026-01-01T00:00:00.000Z", runtimeMinutes: null }],
+      });
+      searchMock.mockImplementation(async (title: string) => {
+        if (title === "Throttled") throw new TmdbRequestError("rate limited", 429);
+        return { page: 1, totalPages: 1, totalResults: 0, results: [] };
+      });
+      const throttledProgress = vi.fn();
+      const calmProgress = vi.fn();
+
+      exportData = movieExport("Throttled");
+      const throttled = importTvTimeExport(["a"], throttledProgress);
+      exportData = movieExport("Calm");
+      const calm = importTvTimeExport(["b"], calmProgress);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await Promise.all([throttled, calm]);
+
+      expect(throttledProgress.mock.calls.some(([progress]) => progress.throttled)).toBe(true);
+      expect(calmProgress.mock.calls.every(([progress]) => !progress.throttled)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

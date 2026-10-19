@@ -120,6 +120,13 @@ function renderPage() {
 }
 
 describe("MovieDetailPage", () => {
+  it("disables viewing actions until the stored seen status is known", () => {
+    seenQueryMock.mockReturnValue({ ...seenQueryMock(), isPending: true, data: undefined });
+    renderPage();
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+    expect(screen.getByRole("button", { name: i18n.t("media.addWatchNoteAction") })).toBeDisabled();
+  });
+
   beforeAll(async () => {
     await i18n.changeLanguage("en");
   });
@@ -410,6 +417,22 @@ describe("MovieDetailPage", () => {
     screen.getByTestId("seen-toggle").click();
 
     expect(toggleMovieSeenMock).toHaveBeenCalledWith({ movie, watched: true });
+  });
+
+  it("retries the seen read from the partial error state", () => {
+    const refetch = vi.fn();
+    seenQueryMock.mockReturnValue({
+      data: undefined,
+      isSaving: false,
+      isError: true,
+      refetch,
+      toggleMovieSeen: toggleMovieSeenMock,
+    });
+
+    renderPage();
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("shows a partial error state alongside the seen toggle when the seen query fails", () => {

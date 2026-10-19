@@ -9,7 +9,10 @@
  * `maxBatch` keys per call. The same key asked for twice in one batch is sent
  * once, and both callers get its answer. A failed batch rejects every caller
  * waiting on it with the same error, so each surfaces it through its own
- * query state, never swallowed.
+ * query state, never swallowed. That includes a `run` that throws before
+ * returning a promise, and one that answers fewer keys than it was given: the
+ * keys without an answer are rejected rather than left pending forever (or
+ * resolved with a value that was never read).
  */
 export interface BatchLoader<Key, Value> {
   load(key: Key): Promise<Value>;
@@ -39,9 +42,22 @@ export function createBatchLoader<Key, Value>(options: {
     const entries = [...batch.values()];
     for (let start = 0; start < entries.length; start += maxBatch) {
       const chunk = entries.slice(start, start + maxBatch);
-      run(chunk.map((entry) => entry.key)).then(
+      let result: Promise<Value[]>;
+      try {
+        result = run(chunk.map((entry) => entry.key));
+      } catch (error) {
+        // A synchronous throw would otherwise escape the timer callback and
+        // leave every waiter of this (and any later) chunk pending.
+        result = Promise.reject(error);
+      }
+      result.then(
         (values) => {
           chunk.forEach((entry, index) => {
+            if (index >= values.length) {
+              const error = new Error(`Batch loader: run answered ${values.length} of ${chunk.length} keys`);
+              for (const waiting of entry.waiting) waiting.reject(error);
+              return;
+            }
             for (const waiting of entry.waiting) waiting.resolve(values[index] as Value);
           });
         },

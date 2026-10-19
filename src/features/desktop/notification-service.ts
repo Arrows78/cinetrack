@@ -1,15 +1,18 @@
 import { differenceInHours, endOfDay, isAfter, parseISO, startOfDay } from "date-fns";
 import i18n from "@/i18n";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 import type { CalendarEntry, UserPreferences } from "@/types/media";
+import { sentNotificationsKey } from "@/shared/constants/local-storage-keys";
 
-const SENT_KEY = "cinetrack.sent-notifications.v1";
+// A reminder delivered to one viewer must not consume another viewer's reminder.
 /** Maximum number of sent notification IDs retained to prevent re-notifying. */
 const MAX_SENT_NOTIFICATIONS = 500;
 
-function readSentNotifications(): Set<string> {
+function readSentNotifications(profileId: string): Set<string> {
   try {
-    const value = JSON.parse(localStorage.getItem(SENT_KEY) ?? "[]") as unknown;
+    const value = JSON.parse(localStorage.getItem(sentNotificationsKey(profileId)) ?? "[]") as unknown;
     return new Set(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
   } catch {
     return new Set();
@@ -61,7 +64,7 @@ export const notificationService = {
       !(await this.isPermissionGranted())
     )
       return 0;
-    const sent = readSentNotifications();
+    const sent = readSentNotifications(preferences.activeProfileId);
     let count = 0;
     const now = new Date();
     // Saved even when a send throws partway: otherwise every notification
@@ -85,7 +88,16 @@ export const notificationService = {
         count += 1;
       }
     } finally {
-      localStorage.setItem(SENT_KEY, JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS)));
+      // Guarded: a storage failure here (quota, blocked storage) must not
+      // replace the error a failed send is already propagating.
+      try {
+        localStorage.setItem(
+          sentNotificationsKey(preferences.activeProfileId),
+          JSON.stringify([...sent].slice(-MAX_SENT_NOTIFICATIONS))
+        );
+      } catch (error) {
+        logger.warn(`Could not persist the sent-notifications record: ${errorMessage(error)}`);
+      }
     }
     return count;
   },

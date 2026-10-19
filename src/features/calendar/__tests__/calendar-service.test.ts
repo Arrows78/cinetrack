@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   getSeriesDetails: vi.fn(),
   getSeasonDetails: vi.fn(),
   listTrackedSeries: vi.fn(),
+  getMovieDetails: vi.fn(),
+  listLibraryMovies: vi.fn(),
 }));
 
 vi.mock("@/features/media/media-repository", () => ({
@@ -14,7 +16,12 @@ vi.mock("@/features/media/media-repository", () => ({
     getUpcomingMovies: mocks.getUpcomingMovies,
     getSeriesDetails: mocks.getSeriesDetails,
     getSeasonDetails: mocks.getSeasonDetails,
+    getMovieDetails: mocks.getMovieDetails,
   },
+}));
+
+vi.mock("@/features/library/library-repository", () => ({
+  libraryRepository: { list: mocks.listLibraryMovies },
 }));
 
 vi.mock("@/features/progress/progress-repository", () => ({
@@ -74,6 +81,20 @@ const season = (seasonNumber: number, episodes: Array<{ id: number; airDate: str
 });
 
 describe("calendarService", () => {
+  it("continues paging after an out-of-window film because upcoming movies are sorted by popularity", async () => {
+    mocks.getUpcomingMovies
+      .mockResolvedValueOnce({ page: 1, totalPages: 2, totalResults: 2, results: [movie(1, day(90))] })
+      .mockResolvedValueOnce({ page: 2, totalPages: 2, totalResults: 2, results: [movie(2, day(3))] });
+    expect((await calendarService.build(7)).map((entry) => entry.mediaId)).toEqual([2]);
+  });
+
+  it("reports unavailable episodes instead of an empty calendar when every season lookup fails", async () => {
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 10 }]);
+    mocks.getSeriesDetails.mockResolvedValue(series(10, [1]));
+    mocks.getSeasonDetails.mockRejectedValue(new Error("Season endpoint unavailable"));
+    await expect(calendarService.build()).rejects.toThrow("Season endpoint unavailable");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     // build() now routes series/season lookups through the shared
@@ -82,6 +103,20 @@ describe("calendarService", () => {
     queryClient.clear();
     mocks.getUpcomingMovies.mockResolvedValue(emptyPage);
     mocks.listTrackedSeries.mockResolvedValue([]);
+    mocks.listLibraryMovies.mockResolvedValue([]);
+  });
+
+  it("adds a saved film that is missing from the upcoming feed", async () => {
+    mocks.listLibraryMovies.mockResolvedValue([
+      { mediaId: 77, status: "planned", year: new Date().getFullYear() },
+      { mediaId: 78, status: "completed", year: new Date().getFullYear() },
+    ]);
+    mocks.getMovieDetails.mockResolvedValue(movie(77, day(10)));
+
+    const entries = await calendarService.build(60);
+
+    expect(entries.map((entry) => entry.mediaId)).toEqual([77]);
+    expect(mocks.getMovieDetails).toHaveBeenCalledTimes(1);
   });
 
   it("keeps only movie releases inside the window", async () => {
@@ -202,15 +237,16 @@ describe("calendarService", () => {
     expect(entries.map((entry) => entry.mediaId)).toEqual([1, 2]);
   });
 
-  it("stops paginating once a page's results move past the window", async () => {
+  it("reads later pages even when the first page is outside the window", async () => {
     mocks.getUpcomingMovies.mockImplementation((page: number) => {
       if (page === 1) return Promise.resolve({ page: 1, totalPages: 3, totalResults: 3, results: [movie(1, day(90))] });
       return Promise.resolve({ page, totalPages: 3, totalResults: 3, results: [movie(page + 10, day(1))] });
     });
 
-    await calendarService.build(60);
+    const entries = await calendarService.build(60);
 
-    expect(mocks.getUpcomingMovies).toHaveBeenCalledTimes(1);
+    expect(mocks.getUpcomingMovies).toHaveBeenCalledTimes(3);
+    expect(entries.map((entry) => entry.mediaId)).toEqual([12, 13]);
   });
 
   it("includes every tracked series, not just a capped first batch", async () => {

@@ -233,6 +233,44 @@ function renderPage() {
 }
 
 describe("SeriesDetailPage", () => {
+  it("keeps the catalogue's announced total instead of overwriting it with only aired episodes", async () => {
+    seriesQueryMock.mockReturnValue({
+      ...seriesQueryMock(),
+      data: buildSeries({ numberOfEpisodes: 4, status: "Ended" }),
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({ seriesId: 9, status: "Ended", totalEpisodes: 4 })
+    );
+  });
+
+  it("does not invent a catalogue total when TMDB has not provided one", async () => {
+    seriesQueryMock.mockReturnValue({
+      ...seriesQueryMock(),
+      data: buildSeries({ numberOfEpisodes: undefined, status: "Ended" }),
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({ seriesId: 9, status: "Ended", totalEpisodes: null })
+    );
+  });
+
+  it.each([
+    { isError: true, isPending: false },
+    { isError: false, isPending: true },
+  ])("blocks every progress action while progress is unavailable: %j", (state) => {
+    episodeProgressMock.mockReturnValue({
+      ...episodeProgressMock(),
+      ...state,
+      data: undefined,
+      refetch: vi.fn(),
+    });
+    renderPage();
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+    expect(screen.queryByTestId("next-episode-card")).not.toBeInTheDocument();
+    expect(seasonAccordionPropsMock.mock.lastCall?.[0].isSaving).toBe(true);
+  });
+
   const markSeriesSeenMock = vi.fn();
   const toggleEpisodeSeenMock = vi.fn();
   const markSeasonSeenMock = vi.fn();
@@ -670,8 +708,7 @@ describe("SeriesDetailPage", () => {
           id: "t1",
           seriesId: 9,
           title: "Test Series",
-          // Inflated by an earlier toggle-time ratchet — the real aired
-          // count from the season data below is 3.
+          // Inflated by an earlier toggle-time ratchet — TMDB now reports 3.
           totalEpisodes: 10,
           watchedEpisodes: 2,
           status: "Returning Series",
@@ -692,7 +729,7 @@ describe("SeriesDetailPage", () => {
     );
   });
 
-  it("withholds the total_episodes correction (sends null) while a season is still loading", () => {
+  it("uses the full catalogue total even while individual seasons are still loading", () => {
     seasonQueriesMock.mockReturnValue([{ data: undefined, isPending: true, isError: false, refetch: vi.fn() }]);
     seriesQueryMock.mockReturnValue({
       isPending: false,
@@ -718,7 +755,7 @@ describe("SeriesDetailPage", () => {
 
     renderPage();
 
-    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({ seriesId: 9, status: "Ended", totalEpisodes: null });
+    expect(refreshTrackedSeriesStatusMock).toHaveBeenCalledWith({ seriesId: 9, status: "Ended", totalEpisodes: 3 });
   });
 
   it("does not show the Up to date badge while an aired episode is still unwatched", () => {

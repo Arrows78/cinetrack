@@ -25,6 +25,7 @@ describe("HideWatchedToggle", () => {
     preferencesMock.mockReturnValue({
       data: undefined,
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
       isSaving: false,
       isLoading: false,
     });
@@ -38,6 +39,7 @@ describe("HideWatchedToggle", () => {
     preferencesMock.mockReturnValue({
       data: { hideWatchedInDiscovery: true },
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
       isSaving: false,
       isLoading: false,
     });
@@ -51,6 +53,7 @@ describe("HideWatchedToggle", () => {
     preferencesMock.mockReturnValue({
       data: { hideWatchedInDiscovery: false },
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
       isSaving: false,
       isLoading: false,
     });
@@ -65,6 +68,7 @@ describe("HideWatchedToggle", () => {
     preferencesMock.mockReturnValue({
       data: { hideWatchedInDiscovery: true },
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
       isSaving: false,
       isLoading: false,
     });
@@ -79,6 +83,7 @@ describe("HideWatchedToggle", () => {
     preferencesMock.mockReturnValue({
       data: { hideWatchedInDiscovery: false },
       updatePreference: updatePreferenceMock,
+      setPreference: updatePreferenceMock,
       isSaving: true,
       isLoading: false,
     });
