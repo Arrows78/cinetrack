@@ -43,7 +43,7 @@ uuid = { version = "1", features = ["v4", "v7"] }
 # (this crate is already in the dependency tree through tauri-plugin-stronghold,
 # so no new code is vendored); sha2 only remains to verify the salted SHA-256
 # digests written before that, which are re-hashed on their next correct entry.
-rust-argon2 = "2"
+rust-argon2 = "3"
 sha2 = "0.11"
 # Generates the TS mirror of an IPC DTO straight from its Rust struct/enum
 # (see docs/architecture.md's IPC boundary section) instead of hand-writing
