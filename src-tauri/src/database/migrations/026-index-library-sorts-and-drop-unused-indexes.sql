@@ -16,7 +16,7 @@ CREATE INDEX idx_library_profile_completed_cursor ON library_items(profile_id, C
 -- recommendation seed). The counts per status still read it as a covering
 -- index.
 -- cinetrack:statement
-DROP INDEX idx_library_profile_status
+DROP INDEX IF EXISTS idx_library_profile_status
 -- cinetrack:statement
 CREATE INDEX idx_library_profile_status ON library_items(profile_id, status, updated_at DESC, media_id DESC, media_type DESC)
 -- Indexes no query reads. Every one of them is also written on every insert and
@@ -36,26 +36,26 @@ CREATE INDEX idx_library_profile_status ON library_items(profile_id, status, upd
 --   - `idx_sync_entity_state_profile`: the same columns, in the same order, as
 --     the table's primary key.
 -- cinetrack:statement
-DROP INDEX idx_library_media_id
+DROP INDEX IF EXISTS idx_library_media_id
 -- cinetrack:statement
-DROP INDEX idx_tracked_series_series_id
+DROP INDEX IF EXISTS idx_tracked_series_series_id
 -- cinetrack:statement
-DROP INDEX idx_episode_progress_episode_id
+DROP INDEX IF EXISTS idx_episode_progress_episode_id
 -- cinetrack:statement
-DROP INDEX idx_custom_list_items_media_id
+DROP INDEX IF EXISTS idx_custom_list_items_media_id
 -- cinetrack:statement
-DROP INDEX idx_viewing_events_media_id
+DROP INDEX IF EXISTS idx_viewing_events_media_id
 -- cinetrack:statement
-DROP INDEX idx_viewing_events_profile_media_episode_date
+DROP INDEX IF EXISTS idx_viewing_events_profile_media_episode_date
 -- cinetrack:statement
-DROP INDEX idx_activity_log_media_id
+DROP INDEX IF EXISTS idx_activity_log_media_id
 -- cinetrack:statement
-DROP INDEX idx_seen_movies_movie_id
+DROP INDEX IF EXISTS idx_seen_movies_movie_id
 -- cinetrack:statement
-DROP INDEX idx_seen_movies_profile_watched
+DROP INDEX IF EXISTS idx_seen_movies_profile_watched
 -- cinetrack:statement
-DROP INDEX idx_tracked_series_profile_updated
+DROP INDEX IF EXISTS idx_tracked_series_profile_updated
 -- cinetrack:statement
-DROP INDEX idx_availability_alerts_enabled
+DROP INDEX IF EXISTS idx_availability_alerts_enabled
 -- cinetrack:statement
-DROP INDEX idx_sync_entity_state_profile
+DROP INDEX IF EXISTS idx_sync_entity_state_profile

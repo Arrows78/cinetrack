@@ -2,6 +2,7 @@ import type { Clerk as ClerkClass } from "@clerk/clerk-js";
 
 import { isTauriApp } from "@/shared/lib/platform";
 import { logger } from "@/shared/lib/logger";
+import { CLERK_CLIENT_JWT_STORAGE_KEY } from "@/shared/constants/local-storage-keys";
 
 // Lives in shared/lib, not features/auth, because the shared Supabase data
 // client (supabase-data-client.ts, this file's sibling) needs the current
@@ -18,8 +19,6 @@ export const clerkConfig = {
 
 let clerkInstance: ClerkClass | null = null;
 let bootstrapPromise: Promise<ClerkClass | null> | null = null;
-
-const CLIENT_JWT_STORAGE_KEY = "cinetrack.clerk.clientJwt";
 
 // Expo-style native session persistence. `standardBrowser: false` stops
 // clerk-js from relying on cookies, but it does not persist or re-attach the
@@ -49,7 +48,7 @@ function attachNativeTokenCache(clerk: ClerkClass): void {
     request.credentials = "omit";
     request.url?.searchParams.set("_is_native", "1");
 
-    const token = window.localStorage.getItem(CLIENT_JWT_STORAGE_KEY);
+    const token = window.localStorage.getItem(CLERK_CLIENT_JWT_STORAGE_KEY);
     if (!token) return;
 
     const headers = new Headers(request.headers);
@@ -63,7 +62,7 @@ function attachNativeTokenCache(clerk: ClerkClass): void {
     const header = response?.headers.get("authorization") ?? response?.headers.get("Authorization");
     if (!header) return;
 
-    window.localStorage.setItem(CLIENT_JWT_STORAGE_KEY, header.replace(/^Bearer\s+/i, ""));
+    window.localStorage.setItem(CLERK_CLIENT_JWT_STORAGE_KEY, header.replace(/^Bearer\s+/i, ""));
   });
 }
 
@@ -147,7 +146,7 @@ async function patchFetchForFrontendApi(): Promise<void> {
       return tauriFetch(nativeUrl.toString(), nativeFapiInit(input, init)).then((response) => {
         const header = response.headers.get("authorization") ?? response.headers.get("Authorization");
         if (header) {
-          window.localStorage.setItem(CLIENT_JWT_STORAGE_KEY, header.replace(/^Bearer\s+/i, ""));
+          window.localStorage.setItem(CLERK_CLIENT_JWT_STORAGE_KEY, header.replace(/^Bearer\s+/i, ""));
         }
         return response;
       });

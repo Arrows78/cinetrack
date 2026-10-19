@@ -80,7 +80,7 @@ export function MovieDetailPage() {
             <div className="flex items-center gap-2">
               <SeenToggle
                 seen={Boolean(seenQuery.data)}
-                disabled={seenQuery.isSaving || seenQuery.isError}
+                disabled={seenQuery.isSaving || seenQuery.isError || seenQuery.isPending}
                 onToggle={() => void seenQuery.toggleMovieSeen({ movie, watched: !seenQuery.data })}
                 celebrateOnSeen
               />
@@ -91,7 +91,7 @@ export function MovieDetailPage() {
                     variant="ghost"
                     size="icon"
                     aria-label={t("media.addWatchNoteAction")}
-                    disabled={seenQuery.isSaving || seenQuery.isError}
+                    disabled={seenQuery.isSaving || seenQuery.isError || seenQuery.isPending}
                     onClick={() => setNoteDialogOpen(true)}
                   >
                     <NotebookPen className="size-4" />
@@ -104,7 +104,7 @@ export function MovieDetailPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={seenQuery.isSaving || seenQuery.isError}
+                  disabled={seenQuery.isSaving || seenQuery.isError || seenQuery.isPending}
                   // Failure toast is handled by the app-wide MutationCache
                   // error handler (see query-client.ts).
                   onClick={() => void seenQuery.rewatchMovie({ movie }).catch(() => {})}
@@ -114,7 +114,9 @@ export function MovieDetailPage() {
                 </Button>
               )}
             </div>
-            {seenQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
+            {seenQuery.isError ? (
+              <PartialErrorState message={t("media.seenStatusUnavailable")} onRetry={() => void seenQuery.refetch()} />
+            ) : null}
           </div>
         }
       />

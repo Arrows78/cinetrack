@@ -289,6 +289,33 @@ pub(crate) fn account_preference_accepts(key: &str, stored_value: &str) -> bool 
         .is_ok_and(|prefs| validate(&prefs).is_ok())
 }
 
+/// The entries of a preference map read from a backup that may be written on
+/// this install: each one is checked on its own, over the defaults, with the
+/// same rules as a write (`write_preference`: a known key, a value the
+/// schema accepts, `validate`). An entry that fails is dropped, so the
+/// default applies — one bad value never takes the others down with it.
+pub(crate) fn sanitize_imported(
+    imported: &serde_json::Map<String, serde_json::Value>,
+) -> serde_json::Map<String, serde_json::Value> {
+    let Ok(serde_json::Value::Object(defaults)) = serde_json::to_value(UserPreferences::default())
+    else {
+        return serde_json::Map::new();
+    };
+    imported
+        .iter()
+        .filter(|(key, value)| {
+            if !defaults.contains_key(key.as_str()) {
+                return false;
+            }
+            let mut candidate = defaults.clone();
+            candidate.insert((*key).clone(), (*value).clone());
+            serde_json::from_value::<UserPreferences>(serde_json::Value::Object(candidate))
+                .is_ok_and(|prefs| validate(&prefs).is_ok())
+        })
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect()
+}
+
 impl Default for UserPreferences {
     fn default() -> Self {
         Self {

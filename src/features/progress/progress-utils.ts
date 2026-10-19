@@ -93,3 +93,24 @@ export function calculateSeriesProgress(
     isUpToDate,
   };
 }
+
+// How far a progress row's `watchedAt` may sit from its `createdAt` before the
+// date counts as one the viewer (or an import) chose, rather than "when it was
+// ticked" — ticking stamps both within the same request.
+const CUSTOM_WATCH_DATE_TOLERANCE_MS = 60_000;
+
+/**
+ * Whether unmarking this episode would delete something the viewer entered:
+ * a rating, or a watch date that is not simply the moment the row was created
+ * (a back-dated watch, an imported history). Unwatching removes the row, so
+ * both are lost for good.
+ */
+export function episodeProgressHasUserData(progress: EpisodeProgress | undefined): boolean {
+  if (!progress) return false;
+  if (progress.rating != null) return true;
+  if (!progress.watchedAt) return false;
+  const watched = Date.parse(progress.watchedAt);
+  const created = Date.parse(progress.createdAt);
+  if (Number.isNaN(watched) || Number.isNaN(created)) return false;
+  return Math.abs(watched - created) > CUSTOM_WATCH_DATE_TOLERANCE_MS;
+}

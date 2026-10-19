@@ -31,16 +31,33 @@ async function rotateIfNeeded(): Promise<void> {
   }
 }
 
-async function appendLine(level: LogLevel, message: string): Promise<void> {
-  if (!isTauriApp()) return;
-  try {
-    await mkdir(LOG_DIR, { baseDir: BaseDirectory.AppData, recursive: true });
-    await rotateIfNeeded();
-    const line = `${new Date().toISOString()} [${level.toUpperCase()}] ${message}\n`;
-    await writeTextFile(LOG_FILE, line, { baseDir: BaseDirectory.AppData, append: true });
-  } catch {
-    // Logging must never itself throw and mask the caller's real error.
-  }
+// Every write goes through one promise chain: two lines logged in the same
+// tick used to run mkdir/stat/rotate/append concurrently, so one rotation
+// could rename the file under another's append and drop lines.
+let writeQueue: Promise<void> = Promise.resolve();
+let logDirReady = false;
+
+function enqueue(task: () => Promise<void>): Promise<void> {
+  const next = writeQueue.then(task, task);
+  writeQueue = next.catch(() => undefined);
+  return next;
+}
+
+function appendLine(level: LogLevel, message: string): Promise<void> {
+  if (!isTauriApp()) return Promise.resolve();
+  const line = `${new Date().toISOString()} [${level.toUpperCase()}] ${message}\n`;
+  return enqueue(async () => {
+    try {
+      if (!logDirReady) {
+        await mkdir(LOG_DIR, { baseDir: BaseDirectory.AppData, recursive: true });
+        logDirReady = true;
+      }
+      await rotateIfNeeded();
+      await writeTextFile(LOG_FILE, line, { baseDir: BaseDirectory.AppData, append: true });
+    } catch {
+      // Logging must never itself throw and mask the caller's real error.
+    }
+  });
 }
 
 async function readFileIfPresent(path: string): Promise<string> {
@@ -76,9 +93,11 @@ export const logger = {
 
   async clear(): Promise<void> {
     if (!isTauriApp()) return;
-    await Promise.all([
-      writeTextFile(LOG_FILE, "", { baseDir: BaseDirectory.AppData }).catch(() => undefined),
-      remove(ROTATED_LOG_FILE, { baseDir: BaseDirectory.AppData }).catch(() => undefined),
-    ]);
+    await enqueue(async () => {
+      await Promise.all([
+        writeTextFile(LOG_FILE, "", { baseDir: BaseDirectory.AppData }).catch(() => undefined),
+        remove(ROTATED_LOG_FILE, { baseDir: BaseDirectory.AppData }).catch(() => undefined),
+      ]);
+    });
   },
 };

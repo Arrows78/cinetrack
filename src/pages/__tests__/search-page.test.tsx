@@ -580,6 +580,16 @@ describe("SearchPage", () => {
     expect(fetchNextPage).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps an empty filtered page navigable without claiming the search is exhausted", () => {
+    const fetchNextPage = vi.fn();
+    searchHookMock.mockReturnValue({ ...defaultSearchResult(), items: [], hasNextPage: true, fetchNextPage });
+    renderPage("?q=batman&genreMovie=28");
+    expect(screen.getByText(i18n.t("search.noMatchesLoaded"))).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t("pages.noResults"))).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("media.loadMore") }));
+    expect(fetchNextPage).toHaveBeenCalledOnce();
+  });
+
   it("shows a loading skeleton for the home-feed browse view while it is pending", () => {
     homeFeedMock.mockReturnValue({
       isLoading: true,

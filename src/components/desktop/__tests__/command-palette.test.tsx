@@ -28,6 +28,7 @@ vi.mock("@/features/preferences/use-preferences", () => ({
   usePreferences: () => ({
     data: preferencesDataMissing ? undefined : { theme, region: "US", preferredProviderIds: [] },
     updatePreference: updatePreferenceMock,
+    setPreference: updatePreferenceMock,
   }),
   useActiveProfileId: () => "default",
 }));
@@ -61,13 +62,14 @@ const toastMock = vi.fn();
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
 const getAlertMock = vi.fn<(mediaId: number, mediaType: string) => Promise<{ id: string } | null>>(async () => null);
-const toggleAlertMock = vi.fn<(media: MediaSummary, region: string, providerIds: number[]) => Promise<{ id: string }>>(
-  async () => ({ id: "alert-1" })
-);
+const toggleAlertMock = vi.fn<
+  (media: MediaSummary, region: string, providerIds: number[], enabled: boolean) => Promise<{ id: string }>
+>(async () => ({ id: "alert-1" }));
 vi.mock("@/features/availability/availability-repository", () => ({
   availabilityRepository: {
     getAlert: (mediaId: number, mediaType: string) => getAlertMock(mediaId, mediaType),
-    toggle: (media: MediaSummary, region: string, providerIds: number[]) => toggleAlertMock(media, region, providerIds),
+    setAlert: (media: MediaSummary, region: string, providerIds: number[], enabled: boolean) =>
+      toggleAlertMock(media, region, providerIds, enabled),
   },
 }));
 
@@ -671,7 +673,9 @@ describe("CommandPalette", () => {
       await waitFor(() => screen.getByRole("option", { name: "Availability alert" }));
       fireEvent.click(screen.getByRole("option", { name: "Availability alert" }));
 
-      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_PREFERRED_REGION, []));
+      await waitFor(() =>
+        expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, DEFAULT_PREFERRED_REGION, [], true)
+      );
     });
 
     it("marking watched runs the real toggle mutation with the cached movie", async () => {
@@ -717,7 +721,7 @@ describe("CommandPalette", () => {
       fireEvent.click(screen.getByRole("option", { name: "Availability alert" }));
 
       await waitFor(() => expect(requestPermissionMock).toHaveBeenCalled());
-      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", []));
+      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", [], true));
     });
 
     it("offers to disable an alert that already exists, skipping the permission prompt", async () => {
@@ -729,7 +733,7 @@ describe("CommandPalette", () => {
       await waitFor(() => expect(screen.getByRole("option", { name: "Disable alert" })).toBeInTheDocument());
       fireEvent.click(screen.getByRole("option", { name: "Disable alert" }));
 
-      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", []));
+      await waitFor(() => expect(toggleAlertMock).toHaveBeenCalledWith(cachedMovie, "US", [], false));
       expect(requestPermissionMock).not.toHaveBeenCalled();
     });
   });

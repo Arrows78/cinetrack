@@ -3,7 +3,6 @@
 //! a new year, and a local midnight that falls on the other side of UTC.
 
 use sqlx::SqlitePool;
-use sqlx::sqlite::SqlitePoolOptions;
 
 use super::{
     get_activity_stats_impl, get_library_extras_impl, get_monthly_recap_impl,
@@ -12,15 +11,7 @@ use super::{
 };
 
 async fn migrated_pool() -> SqlitePool {
-    let pool = SqlitePoolOptions::new()
-        .max_connections(2)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
-    crate::database::migrations::run_migrations(&pool)
-        .await
-        .unwrap();
-    pool
+    crate::test_support::migrated_pool_with_connections(2).await
 }
 
 const SINCE: &str = "2020-01-01T00:00:00.000Z";

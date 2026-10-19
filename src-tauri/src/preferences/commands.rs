@@ -62,20 +62,9 @@ mod tests {
     use super::*;
     use crate::preferences::models::LibraryViewMode;
     use crate::preferences::repository::get_preferences_cached;
-    use sqlx::sqlite::SqlitePoolOptions;
     use tauri::Manager;
 
-    async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
-    }
+    use crate::test_support::migrated_pool;
 
     #[tokio::test]
     async fn get_preferences_command_returns_the_defaults() {
@@ -179,12 +168,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn pin_lock_does_not_block_the_fallback_to_default_or_a_proven_linked_account() {
+    async fn pin_lock_does_not_block_the_fallback_to_default_but_still_applies_to_a_linked_account()
+    {
         let pool = migrated_pool().await;
         sqlx::query(
             "UPDATE profiles SET pin_hash = 'h', pin_salt = 's' WHERE uuid = 'default';
-             INSERT INTO profiles (uuid, name, supabase_user_id, pin_hash, pin_salt, created_at, updated_at)
-             VALUES ('alex', 'Alex', 'user_2abc', 'h', 's', 'now', 'now');
+             INSERT INTO profiles (uuid, name, supabase_user_id, created_at, updated_at)
+             VALUES ('alex', 'Alex', 'user_2abc', 'now', 'now');
              INSERT INTO preferences (key, value, updated_at) VALUES ('activeProfileId', '\"gone\"', 'now');",
         )
         .execute(&pool)
@@ -193,6 +183,10 @@ mod tests {
         let app = tauri::test::mock_app();
         app.manage(pool);
         app.manage(PreferencesCache::default());
+        let pool_state: State<'_, SqlitePool> = app.state();
+        crate::profiles::set_profile_pin("alex".to_string(), "4242".to_string(), None, pool_state)
+            .await
+            .unwrap();
 
         let pool_state: State<'_, SqlitePool> = app.state();
         let cache_state: State<'_, PreferencesCache> = app.state();
@@ -202,12 +196,29 @@ mod tests {
                 .unwrap();
         assert_eq!(updated.active_profile_id, "default");
 
+        // Echoing the linked account id is not enough for a PIN-protected
+        // profile: it is a bare string, not a lock.
+        for pin in [None, Some("0000".to_string())] {
+            let pool_state: State<'_, SqlitePool> = app.state();
+            let cache_state: State<'_, PreferencesCache> = app.state();
+            let error = set_active_profile(
+                "alex".to_string(),
+                Some("user_2abc".to_string()),
+                pin,
+                pool_state,
+                cache_state,
+            )
+            .await
+            .unwrap_err();
+            assert_eq!(error.status, Some(403));
+        }
+
         let pool_state: State<'_, SqlitePool> = app.state();
         let cache_state: State<'_, PreferencesCache> = app.state();
         let updated = set_active_profile(
             "alex".to_string(),
             Some("user_2abc".to_string()),
-            None,
+            Some("4242".to_string()),
             pool_state,
             cache_state,
         )

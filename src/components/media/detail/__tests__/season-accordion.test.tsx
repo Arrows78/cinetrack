@@ -182,7 +182,7 @@ describe("SeasonAccordion", () => {
     expect(dotsWatched(dotStrips[2]!)).toEqual([true, false, false]);
   });
 
-  it("calls celebrate after CONFETTI_SEASON_COMPLETE_DELAY_MS when toggling the last unwatched episode", () => {
+  it("calls celebrate after CONFETTI_SEASON_COMPLETE_DELAY_MS when toggling the last unwatched episode", async () => {
     vi.useFakeTimers();
     try {
       const { onToggleEpisode } = renderAccordion();
@@ -193,11 +193,69 @@ describe("SeasonAccordion", () => {
       expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 103 }), true, undefined);
       expect(celebrateMock).not.toHaveBeenCalled();
 
-      vi.advanceTimersByTime(CONFETTI_SEASON_COMPLETE_DELAY_MS);
+      await vi.advanceTimersByTimeAsync(CONFETTI_SEASON_COMPLETE_DELAY_MS);
       expect(celebrateMock).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("does not celebrate when the write of the season-completing episode is rejected, and logs it", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const onToggleEpisode = vi.fn().mockRejectedValue(new Error("write failed"));
+      renderAccordion({ onToggleEpisode });
+      openSeason("Season One");
+
+      fireEvent.click(screen.getByRole("button", { name: "Mark watched" }));
+      await vi.advanceTimersByTimeAsync(CONFETTI_SEASON_COMPLETE_DELAY_MS + 1000);
+
+      expect(onToggleEpisode).toHaveBeenCalledTimes(1);
+      expect(celebrateMock).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not celebrate a season marked watched when that write is rejected", async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const onToggleSeason = vi.fn().mockRejectedValue(new Error("write failed"));
+      renderAccordion({ onToggleSeason });
+      openSeason("Season Three");
+
+      fireEvent.click(screen.getByRole("button", { name: "Mark season as watched" }));
+      await vi.advanceTimersByTimeAsync(CONFETTI_DELAY_MS + 1000);
+
+      expect(celebrateMock).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("asks before unmarking an episode that carries a rating, and not for a plain one", async () => {
+    const { onToggleEpisode } = renderAccordion({
+      watchedEpisodes: [{ ...makeProgress(101, 1, 1), rating: 4 }, makeProgress(102, 1, 2)],
+    });
+    openSeason("Season One");
+
+    const unmarkButtons = screen.getAllByRole("button", { name: "Mark unwatched" });
+    // A plain watched episode (102) unmarks straight away.
+    fireEvent.click(unmarkButtons[1]!);
+    expect(onToggleEpisode).toHaveBeenCalledTimes(1);
+    expect(onToggleEpisode).toHaveBeenCalledWith(expect.objectContaining({ id: 102 }), false, undefined);
+
+    // The rated one (101) goes through the confirmation first.
+    fireEvent.click(unmarkButtons[0]!);
+    expect(onToggleEpisode).toHaveBeenCalledTimes(1);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: i18n.t("series.unmarkConfirm") }));
+    expect(onToggleEpisode).toHaveBeenCalledTimes(2);
+    expect(onToggleEpisode).toHaveBeenLastCalledWith(expect.objectContaining({ id: 101 }), false, undefined);
   });
 
   it("does not call celebrate when toggling an episode that is not the last unwatched one", () => {
@@ -259,7 +317,7 @@ describe("SeasonAccordion", () => {
     }
   });
 
-  it("marks a season below 100% as watched and schedules celebrate after CONFETTI_DELAY_MS", () => {
+  it("marks a season below 100% as watched and schedules celebrate after CONFETTI_DELAY_MS", async () => {
     vi.useFakeTimers();
     try {
       const { onToggleSeason } = renderAccordion();
@@ -270,7 +328,7 @@ describe("SeasonAccordion", () => {
       expect(onToggleSeason).toHaveBeenCalledWith(expect.objectContaining({ seasonNumber: 3 }), true);
       expect(celebrateMock).not.toHaveBeenCalled();
 
-      vi.advanceTimersByTime(CONFETTI_DELAY_MS);
+      await vi.advanceTimersByTimeAsync(CONFETTI_DELAY_MS);
       expect(celebrateMock).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();

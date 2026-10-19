@@ -31,7 +31,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => mocks.invoke(...args),
 }));
 
-import { ApiConfigurationError, TmdbRequestError, tmdbFetch } from "../client";
+import { ApiConfigurationError, TmdbRequestError, resetNativeTokenSync, tmdbFetch } from "../client";
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -139,18 +139,65 @@ describe("tmdbFetch", () => {
   describe("native transport (inside Tauri)", () => {
     beforeEach(() => {
       mocks.isTauriApp.mockReturnValue(true);
+      resetNativeTokenSync();
     });
 
-    it("invokes tmdb_request with the path, cleaned params, and bearer token", async () => {
+    const callsTo = (command: string) => mocks.invoke.mock.calls.filter(([name]) => name === command);
+
+    it("hands the token to the Rust side first, then invokes tmdb_request with only the path and cleaned params", async () => {
       mocks.invoke.mockResolvedValue({ id: 550 });
 
       await tmdbFetch("/movie/550", { language: "fr-FR", region: "", page: undefined, year: 1999 });
 
-      expect(mocks.invoke).toHaveBeenCalledWith("tmdb_request", {
+      expect(mocks.invoke.mock.calls.map(([name]) => name)).toEqual(["set_tmdb_token", "tmdb_request"]);
+      expect(mocks.invoke).toHaveBeenNthCalledWith(1, "set_tmdb_token", { token: "test-token" });
+      // The token never travels with a request.
+      expect(mocks.invoke).toHaveBeenNthCalledWith(2, "tmdb_request", {
         path: "/movie/550",
         params: { language: "fr-FR", year: "1999" },
-        token: "test-token",
       });
+    });
+
+    it("sends the token once for many requests, and again only when it changes", async () => {
+      mocks.invoke.mockResolvedValue({ id: 550 });
+
+      await Promise.all([tmdbFetch("/movie/1"), tmdbFetch("/movie/2"), tmdbFetch("/movie/3")]);
+      await tmdbFetch("/movie/4");
+      expect(callsTo("set_tmdb_token")).toEqual([["set_tmdb_token", { token: "test-token" }]]);
+      expect(callsTo("tmdb_request")).toHaveLength(4);
+
+      mocks.getToken.mockReturnValue("rotated-token");
+      await tmdbFetch("/movie/5");
+      expect(callsTo("set_tmdb_token")).toEqual([
+        ["set_tmdb_token", { token: "test-token" }],
+        ["set_tmdb_token", { token: "rotated-token" }],
+      ]);
+    });
+
+    it("does not make the request when the token could not be handed over", async () => {
+      mocks.invoke.mockRejectedValueOnce({ message: "Invalid TMDB token.", status: 400 });
+
+      const error = await tmdbFetch("/movie/550").catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(TmdbRequestError);
+      expect((error as TmdbRequestError).status).toBe(400);
+      expect(callsTo("tmdb_request")).toHaveLength(0);
+
+      // Not remembered as sent: the next request tries again.
+      mocks.invoke.mockResolvedValue({ id: 550 });
+      await tmdbFetch("/movie/550");
+      expect(callsTo("set_tmdb_token")).toHaveLength(2);
+    });
+
+    it("clears the token held by the Rust side when TMDB rejects it", async () => {
+      mocks.invoke.mockImplementation(async (command: string) => {
+        if (command === "tmdb_request") throw { message: "Unauthorized", status: 401 };
+        return undefined;
+      });
+
+      await tmdbFetch("/movie/550").catch(() => undefined);
+
+      await vi.waitFor(() => expect(callsTo("set_tmdb_token")).toContainEqual(["set_tmdb_token", { token: null }]));
     });
 
     it("returns the invoke result and never touches the webview fetch path", async () => {

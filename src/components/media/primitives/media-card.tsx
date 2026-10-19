@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Progress } from "@/components/ui/progress";
 import { RatingStar } from "@/components/media/primitives/rating-star";
 import { IconTooltip } from "@/components/ui/tooltip";
+import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
 import { useMovieSeen } from "@/features/progress/use-progress";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { cn } from "@/shared/lib/cn";
@@ -99,8 +100,17 @@ function SeenQuickAction({ media }: { media: MediaSummary }) {
 // that series' full season/episode list loaded — too heavy to fetch just for
 // a grid-card hover action. Movies are a single cheap toggle either way.
 function MediaCardQuickActions({ media }: { media: MediaSummary }) {
+  // Revealed on hover/focus for a pointer; always visible on touch, where
+  // there is no hover and an invisible-but-clickable button would take taps.
+  const isTouch = useIsTouchDevice();
+
   return (
-    <div className="absolute right-3 top-14 flex flex-col gap-2 opacity-0 transition-opacity duration-base group-hover:opacity-100 group-focus-within:opacity-100">
+    <div
+      className={cn(
+        "absolute right-3 top-14 flex flex-col gap-2",
+        !isTouch && "opacity-0 transition-opacity duration-base group-hover:opacity-100 group-focus-within:opacity-100"
+      )}
+    >
       <AddToLibraryQuickAction media={media} />
       {media.mediaType === "movie" ? <SeenQuickAction media={media} /> : null}
     </div>

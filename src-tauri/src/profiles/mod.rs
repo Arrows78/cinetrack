@@ -1,5 +1,6 @@
 mod commands;
 mod models;
+mod pin;
 mod repository;
 mod service;
 

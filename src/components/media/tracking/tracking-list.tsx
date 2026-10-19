@@ -230,6 +230,10 @@ export function TrackingList({
   const setTypeFilter = onTypeFilterChange ?? setLocalTypeFilter;
   const sort = controlledSort ?? localSort;
   const setSort = onSortChange ?? setLocalSort;
+  // The toggle is hidden for the availability-only filter (those entries have
+  // no date to place on a calendar), so a calendar chosen earlier must not
+  // survive it as an empty calendar with no way back.
+  const showViewToggle = typeFilter !== "availability" && !tracking.isLoading && !tracking.isError;
   const platformFilter = controlledPlatformFilter ?? localPlatformFilter;
   const setPlatformFilter = onPlatformFilterChange ?? setLocalPlatformFilter;
 
@@ -327,7 +331,7 @@ export function TrackingList({
         </Panel>
       ) : null}
 
-      {typeFilter !== "availability" && !tracking.isLoading && !tracking.isError ? (
+      {showViewToggle ? (
         <div className="flex justify-end">
           <FilterBar
             value={viewMode}
@@ -342,7 +346,7 @@ export function TrackingList({
         </div>
       ) : null}
 
-      {viewMode === "calendar" ? (
+      {showViewToggle && viewMode === "calendar" ? (
         <Panel className="animate-in">
           <TrackingCalendar entries={dated} />
         </Panel>

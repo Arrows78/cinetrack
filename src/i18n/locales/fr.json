@@ -175,6 +175,9 @@
     "cat": "Chat"
   },
   "home": {
+    "partialFeedNotice_one": "Une rubrique du catalogue n’a pas pu être chargée.",
+    "partialFeedNotice_other": "Certaines rubriques du catalogue n’ont pas pu être chargées ({{count}}).",
+    "partialFeedRetry": "Réessayer",
     "noTokenTitle": "Suivez vos contenus sans token TMDB",
     "noTokenDesc": "Un token TMDB n'est pas nécessaire pour utiliser CineTrack — il ne fait que déverrouiller la découverte de nouveaux titres.",
     "noTokenWorksTitle": "Fonctionne dès maintenant, hors ligne",
@@ -284,6 +287,9 @@
     "filterFromDate": "Depuis le",
     "filterToDate": "Jusqu'au",
     "undo": "Annuler",
+    "undoConfirmTitle": "Annuler cette entrée ?",
+    "undoConfirmDescription": "La modification enregistrée pour « {{title}} » sera annulée.",
+    "undoConfirmAction": "Annuler l'entrée",
     "undoNeedsCatalogue": "Cette entrée ancienne ne peut être annulée que si le catalogue de films et séries est joignable. Vérifiez votre connexion et réessayez.",
     "undoKeptLibraryItem": "Ce titre n'est plus « à voir » depuis son ajout : il a été conservé dans votre bibliothèque.",
     "seriesInProgress": "Séries en cours",
@@ -331,6 +337,9 @@
     "resultsCount_one": "{{count}} résultat",
     "resultsCount_other": "{{count}} résultats",
     "showingResults": "Résultats pour {{filters}}",
+    "showingFilteredResults": "Résultats pour « {{query}} » avec {{filters}}",
+    "noMatchesLoaded": "Aucune correspondance dans les résultats chargés",
+    "moreResultsToCheck": "D’autres résultats sont disponibles. Chargez la suite pour continuer la recherche avec ces filtres.",
     "suggestionsLabel": "Suggestions de recherche",
     "recentSearches": "Recherches récentes",
     "clearHistory": "Effacer",
@@ -397,6 +406,11 @@
     "compactMode": "Mode compact",
     "spoilerProtection": "Protection anti-spoiler",
     "calendarNotifications": "Notifications calendrier",
+    "reminderLeadTime": "Me rappeler avant une sortie",
+    "reminderOnReleaseDay": "Le jour de la sortie",
+    "reminderHoursBefore_one": "{{count}} heure avant",
+    "reminderHoursBefore_other": "{{count}} heures avant",
+    "reminderLeadTimeDescription": "Les rappels des titres suivis sont vérifiés à l’ouverture de l’application et lors des vérifications automatiques.",
     "availabilityAlerts": "Alertes de disponibilité",
     "desktopNotifications": "Notifications bureau",
     "notificationsPermissionDenied": "Les notifications sont bloquées pour CineTrack. Autorisez-les dans les réglages du système, puis réessayez.",
@@ -440,7 +454,9 @@
         "setLabel": "Définir un code PIN",
         "changeLabel": "Changer le code PIN",
         "removeLabel": "Retirer le code PIN",
-        "locked": "Protégé par un code PIN"
+        "locked": "Protégé par un code PIN",
+        "lockedWithDelay": "Trop de codes PIN erronés. Réessayez dans {{seconds}} secondes.",
+        "lockedNoDelay": "Trop de codes PIN erronés. Réessayez dans un instant."
       },
       "pinPrompt": {
         "title": "Saisissez le code PIN de {{name}}",
@@ -587,6 +603,8 @@
     "unmarkSeasonConfirmDescription": "Tous les épisodes de cette saison redeviennent non vus. Leurs notes et leurs dates de visionnage sont supprimées ; l'historique garde une trace du changement.",
     "unmarkSeriesConfirmTitle": "Marquer toute la série comme non vue ?",
     "unmarkSeriesConfirmDescription": "Tous les épisodes de toutes les saisons redeviennent non vus. Leurs notes et leurs dates de visionnage sont supprimées ; l'historique garde une trace du changement.",
+    "unmarkEpisodeConfirmTitle": "Marquer cet épisode comme non vu ?",
+    "unmarkEpisodeConfirmDescription": "Cet épisode redevient non vu. Sa note et sa date de visionnage sont supprimées ; l'historique garde une trace du changement.",
     "unmarkConfirm": "Marquer comme non vu"
   },
   "stats": {

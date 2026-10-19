@@ -154,7 +154,7 @@ export function OnThisDayInviteBanner({ id }: { id?: string }) {
         <Button
           type="button"
           size="sm"
-          onClick={() => void preferencesQuery.updatePreference({ key: "onThisDayEnabled", value: true })}
+          onClick={() => preferencesQuery.setPreference({ key: "onThisDayEnabled", value: true })}
         >
           {t("home.onThisDayInviteCta")}
         </Button>

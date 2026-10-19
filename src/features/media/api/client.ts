@@ -33,14 +33,20 @@ interface StructuredTmdbError {
   status?: number;
 }
 
+// No token in the request: the Rust side holds it (see `ensureNativeToken`), so it does not
+// cross the IPC boundary with every call.
 type TmdbRequestArgs = {
   path: string;
   params: Record<string, string>;
-  token: string;
+};
+
+type SetTmdbTokenArgs = {
+  token: string | null;
 };
 
 const tmdbCommands = {
   request: defineCommand<TmdbRequestArgs, unknown>("tmdb_request"),
+  setToken: defineCommand<SetTmdbTokenArgs, void>("set_tmdb_token"),
 } as const;
 
 const isStructuredTmdbError = (error: unknown): error is StructuredTmdbError =>
@@ -99,13 +105,37 @@ const fetchFromWebview = async <T>(path: string, params: Record<string, string>,
   return response.json() as Promise<T>;
 };
 
+// What the Rust side is known to hold as the TMDB token (null: nothing, undefined: not known
+// yet). Calls are chained so two requests racing with a token change cannot leave an older
+// token stored last.
+let nativeToken: string | null | undefined;
+let nativeTokenSync: Promise<unknown> = Promise.resolve();
+
+/** Hands the vault's token to the Rust side once, and again only when it changes. */
+const ensureNativeToken = (bearer: string | null): Promise<void> => {
+  const sync = nativeTokenSync.then(async () => {
+    if (nativeToken === bearer) return;
+    await invokeTypedCommand(tmdbCommands.setToken, { token: bearer });
+    nativeToken = bearer;
+  });
+  // The failure goes to this call's own caller through `sync`; the chain only has to keep going.
+  nativeTokenSync = sync.then(
+    () => undefined,
+    () => undefined
+  );
+  return sync;
+};
+
+/** Forgets what the Rust side holds, so the next native request sends the current token again. */
+export const resetNativeTokenSync = (): void => {
+  nativeToken = undefined;
+  nativeTokenSync = Promise.resolve();
+};
+
 const fetchFromNative = async <T>(path: string, params: Record<string, string>, bearer: string): Promise<T> => {
   try {
-    const result = await invokeTypedCommand(tmdbCommands.request, {
-      path,
-      params,
-      token: bearer,
-    });
+    await ensureNativeToken(bearer);
+    const result = await invokeTypedCommand(tmdbCommands.request, { path, params });
     return result as T;
   } catch (error) {
     throw asTmdbError(error);
@@ -159,6 +189,10 @@ export async function tmdbFetch<T>(path: string, params?: Record<string, string 
 
     if (isAuthenticationError(nativeError)) {
       tokenVault.lock();
+      // The rejected token must not stay on the Rust side either.
+      ensureNativeToken(null).catch((clearError: unknown) => {
+        logger.warn(`Could not clear the TMDB token held by the backend: ${errorMessage(clearError)}`);
+      });
     }
 
     logDuration("error");

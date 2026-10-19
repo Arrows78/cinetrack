@@ -41,6 +41,12 @@ vi.mock("@/features/preferences/preferences-repository", () => ({
   preferencesRepository: { setActiveProfile: (...args: unknown[]) => mocks.setActiveProfile(...args) },
 }));
 
+const verifyPin = vi.hoisted(() => vi.fn());
+vi.mock("@/features/profiles/profile-repository", () => ({
+  profileRepository: { verifyPin: (...args: unknown[]) => verifyPin(...args) },
+}));
+
+import { ApiCommandError } from "@/shared/lib/invoke";
 import { ProfileGate } from "@/features/auth/profile-gate";
 
 function wrapper() {
@@ -193,5 +199,26 @@ describe("ProfileGate cloud continuity", () => {
     const retry = await screen.findByRole("button", { name: i18n.t("errors.retry") });
     fireEvent.click(retry);
     await waitFor(() => expect(mocks.cloudGet).toHaveBeenCalledTimes(2));
+  });
+
+  it("asks for the PIN when a protected profile refuses the account-only switch, then switches with it", async () => {
+    mocks.useProfile.mockReturnValue(profileQuery({ id: "profile-2", name: "Bob", avatar: null }));
+    mocks.cloudGet.mockResolvedValue({ userId: "user-1", displayName: "Bob", avatarPath: null });
+    mocks.setActiveProfile.mockRejectedValueOnce(new ApiCommandError("PIN required", 403));
+    verifyPin.mockResolvedValue(true);
+
+    render(
+      <ProfileGate>
+        <div data-testid="child">child</div>
+      </ProfileGate>,
+      { wrapper: wrapper() }
+    );
+
+    const input = await screen.findByLabelText(i18n.t("settings.profiles.pinPrompt.inputLabel"));
+    fireEvent.change(input, { target: { value: "1234" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("settings.profiles.pinPrompt.confirm") }));
+
+    await waitFor(() => expect(mocks.setActiveProfile).toHaveBeenLastCalledWith("profile-2", "user-1", "1234"));
+    expect(verifyPin).toHaveBeenCalledWith("profile-2", "1234");
   });
 });

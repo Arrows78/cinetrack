@@ -3,11 +3,22 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { profileRepository } from "@/features/profiles/profile-repository";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { pinLockMessage } from "@/features/profiles/pin-lock";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { toast } from "@/components/ui/use-toast";
+
+async function verifyPinTellingWhenLocked(profileId: string, pin: string): Promise<boolean> {
+  try {
+    return await profileRepository.verifyPin(profileId, pin);
+  } catch (error) {
+    const locked = pinLockMessage(error);
+    if (locked) toast({ description: locked, variant: "error" });
+    throw error;
+  }
+}
 
 export function useProfiles() {
   const query = useQuery({ queryKey: queryKeys.local.profiles, queryFn: () => profileRepository.list() });
@@ -54,8 +65,10 @@ export function useProfiles() {
     clearPin: clearPin.mutateAsync,
     // A read-only check, not a mutation — nothing in the cache changes on
     // either outcome, so this is a plain pass-through rather than another
-    // useInvalidatingMutation.
-    verifyPin: profileRepository.verifyPin,
+    // useInvalidatingMutation. Except that a profile locked after too many wrong
+    // PINs answers with an error (not `false`): say so, since the prompt itself
+    // only knows "incorrect PIN".
+    verifyPin: verifyPinTellingWhenLocked,
     remove: remove.mutateAsync,
     isSaving: create.isPending || update.isPending || setPin.isPending || clearPin.isPending || remove.isPending,
   };
@@ -86,7 +99,7 @@ export function useProfileSwitching(onSwitched?: () => void) {
       onSwitched?.();
     } catch (error) {
       logger.warn(`Switching to profile ${profileId} failed: ${errorMessage(error)}`);
-      toast({ description: t("settings.profiles.switchFailed"), variant: "error" });
+      toast({ description: pinLockMessage(error) ?? t("settings.profiles.switchFailed"), variant: "error" });
     } finally {
       setSwitchingProfileId(null);
     }

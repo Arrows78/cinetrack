@@ -1,12 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { libraryRepository } from "@/features/library/library-repository";
-import { libraryInvalidationKeys } from "@/features/library/use-library";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
+import { invalidationKeys } from "@/shared/constants/invalidation";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { logger } from "@/shared/lib/logger";
 import type { MediaSummary, ViewingHistoryItem } from "@/types/media";
@@ -131,16 +131,12 @@ export function useUndoHistoryItem() {
           throw new Error(`History action "${item.action}" cannot be undone.`);
       }
     },
+    // A movie toggle also moves the title's own seen state and watch log.
     (_data, item) => [
       queryKeys.local.history(profileId),
-      ...libraryInvalidationKeys(profileId),
-      // A movie toggle also moves the title's own seen state and watch log.
       ...(item.mediaType === "movie"
-        ? [
-            queryKeys.local.movieSeen(profileId, item.mediaId),
-            queryKeys.local.viewingEventsForMedia(profileId, "movie", item.mediaId),
-          ]
-        : []),
+        ? invalidationKeys.movieWatch(profileId, item.mediaId)
+        : invalidationKeys.library(profileId)),
     ]
   );
 }

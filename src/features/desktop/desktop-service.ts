@@ -19,6 +19,22 @@ const openCommandPalette = (event?: { state?: string }) => {
 // cleanup and a later updateGlobalShortcut() call agree on what to
 // unregister before registering the next one.
 let registeredGlobalShortcut: string | null = null;
+// Which initialize() call registered it last: a cleanup only releases the
+// binding it still owns, never one a newer initialize() has taken over.
+let registeredBy: object | null = null;
+
+// register/unregister are async and talk to the OS: run them one after the
+// other, in call order. React StrictMode mounts, unmounts and re-mounts the
+// shell in one tick, so initialize() #1's cleanup and initialize() #2's
+// register overlap — unordered, the cleanup could release the binding the
+// second call had just taken (leaving no shortcut at all) or the second
+// register could be refused as a duplicate of the first.
+let shortcutQueue: Promise<unknown> = Promise.resolve();
+function serialised<T>(task: () => Promise<T>): Promise<T> {
+  const run = shortcutQueue.then(task, task);
+  shortcutQueue = run.catch(() => undefined);
+  return run;
+}
 
 const routeFromUrl = (raw: string): string | null => {
   try {
@@ -46,12 +62,32 @@ export const desktopService = {
       const shortcut = toTauriGlobalShortcut(
         preferences.globalCommandPaletteShortcut ?? defaultPreferences.globalCommandPaletteShortcut
       );
-      await register(shortcut, openCommandPalette);
-      registeredGlobalShortcut = shortcut;
-      // Non-null: this closure is only ever pushed right after the
-      // assignment above, and nothing else in this module ever sets
-      // registeredGlobalShortcut back to null once it's held a value.
-      cleanups.push(() => void unregister(registeredGlobalShortcut!));
+      const owner = {};
+      await serialised(async () => {
+        try {
+          await register(shortcut, openCommandPalette);
+        } catch (error) {
+          // A previous initialize() whose cleanup hasn't run yet still holds
+          // this very binding: that's not a failure, this call takes it over.
+          if (registeredGlobalShortcut !== shortcut) throw error;
+        }
+        registeredGlobalShortcut = shortcut;
+        registeredBy = owner;
+      });
+      cleanups.push(
+        () =>
+          void serialised(async () => {
+            const current = registeredGlobalShortcut;
+            if (registeredBy !== owner || current === null) return;
+            registeredGlobalShortcut = null;
+            registeredBy = null;
+            try {
+              await unregister(current);
+            } catch (error) {
+              logger.warn(`Global shortcut could not be released: ${errorMessage(error)}`);
+            }
+          })
+      );
     } catch (error) {
       logger.warn(`Global shortcut unavailable: ${errorMessage(error)}`);
     }
@@ -99,22 +135,24 @@ export const desktopService = {
   async updateGlobalShortcut(next: string): Promise<void> {
     if (!isTauriApp()) return;
     const { register, unregister } = await import("@/shared/lib/tauri-desktop");
-    const nextShortcut = toTauriGlobalShortcut(next);
-    if (nextShortcut === registeredGlobalShortcut) return;
-    // The new binding is registered *before* the old one is released, and a
-    // refusal (another app owns it, the OS rejects it) propagates: the caller
-    // (Settings) must be able to tell the user and keep the previous binding,
-    // instead of ending up with no system-wide shortcut while the screen
-    // shows the new one.
-    await register(nextShortcut, openCommandPalette);
-    const previousShortcut = registeredGlobalShortcut;
-    registeredGlobalShortcut = nextShortcut;
-    if (previousShortcut) {
-      try {
-        await unregister(previousShortcut);
-      } catch (error) {
-        logger.warn(`Previous global shortcut could not be released: ${errorMessage(error)}`);
+    return serialised(async () => {
+      const nextShortcut = toTauriGlobalShortcut(next);
+      if (nextShortcut === registeredGlobalShortcut) return;
+      // The new binding is registered *before* the old one is released, and a
+      // refusal (another app owns it, the OS rejects it) propagates: the caller
+      // (Settings) must be able to tell the user and keep the previous binding,
+      // instead of ending up with no system-wide shortcut while the screen
+      // shows the new one.
+      await register(nextShortcut, openCommandPalette);
+      const previousShortcut = registeredGlobalShortcut;
+      registeredGlobalShortcut = nextShortcut;
+      if (previousShortcut) {
+        try {
+          await unregister(previousShortcut);
+        } catch (error) {
+          logger.warn(`Previous global shortcut could not be released: ${errorMessage(error)}`);
+        }
       }
-    }
+    });
   },
 };

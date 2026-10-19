@@ -9,6 +9,8 @@ import { Tile } from "@/components/ui/tile";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useSavedFilters } from "@/features/saved-filters/use-saved-filters";
 import { cn } from "@/shared/lib/cn";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import type { SavedFilterPage, SavedFilterState } from "@/types/media";
 
 const MAX_SAVED_FILTER_NAME_LENGTH = 100;
@@ -38,10 +40,18 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
   page,
   currentFilters,
   onApply,
+  isVisible,
 }: {
   page: SavedFilterPage;
   currentFilters: TState;
   onApply: (filters: TState) => void;
+  /**
+   * Narrows which of the page's saved filters are listed — for a surface that
+   * shares a storage `page` with others but only makes sense of some of them
+   * (the /movies and /series hubs share "library" with /library, whose
+   * saved views of the other media type would apply nothing there).
+   */
+  isVisible?: (filters: TState) => boolean;
 }) {
   const { t } = useTranslation();
   const savedFilters = useSavedFilters<TState>(page);
@@ -74,7 +84,9 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
 
   const handleSave = () => {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    // isSaving: Enter (or a second click) while a save is in flight would
+    // create the same saved filter twice.
+    if (!trimmed || savedFilters.isSaving) return;
     setSaveError(null);
     void savedFilters
       .create({ name: trimmed, filters: currentFilters })
@@ -82,17 +94,23 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
         setName("");
         setIsCreating(false);
       })
-      .catch(() => setSaveError(t("filters.savedFilters.saveFailed")));
+      .catch((error: unknown) => {
+        logger.error(`Saving a filter failed: ${errorMessage(error)}`);
+        setSaveError(t("filters.savedFilters.saveFailed"));
+      });
   };
 
   const handleRename = (savedFilterId: string) => {
     const trimmed = editingName.trim();
-    if (!trimmed) return;
+    if (!trimmed || savedFilters.isSaving) return;
     setRenameError(null);
     void savedFilters
       .rename({ savedFilterId, name: trimmed })
       .then(() => setEditingId(null))
-      .catch(() => setRenameError(t("filters.savedFilters.renameFailed")));
+      .catch((error: unknown) => {
+        logger.error(`Renaming a saved filter failed: ${errorMessage(error)}`);
+        setRenameError(t("filters.savedFilters.renameFailed"));
+      });
   };
 
   // A saved filter is "active" when the page's current filter state is
@@ -103,99 +121,101 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        {savedFilters.data?.map((saved) =>
-          editingId === saved.id ? (
-            <Tile key={saved.id} className="flex items-center gap-1 rounded-full py-1 pl-3 pr-1">
-              <Input
-                ref={renameInputRef}
-                size="sm"
-                value={editingName}
-                onChange={(event) => setEditingName(event.target.value)}
-                aria-label={t("filters.savedFilters.renameLabel")}
-                maxLength={MAX_SAVED_FILTER_NAME_LENGTH}
-                className="h-7 max-w-40"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") handleRename(saved.id);
-                  if (event.key === "Escape") setEditingId(null);
-                }}
-              />
-              <IconTooltip label={t("filters.savedFilters.renameSave")}>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("filters.savedFilters.renameSave")}
-                  className="size-6 rounded-full"
-                  disabled={!editingName.trim()}
-                  onClick={() => handleRename(saved.id)}
-                >
-                  <Check className="size-3" />
-                </Button>
-              </IconTooltip>
-              <IconTooltip label={t("filters.savedFilters.renameCancel")}>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("filters.savedFilters.renameCancel")}
-                  className="size-6 rounded-full"
-                  onClick={() => setEditingId(null)}
-                >
-                  <X className="size-3" />
-                </Button>
-              </IconTooltip>
-            </Tile>
-          ) : (
-            <Tile
-              key={saved.id}
-              className={cn(
-                "flex items-center gap-1 rounded-full py-1 pl-3 pr-1",
-                isActive(saved.filters) && "ring-2 ring-primary"
-              )}
-            >
-              <button
-                type="button"
-                className="text-body-sm font-medium text-foreground transition-colors hover:text-primary"
-                onClick={() => onApply(saved.filters)}
-              >
-                {saved.name}
-              </button>
-              {isActive(saved.filters) ? (
-                <Badge variant="success" className="h-5 px-1.5 text-[0.65rem]">
-                  {t("filters.savedFilters.active")}
-                </Badge>
-              ) : null}
-              <IconTooltip label={t("filters.savedFilters.rename", { name: saved.name })}>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("filters.savedFilters.rename", { name: saved.name })}
-                  className="size-6 rounded-full"
-                  onClick={() => {
-                    setRenameError(null);
-                    setEditingName(saved.name);
-                    setEditingId(saved.id);
+        {savedFilters.data
+          ?.filter((saved) => (isVisible ? isVisible(saved.filters) : true))
+          .map((saved) =>
+            editingId === saved.id ? (
+              <Tile key={saved.id} className="flex items-center gap-1 rounded-full py-1 pl-3 pr-1">
+                <Input
+                  ref={renameInputRef}
+                  size="sm"
+                  value={editingName}
+                  onChange={(event) => setEditingName(event.target.value)}
+                  aria-label={t("filters.savedFilters.renameLabel")}
+                  maxLength={MAX_SAVED_FILTER_NAME_LENGTH}
+                  className="h-7 max-w-40"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") handleRename(saved.id);
+                    if (event.key === "Escape") setEditingId(null);
                   }}
-                >
-                  <Pencil className="size-3" />
-                </Button>
-              </IconTooltip>
-              <IconTooltip label={t("filters.savedFilters.delete", { name: saved.name })}>
-                <Button
+                />
+                <IconTooltip label={t("filters.savedFilters.renameSave")}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t("filters.savedFilters.renameSave")}
+                    className="size-6 rounded-full"
+                    disabled={!editingName.trim() || savedFilters.isSaving}
+                    onClick={() => handleRename(saved.id)}
+                  >
+                    <Check className="size-3" />
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={t("filters.savedFilters.renameCancel")}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t("filters.savedFilters.renameCancel")}
+                    className="size-6 rounded-full"
+                    onClick={() => setEditingId(null)}
+                  >
+                    <X className="size-3" />
+                  </Button>
+                </IconTooltip>
+              </Tile>
+            ) : (
+              <Tile
+                key={saved.id}
+                className={cn(
+                  "flex items-center gap-1 rounded-full py-1 pl-3 pr-1",
+                  isActive(saved.filters) && "ring-2 ring-primary"
+                )}
+              >
+                <button
                   type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("filters.savedFilters.delete", { name: saved.name })}
-                  className="size-6 rounded-full"
-                  onClick={() => setPendingRemoval({ id: saved.id, name: saved.name })}
+                  className="text-body-sm font-medium text-foreground transition-colors hover:text-primary"
+                  onClick={() => onApply(saved.filters)}
                 >
-                  <Trash2 className="size-3" />
-                </Button>
-              </IconTooltip>
-            </Tile>
-          )
-        )}
+                  {saved.name}
+                </button>
+                {isActive(saved.filters) ? (
+                  <Badge variant="success" className="h-5 px-1.5 text-[0.65rem]">
+                    {t("filters.savedFilters.active")}
+                  </Badge>
+                ) : null}
+                <IconTooltip label={t("filters.savedFilters.rename", { name: saved.name })}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t("filters.savedFilters.rename", { name: saved.name })}
+                    className="size-6 rounded-full"
+                    onClick={() => {
+                      setRenameError(null);
+                      setEditingName(saved.name);
+                      setEditingId(saved.id);
+                    }}
+                  >
+                    <Pencil className="size-3" />
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={t("filters.savedFilters.delete", { name: saved.name })}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t("filters.savedFilters.delete", { name: saved.name })}
+                    className="size-6 rounded-full"
+                    onClick={() => setPendingRemoval({ id: saved.id, name: saved.name })}
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </IconTooltip>
+              </Tile>
+            )
+          )}
         {isCreating ? (
           <>
             <Input
@@ -211,7 +231,13 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
                 if (event.key === "Enter") handleSave();
               }}
             />
-            <Button type="button" size="sm" variant="outline" disabled={!name.trim()} onClick={handleSave}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!name.trim() || savedFilters.isSaving}
+              onClick={handleSave}
+            >
               <BookmarkPlus className="mr-2 size-4" />
               {t("filters.savedFilters.save")}
             </Button>
@@ -248,7 +274,10 @@ export function SavedFiltersBar<TState extends SavedFilterState>({
           void savedFilters
             .remove(pendingRemoval.id)
             .then(() => setPendingRemoval(null))
-            .catch(() => setRemoveError(t("filters.savedFilters.deleteFailed")));
+            .catch((error: unknown) => {
+              logger.error(`Deleting a saved filter failed: ${errorMessage(error)}`);
+              setRemoveError(t("filters.savedFilters.deleteFailed"));
+            });
         }}
       />
     </div>

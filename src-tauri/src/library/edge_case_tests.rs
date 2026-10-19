@@ -175,3 +175,53 @@ async fn a_total_that_decreases_is_the_same_total_for_a_watch_and_for_the_refres
         .unwrap();
     assert_eq!(status(&pool).await, Some(LibraryStatus::Completed));
 }
+
+#[tokio::test]
+async fn looking_up_keys_in_batch_dedups_and_refuses_an_oversized_set_instead_of_truncating() {
+    use super::models::LibraryMediaKey;
+    use super::queries::{get_items_by_keys_impl, list_keys_among_impl};
+
+    let pool = migrated_pool().await;
+    let app = tauri::test::mock_app();
+    app.manage(pool.clone());
+    apply_episodes_impl(
+        &pool,
+        "default",
+        &show(SERIES, 0, "Returning Series"),
+        &[ep(901, 1)],
+        true,
+        "2026-01-01T00:00:00.000Z",
+    )
+    .await
+    .unwrap();
+
+    let key = LibraryMediaKey {
+        media_id: SERIES,
+        media_type: MediaType::Series,
+    };
+    let absent = LibraryMediaKey {
+        media_id: 12345,
+        media_type: MediaType::Movie,
+    };
+    let found = get_items_by_keys_impl(&pool, "default", &[key, absent, key])
+        .await
+        .unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(
+        list_keys_among_impl(&pool, "default", &[key, absent, key])
+            .await
+            .unwrap(),
+        vec![key]
+    );
+
+    // Far beyond the cap, with the key we know placed last: a silent
+    // truncation would have answered "not in the library".
+    let mut many = vec![absent; 6_000];
+    many.push(key);
+    assert!(
+        get_items_by_keys_impl(&pool, "default", &many)
+            .await
+            .is_err()
+    );
+    assert!(list_keys_among_impl(&pool, "default", &many).await.is_err());
+}

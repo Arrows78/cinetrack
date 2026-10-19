@@ -1,6 +1,8 @@
 import { addDays, endOfDay, isAfter, isBefore, parseISO, startOfDay } from "date-fns";
 import { queryClient } from "@/app/query-client";
+import { fetchMovieDetailsCached, fetchSeriesDetailsCached } from "@/features/media";
 import { mediaRepository } from "@/features/media/media-repository";
+import { libraryRepository } from "@/features/library/library-repository";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
@@ -18,9 +20,8 @@ import type { CalendarEntry, Season } from "@/types/media";
 // a higher fan-out no longer means proportionally more real TMDB calls.
 const SERIES_LOOKUP_CONCURRENCY = 8;
 // Upcoming movies beyond this many pages are not worth paginating into for
-// a 60-day window — TMDB's "upcoming" list is sorted by release date, so
-// this is a safety ceiling, not the normal stopping condition (build() stops
-// as soon as a page's results move past `to`).
+// a 60-day window. The feed is sorted by popularity, so dates on one page
+// cannot tell us whether later pages contain releases inside the window.
 const MAX_UPCOMING_MOVIE_PAGES = 10;
 
 // A source's entries plus the error that made it unreachable, when none of
@@ -42,12 +43,10 @@ async function fetchUpcomingMovieEntries(from: Date, to: Date): Promise<SourceRe
     });
     if (!upcoming.results.length) break;
 
-    let sawEntryPastWindow = false;
     for (const movie of upcoming.results) {
       if (!movie.releaseDate) continue;
       const date = parseISO(movie.releaseDate);
       if (isAfter(date, to)) {
-        sawEntryPastWindow = true;
         continue;
       }
       if (isBefore(date, from)) continue;
@@ -61,12 +60,52 @@ async function fetchUpcomingMovieEntries(from: Date, to: Date): Promise<SourceRe
         posterPath: movie.posterPath,
       });
     }
-    // TMDB's upcoming list is sorted by ascending release date, so once a
-    // page starts returning dates past the window, later pages only would too.
-    if (sawEntryPastWindow || page >= upcoming.totalPages) break;
+    if (page >= upcoming.totalPages) break;
   }
 
   return { entries, failure };
+}
+
+// The upcoming feed is a popularity ranking, so a film the user saved can sit
+// beyond its last page. Looking the library's unseen films up directly puts
+// them on the calendar whatever their rank. Films from past years are skipped:
+// they cannot release inside the window.
+async function fetchLibraryMovieEntries(from: Date, to: Date): Promise<SourceResult> {
+  const entries: CalendarEntry[] = [];
+  const errors: unknown[] = [];
+  const items = (await libraryRepository.list("movie")).filter(
+    (item) =>
+      item.status !== "completed" &&
+      item.status !== "dropped" &&
+      (item.year === null || item.year >= from.getFullYear())
+  );
+
+  await mapWithConcurrency(
+    items,
+    async (item) => {
+      try {
+        const movie = await fetchMovieDetailsCached(item.mediaId, { staleTime: STALE_1_HOUR, retry: false });
+        if (!movie.releaseDate) return;
+        const date = parseISO(movie.releaseDate);
+        if (isBefore(date, from) || isAfter(date, to)) return;
+        entries.push({
+          id: `movie-${movie.id}-${movie.releaseDate}`,
+          mediaId: movie.id,
+          mediaType: "movie",
+          title: movie.title,
+          date: movie.releaseDate,
+          kind: "movie-release",
+          posterPath: movie.posterPath,
+        });
+      } catch (error) {
+        logger.warn(`Failed to fetch details for library movie ${item.mediaId}: ${errorMessage(error)}`);
+        errors.push(error);
+      }
+    },
+    SERIES_LOOKUP_CONCURRENCY
+  );
+
+  return { entries, failure: errors.length > 0 && errors.length === items.length ? { error: errors[0] } : undefined };
 }
 
 async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceResult> {
@@ -89,9 +128,7 @@ async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceRe
         // behavior — this call already has its own catch-and-skip below, so
         // a query-level retry would only add backoff delay before reaching
         // the same "skip this series" outcome.
-        const details = await queryClient.fetchQuery({
-          queryKey: queryKeys.remote.seriesDetails(trackedSeries.seriesId),
-          queryFn: () => mediaRepository.getSeriesDetails(trackedSeries.seriesId),
+        const details = await fetchSeriesDetailsCached(trackedSeries.seriesId, {
           staleTime: STALE_5_MIN,
           retry: false,
         });
@@ -100,6 +137,7 @@ async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceRe
           .filter((number) => number > 0)
           .sort((a, b) => a - b)
           .slice(-2);
+        const seasonErrors: unknown[] = [];
         const seasons = (
           await Promise.all(
             recentSeasonNumbers.map((number) =>
@@ -111,12 +149,14 @@ async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceRe
                   retry: false,
                 })
                 .catch((error) => {
+                  seasonErrors.push(error);
                   logger.warn(`Failed to fetch season ${number} details for series ${details.id}: ${error}`);
                   return null;
                 })
             )
           )
         ).filter((season): season is Season => Boolean(season));
+        if (seasonErrors.length > 0 && seasons.length === 0) throw seasonErrors[0];
         for (const episode of seasons.flatMap((season) => season.episodes)) {
           if (!episode.airDate) continue;
           const date = parseISO(episode.airDate);
@@ -167,25 +207,25 @@ export const calendarService = {
     // other's results — running them concurrently instead of sequentially
     // roughly halves the wall-clock time on a profile with both a sizeable
     // tracked-series list and several pages of upcoming movies.
-    const [movies, episodes] = await Promise.all([
+    const [movies, episodes, libraryMovies] = await Promise.all([
       fetchUpcomingMovieEntries(from, to),
       fetchTrackedSeriesEntries(from, to),
+      fetchLibraryMovieEntries(from, to),
     ]);
 
-    // A partial failure degrades to a shorter calendar. When nothing could
-    // be fetched at all the caller must see an error (so the page shows its
-    // retry state) rather than an empty calendar reading as "nothing coming
-    // up": the upcoming feed is down and no tracked series could be reached
-    // either (or none is tracked, so there is nothing else to show).
-    if (movies.failure && (episodes.failure || episodes.entries.length === 0)) {
-      throw movies.failure.error;
+    // Keep entries from working sources. If the calendar is empty and a
+    // source failed, offer a retry: an empty movie feed cannot prove there
+    // are no upcoming episodes when those episodes could not be fetched.
+    const failure = movies.failure ?? episodes.failure ?? libraryMovies.failure;
+    if (movies.entries.length === 0 && episodes.entries.length === 0 && libraryMovies.entries.length === 0 && failure) {
+      throw failure.error;
     }
 
     // The lookups finish in whatever order TMDB answers, and the upcoming feed
     // can repeat a movie across pages while it shifts: one entry per id, in a
     // fixed order — date, then title, then season and episode.
     const unique = new Map<string, CalendarEntry>();
-    for (const entry of [...movies.entries, ...episodes.entries]) unique.set(entry.id, entry);
+    for (const entry of [...movies.entries, ...libraryMovies.entries, ...episodes.entries]) unique.set(entry.id, entry);
     return [...unique.values()].sort(compareCalendarEntries);
   },
 };

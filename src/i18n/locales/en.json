@@ -175,6 +175,9 @@
     "cat": "Cat"
   },
   "home": {
+    "partialFeedNotice_one": "Some catalogue section could not be loaded.",
+    "partialFeedNotice_other": "Some catalogue sections could not be loaded ({{count}}).",
+    "partialFeedRetry": "Retry",
     "noTokenTitle": "Track without a TMDB token",
     "noTokenDesc": "A TMDB token isn't required to use CineTrack — it only unlocks browsing and discovering new titles.",
     "noTokenWorksTitle": "Works right now, offline",
@@ -284,6 +287,9 @@
     "filterFromDate": "From date",
     "filterToDate": "To date",
     "undo": "Undo",
+    "undoConfirmTitle": "Undo this entry?",
+    "undoConfirmDescription": "The change it recorded for \"{{title}}\" will be reversed.",
+    "undoConfirmAction": "Undo it",
     "undoNeedsCatalogue": "This older entry can only be undone while the movie and series catalogue is reachable. Check your connection and try again.",
     "undoKeptLibraryItem": "This title has moved past \"to watch\" since it was added, so it was kept in your library.",
     "seriesInProgress": "Series in progress",
@@ -331,6 +337,9 @@
     "resultsCount_one": "{{count}} result",
     "resultsCount_other": "{{count}} results",
     "showingResults": "Showing results for {{filters}}",
+    "showingFilteredResults": "Results for “{{query}}” with {{filters}}",
+    "noMatchesLoaded": "No matches in these results yet",
+    "moreResultsToCheck": "More results are available. Load more to continue searching with these filters.",
     "suggestionsLabel": "Search suggestions",
     "recentSearches": "Recent searches",
     "clearHistory": "Clear",
@@ -397,6 +406,11 @@
     "compactMode": "Compact mode",
     "spoilerProtection": "Spoiler protection",
     "calendarNotifications": "Calendar notifications",
+    "reminderLeadTime": "Remind me before a release",
+    "reminderOnReleaseDay": "On the release day",
+    "reminderHoursBefore_one": "{{count}} hour before",
+    "reminderHoursBefore_other": "{{count}} hours before",
+    "reminderLeadTimeDescription": "Reminders for titles you follow are checked when you open the app and during automatic checks.",
     "availabilityAlerts": "Availability alerts",
     "desktopNotifications": "Desktop notifications",
     "notificationsPermissionDenied": "Notifications are blocked for CineTrack. Allow them in your system settings, then try again.",
@@ -440,7 +454,9 @@
         "setLabel": "Set PIN",
         "changeLabel": "Change PIN",
         "removeLabel": "Remove PIN",
-        "locked": "PIN-protected"
+        "locked": "PIN-protected",
+        "lockedWithDelay": "Too many wrong PIN attempts. Try again in {{seconds}} seconds.",
+        "lockedNoDelay": "Too many wrong PIN attempts. Try again in a moment."
       },
       "pinPrompt": {
         "title": "Enter the PIN for {{name}}",
@@ -587,6 +603,8 @@
     "unmarkSeasonConfirmDescription": "Every episode of this season goes back to unwatched. Their own ratings and watch dates are removed; your history keeps a record of the change.",
     "unmarkSeriesConfirmTitle": "Mark the whole series as unwatched?",
     "unmarkSeriesConfirmDescription": "Every episode of every season goes back to unwatched. Their own ratings and watch dates are removed; your history keeps a record of the change.",
+    "unmarkEpisodeConfirmTitle": "Mark this episode as unwatched?",
+    "unmarkEpisodeConfirmDescription": "This episode goes back to unwatched. Its own rating and watch date are removed; your history keeps a record of the change.",
     "unmarkConfirm": "Mark as unwatched"
   },
   "stats": {

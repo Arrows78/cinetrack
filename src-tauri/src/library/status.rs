@@ -16,11 +16,13 @@ use serde_json::json;
 use sqlx::SqlitePool;
 
 use super::domain::{LibraryStatus, LibraryStatusOrigin};
-use super::models::{AutoSyncMedia, LibraryRow};
+use super::insert::{OnConflict, insert_item};
+use super::models::{AutoSyncMedia, LibraryItem, LibraryRow};
 use crate::database::{new_uuid, now_iso};
 use crate::error::ApiError;
 use crate::history::{HistoryAction, ViewingHistoryItem, add_history_item_impl};
 use crate::models::MediaType;
+use crate::progress::regular_episodes_watched;
 
 /// Why a status is being reconsidered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,10 +189,11 @@ async fn watched_regular_episodes<'e, E>(
 where
     E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
 {
-    sqlx::query_scalar(
+    sqlx::query_scalar(concat!(
         "SELECT COUNT(*) FROM episode_progress
-         WHERE profile_id = $1 AND series_id = $2 AND watched = 1 AND season_number > 0",
-    )
+         WHERE profile_id = $1 AND series_id = $2 AND ",
+        regular_episodes_watched!()
+    ))
     .bind(profile_id)
     .bind(series_id)
     .fetch_one(executor)
@@ -352,31 +355,34 @@ async fn create_entry(
     let completed_at = (status == LibraryStatus::Completed).then(|| now.to_string());
     let uuid = new_uuid();
 
-    sqlx::query(
-        "INSERT INTO library_items (
-          uuid, profile_id, media_id, media_type, title, poster_path, backdrop_path, year, rating, genres,
-          status, favourite, user_rating, notes, tags, started_at, completed_at, rewatch_count, created_at, updated_at,
-          status_origin
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,NULL,NULL,$12,$13,$14,0,$15,$15,'auto')",
+    insert_item(
+        tx,
+        &LibraryItem {
+            id: uuid.clone(),
+            profile_id: profile_id.to_string(),
+            media_id: media.media_id,
+            media_type: media.media_type,
+            title: media.title.clone(),
+            poster_path: media.poster_path.clone(),
+            backdrop_path: media.backdrop_path.clone(),
+            year: media.year,
+            rating: media.rating,
+            genres: media.genres.clone(),
+            status,
+            favourite: false,
+            user_rating: None,
+            notes: None,
+            tags: Vec::new(),
+            started_at,
+            completed_at,
+            rewatch_count: 0,
+            created_at: now.to_string(),
+            updated_at: now.to_string(),
+            status_origin: Some(LibraryStatusOrigin::Auto),
+        },
+        OnConflict::Fail,
     )
-    .bind(&uuid)
-    .bind(profile_id)
-    .bind(media.media_id)
-    .bind(media.media_type.as_db_str())
-    .bind(&media.title)
-    .bind(&media.poster_path)
-    .bind(&media.backdrop_path)
-    .bind(media.year)
-    .bind(media.rating)
-    .bind(serde_json::to_string(&media.genres).unwrap())
-    .bind(status.as_db_str())
-    .bind("[]")
-    .bind(&started_at)
-    .bind(&completed_at)
-    .bind(now)
-    .execute(&mut **tx)
-    .await
-    .map_err(ApiError::from)?;
+    .await?;
 
     let history_item = ViewingHistoryItem {
         id: new_uuid(),

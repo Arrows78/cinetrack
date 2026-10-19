@@ -1,9 +1,9 @@
 use sqlx::SqlitePool;
 
 use super::PortableData;
-use super::export::export_backup;
+use super::export::export_impl;
 use super::filesystem;
-use super::import::import_backup;
+use super::import::import_impl;
 use super::integrity::{DataIntegrityCheck, check};
 use crate::error::ApiError;
 
@@ -17,11 +17,11 @@ impl<'a> BackupService<'a> {
     }
 
     pub(super) async fn export(&self) -> Result<PortableData, ApiError> {
-        export_backup(self.pool).await
+        export_impl(self.pool).await
     }
 
     pub(super) async fn import(&self, data: PortableData) -> Result<(), ApiError> {
-        import_backup(self.pool, data).await
+        import_impl(self.pool, data).await
     }
 
     pub(super) async fn check_integrity(&self) -> Result<DataIntegrityCheck, ApiError> {

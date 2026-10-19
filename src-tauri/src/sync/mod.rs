@@ -1,5 +1,6 @@
 mod commands;
 mod models;
+mod registry;
 #[cfg(test)]
 mod scenario_tests;
 mod service;

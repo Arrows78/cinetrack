@@ -52,6 +52,39 @@ describe("imageCache", () => {
   });
 
   describe("prefetch", () => {
+    it("keeps the entries of two overlapping prefetches instead of letting the last write drop the first's", async () => {
+      const cache = createFakeCache();
+      stubCaches(cache);
+
+      await Promise.all([imageCache.prefetch(["https://a.jpg"]), imageCache.prefetch(["https://b.jpg"])]);
+
+      expect(Object.keys(readMeta()).sort()).toEqual(["https://a.jpg", "https://b.jpg"]);
+    });
+
+    it("still runs a later prefetch after an earlier one failed", async () => {
+      const cache = createFakeCache();
+      const cachesOpen = vi.fn().mockRejectedValueOnce(new Error("cache storage unavailable")).mockResolvedValue(cache);
+      vi.stubGlobal("caches", { open: cachesOpen, delete: vi.fn() });
+
+      await expect(imageCache.prefetch(["https://a.jpg"])).rejects.toThrow("cache storage unavailable");
+      await imageCache.prefetch(["https://b.jpg"]);
+
+      expect(Object.keys(readMeta())).toEqual(["https://b.jpg"]);
+    });
+
+    it("logs and resolves when the metadata cannot be saved (quota exceeded)", async () => {
+      const cache = createFakeCache();
+      stubCaches(cache);
+      const setItemSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("QuotaExceededError");
+      });
+
+      await expect(imageCache.prefetch(["https://a.jpg"])).resolves.toBeUndefined();
+
+      expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("could not be saved"));
+      setItemSpy.mockRestore();
+    });
+
     it("returns immediately without touching localStorage when the Cache API is unavailable", async () => {
       expect("caches" in window).toBe(false);
       const setItemSpy = vi.spyOn(Storage.prototype, "setItem");

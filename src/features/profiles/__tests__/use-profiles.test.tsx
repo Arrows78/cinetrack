@@ -287,6 +287,29 @@ describe("useProfiles", () => {
     expect(clearPinMock).toHaveBeenCalledWith("profile-1", "4242");
   });
 
+  it("verifyPin tells the viewer a profile is locked after too many wrong PINs, and still rejects", async () => {
+    const locked = Object.assign(new Error("Too many PIN attempts. Try again in 30 seconds."), { status: 429 });
+    verifyPinMock.mockRejectedValueOnce(locked);
+    const { useProfiles } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfiles(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(result.current.verifyPin("profile-1", "0000")).rejects.toBe(locked);
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.stringContaining("30"), variant: "error" })
+    );
+  });
+
+  it("verifyPin does not toast for an ordinary failure", async () => {
+    verifyPinMock.mockRejectedValueOnce(new Error("boom"));
+    const { useProfiles } = await import("../use-profiles");
+    const { result } = renderHook(() => useProfiles(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(result.current.verifyPin("profile-1", "0000")).rejects.toThrow("boom");
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
   it("verifyPin is a plain pass-through that doesn't affect isSaving", async () => {
     verifyPinMock.mockResolvedValueOnce(false);
     const { useProfiles } = await import("../use-profiles");

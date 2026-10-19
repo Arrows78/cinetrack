@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { DEFAULT_PROFILE_ID } from "@/shared/constants/profile";
@@ -23,12 +23,14 @@ vi.mock("@/features/preferences/preferences-repository", () => ({
 // and still real below.
 let libraryItems: LibraryItem[] = [];
 let libraryIsError = false;
+const idsMatchingFiltersSpy = vi.fn();
 vi.mock("@/features/library/library-repository", () => ({
   libraryRepository: {
-    idsMatchingFilters: () =>
-      libraryIsError
+    idsMatchingFilters: (...args: unknown[]) =>
+      idsMatchingFiltersSpy(...args) ||
+      (libraryIsError
         ? Promise.reject(new Error("boom"))
-        : Promise.resolve(libraryItems.map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType }))),
+        : Promise.resolve(libraryItems.map((item) => ({ mediaId: item.mediaId, mediaType: item.mediaType })))),
     getItemsByKeys: () => Promise.resolve(libraryItems),
   },
 }));
@@ -50,6 +52,7 @@ vi.mock("@/features/progress/use-progress", () => ({
 let seriesWithNextEpisode = new Set<number>();
 let failingSeriesIds = new Set<number>();
 const resolvedRequests: number[][] = [];
+const retryNextEpisodesMock = vi.fn();
 vi.mock("@/features/progress/use-watch-next", () => ({
   useNextEpisodes: (seriesList: TrackedSeriesItem[]) => {
     resolvedRequests.push(seriesList.map((series) => series.seriesId));
@@ -60,7 +63,7 @@ vi.mock("@/features/progress/use-watch-next", () => ({
       isLoading: false,
       isError: failingSeriesIds.has(series.seriesId),
     }));
-    return { entries: [], results, isLoading: false };
+    return { entries: [], results, isLoading: false, refetch: retryNextEpisodesMock };
   },
 }));
 
@@ -88,7 +91,11 @@ function createWrapper() {
 }
 
 beforeEach(() => {
-  getPreferencesMock.mockClear();
+  idsMatchingFiltersSpy.mockReset();
+  getPreferencesMock
+    .mockReset()
+    .mockResolvedValue({ activeProfileId: DEFAULT_PROFILE_ID, preferredProviderIds: [], region: "FR" } as never);
+  retryNextEpisodesMock.mockReset();
   getMovieDetailsMock.mockReset();
   libraryItems = [];
   libraryIsError = false;
@@ -100,6 +107,40 @@ beforeEach(() => {
 });
 
 describe("useSmartListMatches", () => {
+  it("only matches streaming providers available in the selected country", async () => {
+    libraryItems = [makeLibraryItem({ mediaId: 1, mediaType: "movie" })];
+    snapshotsData = [
+      { mediaId: 1, mediaType: "movie", region: "FR", providerIds: [], checkedAt: "2026-01-01" },
+      { mediaId: 1, mediaType: "movie", region: "US", providerIds: [8], checkedAt: "2026-01-01" },
+    ];
+    const { useSmartListMatches } = await import("../use-smart-list-matches");
+    const { result } = renderHook(() => useSmartListMatches({ ...DEFAULT_SMART_LIST_RULES, provider: 8 }), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items).toEqual([]);
+  });
+
+  it("reports failed preferences and retries them instead of silently evaluating with the wrong services", async () => {
+    getPreferencesMock.mockRejectedValue(new Error("Preferences unavailable"));
+    const { useSmartListMatches } = await import("../use-smart-list-matches");
+    const { result } = renderHook(() => useSmartListMatches({ ...DEFAULT_SMART_LIST_RULES, provider: "mine" }), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isError).toBe(true);
+    expect(result.current.error?.message).toBe("Preferences unavailable");
+    getPreferencesMock.mockResolvedValue({
+      activeProfileId: DEFAULT_PROFILE_ID,
+      preferredProviderIds: [],
+      region: "FR",
+    } as never);
+    await act(async () => {
+      result.current.refetch();
+    });
+    await waitFor(() => expect(result.current.isError).toBe(false));
+  });
+
   it("returns no items when no rules are given", async () => {
     libraryItems = [makeLibraryItem()];
     const { useSmartListMatches } = await import("../use-smart-list-matches");
@@ -107,6 +148,8 @@ describe("useSmartListMatches", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.items).toEqual([]);
+    // No smart list selected: no library query at all, not a wasted full-library id scan.
+    expect(idsMatchingFiltersSpy).not.toHaveBeenCalled();
   });
 
   it("filters the library by the given rules", async () => {
@@ -215,6 +258,10 @@ describe("useSmartListMatches", () => {
       const { result } = renderHook(() => useSmartListMatches(rules), { wrapper: createWrapper() });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
+      await act(async () => {
+        result.current.refetch();
+      });
+      expect(retryNextEpisodesMock).toHaveBeenCalledOnce();
     });
   });
 
