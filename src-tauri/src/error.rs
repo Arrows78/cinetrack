@@ -65,8 +65,6 @@ impl From<sqlx::Error> for ApiError {
 
 #[cfg(test)]
 mod tests {
-    use sqlx::SqlitePool;
-    use sqlx::sqlite::SqlitePoolOptions;
 
     use super::*;
 
@@ -82,17 +80,7 @@ mod tests {
         assert_eq!(error.status, Some(500));
     }
 
-    async fn migrated_pool() -> SqlitePool {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-        crate::database::migrations::run_migrations(&pool)
-            .await
-            .unwrap();
-        pool
-    }
+    use crate::test_support::migrated_pool;
 
     #[tokio::test]
     async fn a_database_error_that_is_not_a_unique_violation_falls_back_to_an_internal_error() {

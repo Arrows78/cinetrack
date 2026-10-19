@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { libraryRepository, type LibraryPageSort, type LibraryPatch } from "@/features/library/library-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { invalidationKeys } from "@/shared/constants/invalidation";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { mediaKey } from "@/shared/utils/media-key";
@@ -154,7 +155,7 @@ export function useLibraryItem(media: MediaSummary) {
   });
   const itemKey = queryKeys.local.libraryItem(profileId, media.mediaType, media.id);
   const invalidateEverythingTheLibraryFeeds = () =>
-    Promise.all(libraryInvalidationKeys(profileId).map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    Promise.all(invalidationKeys.library(profileId).map((queryKey) => queryClient.invalidateQueries({ queryKey })));
   const save = useMutation({
     mutationFn: (patch: LibraryPatch) => libraryRepository.save(media, patch),
     onSuccess: async (item) => {
@@ -202,7 +203,7 @@ export function useRefreshLibraryCatalogMetadata() {
       ),
     (_data, variables) => [
       queryKeys.local.libraryItem(profileId, variables.mediaType, variables.mediaId),
-      ...libraryInvalidationKeys(profileId),
+      ...invalidationKeys.library(profileId),
     ]
   );
   return mutation.mutateAsync;
@@ -222,50 +223,12 @@ export function useIsInLibrary(mediaId: number, mediaType: MediaSummary["mediaTy
   });
 }
 
-// Every query key a library mutation can move something out from under —
-// shared so a new mutation site reaches for this instead of retyping the
-// list and risking it drifting from this one (see use-progress.ts's
-// episode/movie toggle mutations for another caller of this same list).
-export function libraryInvalidationKeys(profileId: string) {
-  return [
-    queryKeys.local.library(profileId),
-    queryKeys.local.libraryPage(profileId),
-    queryKeys.local.history(profileId),
-    queryKeys.local.stats(profileId),
-    queryKeys.local.watchTonight(profileId),
-    queryKeys.local.tracking(profileId),
-    queryKeys.local.libraryMediaKeys(profileId),
-    // A save can add or drop a tag and a removal drops the item's tags —
-    // the tag editor's autocomplete reads this list.
-    queryKeys.local.libraryDistinctTags(profileId),
-    queryKeys.local.completedLibraryCandidates(profileId),
-    queryKeys.local.bestRecommendationSeed(profileId),
-    // Planning a title lifts its "not interested" dismissal in Rust.
-    queryKeys.local.dismissedRecommendations(profileId),
-  ];
-}
-
-// What a status moving on titles that stay in the library can change: the
-// lists and counts that read statuses, the statistics that count completed
-// titles, and the two candidate pools built from them. Narrower than
-// libraryInvalidationKeys above — the membership set, the tags, the history,
-// the tracking calendar and the dismissals are untouched by a status move.
-export function libraryStatusInvalidationKeys(profileId: string) {
-  return [
-    queryKeys.local.library(profileId),
-    queryKeys.local.libraryPage(profileId),
-    queryKeys.local.stats(profileId),
-    queryKeys.local.completedLibraryCandidates(profileId),
-    queryKeys.local.bestRecommendationSeed(profileId),
-  ];
-}
-
 // Backs the grid/detail-page quick "add to library" toggle — a lighter
 // weight pair than useLibraryItem (no full LibraryItem fetch) matching the
 // presence-only shape useIsInLibrary already provides for reads.
 export function useLibraryQuickToggle(options?: { suppressErrorToast?: boolean }) {
   const profileId = useActiveProfileId();
-  const invalidateKeys = libraryInvalidationKeys(profileId);
+  const invalidateKeys = invalidationKeys.library(profileId);
 
   const addPlanned = useInvalidatingMutation(
     (media: MediaSummary) => libraryRepository.addIfAbsent(media),

@@ -3,6 +3,7 @@ import { Calendar, Check, Clock4, EyeOff, ImageOff, NotebookPen, X } from "lucid
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { motion, useMotionValue, useTransform } from "framer-motion";
+import { ConfirmUnmarkDialog } from "@/components/media/tracking/confirm-unmark-dialog";
 import { AddWatchNoteDialog } from "@/components/media/tracking/add-watch-note-dialog";
 import { RatingStar } from "@/components/media/primitives/rating-star";
 import { SeenToggleButton } from "@/components/media/tracking/seen-toggle-button";
@@ -34,8 +35,13 @@ export function EpisodeCard({
   seriesId,
   seasonNumber,
   season,
+  hasUserData = false,
 }: {
   episode: Episode;
+  // Whether unmarking would delete something the viewer entered — a rating of
+  // the episode or a watch date that isn't "when it was ticked" (see
+  // episodeProgressHasUserData). Such an unmark asks first; a swipe always does.
+  hasUserData?: boolean;
   // The season the episode belongs to: whether an undated episode has aired
   // depends on its siblings (see hasAired). Without it, an undated episode is
   // simply upcoming.
@@ -51,6 +57,7 @@ export function EpisodeCard({
   const { t } = useTranslation();
   const spoilerProtection = useSpoilerProtection();
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [confirmingUnmark, setConfirmingUnmark] = useState(false);
   const watched = Boolean(episode.watched);
   const hidden = spoilerProtection && !watched;
   // A future/unannounced air date only blocks marking-as-watched, not the
@@ -66,8 +73,17 @@ export function EpisodeCard({
   const swipeEnabled = isTouch && !disabled && !isUnreleased;
   const dragX = useMotionValue(0);
   const revealOpacity = useTransform(dragX, [-SWIPE_TOGGLE_THRESHOLD_PX, 0, SWIPE_TOGGLE_THRESHOLD_PX], [1, 0, 1]);
+  // Unmarking deletes the episode's rating and watch date and a stray swipe
+  // is easy to make, so a swipe never unmarks without confirmation; the
+  // button only asks when there is something to lose.
+  const requestUnmark = (viaSwipe: boolean) => {
+    if (viaSwipe || hasUserData) setConfirmingUnmark(true);
+    else onToggleSeen();
+  };
   const handleSwipeEnd = () => {
-    if (Math.abs(dragX.get()) >= SWIPE_TOGGLE_THRESHOLD_PX) onToggleSeen();
+    if (Math.abs(dragX.get()) < SWIPE_TOGGLE_THRESHOLD_PX) return;
+    if (watched) requestUnmark(true);
+    else onToggleSeen();
   };
 
   const detailsBlock = (
@@ -181,10 +197,19 @@ export function EpisodeCard({
           isSaving={false}
           disabled={disabled || isUnreleased}
           disabledLabel={isUnreleased ? t("media.notYetAired") : undefined}
-          onToggle={() => onToggleSeen()}
+          onToggle={() => (watched ? requestUnmark(false) : onToggleSeen())}
           size="lg"
         />
       </div>
+      <ConfirmUnmarkDialog
+        scope="episode"
+        open={confirmingUnmark}
+        onOpenChange={setConfirmingUnmark}
+        onConfirm={() => {
+          setConfirmingUnmark(false);
+          onToggleSeen();
+        }}
+      />
       <AddWatchNoteDialog
         open={noteDialogOpen}
         onOpenChange={setNoteDialogOpen}

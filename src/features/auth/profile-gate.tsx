@@ -9,9 +9,12 @@ import { cloudProfileRepository } from "@/features/auth/cloud-profile-repository
 import { useCreateProfileForSupabaseUser, useProfileForSupabaseUser } from "@/features/profiles/use-profiles";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
+import { profileRepository } from "@/features/profiles/profile-repository";
+import { PinPromptDialog } from "@/components/settings/pin-prompt-dialog";
 import { LoadingScreen } from "@/components/states/loading-screen";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { errorMessage } from "@/shared/lib/errors";
+import { ApiCommandError } from "@/shared/lib/invoke";
 import { logger } from "@/shared/lib/logger";
 
 // Which local profile is active is derived from who is signed in, not
@@ -61,6 +64,10 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
   const [creationError, setCreationError] = useState<unknown>(null);
   const [switchError, setSwitchError] = useState<unknown>(null);
   const [switchAttempt, setSwitchAttempt] = useState(0);
+  const evictLocalQueries = () => queryClient.removeQueries({ queryKey: ["local"] });
+  // A PIN-protected profile is never entered on the strength of the account
+  // alone: the switch is refused (403) until the PIN is entered here.
+  const [pinRequired, setPinRequired] = useState(false);
   const creationStarted = useRef(false);
   const cloudSeedStarted = useRef(false);
 
@@ -126,6 +133,10 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
         if (!cancelled) queryClient.removeQueries({ queryKey: ["local"] });
       })
       .catch((error: unknown) => {
+        if (error instanceof ApiCommandError && error.status === 403) {
+          if (!cancelled) setPinRequired(true);
+          return;
+        }
         logger.warn(`Couldn't switch to the account's profile: ${errorMessage(error)}`);
         if (!cancelled) setSwitchError(error);
       });
@@ -195,6 +206,30 @@ function ResolvedProfileGate({ supabaseUserId, children }: PropsWithChildren<{ s
   if (!profileQuery.data) {
     if (cloudProfileQuery.data) return <LoadingScreen label={t("profileGate.resolving")} />;
     return <CreateProfileScreen supabaseUserId={supabaseUserId} />;
+  }
+
+  if (activeProfileId !== resolvedProfileId && pinRequired) {
+    return (
+      <PinPromptDialog
+        open
+        profileName={profileQuery.data.name ?? ""}
+        onOpenChange={() => undefined}
+        onVerify={(pin) => profileRepository.verifyPin(resolvedProfileId!, pin)}
+        onSuccess={(pin) => {
+          preferencesRepository
+            .setActiveProfile(resolvedProfileId!, supabaseUserId, pin)
+            .then(() => {
+              setPinRequired(false);
+              evictLocalQueries();
+            })
+            .catch((error: unknown) => {
+              logger.warn(`Couldn't switch to the account's profile: ${errorMessage(error)}`);
+              setPinRequired(false);
+              setSwitchError(error);
+            });
+        }}
+      />
+    );
   }
 
   if (activeProfileId !== resolvedProfileId) {

@@ -206,6 +206,45 @@ describe("maintenanceService automatic backup rotation", () => {
     expect(importMock).toHaveBeenLastCalledWith(backup("legacy"));
   });
 
+  it("reads the latest backup's date from its file name without loading the backup", async () => {
+    fsState.files.set("backups/auto-2026-01-01T00-00-00-000Z.json", "not even json");
+    fsState.files.set("backups/auto-2026-02-03T04-05-06-789Z.json", "not even json either");
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await expect(maintenanceService.getAutomaticBackupInfo()).resolves.toEqual({
+      exportedAt: "2026-02-03T04:05:06.789Z",
+    });
+  });
+
+  it("falls back to the backup's own exportedAt when the file name does not carry a readable date", async () => {
+    fsState.files.set(
+      "backups/auto-weird-name.json",
+      JSON.stringify({ ...backup("odd"), exportedAt: "2026-05-05T05:05:05.000Z" })
+    );
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await expect(maintenanceService.getAutomaticBackupInfo()).resolves.toEqual({
+      exportedAt: "2026-05-05T05:05:05.000Z",
+    });
+  });
+
+  it("does not trust a file name whose date is impossible", async () => {
+    fsState.files.set(
+      "backups/auto-2026-13-45T99-99-99-999Z.json",
+      JSON.stringify({ ...backup("bad"), exportedAt: "2026-06-06T06:06:06.000Z" })
+    );
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await expect(maintenanceService.getAutomaticBackupInfo()).resolves.toEqual({
+      exportedAt: "2026-06-06T06:06:06.000Z",
+    });
+  });
+
+  it("reports no backup when there is none", async () => {
+    const { maintenanceService } = await import("../maintenance-service");
+    await expect(maintenanceService.getAutomaticBackupInfo()).resolves.toBeNull();
+  });
+
   it("flags the last backup attempt as failed, then clears the flag on the next success", async () => {
     exportMock.mockResolvedValue(backup("status"));
     const { maintenanceService } = await import("../maintenance-service");
@@ -236,6 +275,19 @@ describe("maintenanceService automatic backup frequency", () => {
     window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now() - (DAY_MS + 1000)));
     await maintenanceService.createAutomaticBackup();
     expect(exportMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats a last-backup stamp in the future (the clock went backwards) as due, and rewrites it", async () => {
+    exportMock.mockResolvedValue(backup("clock"));
+    getPreferencesMock.mockResolvedValue({ backupDirectory: null, backupFrequency: "daily" });
+    const future = Date.now() + DAY_MS * 400;
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(future));
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await maintenanceService.createAutomaticBackup();
+
+    expect(exportMock).toHaveBeenCalledTimes(1);
+    expect(Number(window.localStorage.getItem(LAST_BACKUP_KEY))).toBeLessThan(future);
   });
 
   it("waits a full week when set to weekly, even past the old daily interval", async () => {

@@ -66,6 +66,7 @@ export function SeriesDetailPage() {
   const id = Number(seriesId);
   const seriesQuery = useSeriesDetails(id);
   const progressQuery = useEpisodeProgress(id);
+  const progressUnavailable = progressQuery.isPending || progressQuery.isError;
   useImageCache([seriesQuery.data?.posterPath, seriesQuery.data?.backdropPath], ["w500", "original"]);
   const seasonNumbers = useMemo(
     () => (seriesQuery.data?.seasons ?? []).map((season) => season.seasonNumber).filter((number) => number > 0),
@@ -93,18 +94,17 @@ export function SeriesDetailPage() {
   // re-toggles after it airs its finale (status) or after TMDB announces
   // more episodes (total_episodes, which a toggle only ever ratchets up)
   // keeps stale values forever otherwise. This page always has TMDB's
-  // current status and, once every season has loaded, a real aired-episode
-  // count in hand — the natural place to opportunistically write both
-  // back; refreshTrackedSeriesStatus is a no-op in Rust when neither value
-  // actually changed. total_episodes is withheld until allSeasonsLoaded so
-  // a page that's still mid-fetch never stamps in a too-low partial count.
+  // current status and announced episode total in hand, as does the Today
+  // Hub. Persist that same total here: the aired-only progress denominator
+  // below is for display and must never prematurely complete the library entry.
   const trackedSeriesQuery = useTrackedSeries();
   const refreshTrackedSeriesStatus = useRefreshTrackedSeriesStatus();
   useEffect(() => {
     const freshStatus = seriesQuery.data?.status;
     const tracked = trackedSeriesQuery.data?.find((item) => item.seriesId === id);
     if (!freshStatus || !tracked) return;
-    const freshTotalEpisodes = allSeasonsLoaded ? progress.totalEpisodes : null;
+    const catalogueTotal = seriesQuery.data?.numberOfEpisodes;
+    const freshTotalEpisodes = catalogueTotal && catalogueTotal > 0 ? catalogueTotal : null;
     if (tracked.status === freshStatus && (freshTotalEpisodes === null || tracked.totalEpisodes === freshTotalEpisodes))
       return;
     void refreshTrackedSeriesStatus({ seriesId: id, status: freshStatus, totalEpisodes: freshTotalEpisodes });
@@ -113,8 +113,7 @@ export function SeriesDetailPage() {
     trackedSeriesQuery.data,
     id,
     refreshTrackedSeriesStatus,
-    allSeasonsLoaded,
-    progress.totalEpisodes,
+    seriesQuery.data?.numberOfEpisodes,
   ]);
   // In-page jump nav for the sections below the hero (see SectionNav) — each
   // candidate can render nothing of its own accord (no trailer, no reviews,
@@ -183,7 +182,7 @@ export function SeriesDetailPage() {
           <div className="flex flex-col gap-2">
             <SeenToggle
               seen={seriesSeen}
-              disabled={progressQuery.isSaving || progressQuery.isError || !allSeasonsLoaded}
+              disabled={progressQuery.isSaving || progressUnavailable || !allSeasonsLoaded}
               onToggle={() => {
                 // Unwatching deletes each episode's own rating and watch date,
                 // so it asks first (see ConfirmUnmarkDialog).
@@ -198,13 +197,18 @@ export function SeriesDetailPage() {
                 keeps that wrong read from being written back as if it were
                 real, same guard movie-detail-page.tsx applies to its own
                 single seen toggle. */}
-            {progressQuery.isError ? <PartialErrorState message={t("media.seenStatusUnavailable")} /> : null}
+            {progressQuery.isError ? (
+              <PartialErrorState
+                message={t("media.seenStatusUnavailable")}
+                onRetry={() => void progressQuery.refetch()}
+              />
+            ) : null}
           </div>
         }
       />
       {seasonsPending ? (
         <Skeleton role="status" aria-label={t("media.seasonsLoading")} className="h-28" />
-      ) : nextEpisode || failedSeasonQueries.length === 0 ? (
+      ) : !progressUnavailable && allSeasonsLoaded ? (
         // A season that failed to load can hide the very episode that is next:
         // "all up to date" would then be a guess, so the card stays away and
         // the seasons section below says what went wrong.
@@ -229,7 +233,9 @@ export function SeriesDetailPage() {
           <Panel tone="subtle" className="p-6">
             <div className="flex items-center justify-between gap-2">
               <p className="text-overline font-bold uppercase text-muted-foreground">{t("series.currentProgress")}</p>
-              {progress.isUpToDate && allSeasonsLoaded ? <Badge variant="success">{t("media.upToDate")}</Badge> : null}
+              {progress.isUpToDate && allSeasonsLoaded && !progressUnavailable ? (
+                <Badge variant="success">{t("media.upToDate")}</Badge>
+              ) : null}
             </div>
             <div className="mt-3 flex items-end justify-between gap-3">
               <p className="font-display text-display-md font-bold leading-none">
@@ -308,7 +314,7 @@ export function SeriesDetailPage() {
             series={{ ...series, numberOfEpisodes: series.numberOfEpisodes }}
             seasons={seasons}
             watchedEpisodes={progressQuery.data ?? []}
-            isSaving={progressQuery.isSaving}
+            isSaving={progressQuery.isSaving || progressUnavailable}
             onToggleEpisode={(episode, watched, note) =>
               progressQuery.toggleEpisodeSeen({ series, episode, watched, note })
             }

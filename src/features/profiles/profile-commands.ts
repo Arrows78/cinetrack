@@ -15,9 +15,12 @@ type SupabaseUserArgs = {
   supabaseUserId: string;
 };
 
+// Linking hands the profile's data to an account, so a PIN-protected profile needs its PIN
+// here too (`currentPin`), like update/remove.
 type LinkProfileArgs = {
   profileId: string;
   supabaseUserId: string;
+  currentPin: string | null;
 };
 
 // `currentPin` unlocks a PIN-protected profile that isn't the active one —

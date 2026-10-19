@@ -60,20 +60,28 @@ pub(super) async fn get_alert_impl(
     Ok(row.map(Into::into))
 }
 
-pub(super) async fn toggle_impl(
+/// Declares whether a title has an availability alert, instead of flipping
+/// whatever state it happens to be in: a repeated call (retry, double click,
+/// a caller invoking it twice) ends in the same state as one call.
+///
+/// - `enabled = true`: the alert exists afterwards, with this title, region and
+///   provider selection — created, or updated in place (same id) when the title
+///   already had one. Returns it. An alert that already matches is left
+///   untouched (no write, so no needless sync mutation).
+/// - `enabled = false`: no alert exists afterwards; one that did is deleted.
+///   Returns `None`, whether or not there was one.
+pub(super) async fn set_alert_impl(
     pool: &SqlitePool,
     profile_id: &str,
     media: MediaSummaryInput,
     region: String,
     provider_ids: Vec<i64>,
+    enabled: bool,
 ) -> Result<Option<AvailabilityAlert>, ApiError> {
-    // Read-then-write inside one transaction (rather than a separate
-    // get_alert_impl(pool, ...) call before opening the transaction) so two
-    // concurrent toggles for the same media can't both observe "absent" and
-    // both insert — the second transaction's read blocks until the first
-    // commits. The UNIQUE index added in migration 9 is the actual
-    // guarantee; this transaction just avoids surfacing a conflict error to
-    // the caller in the common case.
+    // Read-then-write inside one transaction so two concurrent calls for the
+    // same media cannot both observe "absent" and both insert. The UNIQUE
+    // index added in migration 9 is the actual guarantee; this transaction
+    // just avoids surfacing a conflict error to the caller in the common case.
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
     let existing: Option<AlertRow> = sqlx::query_as(
@@ -86,18 +94,52 @@ pub(super) async fn toggle_impl(
     .await
     .map_err(ApiError::from)?;
 
-    if let Some(existing) = existing {
-        sqlx::query("DELETE FROM availability_alerts WHERE uuid = $1")
-            .bind(&existing.uuid)
-            .execute(&mut *tx)
-            .await
-            .map_err(ApiError::from)?;
+    if !enabled {
+        if let Some(existing) = existing {
+            sqlx::query("DELETE FROM availability_alerts WHERE uuid = $1")
+                .bind(&existing.uuid)
+                .execute(&mut *tx)
+                .await
+                .map_err(ApiError::from)?;
+        }
         tx.commit().await.map_err(ApiError::from)?;
         return Ok(None);
     }
 
     validate_region(&region)?;
     let provider_ids = dedup_provider_ids(provider_ids);
+
+    if let Some(existing) = existing {
+        let current: AvailabilityAlert = existing.into();
+        if current.enabled
+            && current.title == media.title
+            && current.region == region
+            && current.provider_ids == provider_ids
+        {
+            return Ok(Some(current));
+        }
+        let updated_at = now_iso(&mut *tx).await?;
+        sqlx::query(
+            "UPDATE availability_alerts SET title = $1, region = $2, provider_ids = $3, enabled = 1, updated_at = $4
+             WHERE uuid = $5",
+        )
+        .bind(&media.title)
+        .bind(&region)
+        .bind(serde_json::to_string(&provider_ids).unwrap())
+        .bind(&updated_at)
+        .bind(&current.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(ApiError::from)?;
+        tx.commit().await.map_err(ApiError::from)?;
+        return Ok(Some(AvailabilityAlert {
+            title: media.title,
+            region,
+            provider_ids,
+            enabled: true,
+            ..current
+        }));
+    }
 
     let created_at = now_iso(&mut *tx).await?;
     let alert = AvailabilityAlert {
@@ -241,40 +283,173 @@ mod tests {
         }
     }
 
+    /// `set_alert_impl(.., enabled = true)`.
+    async fn enable(
+        pool: &SqlitePool,
+        profile_id: &str,
+        media: MediaSummaryInput,
+        region: String,
+        provider_ids: Vec<i64>,
+    ) -> Result<Option<AvailabilityAlert>, ApiError> {
+        set_alert_impl(pool, profile_id, media, region, provider_ids, true).await
+    }
+
+    async fn alert_count(pool: &SqlitePool) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM availability_alerts WHERE media_id = 7")
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
     #[tokio::test]
-    async fn creates_an_alert_on_first_toggle_and_removes_it_on_the_second() {
+    async fn enabling_twice_keeps_one_alert_and_changes_nothing_the_second_time() {
         let pool = migrated_pool().await;
         let m = media(7, MediaType::Movie, "Alerte");
 
-        let created = toggle_impl(&pool, "default", m.clone(), "FR".to_string(), vec![8])
+        let first = enable(&pool, "default", m.clone(), "FR".to_string(), vec![8])
             .await
+            .unwrap()
             .unwrap();
-        assert!(created.is_some());
-        assert!(created.unwrap().enabled);
-        assert!(
-            get_alert_impl(&pool, "default", 7, MediaType::Movie)
-                .await
-                .unwrap()
-                .is_some()
-        );
+        assert!(first.enabled);
+        let (outbox_after_first,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM sync_outbox WHERE entity_type = 'availability_alert'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
-        let removed = toggle_impl(&pool, "default", m, "FR".to_string(), vec![8])
+        let second = enable(&pool, "default", m, "FR".to_string(), vec![8])
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(second.id, first.id);
+        assert_eq!(second.created_at, first.created_at);
+        assert_eq!(alert_count(&pool).await, 1);
+        let (updated_at,): (String,) =
+            sqlx::query_as("SELECT updated_at FROM availability_alerts WHERE uuid = $1")
+                .bind(&first.id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            updated_at, first.created_at,
+            "an identical call writes nothing"
+        );
+        let (outbox_after_second,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM sync_outbox WHERE entity_type = 'availability_alert'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(outbox_after_second, outbox_after_first);
+    }
+
+    #[tokio::test]
+    async fn enabling_an_existing_alert_with_new_settings_updates_it_in_place() {
+        let pool = migrated_pool().await;
+        let first = enable(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Alerte"),
+            "FR".to_string(),
+            vec![8],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+        let updated = enable(
+            &pool,
+            "default",
+            media(7, MediaType::Movie, "Alerte"),
+            "US".to_string(),
+            vec![119, 119, 337],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(updated.id, first.id);
+        assert_eq!(updated.region, "US");
+        assert_eq!(updated.provider_ids, vec![119, 337]);
+        let stored = get_alert_impl(&pool, "default", 7, MediaType::Movie)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(stored.region, "US");
+        assert_eq!(stored.provider_ids, vec![119, 337]);
+        assert_eq!(alert_count(&pool).await, 1);
+    }
+
+    #[tokio::test]
+    async fn disabling_removes_the_alert_and_repeating_it_is_a_no_op() {
+        let pool = migrated_pool().await;
+        let m = media(7, MediaType::Movie, "Alerte");
+        enable(&pool, "default", m.clone(), "FR".to_string(), vec![8])
             .await
             .unwrap();
-        assert!(removed.is_none());
-        assert!(
-            get_alert_impl(&pool, "default", 7, MediaType::Movie)
-                .await
-                .unwrap()
-                .is_none()
-        );
+
+        for _ in 0..2 {
+            let result = set_alert_impl(
+                &pool,
+                "default",
+                m.clone(),
+                "FR".to_string(),
+                vec![8],
+                false,
+            )
+            .await
+            .unwrap();
+            assert!(result.is_none());
+            assert_eq!(alert_count(&pool).await, 0);
+        }
+
+        // Disabling a title that never had an alert is fine too, even with a
+        // region that would be refused for an enabled alert.
+        let result = set_alert_impl(
+            &pool,
+            "default",
+            media(9, MediaType::Series, "Autre"),
+            String::new(),
+            vec![],
+            false,
+        )
+        .await
+        .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn enabling_after_disabling_creates_a_fresh_alert() {
+        let pool = migrated_pool().await;
+        let m = media(7, MediaType::Movie, "Alerte");
+        let first = enable(&pool, "default", m.clone(), "FR".to_string(), vec![8])
+            .await
+            .unwrap()
+            .unwrap();
+        set_alert_impl(
+            &pool,
+            "default",
+            m.clone(),
+            "FR".to_string(),
+            vec![8],
+            false,
+        )
+        .await
+        .unwrap();
+        let again = enable(&pool, "default", m, "FR".to_string(), vec![8])
+            .await
+            .unwrap()
+            .unwrap();
+        assert_ne!(again.id, first.id);
+        assert_eq!(alert_count(&pool).await, 1);
     }
 
     #[tokio::test]
     async fn rejects_an_alert_whose_region_is_not_a_two_letter_uppercase_code() {
         let pool = migrated_pool().await;
         for region in ["", "fr", "FRA", "F1"] {
-            let error = toggle_impl(
+            let error = enable(
                 &pool,
                 "default",
                 media(7, MediaType::Movie, "Alerte"),
@@ -296,7 +471,7 @@ mod tests {
     #[tokio::test]
     async fn stores_each_selected_provider_once() {
         let pool = migrated_pool().await;
-        let alert = toggle_impl(
+        let alert = enable(
             &pool,
             "default",
             media(7, MediaType::Movie, "Alerte"),
@@ -330,7 +505,7 @@ mod tests {
     #[tokio::test]
     async fn distinguishes_alerts_by_media_type() {
         let pool = migrated_pool().await;
-        toggle_impl(
+        enable(
             &pool,
             "default",
             media(7, MediaType::Movie, "Movie"),
@@ -358,7 +533,7 @@ mod tests {
     async fn lists_only_the_requesting_profiles_alerts() {
         let pool = migrated_pool().await;
 
-        toggle_impl(
+        enable(
             &pool,
             "default",
             media(1, MediaType::Movie, "First"),
@@ -367,7 +542,7 @@ mod tests {
         )
         .await
         .unwrap();
-        toggle_impl(
+        enable(
             &pool,
             "default",
             media(2, MediaType::Series, "Second"),
@@ -376,7 +551,7 @@ mod tests {
         )
         .await
         .unwrap();
-        toggle_impl(
+        enable(
             &pool,
             "other",
             media(3, MediaType::Movie, "Not mine"),
@@ -500,7 +675,7 @@ mod tests {
     #[tokio::test]
     async fn a_profile_cannot_remove_another_profiles_alert() {
         let pool = migrated_pool().await;
-        let alert = toggle_impl(
+        let alert = enable(
             &pool,
             "default",
             media(7, MediaType::Movie, "Alerte"),
@@ -529,9 +704,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn the_unique_index_rejects_a_duplicate_alert_bypassing_toggle_impl() {
+    async fn the_unique_index_rejects_a_duplicate_alert_bypassing_enable() {
         let pool = migrated_pool().await;
-        toggle_impl(
+        enable(
             &pool,
             "default",
             media(7, MediaType::Movie, "Alerte"),

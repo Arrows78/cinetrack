@@ -263,6 +263,16 @@ function HomePageContent() {
   return (
     <div ref={contentRef} className="space-y-8">
       {homeQuery.isRefetchError ? <DegradedModeBadge /> : null}
+      {homeQuery.data?.failedSections?.length ? (
+        <Panel className="flex flex-wrap items-center justify-between gap-3" role="status">
+          <p className="text-body-sm text-muted-foreground">
+            {t("home.partialFeedNotice", { count: homeQuery.data.failedSections.length })}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => void homeQuery.refetch()} disabled={homeQuery.isFetching}>
+            {t("home.partialFeedRetry")}
+          </Button>
+        </Panel>
+      ) : null}
       {hero ? (
         <section className="relative overflow-hidden rounded-hero border border-border animate-in-up">
           <img

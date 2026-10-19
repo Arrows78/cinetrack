@@ -352,3 +352,33 @@ describe("countAiredUnwatched", () => {
     expect(countAiredUnwatched([], [])).toBe(0);
   });
 });
+
+describe("episodeProgressHasUserData", () => {
+  const base = {
+    id: "p",
+    profileId: null,
+    seriesId: 1,
+    episodeId: 1,
+    seasonNumber: 1,
+    episodeNumber: 1,
+    watched: true,
+    watchedAt: "2024-01-01T00:00:00.000Z",
+    createdAt: "2024-01-01T00:00:10.000Z",
+    updatedAt: "2024-01-01T00:00:10.000Z",
+    rating: null,
+  } as const;
+
+  it("is false without a row, for a plain tick, and for unreadable or missing dates", async () => {
+    const { episodeProgressHasUserData } = await import("../progress-utils");
+    expect(episodeProgressHasUserData(undefined)).toBe(false);
+    expect(episodeProgressHasUserData({ ...base })).toBe(false);
+    expect(episodeProgressHasUserData({ ...base, watchedAt: null })).toBe(false);
+    expect(episodeProgressHasUserData({ ...base, watchedAt: "garbage" })).toBe(false);
+  });
+
+  it("is true for a rated episode or a watch date far from the row's creation", async () => {
+    const { episodeProgressHasUserData } = await import("../progress-utils");
+    expect(episodeProgressHasUserData({ ...base, rating: 3 })).toBe(true);
+    expect(episodeProgressHasUserData({ ...base, watchedAt: "2019-05-01T00:00:00.000Z" })).toBe(true);
+  });
+});

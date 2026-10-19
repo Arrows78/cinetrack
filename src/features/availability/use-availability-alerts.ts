@@ -16,11 +16,17 @@ export function useAvailabilityAlerts() {
     queryFn: () => availabilityRepository.listAlerts(),
   });
   const removeMutation = useInvalidatingMutation(
-    (id: string) => availabilityRepository.remove(id),
+    async (id: string) => {
+      await availabilityRepository.remove(id);
+      availabilityMonitor.forgetBaseline(id);
+    },
     [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
   );
   const removeManyMutation = useInvalidatingMutation(
-    (ids: string[]) => availabilityRepository.removeMany(ids),
+    async (ids: string[]) => {
+      await availabilityRepository.removeMany(ids);
+      ids.forEach((id) => availabilityMonitor.forgetBaseline(id));
+    },
     [queryKeys.local.availabilityAlerts(profileId), queryKeys.local.tracking(profileId)]
   );
   return {
@@ -70,12 +76,12 @@ export function computeAlertStatuses(
   preferredProviderIds: number[] = []
 ): AvailabilityStatusGroups {
   const snapshotByKey = new Map(
-    snapshots.map((snapshot) => [mediaKey(snapshot.mediaType, snapshot.mediaId), snapshot])
+    snapshots.map((snapshot) => [`${mediaKey(snapshot.mediaType, snapshot.mediaId)}:${snapshot.region}`, snapshot])
   );
   const groups: AvailabilityStatusGroups = { availableNow: [], pending: [] };
 
   for (const alert of alerts.filter((item) => item.enabled)) {
-    const snapshot = snapshotByKey.get(mediaKey(alert.mediaType, alert.mediaId));
+    const snapshot = snapshotByKey.get(`${mediaKey(alert.mediaType, alert.mediaId)}:${alert.region}`);
     const currentProviderIds = snapshot?.providerIds ?? [];
     const matchedProviderIds = matchAlertProviderIds(alert.providerIds, preferredProviderIds, currentProviderIds);
     const status: AlertStatus = { alert, matchedProviderIds, available: matchedProviderIds.length > 0 };
@@ -116,7 +122,15 @@ export function useAvailabilityAlert(
     enabled: options?.enabled ?? true,
   });
   const mutation = useMutation({
-    mutationFn: () => availabilityRepository.toggle(media, region, providerIds),
+    mutationFn: async () => {
+      const previous = query.data;
+      // The button flips what it shows, but what is sent is the state wanted, not a flip: a
+      // double click sends the same request twice and ends in the same state as one.
+      const alert = await availabilityRepository.setAlert(media, region, providerIds, !previous);
+      // Switched off: the alert is gone, so is the baseline it was tracked against.
+      if (!alert && previous) availabilityMonitor.forgetBaseline(previous.id);
+      return alert;
+    },
     onSuccess: (data) => {
       client.setQueryData([...queryKeys.local.availabilityAlerts(profileId), media.mediaType, media.id], data);
       void client.invalidateQueries({ queryKey: queryKeys.local.availabilityAlerts(profileId) });

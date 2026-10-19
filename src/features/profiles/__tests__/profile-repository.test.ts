@@ -69,6 +69,19 @@ describe("profileRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("link_profile_to_supabase_user", {
       profileId: DEFAULT_PROFILE_ID,
       supabaseUserId: "user-1",
+      currentPin: null,
+    });
+  });
+
+  it("linkToSupabaseUser() forwards the PIN of a PIN-protected profile", async () => {
+    invokeMock.mockResolvedValueOnce(profile());
+    const { profileRepository } = await import("../profile-repository");
+
+    await profileRepository.linkToSupabaseUser("profile-id", "user-1", "4242");
+    expect(invokeMock).toHaveBeenCalledWith("link_profile_to_supabase_user", {
+      profileId: "profile-id",
+      supabaseUserId: "user-1",
+      currentPin: "4242",
     });
   });
 

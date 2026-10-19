@@ -3,7 +3,7 @@ use sqlx::SqlitePool;
 use super::models::{AvailabilityAlert, AvailabilitySnapshot, MediaSummaryInput};
 use super::repository::{
     get_alert_impl, get_snapshot_impl, list_alerts_impl, list_snapshots_impl, remove_impl,
-    save_snapshot_impl, toggle_impl,
+    save_snapshot_impl, set_alert_impl,
 };
 use crate::database::current_profile_id;
 use crate::error::ApiError;
@@ -36,14 +36,15 @@ impl<'a> AvailabilityService<'a> {
         get_alert_impl(self.pool, &profile_id, media_id, media_type).await
     }
 
-    pub(super) async fn toggle_alert(
+    pub(super) async fn set_alert(
         &self,
         media: MediaSummaryInput,
         region: String,
         provider_ids: Vec<i64>,
+        enabled: bool,
     ) -> Result<Option<AvailabilityAlert>, ApiError> {
         let profile_id = self.profile_id().await?;
-        toggle_impl(self.pool, &profile_id, media, region, provider_ids).await
+        set_alert_impl(self.pool, &profile_id, media, region, provider_ids, enabled).await
     }
 
     pub(super) async fn remove_alert(&self, id: &str) -> Result<(), ApiError> {

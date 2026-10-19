@@ -38,7 +38,10 @@ pub(in crate::stats) async fn get_activity_stats_impl(
     clock: impl Into<LocalClock>,
 ) -> Result<ActivityStats, ApiError> {
     let clock = clock.into();
-    let events = fetch_counted_watches(pool, profile_id, Some(since), None).await?;
+    // The streaks read the whole history (a streak that began before the
+    // window, or one longer than it, is still that long); the binge day and
+    // the heatmap are bounded to the window (`since`).
+    let events = fetch_counted_watches(pool, profile_id, None, None).await?;
 
     let mut days: BTreeSet<NaiveDate> = BTreeSet::new();
     let mut per_day: HashMap<NaiveDate, i64> = HashMap::new();
@@ -47,6 +50,9 @@ pub(in crate::stats) async fn get_activity_stats_impl(
         let local = clock.local(&event.watched_at)?;
         let day = local.date();
         days.insert(day);
+        if event.watched_at.as_str() < since {
+            continue;
+        }
         *per_day.entry(day).or_insert(0) += 1;
         *heat
             .entry((

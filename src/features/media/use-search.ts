@@ -1,18 +1,10 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { mediaRepository } from "@/features/media/media-repository";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import { nextPage, uniqueMedia } from "@/features/media/use-media";
+import { filterSearchResults, type SearchOptions } from "@/features/media/filter-search-results";
 import type { MediaSummary, PageResult, SearchScope } from "@/types/media";
-
-interface SearchOptions {
-  genreMovie?: string;
-  genreSeries?: string;
-  provider?: string;
-  /** TMDB production-company id — movie discover only, see DiscoverArgs.company's doc comment. */
-  company?: string;
-  region?: string;
-}
 
 // TMDB has no relevance score shared between its movie and series discover
 // endpoints, so a real combined-relevance sort isn't possible here — this
@@ -35,28 +27,37 @@ const mergePages = (pages: PageResult<MediaSummary>[]): PageResult<MediaSummary>
 });
 
 export function useSearch(query: string, scope: SearchScope, options?: SearchOptions) {
+  const client = useQueryClient();
   const genreMovieOption = options?.genreMovie;
   const genreSeriesOption = options?.genreSeries;
   const providerOption = options?.provider;
   const companyOption = options?.company;
   const hasFilters = Boolean(genreMovieOption || genreSeriesOption || providerOption || companyOption);
+  const hasTitle = query.trim().length >= MIN_SEARCH_QUERY_LENGTH;
 
-  const queryKey = hasFilters
-    ? queryKeys.remote.discover(
-        genreMovieOption,
-        genreSeriesOption,
-        providerOption,
-        scope,
-        options?.region,
-        companyOption
-      )
-    : queryKeys.remote.search(query, scope);
+  const queryKey =
+    hasFilters && hasTitle
+      ? [...queryKeys.remote.search(query, scope), options]
+      : hasFilters
+        ? queryKeys.remote.discover(
+            genreMovieOption,
+            genreSeriesOption,
+            providerOption,
+            scope,
+            options?.region,
+            companyOption
+          )
+        : queryKeys.remote.search(query, scope);
 
   const searchQuery = useInfiniteQuery({
     queryKey,
     initialPageParam: 1,
     queryFn: async ({ pageParam }): Promise<PageResult<MediaSummary>> => {
       if (!hasFilters) return mediaRepository.search(query, scope, pageParam);
+      if (hasTitle) {
+        const page = await mediaRepository.search(query, scope, pageParam);
+        return { ...page, results: await filterSearchResults(page.results, options ?? {}, client) };
+      }
 
       const genreMovie = genreMovieOption ? Number(genreMovieOption) : undefined;
       const genreSeries = genreSeriesOption ? Number(genreSeriesOption) : undefined;
@@ -84,7 +85,7 @@ export function useSearch(query: string, scope: SearchScope, options?: SearchOpt
       return mergePages(await Promise.all(requests));
     },
     getNextPageParam: nextPage,
-    enabled: hasFilters || query.trim().length >= MIN_SEARCH_QUERY_LENGTH,
+    enabled: scope !== "person" && (hasFilters || hasTitle),
   });
 
   return {

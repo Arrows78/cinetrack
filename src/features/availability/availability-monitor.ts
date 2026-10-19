@@ -5,6 +5,7 @@ import { mediaRepository } from "@/features/media/media-repository";
 import { notificationService } from "@/features/desktop";
 import { logger } from "@/shared/lib/logger";
 import type { AvailabilityAlert } from "@/types/media";
+import { availabilityBaselineKey } from "@/shared/constants/local-storage-keys";
 
 export interface AvailabilityCheckOutcome {
   /** Alerts whose provider set gained something the user asked to be told about. */
@@ -29,6 +30,37 @@ interface CheckAllOptions {
   preferredProviderIds?: number[];
 }
 
+// What each alert has already been told about, kept per alert (and so per
+// profile) apart from the shared snapshot: the snapshot is a cache of the
+// title and any profile's check overwrites it, so reading "what is new"
+// from it let profile A's check swallow the change profile B was waiting for.
+
+function readBaseline(alertId: string): number[] | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(availabilityBaselineKey(alertId)) ?? "null") as unknown;
+    return Array.isArray(value) ? value.filter((id): id is number => typeof id === "number") : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeBaseline(alertId: string, providerIds: number[]): void {
+  try {
+    localStorage.setItem(availabilityBaselineKey(alertId), JSON.stringify(providerIds));
+  } catch (error) {
+    logger.warn(`[availability] Could not persist the baseline for alert ${alertId}: ${error}`);
+  }
+}
+
+/** Drops an alert's baseline once the alert is gone, so its key doesn't outlive it in localStorage. */
+function forgetBaseline(alertId: string): void {
+  try {
+    localStorage.removeItem(availabilityBaselineKey(alertId));
+  } catch (error) {
+    logger.warn(`[availability] Could not drop the baseline for alert ${alertId}: ${error}`);
+  }
+}
+
 // The boot-time check and the recurring interval can overlap (a slow TMDB
 // run outlasting the interval): a second pass reading the snapshots before
 // the first wrote them back would notify for the same new provider again.
@@ -36,6 +68,8 @@ interface CheckAllOptions {
 let inFlight: Promise<AvailabilityCheckOutcome> | null = null;
 
 export const availabilityMonitor = {
+  forgetBaseline,
+
   checkAll(options: CheckAllOptions = {}): Promise<AvailabilityCheckOutcome> {
     if (inFlight) return inFlight;
     const run = this.runCheck(options).finally(() => {
@@ -52,18 +86,27 @@ export const availabilityMonitor = {
    * check interval) was absorbed silently and never notified. Best effort:
    * a failure only means the first scheduled check seeds it, as before.
    */
-  async seedBaseline(alert: Pick<AvailabilityAlert, "mediaId" | "mediaType" | "region">): Promise<boolean> {
+  async seedBaseline(
+    alert: Pick<AvailabilityAlert, "mediaId" | "mediaType" | "region"> & { id?: string }
+  ): Promise<boolean> {
     try {
       const existing = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
-      if (existing) return false;
+      // A snapshot another profile already cached is still this alert's
+      // baseline: its own record is what keeps later checks independent.
+      if (existing) {
+        if (alert.id && !readBaseline(alert.id)) writeBaseline(alert.id, existing.providerIds);
+        return false;
+      }
       const availability = await mediaRepository.getWatchAvailability(alert.mediaType, alert.mediaId, alert.region);
+      const providerIds = [...availability.flatrate, ...availability.free].map((provider) => provider.id);
       await availabilityRepository.saveSnapshot({
         mediaId: alert.mediaId,
         mediaType: alert.mediaType,
         region: alert.region,
-        providerIds: [...availability.flatrate, ...availability.free].map((provider) => provider.id),
+        providerIds,
         checkedAt: new Date().toISOString(),
       });
+      if (alert.id) writeBaseline(alert.id, providerIds);
       return true;
     } catch (error) {
       logger.warn(`[availability] Could not seed the baseline for ${alert.mediaType} ${alert.mediaId}: ${error}`);
@@ -84,9 +127,14 @@ export const availabilityMonitor = {
       try {
         const availability = await mediaRepository.getWatchAvailability(alert.mediaType, alert.mediaId, alert.region);
         const current = [...availability.flatrate, ...availability.free].map((provider) => provider.id);
-        const previous = await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region);
+        // The alert's own record wins; the shared snapshot only seeds alerts
+        // that predate it.
+        const previous =
+          readBaseline(alert.id) ??
+          (await availabilityRepository.getSnapshot(alert.mediaId, alert.mediaType, alert.region))?.providerIds ??
+          null;
         const preferred = matchAlertProviderIds(alert.providerIds, preferredProviderIds, current);
-        const newProviders = preferred.filter((id) => !previous?.providerIds.includes(id));
+        const newProviders = preferred.filter((id) => !previous?.includes(id));
 
         if (previous && newProviders.length) {
           changes += 1;
@@ -105,6 +153,7 @@ export const availabilityMonitor = {
           providerIds: current,
           checkedAt: new Date().toISOString(),
         });
+        writeBaseline(alert.id, current);
       } catch (error) {
         // Continue checking the remaining alerts when one provider request fails.
         failures += 1;

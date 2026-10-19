@@ -52,6 +52,19 @@ const resolveGenreNames = (ids: number[] | undefined, list: ReadonlyArray<{ id: 
     .map((id) => list.find((genre) => genre.id === id)?.label)
     .filter((label): label is string => Boolean(label));
 
+// Detail endpoints answer `genres` with names localized to the request
+// language ("Comédie"), while list/search only carry ids that resolve to the
+// canonical labels. Stored as-is the same genre would exist in two languages
+// in the library, so a named genre is always resolved from its id to the
+// canonical label; the TMDB name is only kept for an id this app doesn't know.
+const canonicalGenreNames = (
+  dto: { genres?: Array<{ id: number; name: string }>; genre_ids?: number[] },
+  list: ReadonlyArray<{ id: number; label: string }>
+): string[] =>
+  dto.genres
+    ? dto.genres.map((genre) => list.find((entry) => entry.id === genre.id)?.label ?? genre.name)
+    : resolveGenreNames(dto.genre_ids, list);
+
 // TMDB's per-region certifications: a movie's release_dates can list the
 // same region more than once (one entry per release type — theatrical,
 // digital, ...), each with its own possibly-empty certification string, so
@@ -180,9 +193,11 @@ export const mapMovieDto = (dto: TmdbMovieDto, region: string = DEFAULT_TMDB_REG
   releaseDate: dateOrNull(dto.release_date),
   year: yearFromDate(dto.release_date),
   rating: dto.vote_average ?? 0,
-  genres: dto.genres?.map((genre) => genre.name) ?? resolveGenreNames(dto.genre_ids, GENRES.movies),
+  genres: canonicalGenreNames(dto, GENRES.movies),
   genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.production_countries?.map((country) => country.name) ?? [],
+  countryCodes: dto.production_countries?.map((country) => country.iso_3166_1) ?? [],
+  productionCompanyIds: dto.production_companies?.map((company) => company.id) ?? [],
   language: dto.spoken_languages?.[0]?.english_name,
   status: dto.status,
   runtime: positiveOrNull(dto.runtime),
@@ -229,9 +244,10 @@ export const mapSeriesDto = (dto: TmdbTvDto, region: string = DEFAULT_TMDB_REGIO
   releaseDate: dateOrNull(dto.first_air_date),
   year: yearFromDate(dto.first_air_date),
   rating: dto.vote_average ?? 0,
-  genres: dto.genres?.map((genre) => genre.name) ?? resolveGenreNames(dto.genre_ids, GENRES.series),
+  genres: canonicalGenreNames(dto, GENRES.series),
   genreIds: dto.genre_ids ?? dto.genres?.map((genre) => genre.id) ?? [],
   country: dto.origin_country ?? [],
+  countryCodes: dto.origin_country ?? [],
   language: dto.languages?.[0],
   status: dto.status,
   runtime: dto.episode_run_time?.find((minutes) => minutes > 0) ?? null,

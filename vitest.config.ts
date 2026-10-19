@@ -204,8 +204,13 @@ export default defineConfig({
         },
         // The matching/dedup/progress-reporting pipeline is covered against
         // a mocked mediaRepository/tvTimeImportRepository — parse-export.ts
-        // (real CSV parsing) is tested separately.
+        // (real CSV parsing) is tested separately. The import is split into
+        // matching / apply / undo modules behind the tvtime-import-service.ts
+        // facade; each carries its own floor.
         "src/features/tvtime/tvtime-import-service.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
+        "src/features/tvtime/tvtime-import-apply.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
+        "src/features/tvtime/tvtime-import-matching.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
+        "src/features/tvtime/tvtime-import-undo.ts": { statements: 95, branches: 90, functions: 100, lines: 95 },
         // The 4 remaining uncovered branches are: getGenreLabelKey's/genreName's
         // own `id` guard and `id ?? null` fallback, neither reachable in
         // practice since every call site already guards on a truthy id before

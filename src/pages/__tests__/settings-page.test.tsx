@@ -477,6 +477,15 @@ describe("SettingsPage — preferences", () => {
     expect(requestPermissionMock).not.toHaveBeenCalled();
   });
 
+  it("lets the viewer configure release reminders, including the release day itself", async () => {
+    renderPage();
+    const select = await screen.findByRole("combobox", { name: "Remind me before a release" });
+    await waitFor(() => expect(select).toHaveValue("24"));
+    fireEvent.change(select, { target: { value: "0" } });
+    await waitFor(() => expect(updatePreferenceMock).toHaveBeenCalledWith("notifyHoursBefore", 0));
+    expect(requestPermissionMock).not.toHaveBeenCalled();
+  });
+
   it("enables availability alerts directly, without requesting OS permission", async () => {
     renderPage();
     await screen.findByText("Default profile");

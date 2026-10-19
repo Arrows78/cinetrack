@@ -55,7 +55,6 @@ describe("shouldDehydrateQuery", () => {
       queryKeys.local.profiles,
       queryKeys.local.customLists("profile-1"),
       queryKeys.local.customList("profile-1", "list-1"),
-      queryKeys.local.calendar("profile-1"),
       queryKeys.local.availabilityAlerts("profile-1"),
       queryKeys.local.tracking("profile-1"),
       queryKeys.local.watchTonight("profile-1"),

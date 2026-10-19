@@ -25,6 +25,16 @@ pub struct UserProfile {
     pub has_pin: bool,
 }
 
+impl UserProfile {
+    /// The same profile without the linked account id, for the commands that
+    /// list profiles to the webview. The field stays on the struct because a
+    /// backup export carries it (`backup::repository`).
+    pub(crate) fn without_account_id(mut self) -> Self {
+        self.supabase_user_id = None;
+        self
+    }
+}
+
 #[derive(sqlx::FromRow)]
 pub(crate) struct ProfileRow {
     pub(crate) uuid: String,
@@ -34,12 +44,14 @@ pub(crate) struct ProfileRow {
     pub(crate) supabase_user_id: Option<String>,
     pub(crate) pin_hash: Option<String>,
     // Only read via the raw `SELECT pin_hash, pin_salt` in
-    // repository::verify_pin_impl, never through this struct — kept here
+    // pin::check_pin, never through this struct — kept here
     // so `SELECT *`'s `sqlx::FromRow` mapping (list_impl, get_by_id_impl)
     // stays in sync with every column the `profiles` table actually has.
     #[allow(dead_code)]
     pub(crate) pin_salt: Option<String>,
 }
+// `pin_failed_attempts` / `pin_locked_until` are deliberately not mapped: the
+// attempt limit is private to profiles/pin.rs and never leaves the backend.
 
 impl From<ProfileRow> for UserProfile {
     fn from(row: ProfileRow) -> Self {

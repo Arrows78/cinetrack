@@ -73,4 +73,37 @@ describe("createBatchLoader", () => {
     await vi.runAllTimersAsync();
     await expect(next).resolves.toBe(3);
   });
+
+  it("rejects the keys a short answer leaves out instead of leaving them pending", async () => {
+    const run = vi.fn(async (keys: number[]) => keys.slice(0, 1).map((key) => key * 10));
+    const loader = createBatchLoader({ run, keyOf: String });
+
+    const outcomes = Promise.allSettled([loader.load(1), loader.load(2), loader.load(2)]);
+    await vi.runAllTimersAsync();
+
+    const [first, second, third] = await outcomes;
+    expect(first).toEqual({ status: "fulfilled", value: 10 });
+    expect(second.status).toBe("rejected");
+    expect(third.status).toBe("rejected");
+  });
+
+  it("rejects every waiter when run throws synchronously, and keeps serving later chunks and batches", async () => {
+    const run = vi
+      .fn<(keys: number[]) => Promise<number[]>>()
+      .mockImplementationOnce(() => {
+        throw new Error("sync boom");
+      })
+      .mockImplementation(async (keys) => keys);
+    const loader = createBatchLoader({ run, keyOf: String, maxBatch: 2 });
+
+    const outcomes = Promise.allSettled([loader.load(1), loader.load(2), loader.load(3)]);
+    await vi.runAllTimersAsync();
+
+    const settled = await outcomes;
+    expect(settled.map((outcome) => outcome.status)).toEqual(["rejected", "rejected", "fulfilled"]);
+
+    const next = loader.load(4);
+    await vi.runAllTimersAsync();
+    await expect(next).resolves.toBe(4);
+  });
 });

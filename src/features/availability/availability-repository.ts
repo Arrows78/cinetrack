@@ -2,7 +2,7 @@ import { availabilityCommands } from "@/features/availability/availability-comma
 import { invokeTypedCommand } from "@/shared/lib/invoke";
 import type { AvailabilityAlert, AvailabilitySnapshot, MediaSummary } from "@/types/media";
 
-// The toggle/remove/snapshot writes and active-profile resolution now live
+// The set/remove/snapshot writes and active-profile resolution now live
 // in Rust (see src-tauri/src/availability/) — this repository is
 // a thin invoke() wrapper.
 export const availabilityRepository = {
@@ -14,8 +14,17 @@ export const availabilityRepository = {
     return invokeTypedCommand(availabilityCommands.getAlert, { mediaId, mediaType });
   },
 
-  async toggle(media: MediaSummary, region: string, providerIds: number[]): Promise<AvailabilityAlert | null> {
-    return invokeTypedCommand(availabilityCommands.toggleAlert, { media, region, providerIds });
+  /**
+   * Declares whether the title has an alert: `enabled: true` creates it (or updates its
+   * region/providers), `false` removes it. Idempotent — resolves to the alert, or null once removed.
+   */
+  async setAlert(
+    media: MediaSummary,
+    region: string,
+    providerIds: number[],
+    enabled: boolean
+  ): Promise<AvailabilityAlert | null> {
+    return invokeTypedCommand(availabilityCommands.setAlert, { media, region, providerIds, enabled });
   },
 
   async remove(id: string): Promise<void> {

@@ -24,6 +24,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/024-add-library-status-origin.sql"),
     include_str!("migrations/025-add-insert-seq-to-viewing-events.sql"),
     include_str!("migrations/026-index-library-sorts-and-drop-unused-indexes.sql"),
+    include_str!("migrations/027-add-profile-pin-attempt-limit.sql"),
 ];
 
 #[derive(Debug)]
@@ -163,7 +164,21 @@ async fn apply_migrations_up_to(pool: &SqlitePool, max_version: i64) -> Result<(
         .map_err(ApiError::from)?;
     let current_version = row.0;
 
-    for migration in migrations()? {
+    let migrations = migrations()?;
+    // A file written by a newer build of the app: this one cannot know what
+    // those later migrations changed, and silently skipping them would let it
+    // read and write a schema it does not understand. Refuse instead; the
+    // boot treats any migration error as blocking and leaves the file alone.
+    let latest_known = migrations.last().map_or(0, |migration| migration.version);
+    if current_version > latest_known {
+        return Err(ApiError::internal(format!(
+            "This database was last opened by a newer version of CineTrack (schema version \
+             {current_version}; this version only knows up to {latest_known}). Update the app \
+             to open it."
+        )));
+    }
+
+    for migration in migrations {
         if migration.version <= current_version {
             continue;
         }
@@ -230,7 +245,7 @@ mod tests {
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
             vec![
-                1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26
+                1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
             ]
         );
         assert_eq!(
@@ -258,6 +273,7 @@ mod tests {
                 "add library status origin",
                 "add insertion order to viewing events",
                 "index library sorts and drop unused indexes",
+                "add profile pin attempt limit",
             ]
         );
         assert!(
@@ -315,7 +331,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 26);
+        assert_eq!(version.0, 27);
     }
 
     #[tokio::test]
@@ -335,7 +351,30 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 26);
+        assert_eq!(version.0, 27);
+    }
+
+    #[tokio::test]
+    async fn refuses_a_database_written_by_a_newer_version_of_the_app() {
+        let pool = in_memory_pool().await;
+        run_migrations(&pool).await.unwrap();
+        let newer = latest_version().unwrap() + 1;
+        sqlx::query(sqlx::AssertSqlSafe(format!(
+            "PRAGMA user_version = {newer}"
+        )))
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let error = run_migrations(&pool).await.unwrap_err();
+        assert!(error.message.contains("newer version"), "{}", error.message);
+
+        // Nothing was touched: the version is still the newer one.
+        let version: (i64,) = sqlx::query_as("PRAGMA user_version")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(version.0, newer);
     }
 
     #[tokio::test]

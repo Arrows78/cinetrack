@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/app/query-client";
+import { DETAILS_FETCH_CONCURRENCY, fetchSeriesDetailsCached } from "@/features/media";
+import { mapWithConcurrency } from "@/shared/utils/concurrency";
 import { mediaRepository } from "@/features/media/media-repository";
-import { episodeProgressKeys, useRefreshTrackedSeriesBatch } from "@/features/progress/use-progress";
+import { useRefreshTrackedSeriesBatch } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
 import { countAiredUnwatched, getNextEpisode } from "@/features/progress/progress-utils";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { invalidationKeys } from "@/shared/constants/invalidation";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_1_HOUR, STALE_30_MIN } from "@/shared/constants/query";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { logger } from "@/shared/lib/logger";
 import { parseCalendarDate } from "@/shared/utils/format";
-import type { Episode, MediaSummary, TrackedSeriesItem } from "@/types/media";
+import type { Episode, MediaSummary, Season, TrackedSeriesItem } from "@/types/media";
 
 export interface WatchNextEntry {
   series: TrackedSeriesItem;
@@ -56,7 +59,7 @@ interface ResolvedSeries {
  */
 async function resolveNextEpisode(seriesId: number): Promise<ResolvedSeries> {
   const [details, progress] = await Promise.all([
-    mediaRepository.getSeriesDetails(seriesId),
+    fetchSeriesDetailsCached(seriesId),
     progressRepository.getEpisodeProgress(seriesId),
   ]);
 
@@ -69,14 +72,17 @@ async function resolveNextEpisode(seriesId: number): Promise<ResolvedSeries> {
   const tmdb = { tmdbStatus: details.status, tmdbTotalEpisodes: details.numberOfEpisodes };
   if (!candidates.length) return { nextEpisode: null, ...tmdb };
 
-  const seasons = await Promise.all(
-    candidates.map((seasonNumber) =>
-      queryClient.fetchQuery({
+  const seasons: Season[] = new Array<Season>(candidates.length);
+  await mapWithConcurrency(
+    candidates.map((seasonNumber, index) => ({ seasonNumber, index })),
+    async ({ seasonNumber, index }) => {
+      seasons[index] = await queryClient.fetchQuery({
         queryKey: queryKeys.remote.seasonDetails(seriesId, seasonNumber),
         queryFn: () => mediaRepository.getSeasonDetails(seriesId, seasonNumber),
         staleTime: STALE_1_HOUR,
-      })
-    )
+      });
+    },
+    DETAILS_FETCH_CONCURRENCY
   );
   return {
     nextEpisode: getNextEpisode(seasons, progress),
@@ -120,7 +126,12 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     .filter((result) => result.nextEpisode !== null)
     .map(({ series, nextEpisode, remaining }) => ({ series, nextEpisode: nextEpisode!, remaining }));
 
-  return { entries, results, isLoading: queries.some((query) => query.isLoading) };
+  return {
+    entries,
+    results,
+    isLoading: queries.some((query) => query.isLoading),
+    refetch: () => Promise.all(queries.map((query) => query.refetch())),
+  };
 }
 
 export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
@@ -263,7 +274,7 @@ export function useMarkWatchNext() {
       };
       return progressRepository.toggleEpisodeSeen(summary, episode, true);
     },
-    (_data, variables) => episodeProgressKeys(profileId, variables.series.seriesId)
+    (_data, variables) => invalidationKeys.progress(profileId, variables.series.seriesId)
   );
 
   return { markWatched: mutation.mutateAsync, isSaving: mutation.isPending };

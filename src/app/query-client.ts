@@ -8,6 +8,7 @@ import { isTauriApp } from "@/shared/lib/platform";
 import { displayMessage } from "@/shared/lib/user-facing-error";
 import { errorMessage } from "@/shared/lib/errors";
 import { GC_7_DAYS, STALE_5_MIN, STALE_24_HOURS } from "@/shared/constants/query";
+import { REMOTE_QUERY_CACHE_KEY } from "@/shared/constants/local-storage-keys";
 
 // `local.*` (SQLite-backed) queries — library/history/notes/preferences,
 // everything scoped to a profile — must NEVER be persisted outside SQLite:
@@ -82,7 +83,7 @@ export const queryClient = new QueryClient({
 
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
-  key: "cinetrack.remote-cache.v1",
+  key: REMOTE_QUERY_CACHE_KEY,
 });
 
 void persistQueryClient({

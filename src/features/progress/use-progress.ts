@@ -1,8 +1,8 @@
 import { useCallback } from "react";
-import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { progressRepository } from "@/features/progress/progress-repository";
-import { libraryInvalidationKeys, libraryStatusInvalidationKeys } from "@/features/library/use-library";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
+import { invalidationKeys } from "@/shared/constants/invalidation";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { Episode, MediaSummary, MediaType, Season } from "@/types/media";
@@ -11,7 +11,13 @@ import type { Episode, MediaSummary, MediaType, Season } from "@/types/media";
 // (rather than importing progress-utils.ts directly) so this feature's
 // public surface stays the repository/hook files, per the convention
 // check-feature-boundaries.mjs enforces.
-export { airedEpisodes, calculateSeriesProgress, getNextEpisode, hasAired } from "@/features/progress/progress-utils";
+export {
+  airedEpisodes,
+  calculateSeriesProgress,
+  episodeProgressHasUserData,
+  getNextEpisode,
+  hasAired,
+} from "@/features/progress/progress-utils";
 
 export function useMovieSeen(movieId: number) {
   const profileId = useActiveProfileId();
@@ -24,20 +30,11 @@ export function useMovieSeen(movieId: number) {
   const mutation = useInvalidatingMutation(
     ({ movie, watched, note }: { movie: MediaSummary; watched: boolean; note?: string }) =>
       progressRepository.toggleMovieSeen(movie, watched, undefined, note),
-    (_data, variables) => [
-      queryKeys.local.movieSeen(profileId, variables.movie.id),
-      queryKeys.local.history(profileId),
-      queryKeys.local.stats(profileId),
-      queryKeys.local.viewingEventsForMedia(profileId, "movie", variables.movie.id),
-      // Marking a movie seen can auto-complete an existing library entry
-      // (see docs/library-status.md) —
-      // reusing the same invalidation list library mutations use (rather
-      // than only its library/libraryPage keys) so the home page's "people
-      // you watch"/"because you liked" rails, whose exclusion set and
-      // candidate pool read libraryMediaKeys/completedLibraryCandidates/
-      // bestRecommendationSeed, don't keep showing something just watched.
-      ...libraryInvalidationKeys(profileId),
-    ]
+    // Marking a movie seen can auto-complete an existing library entry (see
+    // docs/library-status.md), so the movie's domain includes the library's:
+    // the home "people you watch"/"because you liked" rails read
+    // libraryMediaKeys/completedLibraryCandidates/bestRecommendationSeed.
+    (_data, variables) => invalidationKeys.movieWatch(profileId, variables.movie.id)
   );
 
   // "Watch again": a rewatch changes the rewatch statistics, the library
@@ -45,12 +42,7 @@ export function useMovieSeen(movieId: number) {
   const rewatchMutation = useInvalidatingMutation(
     ({ movie, note }: { movie: MediaSummary; note?: string }) =>
       progressRepository.rewatchMovie(movie, undefined, note),
-    (_data, variables) => [
-      queryKeys.local.history(profileId),
-      queryKeys.local.stats(profileId),
-      queryKeys.local.viewingEventsForMedia(profileId, "movie", variables.movie.id),
-      ...libraryInvalidationKeys(profileId),
-    ]
+    (_data, variables) => invalidationKeys.movieWatch(profileId, variables.movie.id)
   );
 
   return {
@@ -59,24 +51,6 @@ export function useMovieSeen(movieId: number) {
     rewatchMovie: rewatchMutation.mutateAsync,
     isSaving: mutation.isPending || rewatchMutation.isPending,
   };
-}
-
-export function episodeProgressKeys(profileId: string, seriesId: number): QueryKey[] {
-  return [
-    queryKeys.local.episodeProgress(profileId, seriesId),
-    queryKeys.local.watchNextEpisode(profileId, seriesId),
-    queryKeys.local.history(profileId),
-    queryKeys.local.trackedSeries(profileId),
-    queryKeys.local.stats(profileId),
-    queryKeys.local.calendar(profileId),
-    queryKeys.local.tracking(profileId),
-    queryKeys.local.viewingEventsForMedia(profileId, "series", seriesId),
-    // Watching an episode can auto-start/complete an existing library entry
-    // (see docs/library-status.md) — see
-    // useMovieSeen's identical comment above for why this needs the full
-    // library invalidation list, not just library/libraryPage.
-    ...libraryInvalidationKeys(profileId),
-  ];
 }
 
 export function useEpisodeProgress(seriesId: number) {
@@ -99,7 +73,7 @@ export function useEpisodeProgress(seriesId: number) {
       watched: boolean;
       note?: string;
     }) => progressRepository.toggleEpisodeSeen(series, episode, watched, note),
-    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
+    (_data, variables) => invalidationKeys.progress(profileId, variables.series.id)
   );
 
   // Catch-up path for useEpisodeSeenBacklogPrompt's "this one and the
@@ -123,7 +97,7 @@ export function useEpisodeProgress(seriesId: number) {
         episodeNumber: target.episodeNumber,
         episodeTitle: target.title,
       }),
-    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
+    (_data, variables) => invalidationKeys.progress(profileId, variables.series.id)
   );
 
   const seasonMutation = useInvalidatingMutation(
@@ -136,7 +110,7 @@ export function useEpisodeProgress(seriesId: number) {
       season: Season;
       watched: boolean;
     }) => progressRepository.markSeason(series, season, watched),
-    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
+    (_data, variables) => invalidationKeys.progress(profileId, variables.series.id)
   );
 
   const seriesMutation = useInvalidatingMutation(
@@ -149,7 +123,7 @@ export function useEpisodeProgress(seriesId: number) {
       seasons: Season[];
       watched: boolean;
     }) => progressRepository.markSeries(series, seasons, watched),
-    (_data, variables) => episodeProgressKeys(profileId, variables.series.id)
+    (_data, variables) => invalidationKeys.progress(profileId, variables.series.id)
   );
 
   // Kept separate from isSaving below: rating an episode shouldn't disable
@@ -157,7 +131,7 @@ export function useEpisodeProgress(seriesId: number) {
   const ratingMutation = useInvalidatingMutation(
     ({ seriesId, episodeId, rating }: { seriesId: number; episodeId: number; rating: number | null }) =>
       progressRepository.setEpisodeRating(seriesId, episodeId, rating),
-    (_data, variables) => episodeProgressKeys(profileId, variables.seriesId)
+    (_data, variables) => invalidationKeys.progress(profileId, variables.seriesId)
   );
 
   return {
@@ -201,7 +175,7 @@ export function useRefreshTrackedSeriesStatus() {
     ({ seriesId, status, totalEpisodes }: { seriesId: number; status: string | null; totalEpisodes?: number | null }) =>
       progressRepository.refreshTrackedSeriesStatus(seriesId, status, totalEpisodes ?? null),
     // A larger total can reopen an auto-Completed library entry in Rust.
-    () => [queryKeys.local.trackedSeries(profileId), ...libraryInvalidationKeys(profileId)]
+    () => invalidationKeys.trackedSeries(profileId)
   );
   return mutation.mutateAsync;
 }
@@ -237,7 +211,7 @@ export function useRefreshTrackedSeriesBatch() {
       );
       const moved = refreshes.some(({ seriesId, changesCache }) => changesCache && !failed.includes(seriesId));
       if (moved) {
-        const keys = [queryKeys.local.trackedSeries(profileId), ...libraryStatusInvalidationKeys(profileId)];
+        const keys = [queryKeys.local.trackedSeries(profileId), ...invalidationKeys.libraryStatus(profileId)];
         await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
       }
       return failed;

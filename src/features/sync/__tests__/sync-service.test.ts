@@ -167,6 +167,132 @@ describe("syncService.run", () => {
     expect(mocks.markCompleted).toHaveBeenCalledTimes(1);
   });
 
+  it("still invalidates the local queries when a step after the pull throws", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error("outbox unreadable"));
+    client.rpc.mockResolvedValue({
+      data: [
+        {
+          sequence: 2,
+          entity_type: "library_item",
+          entity_id: "remote-1",
+          operation: "upsert",
+          version: 3,
+          data: { uuid: "remote-1" },
+          created_at: "2026-08-30T20:01:00.000Z",
+        },
+      ],
+      error: null,
+    });
+    const queryClient = queryClientMock();
+
+    await expect(syncService.run(queryClient)).rejects.toThrow("outbox unreadable");
+
+    expect(mocks.applyRemote).toHaveBeenCalledTimes(1);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["local"] });
+  });
+
+  it("refetches what depends on language/region when a pull carries one of those preferences", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    client.rpc.mockResolvedValue({
+      data: [
+        {
+          sequence: 2,
+          entity_type: "account_preferences",
+          entity_id: "language",
+          operation: "upsert",
+          version: 1,
+          data: { key: "language", value: "fr" },
+          created_at: "2026-08-30T20:01:00.000Z",
+        },
+      ],
+      error: null,
+    });
+    const queryClient = queryClientMock();
+
+    await syncService.run(queryClient);
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["remote"] });
+  });
+
+  it("does not refetch remote catalogue data for an unrelated account preference", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    client.rpc.mockResolvedValue({
+      data: [
+        {
+          sequence: 2,
+          entity_type: "account_preferences",
+          entity_id: "theme",
+          operation: "upsert",
+          version: 1,
+          data: { key: "theme", value: "dark" },
+          created_at: "2026-08-30T20:01:00.000Z",
+        },
+      ],
+      error: null,
+    });
+    const queryClient = queryClientMock();
+
+    await syncService.run(queryClient);
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["local"] });
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({ queryKey: ["remote"] });
+  });
+
+  it("treats a deleted account preference as a possible locale reset", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    client.rpc.mockResolvedValue({
+      data: [
+        {
+          sequence: 2,
+          entity_type: "account_preferences",
+          entity_id: "region",
+          operation: "delete",
+          version: 2,
+          data: null,
+          created_at: "2026-08-30T20:01:00.000Z",
+        },
+      ],
+      error: null,
+    });
+    const queryClient = queryClientMock();
+
+    await syncService.run(queryClient);
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["remote"] });
+  });
+
+  it("logs, rather than masking the sync result, when refreshing the local queries fails", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    client.rpc.mockResolvedValue({
+      data: [
+        {
+          sequence: 2,
+          entity_type: "library_item",
+          entity_id: "remote-1",
+          operation: "upsert",
+          version: 3,
+          data: {},
+          created_at: "2026-08-30T20:01:00.000Z",
+        },
+      ],
+      error: null,
+    });
+    const queryClient = queryClientMock();
+    (queryClient.invalidateQueries as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("cache gone"));
+
+    await expect(syncService.run(queryClient)).resolves.toEqual({ pushed: 0, pulled: 1, conflicts: 0 });
+  });
+
   it("records completion even when nothing was pushed or pulled", async () => {
     const { client } = makeClient();
     mocks.getDataClient.mockResolvedValue(client);

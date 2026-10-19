@@ -148,6 +148,16 @@ function renderPage() {
 }
 
 describe("EpisodeDetailPage", () => {
+  it.each([
+    { isError: true, isPending: false },
+    { isError: false, isPending: true },
+  ])("blocks the note action too when progress is unavailable: %j", (state) => {
+    progressQueryMock.mockReturnValue({ ...progressQueryMock(), ...state, data: undefined, refetch: vi.fn() });
+    renderPage();
+    expect(screen.getByTestId("seen-toggle")).toBeDisabled();
+    expect(screen.getByRole("button", { name: i18n.t("media.addWatchNoteAction") })).toBeDisabled();
+  });
+
   beforeAll(async () => {
     await i18n.changeLanguage("en");
   });
@@ -494,6 +504,16 @@ describe("EpisodeDetailPage", () => {
 
     expect(screen.getByTestId("seen-toggle")).toBeDisabled();
     expect(screen.getByText(i18n.t("media.seenStatusUnavailable"))).toBeInTheDocument();
+  });
+
+  it("retries the progress read from the partial error state", () => {
+    const refetch = vi.fn();
+    progressQueryMock.mockReturnValue(makeProgressQuery([], { isError: true, data: undefined, refetch }));
+    renderPage();
+
+    screen.getByRole("button", { name: i18n.t("errors.retry") }).click();
+
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("opens the add-watch-note dialog, and confirming it marks the episode seen with the typed note", async () => {

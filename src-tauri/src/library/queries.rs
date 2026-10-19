@@ -34,9 +34,71 @@ const PAGE_MAX_LIMIT: i64 = 200;
 const CANDIDATE_MIN_LIMIT: i64 = 1;
 const CANDIDATE_MAX_LIMIT: i64 = 100;
 /// A batch-by-keys caller always has a small, bounded set in hand already
-/// (a TMDB collection's parts, one custom list's items) — this only guards
-/// against a pathological caller turning this into an unbounded `OR` chain.
-const MAX_BATCH_KEYS: usize = 500;
+/// (a TMDB collection's parts, one custom list's items). The keys travel as
+/// one JSON parameter, so there is no bound-parameter limit to stay under;
+/// this only refuses a pathological caller outright rather than silently
+/// answering for part of what it asked.
+const MAX_BATCH_KEYS: usize = 5_000;
+
+/// The keys as one JSON array bound to a single `json_each` parameter.
+fn keys_json(keys: &[LibraryMediaKey]) -> Result<String, ApiError> {
+    if keys.len() > MAX_BATCH_KEYS {
+        return Err(ApiError::bad_request(format!(
+            "At most {MAX_BATCH_KEYS} library keys can be looked up at once."
+        )));
+    }
+    let keys: Vec<serde_json::Value> = keys
+        .iter()
+        .map(|key| {
+            serde_json::json!({
+                "mediaId": key.media_id,
+                "mediaType": key.media_type.as_db_str(),
+            })
+        })
+        .collect();
+    serde_json::to_string(&keys).map_err(|error| ApiError::internal(error.to_string()))
+}
+
+/// Joins the profile's library to the distinct `(media_id, media_type)` pairs
+/// of the JSON array bound as `?1` (profile id is `?2`), through the unique
+/// `(profile_id, media_id, media_type)` index.
+macro_rules! library_rows_for_keys {
+    ($columns:literal) => {
+        concat!(
+            "WITH k(media_id, media_type) AS (
+               SELECT DISTINCT json_extract(value, '$.mediaId'), json_extract(value, '$.mediaType')
+               FROM json_each(?1)
+             )
+             SELECT ",
+            $columns,
+            " FROM k JOIN library_items li
+               ON li.profile_id = ?2 AND li.media_id = k.media_id AND li.media_type = k.media_type"
+        )
+    };
+}
+
+/// The filters `build_page_query` and `list_ids_matching_filters_impl` share.
+fn push_filters(
+    qb: &mut QueryBuilder<Sqlite>,
+    media_type: Option<MediaType>,
+    status: Option<LibraryStatus>,
+    genre: Option<&str>,
+) {
+    if let Some(media_type) = media_type {
+        qb.push(" AND media_type = ")
+            .push_bind(media_type.as_db_str());
+    }
+    if let Some(status) = status {
+        qb.push(" AND status = ").push_bind(status.as_db_str());
+    }
+    if let Some(genre) = genre.map(str::trim).filter(|g| !g.is_empty()) {
+        // genres is a JSON-serialized string array (no relational genres
+        // table) — a quoted substring match so e.g. "Sci-Fi" doesn't match
+        // a longer genre name that merely contains it.
+        qb.push(" AND genres LIKE ")
+            .push_bind(format!("%\"{genre}\"%"));
+    }
+}
 
 pub(super) async fn list_impl(
     pool: &SqlitePool,
@@ -158,26 +220,14 @@ pub(super) fn build_page_query(
     ));
     qb.push_bind(profile_id.to_string());
 
-    if let Some(media_type) = params.media_type {
-        qb.push(" AND media_type = ")
-            .push_bind(media_type.as_db_str());
-    }
-    if let Some(status) = params.status {
-        qb.push(" AND status = ").push_bind(status.as_db_str());
-    }
+    push_filters(
+        &mut qb,
+        params.media_type,
+        params.status,
+        params.genre.as_deref(),
+    );
     if params.favourites_only {
         qb.push(" AND favourite = 1");
-    }
-    if let Some(genre) = params
-        .genre
-        .as_deref()
-        .map(str::trim)
-        .filter(|g| !g.is_empty())
-    {
-        // Same quoted substring match as list_ids_matching_filters_impl —
-        // genres is a JSON-serialized string array, no relational table.
-        qb.push(" AND genres LIKE ")
-            .push_bind(format!("%\"{genre}\"%"));
     }
     if let Some(search) = params
         .search
@@ -428,26 +478,9 @@ pub(super) async fn get_items_by_keys_impl(
     if keys.is_empty() {
         return Ok(Vec::new());
     }
-    let keys = &keys[..keys.len().min(MAX_BATCH_KEYS)];
-
-    let mut qb: QueryBuilder<Sqlite> =
-        QueryBuilder::new("SELECT * FROM library_items WHERE profile_id = ");
-    qb.push_bind(profile_id.to_string());
-    qb.push(" AND (");
-    for (index, key) in keys.iter().enumerate() {
-        if index > 0 {
-            qb.push(" OR ");
-        }
-        qb.push("(media_id = ")
-            .push_bind(key.media_id)
-            .push(" AND media_type = ")
-            .push_bind(key.media_type.as_db_str())
-            .push(")");
-    }
-    qb.push(")");
-
-    let rows: Vec<LibraryRow> = qb
-        .build_query_as()
+    let rows: Vec<LibraryRow> = sqlx::query_as(library_rows_for_keys!("li.*"))
+        .bind(keys_json(keys)?)
+        .bind(profile_id)
         .fetch_all(pool)
         .await
         .map_err(ApiError::from)?;
@@ -464,29 +497,13 @@ pub(super) async fn list_keys_among_impl(
     if keys.is_empty() {
         return Ok(Vec::new());
     }
-    let keys = &keys[..keys.len().min(MAX_BATCH_KEYS)];
-
-    let mut qb: QueryBuilder<Sqlite> =
-        QueryBuilder::new("SELECT media_id, media_type FROM library_items WHERE profile_id = ");
-    qb.push_bind(profile_id.to_string());
-    qb.push(" AND (");
-    for (index, key) in keys.iter().enumerate() {
-        if index > 0 {
-            qb.push(" OR ");
-        }
-        qb.push("(media_id = ")
-            .push_bind(key.media_id)
-            .push(" AND media_type = ")
-            .push_bind(key.media_type.as_db_str())
-            .push(")");
-    }
-    qb.push(")");
-
-    let rows: Vec<(i64, String)> = qb
-        .build_query_as()
-        .fetch_all(pool)
-        .await
-        .map_err(ApiError::from)?;
+    let rows: Vec<(i64, String)> =
+        sqlx::query_as(library_rows_for_keys!("li.media_id, li.media_type"))
+            .bind(keys_json(keys)?)
+            .bind(profile_id)
+            .fetch_all(pool)
+            .await
+            .map_err(ApiError::from)?;
     Ok(rows
         .into_iter()
         .map(|(media_id, media_type)| LibraryMediaKey {
@@ -695,25 +712,12 @@ pub(super) async fn list_ids_matching_filters_impl(
         QueryBuilder::new("SELECT media_id, media_type FROM library_items WHERE profile_id = ");
     qb.push_bind(profile_id.to_string());
 
-    if let Some(media_type) = filters.media_type {
-        qb.push(" AND media_type = ")
-            .push_bind(media_type.as_db_str());
-    }
-    if let Some(status) = filters.status {
-        qb.push(" AND status = ").push_bind(status.as_db_str());
-    }
-    if let Some(genre) = filters
-        .genre
-        .as_deref()
-        .map(str::trim)
-        .filter(|g| !g.is_empty())
-    {
-        // genres is a JSON-serialized string array (no relational genres
-        // table) — a quoted substring match so e.g. "Sci-Fi" doesn't match
-        // a longer genre name that merely contains it.
-        qb.push(" AND genres LIKE ")
-            .push_bind(format!("%\"{genre}\"%"));
-    }
+    push_filters(
+        &mut qb,
+        filters.media_type,
+        filters.status,
+        filters.genre.as_deref(),
+    );
     if let Some(min_rating) = filters.min_rating {
         qb.push(" AND COALESCE(user_rating, rating, -1.0) >= ")
             .push_bind(min_rating);

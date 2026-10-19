@@ -64,7 +64,11 @@ impl<'a> PreferencesService<'a> {
     /// one that's linked to a Supabase account without at least echoing back
     /// that account's id (which, in the real app, `ProfileGate` only ever does
     /// after `resolve_profile_for_supabase_user` itself confirmed the match).
-    /// `default` is exempt — it's the app's pre-Supabase-auth fallback profile,
+    /// The PIN lock is enforced on top of that, for every PIN-protected profile
+    /// (`authorize_pin_protected_access`, which also counts wrong guesses and
+    /// locks out a guesser).
+    ///
+    /// `default` is exempt from the account check — it's the app's pre-Supabase-auth fallback profile,
     /// already special-cased the same way in `resolve_profile_for_supabase_user`
     /// (auto-claimed rather than gated) and as the only profile profile removal
     /// refuses to ever delete, so it's always a safe landing pad.
@@ -88,17 +92,18 @@ impl<'a> PreferencesService<'a> {
             ));
         }
 
-        // Two cases skip the PIN: a profile linked to an account, whose
-        // owner was just checked above (the account is the lock there), and
-        // the fallback to "default" after the active profile was deleted —
-        // without it, removing the active profile would leave
-        // activeProfileId pointing at a row that no longer exists.
-        let linked_and_proven = profile_id != "default" && owner.supabase_user_id.is_some();
+        // A PIN-protected profile always needs its PIN, linked to an account
+        // or not: the account id above is a bare string the caller can echo
+        // (and no longer even listed to the webview), so it is not a second
+        // lock to stand in for the PIN. The one exception is the fallback to
+        // "default" after the active profile was deleted — without it,
+        // removing the active profile would leave activeProfileId pointing at
+        // a row that no longer exists.
         let active_was_removed = profile_id == "default"
             && get_by_id_impl(self.pool, &current_profile_id(self.pool).await?)
                 .await?
                 .is_none();
-        if !linked_and_proven && !active_was_removed {
+        if !active_was_removed {
             authorize_pin_protected_access(self.pool, profile_id, pin).await?;
         }
 
@@ -118,10 +123,7 @@ impl<'a> PreferencesService<'a> {
 /// (not a `PreferencesService` method) because `refresh_preferences` only
 /// ever has a `PreferencesCache` handle, never a pool.
 pub(crate) fn refresh(cache: &PreferencesCache) {
-    *cache
-        .0
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
+    cache.invalidate();
 }
 
 /// The stored language preference, for native surfaces built before the

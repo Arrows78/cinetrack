@@ -378,6 +378,18 @@ describe("WatchTonightPage", () => {
     });
   });
 
+  it("does not refetch for every keystroke in the duration field, only for the debounced value", async () => {
+    renderPage();
+    await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));
+
+    const runtimeInput = screen.getByLabelText("Max duration");
+    fireEvent.change(runtimeInput, { target: { value: "4" } });
+    fireEvent.change(runtimeInput, { target: { value: "45" } });
+
+    await waitFor(() => expect(pickMock).toHaveBeenLastCalledWith(expect.objectContaining({ maxRuntime: 45 })));
+    expect(pickMock).not.toHaveBeenCalledWith(expect.objectContaining({ maxRuntime: 4 }));
+  });
+
   it("sets the runtime from a quick duration preset button", async () => {
     renderPage();
     await waitFor(() => expect(pickMock).toHaveBeenCalledTimes(1));

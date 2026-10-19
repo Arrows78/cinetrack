@@ -12,14 +12,14 @@ import { usePreferences } from "@/features/preferences/use-preferences";
  */
 export function HideWatchedToggle() {
   const { t } = useTranslation();
-  const { data: preferences, updatePreference, isSaving, isLoading } = usePreferences();
+  const { data: preferences, setPreference, isSaving, isLoading } = usePreferences();
   const hideWatched = preferences?.hideWatchedInDiscovery ?? defaultPreferences.hideWatchedInDiscovery;
 
   return (
     <SettingToggle
       label={t("discovery.hideWatched")}
       pressed={hideWatched}
-      onPressedChange={() => void updatePreference({ key: "hideWatchedInDiscovery", value: !hideWatched })}
+      onPressedChange={() => setPreference({ key: "hideWatchedInDiscovery", value: !hideWatched })}
       disabled={isSaving || isLoading}
     />
   );

@@ -17,7 +17,6 @@ import { MotionPreferenceGate } from "@/components/layout/motion-preference-gate
 import { desktopService } from "@/features/desktop/desktop-service";
 import { maintenanceService } from "@/features/backup/maintenance-service";
 import { logger } from "@/shared/lib/logger";
-import { syncService } from "@/features/sync/sync-service";
 import type { BootRecovery } from "@/features/desktop/boot-recovery-repository";
 import { errorMessage } from "@/shared/lib/errors";
 import { isTauriApp } from "@/shared/lib/platform";
@@ -25,6 +24,7 @@ import { appBootStartedAt } from "@/shared/lib/startup-timing";
 import { TOOLTIP_DELAY_MS } from "@/shared/constants/query";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrayLanguage } from "@/app/use-tray-language";
+import { useCloudSync } from "@/app/use-cloud-sync";
 
 // Module-level, not component state: React StrictMode intentionally mounts
 // this component's effect twice in dev (mount -> cleanup -> mount again) —
@@ -35,6 +35,7 @@ let startupLogged = false;
 export function App() {
   const queryClient = useQueryClient();
   useTrayLanguage();
+  useCloudSync();
 
   useEffect(() => {
     if (!startupLogged) {
@@ -55,7 +56,6 @@ export function App() {
     if (!isTauriApp()) return;
 
     let cleanup: (() => void) | undefined;
-    let cleanupSync: (() => void) | undefined;
     let disposed = false;
 
     void desktopService
@@ -70,16 +70,6 @@ export function App() {
       })
       .catch((error: unknown) => {
         logger.warn(`Desktop initialization failed: ${errorMessage(error)}`);
-      });
-
-    void syncService
-      .initialize(queryClient)
-      .then((value) => {
-        if (disposed) value?.();
-        else cleanupSync = value;
-      })
-      .catch((error: unknown) => {
-        logger.warn(`Cloud sync initialization failed: ${errorMessage(error)}`);
       });
 
     void (async () => {
@@ -112,7 +102,6 @@ export function App() {
     return () => {
       disposed = true;
       cleanup?.();
-      cleanupSync?.();
     };
   }, [queryClient]);
 

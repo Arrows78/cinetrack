@@ -198,7 +198,7 @@ export function WatchTonightPage() {
       genreSeries: selectedGenre?.seriesId || undefined,
       provider: resolvedProvider,
       // A non-positive value means "no cap", never a real 0-minute filter.
-      maxRuntime: Number(runtime) > 0 ? Number(runtime) : undefined,
+      maxRuntime: Number(debouncedRuntime) > 0 ? Number(debouncedRuntime) : undefined,
       hideWatched,
       originCountry: originCountry || undefined,
     },

@@ -17,8 +17,15 @@ impl<'a> ProfileService<'a> {
         Self { pool }
     }
 
+    /// The linked account id is not part of what the profile list shows: the
+    /// frontend never reads it from here, and it is an identifier the webview
+    /// has no use for (see `UserProfile::without_account_id`).
     pub(super) async fn list(&self) -> Result<Vec<UserProfile>, ApiError> {
-        list_impl(self.pool).await
+        Ok(list_impl(self.pool)
+            .await?
+            .into_iter()
+            .map(UserProfile::without_account_id)
+            .collect())
     }
 
     pub(super) async fn create(
@@ -41,7 +48,11 @@ impl<'a> ProfileService<'a> {
         &self,
         profile_id: &str,
         supabase_user_id: &str,
+        current_pin: Option<&str>,
     ) -> Result<UserProfile, ApiError> {
+        // Linking hands the profile's data to an account: same lock as
+        // editing or removing it.
+        authorize_pin_protected_access(self.pool, profile_id, current_pin).await?;
         link_to_supabase_user_impl(self.pool, profile_id, supabase_user_id).await
     }
 

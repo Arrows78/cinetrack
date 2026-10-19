@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import type { MediaSummary, PageResult } from "@/types/media";
+import type { MediaSummary, Movie, PageResult } from "@/types/media";
 
 function page(results: MediaSummary[], pageNumber = 1, totalPages = 1): PageResult<MediaSummary> {
   return { page: pageNumber, totalPages, totalResults: results.length, results };
@@ -26,12 +26,16 @@ function summary(id: number, title: string): MediaSummary {
 const searchMock = vi.fn(async (query: string) => page([summary(1, query)]));
 const discoverMoviesMock = vi.fn(async () => page([summary(2, "Discovered Movie")]));
 const discoverSeriesMock = vi.fn(async () => page([summary(3, "Discovered Series")]));
+const getMovieDetailsMock = vi.fn();
+const getWatchAvailabilityMock = vi.fn();
 
 vi.mock("@/features/media/media-repository", () => ({
   mediaRepository: {
     search: searchMock,
     discoverMovies: discoverMoviesMock,
     discoverSeries: discoverSeriesMock,
+    getMovieDetails: getMovieDetailsMock,
+    getWatchAvailability: getWatchAvailabilityMock,
   },
 }));
 
@@ -43,12 +47,92 @@ function createWrapper() {
 }
 
 beforeEach(() => {
-  searchMock.mockClear();
-  discoverMoviesMock.mockClear();
-  discoverSeriesMock.mockClear();
+  searchMock.mockReset().mockImplementation(async (query: string) => page([summary(1, query)]));
+  discoverMoviesMock.mockReset().mockImplementation(async () => page([summary(2, "Discovered Movie")]));
+  discoverSeriesMock.mockReset().mockImplementation(async () => page([summary(3, "Discovered Series")]));
+  getMovieDetailsMock.mockReset();
+  getWatchAvailabilityMock.mockReset();
 });
 
 describe("useSearch", () => {
+  it("combines the typed title with its genre and refetches when the title changes", async () => {
+    searchMock.mockResolvedValueOnce(
+      page([
+        { ...summary(1, "Batman"), genreIds: [28] },
+        { ...summary(2, "Batman documentary"), genreIds: [99] },
+      ])
+    );
+    searchMock.mockResolvedValueOnce(page([{ ...summary(3, "Superman"), genreIds: [28] }]));
+    const { useSearch } = await import("../use-search");
+    const { result, rerender } = renderHook(({ query }) => useSearch(query, "movie", { genreMovie: "28" }), {
+      wrapper: createWrapper(),
+      initialProps: { query: "batman" },
+    });
+    await waitFor(() => expect(result.current.items.map((item) => item.id)).toEqual([1]));
+    expect(searchMock).toHaveBeenCalledWith("batman", "movie", 1);
+    expect(discoverMoviesMock).not.toHaveBeenCalled();
+    rerender({ query: "superman" });
+    await waitFor(() => expect(result.current.items.map((item) => item.id)).toEqual([3]));
+  });
+
+  it("combines studio and subscription filters in the selected country, preserving relevance order", async () => {
+    searchMock.mockResolvedValueOnce(
+      page([summary(1, "Spider-Man"), summary(2, "Spider-Man 2"), summary(3, "Spider-Man 3")])
+    );
+    getMovieDetailsMock.mockImplementation(
+      async (id: number) => ({ ...summary(id, "Spider-Man"), productionCompanyIds: id === 3 ? [99] : [420] }) as Movie
+    );
+    getWatchAvailabilityMock.mockImplementation(async (_type: string, id: number) => ({
+      flatrate: id === 2 ? [] : [{ id: 8 }],
+      free: [],
+      rent: [{ id: 8 }],
+      buy: [],
+    }));
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("spider", "movie", { company: "420", provider: "8", region: "FR" }), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items.map((item) => item.id)).toEqual([1]);
+    expect(getWatchAvailabilityMock).toHaveBeenCalledWith("movie", 1, "FR");
+    expect(getWatchAvailabilityMock).not.toHaveBeenCalledWith("movie", 3, "FR");
+  });
+
+  it("keeps pagination available when a filtered page is empty", async () => {
+    searchMock.mockResolvedValueOnce(page([{ ...summary(1, "Batman documentary"), genreIds: [99] }], 1, 2));
+    searchMock.mockResolvedValueOnce(page([{ ...summary(2, "Batman"), genreIds: [28] }], 2, 2));
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("batman", "movie", { genreMovie: "28" }), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items).toEqual([]);
+    expect(result.current.hasNextPage).toBe(true);
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+    await waitFor(() => expect(result.current.items.map((item) => item.id)).toEqual([2]));
+    expect(result.current.hasNextPage).toBe(false);
+  });
+
+  it("reports an unavailable provider lookup instead of claiming there are no matching titles", async () => {
+    searchMock.mockResolvedValueOnce(page([summary(1, "Batman")]));
+    getWatchAvailabilityMock.mockRejectedValue(new Error("Provider lookup unavailable"));
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("batman", "movie", { provider: "8", region: "FR" }), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe("Provider lookup unavailable");
+  });
+
+  it("does not query movie discovery for the people scope even when media filters remain in the URL", async () => {
+    const { useSearch } = await import("../use-search");
+    const { result } = renderHook(() => useSearch("", "person", { company: "420" }), { wrapper: createWrapper() });
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(discoverMoviesMock).not.toHaveBeenCalled();
+  });
+
   it("is disabled below the minimum query length and enabled at it", async () => {
     const { useSearch } = await import("../use-search");
     const wrapper = createWrapper();

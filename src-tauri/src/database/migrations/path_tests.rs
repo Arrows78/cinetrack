@@ -1089,3 +1089,28 @@ async fn viewing_event_numbering_follows_a_multi_row_insert_and_an_insert_select
         "strictly increasing, no ties: {numbered:?}"
     );
 }
+
+// A database that was built by an older install path can lack indexes that a
+// later migration drops (reported on a real v25 file missing most of the ones
+// migration 26 removes). Dropping an absent index must not block the upgrade.
+#[tokio::test]
+async fn migration_26_upgrades_a_database_that_never_had_the_indexes_it_drops() {
+    let db = pool().await;
+    apply_migrations_up_to(&db, 25).await.unwrap();
+    for index in [
+        "idx_tracked_series_series_id",
+        "idx_episode_progress_episode_id",
+        "idx_custom_list_items_media_id",
+        "idx_viewing_events_media_id",
+        "idx_activity_log_media_id",
+        "idx_seen_movies_movie_id",
+        "idx_availability_alerts_enabled",
+    ] {
+        run(&db, &format!("DROP INDEX IF EXISTS {index}")).await;
+    }
+
+    apply_pending_migrations(&db).await.unwrap();
+
+    assert_eq!(user_version(&db).await, latest_version().unwrap());
+    assert_healthy(&db, "after upgrading a database missing indexes").await;
+}

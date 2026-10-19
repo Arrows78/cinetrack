@@ -135,7 +135,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
   const { t } = useTranslation();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigationItems = useNavigationItems();
-  const { data: preferences, updatePreference } = usePreferences();
+  const { data: preferences, setPreference } = usePreferences();
   const { signOut, user } = useAuth();
   const activeTheme = preferences?.theme ?? defaultPreferences.theme;
   const userName = user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? null;
@@ -227,7 +227,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 key={value}
                 type="button"
                 aria-pressed={activeTheme === value}
-                onClick={() => void updatePreference({ key: "theme", value })}
+                onClick={() => setPreference({ key: "theme", value })}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-caption font-medium transition-all duration-fast",
                   activeTheme === value
@@ -253,7 +253,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                     "h-9 w-full rounded-xl",
                     activeTheme === value && "bg-primary/15 text-primary shadow-glow"
                   )}
-                  onClick={() => void updatePreference({ key: "theme", value })}
+                  onClick={() => setPreference({ key: "theme", value })}
                 >
                   <Icon className="h-4 w-4" />
                 </Button>

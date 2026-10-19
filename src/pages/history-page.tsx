@@ -4,9 +4,11 @@ import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Virtuoso } from "react-virtuoso";
-import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { endOfDay, format, isToday, isYesterday, parseISO, startOfDay } from "date-fns";
 import type { Locale } from "date-fns";
 import { enUS, fr } from "date-fns/locale";
+import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
+import { tmdbStatusLabel } from "@/shared/utils/tmdb-status";
 import {
   History,
   Clapperboard,
@@ -27,6 +29,7 @@ import { EmptyState } from "@/components/states/empty-state";
 import { TimelineSkeleton, TrackedSeriesSkeleton } from "@/components/states/loading-skeletons";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tile } from "@/components/ui/tile";
@@ -44,8 +47,16 @@ import { useTrackedSeries } from "@/features/progress/use-progress";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
+import { logger } from "@/shared/lib/logger";
 import type { HistoryAction, HistoryFilterState, ViewingHistoryItem } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
+
+/**
+ * How many pages (50 entries each) the page loads on its own while the
+ * media-type filter, applied client-side, leaves nothing to show although more
+ * pages exist.
+ */
+export const TYPE_FILTER_SCAN_MAX_PAGES = 6;
 
 type TimelineRow =
   | { kind: "header"; key: string; label: string }
@@ -222,9 +233,11 @@ function describeLibraryUpdate(item: ViewingHistoryItem, t: TFunction) {
 
 export function HistoryPage() {
   const { t, i18n } = useTranslation();
+  const isTouch = useIsTouchDevice();
   const dateLocale = i18n.language.startsWith("fr") ? fr : enUS;
   const trackedSeriesQuery = useTrackedSeries();
   const undo = useUndoHistoryItem();
+  const [pendingUndo, setPendingUndo] = useState<ViewingHistoryItem | null>(null);
   const navigate = useNavigate({ from: "/history" });
   // Typed against historyRoute's own validateSearch (router-config.tsx) —
   // a plain useState here would lose the filter on refresh and make it
@@ -260,11 +273,13 @@ export function HistoryPage() {
 
   const historyQuery = useHistory({
     search: debouncedQuery || undefined,
-    // Inclusive end-of-day bound — a plain date input only carries the day,
-    // and comparing it against full ISO timestamps at midnight would drop
+    // A plain date input only carries the day: the bounds are the user's
+    // *local* start and (inclusive) end of that day, the same days the list's
+    // day headers are grouped by, converted to the UTC instants the
+    // timestamps are stored as. Comparing against midnight alone would drop
     // every entry logged later that same day.
-    from: fromDate ? `${fromDate}T00:00:00.000Z` : undefined,
-    to: toDate ? `${toDate}T23:59:59.999Z` : undefined,
+    from: fromDate ? startOfDay(parseISO(fromDate)).toISOString() : undefined,
+    to: toDate ? endOfDay(parseISO(toDate)).toISOString() : undefined,
   });
 
   const currentFilters: HistoryFilterState = { typeFilter, search: debouncedQuery, from: fromDate, to: toDate };
@@ -313,6 +328,27 @@ export function HistoryPage() {
       ),
     [historyQuery.data, typeFilter]
   );
+  // The type filter can't be sent to the backend yet, so a type absent from
+  // the loaded pages would read as "no activity" while older matching entries
+  // are still on the next pages: keep fetching until one shows up, but only
+  // while fewer than TYPE_FILTER_SCAN_MAX_PAGES pages are loaded — a type that
+  // is genuinely rare in the log must not walk the whole history (the "Load
+  // more" button stays for going further by hand). Stateless on purpose: the
+  // number of loaded pages is the bound.
+  const { hasNextPage, isFetchingNextPage, isLoading, isError, fetchNextPage } = historyQuery;
+  const loadedPageCount = historyQuery.data?.pages.length ?? 0;
+  const isScanningForType =
+    typeFilter !== "all" &&
+    filteredHistory.length === 0 &&
+    Boolean(hasNextPage) &&
+    loadedPageCount < TYPE_FILTER_SCAN_MAX_PAGES &&
+    !isError;
+  useEffect(() => {
+    if (!isScanningForType || isFetchingNextPage || isLoading) return;
+    fetchNextPage().catch((error: unknown) => {
+      logger.warn(`History: could not fetch the next page for the ${typeFilter} filter: ${String(error)}`);
+    });
+  }, [isScanningForType, isFetchingNextPage, isLoading, fetchNextPage, typeFilter, loadedPageCount]);
   const timelineRows = useMemo(
     () => buildTimelineRows(filteredHistory, t, dateLocale),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `t`/`dateLocale` change together with `i18n.language`, already a stable dep of neither; recomputed whenever filteredHistory itself does
@@ -409,7 +445,7 @@ export function HistoryPage() {
           <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
         </div>
 
-        {historyQuery.isLoading ? (
+        {historyQuery.isLoading || isScanningForType ? (
           <TimelineSkeleton />
         ) : historyQuery.isError ? (
           <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
@@ -489,14 +525,16 @@ export function HistoryPage() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="relative z-10 size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                            className={cn(
+                              "relative z-10 size-8 shrink-0",
+                              // Hover-revealed on a pointer device only: on touch there is no hover, so
+                              // an invisible button would still take taps and undo an entry unseen.
+                              !isTouch &&
+                                "opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                            )}
                             aria-label={t("history.undo")}
                             disabled={undo.isPending}
-                            // Failure toast is handled by the app-wide
-                            // MutationCache error handler (see
-                            // query-client.ts) — this catch only prevents an
-                            // unhandled rejection.
-                            onClick={() => void undo.mutateAsync(item).catch(() => {})}
+                            onClick={() => setPendingUndo(item)}
                           >
                             <Undo2 className="size-4" />
                           </Button>
@@ -516,6 +554,25 @@ export function HistoryPage() {
         ) : (
           <EmptyState icon={History} title={t("history.noActivity")} description={t("history.noActivityDesc")} />
         )}
+        <ConfirmDialog
+          open={pendingUndo !== null}
+          onOpenChange={(open) => !open && !undo.isPending && setPendingUndo(null)}
+          title={t("history.undoConfirmTitle")}
+          description={t("history.undoConfirmDescription", { title: pendingUndo?.title ?? "" })}
+          confirmLabel={t("history.undoConfirmAction")}
+          cancelLabel={t("common.cancel")}
+          isConfirming={undo.isPending}
+          onConfirm={() => {
+            if (!pendingUndo) return;
+            // Failure toast is handled by the app-wide MutationCache error
+            // handler (see query-client.ts) — this catch only logs and
+            // prevents an unhandled rejection.
+            undo
+              .mutateAsync(pendingUndo)
+              .catch((error: unknown) => logger.warn(`History undo failed: ${String(error)}`))
+              .finally(() => setPendingUndo(null));
+          }}
+        />
         <LoadMoreButton
           hasNextPage={historyQuery.hasNextPage}
           isFetchingNextPage={historyQuery.isFetchingNextPage}
@@ -553,7 +610,7 @@ export function HistoryPage() {
                 <option value="all">{t("filters.all")}</option>
                 {trackedSeriesStatuses.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {tmdbStatusLabel(status, t)}
                   </option>
                 ))}
               </Select>
