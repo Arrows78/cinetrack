@@ -31,6 +31,13 @@ export const errorCategory = (error: unknown): ErrorCategory => {
   // Checked first: a rate-limit body must never be read as an auth failure
   // because its text happens to mention a token or a quota.
   if (isRateLimitedError(error)) return "connection";
+  // Every failed local command (SQLite read or write, a refused profile
+  // action, no IPC bridge at all) reaches the UI as an ApiCommandError
+  // (shared/lib/invoke.ts), whatever its text says; TMDB failures are
+  // TmdbRequestErrors. Matched by name so this module does not import
+  // invoke.ts, which imports it. Without this, a local failure whose message
+  // happens not to mention SQL was reported as a TMDB outage.
+  if (error instanceof Error && error.name === "ApiCommandError") return "localDatabase";
   if (candidate && (candidate.status === 401 || candidate.status === 403)) return "authentication";
   if (/TMDB\s+(401|403)|token/i.test(message)) return "authentication";
   if (candidate?.status && candidate.status >= 500 && /sql|sqlite|database|plugin:sql/i.test(message)) {

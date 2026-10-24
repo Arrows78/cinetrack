@@ -80,3 +80,21 @@ describe("429 handling", () => {
     expect(isRateLimitedError(null)).toBe(false);
   });
 });
+
+describe("errorCategory for local commands", () => {
+  const localFailure = (message: string, status?: number) =>
+    Object.assign(new Error(message), { name: "ApiCommandError", status });
+
+  it("reports any failed local command as local data, not as a TMDB connection problem", () => {
+    expect(errorCategory(localFailure("Cannot read properties of undefined (reading 'invoke')"))).toBe("localDatabase");
+    expect(errorCategory(localFailure("Profile not found.", 404))).toBe("localDatabase");
+  });
+
+  it("does not read a refused local action (a PIN-locked profile) as a TMDB authentication failure", () => {
+    expect(errorCategory(localFailure("This profile is locked with a PIN.", 403))).toBe("localDatabase");
+  });
+
+  it("never degrades a local failure to stale data with a badge", () => {
+    expect(isDegradedRemoteError(localFailure("database is locked", 500))).toBe(false);
+  });
+});
