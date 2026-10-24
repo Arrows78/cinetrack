@@ -2088,3 +2088,27 @@ async fn random_watch_sequences_keep_progress_events_stats_and_status_consistent
         }
     }
 }
+
+#[tokio::test]
+async fn a_backdated_rewatch_or_unwatch_never_moves_updated_at_backwards() {
+    let pool = migrated_pool().await;
+    toggle_movie_seen_impl(&pool, "default", movie(7), true, "2024-06-01T00:00:00.000Z")
+        .await
+        .unwrap();
+    let read = || async {
+        sqlx::query_scalar::<_, String>("SELECT updated_at FROM library_items WHERE media_id = 7")
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+    };
+    let before = read().await;
+
+    rewatch_movie_impl(&pool, "default", movie(7), "2020-01-01T00:00:00.000Z", None)
+        .await
+        .unwrap();
+
+    assert!(
+        read().await >= before,
+        "a rewatch dated before the last edit must not make the entry look older than it is"
+    );
+}

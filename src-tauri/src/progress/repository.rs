@@ -117,7 +117,7 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
         // drop them, see stats/queries/active_events.rs), so the library
         // editor's rewatch count starts over from 0 with the next watch.
         sqlx::query(
-            "UPDATE library_items SET rewatch_count = 0, updated_at = $3
+            "UPDATE library_items SET rewatch_count = 0, updated_at = MAX(updated_at, $3)
              WHERE profile_id = $1 AND media_id = $2 AND media_type = 'movie' AND rewatch_count > 0",
         )
         .bind(profile_id)
@@ -280,7 +280,7 @@ pub(crate) async fn rewatch_movie_impl(
     .await?;
 
     sqlx::query(
-        "UPDATE library_items SET rewatch_count = rewatch_count + 1, updated_at = $3
+        "UPDATE library_items SET rewatch_count = rewatch_count + 1, updated_at = MAX(updated_at, $3)
          WHERE profile_id = $1 AND media_id = $2 AND media_type = 'movie'",
     )
     .bind(profile_id)
@@ -499,7 +499,7 @@ pub(crate) async fn apply_episodes_outcome_impl(
            backdrop_path = excluded.backdrop_path,
            total_episodes = CASE WHEN $7 > 0 THEN MAX($7, {WATCHED_REGULAR}) ELSE tracked_series.total_episodes END,
            status = COALESCE(excluded.status, tracked_series.status),
-           updated_at = excluded.updated_at"
+           updated_at = MAX(tracked_series.updated_at, excluded.updated_at)"
     )))
     .bind(new_uuid())
     .bind(profile_id)

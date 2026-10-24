@@ -170,7 +170,7 @@ pub(crate) async fn cancel_series_rewatches_if_unseen(
     .await
     .map_err(ApiError::from)?;
     sqlx::query(
-        "UPDATE library_items SET rewatch_count = 0, updated_at = $3
+        "UPDATE library_items SET rewatch_count = 0, updated_at = MAX(updated_at, $3)
          WHERE profile_id = $1 AND media_id = $2 AND media_type = 'series' AND rewatch_count > 0",
     )
     .bind(profile_id)
