@@ -411,6 +411,19 @@ describe("SettingsPage — preferences", () => {
     expect(await screen.findByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
+  it("keeps the data, desktop and about sections reachable when preferences fail to load", async () => {
+    getPreferencesMock.mockReset().mockRejectedValue(new Error("sqlite unavailable"));
+    renderPage();
+
+    await screen.findByRole("button", { name: "Try again" });
+    // Backup, database check and diagnostics live there: the way out of the failure.
+    expect(screen.getByRole("heading", { name: i18n.t("settings.sections.data") })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: i18n.t("settings.desktopSecurity") })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: i18n.t("settings.sections.about") })).toBeInTheDocument();
+    // The sections built on preferences are not rendered over a failed read.
+    expect(screen.queryByRole("heading", { name: i18n.t("settings.sections.notifications") })).not.toBeInTheDocument();
+  });
+
   it("changes the accent color when a swatch is clicked", async () => {
     renderPage();
     await screen.findByText("Default profile");

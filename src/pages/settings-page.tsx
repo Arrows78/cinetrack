@@ -112,9 +112,10 @@ function AvailabilityCheckCard({
 export function SettingsPage() {
   const { t } = useTranslation();
   const { data: preferences, updatePreference, setPreference, isSaving, isError, error, refetch } = usePreferences();
-  if (isError) {
-    return <RemoteErrorState error={error} onRetry={() => void refetch()} />;
-  }
+  // A failed preferences read only takes the sections built on preferences
+  // down. The rest stays reachable — it is where the way out lives: restoring
+  // a backup, checking the database, the diagnostics log.
+  const preferencesFailed = isError;
   const toggleStreamingProvider = async (providerId: number) => {
     const current = preferences?.preferredProviderIds ?? [];
     const next: UserPreferences["preferredProviderIds"] = current.includes(providerId)
@@ -124,8 +125,12 @@ export function SettingsPage() {
   };
   const navItems = [
     { id: SETTINGS_UI_ID, label: t("settings.uiPreferences") },
-    { id: SETTINGS_STREAMING_ID, label: t("settings.sections.streaming") },
-    { id: SETTINGS_NOTIFICATIONS_ID, label: t("settings.sections.notifications") },
+    ...(preferencesFailed
+      ? []
+      : [
+          { id: SETTINGS_STREAMING_ID, label: t("settings.sections.streaming") },
+          { id: SETTINGS_NOTIFICATIONS_ID, label: t("settings.sections.notifications") },
+        ]),
     { id: SETTINGS_ACCOUNT_ID, label: t("settings.sections.account") },
     { id: SETTINGS_DATA_ID, label: t("settings.sections.data") },
     { id: SETTINGS_HIDDEN_TITLES_ID, label: t("recommendations.hiddenTitles.title") },
@@ -144,51 +149,59 @@ export function SettingsPage() {
           title={t("settings.uiPreferences")}
           subtitle={t("settings.customizeDisplay")}
         />
-        <AppearanceCard
-          preferences={preferences}
-          updatePreference={updatePreference}
-          setPreference={setPreference}
-          isSaving={isSaving}
-        />
-      </section>
-
-      <section id={SETTINGS_STREAMING_ID} className="scroll-mt-28">
-        <SectionHeader
-          size="sub"
-          headingLevel={2}
-          title={t("settings.sections.streaming")}
-          subtitle={t("settings.sections.streamingDesc")}
-        />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <StreamingServicesCard
-            providerIds={preferences?.preferredProviderIds ?? []}
-            onToggle={(providerId) => void toggleStreamingProvider(providerId)}
+        {preferencesFailed ? (
+          <RemoteErrorState error={error} onRetry={() => void refetch()} />
+        ) : (
+          <AppearanceCard
+            preferences={preferences}
+            updatePreference={updatePreference}
+            setPreference={setPreference}
             isSaving={isSaving}
           />
-          <AvailabilityCheckCard
-            intervalHours={
-              preferences?.availabilityCheckIntervalHours ?? defaultPreferences.availabilityCheckIntervalHours
-            }
-            onChange={(hours) => setPreference({ key: "availabilityCheckIntervalHours", value: hours })}
-            isSaving={isSaving}
-          />
-        </div>
+        )}
       </section>
 
-      <section id={SETTINGS_NOTIFICATIONS_ID} className="scroll-mt-28">
-        <SectionHeader
-          size="sub"
-          headingLevel={2}
-          title={t("settings.sections.notifications")}
-          subtitle={t("settings.sections.notificationsDesc")}
-        />
-        <NotificationsCard
-          preferences={preferences}
-          updatePreference={updatePreference}
-          setPreference={setPreference}
-          isSaving={isSaving}
-        />
-      </section>
+      {preferencesFailed ? null : (
+        <>
+          <section id={SETTINGS_STREAMING_ID} className="scroll-mt-28">
+            <SectionHeader
+              size="sub"
+              headingLevel={2}
+              title={t("settings.sections.streaming")}
+              subtitle={t("settings.sections.streamingDesc")}
+            />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <StreamingServicesCard
+                providerIds={preferences?.preferredProviderIds ?? []}
+                onToggle={(providerId) => void toggleStreamingProvider(providerId)}
+                isSaving={isSaving}
+              />
+              <AvailabilityCheckCard
+                intervalHours={
+                  preferences?.availabilityCheckIntervalHours ?? defaultPreferences.availabilityCheckIntervalHours
+                }
+                onChange={(hours) => setPreference({ key: "availabilityCheckIntervalHours", value: hours })}
+                isSaving={isSaving}
+              />
+            </div>
+          </section>
+
+          <section id={SETTINGS_NOTIFICATIONS_ID} className="scroll-mt-28">
+            <SectionHeader
+              size="sub"
+              headingLevel={2}
+              title={t("settings.sections.notifications")}
+              subtitle={t("settings.sections.notificationsDesc")}
+            />
+            <NotificationsCard
+              preferences={preferences}
+              updatePreference={updatePreference}
+              setPreference={setPreference}
+              isSaving={isSaving}
+            />
+          </section>
+        </>
+      )}
 
       <section id={SETTINGS_ACCOUNT_ID} className="scroll-mt-28">
         <SectionHeader
