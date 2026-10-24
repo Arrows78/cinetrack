@@ -23,6 +23,7 @@ vi.mock("@/features/preferences/preferences-repository", () => ({
   },
 }));
 
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { TmdbMediaProvider } from "../tmdb-media-provider";
 
 const basePreferences = (overrides: Partial<UserPreferences> = {}): UserPreferences =>
@@ -89,6 +90,23 @@ describe("TmdbMediaProvider", () => {
       expect(mocks.tmdbFetch).toHaveBeenCalledWith(
         "/watch/providers/movie",
         expect.objectContaining({ watch_region: "FR" })
+      );
+    });
+
+    it("still reaches TMDB, with the default language and region, when the stored preferences cannot be read", async () => {
+      mocks.getPreferences.mockRejectedValue(new Error("database is locked"));
+      mocks.tmdbFetch.mockResolvedValue(emptyListResponse);
+
+      await provider.getTrendingMovies();
+      await provider.getWatchProviders("movie");
+
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith(
+        "/trending/movie/week",
+        expect.objectContaining({ language: "en-US" })
+      );
+      expect(mocks.tmdbFetch).toHaveBeenCalledWith(
+        "/watch/providers/movie",
+        expect.objectContaining({ watch_region: defaultPreferences.region })
       );
     });
 

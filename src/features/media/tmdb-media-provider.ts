@@ -17,6 +17,9 @@ import type {
 } from "@/types/media";
 import type { DiscoverArgs, MediaProvider } from "./media-provider";
 import { tmdbFetch } from "@/features/media/api/client";
+import { defaultPreferences } from "@/shared/constants/preferences-schema";
+import { errorMessage } from "@/shared/lib/errors";
+import { logger } from "@/shared/lib/logger";
 import {
   mapCollectionDto,
   mapEpisodeStillPaths,
@@ -64,7 +67,14 @@ interface Context {
 
 export class TmdbMediaProvider implements MediaProvider {
   private async context(region?: string): Promise<Context> {
-    const preferences = await preferencesRepository.getPreferences();
+    // Language and region only shape the catalogue request: a local read that
+    // fails (a locked or recovering database, the browser preview with no
+    // IPC) must not take the whole catalogue down with it, nor be reported as
+    // a TMDB outage. The defaults apply until preferences can be read again.
+    const preferences = await preferencesRepository.getPreferences().catch((error: unknown) => {
+      logger.warn(`Catalogue request without stored preferences, using the defaults: ${errorMessage(error)}`);
+      return defaultPreferences;
+    });
     return {
       language: languageTag(preferences.language),
       region: region ?? preferences.region,
