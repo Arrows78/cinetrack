@@ -174,6 +174,8 @@ describe("StatsPage", () => {
     renderPage();
 
     const retryButton = await screen.findByRole("button", { name: "Try again" });
+    // The page keeps its own title over the failure.
+    expect(screen.getByRole("heading", { level: 1, name: "Stats" })).toBeInTheDocument();
     retryButton.click();
 
     expect(statsState.refetch).toHaveBeenCalledTimes(1);

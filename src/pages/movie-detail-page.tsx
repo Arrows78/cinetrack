@@ -56,10 +56,10 @@ export function MovieDetailPage() {
   // (see isDegradedRemoteError's doc comment) — folding the category check
   // into the same condition as isRefetchError would erase that narrowing.
   if (movieQuery.isError && !movieQuery.isRefetchError) {
-    return <RemoteErrorState error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
+    return <RemoteErrorState isPageTitle error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
   }
   if (movieQuery.isRefetchError && !isDegradedRemoteError(movieQuery.error)) {
-    return <RemoteErrorState error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
+    return <RemoteErrorState isPageTitle error={movieQuery.error} onRetry={() => void movieQuery.refetch()} />;
   }
   const movie = movieQuery.data;
 

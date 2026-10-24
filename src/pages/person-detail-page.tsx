@@ -75,10 +75,10 @@ export function PersonDetailPage() {
   // See movie-detail-page.tsx's equivalent guard for why this is two
   // separate checks rather than one combined condition (TS narrowing).
   if (query.isError && !query.isRefetchError) {
-    return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
+    return <RemoteErrorState isPageTitle error={query.error} onRetry={() => void query.refetch()} />;
   }
   if (query.isRefetchError && !isDegradedRemoteError(query.error)) {
-    return <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />;
+    return <RemoteErrorState isPageTitle error={query.error} onRetry={() => void query.refetch()} />;
   }
 
   const person = query.data;

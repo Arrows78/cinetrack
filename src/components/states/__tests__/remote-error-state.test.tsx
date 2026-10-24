@@ -34,6 +34,15 @@ describe("RemoteErrorState", () => {
     expect(screen.queryByText("socket hang up")).not.toBeInTheDocument();
   });
 
+  it("titles the page with its message only when it stands in for a whole page", () => {
+    const { unmount } = render(<RemoteErrorState error={new Error("boom")} onRetry={() => {}} />);
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    unmount();
+
+    render(<RemoteErrorState isPageTitle error={new Error("boom")} onRetry={() => {}} />);
+    expect(screen.getByRole("heading", { level: 1, name: "Unable to load the catalogue" })).toBeInTheDocument();
+  });
+
   it("calls onRetry when the retry button is clicked", () => {
     const onRetry = vi.fn();
     render(<RemoteErrorState error={new Error("boom")} onRetry={onRetry} />);

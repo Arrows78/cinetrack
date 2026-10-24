@@ -179,13 +179,16 @@ export function StatsPage() {
   // so the year switcher stays reachable to move to a year that does load.
   if (stats.isError) {
     return (
-      <RemoteErrorState
-        error={stats.error}
-        onRetry={() => {
-          void stats.refetch();
-          void wrapped.refetch();
-        }}
-      />
+      <div className="space-y-8">
+        <SectionHeader title={t("stats.title")} subtitle={t("stats.description")} icon={BarChart3} isPageTitle />
+        <RemoteErrorState
+          error={stats.error}
+          onRetry={() => {
+            void stats.refetch();
+            void wrapped.refetch();
+          }}
+        />
+      </div>
     );
   }
 

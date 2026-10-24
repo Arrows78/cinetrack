@@ -154,10 +154,10 @@ export function SeriesDetailPage() {
   // See movie-detail-page.tsx's equivalent guard for why this is two
   // separate checks rather than one combined condition (TS narrowing).
   if (seriesQuery.isError && !seriesQuery.isRefetchError) {
-    return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
+    return <RemoteErrorState isPageTitle error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
   }
   if (seriesQuery.isRefetchError && !isDegradedRemoteError(seriesQuery.error)) {
-    return <RemoteErrorState error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
+    return <RemoteErrorState isPageTitle error={seriesQuery.error} onRetry={() => void seriesQuery.refetch()} />;
   }
   const series = seriesQuery.data;
   const failedSeasonQueries = seasonQueries.filter((query) => query.isError);

@@ -13,9 +13,12 @@ interface RemoteErrorStateProps {
   // For callers whose failure isn't a TMDB one (e.g. the cloud account
   // profile) — the default wording below blames the TMDB connection.
   description?: string;
+  // Set by a page that renders this state in place of all its content,
+  // its own heading included (see EmptyState).
+  isPageTitle?: boolean;
 }
 
-export function RemoteErrorState({ error, onRetry, description }: RemoteErrorStateProps) {
+export function RemoteErrorState({ error, onRetry, description, isPageTitle }: RemoteErrorStateProps) {
   const { t } = useTranslation();
   const message = errorMessage(error);
   const category = errorCategory(error);
@@ -29,6 +32,7 @@ export function RemoteErrorState({ error, onRetry, description }: RemoteErrorSta
   return (
     <EmptyState
       icon={AlertTriangle}
+      isPageTitle={isPageTitle}
       title={localDatabaseError ? t("errors.localDataUnavailable") : t("errors.catalogUnavailable")}
       description={
         description ??

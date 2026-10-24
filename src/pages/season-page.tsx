@@ -69,16 +69,16 @@ export function SeasonPage() {
   // so TypeScript can narrow seriesQuery.data/seasonQuery.data to defined
   // below — see movie-detail-page.tsx's equivalent guard for why.
   if (seriesQuery.isError && !seriesQuery.isRefetchError) {
-    return <RemoteErrorState error={seriesQuery.error} onRetry={retryBoth} />;
+    return <RemoteErrorState isPageTitle error={seriesQuery.error} onRetry={retryBoth} />;
   }
   if (seasonQuery.isError && !seasonQuery.isRefetchError) {
-    return <RemoteErrorState error={seasonQuery.error} onRetry={retryBoth} />;
+    return <RemoteErrorState isPageTitle error={seasonQuery.error} onRetry={retryBoth} />;
   }
   if (seriesQuery.isRefetchError && !isDegradedRemoteError(seriesQuery.error)) {
-    return <RemoteErrorState error={seriesQuery.error} onRetry={retryBoth} />;
+    return <RemoteErrorState isPageTitle error={seriesQuery.error} onRetry={retryBoth} />;
   }
   if (seasonQuery.isRefetchError && !isDegradedRemoteError(seasonQuery.error)) {
-    return <RemoteErrorState error={seasonQuery.error} onRetry={retryBoth} />;
+    return <RemoteErrorState isPageTitle error={seasonQuery.error} onRetry={retryBoth} />;
   }
 
   const series = seriesQuery.data;
