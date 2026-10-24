@@ -526,7 +526,7 @@ describe("DesktopSettings", () => {
   });
 
   describe("check database", () => {
-    it("shows the healthy message with the interpolated detail", async () => {
+    it("shows the healthy message without the raw check output", async () => {
       checkDataIntegrityMock.mockResolvedValueOnce({ healthy: true, detail: "0 issues found" });
       render(<DesktopSettings />);
 
@@ -534,13 +534,13 @@ describe("DesktopSettings", () => {
 
       await waitFor(() =>
         expect(toastMock).toHaveBeenCalledWith({
-          description: "Database healthy: 0 issues found",
+          description: "Database healthy.",
           variant: "success",
         })
       );
     });
 
-    it("shows the damaged message with the interpolated detail", async () => {
+    it("shows a translated damaged message and keeps the raw SQLite detail out of the toast", async () => {
       checkDataIntegrityMock.mockResolvedValueOnce({ healthy: false, detail: "3 orphan rows" });
       render(<DesktopSettings />);
 
@@ -548,7 +548,7 @@ describe("DesktopSettings", () => {
 
       await waitFor(() =>
         expect(toastMock).toHaveBeenCalledWith({
-          description: "Database damaged: 3 orphan rows",
+          description: "Database damaged. Details are in the diagnostics log.",
           variant: "success",
         })
       );
