@@ -43,3 +43,19 @@ Audit indépendant (intégrité des données Rust, sécurité, frontend, perform
 ## Validation
 
 `pnpm validate` complet, après le dernier changement de code : 275 fichiers et 2852 tests Vitest, 719 tests Rust (+53 d'export de types), contrats, frontières, lint, format, typage, couverture, build, clippy. Benchmark `pnpm perf:database` exécuté en build debug (le build release local est corrompu, `target/release` à nettoyer). Non exécuté : tests visuels Playwright, `bundle:check`, pgTAP Supabase.
+
+## Ajout : CI, dépendances et release (même jour)
+
+La CI de `main` était rouge depuis le 13 octobre ; elle est verte depuis le commit `be6f11a`. Les causes, relevées dans les journaux :
+
+| Cause                                                                                                                | Correction                                                                                                               |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `rust-ini` 0.21.3 casse `tauri-plugin-deep-link` sur Linux (structure publique agrandie dans une version corrective) | Verrouillé à 0.21.1, Dependabot l'ignore au-delà                                                                         |
+| Paquets npm `@tauri-apps/*` et crates Tauri de versions mineures différentes, détecté seulement au build iOS         | Alignés ; `scripts/check-tauri-version-alignment.mjs`, lancé par `pnpm version:check`, échoue tôt                        |
+| `cargo-audit` et `osv-scan` en échec (rustls, quinn-proto, zip, zbus, crypto-bigint)                                 | Mises à jour des crates corrigeables, ignores motivés pour le reste, chacun dans le fichier que son outil lit réellement |
+
+Ajouts : un contrôle unique `ci-ok` à exiger sur `main`, le benchmark dans son propre job, un `cooldown` Dependabot de trois jours, l'auto-merge des mises à jour sûres, les runners fixés à `ubuntu-24.04`.
+
+La release est automatique : une PR « release » tenue à jour par release-please, un contrôle de la CI du commit, les installateurs Linux, Windows et macOS universel avec `SHA256SUMS` et attestation de provenance, puis la publication. La `v0.4.0` a été publiée ainsi ; il a fallu quatre exécutions pour corriger quatre défauts du workflow lui-même (attente de CI, certificat macOS vide, jobs sautés en relance manuelle, formatage du changelog). L'attestation d'un installateur a été vérifiée avec `gh attestation verify` (construit par `release.yml` sur `main`, commit `5cb2b11`), et sa somme de contrôle correspond à `SHA256SUMS`.
+
+Reste ouvert : la migration Supabase `20261024120000` n'est pas appliquée sur le projet hébergé et son test pgTAP n'a jamais tourné ; un test Rust instable sous Windows (`random_sequences_with_restarts…`, « database is locked », un échec sur environ neuf runs) ; les certificats Apple et Windows ; l'essai réel d'une mise à jour automatique entre deux versions.
