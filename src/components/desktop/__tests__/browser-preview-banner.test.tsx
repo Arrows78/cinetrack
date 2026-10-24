@@ -13,6 +13,7 @@ describe("BrowserPreviewBanner", () => {
     render(<BrowserPreviewBanner />);
 
     expect(screen.getByText(/SQLite/)).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Browser preview" })).toBeInTheDocument();
   });
 
   it("renders nothing inside the Tauri webview", () => {

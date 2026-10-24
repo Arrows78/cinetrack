@@ -1099,6 +1099,7 @@
     }
   },
   "browserPreview": {
+    "label": "Aperçu navigateur",
     "message": "Aperçu navigateur — les données SQLite ne sont pas disponibles en dehors de la fenêtre Tauri."
   },
   "commandPalette": {
