@@ -188,7 +188,7 @@ jobs:
           echo "build=$build tag=${tag:-<none>} sha=$sha prerelease=$prerelease publish=$publish"
 
   # The verdict on the commit being released is the CI's, not a second run of
-  # the same checks: wait for `ci-ok` and `visual-regression` on that commit.
+  # the same checks: wait for the CI and visual-regression runs of that commit.
   gate:
     needs: plan
     if: ${{ needs.plan.outputs.tag != '' }}
@@ -218,39 +218,42 @@ jobs:
             exit 1
           fi
 
-      - name: Wait for the CI and visual checks of this commit
+      - name: Wait for the CI and visual-regression runs of this commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           SHA: ${{ needs.plan.outputs.sha }}
         run: |
-          wait_for() {
-            name="$1"
+          # The workflow run exists as soon as the commit is pushed, whereas a
+          # check run like `ci-ok` only appears once the jobs it needs are done
+          # (ten minutes or more): waiting for the run is what is reliable.
+          wait_for_workflow() {
+            workflow="$1"
             deadline=$((SECONDS + 3900))
             while [ "$SECONDS" -lt "$deadline" ]; do
-              latest=$(gh api "repos/$REPO/commits/$SHA/check-runs?check_name=$name&per_page=100" \
-                --jq '[.check_runs[]] | sort_by(.started_at) | last // empty')
+              latest=$(gh api "repos/$REPO/actions/workflows/$workflow/runs?head_sha=$SHA&event=push&per_page=20" \
+                --jq '[.workflow_runs[]] | sort_by(.created_at) | last // empty')
               if [ -z "$latest" ]; then
-                if [ "$SECONDS" -gt 600 ]; then
-                  echo "::error::no '$name' check run for $SHA after 10 minutes"
+                if [ "$SECONDS" -gt 300 ]; then
+                  echo "::error::no $workflow run for $SHA after 5 minutes"
                   return 1
                 fi
               else
                 status=$(printf '%s' "$latest" | jq -r .status)
                 conclusion=$(printf '%s' "$latest" | jq -r '.conclusion // ""')
                 if [ "$status" = "completed" ]; then
-                  if [ "$conclusion" = "success" ]; then echo "$name: success"; return 0; fi
-                  echo "::error::'$name' finished as '$conclusion' on $SHA"
+                  if [ "$conclusion" = "success" ]; then echo "$workflow: success"; return 0; fi
+                  echo "::error::$workflow finished as '$conclusion' on $SHA"
                   return 1
                 fi
               fi
               sleep 30
             done
-            echo "::error::'$name' did not finish within 65 minutes"
+            echo "::error::$workflow did not finish within 65 minutes"
             return 1
           }
-          wait_for ci-ok
-          wait_for visual-regression
+          wait_for_workflow ci.yml
+          wait_for_workflow visual.yml
 
   build:
     needs: [plan, gate]
