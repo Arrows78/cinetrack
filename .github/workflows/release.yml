@@ -326,28 +326,40 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      # An environment variable that is defined but empty is not "unset" to the
+      # Tauri CLI: `APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}` with no
+      # such secret still reaches it as an empty string, and the macOS build then
+      # tries to import an empty certificate and fails ("failed to import the
+      # signing certificate"). So only the signing secrets that exist are
+      # exported for the build step; with none of them it produces plain
+      # unsigned bundles. See docs/release-signing.md for what each one is.
+      - name: Pass the signing secrets that exist to the build
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+                      APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID \
+                      WINDOWS_CERTIFICATE WINDOWS_CERTIFICATE_PASSWORD; do
+            value="${!name}"
+            if [ -n "$value" ]; then
+              echo "$name is set: it will sign"
+              { echo "$name<<__END_$name"; echo "$value"; echo "__END_$name"; } >> "$GITHUB_ENV"
+            fi
+          done
+          echo "Signing secrets that exist were exported; the others stay unset (unsigned build)."
+
       - name: Build and package the app
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-          # --- macOS signing + notarization (placeholders) ---------------
-          # Populate to codesign the .app before bundling. Leave unset and
-          # the CLI produces an unsigned, ad-hoc .app/.dmg instead.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # Populate to notarize with Apple after signing (requires the
-          # signing secrets above too). Leave unset to skip notarization.
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-          # --- Windows signing (placeholder) ------------------------------
-          # Populate to sign the .msi/.exe with an OV certificate. Leave
-          # unset and the CLI produces an unsigned installer instead.
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
 
           # --- Updater signature (placeholder) ----------------------------
           # Signs the update bundles `createUpdaterArtifacts` produces, with
