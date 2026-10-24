@@ -4,6 +4,8 @@ const files = [
   ["package.json", /"version"\s*:\s*"([^"]+)"/],
   ["src-tauri/Cargo.toml", /^version\s*=\s*"([^"]+)"/m],
   ["src-tauri/tauri.conf.json", /"version"\s*:\s*"([^"]+)"/],
+  // The cinetrack entry of the lock: a stale one fails every `--locked` build.
+  ["src-tauri/Cargo.lock", /name = "cinetrack"\r?\nversion = "([^"]+)"/],
 ];
 
 const versions = await Promise.all(

@@ -101,6 +101,31 @@ jobs:
           manifest-file: .release-please-manifest.json
           release-as: ${{ inputs.release-as }}
 
+      # release-please bumps package.json and the changelog but cannot edit the
+      # other three files without damage (see scripts/sync-release-version.mjs):
+      # the script copies the new version into them, as one text replacement
+      # each, and the result is pushed onto the release PR's own branch.
+      - name: Check out the release pull request's branch
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: release-please--branches--main--components--cinetrack
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Copy the version into tauri.conf.json, Cargo.toml and Cargo.lock
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        run: |
+          node scripts/sync-release-version.mjs
+          node scripts/check-version-consistency.mjs
+          if git diff --quiet; then
+            echo "Versions already in step on the release branch."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: sync the Tauri and Cargo versions with package.json"
+          git push
+
   # Decides what, if anything, this run builds, and which commit it is.
   plan:
     needs: release-please
