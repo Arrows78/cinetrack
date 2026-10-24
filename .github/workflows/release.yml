@@ -347,9 +347,9 @@ jobs:
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
 
           # --- Updater signature (placeholder) ----------------------------
-          # Only relevant once the desktop update channel (endpoint + public
-          # key in tauri.conf.json's `plugins.updater`) is actually
-          # configured — see docs/release-signing.md. Unused until then.
+          # Signs the update bundles `createUpdaterArtifacts` produces, with
+          # the key whose public half is in tauri.conf.json's
+          # `plugins.updater` — see docs/release-signing.md.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
@@ -364,7 +364,9 @@ jobs:
           prerelease: ${{ needs.plan.outputs.prerelease == 'true' }}
           args: ${{ matrix.args }}
           uploadWorkflowArtifacts: true
-          uploadUpdaterJson: false
+          # latest.json, which the in-app updater polls: it points at the signed
+          # update bundles of this release and is attached to it.
+          uploadUpdaterJson: true
 
   # SHA256SUMS and a signed provenance attestation for every installer, so a
   # download can be checked against what this workflow built.

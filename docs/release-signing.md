@@ -52,14 +52,15 @@ Pushing a `v*` tag by hand also works: it builds a draft release to review and p
 | `WINDOWS_CERTIFICATE`          | Base64 of your OV/EV code-signing `.pfx` |
 | `WINDOWS_CERTIFICATE_PASSWORD` | Export password for the `.pfx`           |
 
-## Auto-updater signature (not needed yet)
+## Auto-updater
 
-CineTrack's update channel isn't configured yet (see `desktop.updateChannelNotConfigured` in the i18n locales — no endpoint/public key in `tauri.conf.json`'s `plugins.updater`). Once it is, generate a keypair with `pnpm tauri signer generate` and add:
+The in-app update check is configured: `src-tauri/tauri.conf.json` carries the updater's **public** key and the endpoint `https://github.com/Arrows78/cinetrack/releases/latest/download/latest.json`, and `bundle.createUpdaterArtifacts` makes every build produce signed update bundles. The release workflow signs them with the repository secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` and attaches `latest.json` to the release, so each published release is offered to installed copies by their next update check.
 
-| Secret                               | Value                              |
-| ------------------------------------ | ---------------------------------- |
-| `TAURI_SIGNING_PRIVATE_KEY`          | The generated private key          |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password chosen when generating it |
+This signature is the updater's own, independent of the operating system's code signing above: an unsigned installer still updates itself, it just keeps the first-install warning.
+
+- **The private key is irreplaceable.** Keep `cinetrack-updater.key` and its password in a password manager. If they are lost, installed copies can never verify another update: a new keypair means every user reinstalls by hand.
+- **Changing the key** means putting the new public key in `tauri.conf.json` and the new private key in the two secrets, and shipping one release signed with the **old** key that carries the new public key, before switching.
+- **Nothing is offered until the first release made after this configuration** (earlier installs have no updater to ask).
 
 Full details: [Tauri — macOS code signing](https://v2.tauri.app/distribute/sign/macos/), [Tauri — Windows code signing](https://v2.tauri.app/distribute/sign/windows/).
 
