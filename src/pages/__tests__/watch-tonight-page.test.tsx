@@ -338,6 +338,14 @@ describe("WatchTonightPage", () => {
     expect(screen.queryByRole("checkbox", { name: "My services" })).not.toBeInTheDocument();
   });
 
+  it("says no services are saved instead of searching every platform when 'My services' has nothing behind it", async () => {
+    preferencesData = { preferredProviderIds: [] };
+    renderPage("?provider=mine");
+
+    expect(await screen.findByText(i18n.t("watchTonight.noServicesTitle"))).toBeInTheDocument();
+    expect(pickMock).not.toHaveBeenCalled();
+  });
+
   it("re-fetches with every preferred provider id when 'My services' is selected", async () => {
     preferencesData = { preferredProviderIds: [8, 337] };
     renderPage();

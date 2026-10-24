@@ -155,6 +155,19 @@ describe("calendarService", () => {
     });
   });
 
+  it("leaves out the episodes of a series the user dropped", async () => {
+    mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 10 }, { seriesId: 11 }]);
+    mocks.listLibraryMovies.mockImplementation((mediaType: string) =>
+      Promise.resolve(mediaType === "series" ? [{ mediaId: 11, mediaType: "series", status: "dropped" }] : [])
+    );
+    mocks.getSeriesDetails.mockImplementation((id: number) => Promise.resolve(series(id, [1])));
+    mocks.getSeasonDetails.mockResolvedValue(season(1, [{ id: 1, airDate: day(3) }]));
+
+    const entries = await calendarService.build(60);
+
+    expect(entries.map((entry) => entry.mediaId)).toEqual([10]);
+  });
+
   it("survives a failing series and a failing upcoming feed", async () => {
     mocks.getUpcomingMovies.mockRejectedValue(new Error("TMDB down"));
     mocks.listTrackedSeries.mockResolvedValue([{ seriesId: 10 }, { seriesId: 11 }]);

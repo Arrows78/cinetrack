@@ -108,10 +108,27 @@ async function fetchLibraryMovieEntries(from: Date, to: Date): Promise<SourceRes
   return { entries, failure: errors.length > 0 && errors.length === items.length ? { error: errors[0] } : undefined };
 }
 
+// A series the user dropped stays tracked (its progress is kept) but must not
+// fill the agenda or raise reminders, like a dropped film (see above). A failed
+// library read only costs that filter: the agenda still renders.
+async function fetchDroppedSeriesIds(): Promise<Set<number>> {
+  try {
+    const items = await libraryRepository.list("series");
+    return new Set(items.filter((item) => item.status === "dropped").map((item) => item.mediaId));
+  } catch (error) {
+    logger.warn(`Failed to read the library to skip dropped series: ${errorMessage(error)}`);
+    return new Set();
+  }
+}
+
 async function fetchTrackedSeriesEntries(from: Date, to: Date): Promise<SourceResult> {
   const entries: CalendarEntry[] = [];
   const errors: unknown[] = [];
-  const tracked = await progressRepository.listTrackedSeries();
+  const [allTracked, droppedSeriesIds] = await Promise.all([
+    progressRepository.listTrackedSeries(),
+    fetchDroppedSeriesIds(),
+  ]);
+  const tracked = allTracked.filter((series) => !droppedSeriesIds.has(series.seriesId));
 
   await mapWithConcurrency(
     tracked,

@@ -946,6 +946,8 @@
     "allGenres": "All genres",
     "allPlatforms": "All platforms",
     "myServices": "My services",
+    "noServicesTitle": "No streaming services saved",
+    "noServicesDesc": "Pick your services in the settings to get suggestions you can actually stream, or choose another platform filter.",
     "platformsSelectedCount_one": "{{count}} platform",
     "platformsSelectedCount_other": "{{count}} platforms",
     "platformsSheetDescription": "Select one or more platforms to filter results.",

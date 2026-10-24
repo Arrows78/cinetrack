@@ -946,6 +946,8 @@
     "allGenres": "Tous les genres",
     "allPlatforms": "Toutes les plateformes",
     "myServices": "Mes services",
+    "noServicesTitle": "Aucun service de streaming enregistré",
+    "noServicesDesc": "Choisissez vos services dans les réglages pour obtenir des suggestions réellement disponibles, ou sélectionnez une autre plateforme.",
     "platformsSelectedCount_one": "{{count}} plateforme",
     "platformsSelectedCount_other": "{{count}} plateformes",
     "platformsSheetDescription": "Sélectionnez une ou plusieurs plateformes pour filtrer les résultats.",

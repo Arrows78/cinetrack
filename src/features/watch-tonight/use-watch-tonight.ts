@@ -16,7 +16,7 @@ import { queryKeys } from "@/shared/constants/query-keys";
  * but still needs to force a refetch on an unchanged filter set — the
  * page's "pick again" dice button bumps it for exactly that reason.
  */
-export function useWatchTonightPicks(filters: WatchTonightFilters, seed = 0) {
+export function useWatchTonightPicks(filters: WatchTonightFilters, seed = 0, options: { enabled?: boolean } = {}) {
   const profileId = useActiveProfileId();
   return useQuery<WatchTonightPicks>({
     queryKey: [
@@ -30,5 +30,6 @@ export function useWatchTonightPicks(filters: WatchTonightFilters, seed = 0) {
       seed,
     ],
     queryFn: () => watchTonightService.pick(filters),
+    enabled: options.enabled ?? true,
   });
 }

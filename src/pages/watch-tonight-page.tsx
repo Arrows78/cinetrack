@@ -190,6 +190,14 @@ export function WatchTonightPage() {
     if (!ids.size) return undefined;
     return ids.size === 1 ? [...ids][0] : [...ids];
   })();
+  // "My services" with none saved would otherwise search every platform while
+  // still reading "My services": say so instead of suggesting titles the user
+  // cannot stream.
+  const noServicesConfigured =
+    selectedProviderKeys.length > 0 &&
+    selectedProviderKeys.every((key) => key === MY_SERVICES_VALUE) &&
+    preferences.data !== undefined &&
+    preferredProviderIds.length === 0;
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? defaultPreferences.hideWatchedInDiscovery;
 
   const query = useWatchTonightPicks(
@@ -202,7 +210,8 @@ export function WatchTonightPage() {
       hideWatched,
       originCountry: originCountry || undefined,
     },
-    seed
+    seed,
+    { enabled: !noServicesConfigured }
   );
 
   const combined: WatchTonightMedia[] = [...(query.data?.movies ?? []), ...(query.data?.series ?? [])];
@@ -398,12 +407,21 @@ export function WatchTonightPage() {
       <div className="flex justify-end">
         <HideWatchedToggle />
       </div>
-      {query.isPending ? <GridSkeleton count={8} /> : null}
-      {query.isError && (!query.isRefetchError || !isDegradedRemoteError(query.error)) ? (
+      {noServicesConfigured ? (
+        <EmptyState
+          icon={Popcorn}
+          title={t("watchTonight.noServicesTitle")}
+          description={t("watchTonight.noServicesDesc")}
+        />
+      ) : null}
+      {!noServicesConfigured && query.isPending ? <GridSkeleton count={8} /> : null}
+      {!noServicesConfigured && query.isError && (!query.isRefetchError || !isDegradedRemoteError(query.error)) ? (
         <RemoteErrorState error={query.error} onRetry={() => void query.refetch()} />
       ) : null}
-      {query.isRefetchError && isDegradedRemoteError(query.error) ? <DegradedModeBadge /> : null}
-      {!query.isPending && (!query.isError || query.isRefetchError) ? (
+      {!noServicesConfigured && query.isRefetchError && isDegradedRemoteError(query.error) ? (
+        <DegradedModeBadge />
+      ) : null}
+      {!noServicesConfigured && !query.isPending && (!query.isError || query.isRefetchError) ? (
         isEmpty ? (
           <EmptyState icon={Popcorn} title={t("watchTonight.emptyTitle")} description={t("watchTonight.emptyDesc")} />
         ) : (
