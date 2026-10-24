@@ -111,6 +111,10 @@ pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Re
     let withheld = super::scope::withheld_profile_ids(&mut tx).await?;
     let withheld_json = super::scope::as_json_array(&withheld);
     data.drop_profiles(&withheld);
+    // What the cloud holds, noted before the purge forgets it: a restore must
+    // delete there what the restored data no longer has, not just stop
+    // tracking it.
+    crate::sync::snapshot_synced_documents(&mut tx, &withheld_json).await?;
 
     // The export never carries a PIN (hash and salt are device secrets), so
     // the purge below would unlock every profile. A profile whose uuid is
@@ -513,6 +517,8 @@ pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Re
                 .push_bind(&item.updated_at);
         }
     );
+
+    crate::sync::queue_deletes_for_missing_documents(&mut tx).await?;
 
     tx.commit().await.map_err(ApiError::from)?;
     Ok(())

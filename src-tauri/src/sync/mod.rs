@@ -10,4 +10,6 @@ mod simulation_tests;
 mod status_simulation_tests;
 
 pub use commands::*;
-pub(crate) use service::forget_profile;
+pub(crate) use service::{
+    forget_profile, queue_deletes_for_missing_documents, snapshot_synced_documents,
+};

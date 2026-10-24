@@ -1508,3 +1508,80 @@ async fn a_backup_with_an_invalid_profile_is_refused_before_anything_is_replaced
         Some(400)
     );
 }
+
+#[tokio::test]
+async fn a_restore_queues_a_cloud_delete_for_a_synced_title_the_backup_lacks() {
+    let pool = migrated_pool().await;
+    for (uuid, media_id) in [("doc-a", 1), ("doc-b", 2)] {
+        sqlx::query(
+            "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+             VALUES ($1, 'default', $2, 'movie', 'T', 'planned', 't', 't')",
+        )
+        .bind(uuid)
+        .bind(media_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO sync_entity_state (profile_id, entity_type, entity_id, remote_version, deleted, updated_at)
+             VALUES ('default', 'library_item', $1, 5, 0, 't')",
+        )
+        .bind(uuid)
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+    // The backup is taken without `doc-b`, which the cloud still holds.
+    sqlx::query("DELETE FROM library_items WHERE uuid = 'doc-b'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let snapshot = export_impl(&pool).await.unwrap();
+
+    import_impl(&pool, snapshot).await.unwrap();
+
+    let deletes: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT entity_id, base_version FROM sync_outbox WHERE operation = 'delete' ORDER BY entity_id",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(deletes, vec![("doc-b".to_string(), 5)]);
+    let (left,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM sqlite_temp_master WHERE name = 'restore_synced_documents'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(left, 0, "the snapshot table does not outlive the restore");
+}
+
+#[tokio::test]
+async fn a_restore_leaves_the_cloud_alone_for_a_title_it_brings_back_under_a_new_uuid() {
+    let pool = migrated_pool().await;
+    sqlx::query(
+        "INSERT INTO library_items (uuid, profile_id, media_id, media_type, title, status, created_at, updated_at)
+         VALUES ('doc-a', 'default', 1, 'movie', 'T', 'planned', 't', 't')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO sync_entity_state (profile_id, entity_type, entity_id, remote_version, deleted, updated_at)
+         VALUES ('default', 'library_item', 'doc-a', 5, 0, 't')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let snapshot = export_impl(&pool).await.unwrap();
+
+    // The import gives a library row a fresh uuid, but the same title.
+    import_impl(&pool, snapshot).await.unwrap();
+
+    let (deletes,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM sync_outbox WHERE operation = 'delete'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(deletes, 0);
+}

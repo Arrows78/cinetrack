@@ -1133,7 +1133,7 @@
     "undoConfirmTitle": "Undo the last import?",
     "undoConfirmDescription": "This restores your data to how it was right before the last import — reversing anything you've done since.",
     "undoFailed": "Nothing to undo: no pre-import snapshot was found.",
-    "syncRestoreWarning": "This profile is synced: titles the backup does not contain may come back from the cloud at the next sync.",
+    "syncRestoreWarning": "This profile is synced: what the backup does not contain will also be deleted from your other devices at the next sync.",
     "importConfirmTitle": "Replace all your data?",
     "importConfirmDescription": "Importing this backup overwrites your current library, history and lists. You can undo this right after with \"Undo last change\".",
     "locationTitle": "Backup folder",

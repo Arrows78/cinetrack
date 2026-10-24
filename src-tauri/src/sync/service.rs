@@ -16,12 +16,14 @@ mod apply;
 pub(super) mod bootstrap;
 mod keys;
 mod outbox;
+pub(super) mod restore;
 
 #[cfg(test)]
 pub use apply::apply_remote_changes;
 pub use apply::apply_remote_changes_for;
 pub use bootstrap::{assert_run_profile, prepare_for_account};
 pub use outbox::{ack_mutations, list_conflicts, list_outbox, rebase_conflicts, status};
+pub(crate) use restore::{queue_deletes_for_missing_documents, snapshot_synced_documents};
 
 #[cfg(test)]
 use bootstrap::prepare;

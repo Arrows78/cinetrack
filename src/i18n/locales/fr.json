@@ -1133,7 +1133,7 @@
     "undoConfirmTitle": "Annuler le dernier import ?",
     "undoConfirmDescription": "Cela restaure vos données à leur état juste avant le dernier import — annulant tout ce que vous avez fait depuis.",
     "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée.",
-    "syncRestoreWarning": "Ce profil est synchronisé : les titres absents de la sauvegarde peuvent revenir depuis le cloud à la prochaine synchronisation.",
+    "syncRestoreWarning": "Ce profil est synchronisé : ce que la sauvegarde ne contient pas sera aussi supprimé de vos autres appareils à la prochaine synchronisation.",
     "importConfirmTitle": "Remplacer toutes vos données ?",
     "importConfirmDescription": "Importer cette sauvegarde remplace votre bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement ».",
     "locationTitle": "Dossier de sauvegarde",
