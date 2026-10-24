@@ -8,6 +8,7 @@ mod payload_contract_tests;
 mod repository;
 #[cfg(test)]
 mod round_trip_tests;
+mod scope;
 mod service;
 
 pub use commands::{

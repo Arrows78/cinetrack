@@ -1100,8 +1100,8 @@ async fn a_restore_from_another_device_brings_unknown_profiles_without_a_pin() {
         .await
         .unwrap();
     assert_eq!(
-        gone, 0,
-        "a profile absent from the backup is still replaced"
+        gone, 1,
+        "a locked profile absent from the backup is left alone, not deleted"
     );
 }
 
@@ -1269,4 +1269,143 @@ async fn remove_backup_file_is_a_no_op_for_a_file_that_is_already_gone() {
         .unwrap();
 
     std::fs::remove_dir_all(&dir).ok();
+}
+
+async fn seed_locked_profile_with_a_list(pool: &SqlitePool, profile: &str) {
+    sqlx::query(
+        "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ($1, $1, 'now', 'now')",
+    )
+    .bind(profile)
+    .execute(pool)
+    .await
+    .unwrap();
+    set_raw_pin(pool, profile, "hash", "salt").await;
+    sqlx::query(
+        "INSERT INTO custom_lists (uuid, profile_id, name, created_at, updated_at)
+         VALUES ($1, $2, 'Private list', 'now', 'now')",
+    )
+    .bind(format!("list-of-{profile}"))
+    .bind(profile)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn list_count(pool: &SqlitePool, profile: &str) -> i64 {
+    let (count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM custom_lists WHERE profile_id = $1")
+            .bind(profile)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    count
+}
+
+#[tokio::test]
+async fn the_export_leaves_out_a_pin_locked_profile_that_is_not_the_active_one() {
+    let pool = migrated_pool().await;
+    seed_locked_profile_with_a_list(&pool, "locked").await;
+    // The active profile is `default`, which has no PIN.
+
+    let snapshot = export_impl(&pool).await.unwrap();
+
+    assert!(snapshot.profiles.iter().all(|p| p.id != "locked"));
+    assert!(
+        snapshot
+            .custom_lists
+            .iter()
+            .all(|l| l.profile_id != "locked")
+    );
+}
+
+#[tokio::test]
+async fn the_export_keeps_a_pin_locked_profile_once_it_is_the_active_one() {
+    let pool = migrated_pool().await;
+    seed_locked_profile_with_a_list(&pool, "locked").await;
+    sqlx::query(
+        "INSERT OR REPLACE INTO preferences (key, value, updated_at) VALUES ('activeProfileId', '\"locked\"', 'now')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let snapshot = export_impl(&pool).await.unwrap();
+
+    assert!(snapshot.profiles.iter().any(|p| p.id == "locked"));
+    assert!(
+        snapshot
+            .custom_lists
+            .iter()
+            .any(|l| l.profile_id == "locked")
+    );
+}
+
+#[tokio::test]
+async fn a_restore_neither_replaces_nor_deletes_a_pin_locked_profile_that_is_not_active() {
+    let pool = migrated_pool().await;
+    seed_locked_profile_with_a_list(&pool, "locked").await;
+    // A backup that does not know the locked profile at all.
+    let snapshot = PortableData {
+        profiles: vec![],
+        custom_lists: vec![],
+        custom_list_items: vec![],
+        ..export_impl(&migrated_pool().await).await.unwrap()
+    };
+
+    import_impl(&pool, snapshot).await.unwrap();
+
+    assert_eq!(
+        list_count(&pool, "locked").await,
+        1,
+        "its data is still there"
+    );
+    assert_eq!(
+        pin_of(&pool, "locked").await,
+        Some(("hash".to_string(), "salt".to_string())),
+        "and so is its PIN"
+    );
+}
+
+#[tokio::test]
+async fn a_crafted_backup_cannot_write_into_a_pin_locked_profile() {
+    let pool = migrated_pool().await;
+    seed_locked_profile_with_a_list(&pool, "locked").await;
+    // A file claiming to carry the locked profile, with a list of its own.
+    let source = migrated_pool().await;
+    seed_locked_profile_with_a_list(&source, "locked").await;
+    sqlx::query(
+        "UPDATE custom_lists SET name = 'Injected', uuid = 'injected' WHERE profile_id = 'locked'",
+    )
+    .execute(&source)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE preferences SET value = '\"locked\"' WHERE key = 'activeProfileId'")
+        .execute(&source)
+        .await
+        .unwrap();
+    let mut snapshot = export_impl(&source).await.unwrap();
+    // The source's own export drops it too, so build the claim by hand.
+    let injected = CustomList {
+        id: "injected".to_string(),
+        profile_id: "locked".to_string(),
+        name: "Injected".to_string(),
+        description: None,
+        created_at: "now".to_string(),
+        updated_at: "now".to_string(),
+    };
+    snapshot.custom_lists.push(injected);
+
+    import_impl(&pool, snapshot).await.unwrap();
+
+    let (names,): (String,) =
+        sqlx::query_as("SELECT GROUP_CONCAT(name) FROM custom_lists WHERE profile_id = 'locked'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(names, "Private list", "nothing was added to it");
+    assert_eq!(
+        crate::database::current_profile_id(&pool).await.unwrap(),
+        "default",
+        "and the file did not switch the app into it"
+    );
 }

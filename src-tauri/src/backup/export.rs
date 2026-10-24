@@ -178,6 +178,9 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
     let dismissed_recommendations =
         export_table!(tx, "dismissed_recommendations", DismissedRecommendationRow);
 
+    // A profile locked by a PIN (other than the active one) stays out of the file.
+    let withheld = super::scope::withheld_profile_ids(&mut tx).await?;
+
     tx.commit().await.map_err(ApiError::from)?;
 
     let mut preferences_map = serde_json::Map::new();
@@ -187,7 +190,7 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
         }
     }
 
-    Ok(PortableData {
+    let mut data = PortableData {
         seen_movies: seen_movies
             .into_iter()
             .map(|row| SeenMovie {
@@ -413,5 +416,7 @@ pub(super) async fn export_impl(pool: &SqlitePool) -> Result<PortableData, ApiEr
             .into_iter()
             .map(Into::into)
             .collect(),
-    })
+    };
+    data.drop_profiles(&withheld);
+    Ok(data)
 }

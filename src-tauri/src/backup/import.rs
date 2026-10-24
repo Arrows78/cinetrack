@@ -89,6 +89,13 @@ pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Re
     }
     let mut tx = pool.begin().await.map_err(ApiError::from)?;
 
+    // A PIN-protected profile (other than the active one) is neither replaced
+    // nor deleted by a restore, and a file cannot write into it either: its
+    // rows are dropped from the payload before anything is touched.
+    let withheld = super::scope::withheld_profile_ids(&mut tx).await?;
+    let withheld_json = super::scope::as_json_array(&withheld);
+    data.drop_profiles(&withheld);
+
     // The export never carries a PIN (hash and salt are device secrets), so
     // the purge below would unlock every profile. A profile whose uuid is
     // already in the database is the same person on the same device: its PIN
@@ -119,11 +126,26 @@ pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Re
         .chain(["preferences", "profiles"])
         .collect();
     for table in purge_order {
-        // `table` iterates a fixed Rust list built above, never user input.
-        sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table}")))
-            .execute(&mut *tx)
-            .await
-            .map_err(ApiError::from)?;
+        // `table` iterates a fixed Rust list built above, never user input;
+        // the withheld ids travel as one bound JSON array.
+        let keep_withheld = match table {
+            "profiles" => " WHERE uuid NOT IN (SELECT value FROM json_each($1))",
+            "custom_list_items" => {
+                " WHERE list_id NOT IN (SELECT uuid FROM custom_lists \
+                 WHERE profile_id IN (SELECT value FROM json_each($1)))"
+            }
+            // No owner: a cache of the catalogue's provider lists.
+            "availability_snapshots" => "",
+            "preferences" => "",
+            _ => " WHERE COALESCE(profile_id, '') NOT IN (SELECT value FROM json_each($1))",
+        };
+        let mut query = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "DELETE FROM {table}{keep_withheld}"
+        )));
+        if keep_withheld.contains("$1") {
+            query = query.bind(&withheld_json);
+        }
+        query.execute(&mut *tx).await.map_err(ApiError::from)?;
     }
 
     for item in &data.profiles {
@@ -165,10 +187,24 @@ pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Re
     // cascade with the profiles), but not these: a kept cursor or bootstrap
     // flag would tell the next sync the restored rows are already known to
     // the cloud. Without them, it pulls from the start and reseeds.
-    sqlx::query("DELETE FROM sync_metadata WHERE key LIKE 'cursor:%' OR key LIKE 'bootstrap:%'")
-        .execute(&mut *tx)
-        .await
-        .map_err(ApiError::from)?;
+    // A withheld profile's own cursor stays: its rows were not touched.
+    let sync_keys: Vec<(String,)> = sqlx::query_as(
+        "SELECT key FROM sync_metadata WHERE key LIKE 'cursor:%' OR key LIKE 'bootstrap:%'",
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(ApiError::from)?;
+    for (key,) in sync_keys {
+        let owner = key.rsplit(':').next().unwrap_or_default();
+        if withheld.contains(owner) {
+            continue;
+        }
+        sqlx::query("DELETE FROM sync_metadata WHERE key = $1")
+            .bind(&key)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+    }
 
     // Preferences go through the same rules as a write: an invalid value is
     // dropped (the default applies), and an active profile the restore does
