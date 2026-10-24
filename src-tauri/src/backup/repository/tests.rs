@@ -1482,3 +1482,29 @@ async fn the_file_commands_refuse_a_path_outside_the_configured_directory() {
     std::fs::remove_dir_all(dir.parent().unwrap()).ok();
     std::fs::remove_dir_all(&elsewhere).ok();
 }
+
+#[tokio::test]
+async fn a_backup_with_an_invalid_profile_is_refused_before_anything_is_replaced() {
+    let pool = migrated_pool().await;
+    seed_locked_profile_with_a_list(&pool, "kept").await;
+    let mut snapshot = export_impl(&migrated_pool().await).await.unwrap();
+    snapshot.profiles[0].avatar = Some("bad\u{0007}avatar".to_string());
+
+    let refused = import_impl(&pool, snapshot).await;
+
+    assert_eq!(refused.unwrap_err().status, Some(400));
+    assert_eq!(list_count(&pool, "kept").await, 1, "nothing was replaced");
+
+    let mut too_many = export_impl(&migrated_pool().await).await.unwrap();
+    let template = too_many.profiles[0].clone();
+    too_many.profiles = (0..25)
+        .map(|index| UserProfile {
+            id: format!("p{index}"),
+            ..template.clone()
+        })
+        .collect();
+    assert_eq!(
+        import_impl(&pool, too_many).await.unwrap_err().status,
+        Some(400)
+    );
+}

@@ -76,6 +76,19 @@ pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Re
     // One unreadable date in the log would make every statistic fail once the
     // restore has replaced the database, so such a file is refused up front.
     // The dates are stored in canonical form (SQL compares them as strings).
+    // A file is not a trusted writer: the profile fields obey the same rules as
+    // `create_profile`, and a file cannot bring more profiles than the app allows.
+    if data.profiles.len() > crate::profiles::PROFILE_LIMIT {
+        return Err(ApiError::bad_request(
+            "The backup holds more profiles than the app allows.",
+        ));
+    }
+    for profile in &mut data.profiles {
+        let (name, avatar) =
+            crate::profiles::validated_profile_fields(&profile.name, profile.avatar.take())?;
+        profile.name = name;
+        profile.avatar = avatar;
+    }
     for event in &mut data.viewing_events {
         event.watched_at = crate::database::canonical_instant(&event.watched_at)?;
     }

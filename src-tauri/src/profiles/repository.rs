@@ -14,6 +14,17 @@ pub(super) const MAX_AVATAR_LENGTH: usize = 200;
 /// profile switcher (and the sync bookkeeping kept per profile).
 pub(super) const MAX_PROFILES: i64 = 20;
 
+/// A profile's name and avatar as the commands accept them, for a caller that
+/// writes profiles without going through `create_profile` (a backup restore).
+pub(crate) fn validated_profile_fields(
+    name: &str,
+    avatar: Option<String>,
+) -> Result<(String, Option<String>), ApiError> {
+    Ok((validated_name(name)?.to_string(), validated_avatar(avatar)?))
+}
+
+pub(crate) const PROFILE_LIMIT: usize = MAX_PROFILES as usize;
+
 fn validated_name(name: &str) -> Result<&str, ApiError> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
