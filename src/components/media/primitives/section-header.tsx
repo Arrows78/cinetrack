@@ -61,7 +61,7 @@ export function SectionHeader({
           <div className="section-rule w-10 transition-all duration-medium group-hover:w-16" />
         </div>
       )}
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div className="animate-in" style={{ animationDelay: `${sectionDelay}ms` }}>
           <div className="flex items-center gap-3">
             {Icon ? <Icon className="size-7 shrink-0 text-primary" aria-hidden="true" /> : null}
