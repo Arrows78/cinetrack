@@ -354,7 +354,7 @@ export function HistoryPage() {
   }, [trackedSeriesQuery.data, seriesStatusFilter, seriesSort]);
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
+    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.25fr_0.75fr]">
       {/* No single section title matches "History" as a page label (the
           page shows two co-equal sections, "Recent Activity" and "Series in
           Progress") — a sr-only <h1> is the page's real heading instead,
@@ -392,7 +392,7 @@ export function HistoryPage() {
               value={fromDate}
               onChange={(event) => setFromDate(event.target.value)}
               aria-label={t("history.filterFromDate")}
-              className="max-w-40"
+              className="min-w-0 max-w-40 flex-1"
             />
             <span className="h-px w-3 shrink-0 bg-border" aria-hidden="true" />
             <Input
@@ -401,7 +401,7 @@ export function HistoryPage() {
               value={toDate}
               onChange={(event) => setToDate(event.target.value)}
               aria-label={t("history.filterToDate")}
-              className="max-w-40"
+              className="min-w-0 max-w-40 flex-1"
             />
           </div>
         </div>
