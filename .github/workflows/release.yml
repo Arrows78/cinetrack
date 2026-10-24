@@ -86,6 +86,15 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check the tag matches the manifests' version
+        run: |
+          pnpm version:check
+          manifest_version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "v${manifest_version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match the manifests' version v${manifest_version}" >&2
+            exit 1
+          fi
+
       - name: Validate (frontend + backend)
         run: pnpm validate
 
