@@ -24,6 +24,7 @@ export function RemoteErrorState({ error, onRetry, description, isPageTitle }: R
   const category = errorCategory(error);
   const authenticationError = category === "authentication";
   const localDatabaseError = category === "localDatabase";
+  const notFoundError = category === "notFound";
 
   useEffect(() => {
     if (message) logger.error(`Remote error state: ${message}`);
@@ -33,16 +34,24 @@ export function RemoteErrorState({ error, onRetry, description, isPageTitle }: R
     <EmptyState
       icon={AlertTriangle}
       isPageTitle={isPageTitle}
-      title={localDatabaseError ? t("errors.localDataUnavailable") : t("errors.catalogUnavailable")}
+      title={
+        localDatabaseError
+          ? t("errors.localDataUnavailable")
+          : notFoundError
+            ? t("pages.notFound")
+            : t("errors.catalogUnavailable")
+      }
       description={
         description ??
         (localDatabaseError
           ? t("errors.localDatabase")
-          : authenticationError
-            ? t("errors.tmdbAuthentication")
-            : isRateLimitedError(error)
-              ? t("errors.tmdbRateLimited")
-              : t("errors.tmdbConnection"))
+          : notFoundError
+            ? t("errors.tmdbNotFound")
+            : authenticationError
+              ? t("errors.tmdbAuthentication")
+              : isRateLimitedError(error)
+                ? t("errors.tmdbRateLimited")
+                : t("errors.tmdbConnection"))
       }
       action={
         <div className="space-y-3 text-center">

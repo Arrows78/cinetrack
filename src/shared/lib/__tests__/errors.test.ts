@@ -98,3 +98,20 @@ describe("errorCategory for local commands", () => {
     expect(isDegradedRemoteError(localFailure("database is locked", 500))).toBe(false);
   });
 });
+
+describe("errorCategory for TMDB 404s", () => {
+  const tmdbFailure = (status: number) =>
+    Object.assign(new Error(`TMDB ${status}: {}`), { name: "TmdbRequestError", status });
+
+  it("reports a TMDB 404 as a missing title, not as a connection problem", () => {
+    expect(errorCategory(tmdbFailure(404))).toBe("notFound");
+    expect(isDegradedRemoteError(tmdbFailure(404))).toBe(false);
+  });
+
+  it("leaves a 404 from anywhere else to the existing categories", () => {
+    expect(errorCategory(Object.assign(new Error("Not found"), { status: 404 }))).toBe("connection");
+    expect(
+      errorCategory(Object.assign(new Error("Profile not found."), { name: "ApiCommandError", status: 404 }))
+    ).toBe("localDatabase");
+  });
+});

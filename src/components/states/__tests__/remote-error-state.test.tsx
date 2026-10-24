@@ -43,6 +43,14 @@ describe("RemoteErrorState", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Unable to load the catalogue" })).toBeInTheDocument();
   });
 
+  it("says the title is missing, not that the connection failed, when TMDB answers 404", () => {
+    const missing = Object.assign(new Error("TMDB 404: not found"), { name: "TmdbRequestError", status: 404 });
+    render(<RemoteErrorState error={missing} onRetry={() => {}} />);
+    expect(screen.getByText(i18n.t("pages.notFound"))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("errors.tmdbNotFound"))).toBeInTheDocument();
+    expect(screen.queryByText(/connection to TMDB failed/i)).not.toBeInTheDocument();
+  });
+
   it("calls onRetry when the retry button is clicked", () => {
     const onRetry = vi.fn();
     render(<RemoteErrorState error={new Error("boom")} onRetry={onRetry} />);

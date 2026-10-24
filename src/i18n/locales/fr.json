@@ -1343,6 +1343,7 @@
     "localDatabase": "CineTrack n'a pas pu ouvrir vos données locales. Essayez de redémarrer l'application.",
     "tmdbAuthentication": "Le token TMDB du coffre desktop est absent, expiré ou refusé. Déverrouillez le coffre et enregistrez de nouveau un token Bearer valide.",
     "tmdbConnection": "La connexion à TMDB a échoué. Vérifiez votre connexion, VPN ou proxy.",
+    "tmdbNotFound": "TMDB ne connaît rien à cette adresse. Le titre a peut-être été supprimé ou renuméroté.",
     "tmdbRateLimited": "TMDB reçoit trop de requêtes en ce moment. Patientez quelques secondes, puis réessayez.",
     "retry": "Réessayer",
     "technicalDetails": "Détails techniques",

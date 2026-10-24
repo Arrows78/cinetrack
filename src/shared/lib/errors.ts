@@ -19,7 +19,7 @@ export const errorMessage = (error: unknown): string => {
   }
 };
 
-export type ErrorCategory = "authentication" | "localDatabase" | "connection";
+export type ErrorCategory = "authentication" | "localDatabase" | "notFound" | "connection";
 
 /** TMDB (or its proxy) answered 429: a transient condition, not a broken setup. */
 export const isRateLimitedError = (error: unknown): boolean => (error as { status?: number } | null)?.status === 429;
@@ -38,6 +38,9 @@ export const errorCategory = (error: unknown): ErrorCategory => {
   // invoke.ts, which imports it. Without this, a local failure whose message
   // happens not to mention SQL was reported as a TMDB outage.
   if (error instanceof Error && error.name === "ApiCommandError") return "localDatabase";
+  // TMDB has nothing at that id (a stale link, a title TMDB removed or
+  // renumbered): retrying or checking the network will not help.
+  if (error instanceof Error && error.name === "TmdbRequestError" && candidate?.status === 404) return "notFound";
   if (candidate && (candidate.status === 401 || candidate.status === 403)) return "authentication";
   if (/TMDB\s+(401|403)|token/i.test(message)) return "authentication";
   if (candidate?.status && candidate.status >= 500 && /sql|sqlite|database|plugin:sql/i.test(message)) {
