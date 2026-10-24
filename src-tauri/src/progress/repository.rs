@@ -218,6 +218,11 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
     Ok(())
 }
 
+/// Two rewatches of one film closer than this are one viewing logged twice (a
+/// double click stamps two different milliseconds, so the exact date alone
+/// cannot tell them apart): the second is a no-op.
+const REWATCH_DEDUPE_SECONDS: i64 = 60;
+
 /// Watches an already-seen movie again: logs one `rewatched` viewing event
 /// and moves the library editor's rewatch count up by one, in one
 /// transaction. The movie stays one watch in every statistic (a rewatch only
@@ -254,12 +259,14 @@ pub(crate) async fn rewatch_movie_impl(
         "SELECT EXISTS(
            SELECT 1 FROM viewing_events
            WHERE profile_id = $1 AND media_id = $2 AND media_type = 'movie'
-             AND event_type = 'rewatched' AND watched_at = $3
+             AND event_type = 'rewatched'
+             AND ABS(strftime('%s', watched_at) - strftime('%s', $3)) < $4
          )",
     )
     .bind(profile_id)
     .bind(movie.id)
     .bind(watched_at)
+    .bind(REWATCH_DEDUPE_SECONDS)
     .fetch_one(&mut *tx)
     .await
     .map_err(ApiError::from)?;

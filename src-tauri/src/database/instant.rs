@@ -42,6 +42,39 @@ pub fn canonical_instant(value: &str) -> Result<String, ApiError> {
     Ok(require_instant(value)?.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
 }
 
+/// How far past "now" a viewing date a user logs may be: a day covers the
+/// time zones and the clock drift between two devices. Anything later is a
+/// typo or a hand-built call, and would break "current streak" and the
+/// pace forecast (their runs end at today or yesterday).
+const FUTURE_TOLERANCE_HOURS: i64 = 24;
+
+/// `canonical_instant` for a date a user logs a viewing at: also refuses a
+/// date more than a day in the future. Imports, restores and cloud pulls keep
+/// using `canonical_instant`, which only checks that the date is readable.
+pub fn canonical_viewing_instant(value: &str) -> Result<String, ApiError> {
+    let instant = require_instant(value)?;
+    if instant > Utc::now() + chrono::Duration::hours(FUTURE_TOLERANCE_HOURS) {
+        return Err(ApiError::bad_request(
+            "A viewing cannot be dated in the future",
+        ));
+    }
+    Ok(instant.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+}
+
+/// The longest note kept on one viewing.
+pub const MAX_NOTE_CHARS: usize = 2000;
+
+/// Trims a viewing note to nothing-or-text and refuses an oversized one: the
+/// note is stored once per event, and exported and synced with it.
+pub fn bounded_note(note: Option<String>) -> Result<Option<String>, ApiError> {
+    match note {
+        Some(text) if text.chars().count() > MAX_NOTE_CHARS => Err(ApiError::bad_request(format!(
+            "A note is limited to {MAX_NOTE_CHARS} characters"
+        ))),
+        other => Ok(other),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -71,6 +104,38 @@ mod tests {
         ] {
             assert!(parse_instant(value).is_some(), "{value}");
         }
+    }
+
+    #[test]
+    fn a_viewing_may_be_today_or_past_but_not_days_ahead() {
+        let now = Utc::now();
+        let day = chrono::Duration::days(1);
+        let ok = |at: DateTime<Utc>| canonical_viewing_instant(&at.to_rfc3339()).is_ok();
+        assert!(ok(now));
+        assert!(ok(now - day * 400));
+        assert!(
+            ok(now + chrono::Duration::hours(12)),
+            "time zones and drift"
+        );
+        assert!(!ok(now + day * 3));
+        assert_eq!(
+            canonical_viewing_instant("2999-01-01T00:00:00Z")
+                .unwrap_err()
+                .status,
+            Some(400)
+        );
+    }
+
+    #[test]
+    fn an_oversized_note_is_refused() {
+        assert!(bounded_note(None).unwrap().is_none());
+        assert!(bounded_note(Some("a".repeat(MAX_NOTE_CHARS))).is_ok());
+        assert_eq!(
+            bounded_note(Some("a".repeat(MAX_NOTE_CHARS + 1)))
+                .unwrap_err()
+                .status,
+            Some(400)
+        );
     }
 
     #[test]

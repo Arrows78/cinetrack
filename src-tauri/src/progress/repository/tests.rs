@@ -2112,3 +2112,66 @@ async fn a_backdated_rewatch_or_unwatch_never_moves_updated_at_backwards() {
         "a rewatch dated before the last edit must not make the entry look older than it is"
     );
 }
+
+#[tokio::test]
+async fn a_double_clicked_rewatch_is_logged_once() {
+    let pool = migrated_pool().await;
+    toggle_movie_seen_impl(&pool, "default", movie(8), true, "2024-06-01T00:00:00.000Z")
+        .await
+        .unwrap();
+
+    // Two clicks stamp two different milliseconds.
+    for at in ["2025-01-01T20:00:00.000Z", "2025-01-01T20:00:00.431Z"] {
+        rewatch_movie_impl(&pool, "default", movie(8), at, None)
+            .await
+            .unwrap();
+    }
+    // A real second viewing, much later, still counts.
+    rewatch_movie_impl(&pool, "default", movie(8), "2025-02-01T20:00:00.000Z", None)
+        .await
+        .unwrap();
+
+    let (events, count): (i64, i64) = sqlx::query_as(
+        "SELECT (SELECT COUNT(*) FROM viewing_events WHERE media_id = 8 AND event_type = 'rewatched'),
+                (SELECT rewatch_count FROM library_items WHERE media_id = 8)",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!((events, count), (2, 2));
+}
+
+#[tokio::test]
+async fn the_commands_refuse_a_viewing_dated_in_the_future_and_an_oversized_note() {
+    let pool = migrated_pool().await;
+    let app = tauri::test::mock_app();
+    app.manage(pool);
+    let state: State<'_, SqlitePool> = app.state();
+
+    let future = toggle_movie_seen(
+        movie(5),
+        true,
+        "2999-01-01T00:00:00.000Z".to_string(),
+        None,
+        state.clone(),
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(future.status, Some(400));
+
+    let long_note = toggle_movie_seen(
+        movie(5),
+        true,
+        "2026-01-01T00:00:00.000Z".to_string(),
+        Some("x".repeat(2001)),
+        state.clone(),
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(long_note.status, Some(400));
+
+    assert!(
+        !is_movie_seen(5, state).await.unwrap(),
+        "nothing was written"
+    );
+}

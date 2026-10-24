@@ -12,7 +12,7 @@ use super::repository::{
     apply_episodes_and_log_impl, refresh_tracked_series_status_impl, rewatch_movie_impl,
     set_episode_rating_impl, toggle_movie_seen_with_note_impl,
 };
-use crate::database::current_profile_id;
+use crate::database::{bounded_note, canonical_viewing_instant, current_profile_id};
 use crate::error::ApiError;
 
 /// A screen's worth of series, not "everything": a bound on one call.
@@ -48,8 +48,10 @@ impl<'a> ProgressService<'a> {
         watched_at: &str,
         note: Option<String>,
     ) -> Result<(), ApiError> {
+        let watched_at = canonical_viewing_instant(watched_at)?;
+        let note = bounded_note(note)?;
         let profile_id = self.profile_id().await?;
-        toggle_movie_seen_with_note_impl(self.pool, &profile_id, movie, watched, watched_at, note)
+        toggle_movie_seen_with_note_impl(self.pool, &profile_id, movie, watched, &watched_at, note)
             .await
     }
 
@@ -59,8 +61,10 @@ impl<'a> ProgressService<'a> {
         watched_at: &str,
         note: Option<String>,
     ) -> Result<(), ApiError> {
+        let watched_at = canonical_viewing_instant(watched_at)?;
+        let note = bounded_note(note)?;
         let profile_id = self.profile_id().await?;
-        rewatch_movie_impl(self.pool, &profile_id, movie, watched_at, note).await
+        rewatch_movie_impl(self.pool, &profile_id, movie, &watched_at, note).await
     }
 
     pub(super) async fn get_episode_progress(
@@ -89,6 +93,14 @@ impl<'a> ProgressService<'a> {
         history: Option<EpisodeHistoryInput>,
         note: Option<String>,
     ) -> Result<i64, ApiError> {
+        let watched_at = canonical_viewing_instant(watched_at)?;
+        for own_date in episodes
+            .iter()
+            .filter_map(|episode| episode.watched_at.as_deref())
+        {
+            canonical_viewing_instant(own_date)?;
+        }
+        let note = bounded_note(note)?;
         let profile_id = self.profile_id().await?;
         apply_episodes_and_log_impl(
             self.pool,
@@ -96,7 +108,7 @@ impl<'a> ProgressService<'a> {
             series,
             episodes,
             watched,
-            watched_at,
+            &watched_at,
             history,
             note,
         )
