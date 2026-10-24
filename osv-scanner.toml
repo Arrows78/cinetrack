@@ -13,3 +13,42 @@
 id = "GHSA-vfj7-8cjw-p6xm"
 ignoreUntil = 2027-01-10
 reason = "Dev-only transitive dependency (eslint-plugin-boundaries -> micromatch); no patched version of braces exists"
+
+# zip < 9.0.0 — unsafe permission and symlink handling when extracting an
+# archive. Two copies, neither fixable from this repository: zip 4.6.1 is
+# pinned by tauri-plugin-updater, whose update channel is not configured (no
+# `plugins.updater` in tauri.conf.json), so nothing is ever extracted; zip 8.6.0
+# is a build-dependency of libsodium-sys-stable that unpacks libsodium's own
+# source tarball. Same entries as src-tauri/.cargo/audit.toml.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0367"
+ignoreUntil = 2027-01-24
+reason = "zip pinned by tauri-plugin-updater (updater not configured) and a libsodium build-dependency; no patched version reachable"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0368"
+ignoreUntil = 2027-01-24
+reason = "same zip copies as RUSTSEC-2026-0367"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0369"
+ignoreUntil = 2027-01-24
+reason = "same zip copies as RUSTSEC-2026-0367"
+
+# zbus / zvariant — reported as unmaintained, no fixed version exists. Pulled
+# in by the Linux desktop notification, opener and single-instance plugins
+# (D-Bus); nothing to upgrade to.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0370"
+ignoreUntil = 2027-01-24
+reason = "zvariant unmaintained, transitive via zbus (Linux D-Bus plugins); no fixed version exists"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0371"
+ignoreUntil = 2027-01-24
+reason = "zbus_names unmaintained, transitive via zbus (Linux D-Bus plugins); no fixed version exists"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0372"
+ignoreUntil = 2027-01-24
+reason = "zvariant_derive unmaintained, transitive via zbus (Linux D-Bus plugins); no fixed version exists"

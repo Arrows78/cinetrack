@@ -185,80 +185,6 @@ jobs:
         if: runner.os == 'Linux'
         run: pnpm contract:check-ts-bindings
 
-      - name: Record database performance baseline
-        if: runner.os == 'Linux'
-        run: >-
-          cargo test --locked --manifest-path src-tauri/Cargo.toml
-          stats::performance::benchmark_library_progress_and_stats_at_1k_10k_and_50k_scale
-          -- --ignored --nocapture
-
-      - name: Upload database performance baseline
-        if: runner.os == 'Linux' && !cancelled()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: database-performance-baseline
-          path: src-tauri/target/performance/database-benchmark.*
-          if-no-files-found: error
-          retention-days: 30
-
-      # Informational only (see docs/performance.md) — turns this PR's own
-      # benchmark run into a "main vs. PR vs. delta" table instead of a
-      # snapshot artifact a human has to manually download and eyeball
-      # across runs. Skipped on a push-to-main run: there's no "PR" to
-      # compare main against in that case, and main's own freshly-uploaded
-      # artifact above already is next time's baseline.
-      - name: Download main's latest database performance baseline
-        if: runner.os == 'Linux' && !cancelled() && github.event_name == 'pull_request'
-        id: download-main-baseline
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const runs = await github.rest.actions.listWorkflowRuns({
-              owner,
-              repo,
-              workflow_id: "ci.yml",
-              branch: "main",
-              status: "success",
-              per_page: 1,
-            });
-            const run = runs.data.workflow_runs[0];
-            if (!run) {
-              core.warning("No successful CI run on main yet — skipping the performance comparison.");
-              core.setOutput("found", "false");
-              return;
-            }
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner,
-              repo,
-              run_id: run.id,
-            });
-            const artifact = artifacts.data.artifacts.find((a) => a.name === "database-performance-baseline");
-            if (!artifact) {
-              core.warning(`main's latest successful run (${run.id}) has no database-performance-baseline artifact — skipping.`);
-              core.setOutput("found", "false");
-              return;
-            }
-            const download = await github.rest.actions.downloadArtifact({
-              owner,
-              repo,
-              artifact_id: artifact.id,
-              archive_format: "zip",
-            });
-            const fs = require("node:fs");
-            fs.writeFileSync("main-baseline.zip", Buffer.from(download.data));
-            core.setOutput("found", "true");
-
-      - name: Compare this PR's benchmark against main's baseline
-        if: runner.os == 'Linux' && !cancelled() && steps.download-main-baseline.outputs.found == 'true'
-        run: |
-          mkdir -p main-baseline
-          unzip -o main-baseline.zip -d main-baseline
-          node scripts/compare-performance-baseline.mjs \
-            main-baseline/database-benchmark.json \
-            src-tauri/target/performance/database-benchmark.json \
-            | tee -a "$GITHUB_STEP_SUMMARY"
-
   ios:
     runs-on: macos-latest
     timeout-minutes: 30
@@ -328,3 +254,134 @@ jobs:
       scan-args: |-
         -r
         ./
+
+  # The database benchmark is informational (it never gates a merge) and takes
+  # several minutes: it runs beside the Rust job instead of at the end of its
+  # Linux leg, so it no longer extends the time a PR waits for a verdict.
+  performance:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install Tauri system dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            build-essential \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            patchelf
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          cache: false
+          rustflags: ""
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Record database performance baseline
+        run: >-
+          cargo test --locked --manifest-path src-tauri/Cargo.toml
+          stats::performance::benchmark_library_progress_and_stats_at_1k_10k_and_50k_scale
+          -- --ignored --nocapture
+
+      - name: Upload database performance baseline
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: database-performance-baseline
+          path: src-tauri/target/performance/database-benchmark.*
+          if-no-files-found: error
+          retention-days: 30
+
+      # Informational only (see docs/performance.md) — turns this PR's own
+      # benchmark run into a "main vs. PR vs. delta" table instead of a
+      # snapshot artifact a human has to manually download and eyeball
+      # across runs. Skipped on a push-to-main run: there's no "PR" to
+      # compare main against in that case, and main's own freshly-uploaded
+      # artifact above already is next time's baseline.
+      - name: Download main's latest database performance baseline
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        id: download-main-baseline
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: "ci.yml",
+              branch: "main",
+              status: "success",
+              per_page: 1,
+            });
+            const run = runs.data.workflow_runs[0];
+            if (!run) {
+              core.warning("No successful CI run on main yet — skipping the performance comparison.");
+              core.setOutput("found", "false");
+              return;
+            }
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner,
+              repo,
+              run_id: run.id,
+            });
+            const artifact = artifacts.data.artifacts.find((a) => a.name === "database-performance-baseline");
+            if (!artifact) {
+              core.warning(`main's latest successful run (${run.id}) has no database-performance-baseline artifact — skipping.`);
+              core.setOutput("found", "false");
+              return;
+            }
+            const download = await github.rest.actions.downloadArtifact({
+              owner,
+              repo,
+              artifact_id: artifact.id,
+              archive_format: "zip",
+            });
+            const fs = require("node:fs");
+            fs.writeFileSync("main-baseline.zip", Buffer.from(download.data));
+            core.setOutput("found", "true");
+
+      - name: Compare this PR's benchmark against main's baseline
+        if: ${{ !cancelled() && steps.download-main-baseline.outputs.found == 'true' }}
+        run: |
+          mkdir -p main-baseline
+          unzip -o main-baseline.zip -d main-baseline
+          node scripts/compare-performance-baseline.mjs \
+            main-baseline/database-benchmark.json \
+            src-tauri/target/performance/database-benchmark.json \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # One check to require in branch protection (and for auto-merge to wait on):
+  # it is green only when every gating job above is. `if: always()` makes it
+  # report a failure when a needed job fails or is skipped, instead of being
+  # skipped itself — a skipped required check reads as passing.
+  ci-ok:
+    if: always()
+    needs: [frontend, rust, ios, cargo-audit, osv-scan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Fail unless every gating job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "needed jobs: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "::error::a gating job finished as '$result'"
+              exit 1
+            fi
+          done

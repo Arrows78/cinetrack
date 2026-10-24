@@ -9,6 +9,10 @@ updates:
       time: "06:00"
       timezone: Europe/Paris
     open-pull-requests-limit: 5
+    # A version published minutes ago is the one most likely to be broken or
+    # yanked: wait a few days before proposing it.
+    cooldown:
+      default-days: 3
     groups:
       npm-development:
         dependency-type: development
@@ -53,9 +57,20 @@ updates:
       time: "07:00"
       timezone: Europe/Paris
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
     groups:
       cargo:
         patterns:
           - "*"
+    ignore:
+      # rust-ini 0.21.3 added two public fields to `ParseOption`, which
+      # tauri-plugin-deep-link 2.6.2 builds with a struct literal on Linux
+      # only: the bump compiled everywhere but the Linux CI job (and would
+      # break the Linux release build). Cargo.lock is pinned to 0.21.1, the
+      # last version checked to work; 0.21.2 was not tried, hence ">=0.21.2".
+      # Drop this once tauri-plugin-deep-link is released with the fix.
+      - dependency-name: "rust-ini"
+        versions: [">=0.21.2"]
     commit-message:
       prefix: "build(deps)"

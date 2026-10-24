@@ -1,0 +1,20 @@
+# cargo-audit configuration, read by the `cargo-audit` job of
+# .github/workflows/ci.yml (working directory: src-tauri). Mirrors the
+# entries of ../../osv-scanner.toml so both scanners agree; each ignore names
+# why it is safe and when to look again.
+
+[advisories]
+ignore = [
+  # zip < 9.0.0: unsafe permission/symlink handling in `extract()`. Two copies
+  # are in the tree and neither is fixable from here:
+  #   - zip 4.6.1, pinned by tauri-plugin-updater 2.14. The updater is not
+  #     configured (no `plugins.updater` in tauri.conf.json), so no archive is
+  #     ever downloaded or extracted.
+  #   - zip 8.6.0, a build-dependency of libsodium-sys-stable (via
+  #     tauri-plugin-stronghold): it unpacks libsodium's own source tarball at
+  #     build time, never untrusted input.
+  # Look again once tauri-plugin-updater and libsodium-sys-stable move to zip 9.
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
+]
