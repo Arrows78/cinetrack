@@ -2175,3 +2175,72 @@ async fn the_commands_refuse_a_viewing_dated_in_the_future_and_an_oversized_note
         "nothing was written"
     );
 }
+
+#[tokio::test]
+async fn unwatching_a_rated_episode_keeps_its_rating_for_the_next_watch() {
+    let pool = migrated_pool().await;
+    let s = series(9, None);
+    let watch = |watched: bool, at: &'static str| {
+        let pool = pool.clone();
+        let s = s.clone();
+        async move {
+            apply_episodes_impl(&pool, "default", &s, &[episode(100, 1)], watched, at)
+                .await
+                .unwrap();
+        }
+    };
+    watch(true, "2026-01-01T00:00:00.000Z").await;
+    set_episode_rating_impl(&pool, "default", 9, 100, Some(5))
+        .await
+        .unwrap();
+
+    watch(false, "2026-01-02T00:00:00.000Z").await;
+    let after_unwatch = get_episode_progress_impl(&pool, "default", 9)
+        .await
+        .unwrap();
+    assert!(
+        after_unwatch.iter().all(|item| !item.watched),
+        "no longer counted as watched"
+    );
+
+    watch(true, "2026-01-03T00:00:00.000Z").await;
+    let progress = get_episode_progress_impl(&pool, "default", 9)
+        .await
+        .unwrap();
+    assert_eq!(progress.len(), 1);
+    assert!(progress[0].watched);
+    assert_eq!(progress[0].rating, Some(5), "the rating survived");
+}
+
+#[tokio::test]
+async fn unwatching_an_unrated_episode_still_removes_its_row() {
+    let pool = migrated_pool().await;
+    let s = series(9, None);
+    apply_episodes_impl(
+        &pool,
+        "default",
+        &s,
+        &[episode(100, 1)],
+        true,
+        "2026-01-01T00:00:00.000Z",
+    )
+    .await
+    .unwrap();
+    apply_episodes_impl(
+        &pool,
+        "default",
+        &s,
+        &[episode(100, 1)],
+        false,
+        "2026-01-02T00:00:00.000Z",
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        get_episode_progress_impl(&pool, "default", 9)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}

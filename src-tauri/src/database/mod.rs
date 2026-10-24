@@ -129,11 +129,10 @@ fn quarantine_broken_database(db_path: &Path) -> Result<String, ApiError> {
     Ok(quarantined.to_string_lossy().into_owned())
 }
 
-/// Opens the same SQLite file `tauri-plugin-sql` uses today
-/// (`sqlite:app.db`, resolved against the app's *config* dir — not the data
-/// dir; that's what `tauri-plugin-sql` resolves relative sqlite URLs
-/// against, see its `DbPool::connect`/`path_mapper`). Both drivers must
-/// point at the identical file while domains are migrated one at a time.
+/// Opens `app.db` in the app's *config* dir — not the data dir: the location
+/// every existing install already uses, from when `tauri-plugin-sql` (since
+/// removed) resolved `sqlite:app.db` against it. Moving it would orphan
+/// those databases.
 ///
 /// `SqliteConnectOptions` applies `foreign_keys`/`journal_mode`/`synchronous`
 /// to every connection the pool opens (not just the first one obtained),

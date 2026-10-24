@@ -444,7 +444,23 @@ pub(crate) async fn apply_episodes_outcome_impl(
             .await
             .map_err(ApiError::from)?;
         } else {
-            sqlx::query("DELETE FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND episode_id = $3")
+            // A rating is the viewer's own data: unwatching an episode keeps the
+            // row (as not watched) when it carries one, so marking it watched
+            // again does not lose the rating. A row without a rating has
+            // nothing left to keep.
+            let unwatched_at = now_iso(&mut *tx).await?;
+            sqlx::query(
+                "UPDATE episode_progress SET watched = 0, watched_at = NULL, updated_at = $4
+                 WHERE profile_id = $1 AND series_id = $2 AND episode_id = $3 AND rating IS NOT NULL",
+            )
+            .bind(profile_id)
+            .bind(series.id)
+            .bind(episode.id)
+            .bind(&unwatched_at)
+            .execute(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+            sqlx::query("DELETE FROM episode_progress WHERE profile_id = $1 AND series_id = $2 AND episode_id = $3 AND rating IS NULL")
                 .bind(profile_id)
                 .bind(series.id)
                 .bind(episode.id)

@@ -67,8 +67,9 @@ export default defineConfig({
         "src/app/router.tsx",
         "src/app/router-config.tsx",
       ],
-      // Global thresholds aren't meaningful yet (~10% overall, since most
-      // UI has no tests at all — see the coverage report). Only enforce a
+      // Global thresholds aren't meaningful (the overall figure only averages
+      // the files the report includes, and says little about the UI that has
+      // no tests — see the coverage report). Only enforce a
       // floor on the specific files that already have characterization
       // tests, so a regression there fails CI without pretending the rest
       // of the app is covered. Add a file here once you give it real tests.

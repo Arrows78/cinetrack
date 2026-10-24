@@ -296,9 +296,8 @@ pub fn run() {
                 diagnostics::init(app_data_dir);
             }
 
-            // Same "sqlite:app.db" file tauri-plugin-sql already opens
-            // (resolved against the app config dir) — both drivers must
-            // agree on the file while domains are migrated one at a time.
+            // The one SQLite pool the whole command layer shares; the
+            // frontend never opens the file itself.
             let handle = app.handle().clone();
             let (pool, boot_recovery) =
                 tauri::async_runtime::block_on(async move { database::init_pool(&handle).await })
