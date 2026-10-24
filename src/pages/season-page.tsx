@@ -58,7 +58,9 @@ export function SeasonPage() {
   // and isPending-vs-isLoading both used to fall through to a bare `return
   // null` — a permanently blank page instead of a skeleton or an error.
   if (!Number.isFinite(parsedSeriesId) || !Number.isFinite(parsedSeasonNumber)) {
-    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+    return (
+      <EmptyState isPageTitle icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />
+    );
   }
   if (seriesQuery.isPending || seasonQuery.isPending) return <HeroSkeleton />;
   const retryBoth = () => {

@@ -143,7 +143,9 @@ export function SeriesDetailPage() {
   // explicitly, before ever touching the query's pending state, means this
   // page is never blank: it's the skeleton, a real error, or the content.
   if (!Number.isFinite(id)) {
-    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+    return (
+      <EmptyState isPageTitle icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />
+    );
   }
   // isPending (not isLoading): in TanStack Query v5, isLoading is
   // `isPending && isFetching`, which is false for a query that's pending

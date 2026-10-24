@@ -47,7 +47,9 @@ export function MovieDetailPage() {
   // and isPending-vs-isLoading both used to fall through to a bare `return
   // null` — a permanently blank page instead of a skeleton or an error.
   if (!Number.isFinite(id)) {
-    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+    return (
+      <EmptyState isPageTitle icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />
+    );
   }
   if (movieQuery.isPending) return <HeroSkeleton />;
   // Two separate guards (rather than one combined condition) so TypeScript

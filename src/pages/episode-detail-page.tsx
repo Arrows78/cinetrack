@@ -89,7 +89,9 @@ export function EpisodeDetailPage() {
     !Number.isFinite(parsedSeasonNumber) ||
     !Number.isFinite(parsedEpisodeNumber)
   ) {
-    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+    return (
+      <EmptyState isPageTitle icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />
+    );
   }
   if (seriesQuery.isPending || seasonQuery.isPending) return <HeroSkeleton />;
   const retryBoth = () => {
@@ -121,6 +123,7 @@ export function EpisodeDetailPage() {
     // bookmark to it must lead somewhere, not stop on a bare dead end.
     return (
       <EmptyState
+        isPageTitle
         icon={TriangleAlert}
         title={t("pages.notFound")}
         description={t("pages.notFoundDesc")}

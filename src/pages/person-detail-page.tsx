@@ -69,7 +69,9 @@ export function PersonDetailPage() {
   // isPending-vs-isLoading both used to fall through to a bare `return
   // null` — a permanently blank page instead of a skeleton or an error.
   if (!Number.isFinite(id)) {
-    return <EmptyState icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />;
+    return (
+      <EmptyState isPageTitle icon={TriangleAlert} title={t("pages.notFound")} description={t("pages.notFoundDesc")} />
+    );
   }
   if (query.isPending) return <HeroSkeleton />;
   // See movie-detail-page.tsx's equivalent guard for why this is two
