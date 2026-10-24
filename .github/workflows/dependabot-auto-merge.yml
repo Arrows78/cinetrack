@@ -1,0 +1,84 @@
+name: Dependabot auto-merge
+
+# Turns on auto-merge (rebase) for Dependabot pull requests that only carry
+# patch or minor updates of packages already past 1.0. GitHub then merges each
+# one by itself once the checks required by the ruleset on `main` (`ci-ok` and
+# `visual-regression`) pass. Anything else stays for a human to read:
+#   - a major update;
+#   - a 0.x update that is not a patch: before 1.0 a minor bump may break the
+#     API (rust-ini 0.21.3 did, and rfd 0.15 -> 0.17 rewrote a backend), even
+#     though the version number only moved by a minor step.
+#
+# `pull_request_target` rather than `pull_request`: a pull request opened by
+# Dependabot runs `pull_request` workflows with a read-only token and only the
+# Dependabot secrets, so the release GitHub App could not be used. This one runs
+# the workflow from `main`, never checks the pull request's code out and only
+# reads its metadata, which is the safe use of that trigger.
+#
+# The GitHub App's token (when set up, see docs/release-signing.md) enables the
+# auto-merge instead of the default one: a merge made with `GITHUB_TOKEN` does
+# not trigger the workflows on `main` (the CI and release-please would not run
+# after it). Without the App the default token is used, and those runs have to
+# be started by hand. A pull request that edits `.github/workflows` can only be
+# merged with a token that has the "Workflows" permission, which the App does
+# not have by default: for those the step below only logs a notice.
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Read what Dependabot is updating
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decide whether this update is safe to merge unattended
+        id: decision
+        env:
+          UPDATES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+        run: |
+          risky=$(printf '%s' "$UPDATES" | jq -r '
+            [ .[]
+              | select(
+                  .updateType == "version-update:semver-major"
+                  or (.updateType != "version-update:semver-patch"
+                      and ((.prevVersion // "") | startswith("0.")))
+                )
+              | "\(.dependencyName) \(.prevVersion) -> \(.newVersion) (\(.updateType))"
+            ] | .[]')
+          if [ -n "$risky" ]; then
+            echo "A human should read this one:"
+            echo "$risky"
+            echo "auto=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only patch and minor updates of 1.x+ packages."
+            echo "auto=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create a token from the release GitHub App
+        id: app-token
+        if: ${{ steps.decision.outputs.auto == 'true' && vars.RELEASE_APP_CLIENT_ID != '' }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Enable auto-merge
+        if: ${{ steps.decision.outputs.auto == 'true' }}
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --rebase "$PR_URL" \
+            || echo "::notice::Auto-merge could not be enabled for $PR_URL (it edits workflow files, or the ruleset on main does not require checks)."

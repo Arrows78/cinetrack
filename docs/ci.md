@@ -46,6 +46,18 @@ never part of `ci-ok`.
 Dependabot waits three days before proposing a new version (`cooldown`), and
 `rust-ini` is held at 0.21.1 (see the comment in `dependabot.yml`).
 
+`dependabot-auto-merge.yml` turns on auto-merge (rebase) for the Dependabot pull
+requests that carry only patch or minor updates of packages already past 1.0;
+GitHub then merges each one once `ci-ok` and `visual-regression` pass. A major
+update, or any 0.x update that is not a patch (a minor bump before 1.0 may
+break the API), stays for a human. It uses the release GitHub App's token when
+`RELEASE_APP_CLIENT_ID` is set, so the merge triggers the workflows on `main`
+(a merge made with the default token does not). A pull request that edits
+`.github/workflows` needs a token with the "Workflows" permission, which the App
+does not have by default (Settings → the App → Permissions → Workflows:
+read and write, if you want those merged unattended too); without it the job only
+logs a notice and the pull request waits for you.
+
 The npm `@tauri-apps/*` packages and their Rust crates must share a major.minor
 (the Tauri CLI refuses to build otherwise, but only at the iOS build step).
 Dependabot bumps the two sides in separate PRs, so `pnpm version:check` — run by
