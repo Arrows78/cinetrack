@@ -34,6 +34,15 @@ describe("historyRepository", () => {
     expect(invokeMock).toHaveBeenCalledWith("list_history", { limit: 5 });
   });
 
+  it("list() sends the media type filter to the backend", async () => {
+    invokeMock.mockResolvedValueOnce([]);
+    const { historyRepository } = await import("../history-repository");
+
+    await historyRepository.list(50, undefined, { mediaType: "series" });
+
+    expect(invokeMock).toHaveBeenCalledWith("list_history", { limit: 50, mediaType: "series" });
+  });
+
   it("list() defaults to a limit of 50", async () => {
     invokeMock.mockResolvedValueOnce([]);
     const { historyRepository } = await import("../history-repository");

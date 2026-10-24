@@ -6,6 +6,7 @@ use super::repository::HistoryFilters;
 use super::service::HistoryService;
 use crate::diagnostics::timed;
 use crate::error::ApiError;
+use crate::models::MediaType;
 
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
@@ -16,11 +17,17 @@ pub async fn list_history(
     search: Option<String>,
     from: Option<String>,
     to: Option<String>,
+    media_type: Option<MediaType>,
     pool: State<'_, SqlitePool>,
 ) -> Result<Vec<ViewingHistoryItem>, ApiError> {
     timed("list_history", async {
         let before = before_timestamp.as_deref().zip(before_id.as_deref());
-        let filters = HistoryFilters { search, from, to };
+        let filters = HistoryFilters {
+            search,
+            from,
+            to,
+            media_type,
+        };
         HistoryService::new(pool.inner())
             .list(limit.unwrap_or(50), before, &filters)
             .await
@@ -81,7 +88,7 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let list = list_history(None, None, None, None, None, None, state)
+        let list = list_history(None, None, None, None, None, None, None, state)
             .await
             .unwrap();
 
@@ -112,7 +119,7 @@ mod tests {
         app.manage(pool);
         let state: State<'_, SqlitePool> = app.state();
 
-        let list = list_history(Some(1), None, None, None, None, None, state)
+        let list = list_history(Some(1), None, None, None, None, None, None, state)
             .await
             .unwrap();
 

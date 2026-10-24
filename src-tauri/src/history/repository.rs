@@ -4,6 +4,7 @@ use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 use super::models::{HistoryRow, ViewingHistoryItem};
 use crate::database::{current_profile_id, like_contains_pattern};
 use crate::error::ApiError;
+use crate::models::MediaType;
 
 /// Search/date-range filters layered on top of the cursor pagination below —
 /// all optional, `None`/empty leaves that dimension unfiltered. `from`/`to`
@@ -16,6 +17,8 @@ pub(crate) struct HistoryFilters {
     pub(crate) search: Option<String>,
     pub(crate) from: Option<String>,
     pub(crate) to: Option<String>,
+    /// Only entries of this type (`movie` or `series`); `None` keeps both.
+    pub(crate) media_type: Option<MediaType>,
 }
 
 /// `before` is an exclusive `(timestamp, uuid)` cursor — the last item seen
@@ -57,6 +60,10 @@ pub(crate) async fn list_history_impl(
         qb.push(" AND title LIKE ")
             .push_bind(like_contains_pattern(search))
             .push(" COLLATE NOCASE ESCAPE '\\'");
+    }
+    if let Some(media_type) = filters.media_type {
+        qb.push(" AND media_type = ")
+            .push_bind(media_type.as_db_str());
     }
     if let Some(from) = filters.from.as_deref().filter(|s| !s.is_empty()) {
         qb.push(" AND timestamp >= ").push_bind(from.to_string());
@@ -149,7 +156,6 @@ where
 mod tests {
     use super::*;
     use crate::history::models::HistoryAction;
-    use crate::models::MediaType;
 
     use crate::test_support::migrated_pool;
 
@@ -510,10 +516,34 @@ mod tests {
             search: Some("dune".to_string()),
             from: Some("2026-01-03T00:00:00.000Z".to_string()),
             to: None,
+            media_type: None,
         };
         let list = list_history_impl(&pool, 50, None, &filters).await.unwrap();
 
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].id, "2");
+    }
+    #[tokio::test]
+    async fn filters_by_media_type_before_paginating() {
+        let pool = migrated_pool().await;
+        for (id, ts, media_type) in [
+            ("1", "2026-01-01T00:00:00.000Z", MediaType::Movie),
+            ("2", "2026-01-02T00:00:00.000Z", MediaType::Series),
+            ("3", "2026-01-03T00:00:00.000Z", MediaType::Series),
+        ] {
+            let mut item = entry(id, ts, "Title");
+            item.media_type = media_type;
+            add_history_item_impl(&pool, &pool, item).await.unwrap();
+        }
+
+        let filters = HistoryFilters {
+            media_type: Some(MediaType::Movie),
+            ..Default::default()
+        };
+        // A page of one still reaches the only movie, which sits behind two series.
+        let list = list_history_impl(&pool, 1, None, &filters).await.unwrap();
+
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].id, "1");
     }
 }

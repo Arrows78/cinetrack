@@ -12,7 +12,13 @@ export function useHistory(filters: HistoryFilters = {}) {
     // them must start a fresh paginated feed (discarding pages fetched
     // under the old filters), not append onto it as if it were more of
     // the same list.
-    queryKey: [...queryKeys.local.history(profileId), filters.search ?? "", filters.from ?? "", filters.to ?? ""],
+    queryKey: [
+      ...queryKeys.local.history(profileId),
+      filters.search ?? "",
+      filters.mediaType ?? "",
+      filters.from ?? "",
+      filters.to ?? "",
+    ],
     queryFn: ({ pageParam }: { pageParam?: HistoryCursor }) => historyRepository.list(PAGE_SIZE, pageParam, filters),
     initialPageParam: undefined as HistoryCursor | undefined,
     getNextPageParam: (lastPage) => {

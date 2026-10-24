@@ -8,6 +8,7 @@ type ListHistoryArgs = {
   search: string | undefined;
   from: string | undefined;
   to: string | undefined;
+  mediaType: "movie" | "series" | undefined;
 };
 
 export const historyCommands = {

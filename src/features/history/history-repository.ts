@@ -15,6 +15,7 @@ export interface HistoryFilters {
   /** Inclusive ISO timestamp bounds — same semantics as the Rust side's HistoryFilters. */
   from?: string;
   to?: string;
+  mediaType?: "movie" | "series";
 }
 
 export const historyRepository = {
@@ -26,6 +27,7 @@ export const historyRepository = {
       search: filters?.search,
       from: filters?.from,
       to: filters?.to,
+      mediaType: filters?.mediaType,
     });
   },
 };

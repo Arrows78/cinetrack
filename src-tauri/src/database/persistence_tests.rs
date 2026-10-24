@@ -275,7 +275,7 @@ async fn snapshot(app: &TestApp) -> Snapshot {
     }
     read!(
         "history",
-        list_history(Some(1000), None, None, None, None, None, db(app))
+        list_history(Some(1000), None, None, None, None, None, None, db(app))
     );
     read!(
         "events:recent",

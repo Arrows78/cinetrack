@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 import i18n from "@/i18n";
-import { HistoryPage, TYPE_FILTER_SCAN_MAX_PAGES } from "../history-page";
+import { HistoryPage } from "../history-page";
 import { useHistory } from "@/features/history/use-history";
 import { useTrackedSeries } from "@/features/progress/use-progress";
 import type { TrackedSeriesItem, ViewingHistoryItem } from "@/types/media";
@@ -341,8 +341,9 @@ describe("HistoryPage", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Movies" }));
 
-      await waitFor(() => expect(screen.queryByText("A Series")).not.toBeInTheDocument());
-      expect(screen.getByText("A Movie")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(mockUseHistory).toHaveBeenLastCalledWith(expect.objectContaining({ mediaType: "movie" }))
+      );
     });
 
     it("filters to series only", async () => {
@@ -351,8 +352,9 @@ describe("HistoryPage", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Series" }));
 
-      await waitFor(() => expect(screen.queryByText("A Movie")).not.toBeInTheDocument());
-      expect(screen.getByText("A Series")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(mockUseHistory).toHaveBeenLastCalledWith(expect.objectContaining({ mediaType: "series" }))
+      );
     });
 
     it("pushes the type filter into the URL instead of only local state", async () => {
@@ -368,8 +370,9 @@ describe("HistoryPage", () => {
       mockedMixedHistory();
       renderPage("?type=series");
 
-      await waitFor(() => expect(screen.queryByText("A Movie")).not.toBeInTheDocument());
-      expect(screen.getByText("A Series")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(mockUseHistory).toHaveBeenLastCalledWith(expect.objectContaining({ mediaType: "series" }))
+      );
 
       // Only asserts on the URL, not the list re-settling — Virtuoso's own
       // re-render (see the "chaining successive filter clicks" comment above)
@@ -461,63 +464,20 @@ describe("HistoryPage", () => {
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     });
 
-    it("keeps fetching following pages while the type filter leaves nothing to show, instead of claiming no activity", async () => {
-      const fetchNextPage = vi.fn().mockResolvedValue(undefined);
+    it("sends the type filter to the backend instead of filtering the loaded pages", () => {
       mockUseHistory.mockReturnValue(
-        historyQueryResult({
-          data: { pages: [[makeHistoryItem({ id: "1", mediaType: "series", title: "A Show" })]] },
-          hasNextPage: true,
-          fetchNextPage,
-        })
+        historyQueryResult({ data: { pages: [[makeHistoryItem({ id: "1", mediaType: "movie", title: "Dune" })]] } })
       );
       renderPage("?type=movie");
 
-      await waitFor(() => expect(fetchNextPage).toHaveBeenCalled());
+      expect(mockUseHistory).toHaveBeenCalledWith(expect.objectContaining({ mediaType: "movie" }));
     });
 
-    it("stops scanning once the bounded number of pages is loaded, and then shows the empty state", async () => {
-      const fetchNextPage = vi.fn().mockResolvedValue(undefined);
-      const seriesPage = [makeHistoryItem({ id: "1", mediaType: "series", title: "A Show" })];
-      mockUseHistory.mockReturnValue(
-        historyQueryResult({
-          data: { pages: Array.from({ length: TYPE_FILTER_SCAN_MAX_PAGES }, () => seriesPage) },
-          hasNextPage: true,
-          fetchNextPage,
-        })
-      );
-      renderPage("?type=movie");
+    it("sends no type filter when all types are shown", () => {
+      mockUseHistory.mockReturnValue(historyQueryResult({ data: { pages: [[]] } }));
+      renderPage();
 
-      expect(await screen.findByText(i18n.t("history.noActivity"))).toBeInTheDocument();
-      expect(fetchNextPage).not.toHaveBeenCalled();
-    });
-
-    it("still scans one page below the bound, and logs instead of throwing when that fetch fails", async () => {
-      const fetchNextPage = vi.fn().mockRejectedValue(new Error("offline"));
-      const seriesPage = [makeHistoryItem({ id: "1", mediaType: "series", title: "A Show" })];
-      mockUseHistory.mockReturnValue(
-        historyQueryResult({
-          data: { pages: Array.from({ length: TYPE_FILTER_SCAN_MAX_PAGES - 1 }, () => seriesPage) },
-          hasNextPage: true,
-          fetchNextPage,
-        })
-      );
-      renderPage("?type=movie");
-
-      await waitFor(() => expect(fetchNextPage).toHaveBeenCalledTimes(1));
-    });
-
-    it("does not auto-fetch when the filtered list already has entries", () => {
-      const fetchNextPage = vi.fn().mockResolvedValue(undefined);
-      mockUseHistory.mockReturnValue(
-        historyQueryResult({
-          data: { pages: [[makeHistoryItem({ id: "1", mediaType: "movie", title: "Dune" })]] },
-          hasNextPage: true,
-          fetchNextPage,
-        })
-      );
-      renderPage("?type=movie");
-
-      expect(fetchNextPage).not.toHaveBeenCalled();
+      expect(mockUseHistory).toHaveBeenCalledWith(expect.objectContaining({ mediaType: undefined }));
     });
 
     it("keeps the undo action hover-revealed on a pointer device but always visible on touch", () => {

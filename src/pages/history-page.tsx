@@ -51,13 +51,6 @@ import { logger } from "@/shared/lib/logger";
 import type { HistoryAction, HistoryFilterState, ViewingHistoryItem } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
 
-/**
- * How many pages (50 entries each) the page loads on its own while the
- * media-type filter, applied client-side, leaves nothing to show although more
- * pages exist.
- */
-export const TYPE_FILTER_SCAN_MAX_PAGES = 6;
-
 type TimelineRow =
   | { kind: "header"; key: string; label: string }
   | { kind: "entry"; key: string; item: ViewingHistoryItem; isLastOfDay: boolean };
@@ -273,6 +266,7 @@ export function HistoryPage() {
 
   const historyQuery = useHistory({
     search: debouncedQuery || undefined,
+    mediaType: typeFilter === "all" ? undefined : typeFilter,
     // A plain date input only carries the day: the bounds are the user's
     // *local* start and (inclusive) end of that day, the same days the list's
     // day headers are grouped by, converted to the UTC instants the
@@ -318,37 +312,9 @@ export function HistoryPage() {
     setToDate("");
   };
 
-  // search/from/to are applied server-side (part of useHistory's own query
-  // key, above) — type stays a client-side filter over whatever pages are
-  // already loaded, same as before search/date filtering existed.
-  const filteredHistory = useMemo(
-    () =>
-      (historyQuery.data?.pages.flat() ?? []).filter((item) =>
-        typeFilter === "all" ? true : item.mediaType === typeFilter
-      ),
-    [historyQuery.data, typeFilter]
-  );
-  // The type filter can't be sent to the backend yet, so a type absent from
-  // the loaded pages would read as "no activity" while older matching entries
-  // are still on the next pages: keep fetching until one shows up, but only
-  // while fewer than TYPE_FILTER_SCAN_MAX_PAGES pages are loaded — a type that
-  // is genuinely rare in the log must not walk the whole history (the "Load
-  // more" button stays for going further by hand). Stateless on purpose: the
-  // number of loaded pages is the bound.
-  const { hasNextPage, isFetchingNextPage, isLoading, isError, fetchNextPage } = historyQuery;
-  const loadedPageCount = historyQuery.data?.pages.length ?? 0;
-  const isScanningForType =
-    typeFilter !== "all" &&
-    filteredHistory.length === 0 &&
-    Boolean(hasNextPage) &&
-    loadedPageCount < TYPE_FILTER_SCAN_MAX_PAGES &&
-    !isError;
-  useEffect(() => {
-    if (!isScanningForType || isFetchingNextPage || isLoading) return;
-    fetchNextPage().catch((error: unknown) => {
-      logger.warn(`History: could not fetch the next page for the ${typeFilter} filter: ${String(error)}`);
-    });
-  }, [isScanningForType, isFetchingNextPage, isLoading, fetchNextPage, typeFilter, loadedPageCount]);
+  // search/type/from/to are all applied server-side (part of useHistory's own
+  // query key), so the pages are the list.
+  const filteredHistory = useMemo(() => historyQuery.data?.pages.flat() ?? [], [historyQuery.data]);
   const timelineRows = useMemo(
     () => buildTimelineRows(filteredHistory, t, dateLocale),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `t`/`dateLocale` change together with `i18n.language`, already a stable dep of neither; recomputed whenever filteredHistory itself does
@@ -445,7 +411,7 @@ export function HistoryPage() {
           <ActiveFilterChips chips={chips} onClearAll={clearAllFilters} />
         </div>
 
-        {historyQuery.isLoading || isScanningForType ? (
+        {historyQuery.isLoading ? (
           <TimelineSkeleton />
         ) : historyQuery.isError ? (
           <RemoteErrorState error={historyQuery.error} onRetry={() => void historyQuery.refetch()} />
