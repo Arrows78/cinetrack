@@ -18,6 +18,7 @@ import m024 from "../../../src-tauri/src/database/migrations/024-add-library-sta
 import m025 from "../../../src-tauri/src/database/migrations/025-add-insert-seq-to-viewing-events.sql?raw";
 import m026 from "../../../src-tauri/src/database/migrations/026-index-library-sorts-and-drop-unused-indexes.sql?raw";
 import m027 from "../../../src-tauri/src/database/migrations/027-add-profile-pin-attempt-limit.sql?raw";
+import m028 from "../../../src-tauri/src/database/migrations/028-add-library-title-sort-key.sql?raw";
 import type { Migration } from "./types";
 
 const statementMarker = "-- cinetrack:statement";
@@ -84,4 +85,5 @@ export const migrations = extractCanonicalMigrations([
   m025,
   m026,
   m027,
+  m028,
 ]);

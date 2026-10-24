@@ -25,6 +25,7 @@ const MIGRATION_SOURCES: &[&str] = &[
     include_str!("migrations/025-add-insert-seq-to-viewing-events.sql"),
     include_str!("migrations/026-index-library-sorts-and-drop-unused-indexes.sql"),
     include_str!("migrations/027-add-profile-pin-attempt-limit.sql"),
+    include_str!("migrations/028-add-library-title-sort-key.sql"),
 ];
 
 #[derive(Debug)]
@@ -245,7 +246,7 @@ mod tests {
                 .map(|migration| migration.version)
                 .collect::<Vec<_>>(),
             vec![
-                1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
+                1, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28
             ]
         );
         assert_eq!(
@@ -274,6 +275,7 @@ mod tests {
                 "add insertion order to viewing events",
                 "index library sorts and drop unused indexes",
                 "add profile pin attempt limit",
+                "add accent and case insensitive library title sort key",
             ]
         );
         assert!(
@@ -331,7 +333,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 27);
+        assert_eq!(version.0, 28);
     }
 
     #[tokio::test]
@@ -351,7 +353,7 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        assert_eq!(version.0, 27);
+        assert_eq!(version.0, 28);
     }
 
     #[tokio::test]

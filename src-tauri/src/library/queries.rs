@@ -282,9 +282,19 @@ pub(super) fn build_page_query(
                 media_type,
             }),
         ) => {
-            qb.push(" AND (title, media_id, media_type) > (")
-                .push_bind(title.clone())
-                .push(", ")
+            // The cursor carries the title; the order is on `title_sort`
+            // (migration 28), so the last row's own sort key is read back by
+            // its identity. A row deleted since the previous page falls back
+            // to the lower-cased title, which is exact for unaccented titles.
+            qb.push(" AND (title_sort, media_id, media_type) > (COALESCE((SELECT title_sort FROM library_items WHERE profile_id = ")
+                .push_bind(profile_id.to_string())
+                .push(" AND media_id = ")
+                .push_bind(*media_id)
+                .push(" AND media_type = ")
+                .push_bind(media_type.clone())
+                .push("), ")
+                .push_bind(title.to_lowercase())
+                .push("), ")
                 .push_bind(*media_id)
                 .push(", ")
                 .push_bind(media_type.clone())
@@ -355,7 +365,7 @@ pub(super) fn build_page_query(
 
     match params.sort {
         LibrarySort::Recent => qb.push(" ORDER BY updated_at DESC, media_id DESC, media_type DESC"),
-        LibrarySort::Title => qb.push(" ORDER BY title ASC, media_id ASC, media_type ASC"),
+        LibrarySort::Title => qb.push(" ORDER BY title_sort ASC, media_id ASC, media_type ASC"),
         LibrarySort::Rating => qb.push(
             " ORDER BY COALESCE(user_rating, rating, -1.0) DESC, media_id DESC, media_type DESC",
         ),

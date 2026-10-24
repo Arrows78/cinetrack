@@ -2451,3 +2451,53 @@ async fn status_origin_tells_a_viewers_status_from_an_automatic_one() {
         .unwrap();
     assert_eq!(status_origin(&pool, 3).await, "manual");
 }
+
+#[tokio::test]
+async fn the_title_sort_ignores_case_and_accents_across_pages() {
+    let pool = migrated_pool().await;
+    // Byte order would give: Zorro, amélie, Éternels, ñandú ... after every capital.
+    for (id, title) in [
+        (1, "Zorro"),
+        (2, "amélie"),
+        (3, "Éternels"),
+        (4, "Bravo"),
+        (5, "ÀÀ first"),
+        (6, "Œuvres"),
+        (7, "Straße"),
+    ] {
+        upsert_impl(
+            &pool,
+            media_titled(id, title, None),
+            LibraryPatch::default(),
+            "default",
+        )
+        .await
+        .unwrap();
+    }
+
+    let mut cursor = None;
+    let mut seen = Vec::new();
+    loop {
+        let page = list_page_impl(&pool, "default", page_params(LibrarySort::Title, cursor, 2))
+            .await
+            .unwrap();
+        seen.extend(page.items.iter().map(|i| i.title.clone()));
+        cursor = page.next_cursor;
+        if cursor.is_none() {
+            break;
+        }
+    }
+
+    assert_eq!(
+        seen,
+        vec![
+            "ÀÀ first",
+            "amélie",
+            "Bravo",
+            "Éternels",
+            "Œuvres",
+            "Straße",
+            "Zorro"
+        ]
+    );
+}
