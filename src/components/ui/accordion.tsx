@@ -21,24 +21,31 @@ export const AccordionItem = React.forwardRef<
 ));
 AccordionItem.displayName = "AccordionItem";
 
+// Radix wraps each trigger in an <h3>. An accordion placed right under a
+// page's <h1> passes headingLevel={2}, so the outline does not skip a level.
 export const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "group flex flex-1 items-center justify-between gap-4 px-5 py-4 text-left text-body-sm font-medium transition-all hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-fast group-data-[state=open]:rotate-180" />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
-));
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> & { headingLevel?: 2 | 3 }
+>(({ className, children, headingLevel = 3, ...props }, ref) => {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
+  return (
+    <AccordionPrimitive.Header asChild>
+      <Heading className="flex">
+        <AccordionPrimitive.Trigger
+          ref={ref}
+          className={cn(
+            "group flex flex-1 items-center justify-between gap-4 px-5 py-4 text-left text-body-sm font-medium transition-all hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+            className
+          )}
+          {...props}
+        >
+          {children}
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-fast group-data-[state=open]:rotate-180" />
+        </AccordionPrimitive.Trigger>
+      </Heading>
+    </AccordionPrimitive.Header>
+  );
+});
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName;
 
 export const AccordionContent = React.forwardRef<

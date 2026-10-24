@@ -462,7 +462,7 @@ export function LibraryExplorer({
         // My Lists — the two are independent filter panels, not alternatives.
         <Accordion type="multiple" className="space-y-3">
           <AccordionItem value="lists">
-            <AccordionTrigger>
+            <AccordionTrigger headingLevel={2}>
               <span className="flex items-center gap-2">
                 <FolderHeart className="size-4 text-primary" aria-hidden="true" />
                 {t("library.lists.title")}
@@ -476,7 +476,7 @@ export function LibraryExplorer({
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="smart-lists">
-            <AccordionTrigger>
+            <AccordionTrigger headingLevel={2}>
               <span className="flex items-center gap-2">
                 <Sparkles className="size-4 text-primary" aria-hidden="true" />
                 {t("library.smartLists.title")}
