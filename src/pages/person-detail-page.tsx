@@ -131,7 +131,7 @@ export function PersonDetailPage() {
               <Badge variant="outline">{t("person.placeOfBirth", { place: person.placeOfBirth })}</Badge>
             ) : null}
           </div>
-          <p className="max-w-3xl whitespace-pre-line text-body-lg text-muted-foreground">
+          <p className="max-w-3xl whitespace-pre-line break-words text-body-lg text-muted-foreground">
             {person.biography || t("person.noBiography")}
           </p>
           <ImdbLink imdbId={person.imdbId} />

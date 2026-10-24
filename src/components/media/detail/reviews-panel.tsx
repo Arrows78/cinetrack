@@ -34,7 +34,7 @@ function ReviewCard({ review }: { review: MediaReview }) {
           </Badge>
         ) : null}
       </div>
-      <p className="mt-3 line-clamp-6 text-body-sm leading-6 text-muted-foreground">{review.content}</p>
+      <p className="mt-3 line-clamp-6 break-words text-body-sm leading-6 text-muted-foreground">{review.content}</p>
       <a
         href={review.url}
         target="_blank"
