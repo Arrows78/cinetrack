@@ -142,10 +142,24 @@ jobs:
         id: diff
         run: echo "changed=$(git status --porcelain e2e/visual/__screenshots__ | wc -l)" >> "$GITHUB_OUTPUT"
 
+      # A pull request opened with the default GITHUB_TOKEN does not trigger
+      # the CI, so with `ci-ok` required it would stay blocked with no checks.
+      # The release GitHub App's token (see docs/release-signing.md) opens it
+      # instead, and the checks run; without the App it falls back to the
+      # default token as before.
+      - name: Create a token from the release GitHub App
+        id: app-token
+        if: ${{ steps.diff.outputs.changed != '0' && vars.RELEASE_APP_CLIENT_ID != '' }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: Open a PR with the refreshed baselines
         if: steps.diff.outputs.changed != '0'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           commit-message: "test(visual): refresh Linux baselines"
           title: "test(visual): refresh Linux baselines"
           body: >
