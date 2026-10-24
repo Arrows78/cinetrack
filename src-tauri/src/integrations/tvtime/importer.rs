@@ -8,6 +8,7 @@ use crate::library::{AutoSyncMedia, StatusTrigger, reconcile_status_impl};
 use crate::library::{CreatedLibraryItem, remove_untouched_items_impl};
 use crate::models::MediaType;
 use crate::progress::{EpisodeInput, SeriesInput, apply_episodes_outcome_impl};
+use crate::stats::{NewViewingEvent, ViewingEventType, insert_viewing_event};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -190,19 +191,23 @@ pub(super) async fn import_movie_seen_impl(
     .await
     .map_err(ApiError::from)?;
 
-    sqlx::query(
-        "INSERT INTO viewing_events (uuid, profile_id, media_id, media_type, title, event_type, watched_at, duration_minutes, episode_id, season_number, episode_number, created_at)
-         VALUES ($1,$2,$3,'movie',$4,'watched',$5,$6,NULL,NULL,NULL,$5)",
+    insert_viewing_event(
+        &mut tx,
+        &NewViewingEvent {
+            profile_id,
+            media_id: movie.movie_id,
+            media_type: MediaType::Movie,
+            title: &movie.title,
+            event_type: ViewingEventType::Watched,
+            watched_at: &movie.watched_at,
+            duration_minutes: crate::progress::known_runtime(movie.runtime),
+            episode_id: None,
+            season_number: None,
+            episode_number: None,
+            note: None,
+        },
     )
-    .bind(new_uuid())
-    .bind(profile_id)
-    .bind(movie.movie_id)
-    .bind(&movie.title)
-    .bind(&movie.watched_at)
-    .bind(crate::progress::known_runtime(movie.runtime))
-    .execute(&mut *tx)
-    .await
-    .map_err(ApiError::from)?;
+    .await?;
 
     let media = AutoSyncMedia {
         media_id: movie.movie_id,

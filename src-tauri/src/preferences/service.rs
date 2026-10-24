@@ -5,7 +5,7 @@ use sqlx::SqlitePool;
 use super::models::Language;
 use super::models::UserPreferences;
 use super::repository::{PreferencesCache, get_preferences_cached, write_preference};
-use crate::database::current_profile_id;
+use crate::database::{DEFAULT_PROFILE_ID, current_profile_id};
 use crate::error::ApiError;
 use crate::profiles::{authorize_pin_protected_access, get_by_id_impl};
 
@@ -83,7 +83,7 @@ impl<'a> PreferencesService<'a> {
             return Err(ApiError::not_found("Profile not found."));
         };
 
-        if profile_id != "default"
+        if profile_id != DEFAULT_PROFILE_ID
             && let Some(required) = &owner.supabase_user_id
             && supabase_user_id != Some(required.as_str())
         {
@@ -99,7 +99,7 @@ impl<'a> PreferencesService<'a> {
         // "default" after the active profile was deleted — without it,
         // removing the active profile would leave activeProfileId pointing at
         // a row that no longer exists.
-        let active_was_removed = profile_id == "default"
+        let active_was_removed = profile_id == DEFAULT_PROFILE_ID
             && get_by_id_impl(self.pool, &current_profile_id(self.pool).await?)
                 .await?
                 .is_none();
