@@ -55,9 +55,12 @@ side in the same PR.
 
 ## Advisory ignores
 
-`cargo-audit` reads `src-tauri/.cargo/audit.toml` and `osv-scan` reads
-`osv-scanner.toml`; every ignore carries its reason, and the osv ones expire on
-their own (`ignoreUntil`). Keep the two files in step.
+`osv-scan` reads one `osv-scanner.toml` per lockfile directory (the repo root for
+`pnpm-lock.yaml`, `src-tauri/` for `Cargo.lock`) and `cargo-audit` takes its
+ignore list from the `ignore:` input of its step in `ci.yml` (the action does
+not read an `audit.toml`). Every ignore carries its reason, and the osv ones
+expire on their own (`ignoreUntil`). Keep the Rust lists of the two scanners in
+step.
 
 For local changes, run the narrowest relevant command while iterating and use
 `pnpm validate` before opening a pull request.

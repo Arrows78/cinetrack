@@ -99,3 +99,53 @@ reason = "bincode — unmaintained (no fixed version exists), transitive via tau
 [[IgnoredVulns]]
 id = "RUSTSEC-2024-0429"
 reason = "glib — real CVE, but pinned to 0.18.5 by gtk 0.18.2 (tauri's Linux tray-icon GTK3 backend); no compatible fixed version exists until tauri migrates to gtk4-rs"
+
+# zip < 9.0.0 — unsafe permission and symlink handling when extracting an
+# archive. Two copies, neither fixable from this repository: zip 4.6.1 is
+# pinned by tauri-plugin-updater, whose update channel is not configured (no
+# `plugins.updater` in tauri.conf.json), so nothing is ever extracted; zip 8.6.0
+# is a build-dependency of libsodium-sys-stable that unpacks libsodium's own
+# source tarball. The same IDs are ignored by the cargo-audit job
+# (.github/workflows/ci.yml): keep the two lists in step.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0367"
+ignoreUntil = 2027-01-24
+reason = "zip pinned by tauri-plugin-updater (updater not configured) and a libsodium build-dependency; no patched version reachable"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0368"
+ignoreUntil = 2027-01-24
+reason = "same zip copies as RUSTSEC-2026-0367"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0369"
+ignoreUntil = 2027-01-24
+reason = "same zip copies as RUSTSEC-2026-0367"
+
+# crypto-bigint 0.5.5 — timing variability in some operations. Pinned by
+# elliptic-curve 0.13 / k256 0.13, reached only through tauri-plugin-stronghold
+# (iota-crypto); the app uses Stronghold as a record store for the TMDB token,
+# never to sign with a secret key. The fix is crypto-bigint 0.7, a different
+# major of a RustCrypto stack Stronghold has not moved to.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0387"
+ignoreUntil = 2027-01-24
+reason = "crypto-bigint 0.5 pinned by k256 via tauri-plugin-stronghold; no secret-key signing happens; fix needs a new RustCrypto major"
+
+# zbus / zvariant — reported as unmaintained, no fixed version exists. Pulled
+# in by the Linux desktop notification, opener and single-instance plugins
+# (D-Bus); nothing to upgrade to.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0370"
+ignoreUntil = 2027-01-24
+reason = "zvariant unmaintained, transitive via zbus (Linux D-Bus plugins); no fixed version exists"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0371"
+ignoreUntil = 2027-01-24
+reason = "zbus_names unmaintained, transitive via zbus (Linux D-Bus plugins); no fixed version exists"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0372"
+ignoreUntil = 2027-01-24
+reason = "zvariant_derive unmaintained, transitive via zbus (Linux D-Bus plugins); no fixed version exists"
