@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import { MAX_BACKUP_FILE_BYTES, maintenanceService, portableData } from "@/features/backup";
 import { logger } from "@/shared/lib/logger";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { useSyncStatus } from "@/features/sync/use-sync-status";
 import { errorMessage } from "@/shared/lib/errors";
 import { displayMessage, UserFacingError } from "@/shared/lib/user-facing-error";
 
@@ -24,6 +25,10 @@ export function BackupTools() {
   const [isChoosingFolder, setIsChoosingFolder] = useState(false);
   const [isResettingFolder, setIsResettingFolder] = useState(false);
   const backupDirectory = preferences?.backupDirectory ?? null;
+  // A restore does not tell the cloud what it removed: on a synced profile,
+  // what the backup lacks can come back at the next sync.
+  const syncStatus = useSyncStatus();
+  const syncWarning = syncStatus.data?.lastSyncedAt ? ` ${t("backup.syncRestoreWarning")}` : "";
 
   const exportBackup = async () => {
     setIsExporting(true);
@@ -176,7 +181,7 @@ export function BackupTools() {
         open={pendingImportFile !== null}
         onOpenChange={(open) => !open && !isImporting && setPendingImportFile(null)}
         title={t("backup.importConfirmTitle")}
-        description={t("backup.importConfirmDescription")}
+        description={`${t("backup.importConfirmDescription")}${syncWarning}`}
         confirmLabel={t("backup.import")}
         cancelLabel={t("common.cancel")}
         isConfirming={isImporting}
@@ -187,7 +192,7 @@ export function BackupTools() {
         open={pendingUndo}
         onOpenChange={(open) => !open && !isUndoing && setPendingUndo(false)}
         title={t("backup.undoConfirmTitle")}
-        description={t("backup.undoConfirmDescription")}
+        description={`${t("backup.undoConfirmDescription")}${syncWarning}`}
         confirmLabel={t("backup.undoLastImport")}
         cancelLabel={t("common.cancel")}
         confirmVariant="destructive"

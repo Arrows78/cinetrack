@@ -10,6 +10,9 @@ import { BackupTools } from "../backup-tools";
 const toastMock = vi.fn();
 vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
+let syncStatusData: { lastSyncedAt: string | null } | undefined;
+vi.mock("@/features/sync/use-sync-status", () => ({ useSyncStatus: () => ({ data: syncStatusData }) }));
+
 const loggerWarnMock = vi.fn();
 vi.mock("@/shared/lib/logger", () => ({
   logger: { info: vi.fn(), warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn() },
@@ -114,6 +117,7 @@ describe("BackupTools", () => {
 
   beforeEach(() => {
     toastMock.mockReset();
+    syncStatusData = undefined;
     loggerWarnMock.mockReset();
     exportMock.mockReset().mockResolvedValue(SAMPLE_BACKUP);
     restoreFromBackupMock.mockReset().mockResolvedValue(undefined);
@@ -292,6 +296,24 @@ describe("BackupTools", () => {
       // Dialog closed means pendingImportFile reset — selecting again should still work.
       fireEvent.change(getFileInput(container), { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
       expect(await screen.findByRole("button", { name: "Import" })).not.toBeDisabled();
+    });
+
+    it("warns that deleted titles can come back when the profile is synced", async () => {
+      syncStatusData = { lastSyncedAt: "2026-10-01T00:00:00.000Z" };
+      const { container } = renderBackupTools();
+
+      fireEvent.change(getFileInput(container), { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
+
+      expect(await screen.findByText(new RegExp(i18n.t("backup.syncRestoreWarning")))).toBeInTheDocument();
+    });
+
+    it("shows no sync warning on a profile that never synced", async () => {
+      const { container } = renderBackupTools();
+
+      fireEvent.change(getFileInput(container), { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
+
+      await screen.findByText(new RegExp(i18n.t("backup.importConfirmDescription").slice(0, 20)));
+      expect(screen.queryByText(new RegExp(i18n.t("backup.syncRestoreWarning")))).not.toBeInTheDocument();
     });
 
     it("the import ConfirmDialog refuses to close while isImporting is true", async () => {
