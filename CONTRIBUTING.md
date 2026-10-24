@@ -53,3 +53,9 @@ All of it should pass before you open a pull request. While iterating, scope to 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/):
 `type(scope): summary` — e.g. `fix(pages): add remote-error state missed by the prior pass`.
 Keep the scope to the touched feature or area.
+
+The commit type drives releases (see `docs/release-signing.md`): `feat` and `fix`
+(and `perf`) reach the changelog and decide the next version, a `!` after the
+type or a `BREAKING CHANGE:` footer marks a breaking change, and `docs`, `test`,
+`ci`, `chore`, `build` and `refactor` are released silently. A release is made by
+merging the "release X.Y.Z" pull request release-please keeps open.

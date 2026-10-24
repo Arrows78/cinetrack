@@ -1,6 +1,33 @@
-# Release signing
+# Releases and signing
 
-`.github/workflows/release.yml` builds Linux/Windows/macOS installers on every manual run or `v*` tag push. A manual run (Actions tab → Release build → Run workflow) only uploads them as workflow artifacts. A `v*` tag push additionally publishes them to a **draft** GitHub Release attached to that tag — draft on purpose, so nothing goes out until you review it and click "Publish release" yourself (see "Publishing a release" below). Signing is intentionally opt-in until the repository owner provisions the platform certificates and secrets below; unsigned artifacts are suitable for development/testing only and will trigger OS trust warnings.
+`.github/workflows/release.yml` takes a merged commit all the way to a published GitHub Release, with no manual step except merging one pull request.
+
+## How a release happens
+
+1. Commits reach `main` as [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `perf:` count toward the version and the changelog; `docs:`, `test:`, `ci:`, `chore:`, `build:` and `refactor:` do not appear in it).
+2. [release-please](https://github.com/googleapis/release-please) keeps one pull request up to date, "chore(main): release X.Y.Z": the version bumped in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`, and `CHANGELOG.md` written. Before 1.0, a `feat` raises the minor version and a `fix` the patch.
+3. **Merging that pull request is the release.** release-please creates the tag's draft release (with the changelog as its notes); the workflow then waits for the `ci-ok` and `visual-regression` checks of that exact commit, builds the Linux, Windows and macOS (universal) installers, attaches them with a `SHA256SUMS` file and a build-provenance attestation, and publishes the release.
+4. Anything that fails before the last step leaves a **draft** — nothing is public until every step passed. Fix the cause and run the workflow again with `tag` set to the version (tick `publish` to publish when it finishes).
+
+A tag with a suffix (`v0.5.0-rc.1`) is published as a pre-release and never becomes "latest".
+
+## Doing it by hand
+
+From the Actions tab, Release → Run workflow:
+
+| Input        | Effect                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `release-as` | Open (or refresh) the release pull request for exactly this version (`1.0.0`, `0.5.0-rc.1`) instead of the computed one.  |
+| `tag`        | Rebuild an existing tag. With `publish` ticked the release is published at the end; otherwise it stays a draft to review. |
+| `test-build` | Build the installers as downloadable workflow artifacts only; no release is touched. Safe to run freely.                  |
+
+Pushing a `v*` tag by hand also works: it builds a draft release to review and publish yourself.
+
+## One-time setup
+
+- **A GitHub App for the release pull request** (recommended). A pull request opened with the default `GITHUB_TOKEN` does not trigger the CI, so the release pull request would show no checks. Create a GitHub App with _Contents_ and _Pull requests_ read-and-write, install it on this repository, then add the repository **variable** `RELEASE_APP_CLIENT_ID` and the **secret** `RELEASE_APP_PRIVATE_KEY`. The workflow uses the App's token as soon as the variable exists. Without it the release still works, but its pull request has to be merged by someone allowed to bypass the required checks.
+- **Branch protection on `main`**, requiring `ci-ok` and `visual-regression` (see `docs/ci.md`).
+- **Code signing** (below): optional, without it installers are unsigned and flagged by Gatekeeper and SmartScreen.
 
 ## macOS: code signing
 
@@ -35,13 +62,6 @@ CineTrack's update channel isn't configured yet (see `desktop.updateChannelNotCo
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password chosen when generating it |
 
 Full details: [Tauri — macOS code signing](https://v2.tauri.app/distribute/sign/macos/), [Tauri — Windows code signing](https://v2.tauri.app/distribute/sign/windows/).
-
-## Publishing a release
-
-1. Push a tag matching `v*` (e.g. `git tag v0.4.0 && git push origin v0.4.0`).
-2. Wait for all 3 matrix jobs (Linux/Windows/macOS) to finish — each uploads its own installer to the same draft release.
-3. Open the **Releases** page, check the attached installers and the auto-generated notes, edit the notes if needed.
-4. Click **Publish release** once you're satisfied. Nothing is public before this step.
 
 ## Rollback strategy
 

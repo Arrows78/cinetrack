@@ -1,105 +1,235 @@
-name: Release build
+name: Release
 
-# Builds native CineTrack installers for Linux, Windows and macOS. Two ways
-# to trigger it, two different outputs:
-#   - Manual run (Actions tab -> Release build -> Run workflow): installers
-#     are attached to the workflow run as downloadable artifacts only. No
-#     GitHub Release is touched — safe to use freely for one-off test builds.
-#   - Pushing a `v*` tag: same installers, but also published as a DRAFT
-#     GitHub Release attached to that tag (one release, all 3 platforms'
-#     installers uploaded to it by their respective matrix jobs). Draft, not
-#     public, on purpose — review the generated notes and attached files on
-#     the Releases page, then hit "Publish release" yourself. See
-#     docs/release-signing.md's rollback section for what to do if a
-#     published release turns out to be broken.
+# From a merged commit to a published release, with nobody in the loop:
 #
-# Unsigned by default: none of the secrets referenced below
-# (APPLE_CERTIFICATE, WINDOWS_CERTIFICATE, ...) exist in this repository yet,
-# so the Tauri CLI skips code signing and notarization and produces plain
-# unsigned bundles — installable, but flagged by Gatekeeper/SmartScreen.
-# Add the matching secrets under Settings -> Secrets and variables -> Actions
-# (see docs/release-signing.md) and these same steps start signing/notarizing
-# automatically, no workflow changes required.
+#   push to main ──► release-please ──► (release PR merged) ──► plan ──► gate
+#                                                                         │
+#        publish ◄── checksums ◄── build (Linux, Windows, macOS) ◄────────┘
 #
-# `build` needs `validate` to pass first: a `v*` tag push doesn't otherwise
-# guarantee the tagged commit ever ran CI (tags aren't in ci.yml's own
-# triggers) — nothing stopped a tag on a broken commit from producing and
-# drafting installers before this. `validate` re-runs the same checks
-# `pnpm validate` runs locally, once, on the exact commit being tagged.
-# This is deliberately a self-contained job here (not a call into ci.yml)
-# rather than a cross-workflow permissions dance for cargo-audit/osv-scan,
-# which don't need to gate a release the way lint/typecheck/tests/build do.
+# - release-please reads the Conventional Commits that reached `main` and keeps
+#   one "release PR" up to date: version bumped in package.json, Cargo.toml,
+#   Cargo.lock and tauri.conf.json, CHANGELOG.md written. Merging that PR is the
+#   only human act; the release itself is created as a DRAFT.
+# - gate waits for the CI and the visual-regression checks of the exact commit
+#   being released (no second `pnpm validate` here: those checks are the
+#   verdict) and refuses a tag that differs from the manifests' version.
+# - build produces the installers (a universal binary on macOS) and attaches
+#   them to the draft; checksums adds SHA256SUMS and a build-provenance
+#   attestation; publish turns the draft into the public release. A release
+#   that fails anywhere before publish stays a draft, nothing goes out.
+#
+# Other ways in, same pipeline:
+#   - Run workflow with `release-as`: release-please opens (or refreshes) the
+#     release PR for that exact version instead of the computed one.
+#   - Run workflow with `tag`: rebuild an existing tag (after a failed run);
+#     ticks `publish` to publish it when done, otherwise it stays a draft.
+#   - Run workflow with `test-build`: installers as workflow artifacts only,
+#     no release touched.
+#   - Pushing a `v*` tag by hand builds it as a draft to review and publish.
+#
+# Unsigned by default: none of the signing secrets below exist yet, so the Tauri
+# CLI skips code signing and notarization — see docs/release-signing.md. Add the
+# matching secrets and these same steps start signing, no change needed here.
 
 on:
-  workflow_dispatch:
   push:
+    branches: [main]
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release-as:
+        description: "Force the next version (for example 1.0.0) on the release PR. Empty: the version computed from the commits."
+        required: false
+        type: string
+      tag:
+        description: "Rebuild an existing tag (for example v0.4.0) instead of running release-please."
+        required: false
+        type: string
+      publish:
+        description: "With `tag`: publish the release once built (otherwise it stays a draft)."
+        required: false
+        type: boolean
+        default: false
+      test-build:
+        description: "Build the installers as workflow artifacts only; touch no release."
+        required: false
+        type: boolean
+        default: false
 
-# Read-only by default: `validate` runs `pnpm install` and every dependency's
-# scripts, which must never hold a token able to push to the repository.
-# Only `build` gets write access, to draft the GitHub Release.
+# Read-only by default: dependency install scripts must never hold a token able
+# to push to the repository. Each job below asks for exactly what it writes.
 permissions:
   contents: read
 
+# One release pipeline at a time, and never cancel one that is running.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  validate:
-    runs-on: ubuntu-22.04
+  release-please:
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (inputs.tag == '' && !inputs.test-build)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+
+    steps:
+      # A pull request opened with the default GITHUB_TOKEN does not trigger the
+      # CI, so the release PR would sit with no checks. When the repository has
+      # a GitHub App for this (variable RELEASE_APP_CLIENT_ID, secret
+      # RELEASE_APP_PRIVATE_KEY — see docs/release-signing.md), its token opens
+      # the PR instead and the checks run.
+      - name: Create a token from the release GitHub App
+        id: app-token
+        if: ${{ vars.RELEASE_APP_CLIENT_ID != '' }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Open or update the release PR, create the release when it is merged
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          release-as: ${{ inputs.release-as }}
+
+  # Decides what, if anything, this run builds, and which commit it is.
+  plan:
+    needs: release-please
+    if: ${{ !cancelled() && (needs.release-please.result == 'success' || needs.release-please.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      tag: ${{ steps.plan.outputs.tag }}
+      sha: ${{ steps.plan.outputs.sha }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+      publish: ${{ steps.plan.outputs.publish }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
-      - name: Install Tauri system dependencies (Linux)
+      - name: Work out the tag, the commit and whether to publish
+        id: plan
+        env:
+          RP_CREATED: ${{ needs.release-please.outputs.release_created }}
+          RP_TAG: ${{ needs.release-please.outputs.tag_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+          INPUT_TEST_BUILD: ${{ inputs.test-build }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            pkg-config \
-            build-essential \
-            libwebkit2gtk-4.1-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libxdo-dev \
-            patchelf
+          build=false; tag=""; publish=false
+          if [ "$RP_CREATED" = "true" ]; then
+            build=true; tag="$RP_TAG"; publish=true
+          elif [ "$REF_TYPE" = "tag" ]; then
+            build=true; tag="$REF_NAME"
+          elif [ -n "$INPUT_TAG" ]; then
+            build=true; tag="$INPUT_TAG"; publish="$INPUT_PUBLISH"
+          elif [ "$INPUT_TEST_BUILD" = "true" ]; then
+            build=true
+          fi
 
-      - name: Install Rust
-        # Reads channel/components from rust-toolchain.toml (see ci.yml's
-        # equivalent step for why this action, not dtolnay/rust-toolchain).
-        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
-        with:
-          cache: false
-          rustflags: ""
+          sha="$GITHUB_SHA"; prerelease=false
+          if [ -n "$tag" ]; then
+            if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+              echo "::error::'$tag' is not a release tag (vMAJOR.MINOR.PATCH[-prerelease])"
+              exit 1
+            fi
+            # An existing tag fixes the commit; a release release-please just
+            # created as a draft has no tag yet and is the commit that ran.
+            if resolved=$(git rev-parse -q --verify "refs/tags/${tag}^{commit}"); then sha="$resolved"; fi
+            case "$tag" in *-*) prerelease=true ;; esac
+          fi
 
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-        with:
-          workspaces: "./src-tauri -> target"
+          {
+            echo "build=$build"
+            echo "tag=$tag"
+            echo "sha=$sha"
+            echo "prerelease=$prerelease"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+          echo "build=$build tag=${tag:-<none>} sha=$sha prerelease=$prerelease publish=$publish"
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+  # The verdict on the commit being released is the CI's, not a second run of
+  # the same checks: wait for `ci-ok` and `visual-regression` on that commit.
+  gate:
+    needs: plan
+    if: ${{ needs.plan.outputs.tag != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    permissions:
+      contents: read
+      checks: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          version: 10.6.5
+          ref: ${{ needs.plan.outputs.sha }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
-          cache: pnpm
 
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check the tag matches the manifests' version
+      - name: The tag must match the version in the manifests
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
         run: |
-          pnpm version:check
+          node scripts/check-version-consistency.mjs
           manifest_version="$(node -p "require('./package.json').version")"
-          if [ "${GITHUB_REF_NAME}" != "v${manifest_version}" ]; then
-            echo "Tag ${GITHUB_REF_NAME} does not match the manifests' version v${manifest_version}" >&2
+          if [ "$TAG" != "v${manifest_version}" ]; then
+            echo "::error::Tag $TAG does not match the manifests' version v${manifest_version}"
             exit 1
           fi
 
-      - name: Validate (frontend + backend)
-        run: pnpm validate
+      - name: Wait for the CI and visual checks of this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ needs.plan.outputs.sha }}
+        run: |
+          wait_for() {
+            name="$1"
+            deadline=$((SECONDS + 3900))
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              latest=$(gh api "repos/$REPO/commits/$SHA/check-runs?check_name=$name&per_page=100" \
+                --jq '[.check_runs[]] | sort_by(.started_at) | last // empty')
+              if [ -z "$latest" ]; then
+                if [ "$SECONDS" -gt 600 ]; then
+                  echo "::error::no '$name' check run for $SHA after 10 minutes"
+                  return 1
+                fi
+              else
+                status=$(printf '%s' "$latest" | jq -r .status)
+                conclusion=$(printf '%s' "$latest" | jq -r '.conclusion // ""')
+                if [ "$status" = "completed" ]; then
+                  if [ "$conclusion" = "success" ]; then echo "$name: success"; return 0; fi
+                  echo "::error::'$name' finished as '$conclusion' on $SHA"
+                  return 1
+                fi
+              fi
+              sleep 30
+            done
+            echo "::error::'$name' did not finish within 65 minutes"
+            return 1
+          }
+          wait_for ci-ok
+          wait_for visual-regression
 
   build:
-    needs: validate
+    needs: [plan, gate]
+    if: ${{ !cancelled() && needs.plan.outputs.build == 'true' && (needs.gate.result == 'success' || needs.gate.result == 'skipped') }}
     permissions:
       contents: write
     strategy:
@@ -108,15 +238,25 @@ jobs:
         include:
           - os: ubuntu-22.04
             target: linux
+            args: ""
+            rust-targets: ""
           - os: windows-latest
             target: windows
+            args: ""
+            rust-targets: ""
+          # One universal binary: Apple-silicon and Intel Macs, one installer.
           - os: macos-latest
             target: macos
+            args: "--target universal-apple-darwin"
+            rust-targets: "aarch64-apple-darwin,x86_64-apple-darwin"
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
 
       - name: Install Tauri system dependencies (Linux)
         if: matrix.target == 'linux'
@@ -139,6 +279,7 @@ jobs:
         with:
           cache: false
           rustflags: ""
+          target: ${{ matrix.rust-targets }}
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
@@ -183,19 +324,113 @@ jobs:
           # --- Updater signature (placeholder) ----------------------------
           # Only relevant once the desktop update channel (endpoint + public
           # key in tauri.conf.json's `plugins.updater`) is actually
-          # configured — see desktop.updateChannelNotConfigured in the i18n
-          # locales. Unused until then.
+          # configured — see docs/release-signing.md. Unused until then.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          # Empty tagName on a manual (workflow_dispatch) run is falsy to
-          # tauri-action, which then skips release creation entirely and
-          # only uploads the workflow artifacts below — exactly today's
-          # manual-run behavior, unchanged.
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('CineTrack {0}', github.ref_name) || '' }}
-          releaseBody: "See the commit history for what changed. Installers for Linux, Windows and macOS are attached below."
+          # An empty tagName (a test build) is falsy to tauri-action, which
+          # then skips the release entirely and only uploads workflow
+          # artifacts. With a tag it attaches to the release of that tag —
+          # the draft release-please created, or a new draft. The release body
+          # is left alone: release-please wrote it from the changelog.
+          tagName: ${{ needs.plan.outputs.tag }}
+          releaseName: ${{ needs.plan.outputs.tag != '' && format('CineTrack {0}', needs.plan.outputs.tag) || '' }}
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ needs.plan.outputs.prerelease == 'true' }}
+          args: ${{ matrix.args }}
           uploadWorkflowArtifacts: true
           uploadUpdaterJson: false
+
+  # SHA256SUMS and a signed provenance attestation for every installer, so a
+  # download can be checked against what this workflow built.
+  checksums:
+    needs: [plan, build]
+    if: ${{ needs.plan.outputs.tag != '' && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Download the installers built by this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: built
+
+      - name: Collect the installers and write SHA256SUMS
+        run: |
+          mkdir -p assets
+          find built -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \) \
+            -exec cp {} assets/ \;
+          if [ -z "$(ls -A assets)" ]; then
+            echo "::error::no installer found among the build artifacts"
+            exit 1
+          fi
+          (cd assets && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Attest the provenance of the installers
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: assets/*
+
+      - name: Attach SHA256SUMS to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          # `gh release upload TAG` cannot find a draft whose tag does not
+          # exist yet, so the release is looked up by tag name in the list.
+          release_id=$(gh api "repos/$REPO/releases?per_page=100" --paginate \
+            --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n 1)
+          if [ -z "$release_id" ]; then
+            echo "::error::no release found for $TAG"
+            exit 1
+          fi
+          existing=$(gh api "repos/$REPO/releases/$release_id/assets" --jq '.[] | select(.name == "SHA256SUMS") | .id')
+          for asset in $existing; do
+            gh api --method DELETE "repos/$REPO/releases/assets/$asset"
+          done
+          gh api --method POST \
+            -H "Content-Type: text/plain" \
+            "https://uploads.github.com/repos/$REPO/releases/$release_id/assets?name=SHA256SUMS" \
+            --input assets/SHA256SUMS
+
+  # The last step, and the only one that makes anything public. A pre-release
+  # (a tag with a `-rc.1` suffix) is published as a pre-release and never becomes
+  # "latest". Skipped when the run is a manual rebuild without `publish`.
+  publish:
+    needs: [plan, checksums]
+    if: ${{ needs.plan.outputs.publish == 'true' && needs.checksums.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+        run: |
+          release_id=$(gh api "repos/$REPO/releases?per_page=100" --paginate \
+            --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n 1)
+          if [ -z "$release_id" ]; then
+            echo "::error::no release found for $TAG"
+            exit 1
+          fi
+          latest=true
+          if [ "$PRERELEASE" = "true" ]; then latest=false; fi
+          # target_commitish only matters while the tag does not exist yet
+          # (a draft): it pins the tag to the commit that was built and gated.
+          gh api --method PATCH "repos/$REPO/releases/$release_id" \
+            -F draft=false \
+            -F prerelease="$PRERELEASE" \
+            -f make_latest="$latest" \
+            -f target_commitish="$SHA"
+          echo "Published $TAG"
