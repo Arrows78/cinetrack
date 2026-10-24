@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { queryClient } from "@/app/query-client";
 import { DETAILS_FETCH_CONCURRENCY, fetchSeriesDetailsCached } from "@/features/media";
-import { mapWithConcurrency } from "@/shared/utils/concurrency";
+import { createLimiter, mapWithConcurrency } from "@/shared/utils/concurrency";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useRefreshTrackedSeriesBatch } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
@@ -14,7 +14,7 @@ import { STALE_1_HOUR, STALE_30_MIN } from "@/shared/constants/query";
 import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { logger } from "@/shared/lib/logger";
 import { parseCalendarDate } from "@/shared/utils/format";
-import type { Episode, MediaSummary, Season, TrackedSeriesItem } from "@/types/media";
+import type { Episode, EpisodeProgress, MediaSummary, Season, TrackedSeriesItem } from "@/types/media";
 
 export interface WatchNextEntry {
   series: TrackedSeriesItem;
@@ -58,10 +58,21 @@ interface ResolvedSeries {
  * does not mean one fresh TMDB request per season per resolution.
  */
 async function resolveNextEpisode(seriesId: number): Promise<ResolvedSeries> {
-  const [details, progress] = await Promise.all([
-    fetchSeriesDetailsCached(seriesId),
-    progressRepository.getEpisodeProgress(seriesId),
-  ]);
+  // The local read starts at once, outside the gate: the repository batches the
+  // reads issued in the same tick into one IPC call, which gating it would
+  // split into one call per wave. Only the TMDB lookups wait their turn.
+  const progressRead = progressRepository.getEpisodeProgress(seriesId);
+  // Marks the rejection as handled while the read waits for the gate; the
+  // await below still surfaces it.
+  progressRead.catch(() => undefined);
+  return limitNextEpisodeLookups(() => resolveNextEpisodeFrom(seriesId, progressRead));
+}
+
+async function resolveNextEpisodeFrom(
+  seriesId: number,
+  progressRead: Promise<EpisodeProgress[]>
+): Promise<ResolvedSeries> {
+  const [details, progress] = await Promise.all([fetchSeriesDetailsCached(seriesId), progressRead]);
 
   const hasWatched = progress.some((item) => item.watched);
   const seasonNumbers = (details.seasons ?? [])
@@ -91,6 +102,12 @@ async function resolveNextEpisode(seriesId: number): Promise<ResolvedSeries> {
     ...tmdb,
   };
 }
+
+// One query per series fans out to a details call and up to
+// DETAILS_FETCH_CONCURRENCY season calls each: without a shared gate, a library
+// of a few hundred series on a cold cache fires hundreds of TMDB requests at
+// once and trips its rate limit.
+const limitNextEpisodeLookups = createLimiter(4);
 
 /**
  * Resolves the next episode for an arbitrary list of series — shared by
@@ -212,6 +229,10 @@ export function useTodayHubEpisodes(
   const refreshTrackedSeries = useRefreshTrackedSeriesBatch();
   const reconciled = useRef(new Set<number>());
   useEffect(() => {
+    // One batch once every lookup has settled: lookups are gated (see
+    // limitNextEpisodeLookups), so they finish in waves, and refreshing per
+    // wave would make the number of local calls grow with the library.
+    if (results.some(({ isLoading }) => isLoading)) return;
     const refreshes = results
       .filter(
         ({ series, isLoading, isError }) =>

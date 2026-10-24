@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Query } from "@tanstack/react-query";
-import { handleMutationError, shouldDehydrateQuery } from "@/app/query-client";
+import type { PersistedClient } from "@tanstack/react-query-persist-client";
+import {
+  MAX_PERSISTED_CACHE_CHARS,
+  handleMutationError,
+  serializeRemoteCache,
+  shouldDehydrateQuery,
+} from "@/app/query-client";
 import { queryKeys } from "@/shared/constants/query-keys";
 
 const toastMock = vi.fn();
@@ -108,5 +114,29 @@ describe("handleMutationError", () => {
 
     expect(loggerErrorMock).toHaveBeenCalledTimes(1);
     expect(toastMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("serializeRemoteCache", () => {
+  const client = (payload: string): PersistedClient => ({
+    timestamp: 1,
+    buster: "",
+    clientState: {
+      mutations: [],
+      queries: [{ queryKey: ["remote", "x"], queryHash: "h", state: { data: payload } }] as never,
+    },
+  });
+
+  it("keeps a cache that fits", () => {
+    const serialized = serializeRemoteCache(client("small"));
+
+    expect(JSON.parse(serialized).clientState.queries).toHaveLength(1);
+  });
+
+  it("writes an oversized cache empty instead of overflowing localStorage", () => {
+    const serialized = serializeRemoteCache(client("x".repeat(MAX_PERSISTED_CACHE_CHARS)));
+
+    expect(JSON.parse(serialized).clientState.queries).toEqual([]);
+    expect(serialized.length).toBeLessThan(1000);
   });
 });

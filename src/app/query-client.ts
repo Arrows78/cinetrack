@@ -1,6 +1,6 @@
 import { MutationCache, QueryClient, defaultShouldDehydrateQuery, type Query } from "@tanstack/react-query";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { persistQueryClient, type PersistedClient } from "@tanstack/react-query-persist-client";
 import i18n from "@/i18n";
 import { toast } from "@/components/ui/use-toast";
 import { logger } from "@/shared/lib/logger";
@@ -81,9 +81,23 @@ export const queryClient = new QueryClient({
   }),
 });
 
+// localStorage holds about 5 MB per origin and the sync persister stringifies
+// the whole cache on the main thread after each change: past this size the
+// cache is not worth keeping (it is only a cold-start shortcut), so an
+// oversized one is written empty instead of failing the write silently or
+// janking the UI.
+export const MAX_PERSISTED_CACHE_CHARS = 2_000_000;
+
+export function serializeRemoteCache(client: PersistedClient): string {
+  const serialized = JSON.stringify(client);
+  if (serialized.length <= MAX_PERSISTED_CACHE_CHARS) return serialized;
+  return JSON.stringify({ ...client, clientState: { mutations: [], queries: [] } });
+}
+
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
   key: REMOTE_QUERY_CACHE_KEY,
+  serialize: serializeRemoteCache,
 });
 
 void persistQueryClient({

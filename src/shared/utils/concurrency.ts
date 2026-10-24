@@ -16,3 +16,29 @@ export async function mapWithConcurrency<T>(
   });
   await Promise.all(runners);
 }
+
+/**
+ * A shared gate: at most `max` of the calls passed to the returned function
+ * run at once, the rest wait their turn in order. For work that is started
+ * from many independent places (one TanStack query per series, say), where
+ * `mapWithConcurrency` has no single list to iterate.
+ */
+export function createLimiter(max: number): <T>(task: () => Promise<T>) => Promise<T> {
+  let running = 0;
+  const waiting: Array<() => void> = [];
+  const release = () => {
+    running -= 1;
+    waiting.shift()?.();
+  };
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (running >= max) {
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    }
+    running += 1;
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  };
+}
