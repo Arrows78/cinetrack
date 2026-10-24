@@ -388,6 +388,22 @@ describe("HomePage", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  it("names the hero's previous and next arrows, which only show their label as a hover tooltip", async () => {
+    homeFeedMock.mockReturnValue({
+      isLoading: false,
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+      data: buildHomeFeed({ trendingMovies: [buildMovie(), buildMovie({ id: 2, title: "Arrival" })] }),
+    });
+    const { container } = renderPage();
+
+    expect(screen.getByRole("button", { name: i18n.t("home.heroPrevious") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: i18n.t("home.heroNext") })).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("has no detectable accessibility violations in the no-token state", async () => {
     hasTmdbTokenValue = false;
     const { container } = renderPage();

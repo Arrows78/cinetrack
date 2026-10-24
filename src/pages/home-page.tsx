@@ -339,6 +339,7 @@ function HomePageContent() {
                     type="button"
                     variant="outline"
                     size="icon"
+                    aria-label={t("home.heroPrevious")}
                     onClick={() => setHeroIndex((index) => (index - 1 + heroMovies.length) % heroMovies.length)}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -363,6 +364,7 @@ function HomePageContent() {
                     type="button"
                     variant="outline"
                     size="icon"
+                    aria-label={t("home.heroNext")}
                     onClick={() => setHeroIndex((index) => (index + 1) % heroMovies.length)}
                   >
                     <ChevronRight className="h-4 w-4" />
