@@ -191,7 +191,11 @@ jobs:
   # the same checks: wait for the CI and visual-regression runs of that commit.
   gate:
     needs: plan
-    if: ${{ needs.plan.outputs.tag != '' }}
+    # `!cancelled()` matters: without a status function GitHub adds an implicit
+    # success(), which is false when ANY ancestor job was skipped — and
+    # `release-please` is skipped on every path except a push to main, which
+    # silently skipped this gate, `checksums` and `publish` on a manual rebuild.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.tag != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 70
     permissions:
@@ -387,7 +391,7 @@ jobs:
   # download can be checked against what this workflow built.
   checksums:
     needs: [plan, build]
-    if: ${{ needs.plan.outputs.tag != '' && needs.build.result == 'success' }}
+    if: ${{ !cancelled() && needs.plan.outputs.tag != '' && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -445,7 +449,7 @@ jobs:
   # "latest". Skipped when the run is a manual rebuild without `publish`.
   publish:
     needs: [plan, checksums]
-    if: ${{ needs.plan.outputs.publish == 'true' && needs.checksums.result == 'success' }}
+    if: ${{ !cancelled() && needs.plan.outputs.publish == 'true' && needs.checksums.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
