@@ -92,7 +92,7 @@ pub async fn apply_remote_sync_changes(
     changes: Vec<RemoteSyncChange>,
 ) -> Result<(), ApiError> {
     service::assert_run_profile(pool.inner(), &profile_id).await?;
-    service::apply_remote_changes(pool.inner(), &changes).await?;
+    service::apply_remote_changes_for(pool.inner(), &profile_id, &changes).await?;
     // Account preferences are written straight into the `preferences` table
     // by the apply, behind the in-memory cache's back: without dropping it,
     // a pulled language/region/... wouldn't show until the next launch.

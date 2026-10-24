@@ -17,7 +17,9 @@ pub(super) mod bootstrap;
 mod keys;
 mod outbox;
 
+#[cfg(test)]
 pub use apply::apply_remote_changes;
+pub use apply::apply_remote_changes_for;
 pub use bootstrap::{assert_run_profile, prepare_for_account};
 pub use outbox::{ack_mutations, list_conflicts, list_outbox, rebase_conflicts, status};
 

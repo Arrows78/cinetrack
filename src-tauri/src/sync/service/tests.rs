@@ -960,3 +960,31 @@ async fn mark_synced_records_a_timestamp_that_status_then_reports() {
     let after_second = status(&pool).await.unwrap().last_synced_at;
     assert!(after_second.is_some());
 }
+
+/// The command checks the run's profile first, but the switch can still land
+/// between that check and the write: the apply itself re-checks inside its
+/// write transaction and applies nothing for a profile that is no longer the
+/// active one.
+#[tokio::test]
+async fn a_pull_for_a_profile_that_is_no_longer_active_applies_nothing() {
+    let pool = pool().await;
+    sqlx::query(
+        "INSERT INTO profiles (uuid, name, created_at, updated_at) VALUES ('other','Other','t','t')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let change = upsert_change(
+        "remote-9",
+        1,
+        1,
+        library_item_payload("remote-9", "completed"),
+    );
+
+    // The active profile is `default`; the run was started for `other`.
+    let result = apply_remote_changes_for(&pool, "other", &[change]).await;
+
+    assert_eq!(result.unwrap_err().status, Some(409));
+    assert_eq!(library_item_count(&pool).await, 0);
+    assert_eq!(cursor(&pool).await.unwrap(), 0, "the cursor did not move");
+}

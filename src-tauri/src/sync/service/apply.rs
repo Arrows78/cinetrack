@@ -2,13 +2,12 @@
 
 use sqlx::{Sqlite, SqlitePool, Transaction};
 
-use crate::database::{current_profile_id, now_iso};
+use crate::database::now_iso;
 use crate::error::ApiError;
 use crate::models::MediaType;
 
 use super::super::models::RemoteSyncChange;
 use super::super::registry::{Scope, descriptor, media_type_of, validate_entity_type};
-use super::cursor;
 use super::keys::{cursor_key, orphan_key_prefix};
 
 mod merge;
@@ -273,18 +272,60 @@ async fn title_of_change(
         .and_then(|data| entity.title.title_in_payload(data)))
 }
 
+/// Applies `changes` to the active profile (see `apply_remote_changes_for`
+/// for callers that already know which profile the run belongs to). The
+/// command always names the profile, so only the tests use this.
+#[cfg(test)]
 pub async fn apply_remote_changes(
     pool: &SqlitePool,
+    changes: &[RemoteSyncChange],
+) -> Result<(), ApiError> {
+    let profile_id = crate::database::current_profile_id(pool).await?;
+    apply_remote_changes_for(pool, &profile_id, changes).await
+}
+
+/// Applies `changes` to `profile_id`, the profile the sync run was started
+/// for. The active profile and the cursor are read inside the write
+/// transaction: read beforehand, a profile switch (or an overlapping apply)
+/// between the check and the write would land the changes on the wrong
+/// profile or write the cursor backwards.
+pub async fn apply_remote_changes_for(
+    pool: &SqlitePool,
+    profile_id: &str,
     changes: &[RemoteSyncChange],
 ) -> Result<(), ApiError> {
     if changes.is_empty() {
         return Ok(());
     }
-    let profile_id = current_profile_id(pool).await?;
     let mut ordered = changes.to_vec();
     ordered.sort_by_key(|change| change.sequence);
-    let initial_cursor = cursor(pool).await?;
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
+    let active: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM preferences WHERE key = 'activeProfileId'")
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+    let active = active
+        .and_then(|(value,)| serde_json::from_str::<String>(&value).ok())
+        .unwrap_or_else(|| crate::database::DEFAULT_PROFILE_ID.to_string());
+    if active != profile_id {
+        return Err(ApiError::conflict(
+            "The active profile changed during the sync run.",
+        ));
+    }
+    let profile_id = profile_id.to_string();
+    let stored_cursor: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM sync_metadata WHERE key=?1")
+            .bind(cursor_key(&profile_id))
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(ApiError::from)?;
+    let initial_cursor: i64 = stored_cursor
+        .and_then(|(value,)| value.parse().ok())
+        .unwrap_or(0);
     sqlx::query("UPDATE sync_control SET suppress_outbox=1 WHERE id=1")
         .execute(&mut *tx)
         .await
