@@ -69,7 +69,7 @@ concurrency:
 jobs:
   release-please:
     if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (inputs.tag == '' && !inputs.test-build)) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -130,7 +130,7 @@ jobs:
   plan:
     needs: release-please
     if: ${{ !cancelled() && (needs.release-please.result == 'success' || needs.release-please.result == 'skipped') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       build: ${{ steps.plan.outputs.build }}
@@ -196,7 +196,7 @@ jobs:
     # `release-please` is skipped on every path except a push to main, which
     # silently skipped this gate, `checksums` and `publish` on a manual rebuild.
     if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.tag != '' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 70
     permissions:
       contents: read
@@ -392,7 +392,7 @@ jobs:
   checksums:
     needs: [plan, build]
     if: ${{ !cancelled() && needs.plan.outputs.tag != '' && needs.build.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
@@ -450,7 +450,7 @@ jobs:
   publish:
     needs: [plan, checksums]
     if: ${{ !cancelled() && needs.plan.outputs.publish == 'true' && needs.checksums.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write

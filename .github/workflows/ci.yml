@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -226,7 +226,7 @@ jobs:
         run: pnpm ios:build:sim
 
   cargo-audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # rustsec/audit-check reports its result as a GitHub Check Run, which
     # needs write access beyond the workflow's default contents:read — without
     # it the action itself fails with "Resource not accessible by integration"
@@ -376,7 +376,7 @@ jobs:
   ci-ok:
     if: always()
     needs: [frontend, rust, ios, cargo-audit, osv-scan]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:

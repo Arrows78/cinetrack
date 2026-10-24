@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   visual-regression:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
@@ -61,7 +61,7 @@ jobs:
   # this manual path stays for bootstrapping from scratch or a PR branch.
   bootstrap-baselines:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
@@ -107,7 +107,7 @@ jobs:
   refresh-baselines-pr:
     needs: visual-regression
     if: always() && needs.visual-regression.result == 'failure' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
