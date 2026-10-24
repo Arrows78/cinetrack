@@ -5,6 +5,7 @@ use crate::history::HistoryAction;
 use crate::library::{LibraryStatus, LibraryStatusOrigin};
 use crate::models::MediaType;
 use crate::stats::ViewingEventType;
+use std::path::Path;
 use tauri::Manager;
 
 async fn migrated_pool() -> SqlitePool {
@@ -1136,43 +1137,71 @@ async fn undoing_the_last_restore_keeps_the_pin_of_a_profile_present_throughout(
 // threads never collide on the same files.
 // ------------------------------------------------------------------
 
+/// A `backups` folder inside a fresh temp directory — the one place the file
+/// commands may touch once `backupDirectory` points at that directory.
 fn temp_test_dir() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!(
-        "cinetrack-backup-test-{}",
-        crate::database::new_uuid()
-    ));
+    let dir = std::env::temp_dir()
+        .join(format!(
+            "cinetrack-backup-test-{}",
+            crate::database::new_uuid()
+        ))
+        .join("backups");
     std::fs::create_dir_all(&dir).unwrap();
     dir
+}
+
+/// A mock app whose `backupDirectory` preference is the parent of `backups`.
+async fn backup_app(backups: &Path) -> tauri::App<tauri::test::MockRuntime> {
+    let pool = migrated_pool().await;
+    let configured = serde_json::Value::String(backups.parent().unwrap().to_string_lossy().into());
+    sqlx::query(
+        "INSERT OR REPLACE INTO preferences (key, value, updated_at) VALUES ('backupDirectory', $1, 'now')",
+    )
+    .bind(configured.to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
+    let app = tauri::test::mock_app();
+    app.manage(pool);
+    app
 }
 
 #[tokio::test]
 async fn write_backup_to_path_then_read_backup_from_path_round_trips_the_contents() {
     let dir = temp_test_dir();
+    let app = backup_app(&dir).await;
     let path = dir.join("backup.json").to_str().unwrap().to_string();
 
-    write_backup_to_path(path.clone(), "{\"hello\":\"world\"}".to_string())
-        .await
-        .unwrap();
+    write_backup_to_path(
+        path.clone(),
+        "{\"hello\":\"world\"}".to_string(),
+        app.state(),
+    )
+    .await
+    .unwrap();
 
-    let read_back = read_backup_from_path(path).await.unwrap();
+    let read_back = read_backup_from_path(path, app.state()).await.unwrap();
     assert_eq!(read_back.as_deref(), Some("{\"hello\":\"world\"}"));
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 #[tokio::test]
 async fn write_backup_to_path_creates_missing_parent_directories() {
     let dir = temp_test_dir();
-    let nested = dir.join("nested").join("backups").join("backup.json");
+    let app = backup_app(&dir).await;
+    // The configured folder itself may not exist yet (nothing was backed up).
+    std::fs::remove_dir_all(&dir).unwrap();
+    let nested = dir.join("backup.json");
     let path = nested.to_str().unwrap().to_string();
 
-    write_backup_to_path(path.clone(), "content".to_string())
+    write_backup_to_path(path.clone(), "content".to_string(), app.state())
         .await
         .unwrap();
 
     assert!(nested.exists());
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 #[tokio::test]
@@ -1182,11 +1211,12 @@ async fn write_backup_to_path_never_corrupts_a_previous_backup_when_the_write_fa
     // confirm only the `.tmp` sibling exists — the (nonexistent) target
     // is never partially written.
     let dir = temp_test_dir();
+    let app = backup_app(&dir).await;
     let target_as_directory = dir.join("backup.json");
     std::fs::create_dir_all(&target_as_directory).unwrap();
     let path = target_as_directory.to_str().unwrap().to_string();
 
-    let result = write_backup_to_path(path, "content".to_string()).await;
+    let result = write_backup_to_path(path, "content".to_string(), app.state()).await;
     assert!(result.is_err());
 
     let tmp_path = dir.join("backup.json.tmp");
@@ -1196,28 +1226,30 @@ async fn write_backup_to_path_never_corrupts_a_previous_backup_when_the_write_fa
         "the failed rename must never touch the original target"
     );
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 #[tokio::test]
 async fn read_backup_from_path_returns_none_for_a_missing_file() {
     let dir = temp_test_dir();
+    let app = backup_app(&dir).await;
     let path = dir.join("backup.json").to_str().unwrap().to_string();
 
-    let result = read_backup_from_path(path).await.unwrap();
+    let result = read_backup_from_path(path, app.state()).await.unwrap();
     assert_eq!(result, None);
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 #[tokio::test]
 async fn list_backup_directory_lists_only_files_directly_inside_the_directory() {
     let dir = temp_test_dir();
+    let app = backup_app(&dir).await;
     std::fs::write(dir.join("auto-1.json"), "{}").unwrap();
     std::fs::write(dir.join("auto-2.json"), "{}").unwrap();
     std::fs::create_dir_all(dir.join("a-subdirectory")).unwrap();
 
-    let mut names = list_backup_directory(dir.to_str().unwrap().to_string())
+    let mut names = list_backup_directory(dir.to_str().unwrap().to_string(), app.state())
         .await
         .unwrap();
     names.sort();
@@ -1227,48 +1259,52 @@ async fn list_backup_directory_lists_only_files_directly_inside_the_directory() 
         vec!["auto-1.json".to_string(), "auto-2.json".to_string()]
     );
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 #[tokio::test]
 async fn list_backup_directory_returns_an_empty_list_for_a_directory_that_does_not_exist() {
     let dir = temp_test_dir();
-    let missing = dir.join("never-created");
+    let app = backup_app(&dir).await;
+    std::fs::remove_dir_all(&dir).unwrap();
+    let missing = dir.clone();
 
-    let names = list_backup_directory(missing.to_str().unwrap().to_string())
+    let names = list_backup_directory(missing.to_str().unwrap().to_string(), app.state())
         .await
         .unwrap();
     assert!(names.is_empty());
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 #[tokio::test]
 async fn remove_backup_file_deletes_an_existing_file() {
     let dir = temp_test_dir();
+    let app = backup_app(&dir).await;
     let path = dir.join("backup.json");
     std::fs::write(&path, "{}").unwrap();
 
-    remove_backup_file(path.to_str().unwrap().to_string())
+    remove_backup_file(path.to_str().unwrap().to_string(), app.state())
         .await
         .unwrap();
     assert!(!path.exists());
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 #[tokio::test]
 async fn remove_backup_file_is_a_no_op_for_a_file_that_is_already_gone() {
     let dir = temp_test_dir();
+    let app = backup_app(&dir).await;
     let path = dir.join("backup.json");
 
     // Never created — must not error, matching the idempotent-removal
     // contract callers (pruneOldAutoBackups) rely on.
-    remove_backup_file(path.to_str().unwrap().to_string())
+    remove_backup_file(path.to_str().unwrap().to_string(), app.state())
         .await
         .unwrap();
 
-    std::fs::remove_dir_all(&dir).ok();
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
 }
 
 async fn seed_locked_profile_with_a_list(pool: &SqlitePool, profile: &str) {
@@ -1408,4 +1444,41 @@ async fn a_crafted_backup_cannot_write_into_a_pin_locked_profile() {
         "default",
         "and the file did not switch the app into it"
     );
+}
+
+#[tokio::test]
+async fn the_file_commands_refuse_everything_when_no_custom_directory_is_configured() {
+    let app = tauri::test::mock_app();
+    app.manage(migrated_pool().await);
+    let stray = std::env::temp_dir()
+        .join("cinetrack-should-not-exist")
+        .join("latest.json");
+    let path = stray.to_str().unwrap().to_string();
+
+    let written = write_backup_to_path(path.clone(), "x".to_string(), app.state()).await;
+    let read = read_backup_from_path(path.clone(), app.state()).await;
+
+    assert_eq!(written.unwrap_err().status, Some(403));
+    assert_eq!(read.unwrap_err().status, Some(403));
+    assert!(!stray.exists());
+}
+
+#[tokio::test]
+async fn the_file_commands_refuse_a_path_outside_the_configured_directory() {
+    let dir = temp_test_dir();
+    let app = backup_app(&dir).await;
+    let elsewhere = std::env::temp_dir().join(format!(
+        "cinetrack-elsewhere-{}",
+        crate::database::new_uuid()
+    ));
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    let outside = elsewhere.join("latest.json");
+    let path = outside.to_str().unwrap().to_string();
+
+    let written = write_backup_to_path(path, "x".to_string(), app.state()).await;
+
+    assert_eq!(written.unwrap_err().status, Some(403));
+    assert!(!outside.exists());
+    std::fs::remove_dir_all(dir.parent().unwrap()).ok();
+    std::fs::remove_dir_all(&elsewhere).ok();
 }

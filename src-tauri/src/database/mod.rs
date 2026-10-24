@@ -6,7 +6,7 @@ mod persistence_tests;
 
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use sqlx::SqlitePool;
@@ -69,15 +69,23 @@ pub struct BootRecovery {
     pub original_error: Option<String>,
 }
 
+const BUSY_TIMEOUT: Duration = Duration::from_secs(15);
+const ACQUIRE_TIMEOUT: Duration = Duration::from_secs(30);
+
 async fn open_pool(db_path: &Path) -> Result<SqlitePool, ApiError> {
     let options = SqliteConnectOptions::new()
         .filename(db_path)
         .create_if_missing(true)
         .foreign_keys(true)
         .journal_mode(SqliteJournalMode::Wal)
-        .synchronous(SqliteSynchronous::Normal);
+        .synchronous(SqliteSynchronous::Normal)
+        // A long write (a restore, a bulk import) must make the UI's own writes
+        // wait rather than fail: sqlx's default is 5 s, which a large restore
+        // can outlast.
+        .busy_timeout(BUSY_TIMEOUT);
 
     SqlitePoolOptions::new()
+        .acquire_timeout(ACQUIRE_TIMEOUT)
         .connect_with(options)
         .await
         .map_err(ApiError::from)

@@ -166,7 +166,10 @@ pub(super) async fn link_to_supabase_user_impl(
     if supabase_user_id.trim().is_empty() {
         return Err(ApiError::bad_request("An account id is required."));
     }
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
 
     let linked: Option<(Option<String>,)> =
         sqlx::query_as("SELECT supabase_user_id FROM profiles WHERE uuid = $1")

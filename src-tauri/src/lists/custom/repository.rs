@@ -94,7 +94,10 @@ pub(super) async fn remove_impl(
     profile_id: &str,
     list_id: &str,
 ) -> Result<(), ApiError> {
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
     assert_owns_list(&mut *tx, profile_id, list_id).await?;
 
     sqlx::query("DELETE FROM custom_list_items WHERE list_id = $1")
@@ -153,13 +156,18 @@ pub(super) async fn add_impl(
     list_id: &str,
     media: MediaSummaryInput,
 ) -> Result<(), ApiError> {
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
     assert_owns_list(&mut *tx, profile_id, list_id).await?;
 
     // MAX(position)+1 computed inside the same transaction as the insert
     // below (rather than items.len() read separately beforehand) so two
     // concurrent adds to the same list can't both land on the same
-    // position — the second transaction blocks until the first commits.
+    // position. BEGIN IMMEDIATE takes the write lock before the ownership
+    // read: a deferred BEGIN would fail the second writer outright
+    // (SQLITE_BUSY_SNAPSHOT) instead of making it wait for the first.
     let (next_position,): (i64,) = sqlx::query_as(
         "SELECT COALESCE(MAX(position) + 1, 0) FROM custom_list_items WHERE list_id = $1",
     )

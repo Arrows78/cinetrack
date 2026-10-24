@@ -37,33 +37,47 @@ pub async fn check_data_integrity(
 }
 
 #[tauri::command]
-pub async fn write_backup_to_path(path: String, contents: String) -> Result<(), ApiError> {
+pub async fn write_backup_to_path(
+    path: String,
+    contents: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<(), ApiError> {
     timed("write_backup_to_path", async {
-        BackupService::write_file(path, contents).await
+        BackupService::new(pool.inner())
+            .write_file(path, contents)
+            .await
     })
     .await
 }
 
 #[tauri::command]
-pub async fn read_backup_from_path(path: String) -> Result<Option<String>, ApiError> {
+pub async fn read_backup_from_path(
+    path: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<Option<String>, ApiError> {
     timed("read_backup_from_path", async {
-        BackupService::read_file(path).await
+        BackupService::new(pool.inner()).read_file(path).await
     })
     .await
 }
 
 #[tauri::command]
-pub async fn list_backup_directory(directory: String) -> Result<Vec<String>, ApiError> {
+pub async fn list_backup_directory(
+    directory: String,
+    pool: State<'_, SqlitePool>,
+) -> Result<Vec<String>, ApiError> {
     timed("list_backup_directory", async {
-        BackupService::list_directory(directory).await
+        BackupService::new(pool.inner())
+            .list_directory(directory)
+            .await
     })
     .await
 }
 
 #[tauri::command]
-pub async fn remove_backup_file(path: String) -> Result<(), ApiError> {
+pub async fn remove_backup_file(path: String, pool: State<'_, SqlitePool>) -> Result<(), ApiError> {
     timed("remove_backup_file", async {
-        BackupService::remove_file(path).await
+        BackupService::new(pool.inner()).remove_file(path).await
     })
     .await
 }

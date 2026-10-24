@@ -87,7 +87,10 @@ pub(super) async fn import_impl(pool: &SqlitePool, mut data: PortableData) -> Re
             canonicalize_in_place(watched_at);
         }
     }
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
 
     // A PIN-protected profile (other than the active one) is neither replaced
     // nor deleted by a restore, and a file cannot write into it either: its

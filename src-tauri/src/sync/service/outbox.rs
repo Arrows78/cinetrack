@@ -138,7 +138,10 @@ pub async fn list_conflicts(
 
 pub async fn ack_mutations(pool: &SqlitePool, acks: &[SyncMutationAck]) -> Result<(), ApiError> {
     let profile_id = current_profile_id(pool).await?;
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
     for ack in acks {
         if !validate_entity_type(&ack.entity_type) || ack.version <= 0 {
             continue;
@@ -183,7 +186,10 @@ pub async fn rebase_conflicts(
     conflicts: &[SyncConflict],
 ) -> Result<(), ApiError> {
     let profile_id = current_profile_id(pool).await?;
-    let mut tx = pool.begin().await.map_err(ApiError::from)?;
+    let mut tx = pool
+        .begin_with("BEGIN IMMEDIATE")
+        .await
+        .map_err(ApiError::from)?;
     for conflict in conflicts {
         if !validate_entity_type(&conflict.entity_type) || conflict.server_version < 0 {
             continue;
