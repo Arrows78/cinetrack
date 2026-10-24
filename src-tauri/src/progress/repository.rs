@@ -58,15 +58,15 @@ pub(crate) async fn toggle_movie_seen_with_note_impl(
     let watched_at = watched_at.as_str();
     // BEGIN IMMEDIATE (rather than plain pool.begin()'s deferred BEGIN)
     // acquires SQLite's write lock up front, before the idempotency check
-    // below even runs — a concurrent second call blocks here (sqlx's
-    // default 5s busy_timeout) until the first call's transaction commits,
-    // instead of both reading "not yet watched" off their own snapshot and
-    // both proceeding to insert a viewing_events/activity_log row. Reading
-    // the current state *outside* a transaction (or inside a merely
-    // deferred one) doesn't protect against that: two concurrent callers
+    // below even runs — a concurrent second call blocks here (the pool's
+    // busy_timeout, BUSY_TIMEOUT in database/mod.rs) until the first call's
+    // transaction commits, instead of both reading "not yet watched" off their
+    // own snapshot and both proceeding to insert a viewing_events/activity_log
+    // row. Reading the current state *outside* a transaction (or inside a
+    // merely deferred one) doesn't protect against that: two concurrent callers
     // can each get their own consistent read before either takes the write
-    // lock, so the check has to be inside the same IMMEDIATE transaction as
-    // the write it's guarding.
+    // lock, so the check has to be inside the same IMMEDIATE transaction as the
+    // write it's guarding.
     let mut tx = pool
         .begin_with("BEGIN IMMEDIATE")
         .await
