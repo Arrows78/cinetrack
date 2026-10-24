@@ -5,3 +5,5 @@ src-tauri/gen
 pnpm-lock.yaml
 .serena
 supabase/.temp
+# Written by release-please on each release pull request
+CHANGELOG.md
