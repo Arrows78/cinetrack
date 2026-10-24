@@ -22,7 +22,7 @@ export const queryKeys = {
     recommendations: (mediaType: string, mediaId: number) => ["remote", "recommendations", mediaType, mediaId] as const,
     videos: (mediaType: string, mediaId: number) => ["remote", "videos", mediaType, mediaId] as const,
     person: (personId: number) => ["remote", "person", personId] as const,
-    people: (query: string) => ["remote", "people", query] as const,
+    people: (query: string) => ["remote", "people", "search", query] as const,
     popularPeople: ["remote", "people", "popular"] as const,
     trendingPeople: ["remote", "people", "trending"] as const,
     availability: (mediaType: string, mediaId: number, region: string) =>

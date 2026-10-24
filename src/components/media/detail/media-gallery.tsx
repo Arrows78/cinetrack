@@ -28,6 +28,7 @@ export function MediaGallery({ backdropPaths, id }: { backdropPaths?: string[]; 
           <button
             key={path}
             type="button"
+            aria-label={t("media.openImage", { index: index + 1 })}
             onClick={() => setOpenIndex(index)}
             className="shrink-0 overflow-hidden rounded-card border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >

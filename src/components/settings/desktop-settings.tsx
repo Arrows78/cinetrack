@@ -305,9 +305,10 @@ export function DesktopSettings() {
                     onClick={() =>
                       void run(async () => {
                         const check = await maintenanceService.checkDataIntegrity();
-                        return check.healthy
-                          ? `${t("desktop.databaseHealthy")} ${check.detail}`
-                          : `${t("desktop.databaseDamaged")} ${check.detail}`;
+                        if (check.healthy) return t("desktop.databaseHealthy");
+                        // The raw PRAGMA output is not translated and may carry SQLite detail.
+                        logger.warn(`Database integrity check failed: ${check.detail}`);
+                        return t("desktop.databaseDamaged");
                       })
                     }
                   >
