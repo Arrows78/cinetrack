@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { isTauriApp } from "@/shared/lib/platform";
-import { BROWSER_TOKEN_KEY } from "@/shared/constants/local-storage-keys";
 
 const envSchema = z.object({ VITE_TMDB_API_TOKEN: z.string().min(1).optional() });
 // Read only in development (`pnpm dev` / `pnpm tauri dev`), and by naming the one variable rather
@@ -13,9 +12,7 @@ const parsed = envSchema.safeParse({
 });
 export const env = parsed.success ? parsed.data : { VITE_TMDB_API_TOKEN: undefined };
 
-// Plaintext fallback for the browser-preview path only (`pnpm dev` outside the
-// Tauri window, see token-vault.ts) — there's no real security boundary to
-// protect there anyway (no SQLite, no Stronghold). The actual encrypted path
-// used inside the Tauri app is Stronghold, in token-vault.ts.
-const browserToken = typeof window === "undefined" ? null : window.localStorage.getItem(BROWSER_TOKEN_KEY);
-export const hasTmdbToken = Boolean(env.VITE_TMDB_API_TOKEN || browserToken) || isTauriApp();
+// Browser preview tokens entered at runtime are intentionally memory-only
+// (token-vault.ts), so this static bootstrap flag only knows about the dev env
+// token. Native Tauri builds can unlock Stronghold after startup.
+export const hasTmdbToken = Boolean(env.VITE_TMDB_API_TOKEN) || isTauriApp();
