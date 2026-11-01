@@ -1,87 +1,46 @@
-import { logger } from "@/shared/lib/logger";
-import { IMAGE_CACHE_META_KEY } from "@/shared/constants/local-storage-keys";
-
-const CACHE_NAME = "cinetrack-images-v1";
-const LIMIT = 250;
 const PREFETCH_CONCURRENCY = 6;
-// The metadata key is read, merged and rewritten by every prefetch; two
-// overlapping prefetches (two screens mounting together) used to each start
-// from the same snapshot and the last write dropped the other's entries.
-// Running them one after the other keeps the read-modify-write atomic.
-let prefetchQueue: Promise<void> = Promise.resolve();
 
-async function prefetchNow(urls: Array<string | null | undefined>): Promise<void> {
-  if (!("caches" in window)) return;
-  const cache = await caches.open(CACHE_NAME);
-  let meta: Record<string, number> = {};
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(IMAGE_CACHE_META_KEY) ?? "{}");
-    if (parsed && typeof parsed === "object") {
-      meta = Object.fromEntries(
-        Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === "number")
-      );
-    }
-  } catch {
-    logger.warn("Image cache metadata was invalid and has been reset");
-  }
-  const uniqueUrls = [...new Set(urls.filter((url): url is string => Boolean(url)))];
-  for (let index = 0; index < uniqueUrls.length; index += PREFETCH_CONCURRENCY) {
-    const batch = uniqueUrls.slice(index, index + PREFETCH_CONCURRENCY);
-    await Promise.all(
-      batch.map(async (url) => {
-        if (!(await cache.match(url))) {
-          try {
-            await cache.add(url);
-          } catch (error) {
-            logger.warn(`Failed to cache image ${url}: ${error}`);
-            return;
-          }
-        }
-        meta[url] = Date.now();
-      })
-    );
-  }
-  const sorted = Object.entries(meta).sort((a, b) => b[1] - a[1]);
-  for (const [url] of sorted.slice(LIMIT)) {
-    await cache.delete(url);
-    delete meta[url];
-  }
-  try {
-    localStorage.setItem(IMAGE_CACHE_META_KEY, JSON.stringify(meta));
-  } catch (error) {
-    // Quota exceeded or storage blocked: the cache still works, only the
-    // eviction bookkeeping is stale until the next successful write.
-    logger.warn(`Image cache metadata could not be saved: ${error}`);
-  }
+// Keep duplicate requests out of the image loader within one app session.
+// Successfully loaded URLs stay in this set; failed ones are deliberately
+// left out so a later screen can retry them after connectivity recovers.
+const loaded = new Set<string>();
+const inFlight = new Map<string, Promise<void>>();
+
+function preload(url: string): Promise<void> {
+  if (loaded.has(url)) return Promise.resolve();
+  const existing = inFlight.get(url);
+  if (existing) return existing;
+
+  const task = new Promise<void>((resolve) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      loaded.add(url);
+      resolve();
+    };
+    // Prefetching is only an optimization. A failed speculative load must
+    // never fail the page; the real <img> can retry when it renders.
+    image.onerror = () => resolve();
+    image.src = url;
+  }).finally(() => {
+    inFlight.delete(url);
+  });
+
+  inFlight.set(url, task);
+  return task;
 }
 
+/**
+ * Primes the webview/browser's normal image/HTTP cache by loading the exact
+ * URLs the UI will later put in <img src>. The previous implementation wrote
+ * responses into Cache Storage, but no service worker or component ever read
+ * them back, so it consumed storage without accelerating image rendering.
+ */
 export const imageCache = {
-  prefetch(urls: Array<string | null | undefined>): Promise<void> {
-    const run = prefetchQueue.then(() => prefetchNow(urls));
-    prefetchQueue = run.catch(() => undefined);
-    return run;
-  },
-  async clear() {
-    if ("caches" in window) await caches.delete(CACHE_NAME);
-    localStorage.removeItem(IMAGE_CACHE_META_KEY);
-  },
-  /**
-   * Aggregate size (in bytes) of everything currently in the cache — powers
-   * the "image cache" card in Settings. There's no cheaper way to get a
-   * total from the Cache API than opening every matched response and
-   * summing its `Blob.size`. Like `prefetch`/`clear`, this only reports
-   * what's actually cached right now and returns 0 when the Cache API isn't
-   * available (shouldn't happen in the real app, but mirrors their guard).
-   */
-  async size(): Promise<number> {
-    if (!("caches" in window)) return 0;
-    const cache = await caches.open(CACHE_NAME);
-    const keys = await cache.keys();
-    let total = 0;
-    for (const key of keys) {
-      const response = await cache.match(key);
-      if (response) total += (await response.blob()).size;
+  async prefetch(urls: Array<string | null | undefined>): Promise<void> {
+    const uniqueUrls = [...new Set(urls.filter((url): url is string => Boolean(url)))];
+    for (let index = 0; index < uniqueUrls.length; index += PREFETCH_CONCURRENCY) {
+      await Promise.all(uniqueUrls.slice(index, index + PREFETCH_CONCURRENCY).map(preload));
     }
-    return total;
   },
 };
