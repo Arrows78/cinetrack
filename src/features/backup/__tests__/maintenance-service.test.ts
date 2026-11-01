@@ -54,7 +54,7 @@ vi.mock("@/features/backup/portable-data", async (importOriginal) => {
 });
 
 const isMobileAppMock = vi.hoisted(() => vi.fn(() => false));
-vi.mock("@/shared/lib/platform", () => ({ isMobileApp: () => isMobileAppMock() }));
+vi.mock("@/shared/lib/platform", () => ({ isMobileApp: () => isMobileAppMock(), isTauriApp: () => false }));
 
 const getPreferencesMock = vi.hoisted(() => vi.fn());
 vi.mock("@/features/preferences/preferences-repository", async (importOriginal) => {

@@ -98,8 +98,11 @@ describe("startPeriodicChecks", () => {
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
     document.dispatchEvent(new Event("visibilitychange"));
 
-    await vi.waitFor(() => expect(mocks.createAutomaticBackup).toHaveBeenCalledTimes(1));
-    expect(mocks.checkAll).toHaveBeenCalledTimes(1);
+    // The availability check only starts once the backup and the
+    // preferences read have both resolved: wait for it too, not just the
+    // backup.
+    await vi.waitFor(() => expect(mocks.checkAll).toHaveBeenCalledTimes(1));
+    expect(mocks.createAutomaticBackup).toHaveBeenCalledTimes(1);
     cleanup();
   });
 

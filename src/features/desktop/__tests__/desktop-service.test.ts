@@ -59,7 +59,9 @@ vi.mock("@/app/router-config", () => ({
 
 vi.mock("@/shared/lib/platform", () => ({
   isTauriApp: isTauriAppMock,
-  isDesktopApp: isDesktopAppMock,
+  // Like the real helper, "desktop" implies "inside Tauri": a test that only
+  // turns isTauriApp off must not leave isDesktopApp claiming otherwise.
+  isDesktopApp: () => isTauriAppMock() && isDesktopAppMock(),
 }));
 
 import { desktopService } from "../desktop-service";

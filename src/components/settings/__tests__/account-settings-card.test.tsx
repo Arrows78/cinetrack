@@ -143,7 +143,7 @@ describe("AccountSettingsCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
 
     await waitFor(() => expect(pendingDestroyMock).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText(/too many requests/i)).toBeInTheDocument();
+    expect(await screen.findByText(/too many attempts/i)).toBeInTheDocument();
   });
 
   it("removes an unverified pending address when the email change is cancelled", async () => {

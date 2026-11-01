@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import type * as PortableDataModule from "@/features/backup/portable-data";
@@ -123,6 +123,12 @@ function getFileInput(container: HTMLElement): HTMLInputElement {
   return input as HTMLInputElement;
 }
 
+// The card has its own "Import" button too: the confirm one only exists once
+// the dialog has opened, which waits on reading the picked file.
+async function findImportConfirmButton() {
+  return within(await screen.findByRole("dialog")).getByRole("button", { name: "Import" });
+}
+
 // BackupTools reads the backup folder via usePreferences() (TanStack
 // Query), so every render needs a QueryClientProvider — matching the
 // pattern settings-page.test.tsx already uses for the same hook.
@@ -193,9 +199,14 @@ describe("BackupTools", () => {
       expect(mkdirMock).toHaveBeenCalledWith("shares", { baseDir: "AppCache", recursive: true });
       expect(writeFileMock).toHaveBeenCalledWith(
         expect.stringMatching(/^shares\/cinetrack-backup-.*\.json$/),
-        expect.any(Uint8Array),
+        expect.anything(),
         { baseDir: "AppCache" }
       );
+      // Not expect.any(Uint8Array): the bytes come from Node's TextEncoder,
+      // whose Uint8Array is another realm's than jsdom's global one.
+      const bytes = writeFileMock.mock.calls[0]?.[1] as Uint8Array;
+      expect(ArrayBuffer.isView(bytes)).toBe(true);
+      expect(new TextDecoder().decode(bytes)).toContain('"format": "cinetrack-backup"');
       expect(shareFileMock).toHaveBeenCalledWith(
         expect.stringMatching(/^file:\/\/\/app\/cache\/shares\/cinetrack-backup-.*\.json$/),
         expect.objectContaining({ mimeType: "application/json" })
@@ -334,7 +345,7 @@ describe("BackupTools", () => {
       const parseSpy = vi.spyOn(JSON, "parse");
 
       fireEvent.change(input, { target: { files: [file] } });
-      (await screen.findByRole("button", { name: "Import" })).click();
+      (await findImportConfirmButton()).click();
 
       await waitFor(() => expect(restoreFromBackupMock).toHaveBeenCalledTimes(1));
       expect(parseSpy).toHaveBeenCalled();
@@ -356,7 +367,7 @@ describe("BackupTools", () => {
       const input = getFileInput(container);
 
       fireEvent.change(input, { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
-      (await screen.findByRole("button", { name: "Import" })).click();
+      (await findImportConfirmButton()).click();
 
       await waitFor(() => expect(restoreFromBackupMock).toHaveBeenCalledTimes(1));
       await waitFor(() => expect(loggerWarnMock).toHaveBeenCalledTimes(1));
@@ -376,7 +387,7 @@ describe("BackupTools", () => {
 
       // Dialog closed means pendingImport reset — selecting again should still work.
       fireEvent.change(getFileInput(container), { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
-      expect(await screen.findByRole("button", { name: "Import" })).not.toBeDisabled();
+      expect(await findImportConfirmButton()).not.toBeDisabled();
     });
 
     it("warns that deleted titles can come back when the profile is synced", async () => {
@@ -409,7 +420,7 @@ describe("BackupTools", () => {
       const input = getFileInput(container);
 
       fireEvent.change(input, { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
-      (await screen.findByRole("button", { name: "Import" })).click();
+      (await findImportConfirmButton()).click();
 
       await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled());
 
