@@ -9,13 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/components/ui/use-toast";
-import { MAX_BACKUP_FILE_BYTES, maintenanceService, portableData } from "@/features/backup";
+import {
+  MAX_BACKUP_FILE_BYTES,
+  maintenanceService,
+  parseBackup,
+  portableData,
+  summarizeBackup,
+  type BackupSummary,
+  type CineTrackBackup,
+} from "@/features/backup";
 import { logger } from "@/shared/lib/logger";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useSyncStatus } from "@/features/sync/use-sync-status";
 import { errorMessage } from "@/shared/lib/errors";
 import { displayMessage, UserFacingError } from "@/shared/lib/user-facing-error";
 import { isMobileApp } from "@/shared/lib/platform";
+import { formatRelativeDate } from "@/shared/utils/format";
 
 const SHARE_CACHE_SUBDIR = "shares";
 
@@ -34,10 +43,15 @@ async function shareBackupOnMobile(contents: string, filename: string): Promise<
   }
 }
 
+interface PendingImport {
+  backup: CineTrackBackup;
+  summary: BackupSummary;
+}
+
 export function BackupTools() {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [pendingUndo, setPendingUndo] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
@@ -84,20 +98,29 @@ export function BackupTools() {
     }
   };
 
-  const confirmImport = async () => {
-    const file = pendingImportFile;
-    if (!file) return;
-    setIsImporting(true);
+  const prepareImport = async (file: File) => {
     try {
       if (file.size > MAX_BACKUP_FILE_BYTES) {
         throw new UserFacingError(t("backup.fileTooLarge"));
       }
-      const parsed: unknown = JSON.parse(await file.text());
-      await maintenanceService.restoreFromBackup(parsed);
+      const raw: unknown = JSON.parse(await file.text());
+      const parsed = parseBackup(raw);
+      setPendingImport({ backup: parsed, summary: summarizeBackup(parsed) });
+    } catch (error) {
+      logger.warn(`Backup preview failed: ${errorMessage(error)}`);
+      toast({ description: displayMessage(error, t("backup.importFailed")), variant: "error" });
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImport) return;
+    setIsImporting(true);
+    try {
+      await maintenanceService.restoreFromBackup(pendingImport.backup);
       window.location.reload();
     } catch (error) {
       setIsImporting(false);
-      setPendingImportFile(null);
+      setPendingImport(null);
       logger.warn(`Backup import failed: ${errorMessage(error)}`);
       toast({ description: displayMessage(error, t("backup.importFailed")), variant: "error" });
     }
@@ -173,7 +196,7 @@ export function BackupTools() {
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
-              if (file) setPendingImportFile(file);
+              if (file) void prepareImport(file);
             }}
           />
         </div>
@@ -212,10 +235,21 @@ export function BackupTools() {
         </div>
       </CardContent>
       <ConfirmDialog
-        open={pendingImportFile !== null}
-        onOpenChange={(open) => !open && !isImporting && setPendingImportFile(null)}
+        open={pendingImport !== null}
+        onOpenChange={(open) => !open && !isImporting && setPendingImport(null)}
         title={t("backup.importConfirmTitle")}
-        description={`${t("backup.importConfirmDescription")}${syncWarning}`}
+        description={
+          pendingImport
+            ? `${t("backup.importPreview", {
+                date: formatRelativeDate(pendingImport.summary.exportedAt),
+                profiles: pendingImport.summary.profiles,
+                libraryItems: pendingImport.summary.libraryItems,
+                viewingEvents: pendingImport.summary.viewingEvents,
+                trackedSeries: pendingImport.summary.trackedSeries,
+                lists: pendingImport.summary.customLists,
+              })} ${t("backup.importConfirmDescription")}${syncWarning}`
+            : undefined
+        }
         confirmLabel={t("backup.import")}
         cancelLabel={t("common.cancel")}
         isConfirming={isImporting}

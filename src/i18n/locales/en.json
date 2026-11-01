@@ -1141,6 +1141,7 @@
     "undoFailed": "Nothing to undo: no pre-import snapshot was found.",
     "syncRestoreWarning": "This profile is synced: what the backup does not contain will also be deleted from your other devices at the next sync.",
     "importConfirmTitle": "Replace all your data?",
+    "importPreview": "Backup from {{date}}: {{profiles}} profiles, {{libraryItems}} library items, {{viewingEvents}} viewing events, {{trackedSeries}} tracked series and {{lists}} custom lists.",
     "importConfirmDescription": "Importing this backup overwrites your current library, history and lists. You can undo this right after with \"Undo last change\".",
     "locationTitle": "Backup folder",
     "locationDescription": "Point this at a folder already synced by iCloud Drive, OneDrive, or Dropbox to get your backups onto another device without CineTrack needing real sync.",

@@ -13,6 +13,32 @@ export interface CineTrackBackup {
   data: PortableData;
 }
 
+export interface BackupSummary {
+  exportedAt: string;
+  profiles: number;
+  libraryItems: number;
+  viewingEvents: number;
+  historyItems: number;
+  trackedSeries: number;
+  episodeProgress: number;
+  customLists: number;
+  availabilityAlerts: number;
+}
+
+export function summarizeBackup(backup: CineTrackBackup): BackupSummary {
+  return {
+    exportedAt: backup.exportedAt,
+    profiles: backup.data.profiles.length,
+    libraryItems: backup.data.library.length,
+    viewingEvents: backup.data.viewingEvents.length,
+    historyItems: backup.data.history.length,
+    trackedSeries: backup.data.trackedSeries.length,
+    episodeProgress: backup.data.episodeProgress.length,
+    customLists: backup.data.customLists.length,
+    availabilityAlerts: backup.data.availabilityAlerts.length,
+  };
+}
+
 // First line of defense before even attempting JSON.parse on a user-selected
 // file — the per-array-field limits in backup-schema.ts are what actually
 // bound the work done against SQLite, this just avoids parsing an
