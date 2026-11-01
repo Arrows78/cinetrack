@@ -21,7 +21,7 @@ It re-checks the unresolved items from the 2026-10-24 audit against the current 
 
 No new P0 data-loss or database-corruption path was found.
 
-The codebase is in good shape for a desktop release and for an iOS development beta, but it is not yet correct to call the product fully launch-ready. The remaining material risks are mostly integration/operational: real-device iOS behavior, hosted Supabase verification, a misleading image-cache feature, extreme-scale reads, and a handful of release/CI checks that are still only partially exercised.
+The codebase is in good shape for a desktop release and for an iOS development beta, but it is not yet correct to call the product fully launch-ready. The remaining material risks are mostly integration/operational: real-device iOS behavior, hosted Supabase verification, extreme-scale reads, and a handful of release/CI checks that are still only partially exercised.
 
 ## Findings and actions
 
@@ -35,7 +35,7 @@ The codebase is in good shape for a desktop release and for an iOS development b
 | P1       | Mobile lifecycle   | Periodic maintenance relied on timers that may be suspended in the background                                                          | Availability checks/backups/reminders could remain stale after resume                                                                             | Fixed in #87: run immediately on foreground resume                          |
 | P2       | Mobile integration | Desktop-only shortcut/tray wiring still ran from the shared desktop service                                                            | Produces unnecessary failures/noise on mobile                                                                                                     | Fixed in #87 while retaining deep links                                     |
 | P2       | UX/error handling  | Clipboard rejection could escape silently in diagnostics/auth flows                                                                    | Mobile/browser clipboard APIs can reject                                                                                                          | Fixed in #87                                                                |
-| P2       | Images/perf        | “Image cache” stores TMDB responses in Cache Storage but image elements never read that cache                                          | Cache Storage is not the browser HTTP cache and there is no service-worker interception; prefetch can duplicate downloads while consuming storage | Open: remove the feature or implement a real serving path                   |
+| P2       | Images/perf        | “Image cache” stores TMDB responses in Cache Storage but image elements never read that cache                                          | Cache Storage is not the browser HTTP cache and there is no service-worker interception; prefetch can duplicate downloads while consuming storage | Fixed in e436339e: prefetch now primes the webview's own image cache        |
 | P1       | iOS QA             | OAuth custom-scheme round trip has not been proven on a physical iPhone                                                                | Browser -> `cinetrack://auth/callback` is launch-critical                                                                                         | Real-device gate                                                            |
 | P1       | iOS QA             | Notification behavior while suspended has not been proven                                                                              | JS timers are not reliable background schedulers on iOS                                                                                           | Real-device gate; background delivery may require native scheduling/push    |
 | P1       | iOS QA             | Share sheet, Files/iCloud backup round-trip, keyboard and safe-area behavior need real-device verification                             | Simulator/unit/visual tests do not prove OS integrations                                                                                          | Real-device gate                                                            |
@@ -94,7 +94,7 @@ The product semantics need to remain explicit: the current periodic logic is rel
 
 The responsive product has already had broad 360–1280 px / EN+FR / axe coverage in the October audit. #87 addresses new mobile-specific fixed-layer and viewport issues found in this pass.
 
-The main UX debt still worth correcting before a polished launch is the image-cache feature: Settings promises a faster local cache, but the implementation does not feed cached responses back into image rendering.
+The image-cache debt noted here has since been fixed (e436339e): prefetching now loads the exact `<img>` URLs through the webview's own image cache instead of an unread Cache Storage copy.
 
 ## Performance review
 
@@ -118,7 +118,7 @@ Open release-oriented items:
 1. Merge/validate #89 (functional account + collection fixes).
 2. Merge/validate #87 (cross-platform/mobile functional fixes).
 3. Re-scope #88 so Android work is not presented as part of the immediate iOS launch path.
-4. Fix or remove the ineffective image-cache feature.
+4. ~~Fix or remove the ineffective image-cache feature.~~ Done in e436339e.
 5. Run hosted Supabase/RLS verification.
 6. Run the iOS physical-device checklist with Xcode Personal Team.
 7. Exercise a real updater transition before calling the desktop release pipeline fully verified.
