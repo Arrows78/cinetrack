@@ -8,6 +8,7 @@ import { isTauriApp } from "@/shared/lib/platform";
 
 import { syncRepository } from "./sync-repository";
 import type { RemoteSyncChange, SyncBatchResult, SyncRunResult } from "./sync-types";
+import { recordSyncRun } from "./sync-run-history";
 import { SYNC_BATCH_SIZE, SYNC_PULL_SIZE } from "./sync-types";
 
 // Exported so use-sync-status.ts (this feature's own public hook) can derive
@@ -144,17 +145,43 @@ async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
   // to this Clerk account, and every later step is bound to that profile.
   const profileId = await syncRepository.prepare(auth.userId);
   const progress: PullProgress = { pulled: 0, localeChanged: false };
-  let firstPush: { pushed: number; conflicts: number };
-  let secondPush: { pushed: number; conflicts: number };
+  let pushed = 0;
+  let conflicts = 0;
+
   try {
-    firstPush = await pushOutbox(auth, profileId);
+    const firstPush = await pushOutbox(auth, profileId);
+    pushed += firstPush.pushed;
+    conflicts += firstPush.conflicts;
+
     await pullChanges(auth, profileId, progress);
+
     // A pull may have rebased pending local edits onto a newer remote version.
     // Flush them now instead of waiting for the next periodic wake-up.
-    secondPush = await pushOutbox(auth, profileId);
+    const secondPush = await pushOutbox(auth, profileId);
+    pushed += secondPush.pushed;
+    conflicts += secondPush.conflicts;
+
     // Recorded even when nothing moved: a successful round with no pending
     // changes is still a successful "last synced" check-in.
     await syncRepository.markCompleted(profileId);
+
+    const result = { pushed, pulled: progress.pulled, conflicts };
+    logger.info(`cloud.sync pushed=${result.pushed} pulled=${result.pulled} conflicts=${result.conflicts}`);
+    recordSyncRun(profileId, {
+      at: new Date().toISOString(),
+      outcome: "success",
+      ...result,
+    });
+    return result;
+  } catch (error) {
+    recordSyncRun(profileId, {
+      at: new Date().toISOString(),
+      outcome: "failure",
+      pushed,
+      pulled: progress.pulled,
+      conflicts,
+    });
+    throw error;
   } finally {
     // Even when a later step throws: rows applied by an earlier page are
     // already in SQLite, and the UI must not keep showing the old data.
@@ -167,15 +194,6 @@ async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
       }
     }
   }
-  const pulled = progress.pulled;
-
-  const result = {
-    pushed: firstPush.pushed + secondPush.pushed,
-    pulled,
-    conflicts: firstPush.conflicts + secondPush.conflicts,
-  };
-  logger.info(`cloud.sync pushed=${result.pushed} pulled=${result.pulled} conflicts=${result.conflicts}`);
-  return result;
 }
 
 function run(queryClient?: QueryClient): Promise<SyncRunResult> {
