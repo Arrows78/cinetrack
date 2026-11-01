@@ -13,3 +13,16 @@
 id = "GHSA-vfj7-8cjw-p6xm"
 ignoreUntil = 2027-01-10
 reason = "Dev-only transitive dependency (eslint-plugin-boundaries -> micromatch); no patched version of braces exists"
+
+
+# minimatch <11.0.1 — GHSA-g3hv-75wg-m249, published 2026-10-30.
+# Both installed copies are development-only lint tooling: 10.2.6 is used by
+# ESLint / typescript-eslint config matching, and 3.1.5 by eslint-plugin-jsx-a11y.
+# CineTrack never evaluates attacker-controlled glob patterns at runtime.
+# The upstream advisory specifically describes the newer optimizer path; GitHub's
+# database currently marks all <11.0.1 releases affected, so OSV also flags 3.1.5.
+# Remove this exception once the lint dependency graph supports minimatch >=11.0.1.
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-01-24
+reason = "Dev-only ESLint/typescript-eslint/jsx-a11y glob matching; no untrusted runtime glob input; waiting for parent packages to adopt minimatch >=11.0.1"
