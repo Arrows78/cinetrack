@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, History, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tile } from "@/components/ui/tile";
 import { RemoteErrorState } from "@/components/states/remote-error-state";
 import { useAuth } from "@/features/auth/use-auth";
-import { useSyncConflicts, useSyncStatus } from "@/features/sync/use-sync-status";
+import { useSyncConflicts, useSyncRunHistory, useSyncStatus } from "@/features/sync/use-sync-status";
 import { isTauriApp } from "@/shared/lib/platform";
 import { formatRelativeDate } from "@/shared/utils/format";
 
@@ -37,6 +37,36 @@ function ConflictHistory({ open }: { open: boolean }) {
   );
 }
 
+function SyncRunHistory({ open }: { open: boolean }) {
+  const { t } = useTranslation();
+  const history = useSyncRunHistory();
+  if (!open) return null;
+
+  return history.length ? (
+    <div className="flex flex-col gap-2">
+      {history.slice(0, 5).map((run, index) => (
+        <Tile key={`${run.at}-${index}`} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Badge variant={run.outcome === "success" ? "secondary" : "destructive"}>
+              {t(run.outcome === "success" ? "settings.sync.runSuccess" : "settings.sync.runFailed")}
+            </Badge>
+            <span className="text-caption text-muted-foreground">{formatRelativeDate(run.at)}</span>
+          </div>
+          <span className="text-caption text-muted-foreground">
+            {t("settings.sync.runSummary", {
+              pushed: run.pushed,
+              pulled: run.pulled,
+              conflicts: run.conflicts,
+            })}
+          </span>
+        </Tile>
+      ))}
+    </div>
+  ) : (
+    <p className="text-caption text-muted-foreground">{t("settings.sync.historyEmpty")}</p>
+  );
+}
+
 /**
  * Read-only status for the background sync loop App.tsx already starts on
  * sign-in — this never runs sync itself except via the explicit "Sync now"
@@ -50,6 +80,7 @@ export function SyncStatusCard() {
   const { session } = useAuth();
   const status = useSyncStatus();
   const [conflictsOpen, setConflictsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   if (!isTauriApp() || !session) return null;
 
@@ -117,6 +148,27 @@ export function SyncStatusCard() {
               </div>
             )}
             {status.data && status.data.conflictCount > 0 && <ConflictHistory open={conflictsOpen} />}
+            <div className="border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto gap-1.5 px-0 py-0 hover:bg-transparent"
+                aria-expanded={historyOpen}
+                onClick={() => setHistoryOpen((value) => !value)}
+              >
+                <History className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                {t("settings.sync.historyTitle")}
+                {historyOpen ? (
+                  <ChevronUp className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                ) : (
+                  <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                )}
+              </Button>
+              <div className="mt-2">
+                <SyncRunHistory open={historyOpen} />
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
