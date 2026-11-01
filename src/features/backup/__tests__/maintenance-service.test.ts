@@ -336,7 +336,7 @@ describe("maintenanceService automatic backup frequency", () => {
 // commands are pure file I/O with no SQL behind them, so they're faked here
 // with a small in-memory file map instead of a second plugin-fs mock.
 describe("maintenanceService mobile backup routing", () => {
-  it("ignores a desktop custom directory that arrived through preferences", async () => {
+  it("ignores a desktop custom directory restored from a portable backup", async () => {
     isMobileAppMock.mockReturnValue(true);
     getPreferencesMock.mockResolvedValue({ backupDirectory: "/Users/alex/iCloud", backupFrequency: "daily" });
     exportMock.mockResolvedValue(backup("mobile"));
