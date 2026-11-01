@@ -1249,6 +1249,7 @@
     "welcomeBack": "Bon retour",
     "createAccount": "Créez votre compte",
     "copyErrorDetails": "Copier les détails",
+    "copyErrorDetailsFailed": "Impossible de copier les détails de l\u0027erreur. Réessayez.",
     "continueWithProviderOrEmail": "Continuez avec un fournisseur ou utilisez un code à usage unique par e-mail.",
     "or": "ou",
     "tabs": {
