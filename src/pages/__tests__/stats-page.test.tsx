@@ -75,6 +75,9 @@ vi.mock("@/features/progress/use-watch-next", () => ({
   useCatchUpBacklog: () => catchUpState,
 }));
 
+// Its own data and states are covered in people-stats-section.test.tsx.
+vi.mock("@/components/stats/people-stats-section", () => ({ PeopleStatsSection: () => null }));
+
 vi.mock("@/features/stats/wrapped-export", () => ({
   renderWrappedCard: (...args: unknown[]) => renderWrappedCardMock(...args),
   downloadWrappedCard: (...args: unknown[]) => downloadWrappedCardMock(...args),

@@ -36,6 +36,7 @@ import { YearActivityCalendar } from "@/components/media/activity/year-activity-
 import { MonthlyRecapSection } from "@/components/stats/monthly-recap-section";
 import { RewatchAnalyticsSection } from "@/components/stats/rewatch-analytics-section";
 import { RatingDistributionSection } from "@/components/stats/rating-distribution-section";
+import { PeopleStatsSection } from "@/components/stats/people-stats-section";
 import { WatchMilestonesSection } from "@/components/stats/watch-milestones-section";
 import { ExportPreviewDialog } from "@/components/stats/export-preview-dialog";
 import { SectionHeader } from "@/components/media/primitives/section-header";
@@ -485,6 +486,10 @@ export function StatsPage() {
 
       <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(11)}ms` }}>
         <RatingDistributionSection />
+      </div>
+
+      <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(11)}ms` }}>
+        <PeopleStatsSection />
       </div>
 
       <div className="animate-in" style={{ animationDelay: `${staggerDelayMs(12)}ms` }}>

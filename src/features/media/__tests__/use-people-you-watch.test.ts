@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickTopActor, pickTopDirector } from "../use-people-you-watch";
+import { pickTopActor, pickTopDirector, rankPeople } from "../use-people-you-watch";
 import { makeMedia } from "@/shared/test-utils";
 import type { CastMember, CrewMember, MediaSummary } from "@/types/media";
 
@@ -87,5 +87,28 @@ describe("pickTopDirector", () => {
     const top = pickTopDirector(items);
     expect(top?.id).toBe(1);
     expect(top?.count).toBe(2);
+  });
+});
+
+describe("rankPeople", () => {
+  const villeneuve = director(1, "Denis Villeneuve");
+  const nolan = director(2, "Christopher Nolan");
+  const items = [
+    titleWith({ id: 1, directors: [villeneuve], cast: [castMember(10, "Rebecca Ferguson")] }),
+    titleWith({ id: 2, directors: [villeneuve], cast: [castMember(10, "Rebecca Ferguson")] }),
+    titleWith({ id: 3, directors: [villeneuve, nolan], cast: [castMember(11, "Zendaya")] }),
+    titleWith({ id: 4, directors: [nolan], cast: [castMember(12, "Cillian Murphy")] }),
+  ];
+
+  it("ranks recurring directors by how many titles they're credited on", () => {
+    expect(rankPeople(items, "director").map(({ name, count }) => [name, count])).toEqual([
+      ["Denis Villeneuve", 3],
+      ["Christopher Nolan", 2],
+    ]);
+  });
+
+  it("leaves out actors seen on a single title, and honours the limit", () => {
+    expect(rankPeople(items, "actor").map(({ name }) => name)).toEqual(["Rebecca Ferguson"]);
+    expect(rankPeople(items, "director", 1)).toHaveLength(1);
   });
 });

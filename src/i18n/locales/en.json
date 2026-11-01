@@ -735,6 +735,17 @@
       "activityTitle": "Rewatches over 12 months",
       "rewatches": "rewatches"
     },
+    "people": {
+      "title": "People you watch most",
+      "basedOn_one": "Across your most recent completed title",
+      "basedOn_other": "Across your {{count}} most recently completed titles",
+      "directors": "Directors",
+      "actors": "Actors",
+      "titles_one": "{{count}} title",
+      "titles_other": "{{count}} titles",
+      "none": "No one comes back across your titles yet.",
+      "loading": "Loading the people you watch most"
+    },
     "ratingDistribution": {
       "title": "Rating distribution",
       "titlesLabel": "titles",

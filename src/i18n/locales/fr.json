@@ -735,6 +735,17 @@
       "activityTitle": "Revisionnages sur 12 mois",
       "rewatches": "revisionnages"
     },
+    "people": {
+      "title": "Les personnes que vous regardez le plus",
+      "basedOn_one": "Sur votre dernier titre terminé",
+      "basedOn_other": "Sur vos {{count}} derniers titres terminés",
+      "directors": "Réalisateurs",
+      "actors": "Acteurs",
+      "titles_one": "{{count}} titre",
+      "titles_other": "{{count}} titres",
+      "none": "Personne ne revient encore d'un titre à l'autre.",
+      "loading": "Chargement des personnes que vous regardez le plus"
+    },
     "ratingDistribution": {
       "title": "Distribution des notes",
       "titlesLabel": "titres",

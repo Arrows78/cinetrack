@@ -141,6 +141,48 @@ function usePersonDiscoverRail(
   return { items, isLoading: Boolean(person) && query.isLoading };
 }
 
+// The Stats page's "people you watch most" reads a wider slice than the home
+// rails: the largest window list_completed_candidates_impl serves (its
+// CANDIDATE_MAX_LIMIT). Credits come from the same TMDB details cache the
+// detail pages use (persisted across launches), so after a first visit this
+// costs no request for a title already seen.
+export const PEOPLE_STATS_CANDIDATE_CAP = 100;
+const PEOPLE_STATS_LIMIT = 5;
+
+/** Exported for isolated unit testing — the people credited on the most watched titles, recurring ones only. */
+export function rankPeople(watchedItems: MediaSummary[], role: "director" | "actor", limit = PEOPLE_STATS_LIMIT) {
+  const tallies =
+    role === "director"
+      ? tally(watchedItems, (item) => item.directors ?? [])
+      : tally(watchedItems, (item) => item.cast.slice(0, TOP_BILLED_CAST_SLICE));
+  return tallies.filter((person) => person.count >= MIN_PERSON_APPEARANCES).slice(0, limit);
+}
+
+/** Directors and actors who recur most across the user's completed titles — the Stats page's view of the same tally the rails pick their top person from. */
+export function usePeopleStats() {
+  const profileId = useActiveProfileId();
+  const candidatesQuery = useQuery({
+    // Under the shorter-window key's prefix, so a library write invalidates both.
+    queryKey: [...queryKeys.local.completedLibraryCandidates(profileId), PEOPLE_STATS_CANDIDATE_CAP],
+    queryFn: () => libraryRepository.completedCandidates(undefined, PEOPLE_STATS_CANDIDATE_CAP),
+  });
+  const candidates = candidatesQuery.data ?? [];
+  const creditsQuery = useWatchedCredits(candidates);
+  const watchedItems = useMemo(() => creditsQuery.data ?? [], [creditsQuery.data]);
+  const directors = useMemo(() => rankPeople(watchedItems, "director"), [watchedItems]);
+  const actors = useMemo(() => rankPeople(watchedItems, "actor"), [watchedItems]);
+
+  return {
+    directors,
+    actors,
+    /** How many completed titles the tally covers. */
+    titleCount: watchedItems.length,
+    isLoading: candidatesQuery.isLoading || (candidates.length > 0 && creditsQuery.isLoading),
+    isError: candidatesQuery.isError || creditsQuery.isError,
+    refetch: () => Promise.all([candidatesQuery.refetch(), creditsQuery.refetch()]),
+  };
+}
+
 /**
  * "Movies from directors you watch most" / "More with actors you like" —
  * README's DISCOVERY roadmap item. Aggregates cast/crew credits across a
