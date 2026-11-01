@@ -1141,6 +1141,7 @@
     "undoFailed": "Rien à annuler : aucune sauvegarde pré-import trouvée.",
     "syncRestoreWarning": "Ce profil est synchronisé : ce que la sauvegarde ne contient pas sera aussi supprimé de vos autres appareils à la prochaine synchronisation.",
     "importConfirmTitle": "Remplacer toutes vos données ?",
+    "importPreview": "Sauvegarde du {{date}} : {{profiles}} profils, {{libraryItems}} éléments de bibliothèque, {{viewingEvents}} événements de visionnage, {{trackedSeries}} séries suivies et {{lists}} listes personnalisées.",
     "importConfirmDescription": "Importer cette sauvegarde remplace votre bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement ».",
     "locationTitle": "Dossier de sauvegarde",
     "locationDescription": "Choisissez un dossier déjà synchronisé par iCloud Drive, OneDrive ou Dropbox pour retrouver vos sauvegardes sur un autre appareil sans que CineTrack ait besoin d'une vraie synchronisation.",
