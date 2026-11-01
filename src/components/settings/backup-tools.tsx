@@ -2,6 +2,9 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, FolderOpen, RotateCcw, Undo2, Upload } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { BaseDirectory, mkdir, writeFile } from "@tauri-apps/plugin-fs";
+import { appCacheDir, join } from "@tauri-apps/api/path";
+import { shareFile } from "@choochmeque/tauri-plugin-sharekit-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -12,6 +15,24 @@ import { usePreferences } from "@/features/preferences/use-preferences";
 import { useSyncStatus } from "@/features/sync/use-sync-status";
 import { errorMessage } from "@/shared/lib/errors";
 import { displayMessage, UserFacingError } from "@/shared/lib/user-facing-error";
+import { isMobileApp } from "@/shared/lib/platform";
+
+const SHARE_CACHE_SUBDIR = "shares";
+
+async function shareBackupOnMobile(contents: string, filename: string): Promise<boolean> {
+  await mkdir(SHARE_CACHE_SUBDIR, { baseDir: BaseDirectory.AppCache, recursive: true });
+  const relativePath = `${SHARE_CACHE_SUBDIR}/${filename}`;
+  await writeFile(relativePath, new TextEncoder().encode(contents), { baseDir: BaseDirectory.AppCache });
+  const absolutePath = await join(await appCacheDir(), relativePath);
+
+  try {
+    await shareFile(`file://${absolutePath}`, { mimeType: "application/json", title: filename });
+    return true;
+  } catch (error) {
+    if (error instanceof Error && error.message === "Share cancelled") return false;
+    throw error;
+  }
+}
 
 export function BackupTools() {
   const { t } = useTranslation();
@@ -24,7 +45,8 @@ export function BackupTools() {
   const { data: preferences, updatePreference } = usePreferences();
   const [isChoosingFolder, setIsChoosingFolder] = useState(false);
   const [isResettingFolder, setIsResettingFolder] = useState(false);
-  const backupDirectory = preferences?.backupDirectory ?? null;
+  const mobile = isMobileApp();
+  const backupDirectory = mobile ? null : (preferences?.backupDirectory ?? null);
   // A restore does not tell the cloud what it removed: on a synced profile,
   // what the backup lacks can come back at the next sync.
   const syncStatus = useSyncStatus();
@@ -34,17 +56,25 @@ export function BackupTools() {
     setIsExporting(true);
     try {
       const backup = await portableData.export();
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
+      const contents = JSON.stringify(backup, null, 2);
       // Full timestamp (not just the date) — same pattern
       // maintenance-service.ts's automatic backup already uses — so two
-      // manual exports the same day don't silently overwrite one another
-      // in the user's downloads folder.
-      anchor.download = `cinetrack-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      // manual exports the same day don't silently overwrite one another.
+      const filename = `cinetrack-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+
+      if (mobile) {
+        const shared = await shareBackupOnMobile(contents, filename);
+        if (!shared) return;
+      } else {
+        const blob = new Blob([contents], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+
       toast({ description: t("backup.exported"), variant: "success" });
     } catch (error) {
       logger.warn(`Backup export failed: ${errorMessage(error)}`);
@@ -149,32 +179,36 @@ export function BackupTools() {
         </div>
         <div className="border-t border-border pt-6">
           <p className="text-body-sm font-medium">{t("backup.locationTitle")}</p>
-          <p className="mt-1 text-caption text-muted-foreground">{t("backup.locationDescription")}</p>
+          <p className="mt-1 text-caption text-muted-foreground">
+            {t(mobile ? "backup.locationMobileDescription" : "backup.locationDescription")}
+          </p>
           <p className="mt-3 rounded-xl border border-border bg-card p-3 font-mono text-caption break-all">
             {backupDirectory ? t("backup.currentLocation", { path: backupDirectory }) : t("backup.defaultLocation")}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isChoosingFolder}
-              onClick={() => void chooseBackupFolder()}
-            >
-              <FolderOpen className="mr-2 size-4" />
-              {t("backup.chooseFolder")}
-            </Button>
-            {backupDirectory ? (
+          {!mobile ? (
+            <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 type="button"
-                variant="ghost"
-                disabled={isResettingFolder}
-                onClick={() => void resetBackupFolder()}
+                variant="outline"
+                disabled={isChoosingFolder}
+                onClick={() => void chooseBackupFolder()}
               >
-                <RotateCcw className="mr-2 size-4" />
-                {t("backup.resetFolder")}
+                <FolderOpen className="mr-2 size-4" />
+                {t("backup.chooseFolder")}
               </Button>
-            ) : null}
-          </div>
+              {backupDirectory ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isResettingFolder}
+                  onClick={() => void resetBackupFolder()}
+                >
+                  <RotateCcw className="mr-2 size-4" />
+                  {t("backup.resetFolder")}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </CardContent>
       <ConfirmDialog
