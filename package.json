@@ -12,6 +12,8 @@
     "movies",
     "tv-shows",
     "desktop",
+    "mobile",
+    "ios",
     "local-first"
   ],
   "homepage": "https://github.com/Arrows78/cinetrack",
@@ -63,6 +65,7 @@
     "tauri": "tauri",
     "ios:init": "tauri ios init --ci",
     "ios:dev": "tauri ios dev",
+    "ios:dev:open": "tauri ios dev --open",
     "ios:build:sim": "tauri ios build --target aarch64-sim --no-sign --ci"
   },
   "dependencies": {
