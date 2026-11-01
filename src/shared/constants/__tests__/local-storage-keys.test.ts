@@ -17,7 +17,6 @@ describe("local-storage-keys registry", () => {
 
   it("keeps the historical string of every static key", () => {
     expect(Object.fromEntries(staticKeys)).toEqual({
-      BROWSER_TOKEN_KEY: "cinetrack.tmdb-token",
       LANGUAGE_STORAGE_KEY: "cinetrack.language",
       AUTH_SESSION_STORAGE_KEY: "cinetrack.auth.session",
       LEGACY_QUERY_CACHE_KEY: "cinetrack.query-cache.v1",
