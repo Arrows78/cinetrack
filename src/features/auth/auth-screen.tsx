@@ -279,12 +279,10 @@ export function AuthScreen() {
                 size="sm"
                 className="shrink-0 text-auth-foreground/90 hover:bg-auth-destructive/15"
                 onClick={() => {
-                  void navigator.clipboard
-                    .writeText(errorDetail)
-                    .catch((copyError: unknown) => {
-                      logger.warn(`Failed to copy auth error details: ${errorMessage(copyError)}`);
-                      toast({ description: t("auth.copyErrorDetailsFailed"), variant: "error" });
-                    });
+                  void navigator.clipboard.writeText(errorDetail).catch((copyError: unknown) => {
+                    logger.warn(`Failed to copy auth error details: ${errorMessage(copyError)}`);
+                    toast({ description: t("auth.copyErrorDetailsFailed"), variant: "error" });
+                  });
                 }}
               >
                 <Copy className="mr-2 size-4" aria-hidden="true" />
