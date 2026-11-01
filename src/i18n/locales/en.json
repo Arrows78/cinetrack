@@ -1442,6 +1442,7 @@
     "addMissingCta_other": "Add {{count}} missing movies",
     "addMissingSuccess_one": "Added {{count}} movie to your library",
     "addMissingSuccess_other": "Added {{count}} movies to your library",
+    "addMissingPartial": "Added {{added}} of {{total}} movies. {{failed}} could not be added — try again.",
     "addMissingFailed": "Couldn't add the missing movies to your library — try again."
   }
 }
