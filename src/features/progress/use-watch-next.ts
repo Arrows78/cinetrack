@@ -203,6 +203,18 @@ export function partitionNextEpisodes(results: NextEpisodeResult[], now: Date): 
     else groups.continueWatching.push(entry);
   }
 
+  // Fresh drops are time-sensitive: newest air date first. The other two
+  // groups are ordered by the viewer's own recent activity so the dashboard
+  // remains personal rather than falling back to TMDB/library insertion order.
+  const updatedAt = (entry: WatchNextEntry) => Date.parse(entry.series.updatedAt) || 0;
+  groups.newEpisodes.sort((left, right) => {
+    const leftAir = left.nextEpisode.airDate ? parseCalendarDate(left.nextEpisode.airDate).getTime() : 0;
+    const rightAir = right.nextEpisode.airDate ? parseCalendarDate(right.nextEpisode.airDate).getTime() : 0;
+    return rightAir - leftAir || updatedAt(right) - updatedAt(left);
+  });
+  groups.continueWatching.sort((left, right) => updatedAt(right) - updatedAt(left));
+  groups.upNext.sort((left, right) => updatedAt(right) - updatedAt(left));
+
   return groups;
 }
 
