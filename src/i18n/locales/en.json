@@ -598,6 +598,8 @@
     "seriesInfo": "Series info",
     "currentProgress": "Current progress",
     "episodesFraction": "{{watched}}/{{total}} ep.",
+    "timeLeft": "{{duration}} left to catch up",
+    "timeLeftApproximate": "About {{duration}} left to catch up",
     "seasonsAndEpisodes": "Seasons & Episodes",
     "noSeasons": "No season is available for this series yet.",
     "seasonsAndEpisodesDesc": "Each episode can be marked as watched or unwatched, with progress per season and overall.",

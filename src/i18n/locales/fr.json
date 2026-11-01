@@ -598,6 +598,8 @@
     "seriesInfo": "Informations",
     "currentProgress": "Progression actuelle",
     "episodesFraction": "{{watched}}/{{total}} ép.",
+    "timeLeft": "Encore {{duration}} pour rattraper",
+    "timeLeftApproximate": "Encore environ {{duration}} pour rattraper",
     "seasonsAndEpisodes": "Saisons et épisodes",
     "noSeasons": "Aucune saison n'est encore disponible pour cette série.",
     "seasonsAndEpisodesDesc": "Chaque épisode peut être marqué vu ou non vu, avec une progression par saison et globale.",

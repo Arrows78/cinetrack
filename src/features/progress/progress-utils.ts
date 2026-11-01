@@ -44,6 +44,39 @@ export function countAiredUnwatched(seasons: Season[], watched: EpisodeProgress[
   return airedUnwatchedEpisodes(seasons, watched).length;
 }
 
+export interface RemainingWatchTime {
+  minutes: number;
+  /** True when at least one episode had no runtime of its own and the series' typical runtime stood in for it. */
+  approximate: boolean;
+}
+
+/**
+ * How long the aired, unwatched episodes add up to. TMDB leaves some
+ * episodes' runtime empty: those borrow `fallbackRuntime` (the series'
+ * typical episode length) and mark the total approximate. Returns null when
+ * nothing is left, or when no episode left has a usable runtime at all.
+ */
+export function remainingWatchTime(
+  seasons: Season[],
+  watched: EpisodeProgress[],
+  fallbackRuntime?: number | null
+): RemainingWatchTime | null {
+  let minutes = 0;
+  let approximate = false;
+  for (const episode of airedUnwatchedEpisodes(seasons, watched)) {
+    if (episode.runtime) {
+      minutes += episode.runtime;
+    } else if (fallbackRuntime) {
+      minutes += fallbackRuntime;
+      approximate = true;
+    } else {
+      // An unknown length can't be added up: the total is then a floor.
+      approximate = true;
+    }
+  }
+  return minutes > 0 ? { minutes, approximate } : null;
+}
+
 export function calculateSeriesProgress(
   seriesId: number,
   seasons: Season[],

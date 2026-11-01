@@ -39,10 +39,11 @@ import { EmptyState } from "@/components/states/empty-state";
 import { usePresentSectionIds } from "@/hooks/use-present-section-ids";
 import { useImageCache } from "@/features/media/use-image-cache";
 import { tmdbStatusLabel } from "@/shared/utils/tmdb-status";
-import { formatRelativeCountdown } from "@/shared/utils/format";
+import { formatRelativeCountdown, formatRuntime } from "@/shared/utils/format";
 import {
   calculateSeriesProgress,
   getNextEpisode,
+  remainingWatchTime,
   useEpisodeProgress,
   useRefreshTrackedSeriesStatus,
   useTrackedSeries,
@@ -88,6 +89,7 @@ export function SeriesDetailPage() {
   // announced, unaired episodes, so a caught-up ongoing series showed
   // "mark as seen" and the click did nothing (only aired episodes get marked).
   const seriesSeen = progress.completed || (progress.isUpToDate && progress.watchedEpisodes > 0);
+  const timeLeft = remainingWatchTime(seasons, progressQuery.data ?? [], seriesQuery.data?.runtime);
   // The card/row progress-bar color and episode count both read
   // tracked_series.status/total_episodes, a local cache that's only ever
   // written as a side effect of toggling an episode — a show nobody
@@ -251,6 +253,15 @@ export function SeriesDetailPage() {
             <div className="mt-4">
               <ProgressBar value={progress.progressPercent} />
             </div>
+            {/* Same guard as the "up to date" badge: with a season missing,
+                the total would silently leave its episodes out. */}
+            {timeLeft && allSeasonsLoaded && !progressUnavailable ? (
+              <p className="mt-3 text-body-sm text-muted-foreground">
+                {t(timeLeft.approximate ? "series.timeLeftApproximate" : "series.timeLeft", {
+                  duration: formatRuntime(timeLeft.minutes),
+                })}
+              </p>
+            ) : null}
           </Panel>
           <Panel tone="subtle" className="p-6">
             <SectionHeader

@@ -17,6 +17,7 @@ export {
   episodeProgressHasUserData,
   getNextEpisode,
   hasAired,
+  remainingWatchTime,
 } from "@/features/progress/progress-utils";
 
 export function useMovieSeen(movieId: number) {

@@ -764,6 +764,30 @@ describe("SeriesDetailPage", () => {
     expect(screen.queryByText("All up to date")).not.toBeInTheDocument();
   });
 
+  it("shows how long the aired, unwatched episodes add up to", () => {
+    seasonQueriesMock.mockReturnValue([
+      {
+        data: buildSeason({ episodes: episodes.map((episode) => ({ ...episode, runtime: 125 })) }),
+        isPending: false,
+        isError: false,
+        refetch: vi.fn(),
+      },
+    ]);
+
+    renderPage();
+
+    // Episodes 1 and 2 are watched: only episode 3 is left.
+    expect(screen.getByText("2h 05 left to catch up")).toBeInTheDocument();
+  });
+
+  it("falls back to the series runtime for an episode without one, and says the total is approximate", () => {
+    seriesQueryMock.mockReturnValue({ ...seriesQueryMock(), data: buildSeries({ runtime: 45 }) });
+
+    renderPage();
+
+    expect(screen.getByText("About 45 min left to catch up")).toBeInTheDocument();
+  });
+
   it("shows the Up to date badge once every aired episode is watched but an unaired one is still ahead", () => {
     const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString();
     const unairedEpisode: Episode = {

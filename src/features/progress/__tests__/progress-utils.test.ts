@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { calculateSeriesProgress, countAiredUnwatched, getNextEpisode, hasAired } from "../progress-utils";
+import {
+  calculateSeriesProgress,
+  countAiredUnwatched,
+  getNextEpisode,
+  hasAired,
+  remainingWatchTime,
+} from "../progress-utils";
 import type { Episode, EpisodeProgress, Season } from "@/types/media";
 
 const episode = (overrides: Partial<Episode> = {}): Episode => ({
@@ -380,5 +386,42 @@ describe("episodeProgressHasUserData", () => {
     const { episodeProgressHasUserData } = await import("../progress-utils");
     expect(episodeProgressHasUserData({ ...base, rating: 3 })).toBe(true);
     expect(episodeProgressHasUserData({ ...base, watchedAt: "2019-05-01T00:00:00.000Z" })).toBe(true);
+  });
+
+  describe("remainingWatchTime", () => {
+    const watchedEpisode = (episodeId: number): EpisodeProgress => ({
+      id: String(episodeId),
+      profileId: null,
+      seriesId: 9,
+      episodeId,
+      seasonNumber: 1,
+      episodeNumber: episodeId,
+      watched: true,
+      watchedAt: null,
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+      rating: null,
+    });
+
+    it("adds up the runtime of aired, unwatched episodes only", () => {
+      const s = season([
+        episode({ id: 1, episodeNumber: 1, runtime: 50 }),
+        episode({ id: 2, episodeNumber: 2, runtime: 45 }),
+        episode({ id: 3, episodeNumber: 3, runtime: 60 }),
+        episode({ id: 4, episodeNumber: 4, runtime: 40, airDate: "2999-01-01" }),
+      ]);
+      expect(remainingWatchTime([s], [watchedEpisode(1)], 30)).toEqual({ minutes: 105, approximate: false });
+    });
+
+    it("lets the series runtime stand in for an episode without one, and flags the total approximate", () => {
+      const s = season([episode({ id: 1, episodeNumber: 1, runtime: 50 }), episode({ id: 2, episodeNumber: 2 })]);
+      expect(remainingWatchTime([s], [], 42)).toEqual({ minutes: 92, approximate: true });
+    });
+
+    it("returns null when nothing aired is left or no runtime is known at all", () => {
+      const s = season([episode({ id: 1, episodeNumber: 1, runtime: 50 })]);
+      expect(remainingWatchTime([s], [watchedEpisode(1)], 42)).toBeNull();
+      expect(remainingWatchTime([season([episode({ id: 2 })])], [], null)).toBeNull();
+    });
   });
 });
