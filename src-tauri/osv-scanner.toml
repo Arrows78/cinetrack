@@ -98,15 +98,16 @@ reason = "bincode — unmaintained (no fixed version exists), transitive via tau
 # and drop this entry once a resolvable fix exists — don't just re-add it.
 [[IgnoredVulns]]
 id = "RUSTSEC-2024-0429"
+ignoreUntil = 2027-01-24
 reason = "glib — real CVE, but pinned to 0.18.5 by gtk 0.18.2 (tauri's Linux tray-icon GTK3 backend); no compatible fixed version exists until tauri migrates to gtk4-rs"
 
 # zip < 9.0.0 — unsafe permission and symlink handling when extracting an
-# archive. Two copies, neither fixable from this repository: zip 4.6.1 is
-# pinned by tauri-plugin-updater, whose update channel is not configured (no
-# `plugins.updater` in tauri.conf.json), so nothing is ever extracted; zip 8.6.0
-# is a build-dependency of libsodium-sys-stable that unpacks libsodium's own
-# source tarball. The same IDs are ignored by the cargo-audit job
-# (.github/workflows/ci.yml): keep the two lists in step.
+# archive. The runtime updater copy is fixed by tauri-plugin-updater 2.14.1,
+# which resolves zip 9.0.5. One residual zip 8.6.0 copy remains only as a
+# build-dependency of libsodium-sys-stable, which unpacks the plugin's trusted
+# upstream source during compilation. The same IDs are ignored by cargo-audit
+# (.github/workflows/ci.yml): keep the two lists in step until Stronghold's
+# libsodium dependency moves to zip >=9.0.5.
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0367"
 ignoreUntil = 2027-01-24
@@ -165,26 +166,26 @@ ignoreUntil = 2027-01-24
 reason = "Legacy digest 0.10 needs block-buffer 0.10.4 (Stronghold/iota-crypto and other crates); only incompatible block-buffer 0.12.1 is patched; exploitation requires catching a crypto callback panic and reusing the buffer"
 
 
-# New GitHub advisories published 2026-10-28/29 for the same two zip copies
-# already accepted above. Runtime exposure is unchanged: zip 4.6.1 is only
-# pulled by tauri-plugin-updater, which CineTrack does not configure/use, and
-# zip 8.6.0 is a build dependency of libsodium-sys-stable that unpacks trusted
-# upstream source during compilation. Neither path accepts user-supplied ZIPs.
-# Keep these time-limited and remove them as soon as upstream moves to zip >=9.0.5.
+# GitHub advisories published 2026-10-28/29 for zip. The updater path is
+# remediated by tauri-plugin-updater 2.14.1 + zip 9.0.5. These exceptions now
+# cover only zip 8.6.0 under libsodium-sys-stable, a build dependency that
+# extracts trusted upstream source during compilation and never user ZIPs.
+# Keep these time-limited and remove them as soon as Stronghold/libsodium moves
+# to zip >=9.0.5.
 [[IgnoredVulns]]
 id = "GHSA-8hxf-qr8p-62x4"
 ignoreUntil = 2027-01-24
-reason = "zip advisory on existing non-user-controlled paths: updater is not configured; libsodium build only extracts trusted upstream source"
+reason = "Residual zip 8.6.0 is build-only via libsodium-sys-stable and extracts trusted upstream source; updater path is fixed at zip 9.0.5"
 
 [[IgnoredVulns]]
 id = "GHSA-m665-v7pm-7grj"
 ignoreUntil = 2027-01-24
-reason = "zip parser differential/RCE advisory; CineTrack does not process user ZIPs, updater is not configured, libsodium extraction is build-time trusted input"
+reason = "Residual zip 8.6.0 is build-only via libsodium-sys-stable; CineTrack never processes user ZIPs and updater now uses zip 9.0.5"
 
 [[IgnoredVulns]]
 id = "GHSA-q7v9-x93c-xqv3"
 ignoreUntil = 2027-01-24
-reason = "same two non-user-controlled zip dependency paths; no user-supplied archive extraction"
+reason = "Residual zip 8.6.0 is only a libsodium build dependency; no user-supplied archive extraction; updater now uses zip 9.0.5"
 
 [[IgnoredVulns]]
 id = "GHSA-9hj8-73fh-9963"

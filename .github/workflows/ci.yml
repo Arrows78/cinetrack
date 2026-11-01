@@ -244,10 +244,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: src-tauri
           # The same IDs as src-tauri/osv-scanner.toml, with the reasons given
-          # there (cargo-audit does not read a config file from this directory
-          # when the action runs it): zip pinned by tauri-plugin-updater (not
-          # configured) and a libsodium build-dependency; crypto-bigint 0.5
-          # pinned by Stronghold's k256.
+          # there (cargo-audit does not read that config here): the updater
+          # itself is fixed at zip 9.0.5; the remaining zip 8.6.0 copy is only
+          # a libsodium-sys-stable build-dependency. crypto-bigint 0.5 remains
+          # pinned by Stronghold's k256 stack.
           ignore: RUSTSEC-2026-0367,RUSTSEC-2026-0368,RUSTSEC-2026-0369,RUSTSEC-2026-0387
 
   osv-scan:

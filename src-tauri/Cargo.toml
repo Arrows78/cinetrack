@@ -72,7 +72,7 @@ tauri-plugin-http = { version = "2.6.1", features = ["unsafe-headers"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
-tauri-plugin-updater = "2"
+tauri-plugin-updater = "2.14.1"
 
 # Native share-sheet integration (iOS UIActivityViewController / Android
 # Intent.ACTION_SEND) for exporting Wrapped/recap/milestone PNG cards on

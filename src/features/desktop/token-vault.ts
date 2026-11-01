@@ -7,7 +7,6 @@ import { errorMessage } from "@/shared/lib/errors";
 import { logger } from "@/shared/lib/logger";
 import { isTauriApp } from "@/shared/lib/platform";
 import { UserFacingError } from "@/shared/lib/user-facing-error";
-import { BROWSER_TOKEN_KEY } from "@/shared/constants/local-storage-keys";
 
 const CLIENT_NAME = "cinetrack";
 const TOKEN_KEY = "tmdb-bearer-token";
@@ -83,8 +82,9 @@ export const tokenVault = {
     }
 
     if (!isTauriApp()) {
-      token = window.localStorage.getItem(BROWSER_TOKEN_KEY);
-
+      // Browser preview has no native secret store. Keep the token only in
+      // this module's memory instead of persisting a bearer token in
+      // localStorage where any injected script could read it.
       setSnapshot({
         unlocked: Boolean(token),
         configured: Boolean(token),
@@ -134,7 +134,6 @@ export const tokenVault = {
     }
 
     if (!isTauriApp()) {
-      window.localStorage.setItem(BROWSER_TOKEN_KEY, clean);
       token = clean;
 
       setSnapshot({

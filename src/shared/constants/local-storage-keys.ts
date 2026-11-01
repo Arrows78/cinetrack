@@ -4,9 +4,6 @@
  * reader of the same slot.
  */
 
-/** TMDB bearer token (browser-preview fallback path). */
-export const BROWSER_TOKEN_KEY = "cinetrack.tmdb-token";
-
 /** User-selected UI language. */
 export const LANGUAGE_STORAGE_KEY = "cinetrack.language";
 

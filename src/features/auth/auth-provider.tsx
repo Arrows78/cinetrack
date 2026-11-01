@@ -114,7 +114,10 @@ function describeError(error: unknown): { message: string; detail: string | null
   }
 
   const raw = clerkError?.errors?.[0]?.message ?? (error instanceof Error ? error.message : String(error));
-  logger.warn(`Auth error: ${raw}`);
+  // Keep the diagnostic log free of provider-controlled text: Clerk/OAuth
+  // errors can contain identifiers or callback details. The raw detail stays
+  // in memory only so the user can explicitly copy it from the auth error UI.
+  logger.warn(`Auth error code=${code ?? "unknown"} status=${clerkError?.status ?? "unknown"}`);
   return { message: i18next.t("auth.errors.default"), detail: code ? `${code}: ${raw}` : raw };
 }
 
@@ -182,7 +185,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const expectedRedirect = new URL(getAuthRedirectUrl());
 
       if (!isAuthCallbackUrl(url, expectedRedirect)) {
-        logger.warn(`Ignoring deep link that is not the auth callback: ${callbackUrl}`);
+        logger.warn(`Ignoring non-auth deep link protocol=${url.protocol} path=${callbackPath(url)}`);
         return;
       }
 
