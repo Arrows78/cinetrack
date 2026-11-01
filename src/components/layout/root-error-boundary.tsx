@@ -35,7 +35,7 @@ export class RootErrorBoundary extends Component<PropsWithChildren, RootErrorBou
 
     return (
       <EmptyState
-        className="min-h-screen"
+        className="min-h-dvh"
         icon={AlertTriangle}
         title={i18n.t("errors.unexpectedTitle")}
         description={i18n.t("errors.unexpectedDescription")}
