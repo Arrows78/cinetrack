@@ -485,6 +485,11 @@
       "syncNow": "Sync now",
       "conflictsLoading": "Loading conflicts…",
       "conflictsEmpty": "No conflict details to show.",
+      "historyTitle": "Recent syncs",
+      "historyEmpty": "No sync runs recorded on this device yet.",
+      "runSuccess": "Success",
+      "runFailed": "Failed",
+      "runSummary": "{{pushed}} sent · {{pulled}} received · {{conflicts}} conflicts",
       "entityTypes": {
         "library_item": "Library item",
         "seen_movie": "Watched movie",
