@@ -52,7 +52,7 @@ export function MobileTabBar() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-sticky flex items-stretch gap-1 border-t border-border bg-background/95 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-sticky flex items-stretch gap-1 border-t border-border bg-background/95 px-2 pb-[calc(0.5rem_+_env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden"
       aria-label={t("sidebar.brand.name")}
     >
       {primaryItems.map((item) => (
