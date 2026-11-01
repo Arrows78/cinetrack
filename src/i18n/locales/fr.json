@@ -413,7 +413,7 @@
     "reminderHoursBefore_other": "{{count}} heures avant",
     "reminderLeadTimeDescription": "Les rappels des titres suivis sont vérifiés à l’ouverture de l’application et lors des vérifications automatiques.",
     "availabilityAlerts": "Alertes de disponibilité",
-    "desktopNotifications": "Notifications bureau",
+    "desktopNotifications": "Notifications système",
     "notificationsPermissionDenied": "Les notifications sont bloquées pour CineTrack. Autorisez-les dans les réglages du système, puis réessayez.",
     "notificationsToggleFailed": "Impossible de demander l'autorisation d'envoyer des notifications. Réessayez.",
     "onThisDay": "Souvenirs « Ce jour-là »",
