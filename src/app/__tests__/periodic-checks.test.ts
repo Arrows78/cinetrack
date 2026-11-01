@@ -114,4 +114,3 @@ describe("startPeriodicChecks", () => {
     expect(mocks.createAutomaticBackup).not.toHaveBeenCalled();
   });
 });
-
