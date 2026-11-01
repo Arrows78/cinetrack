@@ -125,6 +125,34 @@ describe("CollectionProgressPanel", () => {
     expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringContaining("1") }));
   });
 
+  it("reports partial success when some missing movies are added before another one fails", async () => {
+    const first = movie({ id: 1, title: "Part One" });
+    const second = movie({ id: 2, title: "Part Two" });
+    const third = movie({ id: 3, title: "Part Three" });
+    collectionQueryMock.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: collection([first, second, third]),
+    });
+    libraryDataMock.mockReturnValue([]);
+    addPlannedMock
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("second failed"))
+      .mockResolvedValueOnce(undefined);
+
+    render(<CollectionProgressPanel movie={movie({ id: 99, collection: { id: 10, name: "Dune Collection" } })} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /add 3 missing movies/i }));
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith({
+        description: "Added 2 of 3 movies. 1 could not be added — try again.",
+        variant: "error",
+      })
+    );
+    expect(addPlannedMock).toHaveBeenCalledTimes(3);
+  });
+
   it("shows a translated error toast (never the raw error) when adding missing entries fails", async () => {
     collectionQueryMock.mockReturnValue({
       isLoading: false,

@@ -16,6 +16,7 @@ import { MAX_BACKUP_FILE_BYTES, parseBackup, portableData } from "@/features/bac
 import { preferencesRepository } from "@/features/preferences/preferences-repository";
 import { STALE_24_HOURS } from "@/shared/constants/query";
 import { logger } from "@/shared/lib/logger";
+import { isMobileApp } from "@/shared/lib/platform";
 import type { UserPreferences } from "@/types/media";
 import { LAST_AUTO_BACKUP_FAILED_KEY, LAST_AUTO_BACKUP_KEY } from "@/shared/constants/local-storage-keys";
 
@@ -53,6 +54,11 @@ const autoBackupFileName = (exportedAt: string) =>
 // unset (the default for everyone who never touches this setting), behavior
 // is unchanged from before this preference existed.
 async function customBackupDirectory(): Promise<string | null> {
+  // Folder picking is not available on Tauri mobile, and a desktop custom
+  // path can arrive here after importing/restoring a portable backup. Never try to reuse that
+  // macOS/Windows/Linux path on iOS/Android: mobile backups stay inside the
+  // app sandbox and manual export uses the native share sheet instead.
+  if (isMobileApp()) return null;
   const { backupDirectory } = await preferencesRepository.getPreferences();
   return backupDirectory ?? null;
 }

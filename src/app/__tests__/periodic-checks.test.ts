@@ -30,7 +30,7 @@ vi.mock("@/shared/lib/logger", () => ({
   logger: { info: vi.fn(), warn: (...args: unknown[]) => mocks.loggerWarn(...args), error: vi.fn() },
 }));
 
-import { runPeriodicChecks } from "../periodic-checks";
+import { runPeriodicChecks, startPeriodicChecks } from "../periodic-checks";
 import { queryClient } from "../query-client";
 import { queryKeys } from "@/shared/constants/query-keys";
 
@@ -87,5 +87,30 @@ describe("runPeriodicChecks", () => {
     await runPeriodicChecks();
 
     expect(mocks.notifyDue).not.toHaveBeenCalled();
+  });
+});
+
+describe("startPeriodicChecks", () => {
+  it("runs a maintenance pass immediately when a suspended app becomes visible again", async () => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    const cleanup = startPeriodicChecks(60_000);
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    await vi.waitFor(() => expect(mocks.createAutomaticBackup).toHaveBeenCalledTimes(1));
+    expect(mocks.checkAll).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it("removes its visibility listener during cleanup", async () => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    const cleanup = startPeriodicChecks(60_000);
+    cleanup();
+
+    document.dispatchEvent(new Event("visibilitychange"));
+    await Promise.resolve();
+
+    expect(mocks.createAutomaticBackup).not.toHaveBeenCalled();
   });
 });

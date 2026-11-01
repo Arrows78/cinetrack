@@ -72,7 +72,7 @@ export function OnboardingScreen() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-foreground">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-6 py-16 text-foreground">
       <div className="mx-auto w-full max-w-2xl text-center">
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-border bg-foreground/[0.04] text-muted-foreground/60">
           <Sparkles className="h-7 w-7" />

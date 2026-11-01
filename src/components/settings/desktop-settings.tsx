@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { RotateCcw } from "lucide-react";
+import { FileDown, RotateCcw } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { maintenanceService } from "@/features/backup";
-import { diagnosticsService, tokenVault, updateService, type DiagnosticsSummary } from "@/features/desktop";
+import { diagnosticsService, exportSupportReport, tokenVault, updateService, type DiagnosticsSummary } from "@/features/desktop";
 import { useDesktopShortcuts } from "@/features/desktop/use-desktop-shortcuts";
 import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { usePreferences } from "@/features/preferences/use-preferences";
@@ -124,6 +124,7 @@ export function DesktopSettings() {
   const [backupStatus, setBackupStatus] = useState<{ exportedAt: string | null; failed: boolean } | null>(null);
   const [logLines, setLogLines] = useState<string[] | null>(null);
   const [timingSummary, setTimingSummary] = useState<DiagnosticsSummary | null>(null);
+  const [isExportingSupportReport, setIsExportingSupportReport] = useState(false);
   const refreshTimingSummary = () => {
     if (!isTauriApp()) return;
     void diagnosticsService
@@ -144,6 +145,18 @@ export function DesktopSettings() {
         .readRecent()
         .then(setLogLines)
         .catch((error: unknown) => logger.warn(`Failed to refresh diagnostic logs: ${errorMessage(error)}`));
+  };
+  const exportDiagnostics = async () => {
+    setIsExportingSupportReport(true);
+    try {
+      const exported = await exportSupportReport();
+      if (exported) toast({ description: t("desktop.diagnosticsReportExported"), variant: "success" });
+    } catch (error) {
+      logger.warn(`Support report export failed: ${errorMessage(error)}`);
+      toast({ description: t("desktop.diagnosticsReportFailed"), variant: "error" });
+    } finally {
+      setIsExportingSupportReport(false);
+    }
   };
   useEffect(() => {
     if (isDesktopApp())
@@ -395,9 +408,18 @@ export function DesktopSettings() {
                     disabled={!logLines?.length}
                     // Non-null: disabled above whenever logLines is empty/null, same
                     // guard the read-only <pre> block below already relies on.
-                    onClick={() => void navigator.clipboard.writeText(logLines!.join("\n"))}
+                    onClick={() => void run(() => navigator.clipboard.writeText(logLines!.join("\n")))}
                   >
                     {t("desktop.diagnosticsCopy")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isExportingSupportReport}
+                    onClick={() => void exportDiagnostics()}
+                  >
+                    <FileDown className="mr-2 size-4" aria-hidden="true" />
+                    {t("desktop.diagnosticsReportExport")}
                   </Button>
                   <Button
                     variant="outline"

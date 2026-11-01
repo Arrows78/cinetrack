@@ -113,7 +113,7 @@ export function AppShell() {
             own brand name below (SidebarNav): the page's own heading (see
             each page component) is the document's real <h1>.
           */}
-          <header className="surface sticky top-[calc(1rem+env(safe-area-inset-top))] z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
+          <header className="surface sticky top-[calc(1rem_+_env(safe-area-inset-top))] z-sticky mb-6 flex items-center justify-between rounded-panel px-3 py-2.5 lg:hidden">
             <div className="flex items-center gap-2">
               {canGoBack && (
                 <IconTooltip label={t("common.back")}>

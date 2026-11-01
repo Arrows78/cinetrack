@@ -413,7 +413,7 @@
     "reminderHoursBefore_other": "{{count}} hours before",
     "reminderLeadTimeDescription": "Reminders for titles you follow are checked when you open the app and during automatic checks.",
     "availabilityAlerts": "Availability alerts",
-    "desktopNotifications": "Desktop notifications",
+    "desktopNotifications": "System notifications",
     "notificationsPermissionDenied": "Notifications are blocked for CineTrack. Allow them in your system settings, then try again.",
     "notificationsToggleFailed": "Couldn't ask for the notification permission. Please try again.",
     "onThisDay": "\"On this day\" memories",
@@ -1144,6 +1144,7 @@
     "importConfirmDescription": "Importing this backup overwrites your current library, history and lists. You can undo this right after with \"Undo last change\".",
     "locationTitle": "Backup folder",
     "locationDescription": "Point this at a folder already synced by iCloud Drive, OneDrive, or Dropbox to get your backups onto another device without CineTrack needing real sync.",
+    "locationMobileDescription": "Automatic backups stay inside CineTrack on mobile. Use Export to save or share a portable copy through the system share sheet.",
     "currentLocation": "Current folder: {{path}}",
     "defaultLocation": "Default (app data folder)",
     "chooseFolder": "Choose backup folder",
@@ -1195,6 +1196,9 @@
     "diagnostics": "Diagnostics (local log)",
     "diagnosticsRefresh": "Refresh",
     "diagnosticsCopy": "Copy",
+    "diagnosticsReportExport": "Export support report",
+    "diagnosticsReportExported": "Support report exported.",
+    "diagnosticsReportFailed": "Couldn't export the support report. Try again.",
     "diagnosticsClear": "Clear",
     "diagnosticsEmpty": "No log entries yet.",
     "diagnosticsTimingTitle": "Command timing summary",
@@ -1253,6 +1257,7 @@
     "welcomeBack": "Welcome back",
     "createAccount": "Create your account",
     "copyErrorDetails": "Copy details",
+    "copyErrorDetailsFailed": "Couldn\u0027t copy the error details. Please try again.",
     "continueWithProviderOrEmail": "Continue with a provider or use a one-time code by email.",
     "or": "or",
     "tabs": {
@@ -1445,6 +1450,7 @@
     "addMissingCta_other": "Add {{count}} missing movies",
     "addMissingSuccess_one": "Added {{count}} movie to your library",
     "addMissingSuccess_other": "Added {{count}} movies to your library",
+    "addMissingPartial": "Added {{added}} of {{total}} movies. {{failed}} could not be added — try again.",
     "addMissingFailed": "Couldn't add the missing movies to your library — try again."
   }
 }

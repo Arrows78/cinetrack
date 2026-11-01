@@ -114,7 +114,7 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
       <motion.div
         aria-hidden="true"
         style={{ opacity: indicatorOpacity, y: pullDistance }}
-        className="pointer-events-none fixed left-1/2 top-[calc(0.5rem+env(safe-area-inset-top))] z-overlay flex size-9 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full border border-border bg-card shadow-lg"
+        className="pointer-events-none fixed left-1/2 top-[calc(0.5rem_+_env(safe-area-inset-top))] z-overlay flex size-9 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full border border-border bg-card shadow-lg"
       >
         {refreshing ? (
           <LoaderCircle className="size-4 animate-spin text-primary" />

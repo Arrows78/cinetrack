@@ -413,7 +413,7 @@
     "reminderHoursBefore_other": "{{count}} heures avant",
     "reminderLeadTimeDescription": "Les rappels des titres suivis sont vérifiés à l’ouverture de l’application et lors des vérifications automatiques.",
     "availabilityAlerts": "Alertes de disponibilité",
-    "desktopNotifications": "Notifications bureau",
+    "desktopNotifications": "Notifications système",
     "notificationsPermissionDenied": "Les notifications sont bloquées pour CineTrack. Autorisez-les dans les réglages du système, puis réessayez.",
     "notificationsToggleFailed": "Impossible de demander l'autorisation d'envoyer des notifications. Réessayez.",
     "onThisDay": "Souvenirs « Ce jour-là »",
@@ -1144,6 +1144,7 @@
     "importConfirmDescription": "Importer cette sauvegarde remplace votre bibliothèque, historique et listes actuels. Vous pourrez annuler juste après avec « Annuler le dernier changement ».",
     "locationTitle": "Dossier de sauvegarde",
     "locationDescription": "Choisissez un dossier déjà synchronisé par iCloud Drive, OneDrive ou Dropbox pour retrouver vos sauvegardes sur un autre appareil sans que CineTrack ait besoin d'une vraie synchronisation.",
+    "locationMobileDescription": "Sur mobile, les sauvegardes automatiques restent dans CineTrack. Utilisez Exporter pour enregistrer ou partager une copie portable via la feuille de partage du système.",
     "currentLocation": "Dossier actuel : {{path}}",
     "defaultLocation": "Par défaut (dossier de données de l'application)",
     "chooseFolder": "Choisir le dossier de sauvegarde",
@@ -1195,6 +1196,9 @@
     "diagnostics": "Diagnostic (journal local)",
     "diagnosticsRefresh": "Actualiser",
     "diagnosticsCopy": "Copier",
+    "diagnosticsReportExport": "Exporter le rapport support",
+    "diagnosticsReportExported": "Rapport support exporté.",
+    "diagnosticsReportFailed": "Impossible d'exporter le rapport support. Réessayez.",
     "diagnosticsClear": "Vider",
     "diagnosticsEmpty": "Aucune entrée pour l'instant.",
     "diagnosticsTimingTitle": "Résumé des temps de commande",
@@ -1253,6 +1257,7 @@
     "welcomeBack": "Bon retour",
     "createAccount": "Créez votre compte",
     "copyErrorDetails": "Copier les détails",
+    "copyErrorDetailsFailed": "Impossible de copier les détails de l\u0027erreur. Réessayez.",
     "continueWithProviderOrEmail": "Continuez avec un fournisseur ou utilisez un code à usage unique par e-mail.",
     "or": "ou",
     "tabs": {
@@ -1445,6 +1450,7 @@
     "addMissingCta_other": "Ajouter {{count}} films manquants",
     "addMissingSuccess_one": "{{count}} film ajouté à votre bibliothèque",
     "addMissingSuccess_other": "{{count}} films ajoutés à votre bibliothèque",
+    "addMissingPartial": "{{added}} films sur {{total}} ajoutés. {{failed}} n'ont pas pu être ajoutés — réessayez.",
     "addMissingFailed": "Impossible d'ajouter les films manquants à votre bibliothèque — réessayez."
   }
 }

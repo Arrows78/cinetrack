@@ -43,7 +43,7 @@ function BlockedScreen({ originalError }: { originalError: string | null }) {
   const { isRestoring, restoreError, restore } = useRestoreAutomaticBackup();
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background p-6">
+    <main className="grid min-h-dvh place-items-center bg-background p-6">
       <div className="w-full max-w-lg">
         <EmptyState
           icon={ShieldAlert}
@@ -99,7 +99,7 @@ export function BootRecoveryGate({ children }: { children: ReactNode }) {
   if (!query.data?.recovered || dismissed) return children;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background p-6">
+    <main className="grid min-h-dvh place-items-center bg-background p-6">
       <div className="w-full max-w-lg">
         <EmptyState
           icon={DatabaseBackup}

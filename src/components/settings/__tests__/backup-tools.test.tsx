@@ -53,6 +53,29 @@ vi.mock("@/features/preferences/preferences-repository", async (importOriginal) 
 const openDialogMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: (...args: unknown[]) => openDialogMock(...args) }));
 
+const isMobileAppMock = vi.fn(() => false);
+vi.mock("@/shared/lib/platform", () => ({ isMobileApp: () => isMobileAppMock() }));
+
+const mkdirMock = vi.fn();
+const writeFileMock = vi.fn();
+vi.mock("@tauri-apps/plugin-fs", () => ({
+  BaseDirectory: { AppCache: "AppCache" },
+  mkdir: (...args: unknown[]) => mkdirMock(...args),
+  writeFile: (...args: unknown[]) => writeFileMock(...args),
+}));
+
+const appCacheDirMock = vi.fn(() => Promise.resolve("/app/cache"));
+const joinMock = vi.fn((...parts: string[]) => Promise.resolve(parts.join("/")));
+vi.mock("@tauri-apps/api/path", () => ({
+  appCacheDir: () => appCacheDirMock(),
+  join: (...args: unknown[]) => joinMock(...(args as string[])),
+}));
+
+const shareFileMock = vi.fn();
+vi.mock("@choochmeque/tauri-plugin-sharekit-api", () => ({
+  shareFile: (...args: unknown[]) => shareFileMock(...args),
+}));
+
 // Imported after mocking so this is the real, un-mocked constant.
 const { MAX_BACKUP_FILE_BYTES } = await vi.importActual<typeof PortableDataModule>("@/features/backup/portable-data");
 
@@ -125,6 +148,12 @@ describe("BackupTools", () => {
     getPreferencesMock.mockReset().mockResolvedValue(BASE_PREFERENCES);
     updatePreferenceMock.mockReset();
     openDialogMock.mockReset();
+    isMobileAppMock.mockReset().mockReturnValue(false);
+    mkdirMock.mockReset().mockResolvedValue(undefined);
+    writeFileMock.mockReset().mockResolvedValue(undefined);
+    appCacheDirMock.mockReset().mockResolvedValue("/app/cache");
+    joinMock.mockReset().mockImplementation((...parts: string[]) => Promise.resolve(parts.join("/")));
+    shareFileMock.mockReset().mockResolvedValue(undefined);
 
     // jsdom doesn't implement these; the component calls them directly.
     URL.createObjectURL = vi.fn(() => "blob:mock-url");
@@ -151,6 +180,42 @@ describe("BackupTools", () => {
       await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" })));
 
       anchorClickSpy.mockRestore();
+    });
+
+    it("on mobile, stages the JSON backup in app cache and opens the native share sheet", async () => {
+      isMobileAppMock.mockReturnValue(true);
+      renderBackupTools();
+      const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+      screen.getByRole("button", { name: "Export" }).click();
+
+      await waitFor(() => expect(shareFileMock).toHaveBeenCalledTimes(1));
+      expect(mkdirMock).toHaveBeenCalledWith("shares", { baseDir: "AppCache", recursive: true });
+      expect(writeFileMock).toHaveBeenCalledWith(
+        expect.stringMatching(/^shares\/cinetrack-backup-.*\.json$/),
+        expect.any(Uint8Array),
+        { baseDir: "AppCache" }
+      );
+      expect(shareFileMock).toHaveBeenCalledWith(
+        expect.stringMatching(/^file:\/\/\/app\/cache\/shares\/cinetrack-backup-.*\.json$/),
+        expect.objectContaining({ mimeType: "application/json" })
+      );
+      expect(anchorClickSpy).not.toHaveBeenCalled();
+      await waitFor(() => expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: "success" })));
+
+      anchorClickSpy.mockRestore();
+    });
+
+    it("treats dismissing the mobile share sheet as a cancellation, not an export failure", async () => {
+      isMobileAppMock.mockReturnValue(true);
+      shareFileMock.mockRejectedValueOnce(new Error("Share cancelled"));
+      renderBackupTools();
+
+      screen.getByRole("button", { name: "Export" }).click();
+
+      await waitFor(() => expect(shareFileMock).toHaveBeenCalledTimes(1));
+      expect(toastMock).not.toHaveBeenCalled();
+      expect(loggerWarnMock).not.toHaveBeenCalled();
     });
 
     it("disables the export button while the export is in flight", async () => {
@@ -422,6 +487,18 @@ describe("BackupTools", () => {
   });
 
   describe("backup folder", () => {
+    it("on mobile, keeps backups in app data and does not offer the unsupported folder picker", async () => {
+      isMobileAppMock.mockReturnValue(true);
+      getPreferencesMock.mockReset().mockResolvedValue({ ...BASE_PREFERENCES, backupDirectory: "/Users/alex/iCloud" });
+      renderBackupTools();
+
+      expect(await screen.findByText("Default (app data folder)")).toBeInTheDocument();
+      expect(screen.getByText(/Automatic backups stay inside CineTrack on mobile/)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Choose backup folder" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Reset to default" })).not.toBeInTheDocument();
+      expect(openDialogMock).not.toHaveBeenCalled();
+    });
+
     it("shows the default location when no custom directory is set", async () => {
       renderBackupTools();
 
