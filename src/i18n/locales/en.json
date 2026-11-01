@@ -1249,6 +1249,7 @@
     "welcomeBack": "Welcome back",
     "createAccount": "Create your account",
     "copyErrorDetails": "Copy details",
+    "copyErrorDetailsFailed": "Couldn\u0027t copy the error details. Please try again.",
     "continueWithProviderOrEmail": "Continue with a provider or use a one-time code by email.",
     "or": "or",
     "tabs": {
