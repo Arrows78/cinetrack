@@ -11,6 +11,9 @@ import { AuthEmailStep } from "@/features/auth/auth-email-step";
 import { AuthOtpStep } from "@/features/auth/auth-otp-step";
 import { AuthProvidersStep, type ProviderSettingsStatus } from "@/features/auth/auth-providers-step";
 import { cn } from "@/shared/lib/cn";
+import { toast } from "@/components/ui/use-toast";
+import { logger } from "@/shared/lib/logger";
+import { errorMessage } from "@/shared/lib/errors";
 
 type AuthMode = "signin" | "signup";
 type AuthStep = "providers" | "email" | "otp";
@@ -275,7 +278,12 @@ export function AuthScreen() {
                 variant="ghost"
                 size="sm"
                 className="shrink-0 text-auth-foreground/90 hover:bg-auth-destructive/15"
-                onClick={() => void navigator.clipboard.writeText(errorDetail)}
+                onClick={() => {
+                  void navigator.clipboard.writeText(errorDetail).catch((copyError: unknown) => {
+                    logger.warn(`Failed to copy auth error details: ${errorMessage(copyError)}`);
+                    toast({ description: t("auth.copyErrorDetailsFailed"), variant: "error" });
+                  });
+                }}
               >
                 <Copy className="mr-2 size-4" aria-hidden="true" />
                 {t("auth.copyErrorDetails")}

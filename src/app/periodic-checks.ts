@@ -52,3 +52,38 @@ export async function runPeriodicChecks(): Promise<void> {
   }
   await checkBackgroundNotifications();
 }
+
+/**
+ * Installs the periodic maintenance loop and wakes it immediately when a
+ * suspended mobile/desktop webview becomes visible again. Browsers pause or
+ * heavily throttle timers in the background, so waiting for the next interval
+ * after resume can leave backups/availability reminders stale for hours.
+ *
+ * Overlapping wake/timer ticks share one in-flight pass.
+ */
+export function startPeriodicChecks(intervalMs: number): () => void {
+  let inFlight: Promise<void> | null = null;
+
+  const run = () => {
+    if (inFlight) return;
+    inFlight = runPeriodicChecks()
+      .catch((error: unknown) => {
+        logger.warn(`Background notification check failed: ${errorMessage(error)}`);
+      })
+      .finally(() => {
+        inFlight = null;
+      });
+  };
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "visible") run();
+  };
+
+  const interval = window.setInterval(run, intervalMs);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
+  return () => {
+    window.clearInterval(interval);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+  };
+}

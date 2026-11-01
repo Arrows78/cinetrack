@@ -25,6 +25,7 @@ const createEmailAddressMock = vi.fn();
 const prepareVerificationMock = vi.fn();
 const attemptVerificationMock = vi.fn();
 const destroyMock = vi.fn();
+const pendingDestroyMock = vi.fn();
 const updateMock = vi.fn();
 const deleteMock = vi.fn();
 
@@ -61,6 +62,7 @@ describe("AccountSettingsCard", () => {
     loggerErrorMock.mockReset();
     signOutMock.mockReset().mockResolvedValue(undefined);
     destroyMock.mockReset().mockResolvedValue(undefined);
+    pendingDestroyMock.mockReset().mockResolvedValue(undefined);
     updateMock.mockReset().mockResolvedValue(undefined);
     deleteMock.mockReset().mockResolvedValue(undefined);
     createEmailAddressMock.mockReset();
@@ -124,6 +126,51 @@ describe("AccountSettingsCard", () => {
         variant: "success",
       })
     );
+  });
+
+  it("removes the newly-created address if preparing verification fails", async () => {
+    const pendingEmail = {
+      id: "email-2",
+      emailAddress: "new@example.com",
+      prepareVerification: prepareVerificationMock,
+      destroy: pendingDestroyMock,
+    };
+    createEmailAddressMock.mockResolvedValue(pendingEmail);
+    prepareVerificationMock.mockRejectedValue({ errors: [{ code: "too_many_requests", message: "raw" }] });
+
+    renderCard();
+    fireEvent.change(screen.getByLabelText("New email address"), { target: { value: "new@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
+
+    await waitFor(() => expect(pendingDestroyMock).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/too many requests/i)).toBeInTheDocument();
+  });
+
+  it("removes an unverified pending address when the email change is cancelled", async () => {
+    const pendingEmail = {
+      id: "email-2",
+      emailAddress: "new@example.com",
+      prepareVerification: prepareVerificationMock,
+      destroy: pendingDestroyMock,
+    };
+    createEmailAddressMock.mockResolvedValue(pendingEmail);
+    prepareVerificationMock.mockResolvedValue(pendingEmail);
+    currentUser = makeUser({
+      emailAddresses: [
+        { id: "email-1", emailAddress: "old@example.com", destroy: destroyMock },
+        { id: "email-2", emailAddress: "new@example.com", destroy: pendingDestroyMock },
+      ],
+    });
+
+    renderCard();
+    fireEvent.change(screen.getByLabelText("New email address"), { target: { value: "new@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
+
+    await screen.findByLabelText("Code sent to new@example.com");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(pendingDestroyMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByLabelText("New email address")).toBeInTheDocument());
   });
 
   it("shows a translated error instead of the raw Clerk message when the code is wrong", async () => {

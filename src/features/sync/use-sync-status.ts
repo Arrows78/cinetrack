@@ -3,10 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { syncRunHistoryKey } from "@/shared/constants/local-storage-keys";
 import { isTauriApp } from "@/shared/lib/platform";
 
 import { syncRepository } from "./sync-repository";
 import { syncService, PERIODIC_SYNC_MS } from "./sync-service";
+import { readSyncRunHistory, SYNC_RUN_HISTORY_EVENT } from "./sync-run-history";
 
 // No push channel drives this card (Supabase Realtime only wakes the actual
 // sync loop, see sync-service.ts's own comment on that) — a short poll
@@ -62,4 +64,33 @@ export function useSyncConflicts(enabled: boolean) {
     queryFn: () => syncRepository.listConflicts(20),
     enabled: isTauriApp() && enabled,
   });
+}
+
+
+/** Device-local recent sync outcomes, including automatic/background runs. */
+export function useSyncRunHistory() {
+  const profileId = useActiveProfileId();
+  const [history, setHistory] = useState(() => readSyncRunHistory(profileId));
+
+  useEffect(() => {
+    const refresh = () => setHistory(readSyncRunHistory(profileId));
+    refresh();
+
+    const onHistoryChanged = (event: Event) => {
+      const changedProfile = (event as CustomEvent<{ profileId?: string }>).detail?.profileId;
+      if (!changedProfile || changedProfile === profileId) refresh();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === syncRunHistoryKey(profileId)) refresh();
+    };
+
+    window.addEventListener(SYNC_RUN_HISTORY_EVENT, onHistoryChanged);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(SYNC_RUN_HISTORY_EVENT, onHistoryChanged);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [profileId]);
+
+  return history;
 }

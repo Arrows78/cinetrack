@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import { AppRouter } from "@/app/router";
-import { checkBackgroundNotifications, runPeriodicChecks } from "@/app/periodic-checks";
+import { checkBackgroundNotifications, startPeriodicChecks } from "@/app/periodic-checks";
 import { BrowserPreviewBanner } from "@/components/desktop/browser-preview-banner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -114,16 +114,7 @@ export function App() {
   useEffect(() => {
     if (!isTauriApp()) return;
 
-    const interval = window.setInterval(
-      () => {
-        void runPeriodicChecks().catch((error: unknown) => {
-          logger.warn(`Background notification check failed: ${errorMessage(error)}`);
-        });
-      },
-      availabilityCheckIntervalHours * 60 * 60 * 1000
-    );
-
-    return () => window.clearInterval(interval);
+    return startPeriodicChecks(availabilityCheckIntervalHours * 60 * 60 * 1000);
   }, [availabilityCheckIntervalHours]);
 
   return (

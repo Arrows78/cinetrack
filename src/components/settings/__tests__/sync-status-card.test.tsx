@@ -49,6 +49,7 @@ describe("SyncStatusCard", () => {
       lastSyncedAt: null,
     });
     runMock.mockReset().mockResolvedValue({ pushed: 0, pulled: 0, conflicts: 0 });
+    localStorage.clear();
   });
 
   it("renders nothing outside Tauri", () => {
@@ -148,6 +149,28 @@ describe("SyncStatusCard", () => {
 
     await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(getStatusMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows recent automatic/manual sync outcomes from this device", async () => {
+    localStorage.setItem(
+      "cinetrack.sync-run-history.v1:profile-1",
+      JSON.stringify([
+        {
+          at: new Date().toISOString(),
+          outcome: "success",
+          pushed: 3,
+          pulled: 2,
+          conflicts: 1,
+        },
+      ])
+    );
+    renderCard();
+    await screen.findByText("Up to date.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Recent syncs" }));
+
+    expect(await screen.findByText("Success")).toBeInTheDocument();
+    expect(screen.getByText("3 sent · 2 received · 1 conflicts")).toBeInTheDocument();
   });
 
   it("shows a RemoteErrorState with working retry when the status query fails", async () => {

@@ -186,7 +186,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      logger.warn(`Handling auth deep link: ${callbackUrl}`);
+      logger.info(`Handling auth deep link for ${url.protocol}//${callbackPath(url)}`);
 
       const rotatingTokenNonce = rotatingTokenNonceFrom(url);
 

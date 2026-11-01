@@ -53,6 +53,9 @@ vi.mock("@/features/backup/portable-data", async (importOriginal) => {
   return { ...actual, portableData: { export: exportMock, import: importMock } };
 });
 
+const isMobileAppMock = vi.hoisted(() => vi.fn(() => false));
+vi.mock("@/shared/lib/platform", () => ({ isMobileApp: () => isMobileAppMock() }));
+
 const getPreferencesMock = vi.hoisted(() => vi.fn());
 vi.mock("@/features/preferences/preferences-repository", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -78,6 +81,7 @@ beforeEach(() => {
   exportMock.mockReset().mockResolvedValue(backup("default-snapshot"));
   importMock.mockReset();
   invokeCommandMock.mockReset();
+  isMobileAppMock.mockReset().mockReturnValue(false);
   getPreferencesMock.mockReset().mockResolvedValue({ backupDirectory: null, backupFrequency: "daily" });
 });
 
@@ -331,6 +335,20 @@ describe("maintenanceService automatic backup frequency", () => {
 // pre-allow-listed for an arbitrary, user-chosen absolute path. These
 // commands are pure file I/O with no SQL behind them, so they're faked here
 // with a small in-memory file map instead of a second plugin-fs mock.
+describe("maintenanceService mobile backup routing", () => {
+  it("ignores a desktop custom directory restored from a portable backup", async () => {
+    isMobileAppMock.mockReturnValue(true);
+    getPreferencesMock.mockResolvedValue({ backupDirectory: "/Users/alex/iCloud", backupFrequency: "daily" });
+    exportMock.mockResolvedValue(backup("mobile"));
+    const { maintenanceService } = await import("../maintenance-service");
+
+    await maintenanceService.createAutomaticBackup(true);
+
+    expect(invokeCommandMock).not.toHaveBeenCalled();
+    expect(Array.from(fsState.files.keys()).some((key) => key.startsWith("backups/auto-"))).toBe(true);
+  });
+});
+
 describe("maintenanceService with a custom backup directory", () => {
   const CUSTOM_DIR = "/Users/alex/iCloud Drive/CineTrack Backups";
 

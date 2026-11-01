@@ -44,6 +44,7 @@ vi.mock("@/features/sync/sync-repository", () => ({
 }));
 
 import { syncService } from "@/features/sync/sync-service";
+import { readSyncRunHistory } from "@/features/sync/sync-run-history";
 
 const mutation = {
   mutationId: "m1",
@@ -79,6 +80,7 @@ function queryClientMock() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   mocks.isTauriApp.mockReturnValue(true);
   mocks.getCurrentUserId.mockReturnValue("user_1");
@@ -165,6 +167,22 @@ describe("syncService.run", () => {
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["local"] });
     expect(mocks.loggerInfo).toHaveBeenCalledWith("cloud.sync pushed=1 pulled=1 conflicts=0");
     expect(mocks.markCompleted).toHaveBeenCalledTimes(1);
+  });
+
+  it("records the result of a successful automatic/manual sync run", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    client.rpc.mockResolvedValue({ data: [], error: null });
+
+    await syncService.run();
+
+    expect(readSyncRunHistory("profile-1")[0]).toMatchObject({
+      outcome: "success",
+      pushed: 0,
+      pulled: 0,
+      conflicts: 0,
+    });
   });
 
   it("still invalidates the local queries when a step after the pull throws", async () => {
@@ -349,6 +367,23 @@ describe("syncService.run", () => {
     client.rpc.mockResolvedValue({ data: { acks: [], conflicts: [], cursor: 0 }, error: null });
 
     await expect(syncService.run()).rejects.toThrow("Sync server made no progress");
+  });
+
+  it("records a failed run without swallowing the original sync error", async () => {
+    const { client } = makeClient();
+    mocks.getDataClient.mockResolvedValue(client);
+    mocks.listOutbox.mockResolvedValue([]);
+    const failure = new Error("pull failed");
+    client.rpc.mockResolvedValue({ data: null, error: failure });
+
+    await expect(syncService.run()).rejects.toBe(failure);
+
+    expect(readSyncRunHistory("profile-1")[0]).toMatchObject({
+      outcome: "failure",
+      pushed: 0,
+      pulled: 0,
+      conflicts: 0,
+    });
   });
 
   it("propagates remote pull errors", async () => {
