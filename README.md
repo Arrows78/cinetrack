@@ -2,7 +2,7 @@
 
 # 🎬 CineTrack
 
-**A local-first desktop application for discovering, organising, and tracking films and TV series.**
+**A local-first application for discovering, organising, and tracking films and TV series.**
 
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
@@ -18,7 +18,7 @@
 
 </div>
 
-CineTrack is a local-first desktop application built with **Tauri**, **React**, **TypeScript**, and **SQLite**. It uses the [TMDB](https://www.themoviedb.org/) catalogue to explore films and TV series while keeping your library, viewing progress, and activity history on your device.
+CineTrack is a local-first application built with **Tauri**, **React**, **TypeScript**, and **SQLite**, with desktop releases and an iOS target under active launch preparation. It uses the [TMDB](https://www.themoviedb.org/) catalogue to explore films and TV series while keeping your library, viewing progress, and activity history on your device.
 
 > [!NOTE]
 > The interface is available in English and French, with the internationalisation architecture in place for adding more languages.
@@ -216,6 +216,8 @@ This command starts the Vite server on port `1420`, initialises the SQLite datab
 For the Rust side, use `pnpm cargo:check`, `pnpm cargo:clippy`, `pnpm cargo:format:check`, and `pnpm cargo:test` (all four also run in CI).
 
 Generated Tauri bundles are written to `src-tauri/target/release/bundle/`.
+
+iOS setup, free-device provisioning limits, App Store/TestFlight gates, and the real-device QA checklist are documented in [`docs/mobile-release.md`](docs/mobile-release.md).
 
 ## 📂 Project structure
 
