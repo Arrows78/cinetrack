@@ -55,7 +55,7 @@ const autoBackupFileName = (exportedAt: string) =>
 // is unchanged from before this preference existed.
 async function customBackupDirectory(): Promise<string | null> {
   // Folder picking is not available on Tauri mobile, and a desktop custom
-  // path can arrive here through synced preferences. Never try to reuse that
+  // path can arrive here after importing/restoring a portable backup. Never try to reuse that
   // macOS/Windows/Linux path on iOS/Android: mobile backups stay inside the
   // app sandbox and manual export uses the native share sheet instead.
   if (isMobileApp()) return null;
