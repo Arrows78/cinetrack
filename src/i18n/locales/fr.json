@@ -485,6 +485,11 @@
       "syncNow": "Synchroniser maintenant",
       "conflictsLoading": "Chargement des conflits…",
       "conflictsEmpty": "Aucun détail de conflit à afficher.",
+      "historyTitle": "Synchronisations récentes",
+      "historyEmpty": "Aucune synchronisation enregistrée sur cet appareil.",
+      "runSuccess": "Réussie",
+      "runFailed": "Échec",
+      "runSummary": "{{pushed}} envoyés · {{pulled}} reçus · {{conflicts}} conflits",
       "entityTypes": {
         "library_item": "Élément de bibliothèque",
         "seen_movie": "Film vu",
