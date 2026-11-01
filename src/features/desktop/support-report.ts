@@ -77,19 +77,26 @@ function downloadText(contents: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-async function shareText(contents: string, filename: string): Promise<void> {
+async function shareText(contents: string, filename: string): Promise<boolean> {
   await mkdir(SUPPORT_CACHE_SUBDIR, { baseDir: BaseDirectory.AppCache, recursive: true });
   const relativePath = `${SUPPORT_CACHE_SUBDIR}/${filename}`;
   await writeFile(relativePath, new TextEncoder().encode(contents), { baseDir: BaseDirectory.AppCache });
   const absolutePath = await join(await appCacheDir(), relativePath);
-  await shareFile(`file://${absolutePath}`, { mimeType: "application/json", title: filename });
+  try {
+    await shareFile(`file://${absolutePath}`, { mimeType: "application/json", title: filename });
+    return true;
+  } catch (error) {
+    if (error instanceof Error && error.message === "Share cancelled") return false;
+    throw error;
+  }
 }
 
-export async function exportSupportReport(): Promise<void> {
+export async function exportSupportReport(): Promise<boolean> {
   const report = await buildSupportReport();
   const contents = JSON.stringify(report, null, 2);
   const filename = `cinetrack-support-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 
-  if (isMobileApp()) await shareText(contents, filename);
-  else downloadText(contents, filename);
+  if (isMobileApp()) return shareText(contents, filename);
+  downloadText(contents, filename);
+  return true;
 }
