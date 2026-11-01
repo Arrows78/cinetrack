@@ -316,6 +316,28 @@ describe("partitionNextEpisodes", () => {
     expect(groups.newEpisodes).toHaveLength(0);
   });
 
+  it("orders fresh episodes by air date, newest first", async () => {
+    const { partitionNextEpisodes } = await import("../use-watch-next");
+    const older = {
+      series: { ...inProgressSeries, seriesId: 10, title: "Older drop" },
+      nextEpisode: { ...nextEpisode, id: 100, airDate: daysAgo(7) },
+      remaining: 1,
+      isLoading: false,
+      isError: false,
+    };
+    const newer = {
+      series: { ...inProgressSeries, seriesId: 11, title: "Newest drop" },
+      nextEpisode: { ...nextEpisode, id: 101, airDate: daysAgo(1) },
+      remaining: 1,
+      isLoading: false,
+      isError: false,
+    };
+
+    const groups = partitionNextEpisodes([older, newer], now);
+
+    expect(groups.newEpisodes.map((entry) => entry.series.title)).toEqual(["Newest drop", "Older drop"]);
+  });
+
   it("excludes results with no resolved next episode from every group", async () => {
     const { partitionNextEpisodes } = await import("../use-watch-next");
     const result = { series: inProgressSeries, nextEpisode: null, remaining: 7, isLoading: false, isError: false };
