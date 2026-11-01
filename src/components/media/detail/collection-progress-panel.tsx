@@ -88,13 +88,30 @@ export function CollectionProgressPanel({ movie }: { movie: Movie }) {
   const handleAddMissing = async () => {
     setIsAddingMissing(true);
     try {
-      await Promise.all(missing.map((missingMovie) => addPlanned(missingMovie)));
-      toast({ description: t("collection.addMissingSuccess", { count: missing.length }) });
-    } catch (error) {
-      // Never surface error.message — see CLAUDE.md's rule on raw IPC/TMDB
-      // error text reaching the user.
-      logger.error(`Failed to add missing collection entries for collection ${collection.id}: ${error}`);
-      toast({ description: t("collection.addMissingFailed"), variant: "error" });
+      const results = await Promise.allSettled(missing.map((missingMovie) => addPlanned(missingMovie)));
+      const added = results.filter((result) => result.status === "fulfilled").length;
+      const failed = results.length - added;
+
+      if (failed === 0) {
+        toast({ description: t("collection.addMissingSuccess", { count: added }) });
+        return;
+      }
+
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          logger.error(
+            `Failed to add collection entry ${missing[index]?.id ?? "unknown"} for collection ${collection.id}: ${result.reason}`
+          );
+        }
+      });
+
+      toast({
+        description:
+          added > 0
+            ? t("collection.addMissingPartial", { added, failed, total: results.length })
+            : t("collection.addMissingFailed"),
+        variant: "error",
+      });
     } finally {
       setIsAddingMissing(false);
     }
