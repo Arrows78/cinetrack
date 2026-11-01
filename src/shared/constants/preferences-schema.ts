@@ -11,7 +11,7 @@ import type { UserPreferences } from "@/types/media";
 // only restore backups and stand in while preferences are still loading.
 // `default-preferences.json` pins both sides to the same document.
 export const preferencesSchema = z.object({
-  theme: z.enum(["dark", "light"]).default("dark"),
+  theme: z.enum(["dark", "light", "system"]).default("dark"),
   accentColor: z.enum(["violet", "blue", "teal", "green", "amber", "orange", "rose", "red"]).default("violet"),
   language: z.enum(["en", "fr"]).default("en"),
   region: z

@@ -21,7 +21,7 @@ const UI_TOGGLES: UiToggle[] = [
   { key: "onThisDayEnabled", labelKey: "settings.onThisDay" },
 ];
 
-/** Accent color, language, region, default search type and display toggles. */
+/** Theme, accent color, language, region, default search type and display toggles. */
 export function AppearanceCard({ preferences, updatePreference, setPreference, isSaving }: PreferenceCardProps) {
   const { t, i18n } = useTranslation();
   const setLanguage = async (language: "fr" | "en") => {
@@ -67,6 +67,20 @@ export function AppearanceCard({ preferences, updatePreference, setPreference, i
               }
             )}
           </div>
+        </div>
+        <div>
+          <p className="mb-3 text-body-sm font-medium">{t("settings.theme")}</p>
+          <FilterBar
+            value={preferences?.theme ?? defaultPreferences.theme}
+            onChange={(value) => setPreference({ key: "theme", value })}
+            groupLabel={t("settings.theme")}
+            disabled={isSaving}
+            options={[
+              { value: "light", label: t("sidebar.theme.light") },
+              { value: "dark", label: t("sidebar.theme.dark") },
+              { value: "system", label: t("sidebar.theme.system") },
+            ]}
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2 text-body-sm font-medium">

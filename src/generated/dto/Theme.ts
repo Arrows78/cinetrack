@@ -3,4 +3,4 @@
 /**
  * Generates `src/generated/dto/Theme.ts`.
  */
-export type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "system";

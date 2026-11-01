@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import { ThemeController } from "../theme-controller";
 import { COLOR_PRESETS, DEFAULT_ACCENT } from "@/shared/constants/colors";
 
@@ -22,7 +22,38 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
 });
 
+// A controllable stand-in for the OS appearance (jsdom has no matchMedia).
+function mockSystemTheme(initiallyDark: boolean) {
+  let matches = initiallyDark;
+  const listeners = new Set<() => void>();
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    get matches() {
+      return matches;
+    },
+    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+  }));
+  return (dark: boolean) => {
+    matches = dark;
+    listeners.forEach((listener) => listener());
+  };
+}
+
 describe("ThemeController", () => {
+  it("follows the operating system under the system theme, live", () => {
+    const setSystemDark = mockSystemTheme(false);
+    preferences = { theme: "system", accentColor: "violet" };
+    render(<ThemeController />);
+    expect(document.documentElement.classList.contains("light")).toBe(true);
+
+    act(() => setSystemDark(true));
+
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(document.body.classList.contains("light")).toBe(false);
+    // @ts-expect-error -- restore jsdom's original (absent) matchMedia
+    delete window.matchMedia;
+  });
+
   it("toggles the light/dark class on both <html> and <body>", () => {
     preferences = { theme: "light", accentColor: "violet" };
     render(<ThemeController />);

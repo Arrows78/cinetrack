@@ -398,6 +398,7 @@
     "navSectionsLabel": "Settings sections",
     "uiPreferences": "UI preferences",
     "customizeDisplay": "Customize display and default values.",
+    "theme": "Theme",
     "accentColor": "Accent color",
     "language": "Language",
     "region": "TMDB region",
@@ -1247,7 +1248,8 @@
     "switchProfile": "Switch profile",
     "theme": {
       "dark": "Dark",
-      "light": "Light"
+      "light": "Light",
+      "system": "System"
     },
     "sections": {
       "discover": "Discover",

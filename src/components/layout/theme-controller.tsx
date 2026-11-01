@@ -1,6 +1,7 @@
 import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect } from "react";
 import { usePreferences } from "@/features/preferences/use-preferences";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
 import { COLOR_PRESETS, DEFAULT_ACCENT } from "@/shared/constants/colors";
 
 /**
@@ -48,11 +49,12 @@ function themeOverrideFromUrl(): "light" | "dark" | null {
 
 export function ThemeController() {
   const { data: preferences } = usePreferences();
+  const resolvedTheme = useResolvedTheme();
 
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
-    const theme = themeOverrideFromUrl() ?? preferences?.theme ?? defaultPreferences.theme;
+    const theme = themeOverrideFromUrl() ?? resolvedTheme;
     const accent = preferences?.accentColor ?? DEFAULT_ACCENT;
 
     // — Theme class
@@ -84,7 +86,7 @@ export function ThemeController() {
     const primaryFg = theme === "dark" ? "225 25% 10%" : "0 0% 98%";
 
     applyAccentVars(primaryHsl, primaryFg);
-  }, [preferences?.theme, preferences?.accentColor, preferences?.reduceMotion, preferences?.compactMode]);
+  }, [resolvedTheme, preferences?.accentColor, preferences?.reduceMotion, preferences?.compactMode]);
 
   return null;
 }

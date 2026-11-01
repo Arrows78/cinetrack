@@ -9,6 +9,8 @@ use crate::error::ApiError;
 pub enum Theme {
     Dark,
     Light,
+    /// Follows the operating system's light/dark appearance, live.
+    System,
 }
 
 /// Generates `src/generated/dto/AccentColor.ts`, re-exported as `AccentColor`

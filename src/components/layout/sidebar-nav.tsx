@@ -1,7 +1,7 @@
 import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useTranslation } from "react-i18next";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { PanelLeftClose, PanelLeft, Moon, Sun, LogOut } from "lucide-react";
+import { PanelLeftClose, PanelLeft, Moon, Sun, Monitor, LogOut } from "lucide-react";
 import { navigationSections, useNavigationItems, type NavigationItem } from "@/shared/constants/navigation";
 import { cn } from "@/shared/lib/cn";
 import { BrandMarkIcon } from "@/components/layout/brand-mark-icon";
@@ -113,6 +113,7 @@ function NavSection({ labelKey, items, collapsed, pathname, onNavigate, showDivi
 const themeOptions = [
   { value: "dark" as const, icon: Moon, labelKey: "sidebar.theme.dark" },
   { value: "light" as const, icon: Sun, labelKey: "sidebar.theme.light" },
+  { value: "system" as const, icon: Monitor, labelKey: "sidebar.theme.system" },
 ];
 
 // Shared surface recipe for the footer's two grouped blocks (theme switcher,

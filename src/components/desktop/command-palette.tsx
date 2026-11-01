@@ -39,6 +39,7 @@ import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import { COMMAND_PALETTE_BACKDROP_CLASSNAME } from "@/shared/constants/decorative-gradients";
 import type { MediaSummary, Movie, Series } from "@/types/media";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
 
 interface PaletteItem {
   key: string;
@@ -136,8 +137,9 @@ export function CommandPalette() {
     [router]
   );
 
-  const theme = preferences.data?.theme ?? defaultPreferences.theme;
-  const nextTheme = theme === "dark" ? "light" : "dark";
+  // Toggles away from what's on screen: under "system", that's the OS's
+  // current appearance, and picking one pins it explicitly.
+  const nextTheme = useResolvedTheme() === "dark" ? "light" : "dark";
   const setPreference = preferences.setPreference;
 
   // Contextual actions — only meaningful on a movie/series detail page, so

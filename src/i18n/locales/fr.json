@@ -398,6 +398,7 @@
     "navSectionsLabel": "Sections des paramètres",
     "uiPreferences": "Préférences d'interface",
     "customizeDisplay": "Personnalisez l'affichage et les valeurs par défaut.",
+    "theme": "Thème",
     "accentColor": "Couleur d'accent",
     "language": "Langue",
     "region": "Région TMDB",
@@ -1247,7 +1248,8 @@
     "switchProfile": "Changer de profil",
     "theme": {
       "dark": "Sombre",
-      "light": "Clair"
+      "light": "Clair",
+      "system": "Système"
     },
     "sections": {
       "discover": "Découvrir",
