@@ -66,9 +66,9 @@ describe("support report", () => {
   });
 
   it("redacts OAuth nonces, bearer tokens and email addresses", () => {
-    expect(
-      redactDiagnosticLine("alice@example.com rotating_token_nonce=abc123 Authorization Bearer secret.jwt")
-    ).toBe("<email-redacted> rotating_token_nonce=<redacted> Authorization Bearer <redacted>");
+    expect(redactDiagnosticLine("alice@example.com rotating_token_nonce=abc123 Authorization Bearer secret.jwt")).toBe(
+      "<email-redacted> rotating_token_nonce=<redacted> Authorization Bearer <redacted>"
+    );
   });
 
   it("builds a useful report without exposing the sync device identifier", async () => {

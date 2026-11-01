@@ -86,8 +86,6 @@ export function AboutSettings() {
           )}
         </CardContent>
       </Card>
-
-
     </div>
   );
 }

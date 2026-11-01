@@ -307,9 +307,7 @@ describe("BackupTools", () => {
       fireEvent.change(getFileInput(container), { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
 
       expect(
-        await screen.findByText(
-          /1 profiles, 0 library items, 0 viewing events, 0 tracked series and 0 custom lists/i
-        )
+        await screen.findByText(/1 profiles, 0 library items, 0 viewing events, 0 tracked series and 0 custom lists/i)
       ).toBeInTheDocument();
       expect(restoreFromBackupMock).not.toHaveBeenCalled();
     });

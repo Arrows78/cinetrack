@@ -66,7 +66,6 @@ export function useSyncConflicts(enabled: boolean) {
   });
 }
 
-
 /** Device-local recent sync outcomes, including automatic/background runs. */
 export function useSyncRunHistory() {
   const profileId = useActiveProfileId();

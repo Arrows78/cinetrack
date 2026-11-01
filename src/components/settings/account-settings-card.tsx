@@ -241,7 +241,12 @@ export function AccountSettingsCard() {
               >
                 {t("settings.account.verifyCode")}
               </Button>
-              <Button type="button" variant="ghost" disabled={isSubmittingEmail} onClick={() => void cancelEmailChange()}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isSubmittingEmail}
+                onClick={() => void cancelEmailChange()}
+              >
                 {t("common.cancel")}
               </Button>
             </form>

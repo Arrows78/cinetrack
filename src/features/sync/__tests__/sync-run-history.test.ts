@@ -5,12 +5,7 @@ vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: (...args: unknown[]) => loggerWarnMock(...args) },
 }));
 
-import {
-  readSyncRunHistory,
-  recordSyncRun,
-  SYNC_RUN_HISTORY_EVENT,
-  SYNC_RUN_HISTORY_LIMIT,
-} from "../sync-run-history";
+import { readSyncRunHistory, recordSyncRun, SYNC_RUN_HISTORY_EVENT, SYNC_RUN_HISTORY_LIMIT } from "../sync-run-history";
 
 describe("sync run history", () => {
   beforeEach(() => {
@@ -32,7 +27,7 @@ describe("sync run history", () => {
     const history = readSyncRunHistory("profile-1");
     expect(history).toHaveLength(SYNC_RUN_HISTORY_LIMIT);
     expect(history[0]?.pushed).toBe(SYNC_RUN_HISTORY_LIMIT + 2);
-    expect(history.at(-1)?.pushed).toBe(3);
+    expect(history[history.length - 1]?.pushed).toBe(3);
   });
 
   it("ignores malformed persisted entries instead of breaking Settings", () => {

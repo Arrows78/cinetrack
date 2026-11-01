@@ -200,7 +200,7 @@ export function bootstrapClerkInstance(): Promise<ClerkClass | null> {
       clerkInstance = clerk;
       await clerk.load({ standardBrowser: !nativeWebview });
       return clerk;
-    } catch (error) {
+    } catch {
       logger.error("Clerk bootstrap failed before the authentication client became ready");
       return null;
     }

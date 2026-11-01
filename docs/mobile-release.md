@@ -4,11 +4,11 @@ CineTrack already shares its product code between desktop and iOS through Tauri.
 
 ## Current iOS status
 
-| Target | Status | Command |
-| --- | --- | --- |
-| iOS Simulator | Supported and CI-built without signing | `pnpm ios:init && pnpm ios:build:sim` |
-| Personal iPhone/iPad | Development testing available with Xcode Personal Team | `pnpm ios:dev:open` |
-| TestFlight / App Store | Blocked until Apple Developer Program enrollment | — |
+| Target                 | Status                                                 | Command                               |
+| ---------------------- | ------------------------------------------------------ | ------------------------------------- |
+| iOS Simulator          | Supported and CI-built without signing                 | `pnpm ios:init && pnpm ios:build:sim` |
+| Personal iPhone/iPad   | Development testing available with Xcode Personal Team | `pnpm ios:dev:open`                   |
+| TestFlight / App Store | Blocked until Apple Developer Program enrollment       | —                                     |
 
 The generated native project lives under `src-tauri/gen/` and remains gitignored. It is regenerated from the committed Tauri configuration.
 

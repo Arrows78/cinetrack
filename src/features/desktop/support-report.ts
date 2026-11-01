@@ -4,7 +4,7 @@ import { BaseDirectory, mkdir, writeFile } from "@tauri-apps/plugin-fs";
 import { type as osType } from "@tauri-apps/plugin-os";
 import { shareFile } from "@choochmeque/tauri-plugin-sharekit-api";
 
-import { maintenanceService } from "@/features/backup/maintenance-service";
+import { maintenanceService } from "@/features/backup";
 import { diagnosticsService } from "@/features/desktop/diagnostics-service";
 import { syncRepository } from "@/features/sync/sync-repository";
 import { logger } from "@/shared/lib/logger";
@@ -14,7 +14,7 @@ const SUPPORT_CACHE_SUBDIR = "support";
 
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const OAUTH_NONCE_PATTERN = /(rotating_token_nonce=)[^&#\s]+/gi;
-const BEARER_PATTERN = /(Bearer\s+)[A-Za-z0-9._~+\/-]+/gi;
+const BEARER_PATTERN = /(Bearer\s+)[A-Za-z0-9._~+/-]+/gi;
 
 export function redactDiagnosticLine(line: string): string {
   return line

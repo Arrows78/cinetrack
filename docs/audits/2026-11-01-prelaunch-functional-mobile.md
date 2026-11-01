@@ -12,20 +12,20 @@ The core local-first product is structurally ready for a mobile beta once the mo
 
 The highest-risk launch gaps are native/device integration rather than core library logic:
 
-| Priority | Finding | Status / action |
-| --- | --- | --- |
-| P1 | Fixed overlays could sit underneath the mobile tab bar / home-indicator area | Fixed in mobile functional-readiness PR |
-| P1 | Several safe-area `calc()` Tailwind classes omitted required operator whitespace | Fixed in mobile functional-readiness PR |
-| P1 | Manual JSON backup relied on browser download semantics on mobile | Fixed: native share sheet on iOS |
-| P1 | A desktop `backupDirectory` restored from a portable backup could be reused as an invalid mobile filesystem path | Fixed: mobile always uses app-sandbox automatic backups |
-| P1 | Tauri mobile does not support folder picking, but Settings exposed the control | Fixed: mobile hides it and explains sandbox/export behavior |
-| P2 | Clipboard failures for auth diagnostics / local logs were unhandled | Fixed with visible feedback/logging |
-| P1 | iOS device launch path needed a documented free-signing workflow | Prepared in this PR |
-| P1 | iOS distribution cannot be validated or shipped without Apple Developer Program | External launch gate; simulator + Personal Team testing remain possible |
-| P1 | Real iOS OAuth deep-link round trip has not been device-tested | Required QA gate |
-| P1 | Notification delivery/background behavior has not been device-tested | Required QA gate |
-| P1 | Physical-device iOS install has not yet been validated with a Personal Team | Required device QA gate |
-| P2 | Large-library whole-read/performance items identified in the October audit remain | Post-beta scalability work unless target users already exceed tested scale |
+| Priority | Finding                                                                                                          | Status / action                                                            |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| P1       | Fixed overlays could sit underneath the mobile tab bar / home-indicator area                                     | Fixed in mobile functional-readiness PR                                    |
+| P1       | Several safe-area `calc()` Tailwind classes omitted required operator whitespace                                 | Fixed in mobile functional-readiness PR                                    |
+| P1       | Manual JSON backup relied on browser download semantics on mobile                                                | Fixed: native share sheet on iOS                                           |
+| P1       | A desktop `backupDirectory` restored from a portable backup could be reused as an invalid mobile filesystem path | Fixed: mobile always uses app-sandbox automatic backups                    |
+| P1       | Tauri mobile does not support folder picking, but Settings exposed the control                                   | Fixed: mobile hides it and explains sandbox/export behavior                |
+| P2       | Clipboard failures for auth diagnostics / local logs were unhandled                                              | Fixed with visible feedback/logging                                        |
+| P1       | iOS device launch path needed a documented free-signing workflow                                                 | Prepared in this PR                                                        |
+| P1       | iOS distribution cannot be validated or shipped without Apple Developer Program                                  | External launch gate; simulator + Personal Team testing remain possible    |
+| P1       | Real iOS OAuth deep-link round trip has not been device-tested                                                   | Required QA gate                                                           |
+| P1       | Notification delivery/background behavior has not been device-tested                                             | Required QA gate                                                           |
+| P1       | Physical-device iOS install has not yet been validated with a Personal Team                                      | Required device QA gate                                                    |
+| P2       | Large-library whole-read/performance items identified in the October audit remain                                | Post-beta scalability work unless target users already exceed tested scale |
 
 ## Functional coverage review
 

@@ -15,7 +15,13 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/use-toast";
 import { SectionHeader } from "@/components/media/primitives/section-header";
 import { maintenanceService } from "@/features/backup";
-import { diagnosticsService, exportSupportReport, tokenVault, updateService, type DiagnosticsSummary } from "@/features/desktop";
+import {
+  diagnosticsService,
+  exportSupportReport,
+  tokenVault,
+  updateService,
+  type DiagnosticsSummary,
+} from "@/features/desktop";
 import { useDesktopShortcuts } from "@/features/desktop/use-desktop-shortcuts";
 import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { usePreferences } from "@/features/preferences/use-preferences";
