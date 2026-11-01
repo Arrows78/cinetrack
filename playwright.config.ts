@@ -12,6 +12,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // A screen can legitimately spend up to 16.5s in waitForStableHeight plus
+  // 20s in toHaveScreenshot (screens.spec.ts) — the 30s default timed out
+  // regenerating /design-system's ~49k-px-tall full-page baseline.
+  timeout: 60_000,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   // Screenshots are only meaningful compared against a baseline generated on
   // the same OS/renderer — see e2e/visual/README.md for why this repo's
