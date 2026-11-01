@@ -301,13 +301,25 @@ describe("BackupTools", () => {
       expect(await screen.findByText("Replace all your data?")).toBeInTheDocument();
     });
 
+    it("previews the validated backup contents before destructive restore", async () => {
+      const { container } = renderBackupTools();
+
+      fireEvent.change(getFileInput(container), { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
+
+      expect(
+        await screen.findByText(
+          /1 profiles, 0 library items, 0 viewing events, 0 tracked series and 0 custom lists/i
+        )
+      ).toBeInTheDocument();
+      expect(restoreFromBackupMock).not.toHaveBeenCalled();
+    });
+
     it("rejects an oversized file without calling restoreFromBackup, and shows the file-too-large error", async () => {
       const { container } = renderBackupTools();
       const input = getFileInput(container);
       const oversized = jsonFile("backup.json", SAMPLE_BACKUP, MAX_BACKUP_FILE_BYTES + 1);
 
       fireEvent.change(input, { target: { files: [oversized] } });
-      (await screen.findByRole("button", { name: "Import" })).click();
 
       await waitFor(() =>
         expect(toastMock).toHaveBeenCalledWith(
@@ -328,7 +340,13 @@ describe("BackupTools", () => {
 
       await waitFor(() => expect(restoreFromBackupMock).toHaveBeenCalledTimes(1));
       expect(parseSpy).toHaveBeenCalled();
-      expect(restoreFromBackupMock).toHaveBeenCalledWith(SAMPLE_BACKUP);
+      expect(restoreFromBackupMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: "cinetrack-backup",
+          version: 1,
+          exportedAt: SAMPLE_BACKUP.exportedAt,
+        })
+      );
       await waitFor(() => expect(window.location.reload).toHaveBeenCalledTimes(1));
 
       parseSpy.mockRestore();
@@ -358,7 +376,7 @@ describe("BackupTools", () => {
       await waitFor(() => expect(screen.queryByText("Replace all your data?")).not.toBeInTheDocument());
       expect(window.location.reload).not.toHaveBeenCalled();
 
-      // Dialog closed means pendingImportFile reset — selecting again should still work.
+      // Dialog closed means pendingImport reset — selecting again should still work.
       fireEvent.change(getFileInput(container), { target: { files: [jsonFile("backup.json", SAMPLE_BACKUP)] } });
       expect(await screen.findByRole("button", { name: "Import" })).not.toBeDisabled();
     });
