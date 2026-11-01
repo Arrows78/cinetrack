@@ -5,6 +5,14 @@ import i18n from "@/i18n";
 
 import { AuthScreen } from "@/features/auth/auth-screen";
 
+const toastMock = vi.fn();
+vi.mock("@/components/ui/use-toast", () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
+
+const loggerWarnMock = vi.fn();
+vi.mock("@/shared/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: (...args: unknown[]) => loggerWarnMock(...args), error: vi.fn() },
+}));
+
 // ---------------------------------------------------------------------------
 // Shared mocks
 // ---------------------------------------------------------------------------
@@ -749,6 +757,27 @@ describe("copy error details", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Copy details" }));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("unknown_error: boom");
+  });
+
+  it("shows feedback and logs when the clipboard rejects the copy action", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn().mockRejectedValue(new Error("clipboard denied")) },
+      writable: true,
+      configurable: true,
+    });
+    useAuthMock.mockReturnValue(baseAuth({ error: "Authentication failed.", errorDetail: "unknown_error: boom" }));
+
+    render(<AuthScreen />);
+    await flushMicrotasks();
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy details" }));
+    await flushMicrotasks();
+
+    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining("clipboard denied"));
+    expect(toastMock).toHaveBeenCalledWith({
+      description: "Couldn't copy the error details. Please try again.",
+      variant: "error",
+    });
   });
 
   it("shows no copy-details action for a recognized error with no detail", async () => {
