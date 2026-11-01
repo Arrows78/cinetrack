@@ -149,3 +149,49 @@ reason = "zbus_names unmaintained, transitive via zbus (Linux D-Bus plugins); no
 id = "RUSTSEC-2026-0372"
 ignoreUntil = 2027-01-24
 reason = "zvariant_derive unmaintained, transitive via zbus (Linux D-Bus plugins); no fixed version exists"
+
+# block-buffer 0.10.4 — GHSA-qwgh-2vcv-g2f7 (moderate): a panic in a
+# caller-supplied crypto callback, if caught, can corrupt the buffer cursor
+# and make subsequent reuse unsafe. The patch exists in block-buffer 0.12.1,
+# which Cargo.lock already includes for digest 0.11. However digest 0.10.7
+# still depends on block-buffer 0.10.x, and is pulled in transitively by
+# the older RustCrypto stack (including Stronghold/iota-crypto). There is
+# no patched 0.10.x release; forcing 0.12 requires upgrading that stack.
+# Time-limited acceptance of this residual risk, NOT a global OSV bypass.
+# Revisit on upstream Stronghold/RustCrypto upgrades and remove on expiry.
+[[IgnoredVulns]]
+id = "GHSA-qwgh-2vcv-g2f7"
+ignoreUntil = 2027-01-24
+reason = "Legacy digest 0.10 needs block-buffer 0.10.4 (Stronghold/iota-crypto and other crates); only incompatible block-buffer 0.12.1 is patched; exploitation requires catching a crypto callback panic and reusing the buffer"
+
+
+# New GitHub advisories published 2026-10-28/29 for the same two zip copies
+# already accepted above. Runtime exposure is unchanged: zip 4.6.1 is only
+# pulled by tauri-plugin-updater, which CineTrack does not configure/use, and
+# zip 8.6.0 is a build dependency of libsodium-sys-stable that unpacks trusted
+# upstream source during compilation. Neither path accepts user-supplied ZIPs.
+# Keep these time-limited and remove them as soon as upstream moves to zip >=9.0.5.
+[[IgnoredVulns]]
+id = "GHSA-8hxf-qr8p-62x4"
+ignoreUntil = 2027-01-24
+reason = "zip advisory on existing non-user-controlled paths: updater is not configured; libsodium build only extracts trusted upstream source"
+
+[[IgnoredVulns]]
+id = "GHSA-m665-v7pm-7grj"
+ignoreUntil = 2027-01-24
+reason = "zip parser differential/RCE advisory; CineTrack does not process user ZIPs, updater is not configured, libsodium extraction is build-time trusted input"
+
+[[IgnoredVulns]]
+id = "GHSA-q7v9-x93c-xqv3"
+ignoreUntil = 2027-01-24
+reason = "same two non-user-controlled zip dependency paths; no user-supplied archive extraction"
+
+[[IgnoredVulns]]
+id = "GHSA-9hj8-73fh-9963"
+ignoreUntil = 2027-01-24
+reason = "zip 8.6.0 is only a libsodium build dependency extracting trusted upstream source"
+
+[[IgnoredVulns]]
+id = "GHSA-hjqx-j4rw-g7xv"
+ignoreUntil = 2027-01-24
+reason = "zip 8.6.0 is only a libsodium build dependency extracting trusted upstream source"
