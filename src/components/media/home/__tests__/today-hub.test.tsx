@@ -197,6 +197,23 @@ describe("TodayHub", () => {
     expect(screen.getByTestId("watch-next-section")).toHaveAttribute("data-entries", "1");
   });
 
+  it("puts time-sensitive new episodes before continue-watching and never-started entries", () => {
+    episodesMock.mockReturnValue({
+      ...emptyEpisodes(),
+      newEpisodes: [{ series: {}, nextEpisode: {}, remaining: 1 }],
+      continueWatching: [{ series: { seriesId: 1 }, nextEpisode: { id: 1 }, remaining: 2 }],
+      upNext: [{ series: {}, nextEpisode: {}, remaining: 3 }],
+    });
+
+    render(<TodayHub index={1} />);
+
+    const fresh = screen.getByTestId("new-episodes");
+    const ongoing = screen.getByTestId("watch-next-section");
+    const upNext = screen.getByTestId("up-next");
+    expect(fresh.compareDocumentPosition(ongoing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(ongoing.compareDocumentPosition(upNext) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("renders when only upNext has entries", () => {
     episodesMock.mockReturnValue({ ...emptyEpisodes(), upNext: [{ series: {}, nextEpisode: {}, remaining: 5 }] });
     render(<TodayHub index={1} />);
