@@ -19,11 +19,15 @@ import { useSmartLists } from "@/features/smart-lists/use-smart-lists";
 import { useSmartListMatches } from "@/components/media/library/use-smart-list-matches";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useSeriesProgressCounts } from "@/features/progress/use-watch-next";
 import { useTracking } from "@/features/tracking/use-tracking";
 import { mediaKey } from "@/shared/utils/media-key";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
 import type { LibraryFilterState, LibrarySort } from "@/types/media";
+
+// Stable while tracked series load, so the progress counts aren't rebuilt every render.
+const EMPTY_TRACKED_SERIES: never[] = [];
 
 const statusOptions: LibraryStatusFilter[] = ["all", "planned", "watching", "paused", "completed", "dropped"];
 
@@ -112,16 +116,7 @@ export function useLibraryExplorer(lockedMediaType?: "movie" | "series") {
     { enabled: isServerPaginated }
   );
 
-  const progressBySeries = useMemo(
-    () =>
-      new Map(
-        (trackedSeries ?? []).map((series) => [
-          series.seriesId,
-          { watched: series.watchedEpisodes, total: series.totalEpisodes, seriesStatus: series.status },
-        ])
-      ),
-    [trackedSeries]
-  );
+  const progressBySeries = useSeriesProgressCounts(trackedSeries ?? EMPTY_TRACKED_SERIES);
 
   // Only fetched for the series hub's own "nextEpisode" sort — the same
   // 60-day tracking calendar the /tracking page reads, reduced to each

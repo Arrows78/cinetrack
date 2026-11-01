@@ -54,6 +54,15 @@ let failingSeriesIds = new Set<number>();
 const resolvedRequests: number[][] = [];
 const retryNextEpisodesMock = vi.fn();
 vi.mock("@/features/progress/use-watch-next", () => ({
+  // The aired-count lookup has its own tests (use-watch-next); here it just
+  // passes the stored counts through, so it doesn't add resolutions.
+  useSeriesProgressCounts: (trackedSeries: TrackedSeriesItem[]) =>
+    new Map(
+      trackedSeries.map((series) => [
+        series.seriesId,
+        { watched: series.watchedEpisodes, total: series.totalEpisodes, seriesStatus: series.status },
+      ])
+    ),
   useNextEpisodes: (seriesList: TrackedSeriesItem[]) => {
     resolvedRequests.push(seriesList.map((series) => series.seriesId));
     const results = seriesList.map((series) => ({

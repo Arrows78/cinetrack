@@ -71,6 +71,7 @@ const countAiredUnwatchedMock = vi.fn(() => 2);
 vi.mock("@/features/progress/progress-utils", () => ({
   getNextEpisode: getNextEpisodeMock,
   countAiredUnwatched: countAiredUnwatchedMock,
+  remainingWatchTime: () => null,
 }));
 
 function createWrapper() {
@@ -507,5 +508,29 @@ describe("summarizeCatchUpBacklog", () => {
       ])
     ).toEqual({ minutes: 50, series: 1, approximate: true, partial: true });
     expect(summarizeCatchUpBacklog([resolved(started(1), null)])).toBeNull();
+  });
+});
+
+describe("useSeriesProgressCounts", () => {
+  it("counts a started series against its aired episodes, not the announced total", async () => {
+    getEpisodeProgressMock.mockResolvedValue([{ episodeId: 1, watched: true }] as never);
+    const { useSeriesProgressCounts } = await import("../use-watch-next");
+    const { result } = renderHook(() => useSeriesProgressCounts([inProgressSeries, notStartedSeries]), {
+      wrapper: createWrapper(),
+    });
+
+    // Before the lookup lands, the stored total stands in.
+    expect(result.current.get(inProgressSeries.seriesId)?.total).toBe(inProgressSeries.totalEpisodes);
+    // Two aired episodes left (countAiredUnwatchedMock): watched + 2.
+    await waitFor(() =>
+      expect(result.current.get(inProgressSeries.seriesId)?.total).toBe(inProgressSeries.watchedEpisodes + 2)
+    );
+    // Never started: no lookup, the stored counts as they are.
+    expect(result.current.get(notStartedSeries.seriesId)).toEqual({
+      watched: 0,
+      total: notStartedSeries.totalEpisodes,
+      seriesStatus: notStartedSeries.status,
+    });
+    getEpisodeProgressMock.mockResolvedValue([] as never);
   });
 });

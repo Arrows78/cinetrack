@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
@@ -44,11 +44,12 @@ import { formatEpisodeCode, formatRelativeDate, percent } from "@/shared/utils/f
 import { useHistory } from "@/features/history/use-history";
 import { isHistoryItemUndoable, useUndoHistoryItem } from "@/features/history/use-undo-history-item";
 import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useSeriesProgressCounts } from "@/features/progress/use-watch-next";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEBOUNCE_MS } from "@/shared/constants/query";
 import { cn } from "@/shared/lib/cn";
 import { logger } from "@/shared/lib/logger";
-import type { HistoryAction, HistoryFilterState, ViewingHistoryItem } from "@/types/media";
+import type { HistoryAction, HistoryFilterState, TrackedSeriesItem, ViewingHistoryItem } from "@/types/media";
 import type { LucideIcon } from "lucide-react";
 
 type TimelineRow =
@@ -64,6 +65,9 @@ type TimelineRow =
  * full groupBy+re-sort) is correct only because the feed is already ordered
  * by timestamp descending, so same-day rows are always adjacent.
  */
+// Stable while tracked series load, so the progress counts aren't rebuilt every render.
+const EMPTY_TRACKED_SERIES: never[] = [];
+
 function buildTimelineRows(items: ViewingHistoryItem[], t: TFunction, locale: Locale): TimelineRow[] {
   const rows: TimelineRow[] = [];
   let currentDayKey: string | null = null;
@@ -338,6 +342,15 @@ export function HistoryPage() {
       ).sort(),
     [trackedSeriesQuery.data]
   );
+  const progressCounts = useSeriesProgressCounts(trackedSeriesQuery.data ?? EMPTY_TRACKED_SERIES);
+  // Aired episodes only (see useSeriesProgressCounts), and never under what
+  // was watched: the stored total can lag a show TMDB itself under-reports,
+  // so never show a >100% bar or an "8/6" fraction over it.
+  const displayTotalOf = useCallback(
+    (item: TrackedSeriesItem) =>
+      Math.max(progressCounts.get(item.seriesId)?.total ?? item.totalEpisodes, item.watchedEpisodes),
+    [progressCounts]
+  );
   const displayedTrackedSeries = useMemo(() => {
     const filtered = (trackedSeriesQuery.data ?? []).filter(
       (item) => seriesStatusFilter === "all" || item.status === seriesStatusFilter
@@ -345,13 +358,13 @@ export function HistoryPage() {
     return [...filtered].sort((a, b) => {
       if (seriesSort === "title") return a.title.localeCompare(b.title);
       if (seriesSort === "progress") {
-        const aTotal = Math.max(a.totalEpisodes, a.watchedEpisodes);
-        const bTotal = Math.max(b.totalEpisodes, b.watchedEpisodes);
+        const aTotal = displayTotalOf(a);
+        const bTotal = displayTotalOf(b);
         return percent(b.watchedEpisodes, bTotal) - percent(a.watchedEpisodes, aTotal);
       }
       return b.updatedAt.localeCompare(a.updatedAt);
     });
-  }, [trackedSeriesQuery.data, seriesStatusFilter, seriesSort]);
+  }, [trackedSeriesQuery.data, seriesStatusFilter, seriesSort, displayTotalOf]);
 
   return (
     <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.25fr_0.75fr]">
@@ -591,13 +604,7 @@ export function HistoryPage() {
         ) : displayedTrackedSeries.length ? (
           <div className="space-y-3">
             {displayedTrackedSeries.map((item, i) => {
-              // total_episodes is a cache of TMDB's episode count, refreshed
-              // only as a side effect of toggling an episode (see
-              // apply_episodes_and_log_impl in src-tauri/src/progress/
-              // repository.rs) — it can still lag behind a real
-              // watchedEpisodes count for a show TMDB itself under-reports.
-              // Never show a >100% bar or an "8/6" fraction over it.
-              const displayTotal = Math.max(item.totalEpisodes, item.watchedEpisodes);
+              const displayTotal = displayTotalOf(item);
               const progress = percent(item.watchedEpisodes, displayTotal);
               return (
                 <Tile

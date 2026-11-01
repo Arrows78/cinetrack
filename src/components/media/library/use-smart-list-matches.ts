@@ -6,7 +6,7 @@ import { useAvailabilitySnapshots } from "@/features/availability/use-availabili
 import { mediaRepository } from "@/features/media/media-repository";
 import { usePreferences } from "@/features/preferences/use-preferences";
 import { useTrackedSeries } from "@/features/progress/use-progress";
-import { useNextEpisodes } from "@/features/progress/use-watch-next";
+import { useNextEpisodes, useSeriesProgressCounts } from "@/features/progress/use-watch-next";
 import { queryKeys } from "@/shared/constants/query-keys";
 import { STALE_24_HOURS } from "@/shared/constants/query";
 import type { LibraryFilterParams, LibraryItem, SmartListRules } from "@/types/media";
@@ -118,12 +118,7 @@ export function useSmartListMatches(rules: SmartListRules | undefined) {
     .filter((result) => result.nextEpisode !== null)
     .map((result) => result.series.seriesId);
 
-  const progressBySeries = new Map(
-    trackedSeries.map((series) => [
-      series.seriesId,
-      { watched: series.watchedEpisodes, total: series.totalEpisodes, seriesStatus: series.status },
-    ])
-  );
+  const progressBySeries = useSeriesProgressCounts(trackedSeries);
 
   const items = rules
     ? (() => {

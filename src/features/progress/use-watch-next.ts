@@ -40,6 +40,8 @@ export interface NextEpisodeResult {
   tmdbTotalEpisodes?: number;
   /** Runtime of the aired, unwatched episodes — only for a started series, whose every season was read. */
   remainingTime?: RemainingWatchTime | null;
+  /** How many aired episodes are still unwatched, under the same every-season-read condition. */
+  airedUnwatched?: number;
   isLoading: boolean;
   isError: boolean;
 }
@@ -146,6 +148,7 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     tmdbStatus: queries[index]?.data?.tmdbStatus,
     tmdbTotalEpisodes: queries[index]?.data?.tmdbTotalEpisodes,
     remainingTime: queries[index]?.data?.remainingTime,
+    airedUnwatched: queries[index]?.data?.airedUnwatched,
     // What is actually out and unwatched when it could be counted; otherwise
     // the cached total minus watched, which for a running series also counts
     // episodes TMDB has announced but not yet aired.
@@ -204,6 +207,50 @@ export function useCatchUpBacklog(trackedSeries: TrackedSeriesItem[]): {
   const started = useMemo(() => trackedSeries.filter((item) => item.watchedEpisodes > 0), [trackedSeries]);
   const { results, isLoading } = useNextEpisodes(started);
   return { backlog: summarizeCatchUpBacklog(results), isLoading };
+}
+
+export interface SeriesProgressCounts {
+  watched: number;
+  total: number;
+  seriesStatus: string | null;
+}
+
+/**
+ * Watched / total per tracked series, for progress bars and counters, where
+ * the total is what has *aired*: a series 50 episodes in with 10 announced but
+ * not yet out reads 50/50 and caught up, not 50/60. tracked_series only stores
+ * TMDB's announced total (completion needs it), so the aired count comes from
+ * the watch-next resolution, shared with the home page; until it lands, or for
+ * a series it can't resolve, the stored total stands in.
+ */
+export function useSeriesProgressCounts(trackedSeries: TrackedSeriesItem[]): Map<number, SeriesProgressCounts> {
+  const started = useMemo(() => trackedSeries.filter((item) => item.watchedEpisodes > 0), [trackedSeries]);
+  const { results } = useNextEpisodes(started);
+  const airedUnwatchedBySeries = new Map(
+    results.flatMap((result) =>
+      result.airedUnwatched === undefined ? [] : [[result.series.seriesId, result.airedUnwatched] as const]
+    )
+  );
+  const signature = [...airedUnwatchedBySeries].join(";");
+  return useMemo(
+    () =>
+      new Map(
+        trackedSeries.map((series) => {
+          const airedUnwatched = airedUnwatchedBySeries.get(series.seriesId);
+          return [
+            series.seriesId,
+            {
+              watched: series.watchedEpisodes,
+              total: airedUnwatched === undefined ? series.totalEpisodes : series.watchedEpisodes + airedUnwatched,
+              seriesStatus: series.status,
+            },
+          ];
+        })
+      ),
+    // airedUnwatchedBySeries is rebuilt every render; its content is `signature`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [trackedSeries, signature]
+  );
 }
 
 export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {
