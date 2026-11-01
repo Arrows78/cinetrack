@@ -1,5 +1,5 @@
 import { router } from "@/app/router-config";
-import { isTauriApp } from "@/shared/lib/platform";
+import { isDesktopApp, isTauriApp } from "@/shared/lib/platform";
 import { defaultPreferences, preferencesRepository } from "@/features/preferences/preferences-repository";
 import { trayCommands } from "@/features/desktop/tray-commands";
 import { errorMessage } from "@/shared/lib/errors";
@@ -57,40 +57,42 @@ export const desktopService = {
     if (!isTauriApp()) return () => undefined;
     const { register, unregister, onOpenUrl, listen } = await import("@/shared/lib/tauri-desktop");
     const cleanups: Array<() => void> = [];
-    try {
-      const preferences = await preferencesRepository.getPreferences();
-      const shortcut = toTauriGlobalShortcut(
-        preferences.globalCommandPaletteShortcut ?? defaultPreferences.globalCommandPaletteShortcut
-      );
-      const owner = {};
-      await serialised(async () => {
-        try {
-          await register(shortcut, openCommandPalette);
-        } catch (error) {
-          // A previous initialize() whose cleanup hasn't run yet still holds
-          // this very binding: that's not a failure, this call takes it over.
-          if (registeredGlobalShortcut !== shortcut) throw error;
-        }
-        registeredGlobalShortcut = shortcut;
-        registeredBy = owner;
-      });
-      cleanups.push(
-        () =>
-          void serialised(async () => {
-            const current = registeredGlobalShortcut;
-            if (registeredBy !== owner || current === null) return;
-            registeredGlobalShortcut = null;
-            registeredBy = null;
-            try {
-              await unregister(current);
-            } catch (error) {
-              logger.warn(`Global shortcut could not be released: ${errorMessage(error)}`);
-            }
-          })
-      );
-    } catch (error) {
-      logger.warn(`Global shortcut unavailable: ${errorMessage(error)}`);
-    }
+    if (isDesktopApp()) {
+      try {
+        const preferences = await preferencesRepository.getPreferences();
+        const shortcut = toTauriGlobalShortcut(
+          preferences.globalCommandPaletteShortcut ?? defaultPreferences.globalCommandPaletteShortcut
+        );
+        const owner = {};
+        await serialised(async () => {
+          try {
+            await register(shortcut, openCommandPalette);
+          } catch (error) {
+            // A previous initialize() whose cleanup hasn't run yet still holds
+            // this very binding: that's not a failure, this call takes it over.
+            if (registeredGlobalShortcut !== shortcut) throw error;
+          }
+          registeredGlobalShortcut = shortcut;
+          registeredBy = owner;
+        });
+        cleanups.push(
+          () =>
+            void serialised(async () => {
+              const current = registeredGlobalShortcut;
+              if (registeredBy !== owner || current === null) return;
+              registeredGlobalShortcut = null;
+              registeredBy = null;
+              try {
+                await unregister(current);
+              } catch (error) {
+                logger.warn(`Global shortcut could not be released: ${errorMessage(error)}`);
+              }
+            })
+        );
+      } catch (error) {
+        logger.warn(`Global shortcut unavailable: ${errorMessage(error)}`);
+      }
+      }
     try {
       cleanups.push(
         await onOpenUrl((urls) => {
@@ -101,11 +103,13 @@ export const desktopService = {
     } catch (error) {
       logger.warn(`Deep links unavailable: ${errorMessage(error)}`);
     }
-    try {
-      cleanups.push(await listen<string>("cinetrack:navigate", (event) => navigate(event.payload)));
-    } catch (error) {
-      logger.warn(`Tray navigation unavailable: ${errorMessage(error)}`);
-    }
+    if (isDesktopApp()) {
+      try {
+        cleanups.push(await listen<string>("cinetrack:navigate", (event) => navigate(event.payload)));
+      } catch (error) {
+        logger.warn(`Tray navigation unavailable: ${errorMessage(error)}`);
+      }
+      }
     try {
       cleanups.push(
         await listen<string>("cinetrack:deep-link", (event) => {
@@ -122,7 +126,7 @@ export const desktopService = {
   // The tray menu is native text: Rust rewrites its labels whenever the
   // interface language changes (and at start, once the language is known).
   async updateTrayLanguage(language: "en" | "fr"): Promise<void> {
-    if (!isTauriApp()) return;
+    if (!isDesktopApp()) return;
     await invokeTypedCommand(trayCommands.setLanguage, { language });
   },
 
@@ -133,7 +137,7 @@ export const desktopService = {
   // "mod+shift+k"); converted to tauri-plugin-global-shortcut's format
   // here, same as initialize() does.
   async updateGlobalShortcut(next: string): Promise<void> {
-    if (!isTauriApp()) return;
+    if (!isDesktopApp()) return;
     const { register, unregister } = await import("@/shared/lib/tauri-desktop");
     return serialised(async () => {
       const nextShortcut = toTauriGlobalShortcut(next);
