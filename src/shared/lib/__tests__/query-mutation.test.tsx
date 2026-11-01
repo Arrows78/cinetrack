@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import { useInvalidatingMutation } from "../query-mutation";
+import { invalidateAfterWrite, useInvalidatingMutation } from "../query-mutation";
 
 function createWrapper(client: QueryClient) {
   return function Wrapper({ children }: PropsWithChildren) {
@@ -76,5 +76,43 @@ describe("useInvalidatingMutation", () => {
     });
 
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("invalidateAfterWrite", () => {
+  // The series-progress bug: a watch-next lookup still running for a page you
+  // had left read the episodes before the write, finished after it, and kept
+  // showing the old state as fresh for its 30-minute staleTime.
+  it("does not let a read started before the write come back as fresh data", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30 * 60_000 } } });
+    let answerStaleRead!: (value: string) => void;
+    const staleRead = client
+      .fetchQuery({
+        queryKey: ["local", "k"],
+        queryFn: () => new Promise<string>((resolve) => (answerStaleRead = resolve)),
+      })
+      .catch(() => undefined);
+
+    await invalidateAfterWrite(client, [["local", "k"]]);
+    answerStaleRead("before the write");
+    await staleRead;
+
+    const query = client.getQueryCache().find({ queryKey: ["local", "k"] });
+    expect(query?.state.data).toBeUndefined();
+    expect(query?.isStale()).toBe(true);
+  });
+
+  it("marks settled reads stale and refetches the ones on screen", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30 * 60_000 } } });
+    await client.fetchQuery({ queryKey: ["local", "k"], queryFn: async () => "old" });
+
+    await invalidateAfterWrite(client, [["local", "k"]]);
+
+    expect(
+      client
+        .getQueryCache()
+        .find({ queryKey: ["local", "k"] })
+        ?.isStale()
+    ).toBe(true);
   });
 });

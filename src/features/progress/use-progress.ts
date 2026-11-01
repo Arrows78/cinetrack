@@ -4,7 +4,7 @@ import { progressRepository } from "@/features/progress/progress-repository";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { invalidationKeys } from "@/shared/constants/invalidation";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
+import { invalidateAfterWrite, useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import type { Episode, MediaSummary, MediaType, Season } from "@/types/media";
 
 // Pure display-progress math over already-fetched data — re-exported here
@@ -213,7 +213,7 @@ export function useRefreshTrackedSeriesBatch() {
       const moved = refreshes.some(({ seriesId, changesCache }) => changesCache && !failed.includes(seriesId));
       if (moved) {
         const keys = [queryKeys.local.trackedSeries(profileId), ...invalidationKeys.libraryStatus(profileId)];
-        await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+        await invalidateAfterWrite(queryClient, keys);
       }
       return failed;
     },

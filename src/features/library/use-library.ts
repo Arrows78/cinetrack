@@ -3,7 +3,7 @@ import { libraryRepository, type LibraryPageSort, type LibraryPatch } from "@/fe
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { invalidationKeys } from "@/shared/constants/invalidation";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { useInvalidatingMutation } from "@/shared/lib/query-mutation";
+import { invalidateAfterWrite, useInvalidatingMutation } from "@/shared/lib/query-mutation";
 import { mediaKey } from "@/shared/utils/media-key";
 import type { LibraryFilterParams, LibraryMediaKey, LibraryStatus, MediaSummary, MediaType } from "@/types/media";
 
@@ -155,7 +155,7 @@ export function useLibraryItem(media: MediaSummary) {
   });
   const itemKey = queryKeys.local.libraryItem(profileId, media.mediaType, media.id);
   const invalidateEverythingTheLibraryFeeds = () =>
-    Promise.all(invalidationKeys.library(profileId).map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    invalidateAfterWrite(queryClient, invalidationKeys.library(profileId));
   const save = useMutation({
     mutationFn: (patch: LibraryPatch) => libraryRepository.save(media, patch),
     onSuccess: async (item) => {

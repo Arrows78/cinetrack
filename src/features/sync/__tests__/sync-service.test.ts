@@ -75,7 +75,10 @@ function makeClient() {
 }
 
 function queryClientMock() {
-  return { invalidateQueries: vi.fn().mockResolvedValue(undefined) } as unknown as QueryClient;
+  return {
+    cancelQueries: vi.fn().mockResolvedValue(undefined),
+    invalidateQueries: vi.fn().mockResolvedValue(undefined),
+  } as unknown as QueryClient;
 }
 
 beforeEach(() => {
@@ -164,6 +167,7 @@ describe("syncService.run", () => {
     expect(mocks.applyRemote).toHaveBeenCalledWith("profile-1", [
       expect.objectContaining({ sequence: 2, entityType: "library_item", entityId: "remote-1", version: 3 }),
     ]);
+    expect(queryClient.cancelQueries).toHaveBeenCalledWith({ queryKey: ["local"] });
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["local"] });
     expect(mocks.loggerInfo).toHaveBeenCalledWith("cloud.sync pushed=1 pulled=1 conflicts=0");
     expect(mocks.markCompleted).toHaveBeenCalledTimes(1);

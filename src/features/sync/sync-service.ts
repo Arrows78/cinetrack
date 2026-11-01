@@ -10,6 +10,7 @@ import { syncRepository } from "./sync-repository";
 import type { RemoteSyncChange, SyncBatchResult, SyncRunResult } from "./sync-types";
 import { recordSyncRun } from "./sync-run-history";
 import { SYNC_BATCH_SIZE, SYNC_PULL_SIZE } from "./sync-types";
+import { invalidateAfterWrite } from "@/shared/lib/query-mutation";
 
 // Exported so use-sync-status.ts (this feature's own public hook) can derive
 // a "next check in ~X min" estimate for the Settings card — the interval
@@ -187,7 +188,7 @@ async function execute(queryClient?: QueryClient): Promise<SyncRunResult> {
     // already in SQLite, and the UI must not keep showing the old data.
     if (progress.pulled > 0 && queryClient) {
       try {
-        await queryClient.invalidateQueries({ queryKey: ["local"] });
+        await invalidateAfterWrite(queryClient, [["local"]]);
         if (progress.localeChanged) await invalidateLocaleDependentQueries(queryClient, profileId);
       } catch (error) {
         logger.warn(`Cloud sync could not refresh the local queries: ${errorMessage(error)}`);
