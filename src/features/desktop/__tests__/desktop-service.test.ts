@@ -7,6 +7,7 @@ const {
   listenMock,
   navigateMock,
   isTauriAppMock,
+  isDesktopAppMock,
   getPreferencesMock,
   loggerWarnMock,
   invokeMock,
@@ -17,6 +18,7 @@ const {
   listenMock: vi.fn(),
   navigateMock: vi.fn(),
   isTauriAppMock: vi.fn(),
+  isDesktopAppMock: vi.fn(),
   getPreferencesMock: vi.fn(),
   loggerWarnMock: vi.fn(),
   invokeMock: vi.fn(),
@@ -57,6 +59,7 @@ vi.mock("@/app/router-config", () => ({
 
 vi.mock("@/shared/lib/platform", () => ({
   isTauriApp: isTauriAppMock,
+  isDesktopApp: isDesktopAppMock,
 }));
 
 import { desktopService } from "../desktop-service";
@@ -91,6 +94,7 @@ describe("desktopService.initialize", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isTauriAppMock.mockReturnValue(true);
+    isDesktopAppMock.mockReturnValue(true);
 
     registerMock.mockResolvedValue(undefined);
     unregisterMock.mockResolvedValue(undefined);
@@ -126,6 +130,23 @@ describe("desktopService.initialize", () => {
     expect(registerMock).not.toHaveBeenCalled();
     expect(onOpenUrlMock).not.toHaveBeenCalled();
     expect(listenMock).not.toHaveBeenCalled();
+  });
+
+  it("on mobile, keeps deep links but skips global shortcuts and tray navigation", async () => {
+    isDesktopAppMock.mockReturnValue(false);
+
+    const cleanup = await initialize();
+
+    expect(registerMock).not.toHaveBeenCalled();
+    expect(getPreferencesMock).not.toHaveBeenCalled();
+    expect(onOpenUrlMock).toHaveBeenCalledWith(expect.any(Function));
+    expect(listenMock).toHaveBeenCalledTimes(1);
+    expect(listenMock).toHaveBeenCalledWith("cinetrack:deep-link", expect.any(Function));
+
+    cleanup();
+    expect(deepLinkUnlisten).toHaveBeenCalledTimes(1);
+    expect(deepLinkEventUnlisten).toHaveBeenCalledTimes(1);
+    expect(navigateUnlisten).not.toHaveBeenCalled();
   });
 
   it("wires up all four integrations and the returned cleanup tears each of them down", async () => {
@@ -459,11 +480,14 @@ describe("desktopService.initialize", () => {
 describe("desktopService.updateTrayLanguage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isTauriAppMock.mockReturnValue(true);
+    isDesktopAppMock.mockReturnValue(true);
     invokeMock.mockResolvedValue(undefined);
   });
 
   it("tells the native tray menu which language to show", async () => {
     isTauriAppMock.mockReturnValue(true);
+    isDesktopAppMock.mockReturnValue(true);
 
     await desktopService.updateTrayLanguage("fr");
 
