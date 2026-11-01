@@ -2,7 +2,7 @@ import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { Compass } from "lucide-react";
+import { Clock, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
 import { EmptyState } from "@/components/states/empty-state";
@@ -18,7 +18,8 @@ import { PersonalizedRecommendationSection } from "@/components/media/home/perso
 import { NeedsAttentionSection } from "@/components/media/home/needs-attention-section";
 import { selectBacklogSeries } from "@/components/media/home/select-backlog-series";
 import { useTrackedSeries } from "@/features/progress/use-progress";
-import { useTodayHubEpisodes } from "@/features/progress/use-watch-next";
+import { summarizeCatchUpBacklog, useTodayHubEpisodes } from "@/features/progress/use-watch-next";
+import { formatWatchDurationBreakdown } from "@/shared/utils/format";
 import { useAvailabilityStatus } from "@/features/availability/use-availability-alerts";
 import { useWatchTonightPicks } from "@/features/watch-tonight/use-watch-tonight";
 import { useLibraryStatusCounts } from "@/features/library/use-library";
@@ -52,6 +53,7 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
   const trackedSeriesQuery = useTrackedSeries();
   const trackedSeries = useMemo(() => trackedSeriesQuery.data ?? [], [trackedSeriesQuery.data]);
   const episodes = useTodayHubEpisodes(trackedSeries);
+  const catchUp = useMemo(() => summarizeCatchUpBacklog(episodes.results), [episodes.results]);
   const availability = useAvailabilityStatus();
   const preferences = usePreferences();
   const hideWatched = preferences.data?.hideWatchedInDiscovery ?? defaultPreferences.hideWatchedInDiscovery;
@@ -163,6 +165,15 @@ export function TodayHub({ index, id }: { index: number; id?: string }) {
     <section id={id} className="scroll-mt-28">
       <SectionHeader title={t("home.todayHubTitle")} subtitle={t("home.todayHubSubtitle")} index={index} />
       <Panel tone="highlight" className="space-y-8">
+        {catchUp ? (
+          <p className="flex items-center gap-2 text-body-sm text-muted-foreground">
+            <Clock className="size-4 shrink-0 text-primary" aria-hidden="true" />
+            {t(catchUp.approximate || catchUp.partial ? "home.catchUpBacklogApproximate" : "home.catchUpBacklog", {
+              duration: formatWatchDurationBreakdown(catchUp.minutes),
+              count: catchUp.series,
+            })}
+          </p>
+        ) : null}
         <NewEpisodesSection entries={episodes.newEpisodes.slice(0, CARD_ROW_LIMIT)} />
         {episodes.continueWatching.length > 0 ? (
           <WatchNextSection entries={episodes.continueWatching.slice(0, CARD_ROW_LIMIT)} index={0} size="sub" />

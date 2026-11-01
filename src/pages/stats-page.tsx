@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { monthOverMonthComparison, yearOverYearComparison } from "@/features/stats/stats-repository";
 import { useStats, useWatchForecast, useWrapped, useYearlyActivity } from "@/features/stats/use-stats";
+import { useTrackedSeries } from "@/features/progress/use-progress";
+import { useCatchUpBacklog } from "@/features/progress/use-watch-next";
 import { ShareCancelledError, downloadWrappedCard, renderWrappedCard } from "@/features/stats";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/panel";
@@ -80,6 +82,9 @@ function DeltaBadge({
   );
 }
 
+// Stable across renders, so the backlog hook doesn't re-filter on every one while tracked series load.
+const EMPTY_TRACKED_SERIES: never[] = [];
+
 export function StatsPage() {
   const { t } = useTranslation();
   const monthLabel = formatMonthLabel;
@@ -92,6 +97,10 @@ export function StatsPage() {
   const [wrappedPreviewBlob, setWrappedPreviewBlob] = useState<Blob | null>(null);
   const [wrappedPreviewUrl, setWrappedPreviewUrl] = useState<string | null>(null);
   const stats = useStats();
+  const trackedSeriesQuery = useTrackedSeries();
+  const { backlog: catchUp, isLoading: catchUpLoading } = useCatchUpBacklog(
+    trackedSeriesQuery.data ?? EMPTY_TRACKED_SERIES
+  );
   const wrapped = useWrapped(selectedYear);
   const previousYearWrapped = useWrapped(selectedYear - 1);
   const forecast = useWatchForecast();
@@ -256,6 +265,26 @@ export function StatsPage() {
               label={t("stats.timeWatchedEpisodes")}
               value={formatWatchDurationBreakdown(stats.data.episodeMinutesWatched)}
             />
+            <div className="sm:col-span-2">
+              <StatCard
+                boxed
+                icon={Hourglass}
+                label={t("stats.catchUpBacklog")}
+                value={catchUp ? formatWatchDurationBreakdown(catchUp.minutes) : "—"}
+                helper={
+                  catchUp
+                    ? t(
+                        catchUp.approximate || catchUp.partial
+                          ? "stats.catchUpBacklogApproximate"
+                          : "stats.catchUpBacklogSeries",
+                        { count: catchUp.series }
+                      )
+                    : catchUpLoading || trackedSeriesQuery.isPending
+                      ? t("common.loading")
+                      : t("stats.catchUpBacklogNone")
+                }
+              />
+            </div>
           </div>
         </div>
       </section>

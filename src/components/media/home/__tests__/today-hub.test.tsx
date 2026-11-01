@@ -4,6 +4,7 @@ import type { PropsWithChildren } from "react";
 import i18n from "@/i18n";
 import { TodayHub } from "../today-hub";
 import type * as NeedsAttentionModule from "../needs-attention-section";
+import type * as WatchNextModule from "@/features/progress/use-watch-next";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: PropsWithChildren<{ to: string }>) => <a href={to}>{children}</a>,
@@ -15,8 +16,10 @@ vi.mock("@/features/progress/use-progress", () => ({
 }));
 
 const episodesMock = vi.fn();
-vi.mock("@/features/progress/use-watch-next", () => ({
-  useTodayHubEpisodes: () => episodesMock(),
+vi.mock("@/features/progress/use-watch-next", async (importOriginal) => ({
+  // The real summary over whatever `results` a test's episodesMock returns.
+  summarizeCatchUpBacklog: (await importOriginal<typeof WatchNextModule>()).summarizeCatchUpBacklog,
+  useTodayHubEpisodes: () => ({ results: [], ...episodesMock() }),
 }));
 
 const availabilityMock = vi.fn();
@@ -195,6 +198,28 @@ describe("TodayHub", () => {
 
     expect(screen.getByText(i18n.t("home.todayHubTitle"))).toBeInTheDocument();
     expect(screen.getByTestId("watch-next-section")).toHaveAttribute("data-entries", "1");
+  });
+
+  it("says how long is left to catch up across the started series", () => {
+    const started = { seriesId: 1, watchedEpisodes: 3 };
+    episodesMock.mockReturnValue({
+      ...emptyEpisodes(),
+      continueWatching: [{ series: started, nextEpisode: { id: 1 }, remaining: 3 }],
+      results: [
+        {
+          series: started,
+          nextEpisode: { id: 1 },
+          remaining: 3,
+          remainingTime: { minutes: 150, approximate: false },
+          isLoading: false,
+          isError: false,
+        },
+      ],
+    });
+
+    render(<TodayHub index={1} />);
+
+    expect(screen.getByText("2h 30min left to catch up on 1 series")).toBeInTheDocument();
   });
 
   it("puts time-sensitive new episodes before continue-watching and never-started entries", () => {

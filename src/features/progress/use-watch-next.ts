@@ -6,7 +6,12 @@ import { createLimiter, mapWithConcurrency } from "@/shared/utils/concurrency";
 import { mediaRepository } from "@/features/media/media-repository";
 import { useRefreshTrackedSeriesBatch } from "@/features/progress/use-progress";
 import { progressRepository } from "@/features/progress/progress-repository";
-import { countAiredUnwatched, getNextEpisode } from "@/features/progress/progress-utils";
+import {
+  countAiredUnwatched,
+  getNextEpisode,
+  remainingWatchTime,
+  type RemainingWatchTime,
+} from "@/features/progress/progress-utils";
 import { useActiveProfileId } from "@/features/preferences/use-preferences";
 import { invalidationKeys } from "@/shared/constants/invalidation";
 import { queryKeys } from "@/shared/constants/query-keys";
@@ -33,6 +38,8 @@ export interface NextEpisodeResult {
   tmdbStatus?: string;
   /** TMDB's current episode count for the series, once resolved. */
   tmdbTotalEpisodes?: number;
+  /** Runtime of the aired, unwatched episodes — only for a started series, whose every season was read. */
+  remainingTime?: RemainingWatchTime | null;
   isLoading: boolean;
   isError: boolean;
 }
@@ -42,6 +49,8 @@ interface ResolvedSeries {
   nextEpisode: Episode | null;
   /** Aired episodes still unwatched, counted over every season — known only once every season was read (a series with watched episodes), never from a partial read. */
   airedUnwatched?: number;
+  /** Runtime of those episodes, under the same every-season-read condition. */
+  remainingTime?: RemainingWatchTime | null;
   tmdbStatus?: string;
   tmdbTotalEpisodes?: number;
 }
@@ -98,7 +107,12 @@ async function resolveNextEpisodeFrom(
   return {
     nextEpisode: getNextEpisode(seasons, progress),
     // Every season was read only when the series has been started (see above).
-    ...(hasWatched ? { airedUnwatched: countAiredUnwatched(seasons, progress) } : {}),
+    ...(hasWatched
+      ? {
+          airedUnwatched: countAiredUnwatched(seasons, progress),
+          remainingTime: remainingWatchTime(seasons, progress, details.runtime),
+        }
+      : {}),
     ...tmdb,
   };
 }
@@ -131,6 +145,7 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     nextEpisode: queries[index]?.data?.nextEpisode ?? null,
     tmdbStatus: queries[index]?.data?.tmdbStatus,
     tmdbTotalEpisodes: queries[index]?.data?.tmdbTotalEpisodes,
+    remainingTime: queries[index]?.data?.remainingTime,
     // What is actually out and unwatched when it could be counted; otherwise
     // the cached total minus watched, which for a running series also counts
     // episodes TMDB has announced but not yet aired.
@@ -149,6 +164,46 @@ export function useNextEpisodes(seriesList: TrackedSeriesItem[]) {
     isLoading: queries.some((query) => query.isLoading),
     refetch: () => Promise.all(queries.map((query) => query.refetch())),
   };
+}
+
+export interface CatchUpBacklog {
+  minutes: number;
+  /** Series with something aired left to watch. */
+  series: number;
+  /** Some episode's runtime was unknown or stood in for: the total is an estimate. */
+  approximate: boolean;
+  /** Some started series is still resolving or failed to: the total may grow. */
+  partial: boolean;
+}
+
+/** Adds up every started series' time left to catch up; null when nothing is left (or nothing is known yet). */
+export function summarizeCatchUpBacklog(results: NextEpisodeResult[]): CatchUpBacklog | null {
+  let minutes = 0;
+  let series = 0;
+  let approximate = false;
+  let partial = false;
+  for (const result of results) {
+    if (result.series.watchedEpisodes <= 0) continue;
+    if (result.isLoading || result.isError) {
+      partial = true;
+      continue;
+    }
+    if (!result.remainingTime) continue;
+    minutes += result.remainingTime.minutes;
+    series += 1;
+    approximate ||= result.remainingTime.approximate;
+  }
+  return minutes > 0 ? { minutes, series, approximate, partial } : null;
+}
+
+/** The catch-up backlog over every started series, for surfaces that don't already resolve them (Stats). */
+export function useCatchUpBacklog(trackedSeries: TrackedSeriesItem[]): {
+  backlog: CatchUpBacklog | null;
+  isLoading: boolean;
+} {
+  const started = useMemo(() => trackedSeries.filter((item) => item.watchedEpisodes > 0), [trackedSeries]);
+  const { results, isLoading } = useNextEpisodes(started);
+  return { backlog: summarizeCatchUpBacklog(results), isLoading };
 }
 
 export function useWatchNext(trackedSeries: TrackedSeriesItem[], limit = 6) {

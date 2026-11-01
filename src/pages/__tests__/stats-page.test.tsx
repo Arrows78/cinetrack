@@ -64,6 +64,17 @@ vi.mock("@/features/stats/use-stats", () => ({
 
 const renderWrappedCardMock = vi.fn();
 const downloadWrappedCardMock = vi.fn();
+let catchUpState: { backlog: unknown; isLoading: boolean } = {
+  backlog: { minutes: 135, series: 2, approximate: false, partial: false },
+  isLoading: false,
+};
+vi.mock("@/features/progress/use-progress", () => ({
+  useTrackedSeries: () => ({ data: [], isPending: false }),
+}));
+vi.mock("@/features/progress/use-watch-next", () => ({
+  useCatchUpBacklog: () => catchUpState,
+}));
+
 vi.mock("@/features/stats/wrapped-export", () => ({
   renderWrappedCard: (...args: unknown[]) => renderWrappedCardMock(...args),
   downloadWrappedCard: (...args: unknown[]) => downloadWrappedCardMock(...args),
@@ -130,6 +141,7 @@ describe("StatsPage", () => {
   });
 
   beforeEach(() => {
+    catchUpState = { backlog: { minutes: 135, series: 2, approximate: false, partial: false }, isLoading: false };
     statsState.data = makeStats();
     statsState.isError = false;
     statsState.error = null;
@@ -157,6 +169,25 @@ describe("StatsPage", () => {
 
     URL.createObjectURL = vi.fn(() => "blob:mock-wrapped-url");
     URL.revokeObjectURL = vi.fn();
+  });
+
+  it("shows the time left to catch up across series in progress", () => {
+    renderPage();
+
+    expect(screen.getByText("Left to catch up")).toBeInTheDocument();
+    expect(screen.getByText("2h 15min")).toBeInTheDocument();
+    expect(screen.getByText("Across 2 series in progress")).toBeInTheDocument();
+  });
+
+  it("says when nothing aired is left to catch up, and doesn't say so while still counting", () => {
+    catchUpState = { backlog: null, isLoading: true };
+    const { unmount } = renderPage();
+    expect(screen.queryByText("Nothing aired left to watch")).not.toBeInTheDocument();
+    unmount();
+
+    catchUpState = { backlog: null, isLoading: false };
+    renderPage();
+    expect(screen.getByText("Nothing aired left to watch")).toBeInTheDocument();
   });
 
   it("shows a remote error state when stats or wrapped fail, and retry refetches both", async () => {

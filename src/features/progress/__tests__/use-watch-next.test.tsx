@@ -471,3 +471,41 @@ describe("useMarkWatchNext", () => {
     );
   });
 });
+
+describe("summarizeCatchUpBacklog", () => {
+  const started = (seriesId: number): TrackedSeriesItem => ({ ...notStartedSeries, seriesId, watchedEpisodes: 2 });
+  const resolved = (series: TrackedSeriesItem, remainingTime: { minutes: number; approximate: boolean } | null) => ({
+    series,
+    nextEpisode: null,
+    remaining: 0,
+    remainingTime,
+    isLoading: false,
+    isError: false,
+  });
+
+  it("adds up the time left on every started series, and counts the ones with something left", async () => {
+    const { summarizeCatchUpBacklog } = await import("../use-watch-next");
+
+    expect(
+      summarizeCatchUpBacklog([
+        resolved(started(1), { minutes: 90, approximate: false }),
+        resolved(started(2), { minutes: 45, approximate: false }),
+        resolved(started(3), null),
+        // Never started: its first season alone says nothing about a backlog.
+        resolved(notStartedSeries, { minutes: 600, approximate: false }),
+      ])
+    ).toEqual({ minutes: 135, series: 2, approximate: false, partial: false });
+  });
+
+  it("flags an estimate and a series still resolving, and returns null when nothing is left", async () => {
+    const { summarizeCatchUpBacklog } = await import("../use-watch-next");
+
+    expect(
+      summarizeCatchUpBacklog([
+        resolved(started(1), { minutes: 50, approximate: true }),
+        { ...resolved(started(2), null), isLoading: true },
+      ])
+    ).toEqual({ minutes: 50, series: 1, approximate: true, partial: true });
+    expect(summarizeCatchUpBacklog([resolved(started(1), null)])).toBeNull();
+  });
+});
