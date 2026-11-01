@@ -50,12 +50,30 @@ vi.mock("@/hooks/use-debounced-value", () => ({
 }));
 
 const isMovieSeenMock = vi.fn<(id: number) => Promise<boolean>>(async () => false);
-const toggleMovieSeenMock = vi.fn<(movie: MediaSummary, watched: boolean) => Promise<undefined>>(async () => undefined);
+const toggleMovieSeenMock = vi.fn<
+  (movie: MediaSummary, watched: boolean, watchedAt?: string, note?: string) => Promise<undefined>
+>(async () => undefined);
+const rewatchMovieMock = vi.fn<(movie: MediaSummary, watchedAt?: string, note?: string) => Promise<undefined>>(
+  async () => undefined
+);
 vi.mock("@/features/progress/progress-repository", () => ({
   progressRepository: {
     isMovieSeen: (id: number) => isMovieSeenMock(id),
-    toggleMovieSeen: (movie: MediaSummary, watched: boolean) => toggleMovieSeenMock(movie, watched),
+    toggleMovieSeen: (movie: MediaSummary, watched: boolean, watchedAt?: string, note?: string) =>
+      toggleMovieSeenMock(movie, watched, watchedAt, note),
+    rewatchMovie: (movie: MediaSummary, watchedAt?: string, note?: string) => rewatchMovieMock(movie, watchedAt, note),
   },
+}));
+
+// The next-episode lookup has its own tests (use-watch-next); here it just
+// answers with whatever episode a test sets.
+let nextEpisodeForPage: { id: number; seasonNumber: number; episodeNumber: number; title: string } | null = null;
+const markWatchedMock = vi.fn<(args: unknown) => Promise<undefined>>(async () => undefined);
+vi.mock("@/features/progress/use-watch-next", () => ({
+  useNextEpisodes: (seriesList: unknown[]) => ({
+    results: seriesList.map((series) => ({ series, nextEpisode: nextEpisodeForPage })),
+  }),
+  useMarkWatchNext: () => ({ markWatched: markWatchedMock, isSaving: false }),
 }));
 
 const toastMock = vi.fn();
@@ -271,7 +289,12 @@ describe("CommandPalette", () => {
       fireEvent.click(screen.getByRole("button", { name: "Mark as watched" }));
 
       await waitFor(() =>
-        expect(toggleMovieSeenMock).toHaveBeenCalledWith(expect.objectContaining({ id: 42, title: "Dune" }), true)
+        expect(toggleMovieSeenMock).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 42, title: "Dune" }),
+          true,
+          undefined,
+          undefined
+        )
       );
       expect(navigateMock).not.toHaveBeenCalled();
       expect(screen.getByText("Titles")).toBeInTheDocument();
@@ -635,6 +658,62 @@ describe("CommandPalette", () => {
       await waitFor(() => expect(libraryRemoveMock).toHaveBeenCalledWith(7, "movie"));
     });
 
+    it("logs a back-dated watch with a note from the movie page", async () => {
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      fireEvent.click(await screen.findByRole("option", { name: "Log a watch…" }));
+      fireEvent.change(await screen.findByLabelText("Watched on"), { target: { value: "2024-03-12" } });
+      fireEvent.change(screen.getByLabelText("Your note"), { target: { value: "  At the cinema " } });
+      fireEvent.click(screen.getByRole("button", { name: "Log watch" }));
+
+      await waitFor(() =>
+        expect(toggleMovieSeenMock).toHaveBeenCalledWith(
+          cachedMovie,
+          true,
+          new Date(2024, 2, 12, 12).toISOString(),
+          "At the cinema"
+        )
+      );
+      expect(rewatchMovieMock).not.toHaveBeenCalled();
+    });
+
+    it("logs a rewatch, not a second first watch, when the movie is already seen", async () => {
+      isMovieSeenMock.mockResolvedValue(true);
+      routerState.pathname = "/movies/7";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.movieDetails(7), cachedMovie));
+      openPalette();
+
+      await waitFor(() => screen.getByRole("option", { name: "Mark unwatched" }));
+      fireEvent.click(screen.getByRole("option", { name: "Log a watch…" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Log watch" }));
+
+      await waitFor(() => expect(rewatchMovieMock).toHaveBeenCalledWith(cachedMovie, expect.any(String), undefined));
+      expect(toggleMovieSeenMock).not.toHaveBeenCalled();
+      isMovieSeenMock.mockResolvedValue(false);
+    });
+
+    it("marks the series' next episode watched, or opens it, from the series page", async () => {
+      nextEpisodeForPage = { id: 304, seasonNumber: 3, episodeNumber: 4, title: "Next" };
+      routerState.pathname = "/series/9";
+      renderPalette((client) => client.setQueryData(queryKeys.remote.seriesDetails(9), cachedSeries));
+      openPalette();
+
+      fireEvent.click(await screen.findByRole("option", { name: "Mark S3E4 watched" }));
+      await waitFor(() =>
+        expect(markWatchedMock).toHaveBeenCalledWith({
+          series: expect.objectContaining({ seriesId: 9 }),
+          episode: nextEpisodeForPage,
+        })
+      );
+
+      openPalette();
+      fireEvent.click(await screen.findByRole("option", { name: "Open S3E4" }));
+      expect(navigateMock).toHaveBeenCalledWith({ to: "/series/9/season/3/episode/4" });
+      nextEpisodeForPage = null;
+    });
+
     it("offers only the availability alert on a cached series page, not mark-watched", async () => {
       routerState.pathname = "/series/9";
       renderPalette((client) => client.setQueryData(queryKeys.remote.seriesDetails(9), cachedSeries));
@@ -686,7 +765,7 @@ describe("CommandPalette", () => {
       await waitFor(() => screen.getByRole("option", { name: "Mark watched" }));
       fireEvent.click(screen.getByRole("option", { name: "Mark watched" }));
 
-      await waitFor(() => expect(toggleMovieSeenMock).toHaveBeenCalledWith(cachedMovie, true));
+      await waitFor(() => expect(toggleMovieSeenMock).toHaveBeenCalledWith(cachedMovie, true, undefined, undefined));
       expect(screen.queryByRole("option", { name: "Mark watched" })).not.toBeInTheDocument();
     });
 

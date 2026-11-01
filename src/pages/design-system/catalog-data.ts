@@ -770,6 +770,14 @@ export const componentInventory = [
     "Shows a TMDB collection's watched/planned/missing entries and adds the missing ones to the library."
   ),
   component(
+    "LogWatchDialog",
+    "components/media/tracking/log-watch-dialog.tsx",
+    "Media",
+    "pattern",
+    "live",
+    'Logs one watch with a chosen date (up to today) and an optional note — the command palette\'s "Log a watch…".'
+  ),
+  component(
     "EpisodeCard",
     "components/media/tracking/episode-card.tsx",
     "Media",

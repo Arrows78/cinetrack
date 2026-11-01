@@ -29,8 +29,18 @@ export function useMovieSeen(movieId: number) {
   });
 
   const mutation = useInvalidatingMutation(
-    ({ movie, watched, note }: { movie: MediaSummary; watched: boolean; note?: string }) =>
-      progressRepository.toggleMovieSeen(movie, watched, undefined, note),
+    // `watchedAt` back-dates the watch (Rust refuses a future one); left out, it's now.
+    ({
+      movie,
+      watched,
+      note,
+      watchedAt,
+    }: {
+      movie: MediaSummary;
+      watched: boolean;
+      note?: string;
+      watchedAt?: string;
+    }) => progressRepository.toggleMovieSeen(movie, watched, watchedAt, note),
     // Marking a movie seen can auto-complete an existing library entry (see
     // docs/library-status.md), so the movie's domain includes the library's:
     // the home "people you watch"/"because you liked" rails read
@@ -41,8 +51,8 @@ export function useMovieSeen(movieId: number) {
   // "Watch again": a rewatch changes the rewatch statistics, the library
   // entry's rewatch count and this movie's diary — not its seen state.
   const rewatchMutation = useInvalidatingMutation(
-    ({ movie, note }: { movie: MediaSummary; note?: string }) =>
-      progressRepository.rewatchMovie(movie, undefined, note),
+    ({ movie, note, watchedAt }: { movie: MediaSummary; note?: string; watchedAt?: string }) =>
+      progressRepository.rewatchMovie(movie, watchedAt, note),
     (_data, variables) => invalidationKeys.movieWatch(profileId, variables.movie.id)
   );
 

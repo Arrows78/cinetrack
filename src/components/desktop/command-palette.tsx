@@ -8,7 +8,9 @@ import {
   BellOff,
   Bookmark,
   BookmarkCheck,
+  CalendarPlus,
   CheckCircle2,
+  CirclePlay,
   Eye,
   EyeOff,
   Film,
@@ -24,6 +26,9 @@ import { defaultPreferences } from "@/shared/constants/preferences-schema";
 import { shortcutMatchesEvent } from "@/shared/lib/keyboard-shortcut";
 import { useSearch } from "@/features/media/use-search";
 import { useMovieSeen } from "@/features/progress/use-progress";
+import { useMarkWatchNext, useNextEpisodes } from "@/features/progress/use-watch-next";
+import { LogWatchDialog } from "@/components/media/tracking/log-watch-dialog";
+import { formatEpisodeCode } from "@/shared/utils/format";
 import { useAvailabilityAlert } from "@/features/availability/use-availability-alerts";
 import { useAddToLibraryToggle } from "@/features/library/use-add-to-library-toggle";
 import { notificationService } from "@/features/desktop";
@@ -38,7 +43,7 @@ import { DEBOUNCE_MS, MIN_SEARCH_QUERY_LENGTH } from "@/shared/constants/query";
 import { DEFAULT_PREFERRED_REGION } from "@/shared/constants/discover";
 import { cn } from "@/shared/lib/cn";
 import { COMMAND_PALETTE_BACKDROP_CLASSNAME } from "@/shared/constants/decorative-gradients";
-import type { MediaSummary, Movie, Series } from "@/types/media";
+import type { MediaSummary, Movie, Series, TrackedSeriesItem } from "@/types/media";
 import { useResolvedTheme } from "@/hooks/use-resolved-theme";
 
 interface PaletteItem {
@@ -98,6 +103,26 @@ const EMPTY_PLACEHOLDER_MEDIA: MediaSummary = {
   cast: [],
 };
 
+// The series page's next-episode actions resolve through the same watch-next
+// lookup as the home page (keyed by series id only, so they share its cache).
+// It only needs the identity fields; the counts are recomputed from progress.
+function seriesStandIn(media: MediaSummary & { numberOfEpisodes?: number }): TrackedSeriesItem {
+  return {
+    id: `palette-${media.id}`,
+    profileId: null,
+    seriesId: media.id,
+    title: media.title,
+    posterPath: media.posterPath ?? null,
+    backdropPath: media.backdropPath ?? null,
+    totalEpisodes: media.numberOfEpisodes ?? 0,
+    watchedEpisodes: 0,
+    status: null,
+    createdAt: "",
+    updatedAt: "",
+  };
+}
+const NO_SERIES: TrackedSeriesItem[] = [];
+
 const TITLE_RESULTS_CAP = 5;
 
 const foldForSearch = (value: string): string =>
@@ -153,6 +178,30 @@ export function CommandPalette() {
   const alertQuery = useAvailabilityAlert(alertMedia, region, providerIds, { enabled: Boolean(currentDetail) });
   const movieSeenQuery = useMovieSeen(currentDetail?.mediaType === "movie" ? currentDetail.id : Number.NaN);
   const libraryToggle = useAddToLibraryToggle(alertMedia, { enabled: Boolean(currentDetail) });
+  const [loggingWatch, setLoggingWatch] = useState(false);
+  const seriesOnPage = currentDetail?.mediaType === "series" ? currentDetail.media : null;
+  const seriesForNextEpisode = useMemo(
+    () => (seriesOnPage ? [seriesStandIn(seriesOnPage)] : NO_SERIES),
+    [seriesOnPage]
+  );
+  const nextEpisodeResult = useNextEpisodes(seriesForNextEpisode).results[0];
+  const nextEpisode = nextEpisodeResult?.nextEpisode ?? null;
+  const markWatchNext = useMarkWatchNext();
+
+  const logWatch = async ({ watchedAt, note }: { watchedAt: string; note: string }) => {
+    if (currentDetail?.mediaType !== "movie") return;
+    const movie = currentDetail.media;
+    setLoggingWatch(false);
+    try {
+      // Already seen: this watch is a rewatch, the movie stays one watch.
+      if (movieSeenQuery.data) await movieSeenQuery.rewatchMovie({ movie, watchedAt, note: note || undefined });
+      else await movieSeenQuery.toggleMovieSeen({ movie, watched: true, watchedAt, note: note || undefined });
+      toast({ description: t("commandPalette.quickLogSuccess", { title: movie.title }), variant: "success" });
+    } catch (error) {
+      logger.error(`CommandPalette: logging a watch failed for movie ${movie.id}: ${String(error)}`);
+      toast({ description: t("commandPalette.quickLogError"), variant: "error" });
+    }
+  };
 
   const contextualItems = useMemo<PaletteItem[]>(() => {
     if (!currentDetail) return [];
@@ -182,6 +231,52 @@ export function CommandPalette() {
           void movieSeenQuery.toggleMovieSeen({ movie, watched: !seen });
         },
       });
+      items.push({
+        key: "context-log-watch",
+        label: t("commandPalette.logWatch"),
+        icon: CalendarPlus,
+        section: "contextual",
+        run: () => {
+          setOpen(false);
+          setLoggingWatch(true);
+        },
+      });
+    }
+
+    if (currentDetail.mediaType === "series" && nextEpisode) {
+      const code = formatEpisodeCode(nextEpisode.seasonNumber, nextEpisode.episodeNumber);
+      const series = seriesStandIn(currentDetail.media);
+      items.push({
+        key: "context-log-next-episode",
+        label: t("commandPalette.quickLogEpisode", { code }),
+        icon: CheckCircle2,
+        section: "contextual",
+        run: () => {
+          setOpen(false);
+          void markWatchNext
+            .markWatched({ series, episode: nextEpisode })
+            .then(() =>
+              toast({
+                description: t("commandPalette.quickLogEpisodeSuccess", { code, title: series.title }),
+                variant: "success",
+              })
+            )
+            .catch((error: unknown) => {
+              logger.error(`CommandPalette: quick log failed for series ${series.seriesId}: ${String(error)}`);
+              toast({ description: t("commandPalette.quickLogError"), variant: "error" });
+            });
+        },
+      });
+      items.push({
+        key: "context-open-next-episode",
+        label: t("commandPalette.openNextEpisode", { code }),
+        icon: CirclePlay,
+        section: "contextual",
+        run: () =>
+          navigate(
+            `/series/${currentDetail.id}/season/${nextEpisode.seasonNumber}/episode/${nextEpisode.episodeNumber}`
+          ),
+      });
     }
 
     const hasAlert = Boolean(alertQuery.data);
@@ -201,7 +296,7 @@ export function CommandPalette() {
 
     return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- movieSeenQuery/alertQuery/libraryToggle carry their own reactive .data already listed
-  }, [currentDetail, movieSeenQuery.data, alertQuery.data, libraryToggle.isInLibrary, t]);
+  }, [currentDetail, movieSeenQuery.data, alertQuery.data, libraryToggle.isInLibrary, nextEpisode, navigate, t]);
 
   const commands = useMemo<PaletteItem[]>(() => {
     const pages: PaletteItem[] = navigationItems.map((item) => ({
@@ -481,6 +576,12 @@ export function CommandPalette() {
         cancelLabel={t("common.cancel")}
         isConfirming={libraryToggle.isSaving}
         onConfirm={() => void libraryToggle.confirmForceRemove()}
+      />
+      <LogWatchDialog
+        open={loggingWatch}
+        onOpenChange={setLoggingWatch}
+        title={currentDetail?.media.title ?? ""}
+        onConfirm={(watch) => void logWatch(watch)}
       />
     </>
   );
