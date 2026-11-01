@@ -24,8 +24,6 @@ vi.mock("@/shared/lib/logger", () => ({
   logger: { warn: loggerWarn, error: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
-const BROWSER_KEY = "cinetrack.tmdb-token";
-
 async function importFresh() {
   vi.resetModules();
   return import("../token-vault");
@@ -57,14 +55,14 @@ describe("tokenVault", () => {
       expect(tokenVault.getToken()).toBeNull();
     });
 
-    it("initialize() reads a previously saved token from localStorage", async () => {
-      window.localStorage.setItem(BROWSER_KEY, "stored-token");
+    it("initialize() never recovers bearer tokens from localStorage", async () => {
+      window.localStorage.setItem("cinetrack.tmdb-token", "stale-plaintext-token");
       const { tokenVault } = await importFresh();
 
       await tokenVault.initialize();
 
-      expect(tokenVault.getToken()).toBe("stored-token");
-      expect(tokenVault.getSnapshot()).toEqual({ unlocked: true, configured: true, source: "browser" });
+      expect(tokenVault.getToken()).toBeNull();
+      expect(tokenVault.getSnapshot()).toEqual({ unlocked: false, configured: false, source: null });
     });
 
     it("initialize() leaves the vault unconfigured when localStorage has nothing", async () => {
@@ -73,11 +71,10 @@ describe("tokenVault", () => {
       expect(tokenVault.getSnapshot()).toEqual({ unlocked: false, configured: false, source: null });
     });
 
-    it("unlock() delegates to initialize() and reports whether a token was found", async () => {
-      window.localStorage.setItem(BROWSER_KEY, "stored-token");
+    it("unlock() cannot recover a browser token after the in-memory value is gone", async () => {
       const { tokenVault } = await importFresh();
-      await expect(tokenVault.unlock("unused")).resolves.toBe(true);
-      expect(tokenVault.getToken()).toBe("stored-token");
+      await expect(tokenVault.unlock("unused")).resolves.toBe(false);
+      expect(tokenVault.getToken()).toBeNull();
     });
 
     it("unlock() reports false when there is nothing to find", async () => {
@@ -88,17 +85,17 @@ describe("tokenVault", () => {
     it("save() rejects a blank token", async () => {
       const { tokenVault } = await importFresh();
       await expect(tokenVault.save("unused", "   ")).rejects.toThrow();
-      expect(window.localStorage.getItem(BROWSER_KEY)).toBeNull();
+      expect(window.localStorage.getItem("cinetrack.tmdb-token")).toBeNull();
     });
 
-    it("save() trims and persists the token to localStorage and notifies subscribers", async () => {
+    it("save() trims and keeps the token in memory without localStorage persistence", async () => {
       const { tokenVault } = await importFresh();
       const listener = vi.fn();
       const unsubscribe = tokenVault.subscribe(listener);
 
       await tokenVault.save("unused", "  my-token  ");
 
-      expect(window.localStorage.getItem(BROWSER_KEY)).toBe("my-token");
+      expect(window.localStorage.getItem("cinetrack.tmdb-token")).toBeNull();
       expect(tokenVault.getToken()).toBe("my-token");
       expect(tokenVault.getSnapshot()).toEqual({ unlocked: true, configured: true, source: "browser" });
       expect(listener).toHaveBeenCalled();
